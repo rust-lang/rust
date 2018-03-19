@@ -1,16 +1,16 @@
 error[E0621]: explicit lifetime required in the type of `cont`
   --> $DIR/issue-13058.rs:24:26
    |
-22 | fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
+LL | fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
    |                                                               ---- consider changing the type of `cont` to `&'r T`
-23 | {
-24 |     let cont_iter = cont.iter();
+LL | {
+LL |     let cont_iter = cont.iter();
    |                          ^^^^ lifetime `'r` required
 
 error[E0308]: mismatched types
   --> $DIR/issue-13058.rs:36:11
    |
-36 |     check((3, 5));
+LL |     check((3, 5));
    |           ^^^^^^
    |           |
    |           expected reference, found tuple
@@ -21,3 +21,5 @@ error[E0308]: mismatched types
 
 error: aborting due to 2 previous errors
 
+Some errors occurred: E0308, E0621.
+For more information about an error, try `rustc --explain E0308`.

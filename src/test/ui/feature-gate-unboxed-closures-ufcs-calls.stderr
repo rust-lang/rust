@@ -1,7 +1,7 @@
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:14:5
    |
-14 |     Fn::call(&f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+LL |     Fn::call(&f, ()); //~ ERROR use of unstable library feature 'fn_traits'
    |     ^^^^^^^^
    |
    = help: add #![feature(fn_traits)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:15:5
    |
-15 |     FnMut::call_mut(&mut f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+LL |     FnMut::call_mut(&mut f, ()); //~ ERROR use of unstable library feature 'fn_traits'
    |     ^^^^^^^^^^^^^^^
    |
    = help: add #![feature(fn_traits)] to the crate attributes to enable
@@ -17,10 +17,11 @@ error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
 error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:16:5
    |
-16 |     FnOnce::call_once(f, ()); //~ ERROR use of unstable library feature 'fn_traits'
+LL |     FnOnce::call_once(f, ()); //~ ERROR use of unstable library feature 'fn_traits'
    |     ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(fn_traits)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

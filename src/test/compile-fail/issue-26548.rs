@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unsupported cyclic reference between types/traits detected
+// error-pattern: cyclic dependency detected
 // note-pattern: the cycle begins when computing layout of
 // note-pattern: ...which then requires computing layout of
 // note-pattern: ...which then again requires computing layout of

@@ -74,7 +74,6 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=aarch64-unknown-linux-gnu \
       --qemu-aarch64-rootfs=/tmp/rootfs
 ENV SCRIPT python2.7 ../x.py test --target aarch64-unknown-linux-gnu
 ENV NO_CHANGE_USER=1

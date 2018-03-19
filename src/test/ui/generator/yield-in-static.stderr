@@ -1,10 +1,9 @@
-error[E0601]: main function not found
-
 error[E0627]: yield statement outside of generator literal
   --> $DIR/yield-in-static.rs:13:18
    |
-13 | static B: u8 = { yield 3u8; 3u8};
+LL | static B: u8 = { yield 3u8; 3u8};
    |                  ^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0627`.

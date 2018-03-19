@@ -14,7 +14,6 @@
 // `FusedIterator` in std but I was not able to isolate that into an
 // external crate.
 
-#![feature(fused)]
 use std::iter::FusedIterator;
 
 struct Thing<'a>(&'a str);

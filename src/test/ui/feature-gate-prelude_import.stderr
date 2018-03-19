@@ -1,10 +1,11 @@
 error[E0658]: `#[prelude_import]` is for use by rustc only
   --> $DIR/feature-gate-prelude_import.rs:11:1
    |
-11 | #[prelude_import] //~ ERROR `#[prelude_import]` is for use by rustc only
+LL | #[prelude_import] //~ ERROR `#[prelude_import]` is for use by rustc only
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(prelude_import)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

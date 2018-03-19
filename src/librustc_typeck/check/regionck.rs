@@ -96,7 +96,7 @@ use rustc::ty::adjustment;
 
 use std::mem;
 use std::ops::Deref;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
-    pub region_scope_tree: Rc<region::ScopeTree>,
+    pub region_scope_tree: Lrc<region::ScopeTree>,
 
     outlives_environment: OutlivesEnvironment<'tcx>,
 
@@ -411,8 +411,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             self.type_of_node_must_outlive(origin, hir_id, var_region);
 
             let typ = self.resolve_node_type(hir_id);
+            let body_id = self.body_id;
             let _ = dropck::check_safety_of_destructor_if_necessary(
-                self, typ, span, var_scope);
+                self, typ, span, body_id, var_scope);
         })
     }
 }
@@ -884,8 +885,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 match *region {
                     ty::ReScope(rvalue_scope) => {
                         let typ = self.resolve_type(cmt.ty);
+                        let body_id = self.body_id;
                         let _ = dropck::check_safety_of_destructor_if_necessary(
-                            self, typ, span, rvalue_scope);
+                            self, typ, span, body_id, rvalue_scope);
                     }
                     ty::ReStatic => {}
                     _ => {

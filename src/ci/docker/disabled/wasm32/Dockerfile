@@ -29,7 +29,4 @@ ENV BINARYEN_ROOT=/emsdk-portable/clang/e1.37.13_64bit/binaryen/
 ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=wasm32-unknown-emscripten
-
-ENV RUST_CONFIGURE_ARGS --target=$TARGETS
-
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS

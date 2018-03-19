@@ -36,7 +36,6 @@
 #![feature(str_internals)]
 #![feature(decode_utf8)]
 #![feature(fn_traits)]
-#![feature(fused)]
 #![feature(lang_items)]
 #![feature(non_exhaustive)]
 #![feature(staged_api)]

@@ -28,6 +28,7 @@ pub struct Page<'a> {
     pub root_path: &'a str,
     pub description: &'a str,
     pub keywords: &'a str,
+    pub resource_suffix: &'a str,
 }
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
@@ -47,12 +48,13 @@ r##"<!DOCTYPE html>
 
     <title>{title}</title>
 
-    <link rel="stylesheet" type="text/css" href="{root_path}normalize.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc.css" id="mainThemeStyle">
+    <link rel="stylesheet" type="text/css" href="{root_path}normalize{suffix}.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}rustdoc{suffix}.css"
+          id="mainThemeStyle">
     {themes}
-    <link rel="stylesheet" type="text/css" href="{root_path}dark.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}main.css" id="themeStyle">
-    <script src="{root_path}storage.js"></script>
+    <link rel="stylesheet" type="text/css" href="{root_path}dark{suffix}.css">
+    <link rel="stylesheet" type="text/css" href="{root_path}main{suffix}.css" id="themeStyle">
+    <script src="{root_path}storage{suffix}.js"></script>
     {css_extension}
 
     {favicon}
@@ -76,11 +78,11 @@ r##"<!DOCTYPE html>
 
     <div class="theme-picker">
         <button id="theme-picker" aria-label="Pick another theme!">
-            <img src="{root_path}brush.svg" width="18" alt="Pick another theme!">
+            <img src="{root_path}brush{suffix}.svg" width="18" alt="Pick another theme!">
         </button>
         <div id="theme-choices"></div>
     </div>
-    <script src="{root_path}theme.js"></script>
+    <script src="{root_path}theme{suffix}.js"></script>
     <nav class="sub">
         <form class="search-form js-only">
             <div class="search-container">
@@ -153,13 +155,14 @@ r##"<!DOCTYPE html>
         window.rootPath = "{root_path}";
         window.currentCrate = "{krate}";
     </script>
-    <script src="{root_path}main.js"></script>
+    <script src="{root_path}main{suffix}.js"></script>
     <script defer src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
     css_extension = if css_file_extension {
-        format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}theme.css\">",
-                root_path = page.root_path)
+        format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{root_path}theme{suffix}.css\">",
+                root_path = page.root_path,
+                suffix=page.resource_suffix)
     } else {
         "".to_owned()
     },
@@ -191,8 +194,10 @@ r##"<!DOCTYPE html>
                    .filter_map(|t| t.file_stem())
                    .filter_map(|t| t.to_str())
                    .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}{}">"#,
-                                    page.root_path, t))
+                                    page.root_path,
+                                    t.replace(".css", &format!("{}.css", page.resource_suffix))))
                    .collect::<String>(),
+    suffix=page.resource_suffix,
     )
 }
 

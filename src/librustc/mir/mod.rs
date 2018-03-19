@@ -15,7 +15,8 @@
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
-use rustc_const_math::{ConstUsize, ConstInt, ConstMathErr};
+use rustc_const_math::ConstMathErr;
+use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
@@ -24,23 +25,23 @@ use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
+use mir::interpret::{Value, PrimVal};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::TypeAndMut;
 use util::ppaux;
 use std::slice;
 use hir::{self, InlineAsm};
-use std::ascii;
 use std::borrow::{Cow};
 use std::cell::Ref;
 use std::fmt::{self, Debug, Formatter, Write};
-use std::{iter, u32};
+use std::{iter, mem, u32};
 use std::ops::{Index, IndexMut};
-use std::rc::Rc;
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 mod cache;
 pub mod tcx;
@@ -707,7 +708,7 @@ pub enum TerminatorKind<'tcx> {
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
-        values: Cow<'tcx, [ConstInt]>,
+        values: Cow<'tcx, [u128]>,
 
         /// Possible branch sites. The last element of this vector is used
         /// for the otherwise branch, so targets.len() == values.len() + 1
@@ -858,7 +859,7 @@ impl<'tcx> Terminator<'tcx> {
 impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
                          t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
+        static BOOL_SWITCH_FALSE: &'static [u128] = &[0];
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,
@@ -984,8 +985,59 @@ impl<'tcx> BasicBlockData<'tcx> {
     pub fn retain_statements<F>(&mut self, mut f: F) where F: FnMut(&mut Statement) -> bool {
         for s in &mut self.statements {
             if !f(s) {
-                s.kind = StatementKind::Nop;
+                s.make_nop();
             }
+        }
+    }
+
+    pub fn expand_statements<F, I>(&mut self, mut f: F)
+        where F: FnMut(&mut Statement<'tcx>) -> Option<I>,
+              I: iter::TrustedLen<Item = Statement<'tcx>>
+    {
+        // Gather all the iterators we'll need to splice in, and their positions.
+        let mut splices: Vec<(usize, I)> = vec![];
+        let mut extra_stmts = 0;
+        for (i, s) in self.statements.iter_mut().enumerate() {
+            if let Some(mut new_stmts) = f(s) {
+                if let Some(first) = new_stmts.next() {
+                    // We can already store the first new statement.
+                    *s = first;
+
+                    // Save the other statements for optimized splicing.
+                    let remaining = new_stmts.size_hint().0;
+                    if remaining > 0 {
+                        splices.push((i + 1 + extra_stmts, new_stmts));
+                        extra_stmts += remaining;
+                    }
+                } else {
+                    s.make_nop();
+                }
+            }
+        }
+
+        // Splice in the new statements, from the end of the block.
+        // FIXME(eddyb) This could be more efficient with a "gap buffer"
+        // where a range of elements ("gap") is left uninitialized, with
+        // splicing adding new elements to the end of that gap and moving
+        // existing elements from before the gap to the end of the gap.
+        // For now, this is safe code, emulating a gap but initializing it.
+        let mut gap = self.statements.len()..self.statements.len()+extra_stmts;
+        self.statements.resize(gap.end, Statement {
+            source_info: SourceInfo {
+                span: DUMMY_SP,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
+            kind: StatementKind::Nop
+        });
+        for (splice_start, new_stmts) in splices.into_iter().rev() {
+            let splice_end = splice_start + new_stmts.size_hint().0;
+            while gap.end > splice_end {
+                gap.start -= 1;
+                gap.end -= 1;
+                self.statements.swap(gap.start, gap.end);
+            }
+            self.statements.splice(splice_start..splice_end, new_stmts);
+            gap.end = splice_start;
         }
     }
 
@@ -1093,12 +1145,16 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
-            SwitchInt { ref values, .. } => {
+            SwitchInt { ref values, switch_ty, .. } => {
                 values.iter()
-                      .map(|const_val| {
-                          let mut buf = String::new();
-                          fmt_const_val(&mut buf, &ConstVal::Integral(*const_val)).unwrap();
-                          buf.into()
+                      .map(|&u| {
+                          let mut s = String::new();
+                          print_miri_value(
+                              Value::ByVal(PrimVal::Bytes(u)),
+                              switch_ty,
+                              &mut s,
+                          ).unwrap();
+                          s.into()
                       })
                       .chain(iter::once(String::from("otherwise").into()))
                       .collect()
@@ -1156,6 +1212,14 @@ impl<'tcx> Statement<'tcx> {
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
+    }
+
+    /// Changes a statement to a nop and returns the original statement.
+    pub fn replace_nop(&mut self) -> Self {
+        Statement {
+            source_info: self.source_info,
+            kind: mem::replace(&mut self.kind, StatementKind::Nop)
+        }
     }
 }
 
@@ -1474,7 +1538,8 @@ impl<'tcx> Operand<'tcx> {
             ty,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Function(def_id, substs),
+                    // ZST function type
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                     ty
                 })
             },
@@ -1498,7 +1563,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, ConstUsize),
+    Repeat(Operand<'tcx>, u64),
 
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
@@ -1794,7 +1859,7 @@ impl<'tcx> Debug for Literal<'tcx> {
         match *self {
             Value { value } => {
                 write!(fmt, "const ")?;
-                fmt_const_val(fmt, &value.val)
+                fmt_const_val(fmt, value)
             }
             Promoted { index } => {
                 write!(fmt, "{:?}", index)
@@ -1804,25 +1869,47 @@ impl<'tcx> Debug for Literal<'tcx> {
 }
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
-fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
+fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
     use middle::const_val::ConstVal::*;
-    match *const_val {
-        Float(f) => write!(fmt, "{:?}", f),
-        Integral(n) => write!(fmt, "{}", n),
-        Str(s) => write!(fmt, "{:?}", s),
-        ByteStr(bytes) => {
-            let escaped: String = bytes.data
-                .iter()
-                .flat_map(|&ch| ascii::escape_default(ch).map(|c| c as char))
-                .collect();
-            write!(fmt, "b\"{}\"", escaped)
-        }
-        Bool(b) => write!(fmt, "{:?}", b),
-        Char(c) => write!(fmt, "{:?}", c),
-        Variant(def_id) |
-        Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
-        Aggregate(_) => bug!("`ConstVal::{:?}` should not be in MIR", const_val),
-        Unevaluated(..) => write!(fmt, "{:?}", const_val)
+    match const_val.val {
+        Unevaluated(..) => write!(fmt, "{:?}", const_val),
+        Value(val) => print_miri_value(val, const_val.ty, fmt),
+    }
+}
+
+pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
+    use ty::TypeVariants::*;
+    use rustc_const_math::ConstFloat;
+    match (value, &ty.sty) {
+        (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
+        (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(fty)) =>
+            write!(f, "{}", ConstFloat { bits, ty: fty }),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
+        (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
+            write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
+        (Value::ByVal(PrimVal::Undef), &TyFnDef(did, _)) =>
+            write!(f, "{}", item_path_str(did)),
+        (Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)), &TyRef(_, TypeAndMut {
+            ty: &ty::TyS { sty: TyStr, .. }, ..
+        })) => {
+            ty::tls::with(|tcx| {
+                let alloc = tcx
+                    .interpret_interner
+                    .get_alloc(ptr.alloc_id);
+                if let Some(alloc) = alloc {
+                    assert_eq!(len as usize as u128, len);
+                    let slice = &alloc.bytes[(ptr.offset as usize)..][..(len as usize)];
+                    let s = ::std::str::from_utf8(slice)
+                        .expect("non utf8 str from miri");
+                    write!(f, "{:?}", s)
+                } else {
+                    write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                }
+            })
+        },
+        _ => write!(f, "{:?}:{}", value, ty),
     }
 }
 
@@ -1911,10 +1998,10 @@ pub struct UnsafetyViolation {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function
-    pub violations: Rc<[UnsafetyViolation]>,
+    pub violations: Lrc<[UnsafetyViolation]>,
     /// unsafe blocks in this function, along with whether they are used. This is
     /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Rc<[(ast::NodeId, bool)]>,
+    pub unsafe_blocks: Lrc<[(ast::NodeId, bool)]>,
 }
 
 /// The layout of generator state
@@ -2022,148 +2109,90 @@ pub enum ClosureOutlivesSubject<'tcx> {
  * TypeFoldable implementations for MIR types
  */
 
-impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        Mir {
-            basic_blocks: self.basic_blocks.fold_with(folder),
-            visibility_scopes: self.visibility_scopes.clone(),
-            visibility_scope_info: self.visibility_scope_info.clone(),
-            promoted: self.promoted.fold_with(folder),
-            yield_ty: self.yield_ty.fold_with(folder),
-            generator_drop: self.generator_drop.fold_with(folder),
-            generator_layout: self.generator_layout.fold_with(folder),
-            local_decls: self.local_decls.fold_with(folder),
-            arg_count: self.arg_count,
-            upvar_decls: self.upvar_decls.clone(),
-            spread_arg: self.spread_arg,
-            span: self.span,
-            cache: cache::Cache::new()
-        }
-    }
+CloneTypeFoldableAndLiftImpls! {
+    Mutability,
+    SourceInfo,
+    UpvarDecl,
+    ValidationOp,
+    VisibilityScopeData,
+    VisibilityScope,
+    VisibilityScopeInfo,
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.basic_blocks.visit_with(visitor) ||
-        self.generator_drop.visit_with(visitor) ||
-        self.generator_layout.visit_with(visitor) ||
-        self.yield_ty.visit_with(visitor) ||
-        self.promoted.visit_with(visitor)     ||
-        self.local_decls.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
+        basic_blocks,
+        visibility_scopes,
+        visibility_scope_info,
+        promoted,
+        yield_ty,
+        generator_drop,
+        generator_layout,
+        local_decls,
+        arg_count,
+        upvar_decls,
+        spread_arg,
+        span,
+        cache,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for GeneratorLayout<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        GeneratorLayout {
-            fields: self.fields.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.fields.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorLayout<'tcx> {
+        fields
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        LocalDecl {
-            ty: self.ty.fold_with(folder),
-            ..self.clone()
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        BasicBlockData {
-            statements: self.statements.fold_with(folder),
-            terminator: self.terminator.fold_with(folder),
-            is_cleanup: self.is_cleanup
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.statements.visit_with(visitor) || self.terminator.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
+        mutability,
+        is_user_variable,
+        internal,
+        ty,
+        name,
+        source_info,
+        syntactic_scope,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Place<'tcx>> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ValidationOperand {
-            place: self.place.fold_with(folder),
-            ty: self.ty.fold_with(folder),
-            re: self.re,
-            mutbl: self.mutbl,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.place.visit_with(visitor) || self.ty.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
+        statements,
+        terminator,
+        is_cleanup,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::StatementKind::*;
-
-        let kind = match self.kind {
-            Assign(ref place, ref rval) => Assign(place.fold_with(folder), rval.fold_with(folder)),
-            SetDiscriminant { ref place, variant_index } => SetDiscriminant {
-                place: place.fold_with(folder),
-                variant_index,
-            },
-            StorageLive(ref local) => StorageLive(local.fold_with(folder)),
-            StorageDead(ref local) => StorageDead(local.fold_with(folder)),
-            InlineAsm { ref asm, ref outputs, ref inputs } => InlineAsm {
-                asm: asm.clone(),
-                outputs: outputs.fold_with(folder),
-                inputs: inputs.fold_with(folder)
-            },
-
-            // Note for future: If we want to expose the region scopes
-            // during the fold, we need to either generalize EndRegion
-            // to carry `[ty::Region]`, or extend the `TypeFolder`
-            // trait with a `fn fold_scope`.
-            EndRegion(ref region_scope) => EndRegion(region_scope.clone()),
-
-            Validate(ref op, ref places) =>
-                Validate(op.clone(),
-                         places.iter().map(|operand| operand.fold_with(folder)).collect()),
-
-            Nop => Nop,
-        };
-        Statement {
-            source_info: self.source_info,
-            kind,
-        }
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Place<'tcx>> {
+        place, ty, re, mutbl
     }
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::StatementKind::*;
-
-        match self.kind {
-            Assign(ref place, ref rval) => { place.visit_with(visitor) || rval.visit_with(visitor) }
-            SetDiscriminant { ref place, .. } => place.visit_with(visitor),
-            StorageLive(ref local) |
-            StorageDead(ref local) => local.visit_with(visitor),
-            InlineAsm { ref outputs, ref inputs, .. } =>
-                outputs.visit_with(visitor) || inputs.visit_with(visitor),
-
-            // Note for future: If we want to expose the region scopes
-            // during the visit, we need to either generalize EndRegion
-            // to carry `[ty::Region]`, or extend the `TypeVisitor`
-            // trait with a `fn visit_scope`.
-            EndRegion(ref _scope) => false,
-
-            Validate(ref _op, ref places) =>
-                places.iter().any(|ty_and_place| ty_and_place.visit_with(visitor)),
-
-            Nop => false,
-        }
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
+        source_info, kind
     }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
+        (StatementKind::Assign)(a, b),
+        (StatementKind::SetDiscriminant) { place, variant_index },
+        (StatementKind::StorageLive)(a),
+        (StatementKind::StorageDead)(a),
+        (StatementKind::InlineAsm) { asm, outputs, inputs },
+        (StatementKind::Validate)(a, b),
+        (StatementKind::EndRegion)(a),
+        (StatementKind::Nop),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx, T> TypeFoldable<'tcx> for ClearCrossCrate<T> {
+        (ClearCrossCrate::Clear),
+        (ClearCrossCrate::Set)(a),
+    } where T: TypeFoldable<'tcx>
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
@@ -2405,6 +2434,15 @@ impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<'tcx, B, V, T>
                 Index(ref v) => v.visit_with(visitor),
                 _ => false
             }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Field {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
     }
 }
 

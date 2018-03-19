@@ -20,11 +20,11 @@ use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, FulfillmentContext};
+use rustc::traits::{self, Normalized, FulfillmentContext};
+use rustc::traits::query::NoSolution;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
@@ -127,7 +127,7 @@ fn type_check_internal<'gcx, 'tcx>(
     mir: &Mir<'tcx>,
     region_bound_pairs: &[(ty::Region<'tcx>, GenericKind<'tcx>)],
     implicit_region_bound: Option<ty::Region<'tcx>>,
-    extra: &mut FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
+    extra: &mut dyn FnMut(&mut TypeChecker<'_, 'gcx, 'tcx>),
 ) -> MirTypeckRegionConstraints<'tcx> {
     let mut checker = TypeChecker::new(
         infcx,
@@ -231,7 +231,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.cx.infcx.tcx
     }
 
-    fn sanitize_type(&mut self, parent: &fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
+    fn sanitize_type(&mut self, parent: &dyn fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
         if ty.has_escaping_regions() || ty.references_error() {
             span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
         } else {
@@ -244,8 +244,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         debug!(
             "sanitize_constant(constant={:?}, location={:?})",
-            constant,
-            location
+            constant, location
         );
 
         let expected_ty = match constant.literal {
@@ -258,7 +257,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 // constraints on `'a` and `'b`. These constraints
                 // would be lost if we just look at the normalized
                 // value.
-                if let ConstVal::Function(def_id, ..) = value.val {
+                if let ty::TyFnDef(def_id, substs) = value.ty.sty {
                     let tcx = self.tcx();
                     let type_checker = &mut self.cx;
 
@@ -271,17 +270,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     // are transitioning to the miri-based system, we
                     // don't have a handy function for that, so for
                     // now we just ignore `value.val` regions.
-                    let substs = match value.ty.sty {
-                        ty::TyFnDef(ty_def_id, substs) => {
-                            assert_eq!(def_id, ty_def_id);
-                            substs
-                        }
-                        _ => span_bug!(
-                            self.last_span,
-                            "unexpected type for constant function: {:?}",
-                            value.ty
-                        ),
-                    };
 
                     let instantiated_predicates =
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
@@ -436,7 +424,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             ProjectionElem::Subslice { from, to } => PlaceTy::Ty {
                 ty: match base_ty.sty {
                     ty::TyArray(inner, size) => {
-                        let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                        let size = size.val.unwrap_u64();
                         let min_size = (from as u64) + (to as u64);
                         if let Some(rest_size) = size.checked_sub(min_size) {
                             tcx.mk_array(inner, rest_size)
@@ -516,7 +504,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn field_ty(
         &mut self,
-        parent: &fmt::Debug,
+        parent: &dyn fmt::Debug,
         base_ty: PlaceTy<'tcx>,
         field: Field,
         location: Location,
@@ -554,7 +542,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }),
                     };
                 }
-                ty::TyTuple(tys, _) => {
+                ty::TyTuple(tys) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
@@ -690,8 +678,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
-            debug!("fully_perform_op: constraints generated at {:?} are {:#?}",
-                   locations, data);
+            debug!(
+                "fully_perform_op: constraints generated at {:?} are {:#?}",
+                locations, data
+            );
             self.constraints
                 .outlives_sets
                 .push(OutlivesSet { locations, data });
@@ -1013,19 +1003,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     }
 
     fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
-        match operand {
-            &Operand::Constant(box Constant {
-                literal:
-                    Literal::Value {
-                        value:
-                            &ty::Const {
-                                val: ConstVal::Function(def_id, _),
-                                ..
-                            },
-                        ..
-                    },
-                ..
-            }) => Some(def_id) == self.tcx().lang_items().box_free_fn(),
+        match *operand {
+            Operand::Constant(ref c) => match c.ty.sty {
+                ty::TyFnDef(ty_def_id, _) => {
+                    Some(ty_def_id) == self.tcx().lang_items().box_free_fn()
+                }
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -1155,12 +1139,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             TerminatorKind::FalseUnwind {
                 real_target,
-                unwind
+                unwind,
             } => {
                 self.assert_iscleanup(mir, block_data, real_target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
+                        span_mirbug!(
+                            self,
+                            block_data,
+                            "cleanup in cleanup block via false unwind"
+                        );
                     }
                     self.assert_iscleanup(mir, block_data, unwind, true);
                 }
@@ -1171,7 +1159,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn assert_iscleanup(
         &mut self,
         mir: &Mir<'tcx>,
-        ctxt: &fmt::Debug,
+        ctxt: &dyn fmt::Debug,
         bb: BasicBlock,
         iscleanuppad: bool,
     ) {
@@ -1208,7 +1196,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // shouldn't affect `is_sized`.
         let gcx = self.tcx().global_tcx();
         let erased_ty = gcx.lift(&self.tcx().erase_regions(&ty)).unwrap();
-        if !erased_ty.is_sized(gcx, self.param_env, span) {
+        if !erased_ty.is_sized(gcx.at(span), self.param_env) {
             // in current MIR construction, all non-control-flow rvalue
             // expressions evaluate through `as_temp` or `into` a return
             // slot or local, so to find all unsized rvalues it is enough
@@ -1284,7 +1272,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.check_aggregate_rvalue(mir, rvalue, ak, ops, location)
             }
 
-            Rvalue::Repeat(operand, const_usize) => if const_usize.as_u64() > 1 {
+            Rvalue::Repeat(operand, len) => if *len > 1 {
                 let operand_ty = operand.ty(mir, tcx);
 
                 let trait_ref = ty::TraitRef {
@@ -1453,8 +1441,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         debug!(
             "prove_aggregate_predicates(aggregate_kind={:?}, location={:?})",
-            aggregate_kind,
-            location
+            aggregate_kind, location
         );
 
         let instantiated_predicates = match aggregate_kind {
@@ -1520,8 +1507,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn prove_predicates(&mut self, predicates: &[ty::Predicate<'tcx>], location: Location) {
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates,
-            location
+            predicates, location
         );
         self.fully_perform_op(location.at_self(), |this| {
             let cause = this.misc(this.last_span);
@@ -1568,10 +1554,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         self.fully_perform_op(location.at_self(), |this| {
-            let mut selcx = traits::SelectionContext::new(this.infcx);
-            let cause = this.misc(this.last_span);
-            let traits::Normalized { value, obligations } =
-                traits::normalize(&mut selcx, this.param_env, cause, value);
+            let Normalized { value, obligations } = this.infcx
+                .at(&this.misc(this.last_span), this.param_env)
+                .normalize(value)
+                .unwrap_or_else(|NoSolution| {
+                    span_bug!(
+                        this.last_span,
+                        "normalization of `{:?}` failed at {:?}",
+                        value,
+                        location,
+                    );
+                });
             Ok(InferOk { value, obligations })
         }).unwrap()
     }
@@ -1584,6 +1577,12 @@ impl MirPass for TypeckMir {
         let def_id = src.def_id;
         let id = tcx.hir.as_local_node_id(def_id).unwrap();
         debug!("run_pass: {:?}", def_id);
+
+        // When NLL is enabled, the borrow checker runs the typeck
+        // itself, so we don't need this MIR pass anymore.
+        if tcx.nll() {
+            return;
+        }
 
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a

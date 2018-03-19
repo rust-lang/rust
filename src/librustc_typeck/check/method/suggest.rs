@@ -54,7 +54,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     self.probe(|_| {
                         let fn_once_substs = tcx.mk_substs_trait(ty,
-                            &[self.next_ty_var(TypeVariableOrigin::MiscVariable(span))]);
+                            &[self.next_ty_var(ty::UniverseIndex::ROOT,
+                                               TypeVariableOrigin::MiscVariable(span))]);
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =
@@ -766,7 +767,7 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
                     if item.span.ctxt().outer().expn_info().is_none() {
-                        self.span = Some(item.span.with_hi(item.span.lo()));
+                        self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
                     }
@@ -778,12 +779,12 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
                     if item.span.ctxt().outer().expn_info().is_none() {
                         // don't insert between attributes and an item
                         if item.attrs.is_empty() {
-                            self.span = Some(item.span.with_hi(item.span.lo()));
+                            self.span = Some(item.span.shrink_to_lo());
                         } else {
                             // find the first attribute on the item
                             for attr in &item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
-                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }

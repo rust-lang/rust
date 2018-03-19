@@ -127,7 +127,6 @@ impl<I> Iterator for Utf16Encoder<I>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
 impl<I> FusedIterator for Utf16Encoder<I>
     where I: FusedIterator<Item = char> {}
 
@@ -186,5 +185,5 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for SplitWhitespace<'a> {}

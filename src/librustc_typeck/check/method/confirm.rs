@@ -259,7 +259,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 // the process we will unify the transformed-self-type
                 // of the method with the actual type in order to
                 // unify some of these variables.
-                self.fresh_substs_for_item(self.span, trait_def_id)
+                self.fresh_substs_for_item(ty::UniverseIndex::ROOT, self.span, trait_def_id)
             }
 
             probe::WhereClausePick(ref poly_trait_ref) => {
@@ -325,7 +325,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             } else {
                 self.region_var_for_def(self.span, def)
             }
-        }, |def, cur_substs| {
+        }, |def, _cur_substs| {
             let i = def.index as usize;
             if i < parent_substs.len() {
                 parent_substs.type_at(i)
@@ -336,7 +336,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             {
                 self.to_ty(ast_ty)
             } else {
-                self.type_var_for_def(self.span, def, cur_substs)
+                self.type_var_for_def(ty::UniverseIndex::ROOT, self.span, def)
             }
         })
     }

@@ -1,10 +1,11 @@
 error[E0658]: #[doc(cfg(...))] is experimental (see issue #43781)
   --> $DIR/feature-gate-doc_cfg.rs:11:1
    |
-11 | #[doc(cfg(unix))] //~ ERROR: #[doc(cfg(...))] is experimental
+LL | #[doc(cfg(unix))] //~ ERROR: #[doc(cfg(...))] is experimental
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(doc_cfg)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

@@ -1,7 +1,7 @@
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:11:58
    |
-11 | fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
+LL | fn parse_type(iter: Box<Iterator<Item=&str>+'static>) -> &str { iter.next() }
    |                                                          ^ expected lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but the signature does not say which one of `iter`'s 2 lifetimes it is borrowed from
@@ -9,7 +9,7 @@ error[E0106]: missing lifetime specifier
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:14:40
    |
-14 | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
+LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
    |                                        ^ expected lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
@@ -18,7 +18,7 @@ error[E0106]: missing lifetime specifier
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:17:22
    |
-17 | fn parse_type_3() -> &str { unimplemented!() }
+LL | fn parse_type_3() -> &str { unimplemented!() }
    |                      ^ expected lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
@@ -26,3 +26,4 @@ error[E0106]: missing lifetime specifier
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0106`.

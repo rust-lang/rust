@@ -1,10 +1,11 @@
 error[E0658]: the `#[rustc_on_unimplemented]` attribute is an experimental feature (see issue #29628)
   --> $DIR/feature-gate-on-unimplemented.rs:14:1
    |
-14 | #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}`"]
+LL | #[rustc_on_unimplemented = "test error `{Self}` with `{Bar}`"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(on_unimplemented)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

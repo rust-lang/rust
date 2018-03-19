@@ -724,7 +724,7 @@ impl<T, S> HashSet<T, S>
     /// use std::collections::HashSet;
     ///
     /// let xs = [1,2,3,4,5,6];
-    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
+    /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
@@ -1097,7 +1097,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
         self.iter.len()
     }
 }
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1124,7 +1124,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
         self.iter.len()
     }
 }
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<K> FusedIterator for IntoIter<K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1155,7 +1155,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
         self.iter.len()
     }
 }
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -1208,7 +1208,7 @@ impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Intersection<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1244,7 +1244,7 @@ impl<'a, T, S> Iterator for Difference<'a, T, S>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Difference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1283,7 +1283,7 @@ impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1307,7 +1307,7 @@ impl<'a, T, S> Clone for Union<'a, T, S> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T, S> FusedIterator for Union<'a, T, S>
     where T: Eq + Hash,
           S: BuildHasher
@@ -1745,7 +1745,7 @@ mod test_set {
     #[test]
     fn test_retain() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut set: HashSet<isize> = xs.iter().cloned().collect();
+        let mut set: HashSet<i32> = xs.iter().cloned().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
         assert!(set.contains(&2));

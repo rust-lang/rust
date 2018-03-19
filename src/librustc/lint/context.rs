@@ -29,11 +29,11 @@ use self::TargetLint::*;
 use std::slice;
 use lint::{EarlyLintPassObject, LateLintPassObject};
 use lint::{Level, Lint, LintId, LintPass, LintBuffer};
+use lint::builtin::BuiltinLintDiagnostics;
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
 use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use session::{config, early_error, Session};
-use traits::Reveal;
 use ty::{self, TyCtxt, Ty};
 use ty::layout::{LayoutError, LayoutOf, TyLayout};
 use util::nodemap::FxHashMap;
@@ -41,6 +41,7 @@ use util::nodemap::FxHashMap;
 use std::default::Default as StdDefault;
 use std::cell::{Ref, RefCell};
 use syntax::ast;
+use syntax::epoch;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 use hir;
@@ -92,6 +93,7 @@ pub struct BufferedEarlyLint {
     pub ast_id: ast::NodeId,
     pub span: MultiSpan,
     pub msg: String,
+    pub diagnostic: BuiltinLintDiagnostics,
 }
 
 /// Extra information for a future incompatibility lint. See the call
@@ -99,7 +101,11 @@ pub struct BufferedEarlyLint {
 /// guidelines.
 pub struct FutureIncompatibleInfo {
     pub id: LintId,
-    pub reference: &'static str // e.g., a URL for an issue/PR/RFC or error code
+    /// e.g., a URL for an issue/PR/RFC or error code
+    pub reference: &'static str,
+    /// If this is an epoch fixing lint, the epoch in which
+    /// this lint becomes obsolete
+    pub epoch: Option<epoch::Epoch>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -194,11 +200,24 @@ impl LintStore {
     pub fn register_future_incompatible(&mut self,
                                         sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
-        let ids = lints.iter().map(|f| f.id).collect();
-        self.register_group(sess, false, "future_incompatible", ids);
-        for info in lints {
-            self.future_incompatible.insert(info.id, info);
+
+        for epoch in epoch::ALL_EPOCHS {
+            let lints = lints.iter().filter(|f| f.epoch == Some(*epoch)).map(|f| f.id)
+                             .collect::<Vec<_>>();
+            if !lints.is_empty() {
+                self.register_group(sess, false, epoch.lint_name(), lints)
+            }
         }
+
+        let mut future_incompatible = vec![];
+        for lint in lints {
+            future_incompatible.push(lint.id);
+            self.future_incompatible.insert(lint.id, lint);
+        }
+
+        self.register_group(sess, false, "future_incompatible", future_incompatible);
+
+
     }
 
     pub fn future_incompatible(&self, id: LintId) -> Option<&FutureIncompatibleInfo> {
@@ -429,6 +448,16 @@ pub trait LintContext<'tcx>: Sized {
         self.lookup(lint, span, msg).emit();
     }
 
+    fn lookup_and_emit_with_diagnostics<S: Into<MultiSpan>>(&self,
+                                                            lint: &'static Lint,
+                                                            span: Option<S>,
+                                                            msg: &str,
+                                                            diagnostic: BuiltinLintDiagnostics) {
+        let mut db = self.lookup(lint, span, msg);
+        diagnostic.run(self.sess(), &mut db);
+        db.emit();
+    }
+
     fn lookup<S: Into<MultiSpan>>(&self,
                                   lint: &'static Lint,
                                   span: Option<S>,
@@ -499,9 +528,10 @@ impl<'a> EarlyContext<'a> {
 
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.buffered.take(id) {
-            self.lookup_and_emit(early_lint.lint_id.lint,
-                                 Some(early_lint.span.clone()),
-                                 &early_lint.msg);
+            self.lookup_and_emit_with_diagnostics(early_lint.lint_id.lint,
+                                                  Some(early_lint.span.clone()),
+                                                  &early_lint.msg,
+                                                  early_lint.diagnostic);
         }
     }
 }
@@ -793,6 +823,17 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         hir_visit::walk_generics(self, g);
     }
 
+    fn visit_where_predicate(&mut self, p: &'tcx hir::WherePredicate) {
+        run_lints!(self, check_where_predicate, late_passes, p);
+        hir_visit::walk_where_predicate(self, p);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'tcx hir::PolyTraitRef,
+                            m: hir::TraitBoundModifier) {
+        run_lints!(self, check_poly_trait_ref, late_passes, t, m);
+        hir_visit::walk_poly_trait_ref(self, t, m);
+    }
+
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         let generics = self.generics.take();
         self.generics = Some(&trait_item.generics);
@@ -955,6 +996,16 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
         ast_visit::walk_generics(self, g);
     }
 
+    fn visit_where_predicate(&mut self, p: &'a ast::WherePredicate) {
+        run_lints!(self, check_where_predicate, early_passes, p);
+        ast_visit::walk_where_predicate(self, p);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'a ast::PolyTraitRef, m: &'a ast::TraitBoundModifier) {
+        run_lints!(self, check_poly_trait_ref, early_passes, t, m);
+        ast_visit::walk_poly_trait_ref(self, t, m);
+    }
+
     fn visit_trait_item(&mut self, trait_item: &'a ast::TraitItem) {
         self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
             run_lints!(cx, check_trait_item, early_passes, trait_item);
@@ -1003,7 +1054,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut cx = LateContext {
         tcx,
         tables: &ty::TypeckTables::empty(None),
-        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+        param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
         last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,
@@ -1054,7 +1105,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     if !sess.opts.actually_rustdoc {
         for (_id, lints) in cx.buffered.map {
             for early_lint in lints {
-                span_bug!(early_lint.span, "failed to process buffered lint here");
+                sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
             }
         }
     }

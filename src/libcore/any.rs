@@ -367,33 +367,7 @@ impl TypeId {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(stage0)]
-    pub fn of<T: ?Sized + 'static>() -> TypeId {
-        TypeId {
-            t: unsafe { intrinsics::type_id::<T>() },
-        }
-    }
-
-    /// Returns the `TypeId` of the type this generic function has been
-    /// instantiated with.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::any::{Any, TypeId};
-    ///
-    /// fn is_string<T: ?Sized + Any>(_s: &T) -> bool {
-    ///     TypeId::of::<String>() == TypeId::of::<T>()
-    /// }
-    ///
-    /// fn main() {
-    ///     assert_eq!(is_string(&0), false);
-    ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature="const_type_id")]
-    #[cfg(not(stage0))]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },

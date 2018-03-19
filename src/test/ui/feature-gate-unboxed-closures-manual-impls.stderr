@@ -1,7 +1,7 @@
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:20:5
    |
-20 |     extern "rust-call" fn call(self, args: ()) -> () {}
+LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: rust-call ABI is subject to change (see issue #29625)
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:25:5
    |
-25 |     extern "rust-call" fn call_once(self, args: ()) -> () {}
+LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
@@ -17,7 +17,7 @@ error[E0658]: rust-call ABI is subject to change (see issue #29625)
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:5
    |
-30 |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
+LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
@@ -25,10 +25,11 @@ error[E0658]: rust-call ABI is subject to change (see issue #29625)
 error[E0658]: rust-call ABI is subject to change (see issue #29625)
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:5
    |
-35 |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
+LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

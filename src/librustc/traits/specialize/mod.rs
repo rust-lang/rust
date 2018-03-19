@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Logic and data structures related to impl specialization, explained in
-// greater detail below.
-//
-// At the moment, this implementation support only the simple "chain" rule:
-// If any two impls overlap, one must be a strict subset of the other.
-//
-// See traits/README.md for a bit more detail on how specialization
-// fits together with the rest of the trait machinery.
+//! Logic and data structures related to impl specialization, explained in
+//! greater detail below.
+//!
+//! At the moment, this implementation support only the simple "chain" rule:
+//! If any two impls overlap, one must be a strict subset of the other.
+//!
+//! See the [rustc guide] for a bit more detail on how specialization
+//! fits together with the rest of the trait machinery.
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-specialization.html
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
@@ -24,11 +26,11 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
-use traits::{self, Reveal, ObligationCause};
+use traits::{self, ObligationCause};
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use lint;
 
@@ -130,7 +132,7 @@ pub fn find_associated_item<'a, 'tcx>(
     match ancestors.defs(tcx, item.name, item.kind, trait_def_id).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::empty(Reveal::All);
+                let param_env = ty::ParamEnv::reveal_all();
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(&infcx, param_env, impl_data.impl_def_id,
                                               substs, node_item.node);
@@ -162,7 +164,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
-    if !tcx.sess.features.borrow().specialization &&
+    if !tcx.features().specialization &&
         (impl1_def_id.is_local() || impl2_def_id.is_local()) {
         return false;
     }
@@ -219,7 +221,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
-    let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
+    let target_substs = infcx.fresh_substs_for_item(param_env.universe, DUMMY_SP, target_impl);
     let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                        param_env,
                                                                        target_impl,
@@ -306,7 +308,7 @@ impl SpecializesCache {
 // Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                       trait_id: DefId)
-                                                      -> Rc<specialization_graph::Graph> {
+                                                      -> Lrc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = Vec::new();
@@ -390,7 +392,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
         }
     }
 
-    Rc::new(sg)
+    Lrc::new(sg)
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

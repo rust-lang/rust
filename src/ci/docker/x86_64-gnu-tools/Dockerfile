@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+COPY x86_64-gnu-tools/checkregression.py /tmp/
 COPY x86_64-gnu-tools/checktools.sh /tmp/
 COPY x86_64-gnu-tools/repo.sh /tmp/
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// must-compile-successfully
+
 union U {
     a: usize,
     b: usize,
@@ -16,9 +18,6 @@ union U {
 const C: U = U { a: 10 };
 
 fn main() {
-    unsafe {
-        let a: [u8; C.a]; // OK
-        let b: [u8; C.b]; //~ ERROR constant evaluation error
-                          //~| WARNING constant evaluation error
-    }
+    let a: [u8; unsafe { C.a }];
+    let b: [u8; unsafe { C.b }];
 }

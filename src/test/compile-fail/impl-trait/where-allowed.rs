@@ -10,7 +10,7 @@
 
 //! A simple test for testing many permutations of allowedness of
 //! impl Trait
-#![feature(conservative_impl_trait, nested_impl_trait, universal_impl_trait, dyn_trait)]
+#![feature(conservative_impl_trait, universal_impl_trait, dyn_trait)]
 use std::fmt::Debug;
 
 // Allowed
@@ -60,6 +60,7 @@ fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
 // Disallowed
 fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+//~^^ ERROR nested `impl Trait` is not allowed
 
 // Disallowed
 fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
@@ -68,6 +69,7 @@ fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
 // Disallowed
 fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
 //~^ ERROR `impl Trait` not allowed outside of function and inherent method return types
+//~^^ ERROR nested `impl Trait` is not allowed
 
 // Disallowed
 fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { panic!() }

@@ -17,6 +17,8 @@ use std::io;
 use std::mem;
 use std::process::{self, Output};
 
+use rustc_back::LldFlavor;
+
 #[derive(Clone)]
 pub struct Command {
     program: Program,
@@ -28,6 +30,7 @@ pub struct Command {
 enum Program {
     Normal(OsString),
     CmdBatScript(OsString),
+    Lld(OsString, LldFlavor)
 }
 
 impl Command {
@@ -37,6 +40,10 @@ impl Command {
 
     pub fn bat_script<P: AsRef<OsStr>>(program: P) -> Command {
         Command::_new(Program::CmdBatScript(program.as_ref().to_owned()))
+    }
+
+    pub fn lld<P: AsRef<OsStr>>(program: P, flavor: LldFlavor) -> Command {
+        Command::_new(Program::Lld(program.as_ref().to_owned(), flavor))
     }
 
     fn _new(program: Program) -> Command {
@@ -74,17 +81,6 @@ impl Command {
         self
     }
 
-    pub fn envs<I, K, V>(&mut self, envs: I) -> &mut Command
-        where I: IntoIterator<Item=(K, V)>,
-              K: AsRef<OsStr>,
-              V: AsRef<OsStr>
-    {
-        for (key, value) in envs {
-            self._env(key.as_ref(), value.as_ref());
-        }
-        self
-    }
-
     fn _env(&mut self, key: &OsStr, value: &OsStr) {
         self.env.push((key.to_owned(), value.to_owned()));
     }
@@ -101,6 +97,16 @@ impl Command {
                 c.arg("/c").arg(p);
                 c
             }
+            Program::Lld(ref p, flavor) => {
+                let mut c = process::Command::new(p);
+                c.arg("-flavor").arg(match flavor {
+                    LldFlavor::Wasm => "wasm",
+                    LldFlavor::Ld => "gnu",
+                    LldFlavor::Link => "link",
+                    LldFlavor::Ld64 => "darwin",
+                });
+                c
+            }
         };
         ret.args(&self.args);
         ret.envs(self.env.clone());
@@ -108,6 +114,10 @@ impl Command {
     }
 
     // extensions
+
+    pub fn get_args(&self) -> &[OsString] {
+        &self.args
+    }
 
     pub fn take_args(&mut self) -> Vec<OsString> {
         mem::replace(&mut self.args, Vec::new())
@@ -119,6 +129,13 @@ impl Command {
         // We mostly only care about Windows in this method, on Unix the limits
         // can be gargantuan anyway so we're pretty unlikely to hit them
         if cfg!(unix) {
+            return false
+        }
+
+        // Right now LLD doesn't support the `@` syntax of passing an argument
+        // through files, so regardless of the platform we try to go to the OS
+        // on this one.
+        if let Program::Lld(..) = self.program {
             return false
         }
 

@@ -1,32 +1,32 @@
 error: incorrect close delimiter: `}`
   --> $DIR/token-error-correct.rs:16:1
    |
-16 | }
+LL | }
    | ^
    |
 note: unclosed delimiter
   --> $DIR/token-error-correct.rs:14:12
    |
-14 |     foo(bar(;
+LL |     foo(bar(;
    |            ^
 
 error: incorrect close delimiter: `}`
   --> $DIR/token-error-correct.rs:16:1
    |
-16 | }
+LL | }
    | ^
    |
 note: unclosed delimiter
   --> $DIR/token-error-correct.rs:14:8
    |
-14 |     foo(bar(;
+LL |     foo(bar(;
    |        ^
 
 error: expected expression, found `;`
   --> $DIR/token-error-correct.rs:14:13
    |
-14 |     foo(bar(;
-   |             ^
+LL |     foo(bar(;
+   |             ^ expected expression
 
 error: aborting due to 3 previous errors
 

@@ -54,7 +54,7 @@ pub struct EdgeFilter {
 }
 
 impl EdgeFilter {
-    pub fn new(test: &str) -> Result<EdgeFilter, Box<Error>> {
+    pub fn new(test: &str) -> Result<EdgeFilter, Box<dyn Error>> {
         let parts: Vec<_> = test.split("->").collect();
         if parts.len() != 2 {
             Err(format!("expected a filter like `a&b -> c&d`, not `{}`", test).into())

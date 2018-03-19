@@ -1,10 +1,11 @@
 error[E0658]: `log_syntax!` is not stable enough for use and is subject to change (see issue #29598)
   --> $DIR/feature-gate-log_syntax2.rs:14:20
    |
-14 |     println!("{}", log_syntax!()); //~ ERROR `log_syntax!` is not stable
+LL |     println!("{}", log_syntax!()); //~ ERROR `log_syntax!` is not stable
    |                    ^^^^^^^^^^^^^
    |
    = help: add #![feature(log_syntax)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

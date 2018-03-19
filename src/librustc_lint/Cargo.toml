@@ -12,6 +12,6 @@ test = false
 [dependencies]
 log = "0.4"
 rustc = { path = "../librustc" }
-rustc_const_eval = { path = "../librustc_const_eval" }
+rustc_mir = { path = "../librustc_mir"}
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }

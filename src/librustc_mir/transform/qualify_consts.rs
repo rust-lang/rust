@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
@@ -36,7 +36,7 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::usize;
 
 use transform::{MirPass, MirSource};
@@ -319,7 +319,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Rc<IdxSetBuf<Local>>) {
+    fn qualify_const(&mut self) -> (Qualif, Lrc<IdxSetBuf<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -436,7 +436,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        (self.qualif, Rc::new(promoted_temps))
+        (self.qualif, Lrc::new(promoted_temps))
     }
 }
 
@@ -690,7 +690,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             _ => false
                         }
                     } else if let ty::TyArray(_, len) = ty.sty {
-                        len.val.to_const_int().unwrap().to_u64().unwrap() == 0 &&
+                        len.val.unwrap_u64() == 0 &&
                             self.mode == Mode::Fn
                     } else {
                         false
@@ -936,7 +936,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     if self.mode != Mode::Fn &&
 
                         // feature-gate is not enabled,
-                        !self.tcx.sess.features.borrow()
+                        !self.tcx.features()
                             .declared_lib_features
                             .iter()
                             .any(|&(ref sym, _)| sym == feature_name) &&
@@ -1121,7 +1121,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> (u8, Rc<IdxSetBuf<Local>>) {
+                              -> (u8, Lrc<IdxSetBuf<Local>>) {
     // NB: This `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1130,7 +1130,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif::NOT_CONST.bits(), Rc::new(IdxSetBuf::new_empty(0)));
+        return (Qualif::NOT_CONST.bits(), Lrc::new(IdxSetBuf::new_empty(0)));
     }
 
     let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
@@ -1237,7 +1237,7 @@ impl MirPass for QualifyAndPromoteConstants {
             }
             let ty = mir.return_ty();
             tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let param_env = ty::ParamEnv::empty();
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 fulfillment_cx.register_bound(&infcx,
@@ -1246,7 +1246,7 @@ impl MirPass for QualifyAndPromoteConstants {
                                               tcx.require_lang_item(lang_items::SyncTraitLangItem),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    infcx.report_fulfillment_errors(&err, None);
+                    infcx.report_fulfillment_errors(&err, None, false);
                 }
             });
         }

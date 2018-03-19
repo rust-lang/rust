@@ -1,0 +1,17 @@
+error[E0597]: `v` does not live long enough
+  --> $DIR/borrowed-local-error.rs:20:9
+   |
+LL |       let x = gimme({
+   |  _____________-
+LL | |         let v = (22,);
+LL | |         &v
+   | |         ^^ borrowed value does not live long enough
+LL | |         //~^ ERROR `v` does not live long enough [E0597]
+LL | |     });
+   | |_____-- borrow later used here
+   |       |
+   |       borrowed value only lives until here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/issue-19109.rs:14:5
    |
-13 | fn function(t: &mut Trait) {
+LL | fn function(t: &mut Trait) {
    |                            - help: try adding a return type: `-> *mut Trait`
-14 |     t as *mut Trait
+LL |     t as *mut Trait
    |     ^^^^^^^^^^^^^^^ expected (), found *-ptr
    |
    = note: expected type `()`
@@ -11,3 +11,4 @@ error[E0308]: mismatched types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

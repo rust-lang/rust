@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::codemap::CodeMap;
 use syntax_pos::{BytePos, FileMap};
 
@@ -18,7 +18,7 @@ struct CacheEntry {
     line_number: usize,
     line_start: BytePos,
     line_end: BytePos,
-    file: Rc<FileMap>,
+    file: Lrc<FileMap>,
     file_index: usize,
 }
 
@@ -51,7 +51,7 @@ impl<'cm> CachingCodemapView<'cm> {
 
     pub fn byte_pos_to_line_and_col(&mut self,
                                     pos: BytePos)
-                                    -> Option<(Rc<FileMap>, usize, BytePos)> {
+                                    -> Option<(Lrc<FileMap>, usize, BytePos)> {
         self.time_stamp += 1;
 
         // Check if the position is in one of the cached lines

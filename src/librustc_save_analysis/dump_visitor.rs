@@ -43,7 +43,7 @@ use syntax::print::pprust::{
     ty_to_string
 };
 use syntax::ptr::P;
-use syntax::codemap::{Spanned, DUMMY_SP};
+use syntax::codemap::{Spanned, DUMMY_SP, respan};
 use syntax_pos::*;
 
 use {escape, generated_code, lower_attributes, PathCollector, SaveContext};
@@ -65,12 +65,19 @@ macro_rules! down_cast_data {
 }
 
 macro_rules! access_from {
+    ($save_ctxt:expr, $vis:expr, $id:expr) => {
+        Access {
+            public: $vis.node == ast::VisibilityKind::Public,
+            reachable: $save_ctxt.analysis.access_levels.is_reachable($id),
+        }
+    };
+
     ($save_ctxt:expr, $item:expr) => {
         Access {
-            public: $item.vis == ast::Visibility::Public,
+            public: $item.vis.node == ast::VisibilityKind::Public,
             reachable: $save_ctxt.analysis.access_levels.is_reachable($item.id),
         }
-    }
+    };
 }
 
 pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
@@ -405,12 +412,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
             method_data.value = sig_str;
             method_data.sig = sig::method_signature(id, name, generics, sig, &self.save_ctxt);
-            self.dumper.dump_def(
-                &Access {
-                    public: vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
-                },
-                method_data);
+            self.dumper.dump_def(&access_from!(self.save_ctxt, vis, id), method_data);
         }
 
         // walk arg and return types
@@ -543,10 +545,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             let span = self.span_from_span(sub_span.expect("No span found for variable"));
 
             self.dumper.dump_def(
-                &Access {
-                    public: vis == ast::Visibility::Public,
-                    reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
-                },
+                &access_from!(self.save_ctxt, vis, id),
                 Def {
                     kind: DefKind::Const,
                     id: ::id_from_node_id(id, &self.save_ctxt),
@@ -597,7 +596,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     .iter()
                     .enumerate()
                     .filter_map(|(i, f)| {
-                        if include_priv_fields || f.vis == ast::Visibility::Public {
+                        if include_priv_fields || f.vis.node == ast::VisibilityKind::Public {
                             f.ident
                                 .map(|i| i.to_string())
                                 .or_else(|| Some(i.to_string()))
@@ -1032,6 +1031,81 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
+    fn process_var_decl_multi(&mut self, pats: &'l [P<ast::Pat>]) {
+        let mut collector = PathCollector::new();
+        for pattern in pats {
+            // collect paths from the arm's patterns
+            collector.visit_pat(&pattern);
+            self.visit_pat(&pattern);
+        }
+
+        // process collected paths
+        for (id, i, sp, immut) in collector.collected_idents {
+            match self.save_ctxt.get_path_def(id) {
+                HirDef::Local(id) => {
+                    let mut value = if immut == ast::Mutability::Immutable {
+                        self.span.snippet(sp).to_string()
+                    } else {
+                        "<mutable>".to_string()
+                    };
+                    let hir_id = self.tcx.hir.node_to_hir_id(id);
+                    let typ = self.save_ctxt
+                        .tables
+                        .node_id_to_type_opt(hir_id)
+                        .map(|t| t.to_string())
+                        .unwrap_or(String::new());
+                    value.push_str(": ");
+                    value.push_str(&typ);
+
+                    if !self.span.filter_generated(Some(sp), sp) {
+                        let qualname = format!("{}${}", i.to_string(), id);
+                        let id = ::id_from_node_id(id, &self.save_ctxt);
+                        let span = self.span_from_span(sp);
+
+                        self.dumper.dump_def(
+                            &Access {
+                                public: false,
+                                reachable: false,
+                            },
+                            Def {
+                                kind: DefKind::Local,
+                                id,
+                                span,
+                                name: i.to_string(),
+                                qualname,
+                                value: typ,
+                                parent: None,
+                                children: vec![],
+                                decl_id: None,
+                                docs: String::new(),
+                                sig: None,
+                                attributes: vec![],
+                            },
+                        );
+                    }
+                }
+                HirDef::StructCtor(..) |
+                HirDef::VariantCtor(..) |
+                HirDef::Const(..) |
+                HirDef::AssociatedConst(..) |
+                HirDef::Struct(..) |
+                HirDef::Variant(..) |
+                HirDef::TyAlias(..) |
+                HirDef::AssociatedTy(..) |
+                HirDef::SelfTy(..) => {
+                    self.dump_path_ref(id, &ast::Path::from_ident(sp, i));
+                }
+                def => error!(
+                    "unexpected definition kind when processing collected idents: {:?}",
+                    def
+                ),
+            }
+        }
+
+        for (id, ref path) in collector.collected_paths {
+            self.process_path(id, path);
+        }
+    }
 
     fn process_var_decl(&mut self, p: &'l ast::Pat, value: String) {
         // The local could declare multiple new vars, we must walk the
@@ -1135,6 +1209,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
     fn process_trait_item(&mut self, trait_item: &'l ast::TraitItem, trait_id: DefId) {
         self.process_macro_use(trait_item.span);
+        let vis_span = trait_item.span.shrink_to_lo();
         match trait_item.node {
             ast::TraitItemKind::Const(ref ty, ref expr) => {
                 self.process_assoc_const(
@@ -1144,7 +1219,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     &ty,
                     expr.as_ref().map(|e| &**e),
                     trait_id,
-                    ast::Visibility::Public,
+                    respan(vis_span, ast::VisibilityKind::Public),
                     &trait_item.attrs,
                 );
             }
@@ -1155,7 +1230,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     trait_item.id,
                     trait_item.ident,
                     &trait_item.generics,
-                    ast::Visibility::Public,
+                    respan(vis_span, ast::VisibilityKind::Public),
                     trait_item.span,
                 );
             }
@@ -1259,10 +1334,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
 
         // The access is calculated using the current tree ID, but with the root tree's visibility
         // (since nested trees don't have their own visibility).
-        let access = Access {
-            public: root_item.vis == ast::Visibility::Public,
-            reachable: self.save_ctxt.analysis.access_levels.is_reachable(id),
-        };
+        let access = access_from!(self.save_ctxt, root_item.vis, id);
 
         // The parent def id of a given use tree is always the enclosing item.
         let parent = self.save_ctxt.tcx.hir.opt_local_def_id(id)
@@ -1270,7 +1342,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             .map(::id_from_def_id);
 
         match use_tree.kind {
-            ast::UseTreeKind::Simple(ident) => {
+            ast::UseTreeKind::Simple(..) => {
+                let ident = use_tree.ident();
                 let path = ast::Path {
                     segments: prefix.segments
                         .iter()
@@ -1593,17 +1666,23 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                         if !self.span.filter_generated(sub_span, ex.span) {
                             let span =
                                 self.span_from_span(sub_span.expect("No span found for var ref"));
-                            let ref_id =
-                                ::id_from_def_id(def.non_enum_variant().fields[idx.node].did);
-                            self.dumper.dump_ref(Ref {
-                                kind: RefKind::Variable,
-                                span,
-                                ref_id,
-                            });
+                            if let Some(field) = def.non_enum_variant().fields.get(idx.node) {
+                                let ref_id = ::id_from_def_id(field.did);
+                                self.dumper.dump_ref(Ref {
+                                    kind: RefKind::Variable,
+                                    span,
+                                    ref_id,
+                                });
+                            } else {
+                                return;
+                            }
                         }
                     }
                     ty::TyTuple(..) => {}
-                    _ => span_bug!(ex.span, "Expected struct or tuple type, found {:?}", ty),
+                    _ => {
+                        debug!("Expected struct or tuple type, found {:?}", ty);
+                        return;
+                    }
                 }
             }
             ast::ExprKind::Closure(_, _, ref decl, ref body, _fn_decl_span) => {
@@ -1625,17 +1704,21 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     v.nest_scope(ex.id, |v| v.visit_expr(body))
                 });
             }
-            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) |
-            ast::ExprKind::WhileLet(ref pattern, ref subexpression, ref block, _) => {
+            ast::ExprKind::ForLoop(ref pattern, ref subexpression, ref block, _) => {
                 let value = self.span.snippet(subexpression.span);
                 self.process_var_decl(pattern, value);
                 debug!("for loop, walk sub-expr: {:?}", subexpression.node);
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
             }
-            ast::ExprKind::IfLet(ref pattern, ref subexpression, ref block, ref opt_else) => {
-                let value = self.span.snippet(subexpression.span);
-                self.process_var_decl(pattern, value);
+            ast::ExprKind::WhileLet(ref pats, ref subexpression, ref block, _) => {
+                self.process_var_decl_multi(pats);
+                debug!("for loop, walk sub-expr: {:?}", subexpression.node);
+                self.visit_expr(subexpression);
+                visit::walk_block(self, block);
+            }
+            ast::ExprKind::IfLet(ref pats, ref subexpression, ref block, ref opt_else) => {
+                self.process_var_decl_multi(pats);
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
                 opt_else.as_ref().map(|el| self.visit_expr(el));
@@ -1664,79 +1747,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
     }
 
     fn visit_arm(&mut self, arm: &'l ast::Arm) {
-        let mut collector = PathCollector::new();
-        for pattern in &arm.pats {
-            // collect paths from the arm's patterns
-            collector.visit_pat(&pattern);
-            self.visit_pat(&pattern);
-        }
-
-        // process collected paths
-        for (id, i, sp, immut) in collector.collected_idents {
-            match self.save_ctxt.get_path_def(id) {
-                HirDef::Local(id) => {
-                    let mut value = if immut == ast::Mutability::Immutable {
-                        self.span.snippet(sp).to_string()
-                    } else {
-                        "<mutable>".to_string()
-                    };
-                    let hir_id = self.tcx.hir.node_to_hir_id(id);
-                    let typ = self.save_ctxt
-                        .tables
-                        .node_id_to_type_opt(hir_id)
-                        .map(|t| t.to_string())
-                        .unwrap_or(String::new());
-                    value.push_str(": ");
-                    value.push_str(&typ);
-
-                    if !self.span.filter_generated(Some(sp), sp) {
-                        let qualname = format!("{}${}", i.to_string(), id);
-                        let id = ::id_from_node_id(id, &self.save_ctxt);
-                        let span = self.span_from_span(sp);
-
-                        self.dumper.dump_def(
-                            &Access {
-                                public: false,
-                                reachable: false,
-                            },
-                            Def {
-                                kind: DefKind::Local,
-                                id,
-                                span,
-                                name: i.to_string(),
-                                qualname,
-                                value: typ,
-                                parent: None,
-                                children: vec![],
-                                decl_id: None,
-                                docs: String::new(),
-                                sig: None,
-                                attributes: vec![],
-                            },
-                        );
-                    }
-                }
-                HirDef::StructCtor(..) |
-                HirDef::VariantCtor(..) |
-                HirDef::Const(..) |
-                HirDef::AssociatedConst(..) |
-                HirDef::Struct(..) |
-                HirDef::Variant(..) |
-                HirDef::TyAlias(..) |
-                HirDef::AssociatedTy(..) |
-                HirDef::SelfTy(..) => {
-                    self.dump_path_ref(id, &ast::Path::from_ident(sp, i));
-                }
-                def => error!(
-                    "unexpected definition kind when processing collected idents: {:?}",
-                    def
-                ),
-            }
-        }
-
-        for (id, ref path) in collector.collected_paths {
-            self.process_path(id, path);
-        }
+        self.process_var_decl_multi(&arm.pats);
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
     }

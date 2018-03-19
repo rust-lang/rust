@@ -13,7 +13,6 @@
 #![feature(i128_type)]
 #![feature(rand)]
 #![feature(repr_simd)]
-#![feature(slice_rotate)]
 #![feature(test)]
 
 extern crate rand;

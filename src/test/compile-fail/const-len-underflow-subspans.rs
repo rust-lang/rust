@@ -16,6 +16,6 @@ const TWO: usize = 2;
 
 fn main() {
     let a: [i8; ONE - TWO] = unimplemented!();
-    //~^ ERROR constant evaluation error [E0080]
+    //~^ ERROR constant evaluation error
     //~| attempt to subtract with overflow
 }

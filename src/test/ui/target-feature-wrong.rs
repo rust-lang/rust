@@ -29,6 +29,10 @@ unsafe fn foo() {}
 //~^ ERROR: can only be applied to `unsafe` function
 fn bar() {}
 
+#[target_feature(enable = "sse2")]
+//~^ ERROR: should be applied to a function
+mod another {}
+
 fn main() {
     unsafe {
         foo();

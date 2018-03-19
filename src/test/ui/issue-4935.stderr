@@ -1,11 +1,12 @@
 error[E0061]: this function takes 1 parameter but 2 parameters were supplied
   --> $DIR/issue-4935.rs:15:13
    |
-13 | fn foo(a: usize) {}
+LL | fn foo(a: usize) {}
    | ---------------- defined here
-14 | //~^ defined here
-15 | fn main() { foo(5, 6) }
+LL | //~^ defined here
+LL | fn main() { foo(5, 6) }
    |             ^^^^^^^^^ expected 1 parameter
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0061`.

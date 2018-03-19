@@ -21,8 +21,10 @@ extern crate getopts;
 extern crate libc;
 #[macro_use]
 extern crate log;
-extern crate rustc_serialize;
 extern crate regex;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde_json;
 extern crate test;
 
 use std::env;
@@ -51,7 +53,7 @@ mod raise_fd_limit;
 mod read2;
 
 fn main() {
-    env_logger::init().unwrap();
+    env_logger::init();
 
     let config = parse_config(env::args().collect());
 
@@ -736,17 +738,12 @@ fn analyze_gdb(gdb: Option<String>) -> (Option<String>, Option<u32>, bool) {
         Some(ref s) => s,
     };
 
-    let version_line = Command::new(gdb)
-        .arg("--version")
-        .output()
-        .map(|output| {
-            String::from_utf8_lossy(&output.stdout)
-                .lines()
-                .next()
-                .unwrap()
-                .to_string()
-        })
-        .ok();
+    let mut version_line = None;
+    if let Ok(output) = Command::new(gdb).arg("--version").output() {
+        if let Some(first_line) = String::from_utf8_lossy(&output.stdout).lines().next() {
+            version_line = Some(first_line.to_string());
+        }
+    }
 
     let version = match version_line {
         Some(line) => extract_gdb_version(&line),

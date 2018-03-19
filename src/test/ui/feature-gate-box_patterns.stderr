@@ -1,10 +1,11 @@
 error[E0658]: box pattern syntax is experimental (see issue #29641)
   --> $DIR/feature-gate-box_patterns.rs:12:9
    |
-12 |     let box x = Box::new('c'); //~ ERROR box pattern syntax is experimental
+LL |     let box x = Box::new('c'); //~ ERROR box pattern syntax is experimental
    |         ^^^^^
    |
    = help: add #![feature(box_patterns)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

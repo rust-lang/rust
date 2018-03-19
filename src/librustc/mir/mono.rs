@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::DefId;
 use syntax::ast::NodeId;
 use syntax::symbol::InternedString;
 use ty::{Instance, TyCtxt};
@@ -21,7 +22,7 @@ use std::hash::Hash;
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
-    Static(NodeId),
+    Static(DefId),
     GlobalAsm(NodeId),
 }
 
@@ -40,9 +41,9 @@ impl<'tcx> MonoItem<'tcx> {
     }
 }
 
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for MonoItem<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'tcx>,
+                                           hcx: &mut StableHashingContext<'a>,
                                            hasher: &mut StableHasher<W>) {
         ::std::mem::discriminant(self).hash_stable(hcx, hasher);
 
@@ -50,7 +51,9 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => {
                 instance.hash_stable(hcx, hasher);
             }
-            MonoItem::Static(node_id)    |
+            MonoItem::Static(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
             MonoItem::GlobalAsm(node_id) => {
                 hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
                     node_id.hash_stable(hcx, hasher);
@@ -70,7 +73,7 @@ pub struct CodegenUnit<'tcx> {
     size_estimate: Option<usize>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum Linkage {
     External,
     AvailableExternally,
@@ -168,9 +171,9 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 }
 
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for CodegenUnit<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
-                                           hcx: &mut StableHashingContext<'tcx>,
+                                           hcx: &mut StableHashingContext<'a>,
                                            hasher: &mut StableHasher<W>) {
         let CodegenUnit {
             ref items,

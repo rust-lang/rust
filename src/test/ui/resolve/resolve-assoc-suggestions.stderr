@@ -1,56 +1,58 @@
 error[E0412]: cannot find type `field` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:26:16
    |
-26 |         let _: field;
+LL |         let _: field;
    |                ^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `field` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:28:13
    |
-28 |         let field(..);
+LL |         let field(..);
    |             ^^^^^ not found in this scope
 
 error[E0425]: cannot find value `field` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:30:9
    |
-30 |         field;
+LL |         field;
    |         ^^^^^ help: try: `self.field`
 
 error[E0412]: cannot find type `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:33:16
    |
-33 |         let _: Type;
+LL |         let _: Type;
    |                ^^^^ help: try: `Self::Type`
 
 error[E0531]: cannot find tuple struct/variant `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:35:13
    |
-35 |         let Type(..);
+LL |         let Type(..);
    |             ^^^^ not found in this scope
 
 error[E0425]: cannot find value `Type` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:37:9
    |
-37 |         Type;
+LL |         Type;
    |         ^^^^ not found in this scope
 
 error[E0412]: cannot find type `method` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:40:16
    |
-40 |         let _: method;
+LL |         let _: method;
    |                ^^^^^^ not found in this scope
 
 error[E0531]: cannot find tuple struct/variant `method` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:42:13
    |
-42 |         let method(..);
+LL |         let method(..);
    |             ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `method` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:44:9
    |
-44 |         method;
+LL |         method;
    |         ^^^^^^ help: try: `self.method`
 
 error: aborting due to 9 previous errors
 
+Some errors occurred: E0412, E0425, E0531.
+For more information about an error, try `rustc --explain E0412`.

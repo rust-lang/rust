@@ -103,7 +103,7 @@ fn query() -> bool { true }
 //         _11 = const query() -> [return: bb6, unwind: bb3];
 //     }
 //     bb6: {
-//         switchInt(move _11) -> [0u8: bb8, otherwise: bb7];
+//         switchInt(move _11) -> [false: bb8, otherwise: bb7];
 //     }
 //     bb7: {
 //         _0 = ();

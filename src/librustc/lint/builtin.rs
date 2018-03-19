@@ -14,7 +14,16 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
+use errors::DiagnosticBuilder;
 use lint::{LintPass, LateLintPass, LintArray};
+use session::Session;
+use syntax::codemap::Span;
+
+declare_lint! {
+    pub EXCEEDING_BITSHIFTS,
+    Deny,
+    "shift exceeds the type's number of bits"
+}
 
 declare_lint! {
     pub CONST_ERR,
@@ -143,13 +152,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
-    Deny,
-    "attempt to resolve a trait on an expression whose type cannot be inferred but which \
-     currently defaults to ()"
-}
-
-declare_lint! {
     pub SAFE_EXTERN_STATICS,
     Deny,
     "safe access to extern statics was erroneously allowed"
@@ -229,12 +231,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub COERCE_NEVER,
-    Deny,
-    "detect coercion to !"
-}
-
-declare_lint! {
     pub SINGLE_USE_LIFETIME,
     Allow,
    "detects single use lifetimes"
@@ -252,6 +248,18 @@ declare_lint! {
     "hidden lifetime parameters are deprecated, try `Foo<'_>`"
 }
 
+declare_lint! {
+    pub BARE_TRAIT_OBJECT,
+    Allow,
+    "suggest using `dyn Trait` for trait objects"
+}
+
+declare_lint! {
+    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+    Warn,
+    "floating-point literals cannot be used in patterns"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -260,6 +268,8 @@ pub struct HardwiredLints;
 impl LintPass for HardwiredLints {
     fn get_lints(&self) -> LintArray {
         lint_array!(
+            ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
+            EXCEEDING_BITSHIFTS,
             UNUSED_IMPORTS,
             UNUSED_EXTERN_CRATES,
             UNUSED_QUALIFICATIONS,
@@ -281,7 +291,6 @@ impl LintPass for HardwiredLints {
             INVALID_TYPE_PARAM_DEFAULT,
             CONST_ERR,
             RENAMED_AND_REMOVED_LINTS,
-            RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
             SAFE_EXTERN_STATICS,
             SAFE_PACKED_BORROWS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -295,12 +304,35 @@ impl LintPass for HardwiredLints {
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,
-            COERCE_NEVER,
             SINGLE_USE_LIFETIME,
             TYVAR_BEHIND_RAW_POINTER,
-            ELIDED_LIFETIME_IN_PATH
-
+            ELIDED_LIFETIME_IN_PATH,
+            BARE_TRAIT_OBJECT
         )
+    }
+}
+
+// this could be a closure, but then implementing derive traits
+// becomes hacky (and it gets allocated)
+#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+pub enum BuiltinLintDiagnostics {
+    Normal,
+    BareTraitObject(Span, /* is_global */ bool)
+}
+
+impl BuiltinLintDiagnostics {
+    pub fn run(self, sess: &Session, db: &mut DiagnosticBuilder) {
+        match self {
+            BuiltinLintDiagnostics::Normal => (),
+            BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
+                let sugg = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) if is_global => format!("dyn ({})", s),
+                    Ok(s) => format!("dyn {}", s),
+                    Err(_) => format!("dyn <type>")
+                };
+                db.span_suggestion(span, "use `dyn`", sugg);
+            }
+        }
     }
 }
 

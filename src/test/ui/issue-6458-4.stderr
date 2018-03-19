@@ -1,11 +1,11 @@
 error[E0308]: mismatched types
   --> $DIR/issue-6458-4.rs:11:40
    |
-11 |   fn foo(b: bool) -> Result<bool,String> { //~ ERROR mismatched types
+LL |   fn foo(b: bool) -> Result<bool,String> { //~ ERROR mismatched types
    |  ________________________________________^
-12 | |     Err("bar".to_string());
+LL | |     Err("bar".to_string());
    | |                           - help: consider removing this semicolon
-13 | | }
+LL | | }
    | |_^ expected enum `std::result::Result`, found ()
    |
    = note: expected type `std::result::Result<bool, std::string::String>`
@@ -13,3 +13,4 @@ error[E0308]: mismatched types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

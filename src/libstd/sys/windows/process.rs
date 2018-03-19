@@ -18,7 +18,7 @@ use ffi::{OsString, OsStr};
 use fmt;
 use fs;
 use io::{self, Error, ErrorKind};
-use libc::c_void;
+use libc::{c_void, EXIT_SUCCESS, EXIT_FAILURE};
 use mem;
 use os::windows::ffi::OsStrExt;
 use path::Path;
@@ -405,6 +405,18 @@ impl From<c::DWORD> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "exit code: {}", self.0)
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct ExitCode(c::DWORD);
+
+impl ExitCode {
+    pub const SUCCESS: ExitCode = ExitCode(EXIT_SUCCESS as _);
+    pub const FAILURE: ExitCode = ExitCode(EXIT_FAILURE as _);
+
+    pub fn as_i32(&self) -> i32 {
+        self.0 as i32
     }
 }
 

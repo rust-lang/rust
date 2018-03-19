@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use middle::const_val::{ConstVal, ConstAggregate};
+use middle::const_val::ConstVal;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
@@ -76,10 +76,6 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     match *predicate {
         ty::Predicate::Trait(ref t) => {
             wf.compute_trait_ref(&t.skip_binder().trait_ref, Elaborate::None); // (*)
-        }
-        ty::Predicate::Equate(ref t) => {
-            wf.compute(t.skip_binder().0);
-            wf.compute(t.skip_binder().1);
         }
         ty::Predicate::RegionOutlives(..) => {
         }
@@ -221,28 +217,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     fn compute_const(&mut self, constant: &'tcx ty::Const<'tcx>) {
         self.require_sized(constant.ty, traits::ConstSized);
         match constant.val {
-            ConstVal::Integral(_) |
-            ConstVal::Float(_) |
-            ConstVal::Str(_) |
-            ConstVal::ByteStr(_) |
-            ConstVal::Bool(_) |
-            ConstVal::Char(_) |
-            ConstVal::Variant(_) |
-            ConstVal::Function(..) => {}
-            ConstVal::Aggregate(ConstAggregate::Struct(fields)) => {
-                for &(_, v) in fields {
-                    self.compute_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Tuple(fields)) |
-            ConstVal::Aggregate(ConstAggregate::Array(fields)) => {
-                for v in fields {
-                    self.compute_const(v);
-                }
-            }
-            ConstVal::Aggregate(ConstAggregate::Repeat(v, _)) => {
-                self.compute_const(v);
-            }
+            ConstVal::Value(_) => {}
             ConstVal::Unevaluated(def_id, substs) => {
                 let obligations = self.nominal_obligations(def_id, substs);
                 self.out.extend(obligations);
@@ -300,7 +275,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.compute_const(len);
                 }
 
-                ty::TyTuple(ref tys, _) => {
+                ty::TyTuple(ref tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for elem in rest {
                             self.require_sized(elem, traits::TupleElem);

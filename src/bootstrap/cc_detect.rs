@@ -77,8 +77,11 @@ pub fn find(build: &mut Build) {
                                .collect::<HashSet<_>>();
     for target in targets.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false)
+        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false)
            .target(&target).host(&build.build);
+        if target.contains("msvc") {
+            cfg.static_crt(true);
+        }
 
         let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
@@ -106,7 +109,7 @@ pub fn find(build: &mut Build) {
     let hosts = build.hosts.iter().cloned().chain(iter::once(build.build)).collect::<HashSet<_>>();
     for host in hosts.into_iter() {
         let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false).opt_level(0).warnings(false).debug(false).cpp(true)
+        cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false).cpp(true)
            .target(&host).host(&build.build);
         let config = build.config.target_config.get(&host);
         if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {

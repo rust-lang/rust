@@ -11,13 +11,14 @@
 use rustc_lint;
 use rustc_driver::{self, driver, target_features, abort_on_err};
 use rustc::session::{self, config};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::hir::def::Def;
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
@@ -30,6 +31,7 @@ use errors::emitter::ColorConfig;
 
 use std::cell::{RefCell, Cell};
 use std::mem;
+use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use std::path::PathBuf;
 
@@ -48,6 +50,8 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub resolver: &'a RefCell<resolve::Resolver<'rcx>>,
     /// The stack of module NodeIds up till this point
     pub mod_ids: RefCell<Vec<NodeId>>,
+    pub crate_name: Option<String>,
+    pub cstore: Rc<CrateStore>,
     pub populated_all_crate_impls: Cell<bool>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -58,6 +62,9 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<FxHashMap<DefId, clean::Trait>>,
+    /// Used while populating `external_traits` to ensure we don't process the same trait twice at
+    /// the same time.
+    pub active_extern_traits: RefCell<Vec<DefId>>,
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
@@ -65,6 +72,11 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    pub send_trait: Option<DefId>,
+    pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
+    pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
+    /// Maps (type_id, trait_id) -> auto trait impl
+    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>
 }
 
 impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
@@ -107,6 +119,7 @@ pub fn run_core(search_paths: SearchPaths,
                 triple: Option<String>,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
+                crate_name: Option<String>,
                 force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
@@ -136,7 +149,7 @@ pub fn run_core(search_paths: SearchPaths,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
+    let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                                                true,
                                                                false,
@@ -190,7 +203,7 @@ pub fn run_core(search_paths: SearchPaths,
         maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
     };
     let analysis = ty::CrateAnalysis {
-        access_levels: Rc::new(AccessLevels::default()),
+        access_levels: Lrc::new(AccessLevels::default()),
         name: name.to_string(),
         glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
     };
@@ -230,16 +243,29 @@ pub fn run_core(search_paths: SearchPaths,
                                   .collect()
         };
 
+        let send_trait = if crate_name == Some("core".to_string()) {
+            clean::get_trait_def_id(&tcx, &["marker", "Send"], true)
+        } else {
+            clean::get_trait_def_id(&tcx, &["core", "marker", "Send"], false)
+        };
+
         let ctxt = DocContext {
             tcx,
             resolver: &resolver,
+            crate_name,
+            cstore: cstore.clone(),
             populated_all_crate_impls: Cell::new(false),
             access_levels: RefCell::new(access_levels),
             external_traits: Default::default(),
+            active_extern_traits: Default::default(),
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
             mod_ids: Default::default(),
+            send_trait: send_trait,
+            fake_def_ids: RefCell::new(FxHashMap()),
+            all_fake_def_ids: RefCell::new(FxHashSet()),
+            generated_synthetics: RefCell::new(FxHashSet()),
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

@@ -105,7 +105,7 @@ impl Step for Std {
         let out_dir = build.stage_out(compiler, Mode::Libstd);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
-        std_cargo(build, &compiler, target, &mut cargo);
+        std_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),
@@ -135,7 +135,7 @@ fn copy_musl_third_party_objects(build: &Build,
 
 /// Configure cargo to compile the standard library, adding appropriate env vars
 /// and such.
-pub fn std_cargo(build: &Build,
+pub fn std_cargo(build: &Builder,
                  compiler: &Compiler,
                  target: Interned<String>,
                  cargo: &mut Command) {
@@ -162,7 +162,11 @@ pub fn std_cargo(build: &Build,
         // missing
         // We also only build the runtimes when --enable-sanitizers (or its
         // config.toml equivalent) is used
-        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+        let llvm_config = build.ensure(native::Llvm {
+            target: build.config.build,
+            emscripten: false,
+        });
+        cargo.env("LLVM_CONFIG", llvm_config);
     }
 
     cargo.arg("--features").arg(features)
@@ -514,10 +518,10 @@ fn rustc_cargo_env(build: &Build, cargo: &mut Command) {
     cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
          .env("CFG_VERSION", build.rust_version())
-         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default());
+         .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or_default())
+         .env("CFG_CODEGEN_BACKENDS_DIR", &build.config.rust_codegen_backends_dir);
 
-    let libdir_relative =
-        build.config.libdir.clone().unwrap_or(PathBuf::from("lib"));
+    let libdir_relative = build.config.libdir_relative().unwrap_or(Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
     // If we're not building a compiler with debugging information then remove
@@ -630,6 +634,8 @@ impl Step for CodegenBackend {
             .arg(build.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
+        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+
         match &*self.backend {
             "llvm" | "emscripten" => {
                 // Build LLVM for our target. This will implicitly build the
@@ -643,7 +649,6 @@ impl Step for CodegenBackend {
                     features.push_str(" emscripten");
                 }
 
-                let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
                 println!("Building stage{} codegen artifacts ({} -> {}, {})",
                          compiler.stage, &compiler.host, target, self.backend);
 
@@ -744,6 +749,21 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
         };
         copy(&file, &dst.join(target_filename));
     }
+}
+
+fn copy_lld_to_sysroot(builder: &Builder,
+                       target_compiler: Compiler,
+                       lld_install_root: &Path) {
+    let target = target_compiler.host;
+
+    let dst = builder.sysroot_libdir(target_compiler, target)
+        .parent()
+        .unwrap()
+        .join("bin");
+    t!(fs::create_dir_all(&dst));
+
+    let exe = exe("lld", &target);
+    copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -895,6 +915,14 @@ impl Step for Assemble {
             }
         }
 
+        let lld_install = if build.config.lld_enabled && target_compiler.stage > 0 {
+            Some(builder.ensure(native::Lld {
+                target: target_compiler.host,
+            }))
+        } else {
+            None
+        };
+
         let stage = target_compiler.stage;
         let host = target_compiler.host;
         println!("Assembling stage{} compiler ({})", stage, host);
@@ -914,6 +942,9 @@ impl Step for Assemble {
         copy_codegen_backends_to_sysroot(builder,
                                          build_compiler,
                                          target_compiler);
+        if let Some(lld_install) = lld_install {
+            copy_lld_to_sysroot(builder, target_compiler, &lld_install);
+        }
 
         // Link the compiler binary itself into place
         let out_dir = build.cargo_out(build_compiler, Mode::Librustc, host);
@@ -1008,6 +1039,10 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
             continue
         };
         if json["reason"].as_str() != Some("compiler-artifact") {
+            if build.config.rustc_error_format.as_ref().map_or(false, |e| e == "json") {
+                // most likely not a cargo message, so let's send it out as well
+                println!("{}", line);
+            }
             continue
         }
         for filename in json["filenames"].as_array().unwrap() {

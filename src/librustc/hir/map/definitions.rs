@@ -28,6 +28,7 @@ use std::hash::Hash;
 use syntax::ast;
 use syntax::ext::hygiene::Mark;
 use syntax::symbol::{Symbol, InternedString};
+use syntax_pos::{Span, DUMMY_SP};
 use util::nodemap::NodeMap;
 
 /// The DefPathTable maps DefIndexes to DefKeys and vice versa.
@@ -70,6 +71,10 @@ impl DefPathTable {
         debug_assert!(self.def_path_hashes[address_space.index()].len() ==
                       self.index_to_key[address_space.index()].len());
         index
+    }
+
+    pub fn next_id(&self, address_space: DefIndexAddressSpace) -> DefIndex {
+        DefIndex::from_array_index(self.index_to_key[address_space.index()].len(), address_space)
     }
 
     #[inline(always)]
@@ -155,6 +160,7 @@ pub struct Definitions {
     macro_def_scopes: FxHashMap<Mark, DefId>,
     expansions: FxHashMap<DefIndex, Mark>,
     next_disambiguator: FxHashMap<(DefIndex, DefPathData), u32>,
+    def_index_to_span: FxHashMap<DefIndex, Span>,
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -172,6 +178,7 @@ impl Clone for Definitions {
             macro_def_scopes: self.macro_def_scopes.clone(),
             expansions: self.expansions.clone(),
             next_disambiguator: self.next_disambiguator.clone(),
+            def_index_to_span: self.def_index_to_span.clone(),
         }
     }
 }
@@ -406,6 +413,7 @@ impl Definitions {
             macro_def_scopes: FxHashMap(),
             expansions: FxHashMap(),
             next_disambiguator: FxHashMap(),
+            def_index_to_span: FxHashMap(),
         }
     }
 
@@ -489,6 +497,22 @@ impl Definitions {
         self.node_to_hir_id[node_id]
     }
 
+    /// Retrieve the span of the given `DefId` if `DefId` is in the local crate, the span exists and
+    /// it's not DUMMY_SP
+    #[inline]
+    pub fn opt_span(&self, def_id: DefId) -> Option<Span> {
+        if def_id.krate == LOCAL_CRATE {
+            let span = self.def_index_to_span.get(&def_id.index).cloned().unwrap_or(DUMMY_SP);
+            if span != DUMMY_SP {
+                Some(span)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
     /// Add a definition with a parent definition.
     pub fn create_root_def(&mut self,
                            crate_name: &str,
@@ -526,7 +550,8 @@ impl Definitions {
                                   node_id: ast::NodeId,
                                   data: DefPathData,
                                   address_space: DefIndexAddressSpace,
-                                  expansion: Mark)
+                                  expansion: Mark,
+                                  span: Span)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
                parent, node_id, data);
@@ -577,6 +602,11 @@ impl Definitions {
         let expansion = expansion.modern();
         if expansion != Mark::root() {
             self.expansions.insert(index, expansion);
+        }
+
+        // The span is added if it isn't DUMMY_SP
+        if span != DUMMY_SP {
+            self.def_index_to_span.insert(index, span);
         }
 
         index
@@ -688,7 +718,8 @@ macro_rules! define_global_metadata_kind {
                         ast::DUMMY_NODE_ID,
                         DefPathData::GlobalMetaData(instance.name().as_str()),
                         GLOBAL_MD_ADDRESS_SPACE,
-                        Mark::root()
+                        Mark::root(),
+                        DUMMY_SP
                     );
 
                     // Make sure calling def_index does not crash.

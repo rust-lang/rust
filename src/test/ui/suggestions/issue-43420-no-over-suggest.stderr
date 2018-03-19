@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-43420-no-over-suggest.rs:18:9
    |
-18 |     foo(&a); //~ ERROR mismatched types
+LL |     foo(&a); //~ ERROR mismatched types
    |         ^^ expected slice, found struct `std::vec::Vec`
    |
    = note: expected type `&[u16]`
@@ -9,3 +9,4 @@ error[E0308]: mismatched types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

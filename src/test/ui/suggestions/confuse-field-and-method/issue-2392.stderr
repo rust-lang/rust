@@ -1,10 +1,10 @@
 error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-2392.rs:49:36: 49:41]>` in the current scope
   --> $DIR/issue-2392.rs:50:15
    |
-25 | struct Obj<F> where F: FnOnce() -> u32 {
+LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-50 |     o_closure.closure(); //~ ERROR no method named `closure` found
+LL |     o_closure.closure(); //~ ERROR no method named `closure` found
    |               ^^^^^^^ field, not a method
    |
    = help: use `(o_closure.closure)(...)` if you meant to call the function stored in the `closure` field
@@ -12,10 +12,10 @@ error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-
 error[E0599]: no method named `not_closure` found for type `Obj<[closure@$DIR/issue-2392.rs:49:36: 49:41]>` in the current scope
   --> $DIR/issue-2392.rs:52:15
    |
-25 | struct Obj<F> where F: FnOnce() -> u32 {
+LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `not_closure` not found for this
 ...
-52 |     o_closure.not_closure();
+LL |     o_closure.not_closure();
    |               ^^^^^^^^^^^ field, not a method
    |
    = help: did you mean to write `o_closure.not_closure` instead of `o_closure.not_closure(...)`?
@@ -23,10 +23,10 @@ error[E0599]: no method named `not_closure` found for type `Obj<[closure@$DIR/is
 error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>` in the current scope
   --> $DIR/issue-2392.rs:56:12
    |
-25 | struct Obj<F> where F: FnOnce() -> u32 {
+LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-56 |     o_func.closure(); //~ ERROR no method named `closure` found
+LL |     o_func.closure(); //~ ERROR no method named `closure` found
    |            ^^^^^^^ field, not a method
    |
    = help: use `(o_func.closure)(...)` if you meant to call the function stored in the `closure` field
@@ -34,10 +34,10 @@ error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>`
 error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the current scope
   --> $DIR/issue-2392.rs:59:14
    |
-30 | struct BoxedObj {
+LL | struct BoxedObj {
    | --------------- method `boxed_closure` not found for this
 ...
-59 |     boxed_fn.boxed_closure();//~ ERROR no method named `boxed_closure` found
+LL |     boxed_fn.boxed_closure();//~ ERROR no method named `boxed_closure` found
    |              ^^^^^^^^^^^^^ field, not a method
    |
    = help: use `(boxed_fn.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
@@ -45,10 +45,10 @@ error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the c
 error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the current scope
   --> $DIR/issue-2392.rs:62:19
    |
-30 | struct BoxedObj {
+LL | struct BoxedObj {
    | --------------- method `boxed_closure` not found for this
 ...
-62 |     boxed_closure.boxed_closure();//~ ERROR no method named `boxed_closure` found
+LL |     boxed_closure.boxed_closure();//~ ERROR no method named `boxed_closure` found
    |                   ^^^^^^^^^^^^^ field, not a method
    |
    = help: use `(boxed_closure.boxed_closure)(...)` if you meant to call the function stored in the `boxed_closure` field
@@ -56,10 +56,10 @@ error[E0599]: no method named `boxed_closure` found for type `BoxedObj` in the c
 error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>` in the current scope
   --> $DIR/issue-2392.rs:67:12
    |
-25 | struct Obj<F> where F: FnOnce() -> u32 {
+LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-67 |     w.wrap.closure();//~ ERROR no method named `closure` found
+LL |     w.wrap.closure();//~ ERROR no method named `closure` found
    |            ^^^^^^^ field, not a method
    |
    = help: use `(w.wrap.closure)(...)` if you meant to call the function stored in the `closure` field
@@ -67,10 +67,10 @@ error[E0599]: no method named `closure` found for type `Obj<fn() -> u32 {func}>`
 error[E0599]: no method named `not_closure` found for type `Obj<fn() -> u32 {func}>` in the current scope
   --> $DIR/issue-2392.rs:69:12
    |
-25 | struct Obj<F> where F: FnOnce() -> u32 {
+LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `not_closure` not found for this
 ...
-69 |     w.wrap.not_closure();
+LL |     w.wrap.not_closure();
    |            ^^^^^^^^^^^ field, not a method
    |
    = help: did you mean to write `w.wrap.not_closure` instead of `w.wrap.not_closure(...)`?
@@ -78,10 +78,10 @@ error[E0599]: no method named `not_closure` found for type `Obj<fn() -> u32 {fun
 error[E0599]: no method named `closure` found for type `Obj<std::boxed::Box<std::boxed::FnBox<(), Output=u32> + 'static>>` in the current scope
   --> $DIR/issue-2392.rs:72:24
    |
-25 | struct Obj<F> where F: FnOnce() -> u32 {
+LL | struct Obj<F> where F: FnOnce() -> u32 {
    | -------------------------------------- method `closure` not found for this
 ...
-72 |     check_expression().closure();//~ ERROR no method named `closure` found
+LL |     check_expression().closure();//~ ERROR no method named `closure` found
    |                        ^^^^^^^ field, not a method
    |
    = help: use `(check_expression().closure)(...)` if you meant to call the function stored in the `closure` field
@@ -89,10 +89,10 @@ error[E0599]: no method named `closure` found for type `Obj<std::boxed::Box<std:
 error[E0599]: no method named `f1` found for type `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:78:31
    |
-15 | struct FuncContainer {
+LL | struct FuncContainer {
    | -------------------- method `f1` not found for this
 ...
-78 |             (*self.container).f1(1); //~ ERROR no method named `f1` found
+LL |             (*self.container).f1(1); //~ ERROR no method named `f1` found
    |                               ^^ field, not a method
    |
    = help: use `((*self.container).f1)(...)` if you meant to call the function stored in the `f1` field
@@ -100,10 +100,10 @@ error[E0599]: no method named `f1` found for type `FuncContainer` in the current
 error[E0599]: no method named `f2` found for type `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:79:31
    |
-15 | struct FuncContainer {
+LL | struct FuncContainer {
    | -------------------- method `f2` not found for this
 ...
-79 |             (*self.container).f2(1); //~ ERROR no method named `f2` found
+LL |             (*self.container).f2(1); //~ ERROR no method named `f2` found
    |                               ^^ field, not a method
    |
    = help: use `((*self.container).f2)(...)` if you meant to call the function stored in the `f2` field
@@ -111,13 +111,14 @@ error[E0599]: no method named `f2` found for type `FuncContainer` in the current
 error[E0599]: no method named `f3` found for type `FuncContainer` in the current scope
   --> $DIR/issue-2392.rs:80:31
    |
-15 | struct FuncContainer {
+LL | struct FuncContainer {
    | -------------------- method `f3` not found for this
 ...
-80 |             (*self.container).f3(1); //~ ERROR no method named `f3` found
+LL |             (*self.container).f3(1); //~ ERROR no method named `f3` found
    |                               ^^ field, not a method
    |
    = help: use `((*self.container).f3)(...)` if you meant to call the function stored in the `f3` field
 
 error: aborting due to 11 previous errors
 
+For more information about this error, try `rustc --explain E0599`.

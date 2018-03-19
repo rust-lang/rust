@@ -353,9 +353,12 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 self.gather_move(&Place::Local(RETURN_PLACE));
             }
 
-            TerminatorKind::Assert { .. } |
-            TerminatorKind::SwitchInt { .. } => {
-                // branching terminators - these don't move anything
+            TerminatorKind::Assert { ref cond, .. } => {
+                self.gather_operand(cond);
+            }
+
+            TerminatorKind::SwitchInt { ref discr, .. } => {
+                self.gather_operand(discr);
             }
 
             TerminatorKind::Yield { ref value, .. } => {

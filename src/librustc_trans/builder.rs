@@ -955,6 +955,147 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn vector_reduce_fadd_fast(&self, acc: ValueRef, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fadd_fast");
+        unsafe {
+            // FIXME: add a non-fast math version once
+            // https://bugs.llvm.org/show_bug.cgi?id=36732
+            // is fixed.
+            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceFAdd is not available in LLVM version < 5.0");
+            }
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_fmul_fast(&self, acc: ValueRef, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmul_fast");
+        unsafe {
+            // FIXME: add a non-fast math version once
+            // https://bugs.llvm.org/show_bug.cgi?id=36732
+            // is fixed.
+            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceFMul is not available in LLVM version < 5.0");
+            }
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_add(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.add");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceAdd is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_mul(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.mul");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceMul is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_and(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.and");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceAnd is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_or(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.or");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceOr is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_xor(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.xor");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceXor is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_fmin(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmin");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, true);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_fmax(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmax");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, true);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_fmin_fast(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmin_fast");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, false);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
+            }
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_fmax_fast(&self, src: ValueRef) -> ValueRef {
+        self.count_insn("vector.reduce.fmax_fast");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, false);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
+            }
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+    pub fn vector_reduce_min(&self, src: ValueRef, is_signed: bool) -> ValueRef {
+        self.count_insn("vector.reduce.min");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceMin is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+    pub fn vector_reduce_max(&self, src: ValueRef, is_signed: bool) -> ValueRef {
+        self.count_insn("vector.reduce.max");
+        unsafe {
+            let instr = llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed);
+            if instr.is_null() {
+                bug!("LLVMRustBuildVectorReduceMax is not available in LLVM version < 5.0");
+            }
+            instr
+        }
+    }
+
     pub fn extract_value(&self, agg_val: ValueRef, idx: u64) -> ValueRef {
         self.count_insn("extractvalue");
         assert_eq!(idx as c_uint as u64, idx);

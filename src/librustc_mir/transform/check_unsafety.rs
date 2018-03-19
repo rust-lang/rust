@@ -10,6 +10,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::maps::Providers;
 use rustc::ty::{self, TyCtxt};
@@ -22,7 +23,6 @@ use rustc::mir::visit::{PlaceContext, Visitor};
 use syntax::ast;
 use syntax::symbol::Symbol;
 
-use std::rc::Rc;
 use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
@@ -213,7 +213,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // locals are safe
             }
             &Place::Static(box Static { def_id, ty: _ }) => {
-                if self.tcx.is_static_mut(def_id) {
+                if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static");
                 } else if self.tcx.is_foreign_item(def_id) {
                     let source_info = self.source_info;
@@ -338,8 +338,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ClearCrossCrate::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
             return UnsafetyCheckResult {
-                violations: Rc::new([]),
-                unsafe_blocks: Rc::new([])
+                violations: Lrc::new([]),
+                unsafe_blocks: Lrc::new([])
             }
         }
     };
@@ -386,10 +386,13 @@ fn is_enclosed(tcx: TyCtxt,
         if used_unsafe.contains(&parent_id) {
             Some(("block".to_string(), parent_id))
         } else if let Some(hir::map::NodeItem(&hir::Item {
-            node: hir::ItemFn(_, hir::Unsafety::Unsafe, _, _, _, _),
+            node: hir::ItemFn(_, fn_unsafety, _, _, _, _),
             ..
         })) = tcx.hir.find(parent_id) {
-            Some(("fn".to_string(), parent_id))
+            match fn_unsafety {
+                hir::Unsafety::Unsafe => Some(("fn".to_string(), parent_id)),
+                hir::Unsafety::Normal => None,
+            }
         } else {
             is_enclosed(tcx, used_unsafe, parent_id)
         }

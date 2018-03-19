@@ -1,10 +1,11 @@
 error[E0658]: the `#[sanitizer_runtime]` attribute is used to identify crates that contain the runtime of a sanitizer and will never be stable
   --> $DIR/feature-gate-sanitizer-runtime.rs:11:1
    |
-11 | #![sanitizer_runtime] //~ ERROR the `#[sanitizer_runtime]` attribute is
+LL | #![sanitizer_runtime] //~ ERROR the `#[sanitizer_runtime]` attribute is
    | ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(sanitizer_runtime)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

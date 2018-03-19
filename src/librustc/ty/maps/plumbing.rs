@@ -84,7 +84,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let span = self.sess.codemap().def_span(span);
             let mut err =
                 struct_span_err!(self.sess, span, E0391,
-                                 "unsupported cyclic reference between types/traits detected");
+                                 "cyclic dependency detected");
             err.span_label(span, "cyclic reference");
 
             err.span_note(self.sess.codemap().def_span(stack[0].0),
@@ -147,7 +147,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 match self.dep_graph.try_mark_green(self.global_tcx(), &dep_node) {
                     Some(dep_node_index) => {
-                        debug_assert!(self.dep_graph.is_green(dep_node_index));
+                        debug_assert!(self.dep_graph.is_green(&dep_node));
                         self.dep_graph.read_index(dep_node_index);
                         Some(dep_node_index)
                     }
@@ -164,8 +164,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
         if cfg!(debug_assertions) {
-            if  $tcx.sess.profile_queries() {
-                profq_msg($msg)
+            if $tcx.sess.profile_queries() {
+                profq_msg($tcx.sess, $msg)
             }
         }
     }
@@ -403,7 +403,7 @@ macro_rules! define_maps {
                                                   dep_node: &DepNode)
                                                   -> Result<$V, CycleError<'a, $tcx>>
             {
-                debug_assert!(tcx.dep_graph.is_green(dep_node_index));
+                debug_assert!(tcx.dep_graph.is_green(dep_node));
 
                 // First we try to load the result from the on-disk cache
                 let result = if Self::cache_on_disk(key) &&
@@ -491,7 +491,7 @@ macro_rules! define_maps {
                      span: Span,
                      dep_node: DepNode)
                      -> Result<($V, DepNodeIndex), CycleError<'a, $tcx>> {
-                debug_assert!(tcx.dep_graph.node_color(&dep_node).is_none());
+                debug_assert!(!tcx.dep_graph.dep_node_exists(&dep_node));
 
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
                 let res = tcx.cycle_check(span, Query::$name(key), || {
@@ -772,7 +772,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
         DepKind::EraseRegionsTy |
-        DepKind::NormalizeTy |
+        DepKind::NormalizeProjectionTy |
+        DepKind::NormalizeTyAfterErasingRegions |
+        DepKind::DropckOutlives |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::InstanceDefSizeEstimate |
 
@@ -851,9 +853,10 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::RvaluePromotableMap => { force!(rvalue_promotable_map, def_id!()); }
         DepKind::ImplParent => { force!(impl_parent, def_id!()); }
         DepKind::TraitOfItem => { force!(trait_of_item, def_id!()); }
-        DepKind::IsExportedSymbol => { force!(is_exported_symbol, def_id!()); }
+        DepKind::IsReachableNonGeneric => { force!(is_reachable_non_generic, def_id!()); }
         DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
+        DepKind::TransFnAttrs => { force!(trans_fn_attrs, def_id!()); }
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
         DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
         DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }
@@ -868,7 +871,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::GetPanicStrategy => { force!(panic_strategy, krate!()); }
         DepKind::IsNoBuiltins => { force!(is_no_builtins, krate!()); }
         DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
-        DepKind::ExportedSymbolIds => { force!(exported_symbol_ids, krate!()); }
+        DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
         DepKind::DeriveRegistrarFn => { force!(derive_registrar_fn, krate!()); }
@@ -925,17 +928,15 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CollectAndPartitionTranslationItems => {
             force!(collect_and_partition_translation_items, LOCAL_CRATE);
         }
-        DepKind::ExportName => { force!(export_name, def_id!()); }
-        DepKind::ContainsExternIndicator => {
-            force!(contains_extern_indicator, def_id!());
-        }
-        DepKind::IsTranslatedFunction => { force!(is_translated_function, def_id!()); }
+        DepKind::IsTranslatedItem => { force!(is_translated_item, def_id!()); }
         DepKind::OutputFilenames => { force!(output_filenames, LOCAL_CRATE); }
 
         DepKind::TargetFeaturesWhitelist => { force!(target_features_whitelist, LOCAL_CRATE); }
-        DepKind::TargetFeaturesEnabled => { force!(target_features_enabled, def_id!()); }
 
         DepKind::GetSymbolExportLevel => { force!(symbol_export_level, def_id!()); }
+        DepKind::Features => { force!(features_query, LOCAL_CRATE); }
+
+        DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
     }
 
     true
@@ -996,10 +997,10 @@ impl_load_from_cache!(
     MirConstQualif => mir_const_qualif,
     SymbolName => def_symbol_name,
     ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
-    ContainsExternIndicator => contains_extern_indicator,
     CheckMatch => check_match,
     TypeOfItem => type_of,
     GenericsOfItem => generics_of,
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
+    TransFnAttrs => trans_fn_attrs,
 );

@@ -15,11 +15,11 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 <http://dx.doi.org/10.1017/S0956796812000093>
 
+use GLOBALS;
 use Span;
 use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -119,7 +119,7 @@ impl Mark {
     }
 }
 
-struct HygieneData {
+pub struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
@@ -127,7 +127,7 @@ struct HygieneData {
 }
 
 impl HygieneData {
-    fn new() -> Self {
+    pub fn new() -> Self {
         HygieneData {
             marks: vec![MarkData {
                 parent: Mark::root(),
@@ -145,10 +145,7 @@ impl HygieneData {
     }
 
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        thread_local! {
-            static HYGIENE_DATA: RefCell<HygieneData> = RefCell::new(HygieneData::new());
-        }
-        HYGIENE_DATA.with(|data| f(&mut *data.borrow_mut()))
+        GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
 }
 

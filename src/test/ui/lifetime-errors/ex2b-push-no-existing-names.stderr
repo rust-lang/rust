@@ -1,10 +1,11 @@
 error[E0623]: lifetime mismatch
   --> $DIR/ex2b-push-no-existing-names.rs:16:12
    |
-15 | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
+LL | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
    |                    --------      -------- these two types are declared with different lifetimes...
-16 |     x.push(y); //~ ERROR lifetime mismatch
+LL |     x.push(y); //~ ERROR lifetime mismatch
    |            ^ ...but data from `y` flows into `x` here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0623`.

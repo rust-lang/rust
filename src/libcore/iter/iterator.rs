@@ -12,7 +12,8 @@ use cmp::Ordering;
 use ops::Try;
 
 use super::{AlwaysOk, LoopState};
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse};
+use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, Fuse};
+use super::{Flatten, FlatMap, flatten_compat};
 use super::{Inspect, Map, Peekable, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile, Rev};
 use super::{Zip, Sum, Product};
 use super::{ChainState, FromIterator, ZipImpl};
@@ -168,7 +169,7 @@ pub trait Iterator {
     /// This function might panic if the iterator has more than [`usize::MAX`]
     /// elements.
     ///
-    /// [`usize::MAX`]: ../../std/isize/constant.MAX.html
+    /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
     ///
     /// # Examples
     ///
@@ -997,11 +998,15 @@ pub trait Iterator {
     /// an extra layer of indirection. `flat_map()` will remove this extra layer
     /// on its own.
     ///
+    /// You can think of [`flat_map(f)`][flat_map] as the semantic equivalent
+    /// of [`map`]ping, and then [`flatten`]ing as in `map(f).flatten()`.
+    ///
     /// Another way of thinking about `flat_map()`: [`map`]'s closure returns
     /// one item for each element, and `flat_map()`'s closure returns an
     /// iterator for each element.
     ///
     /// [`map`]: #method.map
+    /// [`flatten`]: #method.flatten
     ///
     /// # Examples
     ///
@@ -1021,7 +1026,79 @@ pub trait Iterator {
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
         where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
-        FlatMap{iter: self, f: f, frontiter: None, backiter: None }
+        FlatMap { inner: flatten_compat(self.map(f)) }
+    }
+
+    /// Creates an iterator that flattens nested structure.
+    ///
+    /// This is useful when you have an iterator of iterators or an iterator of
+    /// things that can be turned into iterators and you want to remove one
+    /// level of indirection.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let data = vec![vec![1, 2, 3, 4], vec![5, 6]];
+    /// let flattened = data.into_iter().flatten().collect::<Vec<u8>>();
+    /// assert_eq!(flattened, &[1, 2, 3, 4, 5, 6]);
+    /// ```
+    ///
+    /// Mapping and then flattening:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// // chars() returns an iterator
+    /// let merged: String = words.iter()
+    ///                           .map(|s| s.chars())
+    ///                           .flatten()
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// You can also rewrite this in terms of [`flat_map()`], which is preferable
+    /// in this case since it conveys intent more clearly:
+    ///
+    /// ```
+    /// let words = ["alpha", "beta", "gamma"];
+    ///
+    /// // chars() returns an iterator
+    /// let merged: String = words.iter()
+    ///                           .flat_map(|s| s.chars())
+    ///                           .collect();
+    /// assert_eq!(merged, "alphabetagamma");
+    /// ```
+    ///
+    /// Flattening once only removes one level of nesting:
+    ///
+    /// ```
+    /// #![feature(iterator_flatten)]
+    ///
+    /// let d3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
+    ///
+    /// let d2 = d3.iter().flatten().collect::<Vec<_>>();
+    /// assert_eq!(d2, [&[1, 2], &[3, 4], &[5, 6], &[7, 8]]);
+    ///
+    /// let d1 = d3.iter().flatten().flatten().collect::<Vec<_>>();
+    /// assert_eq!(d1, [&1, &2, &3, &4, &5, &6, &7, &8]);
+    /// ```
+    ///
+    /// Here we see that `flatten()` does not perform a "deep" flatten.
+    /// Instead, only one level of nesting is removed. That is, if you
+    /// `flatten()` a three-dimensional array the result will be
+    /// two-dimensional and not one-dimensional. To get a one-dimensional
+    /// structure, you have to `flatten()` again.
+    #[inline]
+    #[unstable(feature = "iterator_flatten", issue = "48213")]
+    fn flatten(self) -> Flatten<Self>
+    where Self: Sized, Self::Item: IntoIterator {
+        Flatten { inner: flatten_compat(self) }
     }
 
     /// Creates an iterator which ends after the first [`None`].
@@ -1103,19 +1180,19 @@ pub trait Iterator {
     ///
     /// // this iterator sequence is complex.
     /// let sum = a.iter()
-    ///             .cloned()
-    ///             .filter(|&x| x % 2 == 0)
-    ///             .fold(0, |sum, i| sum + i);
+    ///     .cloned()
+    ///     .filter(|x| x % 2 == 0)
+    ///     .fold(0, |sum, i| sum + i);
     ///
     /// println!("{}", sum);
     ///
     /// // let's add some inspect() calls to investigate what's happening
     /// let sum = a.iter()
-    ///             .cloned()
-    ///             .inspect(|x| println!("about to filter: {}", x))
-    ///             .filter(|&x| x % 2 == 0)
-    ///             .inspect(|x| println!("made it through filter: {}", x))
-    ///             .fold(0, |sum, i| sum + i);
+    ///     .cloned()
+    ///     .inspect(|x| println!("about to filter: {}", x))
+    ///     .filter(|x| x % 2 == 0)
+    ///     .inspect(|x| println!("made it through filter: {}", x))
+    ///     .fold(0, |sum, i| sum + i);
     ///
     /// println!("{}", sum);
     /// ```
@@ -1123,6 +1200,7 @@ pub trait Iterator {
     /// This will print:
     ///
     /// ```text
+    /// 6
     /// about to filter: 1
     /// about to filter: 4
     /// made it through filter: 4
@@ -1153,8 +1231,7 @@ pub trait Iterator {
     ///
     /// let iter = a.into_iter();
     ///
-    /// let sum: i32 = iter.take(5)
-    ///                    .fold(0, |acc, &i| acc + i );
+    /// let sum: i32 = iter.take(5).fold(0, |acc, i| acc + i );
     ///
     /// assert_eq!(sum, 6);
     ///
@@ -1168,9 +1245,7 @@ pub trait Iterator {
     /// let mut iter = a.into_iter();
     ///
     /// // instead, we add in a .by_ref()
-    /// let sum: i32 = iter.by_ref()
-    ///                    .take(2)
-    ///                    .fold(0, |acc, &i| acc + i );
+    /// let sum: i32 = iter.by_ref().take(2).fold(0, |acc, i| acc + i );
     ///
     /// assert_eq!(sum, 3);
     ///
@@ -1227,9 +1302,7 @@ pub trait Iterator {
     ///
     /// let a = [1, 2, 3];
     ///
-    /// let doubled: VecDeque<i32> = a.iter()
-    ///                               .map(|&x| x * 2)
-    ///                               .collect();
+    /// let doubled: VecDeque<i32> = a.iter().map(|&x| x * 2).collect();
     ///
     /// assert_eq!(2, doubled[0]);
     /// assert_eq!(4, doubled[1]);
@@ -1241,9 +1314,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.iter()
-    ///                .map(|&x| x * 2)
-    ///                .collect::<Vec<i32>>();
+    /// let doubled = a.iter().map(|x| x * 2).collect::<Vec<i32>>();
     ///
     /// assert_eq!(vec![2, 4, 6], doubled);
     /// ```
@@ -1254,9 +1325,7 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let doubled = a.iter()
-    ///                .map(|&x| x * 2)
-    ///                .collect::<Vec<_>>();
+    /// let doubled = a.iter().map(|x| x * 2).collect::<Vec<_>>();
     ///
     /// assert_eq!(vec![2, 4, 6], doubled);
     /// ```
@@ -1267,9 +1336,9 @@ pub trait Iterator {
     /// let chars = ['g', 'd', 'k', 'k', 'n'];
     ///
     /// let hello: String = chars.iter()
-    ///                          .map(|&x| x as u8)
-    ///                          .map(|x| (x + 1) as char)
-    ///                          .collect();
+    ///     .map(|&x| x as u8)
+    ///     .map(|x| (x + 1) as char)
+    ///     .collect();
     ///
     /// assert_eq!("hello", hello);
     /// ```
@@ -1316,8 +1385,9 @@ pub trait Iterator {
     /// ```
     /// let a = [1, 2, 3];
     ///
-    /// let (even, odd): (Vec<i32>, Vec<i32>) = a.into_iter()
-    ///                                          .partition(|&n| n % 2 == 0);
+    /// let (even, odd): (Vec<i32>, Vec<i32>) = a
+    ///     .into_iter()
+    ///     .partition(|&n| n % 2 == 0);
     ///
     /// assert_eq!(even, vec![2]);
     /// assert_eq!(odd, vec![1, 3]);
@@ -1366,9 +1436,9 @@ pub trait Iterator {
     ///
     /// In particular, try to have this call `try_fold()` on the internal parts
     /// from which this iterator is composed.  If multiple calls are needed,
-    /// the `?` operator be convenient for chaining the accumulator value along,
-    /// but beware any invariants that need to be upheld before those early
-    /// returns.  This is a `&mut self` method, so iteration needs to be
+    /// the `?` operator may be convenient for chaining the accumulator value
+    /// along, but beware any invariants that need to be upheld before those
+    /// early returns.  This is a `&mut self` method, so iteration needs to be
     /// resumable after hitting an error here.
     ///
     /// # Examples
@@ -1380,8 +1450,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// // the checked sum of all of the elements of the array
-    /// let sum = a.iter()
-    ///            .try_fold(0i8, |acc, &x| acc.checked_add(x));
+    /// let sum = a.iter().try_fold(0i8, |acc, &x| acc.checked_add(x));
     ///
     /// assert_eq!(sum, Some(6));
     /// ```
@@ -1414,6 +1483,42 @@ pub trait Iterator {
         Try::from_ok(accum)
     }
 
+    /// An iterator method that applies a fallible function to each item in the
+    /// iterator, stopping at the first error and returning that error.
+    ///
+    /// This can also be thought of as the fallible form of [`for_each()`]
+    /// or as the stateless version of [`try_fold()`].
+    ///
+    /// [`for_each()`]: #method.for_each
+    /// [`try_fold()`]: #method.try_fold
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold)]
+    /// use std::fs::rename;
+    /// use std::io::{stdout, Write};
+    /// use std::path::Path;
+    ///
+    /// let data = ["no_tea.txt", "stale_bread.json", "torrential_rain.png"];
+    ///
+    /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{}", x));
+    /// assert!(res.is_ok());
+    ///
+    /// let mut it = data.iter().cloned();
+    /// let res = it.try_for_each(|x| rename(x, Path::new(x).with_extension("old")));
+    /// assert!(res.is_err());
+    /// // It short-circuited, so the remaining items are still in the iterator:
+    /// assert_eq!(it.next(), Some("stale_bread.json"));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    fn try_for_each<F, R>(&mut self, mut f: F) -> R where
+        Self: Sized, F: FnMut(Self::Item) -> R, R: Try<Ok=()>
+    {
+        self.try_fold((), move |(), x| f(x))
+    }
+
     /// An iterator method that applies a function, producing a single, final value.
     ///
     /// `fold()` takes two arguments: an initial value, and a closure with two
@@ -1443,8 +1548,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of the array
-    /// let sum = a.iter()
-    ///            .fold(0, |acc, &x| acc + x);
+    /// let sum = a.iter().fold(0, |acc, x| acc + x);
     ///
     /// assert_eq!(sum, 6);
     /// ```
@@ -1532,7 +1636,7 @@ pub trait Iterator {
     fn all<F>(&mut self, mut f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        self.try_fold((), move |(), x| {
+        self.try_for_each(move |x| {
             if f(x) { LoopState::Continue(()) }
             else { LoopState::Break(()) }
         }) == LoopState::Continue(())
@@ -1581,7 +1685,7 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        self.try_fold((), move |(), x| {
+        self.try_for_each(move |x| {
             if f(x) { LoopState::Break(()) }
             else { LoopState::Continue(()) }
         }) == LoopState::Break(())
@@ -1635,7 +1739,7 @@ pub trait Iterator {
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        self.try_fold((), move |(), x| {
+        self.try_for_each(move |x| {
             if predicate(&x) { LoopState::Break(x) }
             else { LoopState::Continue(()) }
         }).break_value()

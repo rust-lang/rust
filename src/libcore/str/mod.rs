@@ -609,7 +609,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Chars<'a> {}
 
 impl<'a> Chars<'a> {
@@ -702,7 +702,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for CharIndices<'a> {}
 
 impl<'a> CharIndices<'a> {
@@ -817,7 +817,7 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Bytes<'a> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -977,10 +977,10 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        #[unstable(feature = "fused", issue = "35602")]
+        #[stable(feature = "fused", since = "1.26.0")]
         impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
 
-        #[unstable(feature = "fused", issue = "35602")]
+        #[stable(feature = "fused", since = "1.26.0")]
         impl<'a, P: Pattern<'a>> FusedIterator for $reverse_iterator<'a, P>
             where P::Searcher: ReverseSearcher<'a> {}
 
@@ -1337,7 +1337,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Lines<'a> {}
 
 /// Created with the method [`lines_any`].
@@ -1403,7 +1403,7 @@ impl<'a> DoubleEndedIterator for LinesAny<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 #[allow(deprecated)]
 impl<'a> FusedIterator for LinesAny<'a> {}
 
@@ -1779,9 +1779,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::Index<ops::RangeInclusive<usize>> for str {
         type Output = str;
 
@@ -1791,9 +1789,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::Index<ops::RangeToInclusive<usize>> for str {
         type Output = str;
 
@@ -1803,18 +1799,14 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::IndexMut<ops::RangeInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
             index.index_mut(self)
         }
     }
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::IndexMut<ops::RangeToInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
@@ -1997,9 +1989,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl SliceIndex<str> for ops::RangeInclusive<usize> {
         type Output = str;
         #[inline]
@@ -2042,9 +2032,7 @@ mod traits {
 
 
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl SliceIndex<str> for ops::RangeToInclusive<usize> {
         type Output = str;
         #[inline]

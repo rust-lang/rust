@@ -14,7 +14,6 @@ use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::traits;
 use debuginfo;
 use callee;
 use base;
@@ -435,7 +434,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 
     pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
         use syntax_pos::DUMMY_SP;
-        if ty.is_sized(self.tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP) {
+        if ty.is_sized(self.tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
             return false;
         }
 
@@ -464,7 +463,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.tcx.layout_of(ty::ParamEnv::empty(traits::Reveal::All).and(ty))
+        self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
             .unwrap_or_else(|e| match e {
                 LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
                 _ => bug!("failed to get layout for `{}`: {}", ty, e)
@@ -596,6 +595,12 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     ifn!("llvm.bswap.i32", fn(t_i32) -> t_i32);
     ifn!("llvm.bswap.i64", fn(t_i64) -> t_i64);
     ifn!("llvm.bswap.i128", fn(t_i128) -> t_i128);
+
+    ifn!("llvm.bitreverse.i8", fn(t_i8) -> t_i8);
+    ifn!("llvm.bitreverse.i16", fn(t_i16) -> t_i16);
+    ifn!("llvm.bitreverse.i32", fn(t_i32) -> t_i32);
+    ifn!("llvm.bitreverse.i64", fn(t_i64) -> t_i64);
+    ifn!("llvm.bitreverse.i128", fn(t_i128) -> t_i128);
 
     ifn!("llvm.sadd.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
     ifn!("llvm.sadd.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});

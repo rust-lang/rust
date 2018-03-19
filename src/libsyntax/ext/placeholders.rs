@@ -33,7 +33,7 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     let ident = keywords::Invalid.ident();
     let attrs = Vec::new();
     let generics = ast::Generics::default();
-    let vis = ast::Visibility::Inherited;
+    let vis = dummy_spanned(ast::VisibilityKind::Inherited);
     let span = DUMMY_SP;
     let expr_placeholder = || P(ast::Expr {
         id, span,

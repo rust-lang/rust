@@ -1,10 +1,11 @@
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/issue-46983.rs:14:5
    |
-13 | fn foo(x: &u32) -> &'static u32 {
+LL | fn foo(x: &u32) -> &'static u32 {
    |        - consider changing the type of `x` to `&'static u32`
-14 |     &*x
+LL |     &*x
    |     ^^^ lifetime `'static` required
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0621`.

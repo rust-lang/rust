@@ -68,7 +68,7 @@ fn lang_start_internal(main: &(Fn() -> i32 + Sync + ::panic::RefUnwindSafe),
 
 #[cfg(not(test))]
 #[lang = "start"]
-fn lang_start<T: ::termination::Termination + 'static>
+fn lang_start<T: ::process::Termination + 'static>
     (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize
 {
     lang_start_internal(&move || main().report(), argc, argv)

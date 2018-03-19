@@ -10,15 +10,18 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind};
 
-pub use self::value::{PrimVal, PrimValKind, Value, Pointer, bytes_to_f32, bytes_to_f64};
+pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 
 use std::collections::BTreeMap;
 use std::fmt;
 use mir;
-use ty;
+use hir::def_id::DefId;
+use ty::{self, TyCtxt};
 use ty::layout::{self, Align, HasDataLayout};
 use middle::region;
 use std::iter;
+use syntax::ast::Mutability;
+use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Lock {
@@ -41,7 +44,7 @@ pub enum AccessKind {
 }
 
 /// Uniquely identifies a specific constant or static.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
@@ -101,7 +104,7 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 impl<T: layout::HasDataLayout> PointerArithmetic for T {}
 
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct MemoryPointer {
     pub alloc_id: AllocId,
     pub offset: u64,
@@ -148,13 +151,94 @@ impl<'tcx> MemoryPointer {
 #[derive(Copy, Clone, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
 
+impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
+impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
+
+pub const ALLOC_DISCRIMINANT: usize = 0;
+pub const FN_DISCRIMINANT: usize = 1;
+
+pub fn specialized_encode_alloc_id<
+    'a, 'tcx,
+    E: Encoder,
+>(
+    encoder: &mut E,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    alloc_id: AllocId,
+    shorthand: Option<usize>,
+) -> Result<(), E::Error> {
+    if let Some(shorthand) = shorthand {
+        return shorthand.encode(encoder);
+    }
+    if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
+        trace!("encoding {:?} with {:#?}", alloc_id, alloc);
+        ALLOC_DISCRIMINANT.encode(encoder)?;
+        alloc.encode(encoder)?;
+        tcx.interpret_interner
+            .get_corresponding_static_def_id(alloc_id)
+            .encode(encoder)?;
+    } else if let Some(fn_instance) = tcx.interpret_interner.get_fn(alloc_id) {
+        trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
+        FN_DISCRIMINANT.encode(encoder)?;
+        fn_instance.encode(encoder)?;
+    } else {
+        bug!("alloc id without corresponding allocation: {}", alloc_id);
+    }
+    Ok(())
+}
+
+pub fn specialized_decode_alloc_id<
+    'a, 'tcx,
+    D: Decoder,
+    CACHE: FnOnce(&mut D, usize, AllocId),
+    SHORT: FnOnce(&mut D, usize) -> Result<AllocId, D::Error>
+>(
+    decoder: &mut D,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pos: usize,
+    cache: CACHE,
+    short: SHORT,
+) -> Result<AllocId, D::Error> {
+    match usize::decode(decoder)? {
+        ALLOC_DISCRIMINANT => {
+            let alloc_id = tcx.interpret_interner.reserve();
+            trace!("creating alloc id {:?} at {}", alloc_id, pos);
+            // insert early to allow recursive allocs
+            cache(decoder, pos, alloc_id);
+
+            let allocation = Allocation::decode(decoder)?;
+            trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
+            let allocation = tcx.intern_const_alloc(allocation);
+            tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
+
+            if let Some(glob) = Option::<DefId>::decode(decoder)? {
+                tcx.interpret_interner.cache(glob, alloc_id);
+            }
+
+            Ok(alloc_id)
+        },
+        FN_DISCRIMINANT => {
+            trace!("creating fn alloc id at {}", pos);
+            let instance = ty::Instance::decode(decoder)?;
+            trace!("decoded fn alloc instance: {:?}", instance);
+            let id = tcx.interpret_interner.create_fn_alloc(instance);
+            trace!("created fn alloc id: {:?}", id);
+            cache(decoder, pos, id);
+            Ok(id)
+        },
+        shorthand => {
+            trace!("loading shorthand {}", shorthand);
+            short(decoder, shorthand)
+        },
+    }
+}
+
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
@@ -166,6 +250,10 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
+    /// Whether the allocation (of a static) should be put into mutable memory when translating
+    ///
+    /// Only happens for `static mut` or `static` with interior mutability
+    pub runtime_mutability: Mutability,
 }
 
 impl Allocation {
@@ -177,6 +265,7 @@ impl Allocation {
             relocations: BTreeMap::new(),
             undef_mask,
             align: Align::from_bytes(1, 1).unwrap(),
+            runtime_mutability: Mutability::Immutable,
         }
     }
 }
@@ -188,11 +277,13 @@ impl Allocation {
 type Block = u64;
 const BLOCK_SIZE: u64 = 64;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UndefMask {
     blocks: Vec<Block>,
     len: u64,
 }
+
+impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
 
 impl UndefMask {
     pub fn new(size: u64) -> Self {

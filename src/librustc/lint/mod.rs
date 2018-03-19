@@ -31,16 +31,18 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, FnKind};
 use hir;
+use lint::builtin::BuiltinLintDiagnostics;
 use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
+use syntax::epoch::Epoch;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
 use syntax_pos::Span;
@@ -74,6 +76,9 @@ pub struct Lint {
     ///
     /// e.g. "imports that are never used"
     pub desc: &'static str,
+
+    /// Deny lint after this epoch
+    pub epoch_deny: Option<Epoch>,
 }
 
 impl Lint {
@@ -81,18 +86,36 @@ impl Lint {
     pub fn name_lower(&self) -> String {
         self.name.to_ascii_lowercase()
     }
+
+    pub fn default_level(&self, session: &Session) -> Level {
+        if let Some(epoch_deny) = self.epoch_deny {
+            if session.epoch() >= epoch_deny {
+                return Level::Deny
+            }
+        }
+        self.default_level
+    }
 }
 
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $epoch: expr) => (
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            desc: $desc,
+            epoch_deny: Some($epoch)
+        };
+    );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
-            desc: $desc
+            desc: $desc,
+            epoch_deny: None,
         };
-    )
+    );
 }
 
 /// Declare a static `LintArray` and return it as an expression.
@@ -158,6 +181,9 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
     fn check_ty(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Ty) { }
     fn check_generic_param(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::GenericParam) { }
     fn check_generics(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Generics) { }
+    fn check_where_predicate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::WherePredicate) { }
+    fn check_poly_trait_ref(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::PolyTraitRef,
+                            _: hir::TraitBoundModifier) { }
     fn check_fn(&mut self,
                 _: &LateContext<'a, 'tcx>,
                 _: FnKind<'tcx>,
@@ -230,6 +256,9 @@ pub trait EarlyLintPass: LintPass {
     fn check_ty(&mut self, _: &EarlyContext, _: &ast::Ty) { }
     fn check_generic_param(&mut self, _: &EarlyContext, _: &ast::GenericParam) { }
     fn check_generics(&mut self, _: &EarlyContext, _: &ast::Generics) { }
+    fn check_where_predicate(&mut self, _: &EarlyContext, _: &ast::WherePredicate) { }
+    fn check_poly_trait_ref(&mut self, _: &EarlyContext, _: &ast::PolyTraitRef,
+                            _: &ast::TraitBoundModifier) { }
     fn check_fn(&mut self, _: &EarlyContext,
         _: ast_visit::FnKind, _: &ast::FnDecl, _: Span, _: ast::NodeId) { }
     fn check_fn_post(&mut self, _: &EarlyContext,
@@ -258,8 +287,8 @@ pub trait EarlyLintPass: LintPass {
 }
 
 /// A lint pass boxed up as a trait object.
-pub type EarlyLintPassObject = Box<EarlyLintPass + 'static>;
-pub type LateLintPassObject = Box<for<'a, 'tcx> LateLintPass<'a, 'tcx> + 'static>;
+pub type EarlyLintPassObject = Box<dyn EarlyLintPass + 'static>;
+pub type LateLintPassObject = Box<dyn for<'a, 'tcx> LateLintPass<'a, 'tcx> + 'static>;
 
 /// Identifies a lint known to the compiler.
 #[derive(Clone, Copy, Debug)]
@@ -304,7 +333,7 @@ impl LintId {
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 pub enum Level {
-    Allow, Warn, Deny, Forbid
+    Allow, Warn, Deny, Forbid,
 }
 
 impl_stable_hash_for!(enum self::Level {
@@ -378,12 +407,14 @@ impl LintBuffer {
                     lint: &'static Lint,
                     id: ast::NodeId,
                     sp: MultiSpan,
-                    msg: &str) {
+                    msg: &str,
+                    diagnostic: BuiltinLintDiagnostics) {
         let early_lint = BufferedEarlyLint {
             lint_id: LintId::of(lint),
             ast_id: id,
             span: sp,
             msg: msg.to_string(),
+            diagnostic
         };
         let arr = self.map.entry(id).or_insert(Vec::new());
         if !arr.contains(&early_lint) {
@@ -468,9 +499,14 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
     if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
+        let future = if let Some(epoch) = future_incompatible.epoch {
+            format!("the {} epoch", epoch)
+        } else {
+            "a future release".to_owned()
+        };
         let explanation = format!("this was previously accepted by the compiler \
                                    but is being phased out; \
-                                   it will become a hard error in a future release!");
+                                   it will become a hard error in {}!", future);
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         err.warn(&explanation);
@@ -481,7 +517,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 }
 
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
-    -> Rc<LintLevelMap>
+    -> Lrc<LintLevelMap>
 {
     assert_eq!(cnum, LOCAL_CRATE);
     let mut builder = LintLevelMapBuilder {
@@ -494,7 +530,7 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
         intravisit::walk_crate(builder, krate);
     });
 
-    Rc::new(builder.levels.build_map())
+    Lrc::new(builder.levels.build_map())
 }
 
 struct LintLevelMapBuilder<'a, 'tcx: 'a> {

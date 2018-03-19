@@ -39,5 +39,5 @@ fn main() {
         }
     }
     // still recover later
-    let bad_syntax = _; //~ ERROR: found `_`
+    let bad_syntax = _; //~ ERROR: expected expression, found reserved identifier `_`
 }

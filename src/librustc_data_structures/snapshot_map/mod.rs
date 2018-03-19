@@ -45,6 +45,11 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
+    pub fn clear(&mut self) {
+        self.map.clear();
+        self.undo_log.clear();
+    }
+
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.map.insert(key.clone(), value) {
             None => {

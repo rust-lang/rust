@@ -26,10 +26,10 @@ As a reminder, all contributors are expected to follow our [Code of Conduct][coc
 ## Feature Requests
 [feature-requests]: #feature-requests
 
-To request a change to the way that the Rust language works, please open an
-issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
-rather than this one. New features and other significant language changes
-must go through the RFC process.
+To request a change to the way the Rust language works, please head over
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+[README](https://github.com/rust-lang/rfcs/blob/master/README.md)
+for instructions.
 
 ## Bug Reports
 [bug-reports]: #bug-reports
@@ -623,6 +623,7 @@ For people new to Rust, and just starting to contribute, or even for
 more seasoned developers, some useful places to look for information
 are:
 
+* The [rustc guide] contains information about how various parts of the compiler work
 * [Rust Forge][rustforge] contains additional documentation, including write-ups of how to achieve common tasks
 * The [Rust Internals forum][rif], a place to ask questions and
   discuss Rust's internals
@@ -635,6 +636,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 [gdfrustc]: http://manishearth.github.io/rust-internals-docs/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org

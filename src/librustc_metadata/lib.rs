@@ -18,7 +18,9 @@
 #![feature(fs_read_write)]
 #![feature(i128_type)]
 #![feature(libc)]
+#![feature(macro_lifetime_matcher)]
 #![feature(proc_macro_internals)]
+#![feature(macro_lifetime_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(specialization)]
@@ -39,6 +41,7 @@ extern crate proc_macro;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_back;
+#[macro_use]
 extern crate rustc_data_structures;
 
 mod diagnostics;
@@ -59,5 +62,4 @@ pub mod cstore;
 pub mod dynamic_lib;
 pub mod locator;
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_metadata, DIAGNOSTICS }

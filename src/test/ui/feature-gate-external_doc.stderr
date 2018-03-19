@@ -1,10 +1,11 @@
 error[E0658]: #[doc(include = "...")] is experimental (see issue #44732)
   --> $DIR/feature-gate-external_doc.rs:11:1
    |
-11 | #[doc(include="asdf.md")] //~ ERROR: #[doc(include = "...")] is experimental
+LL | #[doc(include="asdf.md")] //~ ERROR: #[doc(include = "...")] is experimental
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(external_doc)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

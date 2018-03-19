@@ -30,14 +30,9 @@ use ptr::P;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::ThinVec;
+use GLOBALS;
 
-use std::cell::RefCell;
 use std::iter;
-
-thread_local! {
-    static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
-    static KNOWN_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
-}
 
 enum AttrError {
     MultipleItem(Name),
@@ -65,22 +60,24 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
 pub fn mark_used(attr: &Attribute) {
     debug!("Marking {:?} as used.", attr);
     let AttrId(id) = attr.id;
-    USED_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let mut slot = globals.used_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        if slot.borrow().len() <= idx {
-            slot.borrow_mut().resize(idx + 1, 0);
+        if slot.len() <= idx {
+            slot.resize(idx + 1, 0);
         }
-        slot.borrow_mut()[idx] |= 1 << shift;
+        slot[idx] |= 1 << shift;
     });
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
-    USED_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let slot = globals.used_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
     })
 }
@@ -88,22 +85,24 @@ pub fn is_used(attr: &Attribute) -> bool {
 pub fn mark_known(attr: &Attribute) {
     debug!("Marking {:?} as known.", attr);
     let AttrId(id) = attr.id;
-    KNOWN_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let mut slot = globals.known_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        if slot.borrow().len() <= idx {
-            slot.borrow_mut().resize(idx + 1, 0);
+        if slot.len() <= idx {
+            slot.resize(idx + 1, 0);
         }
-        slot.borrow_mut()[idx] |= 1 << shift;
+        slot[idx] |= 1 << shift;
     });
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
-    KNOWN_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let slot = globals.known_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
     })
 }
@@ -520,7 +519,7 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -528,10 +527,24 @@ pub enum InlineAttr {
     Never,
 }
 
-/// Determine what `#[inline]` attribute is present in `attrs`, if any.
-pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
-    attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.path != "inline" {
+#[derive(Copy, Clone, PartialEq)]
+pub enum UnwindAttr {
+    Allowed,
+    Aborts,
+}
+
+/// Determine what `#[unwind]` attribute is present in `attrs`, if any.
+pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
+    let syntax_error = |attr: &Attribute| {
+        mark_used(attr);
+        diagnostic.map(|d| {
+            span_err!(d, attr.span, E0633, "malformed `#[unwind]` attribute");
+        });
+        None
+    };
+
+    attrs.iter().fold(None, |ia, attr| {
+        if attr.path != "unwind" {
             return ia;
         }
         let meta = match attr.meta() {
@@ -540,24 +553,18 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
         };
         match meta {
             MetaItemKind::Word => {
-                mark_used(attr);
-                InlineAttr::Hint
+                syntax_error(attr)
             }
             MetaItemKind::List(ref items) => {
                 mark_used(attr);
                 if items.len() != 1 {
-                    diagnostic.map(|d|{ span_err!(d, attr.span, E0534, "expected one argument"); });
-                    InlineAttr::None
-                } else if list_contains_name(&items[..], "always") {
-                    InlineAttr::Always
-                } else if list_contains_name(&items[..], "never") {
-                    InlineAttr::Never
+                    syntax_error(attr)
+                } else if list_contains_name(&items[..], "allowed") {
+                    Some(UnwindAttr::Allowed)
+                } else if list_contains_name(&items[..], "aborts") {
+                    Some(UnwindAttr::Aborts)
                 } else {
-                    diagnostic.map(|d| {
-                        span_err!(d, items[0].span, E0535, "invalid argument");
-                    });
-
-                    InlineAttr::None
+                    syntax_error(attr)
                 }
             }
             _ => ia,
@@ -565,13 +572,6 @@ pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> In
     })
 }
 
-/// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
-pub fn requests_inline(attrs: &[Attribute]) -> bool {
-    match find_inline_attr(None, attrs) {
-        InlineAttr::Hint | InlineAttr::Always => true,
-        InlineAttr::None | InlineAttr::Never => false,
-    }
-}
 
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {

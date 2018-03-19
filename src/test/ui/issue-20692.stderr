@@ -1,7 +1,7 @@
 error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:17:5
    |
-17 |     &Array;
+LL |     &Array;
    |     ^^^^^^ the trait `Array` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
@@ -9,7 +9,7 @@ error[E0038]: the trait `Array` cannot be made into an object
 error[E0038]: the trait `Array` cannot be made into an object
   --> $DIR/issue-20692.rs:14:13
    |
-14 |     let _ = x
+LL |     let _ = x
    |             ^ the trait `Array` cannot be made into an object
    |
    = note: the trait cannot require that `Self : Sized`
@@ -17,3 +17,4 @@ error[E0038]: the trait `Array` cannot be made into an object
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0038`.

@@ -221,8 +221,11 @@ impl Folder for AddParens {
     }
 }
 
-
 fn main() {
+    syntax::with_globals(|| run());
+}
+
+fn run() {
     let ps = ParseSess::new(FilePathMapping::empty());
 
     iter_exprs(2, &mut |e| {

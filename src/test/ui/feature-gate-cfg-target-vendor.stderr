@@ -1,7 +1,7 @@
 error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:12:12
    |
-12 | #[cfg_attr(target_vendor = "x", x)] //~ ERROR `cfg(target_vendor)` is experimental
+LL | #[cfg_attr(target_vendor = "x", x)] //~ ERROR `cfg(target_vendor)` is experimental
    |            ^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see is
 error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:11:7
    |
-11 | #[cfg(target_vendor = "x")] //~ ERROR `cfg(target_vendor)` is experimental
+LL | #[cfg(target_vendor = "x")] //~ ERROR `cfg(target_vendor)` is experimental
    |       ^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
@@ -17,7 +17,7 @@ error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see is
 error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:15:19
    |
-15 | #[cfg(not(any(all(target_vendor = "x"))))] //~ ERROR `cfg(target_vendor)` is experimental
+LL | #[cfg(not(any(all(target_vendor = "x"))))] //~ ERROR `cfg(target_vendor)` is experimental
    |                   ^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
@@ -25,10 +25,11 @@ error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see is
 error[E0658]: `cfg(target_vendor)` is experimental and subject to change (see issue #29718)
   --> $DIR/feature-gate-cfg-target-vendor.rs:19:10
    |
-19 |     cfg!(target_vendor = "x");
+LL |     cfg!(target_vendor = "x");
    |          ^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(cfg_target_vendor)] to the crate attributes to enable
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

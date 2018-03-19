@@ -28,7 +28,7 @@
 // - Trait object shims
 // - Fn Pointer shims
 
-#![allow(dead_code)]
+#![allow(dead_code, warnings)]
 
 extern crate reproducible_build_aux;
 

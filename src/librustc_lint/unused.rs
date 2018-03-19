@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let t = cx.tables.expr_ty(&expr);
         let ty_warned = match t.sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => return,
+            ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyAdt(def, _) => {
                 if def.variants.is_empty() {
@@ -72,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let mut fn_warned = false;
         let mut op_warned = false;
-        if cx.tcx.sess.features.borrow().fn_must_use {
+        if cx.tcx.features().fn_must_use {
             let maybe_def = match expr.node {
                 hir::ExprCall(ref callee, _) => {
                     match callee.node {
@@ -377,11 +377,12 @@ impl UnusedImportBraces {
             // Trigger the lint if the nested item is a non-self single item
             let node_ident;
             match items[0].0.kind {
-                ast::UseTreeKind::Simple(ident) => {
-                    if ident.name == keywords::SelfValue.name() {
+                ast::UseTreeKind::Simple(rename) => {
+                    let orig_ident = items[0].0.prefix.segments.last().unwrap().identifier;
+                    if orig_ident.name == keywords::SelfValue.name() {
                         return;
                     } else {
-                        node_ident = ident;
+                        node_ident = rename.unwrap_or(orig_ident);
                     }
                 }
                 ast::UseTreeKind::Glob => {

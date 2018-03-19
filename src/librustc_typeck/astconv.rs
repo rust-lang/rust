@@ -19,7 +19,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
@@ -51,7 +51,6 @@ pub trait AstConv<'gcx, 'tcx> {
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
                         _def: &ty::TypeParameterDef,
-                        _substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
@@ -261,7 +260,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             } else if infer_types {
                 // No type parameters were provided, we can infer all.
                 let ty_var = if !default_needs_object_self(def) {
-                    self.ty_infer_for_def(def, substs, span)
+                    self.ty_infer_for_def(def, span)
                 } else {
                     self.ty_infer(span)
                 };
@@ -313,7 +312,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
     /// Instantiates the path for the given trait reference, assuming that it's
     /// bound to a valid trait type. Returns the def_id for the defining trait.
-    /// Fails if the type is a type other than a trait type.
+    /// The type _cannot_ be a type other than a trait type.
     ///
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
@@ -331,6 +330,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         trait_ref.path.segments.last().unwrap())
     }
 
+    /// Get the DefId of the given trait ref. It _must_ actually be a trait.
     fn trait_def_id(&self, trait_ref: &hir::TraitRef) -> DefId {
         let path = &trait_ref.path;
         match path.def {
@@ -339,13 +339,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Def::Err => {
                 self.tcx().sess.fatal("cannot continue compilation due to previous error");
             }
-            _ => {
-                span_fatal!(self.tcx().sess, path.span, E0245, "`{}` is not a trait",
-                            self.tcx().hir.node_to_pretty_string(trait_ref.ref_id));
-            }
+            _ => unreachable!(),
         }
     }
 
+    /// The given `trait_ref` must actually be trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,
@@ -417,7 +415,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let trait_def = self.tcx().trait_def(trait_def_id);
 
-        if !self.tcx().sess.features.borrow().unboxed_closures &&
+        if !self.tcx().features().unboxed_closures &&
            trait_segment.with_parameters(|p| p.parenthesized) != trait_def.paren_sugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let msg = if trait_def.paren_sugar {
@@ -1052,7 +1050,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 tcx.types.never
             },
             hir::TyTup(ref fields) => {
-                tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)), false)
+                tcx.mk_tup(fields.iter().map(|t| self.ast_ty_to_ty(&t)))
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
@@ -1136,7 +1134,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
             // Replace all lifetimes with 'static
             for subst in &mut substs {
-                if let Some(_) = subst.as_region() {
+                if let UnpackedKind::Lifetime(_) = subst.unpack() {
                     *subst = Kind::from(&RegionKind::ReStatic);
                 }
             }
@@ -1146,8 +1144,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Fill in our own generics with the resolved lifetimes
         assert_eq!(lifetimes.len(), generics.own_count());
-        substs.extend(lifetimes.iter().map(|lt|
-            Kind::from(self.ast_region_to_region(lt, None))));
+        substs.extend(lifetimes.iter().map(|lt| Kind::from(self.ast_region_to_region(lt, None))));
 
         debug!("impl_trait_ty_to_ty: final substs = {:?}", substs);
 

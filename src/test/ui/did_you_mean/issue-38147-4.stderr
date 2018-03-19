@@ -1,10 +1,11 @@
 error[E0389]: cannot borrow data mutably in a `&` reference
   --> $DIR/issue-38147-4.rs:16:5
    |
-15 | fn f(x: usize, f: &Foo) {
+LL | fn f(x: usize, f: &Foo) {
    |                   ---- use `&mut Foo` here to make mutable
-16 |     f.s.push('x'); //~ ERROR cannot borrow data mutably
+LL |     f.s.push('x'); //~ ERROR cannot borrow data mutably
    |     ^^^ assignment into an immutable reference
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0389`.

@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use infer::{RegionObligation, InferCtxt, InferOk};
+use infer::{RegionObligation, InferCtxt};
+use mir::interpret::GlobalId;
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
+use middle::const_val::{ConstEvalErr, ErrKind};
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -328,11 +330,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             if data.is_global() {
                 // no type variables present, can use evaluation for better caching.
                 // FIXME: consider caching errors too.
-                if
-                    // make defaulted unit go through the slow path for better warnings,
-                    // please remove this when the warnings are removed.
-                    !trait_obligation.predicate.skip_binder().self_ty().is_defaulted_unit() &&
-                    selcx.evaluate_obligation_conservatively(&obligation) {
+                if selcx.evaluate_obligation_conservatively(&obligation) {
                     debug!("selecting trait `{:?}` at depth {} evaluated to holds",
                            data, obligation.recursion_depth);
                     return Ok(Some(vec![]))
@@ -377,17 +375,6 @@ fn process_predicate<'a, 'gcx, 'tcx>(
 
                     Err(CodeSelectionError(selection_err))
                 }
-            }
-        }
-
-        ty::Predicate::Equate(ref binder) => {
-            match selcx.infcx().equality_predicate(&obligation.cause,
-                                                   obligation.param_env,
-                                                   binder) {
-                Ok(InferOk { obligations, value: () }) => {
-                    Ok(Some(obligations))
-                },
-                Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
         }
 
@@ -525,16 +512,34 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                 }
                 Some(param_env) => {
                     match selcx.tcx().lift_to_global(&substs) {
+                        Some(substs) => {
+                            let instance = ty::Instance::resolve(
+                                selcx.tcx().global_tcx(),
+                                param_env,
+                                def_id,
+                                substs,
+                            );
+                            if let Some(instance) = instance {
+                                let cid = GlobalId {
+                                    instance,
+                                    promoted: None,
+                                };
+                                match selcx.tcx().at(obligation.cause.span)
+                                                 .const_eval(param_env.and(cid)) {
+                                    Ok(_) => Ok(Some(vec![])),
+                                    Err(err) => Err(CodeSelectionError(ConstEvalFailure(err)))
+                                }
+                            } else {
+                                Err(CodeSelectionError(ConstEvalFailure(ConstEvalErr {
+                                    span: obligation.cause.span,
+                                    kind: ErrKind::UnimplementedConstVal("could not resolve")
+                                        .into(),
+                                })))
+                            }
+                        },
                         None => {
                             pending_obligation.stalled_on = substs.types().collect();
                             Ok(None)
-                        }
-                        Some(substs) => {
-                            match selcx.tcx().at(obligation.cause.span)
-                                             .const_eval(param_env.and((def_id, substs))) {
-                                Ok(_) => Ok(Some(vec![])),
-                                Err(e) => Err(CodeSelectionError(ConstEvalFailure(e)))
-                            }
                         }
                     }
                 }

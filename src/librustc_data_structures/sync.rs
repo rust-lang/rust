@@ -62,7 +62,7 @@ cfg_if! {
         pub use std::cell::RefMut as WriteGuard;
         pub use std::cell::RefMut as LockGuard;
 
-        pub use std::cell::RefCell as RwLock;
+        use std::cell::RefCell as InnerRwLock;
         use std::cell::RefCell as InnerLock;
 
         use std::cell::Cell;
@@ -159,13 +159,12 @@ cfg_if! {
 
         pub use parking_lot::MutexGuard as LockGuard;
 
-        use parking_lot;
-
         pub use std::sync::Arc as Lrc;
 
         pub use self::Lock as MTLock;
 
         use parking_lot::Mutex as InnerLock;
+        use parking_lot::RwLock as InnerRwLock;
 
         pub type MetadataRef = OwningRef<Box<Erased + Send + Sync>, [u8]>;
 
@@ -177,7 +176,7 @@ cfg_if! {
         macro_rules! rustc_erase_owner {
             ($v:expr) => {{
                 let v = $v;
-                ::rustc_data_structures::sync::assert_send_sync_val(&v);
+                ::rustc_data_structures::sync::assert_send_val(&v);
                 v.erase_send_sync_owner()
             }}
         }
@@ -222,46 +221,11 @@ cfg_if! {
                 self.0.lock().take()
             }
         }
-
-        #[derive(Debug)]
-        pub struct RwLock<T>(parking_lot::RwLock<T>);
-
-        impl<T> RwLock<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                RwLock(parking_lot::RwLock::new(inner))
-            }
-
-            #[inline(always)]
-            pub fn borrow(&self) -> ReadGuard<T> {
-                if ERROR_CHECKING {
-                    self.0.try_read().expect("lock was already held")
-                } else {
-                    self.0.read()
-                }
-            }
-
-            #[inline(always)]
-            pub fn borrow_mut(&self) -> WriteGuard<T> {
-                if ERROR_CHECKING {
-                    self.0.try_write().expect("lock was already held")
-                } else {
-                    self.0.write()
-                }
-            }
-        }
-
-        // FIXME: Probably a bad idea
-        impl<T: Clone> Clone for RwLock<T> {
-            #[inline]
-            fn clone(&self) -> Self {
-                RwLock::new(self.borrow().clone())
-            }
-        }
     }
 }
 
 pub fn assert_sync<T: ?Sized + Sync>() {}
+pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
 
 #[macro_export]
@@ -384,6 +348,11 @@ impl<T> Lock<T> {
     }
 
     #[inline(always)]
+    pub fn with_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
+        f(&mut *self.lock())
+    }
+
+    #[inline(always)]
     pub fn borrow(&self) -> LockGuard<T> {
         self.lock()
     }
@@ -399,5 +368,85 @@ impl<T: Clone> Clone for Lock<T> {
     #[inline]
     fn clone(&self) -> Self {
         Lock::new(self.borrow().clone())
+    }
+}
+
+#[derive(Debug)]
+pub struct RwLock<T>(InnerRwLock<T>);
+
+impl<T> RwLock<T> {
+    #[inline(always)]
+    pub fn new(inner: T) -> Self {
+        RwLock(InnerRwLock::new(inner))
+    }
+
+    #[inline(always)]
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+
+    #[inline(always)]
+    pub fn get_mut(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+
+    #[cfg(not(parallel_queries))]
+    #[inline(always)]
+    pub fn read(&self) -> ReadGuard<T> {
+        self.0.borrow()
+    }
+
+    #[cfg(parallel_queries)]
+    #[inline(always)]
+    pub fn read(&self) -> ReadGuard<T> {
+        if ERROR_CHECKING {
+            self.0.try_read().expect("lock was already held")
+        } else {
+            self.0.read()
+        }
+    }
+
+    #[inline(always)]
+    pub fn with_read_lock<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
+        f(&*self.read())
+    }
+
+    #[cfg(not(parallel_queries))]
+    #[inline(always)]
+    pub fn write(&self) -> WriteGuard<T> {
+        self.0.borrow_mut()
+    }
+
+    #[cfg(parallel_queries)]
+    #[inline(always)]
+    pub fn write(&self) -> WriteGuard<T> {
+        if ERROR_CHECKING {
+            self.0.try_write().expect("lock was already held")
+        } else {
+            self.0.write()
+        }
+    }
+
+    #[inline(always)]
+    pub fn with_write_lock<F: FnOnce(&mut T) -> R, R>(&self, f: F) -> R {
+        f(&mut *self.write())
+    }
+
+    #[inline(always)]
+    pub fn borrow(&self) -> ReadGuard<T> {
+        self.read()
+    }
+
+    #[inline(always)]
+    pub fn borrow_mut(&self) -> WriteGuard<T> {
+        self.write()
+    }
+}
+
+// FIXME: Probably a bad idea
+impl<T: Clone> Clone for RwLock<T> {
+    #[inline]
+    fn clone(&self) -> Self {
+        RwLock::new(self.borrow().clone())
     }
 }

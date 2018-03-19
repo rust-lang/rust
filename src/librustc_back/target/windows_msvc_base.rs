@@ -20,7 +20,6 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         function_sections: true,
-        linker: "link.exe".to_string(),
         dynamic_linking: true,
         executables: true,
         dll_prefix: "".to_string(),

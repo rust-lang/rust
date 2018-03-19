@@ -23,7 +23,6 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePass
                              AllPasses, Sanitizer, Lto};
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
-use rustc_back::LinkerFlavor;
 use time_graph::{self, TimeGraph, Timeline};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef};
@@ -32,7 +31,8 @@ use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKi
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
-use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
+use rustc::util::common::{time_ext, time_depth, set_time_depth, print_time_passes_entry};
+use rustc::util::common::path2cstr;
 use rustc::util::fs::{link_or_copy};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
@@ -42,6 +42,7 @@ use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
 use context::{is_pie_binary, get_reloc_model};
+use common::{C_bytes_in_context, val_ty};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
@@ -262,6 +263,8 @@ pub struct ModuleConfig {
     // emscripten's ecc compiler, when used as the linker.
     obj_is_bitcode: bool,
     no_integrated_as: bool,
+    embed_bitcode: bool,
+    embed_bitcode_marker: bool,
 }
 
 impl ModuleConfig {
@@ -279,6 +282,8 @@ impl ModuleConfig {
             emit_asm: false,
             emit_obj: false,
             obj_is_bitcode: false,
+            embed_bitcode: false,
+            embed_bitcode_marker: false,
             no_integrated_as: false,
 
             no_verify: false,
@@ -299,6 +304,17 @@ impl ModuleConfig {
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
+        let embed_bitcode = sess.target.target.options.embed_bitcode ||
+            sess.opts.debugging_opts.embed_bitcode;
+        if embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No |
+                config::OptLevel::Less => {
+                    self.embed_bitcode_marker = embed_bitcode;
+                }
+                _ => self.embed_bitcode = embed_bitcode,
+            }
+        }
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -333,7 +349,7 @@ pub struct CodegenContext {
     pub no_landing_pads: bool,
     pub save_temps: bool,
     pub fewer_names: bool,
-    pub exported_symbols: Arc<ExportedSymbols>,
+    pub exported_symbols: Option<Arc<ExportedSymbols>>,
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<config::CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
@@ -344,9 +360,7 @@ pub struct CodegenContext {
     pub tm_factory: Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
-    binaryen_linker: bool,
     debuginfo: config::DebugInfoLevel,
-    wasm_import_memory: bool,
 
     // Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
@@ -566,11 +580,19 @@ unsafe fn optimize(cgcx: &CodegenContext,
         diag_handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
-        time(config.time_passes, &format!("llvm function passes [{}]", module_name.unwrap()), ||
-             llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+        time_ext(config.time_passes,
+                 None,
+                 &format!("llvm function passes [{}]", module_name.unwrap()),
+                 || {
+            llvm::LLVMRustRunFunctionPassManager(fpm, llmod)
+        });
         timeline.record("fpm");
-        time(config.time_passes, &format!("llvm module passes [{}]", module_name.unwrap()), ||
-             llvm::LLVMRunPassManager(mpm, llmod));
+        time_ext(config.time_passes,
+                 None,
+                 &format!("llvm module passes [{}]", module_name.unwrap()),
+                 || {
+            llvm::LLVMRunPassManager(mpm, llmod)
+        });
 
         // Deallocate managers that we're now done with
         llvm::LLVMDisposePassManager(fpm);
@@ -639,13 +661,6 @@ unsafe fn codegen(cgcx: &CodegenContext,
         f(cpm)
     }
 
-    // If we're going to generate wasm code from the assembly that llvm
-    // generates then we'll be transitively affecting a ton of options below.
-    // This only happens on the wasm target now.
-    let asm2wasm = cgcx.binaryen_linker &&
-        !cgcx.crate_types.contains(&config::CrateTypeRlib) &&
-        mtrans.kind == ModuleKind::Regular;
-
     // If we don't have the integrated assembler, then we need to emit asm
     // from LLVM and use `gcc` to create the object file.
     let asm_to_obj = config.emit_obj && config.no_integrated_as;
@@ -654,16 +669,16 @@ unsafe fn codegen(cgcx: &CodegenContext,
     // just llvm bitcode. In that case write bitcode, and possibly
     // delete the bitcode if it wasn't requested. Don't generate the
     // machine code, instead copy the .o file from the .bc
-    let write_bc = config.emit_bc || (config.obj_is_bitcode && !asm2wasm);
-    let rm_bc = !config.emit_bc && config.obj_is_bitcode && !asm2wasm;
-    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm2wasm && !asm_to_obj;
-    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode && !asm2wasm;
+    let write_bc = config.emit_bc || config.obj_is_bitcode;
+    let rm_bc = !config.emit_bc && config.obj_is_bitcode;
+    let write_obj = config.emit_obj && !config.obj_is_bitcode && !asm_to_obj;
+    let copy_bc_to_obj = config.emit_obj && config.obj_is_bitcode;
 
     let bc_out = cgcx.output_filenames.temp_path(OutputType::Bitcode, module_name);
     let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
 
-    if write_bc || config.emit_bc_compressed {
+    if write_bc || config.emit_bc_compressed || config.embed_bitcode {
         let thin;
         let old;
         let data = if llvm::LLVMRustThinLTOAvailable() {
@@ -682,6 +697,11 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("write-bc");
         }
 
+        if config.embed_bitcode {
+            embed_bitcode(cgcx, llcx, llmod, Some(data));
+            timeline.record("embed-bc");
+        }
+
         if config.emit_bc_compressed {
             let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
             let data = bytecode::encode(&mtrans.llmod_id, data);
@@ -690,9 +710,11 @@ unsafe fn codegen(cgcx: &CodegenContext,
             }
             timeline.record("compress-bc");
         }
+    } else if config.embed_bitcode_marker {
+        embed_bitcode(cgcx, llcx, llmod, None);
     }
 
-    time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
+    time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
          || -> Result<(), FatalError> {
         if config.emit_ir {
             let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
@@ -736,13 +758,13 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("ir");
         }
 
-        if config.emit_asm || (asm2wasm && config.emit_obj) || asm_to_obj {
+        if config.emit_asm || asm_to_obj {
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
             // We can't use the same module for asm and binary output, because that triggers
             // various errors like invalid IR or broken binaries, so we might have to clone the
             // module to produce the asm output
-            let llmod = if config.emit_obj && !asm2wasm {
+            let llmod = if config.emit_obj {
                 llvm::LLVMCloneModule(llmod)
             } else {
                 llmod
@@ -751,24 +773,13 @@ unsafe fn codegen(cgcx: &CodegenContext,
                 write_output_file(diag_handler, tm, cpm, llmod, &path,
                                   llvm::FileType::AssemblyFile)
             })?;
-            if config.emit_obj && !asm2wasm {
+            if config.emit_obj {
                 llvm::LLVMDisposeModule(llmod);
             }
             timeline.record("asm");
         }
 
-        if asm2wasm && config.emit_obj {
-            let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
-            let suffix = ".wasm.map"; // FIXME use target suffix
-            let map = cgcx.output_filenames.path(OutputType::Exe)
-                .with_extension(&suffix[1..]);
-            binaryen_assemble(cgcx, diag_handler, &assembly, &obj_out, &map);
-            timeline.record("binaryen");
-
-            if !config.emit_asm {
-                drop(fs::remove_file(&assembly));
-            }
-        } else if write_obj {
+        if write_obj {
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                   llvm::FileType::ObjectFile)
@@ -808,47 +819,57 @@ unsafe fn codegen(cgcx: &CodegenContext,
                                    &cgcx.output_filenames))
 }
 
-/// Translates the LLVM-generated `assembly` on the filesystem into a wasm
-/// module using binaryen, placing the output at `object`.
+/// Embed the bitcode of an LLVM module in the LLVM module itself.
 ///
-/// In this case the "object" is actually a full and complete wasm module. We
-/// won't actually be doing anything else to the output for now. This is all
-/// pretty janky and will get removed as soon as a linker for wasm exists.
-fn binaryen_assemble(cgcx: &CodegenContext,
-                     handler: &Handler,
-                     assembly: &Path,
-                     object: &Path,
-                     map: &Path) {
-    use rustc_binaryen::{Module, ModuleOptions};
+/// This is done primarily for iOS where it appears to be standard to compile C
+/// code at least with `-fembed-bitcode` which creates two sections in the
+/// executable:
+///
+/// * __LLVM,__bitcode
+/// * __LLVM,__cmdline
+///
+/// It appears *both* of these sections are necessary to get the linker to
+/// recognize what's going on. For us though we just always throw in an empty
+/// cmdline section.
+///
+/// Furthermore debug/O1 builds don't actually embed bitcode but rather just
+/// embed an empty section.
+///
+/// Basically all of this is us attempting to follow in the footsteps of clang
+/// on iOS. See #35968 for lots more info.
+unsafe fn embed_bitcode(cgcx: &CodegenContext,
+                        llcx: ContextRef,
+                        llmod: ModuleRef,
+                        bitcode: Option<&[u8]>) {
+    let llconst = C_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llglobal = llvm::LLVMAddGlobal(
+        llmod,
+        val_ty(llconst).to_ref(),
+        "rustc.embedded.module\0".as_ptr() as *const _,
+    );
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    let section = if cgcx.opts.target_triple.contains("-ios") {
+        "__LLVM,__bitcode\0"
+    } else {
+        ".llvmbc\0"
+    };
+    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
 
-    let input = fs::read(&assembly).and_then(|contents| {
-        Ok(CString::new(contents)?)
-    });
-    let mut options = ModuleOptions::new();
-    if cgcx.debuginfo != config::NoDebugInfo {
-        options.debuginfo(true);
-        let map_file_name = map.file_name().unwrap();
-        options.source_map_url(map_file_name.to_str().unwrap());
-    }
-
-    options.stack(1024 * 1024);
-    options.import_memory(cgcx.wasm_import_memory);
-    let assembled = input.and_then(|input| {
-        Module::new(&input, &options)
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))
-    });
-    let err = assembled.and_then(|binary| {
-        fs::write(&object, binary.data()).and_then(|()| {
-            if cgcx.debuginfo != config::NoDebugInfo {
-                fs::write(map, binary.source_map())
-            } else {
-                Ok(())
-            }
-        })
-    });
-    if let Err(e) = err {
-        handler.err(&format!("failed to run binaryen assembler: {}", e));
-    }
+    let llconst = C_bytes_in_context(llcx, &[]);
+    let llglobal = llvm::LLVMAddGlobal(
+        llmod,
+        val_ty(llconst).to_ref(),
+        "rustc.embedded.cmdline\0".as_ptr() as *const _,
+    );
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    let section = if cgcx.opts.target_triple.contains("-ios") {
+        "__LLVM,__cmdline\0"
+    } else {
+        ".llvmcmd\0"
+    };
+    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
 }
 
 pub(crate) struct CompiledModules {
@@ -1394,13 +1415,35 @@ fn start_executing_work(tcx: TyCtxt,
                         allocator_config: Arc<ModuleConfig>)
                         -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tcx.tx_to_llvm_workers.clone();
-    let mut exported_symbols = FxHashMap();
-    exported_symbols.insert(LOCAL_CRATE, tcx.exported_symbols(LOCAL_CRATE));
-    for &cnum in tcx.crates().iter() {
-        exported_symbols.insert(cnum, tcx.exported_symbols(cnum));
-    }
-    let exported_symbols = Arc::new(exported_symbols);
     let sess = tcx.sess;
+
+    // Compute the set of symbols we need to retain when doing LTO (if we need to)
+    let exported_symbols = {
+        let mut exported_symbols = FxHashMap();
+
+        let copy_symbols = |cnum| {
+            let symbols = tcx.exported_symbols(cnum)
+                             .iter()
+                             .map(|&(s, lvl)| (s.symbol_name(tcx).to_string(), lvl))
+                             .collect();
+            Arc::new(symbols)
+        };
+
+        match sess.lto() {
+            Lto::No => None,
+            Lto::ThinLocal => {
+                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
+                Some(Arc::new(exported_symbols))
+            }
+            Lto::Yes | Lto::Fat | Lto::Thin => {
+                exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
+                for &cnum in tcx.crates().iter() {
+                    exported_symbols.insert(cnum, copy_symbols(cnum));
+                }
+                Some(Arc::new(exported_symbols))
+            }
+        }
+    };
 
     // First up, convert our jobserver into a helper thread so we can use normal
     // mpsc channels to manage our messages and such.
@@ -1420,12 +1463,9 @@ fn start_executing_work(tcx: TyCtxt,
         each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
     }));
 
-    let wasm_import_memory =
-        attr::contains_name(&tcx.hir.krate().attrs, "wasm_import_memory");
-
     let assembler_cmd = if modules_config.no_integrated_as {
         // HACK: currently we use linker (gcc) as our assembler
-        let (name, mut cmd, _) = get_linker(sess);
+        let (name, mut cmd) = get_linker(sess);
         cmd.args(&sess.target.target.options.asm_args);
         Some(Arc::new(AssemblerCommand {
             name,
@@ -1460,9 +1500,7 @@ fn start_executing_work(tcx: TyCtxt,
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
-        binaryen_linker: tcx.sess.linker_flavor() == LinkerFlavor::Binaryen,
         debuginfo: tcx.sess.opts.debuginfo,
-        wasm_import_memory,
         assembler_cmd,
     };
 

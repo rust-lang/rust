@@ -171,7 +171,7 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
     let mut target = CastTarget::from(lo);
     if size > offset {
         if let Some(hi) = reg_component(cls, &mut i, size - offset) {
-            target = CastTarget::Pair(lo, hi);
+            target = CastTarget::pair(lo, hi);
         }
     }
     assert_eq!(reg_component(cls, &mut i, Size::from_bytes(0)), None);

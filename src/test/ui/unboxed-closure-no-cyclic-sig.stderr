@@ -1,7 +1,7 @@
 error[E0644]: closure/generator type that references itself
   --> $DIR/unboxed-closure-no-cyclic-sig.rs:18:7
    |
-18 |     g(|_| {  }); //~ ERROR closure/generator type that references itself
+LL |     g(|_| {  }); //~ ERROR closure/generator type that references itself
    |       ^^^^^^^^ cyclic type of infinite size
    |
    = note: closures cannot capture themselves or take themselves as argument;
@@ -10,3 +10,4 @@ error[E0644]: closure/generator type that references itself
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0644`.

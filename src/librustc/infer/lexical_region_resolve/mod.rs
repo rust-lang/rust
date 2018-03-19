@@ -258,6 +258,8 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         let tcx = self.region_rels.tcx;
         match (a, b) {
+            (&ty::ReCanonical(..), _) |
+            (_, &ty::ReCanonical(..)) |
             (&ty::ReClosureBound(..), _) |
             (_, &ty::ReClosureBound(..)) |
             (&ReLateBound(..), _) |

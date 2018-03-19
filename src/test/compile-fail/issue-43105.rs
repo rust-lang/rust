@@ -12,6 +12,7 @@ fn xyz() -> u8 { 42 }
 
 const NUM: u8 = xyz();
 //~^ ERROR calls in constants are limited to constant functions, struct and enum constructors
+//~| ERROR constant evaluation error
 
 fn main() {
     match 1 {

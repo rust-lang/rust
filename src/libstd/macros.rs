@@ -68,6 +68,9 @@ macro_rules! panic {
     ($msg:expr) => ({
         $crate::rt::begin_panic($msg, &(file!(), line!(), __rust_unstable_column!()))
     });
+    ($msg:expr,) => ({
+        panic!($msg)
+    });
     ($fmt:expr, $($arg:tt)+) => ({
         $crate::rt::begin_panic_fmt(&format_args!($fmt, $($arg)+),
                                     &(file!(), line!(), __rust_unstable_column!()))
@@ -312,7 +315,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "compile_error_macro", since = "1.20.0")]
     #[macro_export]
-    macro_rules! compile_error { ($msg:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! compile_error {
+        ($msg:expr) => ({ /* compiler built-in */ });
+        ($msg:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// The core macro for formatted string creation & output.
     ///
@@ -400,7 +406,10 @@ pub mod builtin {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! option_env { ($name:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! option_env {
+        ($name:expr) => ({ /* compiler built-in */ });
+        ($name:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Concatenate identifiers into one identifier.
     ///
@@ -463,7 +472,7 @@ pub mod builtin {
     /// The expanded expression has type `u32` and is 1-based, so the first line
     /// in each file evaluates to 1, the second to 2, etc. This is consistent
     /// with error messages by common compilers or popular editors.
-    /// The returned line is not the invocation of the `line!` macro itself,
+    /// The returned line is *not necessarily* the line of the `line!` invocation itself,
     /// but rather the first macro invocation leading up to the invocation
     /// of the `line!` macro.
     ///
@@ -488,7 +497,7 @@ pub mod builtin {
     /// The expanded expression has type `u32` and is 1-based, so the first column
     /// in each line evaluates to 1, the second to 2, etc. This is consistent
     /// with error messages by common compilers or popular editors.
-    /// The returned column is not the invocation of the `column!` macro itself,
+    /// The returned column is *not necessarily* the line of the `column!` invocation itself,
     /// but rather the first macro invocation leading up to the invocation
     /// of the `column!` macro.
     ///
@@ -580,7 +589,10 @@ pub mod builtin {
     /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! include_str { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include_str {
+        ($file:expr) => ({ /* compiler built-in */ });
+        ($file:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Includes a file as a reference to a byte array.
     ///
@@ -614,7 +626,10 @@ pub mod builtin {
     /// Compiling 'main.rs' and running the resulting binary will print "adiós".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! include_bytes { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include_bytes {
+        ($file:expr) => ({ /* compiler built-in */ });
+        ($file:expr,) => ({ /* compiler built-in */ });
+    }
 
     /// Expands to a string that represents the current module path.
     ///
@@ -700,7 +715,64 @@ pub mod builtin {
     /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
-    macro_rules! include { ($file:expr) => ({ /* compiler built-in */ }) }
+    macro_rules! include {
+        ($file:expr) => ({ /* compiler built-in */ });
+        ($file:expr,) => ({ /* compiler built-in */ });
+    }
+
+    /// Ensure that a boolean expression is `true` at runtime.
+    ///
+    /// This will invoke the [`panic!`] macro if the provided expression cannot be
+    /// evaluated to `true` at runtime.
+    ///
+    /// # Uses
+    ///
+    /// Assertions are always checked in both debug and release builds, and cannot
+    /// be disabled. See [`debug_assert!`] for assertions that are not enabled in
+    /// release builds by default.
+    ///
+    /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
+    /// violated could lead to unsafety.
+    ///
+    /// Other use-cases of `assert!` include [testing] and enforcing run-time
+    /// invariants in safe code (whose violation cannot result in unsafety).
+    ///
+    /// # Custom Messages
+    ///
+    /// This macro has a second form, where a custom panic message can
+    /// be provided with or without arguments for formatting.  See [`std::fmt`]
+    /// for syntax for this form.
+    ///
+    /// [`panic!`]: macro.panic.html
+    /// [`debug_assert!`]: macro.debug_assert.html
+    /// [testing]: ../book/second-edition/ch11-01-writing-tests.html#checking-results-with-the-assert-macro
+    /// [`std::fmt`]: ../std/fmt/index.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // the panic message for these assertions is the stringified value of the
+    /// // expression given.
+    /// assert!(true);
+    ///
+    /// fn some_computation() -> bool { true } // a very simple function
+    ///
+    /// assert!(some_computation());
+    ///
+    /// // assert with a custom message
+    /// let x = true;
+    /// assert!(x, "x wasn't true!");
+    ///
+    /// let a = 3; let b = 27;
+    /// assert!(a + b == 30, "a = {}, b = {}", a, b);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[macro_export]
+    macro_rules! assert {
+        ($cond:expr) => ({ /* compiler built-in */ });
+        ($cond:expr,) => ({ /* compiler built-in */ });
+        ($cond:expr, $($arg:tt)+) => ({ /* compiler built-in */ });
+    }
 }
 
 /// A macro for defining #[cfg] if-else statements.

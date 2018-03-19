@@ -1020,41 +1020,6 @@ Here `X` will have already been specified the discriminant 0 by the time `Y` is
 encountered, so a conflict occurs.
 "##,
 
-E0082: r##"
-#### Note: this error code is no longer emitted by the compiler.
-
-When you specify enum discriminants with `=`, the compiler expects `isize`
-values by default. Or you can add the `repr` attibute to the enum declaration
-for an explicit choice of the discriminant type. In either cases, the
-discriminant values must fall within a valid range for the expected type;
-otherwise this error is raised. For example:
-
-```compile_fail
-# #![deny(overflowing_literals)]
-#[repr(u8)]
-enum Thing {
-    A = 1024,
-    B = 5,
-}
-```
-
-Here, 1024 lies outside the valid range for `u8`, so the discriminant for `A` is
-invalid. Here is another, more subtle example which depends on target word size:
-
-```compile_fail,E0080
-# #[repr(i32)]
-enum DependsOnPointerSize {
-    A = 1 << 32,
-}
-```
-
-Here, `1 << 32` is interpreted as an `isize` value. So it is invalid for 32 bit
-target (`target_pointer_width = "32"`) but valid for 64 bit target.
-
-You may want to change representation types to fix this, or else change invalid
-discriminant values so that they fit within the existing type.
-"##,
-
 E0084: r##"
 An unsupported representation was attempted on a zero-variant enum.
 
@@ -1522,26 +1487,6 @@ fn foo() -> _ { 5 } // error, explicitly write out the return type instead
 
 static BAR: _ = "test"; // error, explicitly write out the type instead
 ```
-"##,
-
-E0122: r##"
-An attempt was made to add a generic constraint to a type alias. This constraint
-is entirely ignored. For backwards compatibility, Rust still allows this with a
-warning. Consider the example below:
-
-```
-trait Foo{}
-
-type MyType<R: Foo> = (R, ());
-
-fn main() {
-    let t: MyType<u32>;
-}
-```
-
-We're able to declare a variable of type `MyType<u32>`, despite the fact that
-`u32` does not implement `Foo`. As a result, one should avoid using generic
-constraints in concert with type aliases.
 "##,
 
 E0124: r##"
@@ -3705,6 +3650,98 @@ match r {
 ```
 "##,
 
+E0534: r##"
+The `inline` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[inline()] // error: expected one argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The parenthesized `inline` attribute requires the parameter to be specified:
+
+```
+#[inline(always)]
+fn something() {}
+```
+
+or:
+
+```
+#[inline(never)]
+fn something() {}
+```
+
+Alternatively, a paren-less version of the attribute may be used to hint the
+compiler about inlining opportunity:
+
+```
+#[inline]
+fn something() {}
+```
+
+For more information about the inline attribute, read:
+https://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
+E0535: r##"
+An unknown argument was given to the `inline` attribute.
+
+Erroneous code example:
+
+```ignore (compile_fail not working here; see Issue #43707)
+#[inline(unknown)] // error: invalid argument
+pub fn something() {}
+
+fn main() {}
+```
+
+The `inline` attribute only supports two arguments:
+
+ * always
+ * never
+
+All other arguments given to the `inline` attribute will return this error.
+Example:
+
+```
+#[inline(never)] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+
+For more information about the inline attribute, https:
+read://doc.rust-lang.org/reference.html#inline-attributes
+"##,
+
+E0558: r##"
+The `export_name` attribute was malformed.
+
+Erroneous code example:
+
+```ignore (error-emitted-at-codegen-which-cannot-be-handled-by-compile_fail)
+#[export_name] // error: export_name attribute has invalid format
+pub fn something() {}
+
+fn main() {}
+```
+
+The `export_name` attribute expects a string in order to determine the name of
+the exported symbol. Example:
+
+```
+#[export_name = "some_function"] // ok!
+pub fn something() {}
+
+fn main() {}
+```
+"##,
+
 E0559: r##"
 An unknown field was specified into an enum's structure variant.
 
@@ -4368,12 +4405,13 @@ i_am_a_function();
 "##,
 
 E0619: r##"
+#### Note: this error code is no longer emitted by the compiler.
 The type-checker needed to know the type of an expression, but that type had not
 yet been inferred.
 
 Erroneous code example:
 
-```compile_fail,E0619
+```compile_fail
 let mut x = vec![];
 match x.pop() {
     Some(v) => {
@@ -4757,6 +4795,7 @@ register_diagnostics! {
 //  E0086,
 //  E0103,
 //  E0104,
+//  E0122, // bounds in type aliases are ignored, turned into proper lint
 //  E0123,
 //  E0127,
 //  E0129,
@@ -4801,7 +4840,7 @@ register_diagnostics! {
 //  E0240,
 //  E0241,
 //  E0242,
-    E0245, // not a trait
+//  E0245, // not a trait
 //  E0246, // invalid recursive type
 //  E0247,
 //  E0248, // value used as a type, now reported earlier during resolution as E0412

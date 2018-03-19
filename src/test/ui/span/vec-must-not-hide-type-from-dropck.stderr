@@ -1,24 +1,25 @@
 error[E0597]: `c2` does not live long enough
-   --> $DIR/vec-must-not-hide-type-from-dropck.rs:127:25
-    |
-127 |     c1.v[0].v.set(Some(&c2));
-    |                         ^^ borrowed value does not live long enough
+  --> $DIR/vec-must-not-hide-type-from-dropck.rs:127:25
+   |
+LL |     c1.v[0].v.set(Some(&c2));
+   |                         ^^ borrowed value does not live long enough
 ...
-131 | }
-    | - `c2` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+LL | }
+   | - `c2` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c1` does not live long enough
-   --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:25
-    |
-129 |     c2.v[0].v.set(Some(&c1));
-    |                         ^^ borrowed value does not live long enough
-130 |     //~^ ERROR `c1` does not live long enough
-131 | }
-    | - `c1` dropped here while still borrowed
-    |
-    = note: values in a scope are dropped in the opposite order they are created
+  --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:25
+   |
+LL |     c2.v[0].v.set(Some(&c1));
+   |                         ^^ borrowed value does not live long enough
+LL |     //~^ ERROR `c1` does not live long enough
+LL | }
+   | - `c1` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

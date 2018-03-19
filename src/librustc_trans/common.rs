@@ -25,10 +25,8 @@ use declare;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
-use rustc::ty::subst::Kind;
 use rustc::hir;
 
 use libc::{c_uint, c_char};
@@ -41,15 +39,15 @@ use syntax_pos::{Span, DUMMY_SP};
 pub use context::CodegenCx;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.needs_drop(tcx, ty::ParamEnv::empty(traits::Reveal::All))
+    ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
 }
 
 pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+    ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all())
 }
 
 pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_freeze(tcx, ty::ParamEnv::empty(traits::Reveal::All), DUMMY_SP)
+    ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
 }
 
 /*
@@ -271,6 +269,19 @@ pub fn const_get_elt(v: ValueRef, idx: u64) -> ValueRef {
     }
 }
 
+pub fn const_get_real(v: ValueRef) -> Option<(f64, bool)> {
+    unsafe {
+        if is_const_real(v) {
+            let mut loses_info: llvm::Bool = ::std::mem::uninitialized();
+            let r = llvm::LLVMConstRealGetDouble(v, &mut loses_info as *mut llvm::Bool);
+            let loses_info = if loses_info == 1 { true } else { false };
+            Some((r, loses_info))
+        } else {
+            None
+        }
+    }
+}
+
 pub fn const_to_uint(v: ValueRef) -> u64 {
     unsafe {
         llvm::LLVMConstIntGetZExtValue(v)
@@ -282,6 +293,13 @@ pub fn is_const_integral(v: ValueRef) -> bool {
         !llvm::LLVMIsAConstantInt(v).is_null()
     }
 }
+
+pub fn is_const_real(v: ValueRef) -> bool {
+    unsafe {
+        !llvm::LLVMIsAConstantFP(v).is_null()
+    }
+}
+
 
 #[inline]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
@@ -413,8 +431,8 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             sig.map_bound(|sig| {
                 let state_did = tcx.lang_items().gen_state().unwrap();
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs([Kind::from(sig.yield_ty),
-                    Kind::from(sig.return_ty)].iter());
+                let state_substs = tcx.mk_substs([sig.yield_ty.into(),
+                    sig.return_ty.into()].iter());
                 let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
                 tcx.mk_fn_sig(iter::once(env_ty),

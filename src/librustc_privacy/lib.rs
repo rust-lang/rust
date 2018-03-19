@@ -19,6 +19,7 @@
 #[macro_use] extern crate syntax;
 extern crate rustc_typeck;
 extern crate syntax_pos;
+extern crate rustc_data_structures;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::Def;
@@ -34,10 +35,11 @@ use rustc::util::nodemap::NodeSet;
 use syntax::ast::{self, CRATE_NODE_ID, Ident};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
+use syntax_pos::hygiene::SyntaxContext;
 
 use std::cmp;
 use std::mem::replace;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 mod diagnostics;
 
@@ -491,9 +493,13 @@ struct NamePrivacyVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
-    // Checks that a field is accessible.
-    fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
-        let ident = Ident { ctxt: span.ctxt().modern(), ..keywords::Invalid.ident() };
+    // Checks that a field in a struct constructor (expression or pattern) is accessible.
+    fn check_field(&mut self,
+                   use_ctxt: SyntaxContext, // Syntax context of the field name at the use site
+                   span: Span, // Span of the field pattern, e.g. `x: 0`
+                   def: &'tcx ty::AdtDef, // Definition of the struct or enum
+                   field: &'tcx ty::FieldDef) { // Definition of the field
+        let ident = Ident { ctxt: use_ctxt.modern(), ..keywords::Invalid.ident() };
         let def_id = self.tcx.adjust_ident(ident, def.did, self.current_item).1;
         if !def.is_enum() && !field.vis.is_accessible_from(def_id, self.tcx) {
             struct_span_err!(self.tcx.sess, span, E0451, "field `{}` of {} `{}` is private",
@@ -566,12 +572,17 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                     // unmentioned fields, just check them all.
                     for variant_field in &variant.fields {
                         let field = fields.iter().find(|f| f.name.node == variant_field.name);
-                        let span = if let Some(f) = field { f.span } else { base.span };
-                        self.check_field(span, adt, variant_field);
+                        let (use_ctxt, span) = match field {
+                            Some(field) => (field.name.node.to_ident().ctxt, field.span),
+                            None => (base.span.ctxt(), base.span),
+                        };
+                        self.check_field(use_ctxt, span, adt, variant_field);
                     }
                 } else {
                     for field in fields {
-                        self.check_field(field.span, adt, variant.field_named(field.name.node));
+                        let use_ctxt = field.name.node.to_ident().ctxt;
+                        let field_def = variant.field_named(field.name.node);
+                        self.check_field(use_ctxt, field.span, adt, field_def);
                     }
                 }
             }
@@ -588,7 +599,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
                 let variant = adt.variant_of_def(def);
                 for field in fields {
-                    self.check_field(field.span, adt, variant.field_named(field.node.name));
+                    let use_ctxt = field.node.name.to_ident().ctxt;
+                    let field_def = variant.field_named(field.node.name);
+                    self.check_field(use_ctxt, field.span, adt, field_def);
                 }
             }
             _ => {}
@@ -1634,13 +1647,13 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
     tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
 fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    krate: CrateNum)
-                                   -> Rc<AccessLevels> {
+                                   -> Lrc<AccessLevels> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
@@ -1714,8 +1727,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }
 
-    Rc::new(visitor.access_levels)
+    Lrc::new(visitor.access_levels)
 }
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

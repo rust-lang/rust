@@ -1,7 +1,7 @@
 error[E0658]: auto traits are experimental and possibly buggy (see issue #13231)
   --> $DIR/feature-gate-optin-builtin-traits.rs:20:1
    |
-20 | auto trait AutoDummyTrait {}
+LL | auto trait AutoDummyTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
@@ -9,10 +9,11 @@ error[E0658]: auto traits are experimental and possibly buggy (see issue #13231)
 error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now (see issue #13231)
   --> $DIR/feature-gate-optin-builtin-traits.rs:23:1
    |
-23 | impl !DummyTrait for DummyStruct {}
+LL | impl !DummyTrait for DummyStruct {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

@@ -1,8 +1,9 @@
 error[E0560]: struct `A` has no field named `bar`
   --> $DIR/struct-fields-hints.rs:20:9
    |
-20 |         bar : 42,
-   |         ^^^^^ field does not exist - did you mean `car`?
+LL |         bar : 42,
+   |         ^^^ field does not exist - did you mean `car`?
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0560`.

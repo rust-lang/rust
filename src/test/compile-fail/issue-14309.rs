@@ -37,13 +37,13 @@ struct D {
 }
 
 extern "C" {
-    fn foo(x: A); //~ ERROR found struct without foreign-function-safe
-    fn bar(x: B); //~ ERROR foreign-function-safe
+    fn foo(x: A); //~ ERROR type `A` which is not FFI-safe
+    fn bar(x: B); //~ ERROR type `A`
     fn baz(x: C);
-    fn qux(x: A2); //~ ERROR foreign-function-safe
-    fn quux(x: B2); //~ ERROR foreign-function-safe
+    fn qux(x: A2); //~ ERROR type `A`
+    fn quux(x: B2); //~ ERROR type `A`
     fn corge(x: C2);
-    fn fred(x: D); //~ ERROR foreign-function-safe
+    fn fred(x: D); //~ ERROR type `A`
 }
 
 fn main() { }

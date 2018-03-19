@@ -1,11 +1,11 @@
 error: missing `fn` for method definition
   --> $DIR/pub-ident-fn-2.rs:11:4
    |
-11 | pub foo(s: usize) { bar() }
+LL | pub foo(s: usize) { bar() }
    |    ^
 help: add `fn` here to parse `foo` as a public method
    |
-11 | pub fn foo(s: usize) { bar() }
+LL | pub fn foo(s: usize) { bar() }
    |     ^^
 
 error: aborting due to previous error

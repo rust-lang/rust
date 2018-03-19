@@ -62,7 +62,7 @@ pub trait PpAnn {
 
 pub struct NoAnn;
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &'static PpAnn = &NoAnn;
+pub const NO_ANN: &'static dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate {
     fn nested(&self, state: &mut State, nested: Nested) -> io::Result<()> {
@@ -83,7 +83,7 @@ pub struct State<'a> {
     literals: Peekable<vec::IntoIter<comments::Literal>>,
     cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
-    ann: &'a (PpAnn + 'a),
+    ann: &'a (dyn PpAnn + 'a),
 }
 
 impl<'a> PrintState<'a> for State<'a> {
@@ -126,9 +126,9 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: FileName,
-                       input: &mut Read,
-                       out: Box<Write + 'a>,
-                       ann: &'a PpAnn,
+                       input: &mut dyn Read,
+                       out: Box<dyn Write + 'a>,
+                       ann: &'a dyn PpAnn,
                        is_expanded: bool)
                        -> io::Result<()> {
     let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
@@ -145,9 +145,9 @@ impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
                           sess: &ParseSess,
                           filename: FileName,
-                          input: &mut Read,
-                          out: Box<Write + 'a>,
-                          ann: &'a PpAnn,
+                          input: &mut dyn Read,
+                          out: Box<dyn Write + 'a>,
+                          ann: &'a dyn PpAnn,
                           is_expanded: bool)
                           -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
@@ -167,8 +167,8 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a CodeMap,
-               out: Box<Write + 'a>,
-               ann: &'a PpAnn,
+               out: Box<dyn Write + 'a>,
+               ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
                literals: Option<Vec<comments::Literal>>)
                -> State<'a> {
@@ -184,7 +184,7 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn to_string<F>(ann: &PpAnn, f: F) -> String
+pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
     where F: FnOnce(&mut State) -> io::Result<()>
 {
     let mut wr = Vec::new();
@@ -524,15 +524,10 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
-            hir::ItemExternCrate(ref optional_path) => {
+            hir::ItemExternCrate(orig_name) => {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
-                if let Some(p) = *optional_path {
-                    let val = p.as_str();
-                    if val.contains("-") {
-                        self.print_string(&val, ast::StrStyle::Cooked)?;
-                    } else {
-                        self.print_name(p)?;
-                    }
+                if let Some(orig_name) = orig_name {
+                    self.print_name(orig_name)?;
                     self.s.space()?;
                     self.s.word("as")?;
                     self.s.space()?;
@@ -1810,15 +1805,35 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             PatKind::Box(ref inner) => {
+                let is_range_inner = match inner.node {
+                    PatKind::Range(..) => true,
+                    _ => false,
+                };
                 self.s.word("box ")?;
+                if is_range_inner {
+                    self.popen()?;
+                }
                 self.print_pat(&inner)?;
+                if is_range_inner {
+                    self.pclose()?;
+                }
             }
             PatKind::Ref(ref inner, mutbl) => {
+                let is_range_inner = match inner.node {
+                    PatKind::Range(..) => true,
+                    _ => false,
+                };
                 self.s.word("&")?;
                 if mutbl == hir::MutMutable {
                     self.s.word("mut ")?;
                 }
+                if is_range_inner {
+                    self.popen()?;
+                }
                 self.print_pat(&inner)?;
+                if is_range_inner {
+                    self.pclose()?;
+                }
             }
             PatKind::Lit(ref e) => self.print_expr(&e)?,
             PatKind::Range(ref begin, ref end, ref end_kind) => {
@@ -2208,13 +2223,8 @@ impl<'a> State<'a> {
         if self.next_comment().is_none() {
             self.s.hardbreak()?;
         }
-        loop {
-            match self.next_comment() {
-                Some(ref cmnt) => {
-                    self.print_comment(cmnt)?;
-                }
-                _ => break,
-            }
+        while let Some(ref cmnt) = self.next_comment() {
+            self.print_comment(cmnt)?
         }
         Ok(())
     }

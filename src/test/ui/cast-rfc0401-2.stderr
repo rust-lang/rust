@@ -1,10 +1,11 @@
 error[E0054]: cannot cast as `bool`
   --> $DIR/cast-rfc0401-2.rs:16:13
    |
-16 |     let _ = 3 as bool;
+LL |     let _ = 3 as bool;
    |             ^^^^^^^^^ unsupported cast
    |
    = help: compare with zero instead
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0054`.

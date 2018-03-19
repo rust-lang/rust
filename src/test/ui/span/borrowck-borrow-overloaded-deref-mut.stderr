@@ -1,34 +1,35 @@
 error[E0596]: cannot borrow immutable argument `x` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:39:25
    |
-38 | fn deref_mut1(x: Own<isize>) {
+LL | fn deref_mut1(x: Own<isize>) {
    |               - consider changing this to `mut x`
-39 |     let __isize = &mut *x; //~ ERROR cannot borrow
+LL |     let __isize = &mut *x; //~ ERROR cannot borrow
    |                         ^ cannot borrow mutably
 
 error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:51:11
    |
-50 | fn deref_extend_mut1<'a>(x: &'a Own<isize>) -> &'a mut isize {
+LL | fn deref_extend_mut1<'a>(x: &'a Own<isize>) -> &'a mut isize {
    |                             -------------- use `&'a mut Own<isize>` here to make mutable
-51 |     &mut **x //~ ERROR cannot borrow
+LL |     &mut **x //~ ERROR cannot borrow
    |           ^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow immutable argument `x` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:59:6
    |
-58 | fn assign1<'a>(x: Own<isize>) {
+LL | fn assign1<'a>(x: Own<isize>) {
    |                - consider changing this to `mut x`
-59 |     *x = 3; //~ ERROR cannot borrow
+LL |     *x = 3; //~ ERROR cannot borrow
    |      ^ cannot borrow mutably
 
 error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
   --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:63:6
    |
-62 | fn assign2<'a>(x: &'a Own<isize>) {
+LL | fn assign2<'a>(x: &'a Own<isize>) {
    |                   -------------- use `&'a mut Own<isize>` here to make mutable
-63 |     **x = 3; //~ ERROR cannot borrow
+LL |     **x = 3; //~ ERROR cannot borrow
    |      ^^ cannot borrow as mutable
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0596`.

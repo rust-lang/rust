@@ -14,7 +14,7 @@ use self::EnumDiscriminantInfo::*;
 
 use super::utils::{debug_context, DIB, span_start,
                    get_namespace_for_item, create_DIArray, is_node_local_to_unit};
-use super::namespace::mangled_name_of_item;
+use super::namespace::mangled_name_of_instance;
 use super::type_names::compute_debuginfo_type_name;
 use super::{CrateDebugContext};
 use abi;
@@ -30,7 +30,7 @@ use rustc::ty::util::TypeIdHasher;
 use rustc::ich::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
-use rustc::ty::{self, AdtKind, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
@@ -276,7 +276,7 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let upper_bound = match array_or_slice_type.sty {
         ty::TyArray(_, len) => {
-            len.val.to_const_int().unwrap().to_u64().unwrap() as c_longlong
+            len.val.unwrap_u64() as c_longlong
         }
         _ => -1
     };
@@ -353,13 +353,16 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = cx.tcx.erase_late_bound_regions_and_normalize(&signature);
+    let signature = cx.tcx.normalize_erasing_late_bound_regions(
+        ty::ParamEnv::reveal_all(),
+        &signature,
+    );
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
 
     // return type
     signature_metadata.push(match signature.output().sty {
-        ty::TyTuple(ref tys, _) if tys.is_empty() => ptr::null_mut(),
+        ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
         _ => type_metadata(cx, signature.output(), span)
     });
 
@@ -530,7 +533,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::TyFloat(_) => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::TyTuple(ref elements, _) if elements.is_empty() => {
+        ty::TyTuple(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
         ty::TyArray(typ, _) |
@@ -589,7 +592,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         ty::TyGenerator(def_id, substs, _) => {
             let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx).map(|t| {
-                cx.tcx.fully_normalize_associated_types_in(&t)
+                cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t)
             }).collect();
             prepare_tuple_metadata(cx,
                                    t,
@@ -618,7 +621,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                     usage_site_span).finalize(cx)
             }
         },
-        ty::TyTuple(ref elements, _) => {
+        ty::TyTuple(ref elements) => {
             prepare_tuple_metadata(cx,
                                    t,
                                    &elements[..],
@@ -728,7 +731,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let (name, encoding) = match t.sty {
         ty::TyNever => ("!", DW_ATE_unsigned),
-        ty::TyTuple(ref elements, _) if elements.is_empty() =>
+        ty::TyTuple(ref elements) if elements.is_empty() =>
             ("()", DW_ATE_unsigned),
         ty::TyBool => ("bool", DW_ATE_boolean),
         ty::TyChar => ("char", DW_ATE_unsigned_char),
@@ -1378,7 +1381,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     DIB(cx),
                     name.as_ptr(),
                     // FIXME: what if enumeration has i128 discriminant?
-                    discr.to_u128_unchecked() as u64)
+                    discr.val as u64)
             }
         })
         .collect();
@@ -1634,19 +1637,18 @@ fn create_union_stub<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_global_var_metadata(cx: &CodegenCx,
-                                  node_id: ast::NodeId,
+                                  def_id: DefId,
                                   global: ValueRef) {
     if cx.dbg_cx.is_none() {
         return;
     }
 
     let tcx = cx.tcx;
-    let node_def_id = tcx.hir.local_def_id(node_id);
-    let no_mangle = attr::contains_name(&tcx.get_attrs(node_def_id), "no_mangle");
+    let no_mangle = attr::contains_name(&tcx.get_attrs(def_id), "no_mangle");
     // We may want to remove the namespace scope if we're in an extern block, see:
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952
-    let var_scope = get_namespace_for_item(cx, node_def_id);
-    let span = cx.tcx.def_span(node_def_id);
+    let var_scope = get_namespace_for_item(cx, def_id);
+    let span = cx.tcx.def_span(def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);
@@ -1655,15 +1657,15 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
         (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
     };
 
-    let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = Instance::mono(cx.tcx, node_def_id).ty(cx.tcx);
+    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let var_name = tcx.item_name(node_def_id).to_string();
+    let var_name = tcx.item_name(def_id).to_string();
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = if no_mangle {
         None
     } else {
-        let linkage_name = mangled_name_of_item(cx, node_id);
+        let linkage_name = mangled_name_of_instance(cx, Instance::mono(tcx, def_id));
         Some(CString::new(linkage_name.to_string()).unwrap())
     };
 

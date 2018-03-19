@@ -64,7 +64,6 @@ for details on how to format and write long error codes.
   [librustc](https://github.com/rust-lang/rust/blob/master/src/librustc/diagnostics.rs),
   [libsyntax](https://github.com/rust-lang/rust/blob/master/src/libsyntax/diagnostics.rs),
   [librustc_borrowck](https://github.com/rust-lang/rust/blob/master/src/librustc_borrowck/diagnostics.rs),
-  [librustc_const_eval](https://github.com/rust-lang/rust/blob/master/src/librustc_const_eval/diagnostics.rs),
   [librustc_metadata](https://github.com/rust-lang/rust/blob/master/src/librustc_metadata/diagnostics.rs),
   [librustc_mir](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/diagnostics.rs),
   [librustc_passes](https://github.com/rust-lang/rust/blob/master/src/librustc_passes/diagnostics.rs),

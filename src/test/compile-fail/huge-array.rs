@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:; 1518599999
+// error-pattern:; 1518600000
 
 fn generic<T: Copy>(t: T) {
     let s: [T; 1518600000] = [t; 1518600000];

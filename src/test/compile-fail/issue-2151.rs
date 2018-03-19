@@ -10,5 +10,5 @@
 
 fn main() {
     let x = panic!();
-    x.clone(); //~ ERROR the type of this value must be known in this context
+    x.clone(); //~ ERROR type annotations needed
 }

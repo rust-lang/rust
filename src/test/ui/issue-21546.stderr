@@ -1,10 +1,10 @@
 error[E0428]: the name `Foo` is defined multiple times
   --> $DIR/issue-21546.rs:17:1
    |
-14 | mod Foo { }
+LL | mod Foo { }
    | ------- previous definition of the module `Foo` here
 ...
-17 | struct Foo;
+LL | struct Foo;
    | ^^^^^^^^^^^ `Foo` redefined here
    |
    = note: `Foo` must be defined only once in the type namespace of this module
@@ -12,10 +12,10 @@ error[E0428]: the name `Foo` is defined multiple times
 error[E0428]: the name `Bar` is defined multiple times
   --> $DIR/issue-21546.rs:24:1
    |
-21 | mod Bar { }
+LL | mod Bar { }
    | ------- previous definition of the module `Bar` here
 ...
-24 | struct Bar(i32);
+LL | struct Bar(i32);
    | ^^^^^^^^^^^^^^^^ `Bar` redefined here
    |
    = note: `Bar` must be defined only once in the type namespace of this module
@@ -23,10 +23,10 @@ error[E0428]: the name `Bar` is defined multiple times
 error[E0428]: the name `Baz` is defined multiple times
   --> $DIR/issue-21546.rs:32:1
    |
-29 | struct Baz(i32);
+LL | struct Baz(i32);
    | ---------------- previous definition of the type `Baz` here
 ...
-32 | mod Baz { }
+LL | mod Baz { }
    | ^^^^^^^ `Baz` redefined here
    |
    = note: `Baz` must be defined only once in the type namespace of this module
@@ -34,10 +34,10 @@ error[E0428]: the name `Baz` is defined multiple times
 error[E0428]: the name `Qux` is defined multiple times
   --> $DIR/issue-21546.rs:40:1
    |
-37 | struct Qux { x: bool }
+LL | struct Qux { x: bool }
    | ---------- previous definition of the type `Qux` here
 ...
-40 | mod Qux { }
+LL | mod Qux { }
    | ^^^^^^^ `Qux` redefined here
    |
    = note: `Qux` must be defined only once in the type namespace of this module
@@ -45,10 +45,10 @@ error[E0428]: the name `Qux` is defined multiple times
 error[E0428]: the name `Quux` is defined multiple times
   --> $DIR/issue-21546.rs:48:1
    |
-45 | struct Quux;
+LL | struct Quux;
    | ------------ previous definition of the type `Quux` here
 ...
-48 | mod Quux { }
+LL | mod Quux { }
    | ^^^^^^^^ `Quux` redefined here
    |
    = note: `Quux` must be defined only once in the type namespace of this module
@@ -56,13 +56,14 @@ error[E0428]: the name `Quux` is defined multiple times
 error[E0428]: the name `Corge` is defined multiple times
   --> $DIR/issue-21546.rs:56:1
    |
-53 | enum Corge { A, B }
+LL | enum Corge { A, B }
    | ---------- previous definition of the type `Corge` here
 ...
-56 | mod Corge { }
+LL | mod Corge { }
    | ^^^^^^^^^ `Corge` redefined here
    |
    = note: `Corge` must be defined only once in the type namespace of this module
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0428`.

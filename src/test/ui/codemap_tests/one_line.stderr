@@ -1,7 +1,7 @@
 error[E0499]: cannot borrow `v` as mutable more than once at a time
   --> $DIR/one_line.rs:13:12
    |
-13 |     v.push(v.pop().unwrap()); //~ ERROR cannot borrow
+LL |     v.push(v.pop().unwrap()); //~ ERROR cannot borrow
    |     -      ^               - first borrow ends here
    |     |      |
    |     |      second mutable borrow occurs here
@@ -9,3 +9,4 @@ error[E0499]: cannot borrow `v` as mutable more than once at a time
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0499`.

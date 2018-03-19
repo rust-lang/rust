@@ -1,13 +1,13 @@
 error[E0308]: `if let` arms have incompatible types
   --> $DIR/if-let-arm-types.rs:12:5
    |
-12 | /     if let Some(b) = None { //~ ERROR: `if let` arms have incompatible types
-13 | |         //~^ expected (), found integral variable
-14 | |         //~| expected type `()`
-15 | |         //~| found type `{integer}`
+LL | /     if let Some(b) = None { //~ ERROR: `if let` arms have incompatible types
+LL | |         //~^ expected (), found integral variable
+LL | |         //~| expected type `()`
+LL | |         //~| found type `{integer}`
 ...  |
-18 | |         1
-19 | |     };
+LL | |         1
+LL | |     };
    | |_____^ expected (), found integral variable
    |
    = note: expected type `()`
@@ -15,11 +15,12 @@ error[E0308]: `if let` arms have incompatible types
 note: `if let` arm with an incompatible type
   --> $DIR/if-let-arm-types.rs:17:12
    |
-17 |       } else {
+LL |       } else {
    |  ____________^
-18 | |         1
-19 | |     };
+LL | |         1
+LL | |     };
    | |_____^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

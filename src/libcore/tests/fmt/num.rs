@@ -150,3 +150,9 @@ fn test_format_int_twos_complement() {
     assert!(format!("{}", i32::MIN) == "-2147483648");
     assert!(format!("{}", i64::MIN) == "-9223372036854775808");
 }
+
+#[test]
+fn test_format_debug_hex() {
+    assert!(format!("{:02x?}", b"Foo\0") == "[46, 6f, 6f, 00]");
+    assert!(format!("{:02X?}", b"Foo\0") == "[46, 6F, 6F, 00]");
+}

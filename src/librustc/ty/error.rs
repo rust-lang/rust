@@ -9,17 +9,12 @@
 // except according to those terms.
 
 use hir::def_id::DefId;
-use infer::type_variable;
-use middle::const_val::ConstVal;
-use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
-
+use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use std::fmt;
 use syntax::abi;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
-
-use rustc_const_math::ConstInt;
 
 use hir;
 
@@ -56,7 +51,6 @@ pub enum TypeError<'tcx> {
     CyclicTy(Ty<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
     ProjectionBoundsLength(ExpectedFound<usize>),
-    TyParamDefaultMismatch(ExpectedFound<type_variable::Default<'tcx>>),
     ExistentialMismatch(ExpectedFound<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>>),
 
     OldStyleLUB(Box<TypeError<'tcx>>),
@@ -167,11 +161,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                        values.expected,
                        values.found)
             },
-            TyParamDefaultMismatch(ref values) => {
-                write!(f, "conflicting type parameter defaults `{}` and `{}`",
-                       values.expected.ty,
-                       values.found.ty)
-            }
             ExistentialMismatch(ref values) => {
                 report_maybe_different(f, format!("trait `{}`", values.expected),
                                        format!("trait `{}`", values.found))
@@ -188,15 +177,14 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr | ty::TyNever => self.to_string(),
-            ty::TyTuple(ref tys, _) if tys.is_empty() => self.to_string(),
+            ty::TyTuple(ref tys) if tys.is_empty() => self.to_string(),
 
             ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
             ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
             ty::TyArray(_, n) => {
-                if let ConstVal::Integral(ConstInt::Usize(n)) = n.val {
-                    format!("array of {} elements", n)
-                } else {
-                    "array".to_string()
+                match n.val.to_raw_bits() {
+                    Some(n) => format!("array of {} elements", n),
+                    None => "array".to_string(),
                 }
             }
             ty::TySlice(_) => "slice".to_string(),
@@ -232,6 +220,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyInfer(ty::TyVar(_)) => "inferred type".to_string(),
             ty::TyInfer(ty::IntVar(_)) => "integral variable".to_string(),
             ty::TyInfer(ty::FloatVar(_)) => "floating-point variable".to_string(),
+            ty::TyInfer(ty::CanonicalTy(_)) |
             ty::TyInfer(ty::FreshTy(_)) => "skolemized type".to_string(),
             ty::TyInfer(ty::FreshIntTy(_)) => "skolemized integral type".to_string(),
             ty::TyInfer(ty::FreshFloatTy(_)) => "skolemized floating-point type".to_string(),
@@ -265,42 +254,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     db.help("consider boxing your closure and/or using it as a trait object");
                 }
             },
-            TyParamDefaultMismatch(values) => {
-                let expected = values.expected;
-                let found = values.found;
-                db.span_note(sp, &format!("conflicting type parameter defaults `{}` and `{}`",
-                                          expected.ty,
-                                          found.ty));
-
-                match self.hir.span_if_local(expected.def_id) {
-                    Some(span) => {
-                        db.span_note(span, "a default was defined here...");
-                    }
-                    None => {
-                        let item_def_id = self.parent(expected.def_id).unwrap();
-                        db.note(&format!("a default is defined on `{}`",
-                                         self.item_path_str(item_def_id)));
-                    }
-                }
-
-                db.span_note(
-                    expected.origin_span,
-                    "...that was applied to an unconstrained type variable here");
-
-                match self.hir.span_if_local(found.def_id) {
-                    Some(span) => {
-                        db.span_note(span, "a second default was defined here...");
-                    }
-                    None => {
-                        let item_def_id = self.parent(found.def_id).unwrap();
-                        db.note(&format!("a second default is defined on `{}`",
-                                         self.item_path_str(item_def_id)));
-                    }
-                }
-
-                db.span_note(found.origin_span,
-                             "...that also applies to the same type variable here");
-            }
             OldStyleLUB(err) => {
                 db.note("this was previously accepted by the compiler but has been phased out");
                 db.note("for more information, see https://github.com/rust-lang/rust/issues/45852");

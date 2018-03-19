@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/overloaded-calls-bad.rs:38:17
    |
-38 |     let ans = s("what");    //~ ERROR mismatched types
+LL |     let ans = s("what");    //~ ERROR mismatched types
    |                 ^^^^^^ expected isize, found reference
    |
    = note: expected type `isize`
@@ -10,14 +10,16 @@ error[E0308]: mismatched types
 error[E0057]: this function takes 1 parameter but 0 parameters were supplied
   --> $DIR/overloaded-calls-bad.rs:39:15
    |
-39 |     let ans = s();
+LL |     let ans = s();
    |               ^^^ expected 1 parameter
 
 error[E0057]: this function takes 1 parameter but 2 parameters were supplied
   --> $DIR/overloaded-calls-bad.rs:41:15
    |
-41 |     let ans = s("burma", "shave");
+LL |     let ans = s("burma", "shave");
    |               ^^^^^^^^^^^^^^^^^^^ expected 1 parameter
 
 error: aborting due to 3 previous errors
 
+Some errors occurred: E0057, E0308.
+For more information about an error, try `rustc --explain E0057`.

@@ -22,8 +22,8 @@ RUN sh /scripts/sccache.sh
 ENV TARGETS=wasm32-unknown-unknown
 
 ENV RUST_CONFIGURE_ARGS \
-  --target=$TARGETS \
-  --set build.nodejs=/node-v9.2.0-linux-x64/bin/node
+  --set build.nodejs=/node-v9.2.0-linux-x64/bin/node \
+  --set rust.lld
 
 ENV SCRIPT python2.7 /checkout/x.py test --target $TARGETS \
   src/test/ui \

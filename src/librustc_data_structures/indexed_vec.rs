@@ -29,12 +29,16 @@ pub trait Idx: Copy + 'static + Eq + Debug {
 }
 
 impl Idx for usize {
+    #[inline]
     fn new(idx: usize) -> Self { idx }
+    #[inline]
     fn index(self) -> usize { self }
 }
 
 impl Idx for u32 {
+    #[inline]
     fn new(idx: usize) -> Self { assert!(idx <= u32::MAX as usize); idx as u32 }
+    #[inline]
     fn index(self) -> usize { self as usize }
 }
 
@@ -73,11 +77,13 @@ macro_rules! newtype_index {
         pub struct $type($($pub)* u32);
 
         impl Idx for $type {
+            #[inline]
             fn new(value: usize) -> Self {
                 assert!(value < ($max) as usize);
                 $type(value as u32)
             }
 
+            #[inline]
             fn index(self) -> usize {
                 self.0 as usize
             }
@@ -324,7 +330,7 @@ macro_rules! newtype_index {
     );
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
     _marker: PhantomData<fn(&I)>
@@ -481,6 +487,21 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
         self.raw.get_mut(index.index())
+    }
+
+    /// Return mutable references to two distinct elements, a and b. Panics if a == b.
+    #[inline]
+    pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
+        let (ai, bi) = (a.index(), b.index());
+        assert!(ai != bi);
+
+        if ai < bi {
+            let (c1, c2) = self.raw.split_at_mut(bi);
+            (&mut c1[ai], &mut c2[0])
+        } else {
+            let (c2, c1) = self.pick2_mut(b, a);
+            (c1, c2)
+        }
     }
 }
 

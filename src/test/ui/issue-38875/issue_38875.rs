@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue_38875_b.rs
+// must-compile-successfully
 
 extern crate issue_38875_b;
 

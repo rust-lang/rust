@@ -46,7 +46,7 @@ impl Step for Std {
         let out_dir = build.stage_out(compiler, Mode::Libstd);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "check");
-        std_cargo(build, &compiler, target, &mut cargo);
+        std_cargo(builder, &compiler, target, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),

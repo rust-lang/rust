@@ -16,33 +16,6 @@ impl_stable_hash_for!(struct ::rustc_const_math::ConstFloat {
     bits
 });
 
-impl_stable_hash_for!(enum ::rustc_const_math::ConstInt {
-    I8(val),
-    I16(val),
-    I32(val),
-    I64(val),
-    I128(val),
-    Isize(val),
-    U8(val),
-    U16(val),
-    U32(val),
-    U64(val),
-    U128(val),
-    Usize(val)
-});
-
-impl_stable_hash_for!(enum ::rustc_const_math::ConstIsize {
-    Is16(i16),
-    Is32(i32),
-    Is64(i64)
-});
-
-impl_stable_hash_for!(enum ::rustc_const_math::ConstUsize {
-    Us16(i16),
-    Us32(i32),
-    Us64(i64)
-});
-
 impl_stable_hash_for!(enum ::rustc_const_math::ConstMathErr {
     NotInRange,
     CmpBetweenUnequalTypes,

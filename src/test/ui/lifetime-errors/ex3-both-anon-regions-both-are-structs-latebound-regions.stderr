@@ -1,10 +1,11 @@
 error[E0623]: lifetime mismatch
   --> $DIR/ex3-both-anon-regions-both-are-structs-latebound-regions.rs:15:12
    |
-14 | fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>) {
+LL | fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>) {
    |                           -------      ------- these two types are declared with different lifetimes...
-15 |     x.push(y); //~ ERROR lifetime mismatch
+LL |     x.push(y); //~ ERROR lifetime mismatch
    |            ^ ...but data from `y` flows into `x` here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0623`.

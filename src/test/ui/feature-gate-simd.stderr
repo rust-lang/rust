@@ -1,10 +1,11 @@
 error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
   --> $DIR/feature-gate-simd.rs:14:1
    |
-14 | #[repr(simd)] //~ ERROR SIMD types are experimental
+LL | #[repr(simd)] //~ ERROR SIMD types are experimental
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(repr_simd)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

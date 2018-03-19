@@ -13,27 +13,27 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
 use schema::*;
 
+use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir;
 use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
                             ExternBodyNestedBodies};
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex,
-                         CRATE_DEF_INDEX, LOCAL_CRATE};
+                         CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::ich::Fingerprint;
 use rustc::middle::lang_items;
-use rustc::mir;
+use rustc::mir::{self, interpret};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::util::nodemap::DefIdSet;
 use rustc::mir::Mir;
+use rustc::util::nodemap::FxHashMap;
 
-use std::cell::Ref;
 use std::collections::BTreeMap;
 use std::io;
 use std::mem;
-use std::rc::Rc;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
@@ -54,6 +54,12 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     last_filemap_index: usize,
 
     lazy_state: LazyState,
+
+    // interpreter allocation cache
+    interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
+    // a cache for sizes of interpreter allocations
+    // needed to skip already deserialized allocations
+    interpret_alloc_size: FxHashMap<usize, usize>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -72,6 +78,8 @@ pub trait Metadata<'a, 'tcx>: Copy {
             tcx,
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
+            interpret_alloc_cache: FxHashMap::default(),
+            interpret_alloc_size: FxHashMap::default(),
         }
     }
 }
@@ -265,6 +273,46 @@ impl<'a, 'tcx> SpecializedDecoder<DefIndex> for DecodeContext<'a, 'tcx> {
     #[inline]
     fn specialized_decode(&mut self) -> Result<DefIndex, Self::Error> {
         Ok(DefIndex::from_raw_u32(self.read_u32()?))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_decode(&mut self) -> Result<LocalDefId, Self::Error> {
+        self.specialized_decode().map(|i| LocalDefId::from_def_id(i))
+    }
+}
+
+impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
+        let tcx = self.tcx.expect("need tcx for AllocId decoding");
+        let pos = self.position();
+        if let Some(cached) = self.interpret_alloc_cache.get(&pos).cloned() {
+            // if there's no end position we are currently deserializing a recursive
+            // allocation
+            if let Some(end) = self.interpret_alloc_size.get(&pos).cloned() {
+                trace!("{} already cached as {:?}", pos, cached);
+                // skip ahead
+                self.opaque.set_position(end);
+                return Ok(cached)
+            }
+        }
+        let id = interpret::specialized_decode_alloc_id(
+            self,
+            tcx,
+            pos,
+            |this, pos, alloc_id| { this.interpret_alloc_cache.insert(pos, alloc_id); },
+            |this, shorthand| {
+                // need to load allocation
+                this.with_position(shorthand, |this| interpret::AllocId::decode(this))
+            }
+        )?;
+        let end_pos = self.position();
+        assert!(self
+            .interpret_alloc_size
+            .insert(pos, end_pos)
+            .is_none());
+        Ok(id)
     }
 }
 
@@ -657,7 +705,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // Iterate over all children.
-        let macros_only = self.dep_kind.get().macros_only();
+        let macros_only = self.dep_kind.lock().macros_only();
         for child_index in item.children.decode((self, sess)) {
             if macros_only {
                 continue
@@ -773,12 +821,12 @@ impl<'a, 'tcx> CrateMetadata {
                                                    .map(|body| (body.id(), body))
                                                    .collect();
             ExternBodyNestedBodies {
-                nested_bodies: Rc::new(nested_bodies),
+                nested_bodies: Lrc::new(nested_bodies),
                 fingerprint: ast.stable_bodies_hash,
             }
         } else {
             ExternBodyNestedBodies {
-                nested_bodies: Rc::new(BTreeMap::new()),
+                nested_bodies: Lrc::new(BTreeMap::new()),
                 fingerprint: Fingerprint::ZERO,
             }
         }
@@ -868,11 +916,11 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Rc<[ast::Attribute]> {
+    pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
         let (node_as, node_index) =
             (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
-            return Rc::new([]);
+            return Lrc::new([]);
         }
 
         if let Some(&Some(ref val)) =
@@ -888,11 +936,13 @@ impl<'a, 'tcx> CrateMetadata {
         if def_key.disambiguated_data.data == DefPathData::StructCtor {
             item = self.entry(def_key.parent.unwrap());
         }
-        let result: Rc<[ast::Attribute]> = Rc::from(self.get_attributes(&item, sess));
+        let result: Lrc<[ast::Attribute]> = Lrc::from(self.get_attributes(&item, sess));
         let vec_ = &mut self.attribute_cache.borrow_mut()[node_as];
         if vec_.len() < node_index + 1 {
             vec_.resize(node_index + 1, None);
         }
+        // This can overwrite the result produced by another thread, but the value
+        // written should be the same
         vec_[node_index] = Some(result.clone());
         result
     }
@@ -1006,10 +1056,10 @@ impl<'a, 'tcx> CrateMetadata {
         arg_names.decode(self).collect()
     }
 
-    pub fn get_exported_symbols(&self) -> DefIdSet {
-        self.exported_symbols
-            .iter()
-            .map(|&index| self.local_def_id(index))
+    pub fn exported_symbols(&self) -> Vec<(ExportedSymbol, SymbolExportLevel)> {
+        self.root
+            .exported_symbols
+            .decode(self)
             .collect()
     }
 
@@ -1099,12 +1149,20 @@ impl<'a, 'tcx> CrateMetadata {
     /// for items inlined from other crates.
     pub fn imported_filemaps(&'a self,
                              local_codemap: &codemap::CodeMap)
-                             -> Ref<'a, Vec<cstore::ImportedFileMap>> {
+                             -> ReadGuard<'a, Vec<cstore::ImportedFileMap>> {
         {
             let filemaps = self.codemap_import_info.borrow();
             if !filemaps.is_empty() {
                 return filemaps;
             }
+        }
+
+        // Lock the codemap_import_info to ensure this only happens once
+        let mut codemap_import_info = self.codemap_import_info.borrow_mut();
+
+        if !codemap_import_info.is_empty() {
+            drop(codemap_import_info);
+            return self.codemap_import_info.borrow();
         }
 
         let external_codemap = self.root.codemap.decode(self);
@@ -1165,8 +1223,10 @@ impl<'a, 'tcx> CrateMetadata {
             }
         }).collect();
 
+        *codemap_import_info = imported_filemaps;
+        drop(codemap_import_info);
+
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
-        *self.codemap_import_info.borrow_mut() = imported_filemaps;
         self.codemap_import_info.borrow()
     }
 }

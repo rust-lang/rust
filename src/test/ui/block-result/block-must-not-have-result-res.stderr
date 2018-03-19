@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/block-must-not-have-result-res.rs:15:9
    |
-14 |     fn drop(&mut self) {
+LL |     fn drop(&mut self) {
    |                        - expected `()` because of default return type
-15 |         true //~  ERROR mismatched types
+LL |         true //~  ERROR mismatched types
    |         ^^^^ expected (), found bool
    |
    = note: expected type `()`
@@ -11,3 +11,4 @@ error[E0308]: mismatched types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

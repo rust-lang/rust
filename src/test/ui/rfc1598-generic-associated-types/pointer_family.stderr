@@ -1,26 +1,27 @@
 error[E0109]: type parameters are not allowed on this type
   --> $DIR/pointer_family.rs:46:21
    |
-46 |     bar: P::Pointer<String>,
+LL |     bar: P::Pointer<String>,
    |                     ^^^^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
   --> $DIR/pointer_family.rs:21:42
    |
-21 |     fn new<T>(value: T) -> Self::Pointer<T>;
+LL |     fn new<T>(value: T) -> Self::Pointer<T>;
    |                                          ^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
   --> $DIR/pointer_family.rs:29:42
    |
-29 |     fn new<T>(value: T) -> Self::Pointer<T> {
+LL |     fn new<T>(value: T) -> Self::Pointer<T> {
    |                                          ^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
   --> $DIR/pointer_family.rs:39:42
    |
-39 |     fn new<T>(value: T) -> Self::Pointer<T> {
+LL |     fn new<T>(value: T) -> Self::Pointer<T> {
    |                                          ^ type parameter not allowed
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0109`.

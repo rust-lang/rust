@@ -760,7 +760,7 @@ impl<T:Encodable> Encodable for Arc<T> {
     }
 }
 
-impl<T:Decodable+Send+Sync> Decodable for Arc<T> {
+impl<T:Decodable> Decodable for Arc<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Arc<T>, D::Error> {
         Ok(Arc::new(Decodable::decode(d)?))
     }

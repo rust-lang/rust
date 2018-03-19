@@ -30,7 +30,6 @@ use super::ModuleKind;
 
 use abi;
 use back::link;
-use back::symbol_export;
 use back::write::{self, OngoingCrateTranslation, create_target_machine};
 use llvm::{ContextRef, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
@@ -45,6 +44,7 @@ use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::ty::subst::Kind;
 use rustc::middle::cstore::{self, LinkMeta, LinkagePreference};
+use rustc::middle::exported_symbols;
 use rustc::util::common::{time, print_time_passes_entry};
 use rustc::session::config::{self, NoDebugInfo};
 use rustc::session::Session;
@@ -70,7 +70,7 @@ use time_graph;
 use trans_item::{MonoItem, BaseMonoItemExt, MonoItemExt, DefPathBasedNames};
 use type_::Type;
 use type_of::LayoutLlvmExt;
-use rustc::util::nodemap::{NodeSet, FxHashMap, FxHashSet, DefIdSet};
+use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
 use CrateInfo;
 
 use std::any::Any;
@@ -89,8 +89,7 @@ use syntax::ast;
 
 use mir::operand::OperandValue;
 
-pub use rustc_trans_utils::{find_exported_symbols, check_for_rustc_errors_attr};
-pub use rustc_mir::monomorphize::item::linkage_by_name;
+pub use rustc_trans_utils::check_for_rustc_errors_attr;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     cx: &'a CodegenCx<'a, 'tcx>,
@@ -196,7 +195,7 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
-            C_usize(cx, len.val.to_const_int().unwrap().to_u64().unwrap())
+            C_usize(cx, len.val.unwrap_u64())
         }
         (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -335,14 +334,6 @@ pub fn cast_shift_expr_rhs(
     cast_shift_rhs(op, lhs, rhs, |a, b| cx.trunc(a, b), |a, b| cx.zext(a, b))
 }
 
-pub fn cast_shift_const_rhs(op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
-    cast_shift_rhs(op,
-                   lhs,
-                   rhs,
-                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
-                   |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
-}
-
 fn cast_shift_rhs<F, G>(op: hir::BinOp_,
                         lhs: ValueRef,
                         rhs: ValueRef,
@@ -471,7 +462,7 @@ pub fn trans_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'tc
 
     let fn_ty = instance.ty(cx.tcx);
     let sig = common::ty_fn_sig(cx, fn_ty);
-    let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+    let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
     let lldecl = match cx.instances.borrow().get(&instance) {
         Some(&val) => val,
@@ -606,8 +597,7 @@ fn contains_null(s: &str) -> bool {
 
 fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                             llmod_id: &str,
-                            link_meta: &LinkMeta,
-                            exported_symbols: &NodeSet)
+                            link_meta: &LinkMeta)
                             -> (ContextRef, ModuleRef, EncodedMetadata) {
     use std::io::Write;
     use flate2::Compression;
@@ -643,7 +633,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                 EncodedMetadata::new());
     }
 
-    let metadata = tcx.encode_metadata(link_meta, exported_symbols);
+    let metadata = tcx.encode_metadata(link_meta);
     if kind == MetadataKind::Uncompressed {
         return (metadata_llcx, metadata_llmod, metadata);
     }
@@ -655,7 +645,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
     let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
-    let name = symbol_export::metadata_symbol_name(tcx);
+    let name = exported_symbols::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
@@ -718,13 +708,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
     let link_meta = link::build_link_meta(crate_hash);
-    let exported_symbol_node_ids = find_exported_symbols(tcx);
 
     // Translate the metadata.
     let llmod_id = "metadata";
     let (metadata_llcx, metadata_llmod, metadata) =
-        time(tcx.sess.time_passes(), "write metadata", || {
-            write_metadata(tcx, llmod_id, &link_meta, &exported_symbol_node_ids)
+        time(tcx.sess, "write metadata", || {
+            write_metadata(tcx, llmod_id, &link_meta)
         });
 
     let metadata_module = ModuleTranslation {
@@ -801,7 +790,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 llcx,
                 tm: create_target_machine(tcx.sess),
             };
-            time(tcx.sess.time_passes(), "write allocator module", || {
+            time(tcx.sess, "write allocator module", || {
                 allocator::trans(tcx, &modules, kind)
             });
 
@@ -935,11 +924,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    time(tcx.sess.time_passes(),
+    time(tcx.sess,
          "assert dep graph",
          || rustc_incremental::assert_dep_graph(tcx));
 
-    time(tcx.sess.time_passes(),
+    time(tcx.sess,
          "serialize dep graph",
          || rustc_incremental::save_dep_graph(tcx));
 }
@@ -950,7 +939,6 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
 ) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
 {
     assert_eq!(cnum, LOCAL_CRATE);
-    let time_passes = tcx.sess.time_passes();
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_trans_items {
         Some(ref s) => {
@@ -979,9 +967,11 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     };
 
     let (items, inlining_map) =
-        time(time_passes, "translation item collection", || {
+        time(tcx.sess, "translation item collection", || {
             collector::collect_crate_mono_items(tcx, collection_mode)
     });
+
+    tcx.sess.abort_if_errors();
 
     ::rustc_mir::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
 
@@ -991,7 +981,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
         PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
     };
 
-    let codegen_units = time(time_passes, "codegen unit partitioning", || {
+    let codegen_units = time(tcx.sess, "codegen unit partitioning", || {
         partitioning::partition(tcx,
                                 items.iter().cloned(),
                                 strategy,
@@ -1004,6 +994,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
     let translation_items: DefIdSet = items.iter().filter_map(|trans_item| {
         match *trans_item {
             MonoItem::Fn(ref instance) => Some(instance.def_id()),
+            MonoItem::Static(def_id) => Some(def_id),
             _ => None,
         }
     }).collect();
@@ -1107,7 +1098,7 @@ impl CrateInfo {
     }
 }
 
-fn is_translated_function(tcx: TyCtxt, id: DefId) -> bool {
+fn is_translated_item(tcx: TyCtxt, id: DefId) -> bool {
     let (all_trans_items, _) =
         tcx.collect_and_partition_translation_items(LOCAL_CRATE);
     all_trans_items.contains(&id)
@@ -1222,7 +1213,7 @@ pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_translation_items =
         collect_and_partition_translation_items;
 
-    providers.is_translated_function = is_translated_function;
+    providers.is_translated_item = is_translated_item;
 
     providers.codegen_unit = |tcx, name| {
         let (_, all) = tcx.collect_and_partition_translation_items(LOCAL_CRATE);

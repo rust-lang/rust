@@ -1,10 +1,11 @@
 error[E0658]: the `#[used]` attribute is an experimental feature (see issue #40289)
   --> $DIR/feature-gate-linker-flavor.rs:16:1
    |
-16 | #[used]
+LL | #[used]
    | ^^^^^^^
    |
    = help: add #![feature(used)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

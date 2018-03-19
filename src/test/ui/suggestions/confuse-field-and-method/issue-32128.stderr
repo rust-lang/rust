@@ -1,13 +1,14 @@
 error[E0599]: no method named `example` found for type `Example` in the current scope
   --> $DIR/issue-32128.rs:22:10
    |
-11 | struct Example {
+LL | struct Example {
    | -------------- method `example` not found for this
 ...
-22 |     demo.example(1);
+LL |     demo.example(1);
    |          ^^^^^^^ field, not a method
    |
    = help: use `(demo.example)(...)` if you meant to call the function stored in the `example` field
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

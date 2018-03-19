@@ -87,6 +87,7 @@ use io;
 use iter::{self, FusedIterator};
 use ops::{self, Deref};
 use rc::Rc;
+use str::FromStr;
 use sync::Arc;
 
 use ffi::{OsStr, OsString};
@@ -905,7 +906,7 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Iter<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1008,7 +1009,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a> FusedIterator for Components<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1034,6 +1035,50 @@ impl<'a> cmp::Ord for Components<'a> {
         Iterator::cmp(self.clone(), other.clone())
     }
 }
+
+/// An iterator over [`Path`] and its ancestors.
+///
+/// This `struct` is created by the [`ancestors`] method on [`Path`].
+/// See its documentation for more.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(path_ancestors)]
+///
+/// use std::path::Path;
+///
+/// let path = Path::new("/foo/bar");
+///
+/// for ancestor in path.ancestors() {
+///     println!("{}", ancestor.display());
+/// }
+/// ```
+///
+/// [`ancestors`]: struct.Path.html#method.ancestors
+/// [`Path`]: struct.Path.html
+#[derive(Copy, Clone, Debug)]
+#[unstable(feature = "path_ancestors", issue = "48581")]
+pub struct Ancestors<'a> {
+    next: Option<&'a Path>,
+}
+
+#[unstable(feature = "path_ancestors", issue = "48581")]
+impl<'a> Iterator for Ancestors<'a> {
+    type Item = &'a Path;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.next;
+        self.next = match next {
+            Some(path) => path.parent(),
+            None => None,
+        };
+        next
+    }
+}
+
+#[unstable(feature = "path_ancestors", issue = "48581")]
+impl<'a> FusedIterator for Ancestors<'a> {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic types and traits
@@ -1394,6 +1439,32 @@ impl From<PathBuf> for OsString {
 impl From<String> for PathBuf {
     fn from(s: String) -> PathBuf {
         PathBuf::from(OsString::from(s))
+    }
+}
+
+/// Error returned from [`PathBuf::from_str`][`from_str`].
+///
+/// Note that parsing a path will never fail. This error is just a placeholder
+/// for implementing `FromStr` for `PathBuf`.
+///
+/// [`from_str`]: struct.PathBuf.html#method.from_str
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[stable(feature = "path_from_str", since = "1.26.0")]
+pub enum ParsePathError {}
+
+#[stable(feature = "path_from_str", since = "1.26.0")]
+impl fmt::Display for ParsePathError {
+    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
+        match *self {}
+    }
+}
+
+#[stable(feature = "path_from_str", since = "1.26.0")]
+impl FromStr for PathBuf {
+    type Err = ParsePathError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(PathBuf::from(s))
     }
 }
 
@@ -1820,12 +1891,43 @@ impl Path {
         })
     }
 
+    /// Produces an iterator over `Path` and its ancestors.
+    ///
+    /// The iterator will yield the `Path` that is returned if the [`parent`] method is used zero
+    /// or more times. That means, the iterator will yield `&self`, `&self.parent().unwrap()`,
+    /// `&self.parent().unwrap().parent().unwrap()` and so on. If the [`parent`] method returns
+    /// [`None`], the iterator will do likewise. The iterator will always yield at least one value,
+    /// namely `&self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(path_ancestors)]
+    ///
+    /// use std::path::Path;
+    ///
+    /// let mut ancestors = Path::new("/foo/bar").ancestors();
+    /// assert_eq!(ancestors.next(), Some(Path::new("/foo/bar")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("/foo")));
+    /// assert_eq!(ancestors.next(), Some(Path::new("/")));
+    /// assert_eq!(ancestors.next(), None);
+    /// ```
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`parent`]: struct.Path.html#method.parent
+    #[unstable(feature = "path_ancestors", issue = "48581")]
+    pub fn ancestors(&self) -> Ancestors {
+        Ancestors {
+            next: Some(&self),
+        }
+    }
+
     /// Returns the final component of the `Path`, if there is one.
     ///
     /// If the path is a normal file, this is the file name. If it's the path of a directory, this
     /// is the directory name.
     ///
-    /// Returns [`None`] If the path terminates in `..`.
+    /// Returns [`None`] if the path terminates in `..`.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///

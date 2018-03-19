@@ -1,9 +1,9 @@
 error[E0597]: `bomb` does not live long enough
   --> $DIR/dropck_misc_variants.rs:33:37
    |
-33 |     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
+LL |     _w = Wrap::<&[&str]>(NoisyDrop(&bomb));
    |                                     ^^^^ borrowed value does not live long enough
-34 | }
+LL | }
    | - `bomb` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -11,13 +11,14 @@ error[E0597]: `bomb` does not live long enough
 error[E0597]: `v` does not live long enough
   --> $DIR/dropck_misc_variants.rs:41:28
    |
-41 |         let u = NoisyDrop(&v);
+LL |         let u = NoisyDrop(&v);
    |                            ^ borrowed value does not live long enough
 ...
-45 | }
+LL | }
    | - `v` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

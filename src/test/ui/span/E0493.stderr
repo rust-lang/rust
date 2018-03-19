@@ -1,8 +1,9 @@
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/E0493.rs:27:17
    |
-27 | const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
+LL | const F : Foo = (Foo { a : 0 }, Foo { a : 1 }).1;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constants cannot evaluate destructors
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0493`.

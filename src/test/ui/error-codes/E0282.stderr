@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/E0282.rs:12:9
    |
-12 |     let x = "hello".chars().rev().collect(); //~ ERROR E0282
+LL |     let x = "hello".chars().rev().collect(); //~ ERROR E0282
    |         ^
    |         |
    |         cannot infer type for `_`
@@ -9,3 +9,4 @@ error[E0282]: type annotations needed
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0282`.

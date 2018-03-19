@@ -75,26 +75,28 @@ unsafe fn configure_llvm(sess: &Session) {
                                  llvm_args.as_ptr());
 }
 
-// WARNING: the features must be known to LLVM or the feature
-// detection code will walk past the end of the feature array,
-// leading to crashes.
+// WARNING: the features after applying `to_llvm_feature` must be known
+// to LLVM or the feature detection code will walk past the end of the feature
+// array, leading to crashes.
 
 const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["neon", "v7"];
+const AARCH64_WHITELIST: &'static [&'static str] = &["fp", "neon", "sve", "crc", "crypto",
+                                                     "ras", "lse", "rdm", "fp16", "rcpc",
+                                                     "dotprod", "v8.1a", "v8.2a", "v8.3a"];
 
-const X86_WHITELIST: &'static [&'static str] = &["avx", "avx2", "bmi", "bmi2", "sse",
-                                                 "sse2", "sse3", "sse4.1", "sse4.2",
-                                                 "ssse3", "tbm", "lzcnt", "popcnt",
-                                                 "sse4a", "rdrnd", "rdseed", "fma",
-                                                 "xsave", "xsaveopt", "xsavec",
-                                                 "xsaves", "aes", "pclmulqdq",
-                                                 "avx512bw", "avx512cd",
-                                                 "avx512dq", "avx512er",
-                                                 "avx512f", "avx512ifma",
-                                                 "avx512pf", "avx512vbmi",
-                                                 "avx512vl", "avx512vpopcntdq",
-                                                 "mmx", "fxsr"];
+const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
+                                                 "avx512cd", "avx512dq", "avx512er",
+                                                 "avx512f", "avx512ifma", "avx512pf",
+                                                 "avx512vbmi", "avx512vl", "avx512vpopcntdq",
+                                                 "bmi1", "bmi2", "fma", "fxsr",
+                                                 "lzcnt", "mmx", "pclmulqdq",
+                                                 "popcnt", "rdrand", "rdseed",
+                                                 "sha",
+                                                 "sse", "sse2", "sse3", "sse4.1",
+                                                 "sse4.2", "sse4a", "ssse3",
+                                                 "tbm", "xsave", "xsavec",
+                                                 "xsaveopt", "xsaves"];
 
 const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx", "hvx-double"];
 
@@ -103,12 +105,20 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
                                                      "power8-vector", "power9-vector",
                                                      "vsx"];
 
-const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
+const MIPS_WHITELIST: &'static [&'static str] = &["fp64", "msa"];
 
-pub fn to_llvm_feature(s: &str) -> &str {
-    match s {
-        "pclmulqdq" => "pclmul",
-        s => s,
+pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
+    let arch = if sess.target.target.arch == "x86_64" {
+        "x86"
+    } else {
+        &*sess.target.target.arch
+    };
+    match (arch, s) {
+        ("x86", "pclmulqdq") => "pclmul",
+        ("x86", "rdrand") => "rdrnd",
+        ("x86", "bmi1") => "bmi",
+        ("aarch64", "fp16") => "fullfp16",
+        (_, s) => s,
     }
 }
 
@@ -117,7 +127,7 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
     target_feature_whitelist(sess)
         .iter()
         .filter(|feature| {
-            let llvm_feature = to_llvm_feature(feature);
+            let llvm_feature = to_llvm_feature(sess, feature);
             let cstr = CString::new(llvm_feature).unwrap();
             unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) }
         })

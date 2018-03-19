@@ -1,7 +1,7 @@
 error[E0658]: the `link_args` attribute is experimental and not portable across platforms, it is recommended to use `#[link(name = "foo")] instead (see issue #29596)
   --> $DIR/feature-gate-link_args.rs:22:1
    |
-22 | #[link_args = "-l expected_use_case"]
+LL | #[link_args = "-l expected_use_case"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(link_args)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: the `link_args` attribute is experimental and not portable across 
 error[E0658]: the `link_args` attribute is experimental and not portable across platforms, it is recommended to use `#[link(name = "foo")] instead (see issue #29596)
   --> $DIR/feature-gate-link_args.rs:26:1
    |
-26 | #[link_args = "-l unexected_use_on_non_extern_item"]
+LL | #[link_args = "-l unexected_use_on_non_extern_item"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(link_args)] to the crate attributes to enable
@@ -17,10 +17,11 @@ error[E0658]: the `link_args` attribute is experimental and not portable across 
 error[E0658]: the `link_args` attribute is experimental and not portable across platforms, it is recommended to use `#[link(name = "foo")] instead (see issue #29596)
   --> $DIR/feature-gate-link_args.rs:19:1
    |
-19 | #![link_args = "-l unexpected_use_as_inner_attr_on_mod"]
+LL | #![link_args = "-l unexpected_use_as_inner_attr_on_mod"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(link_args)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

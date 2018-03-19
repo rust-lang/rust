@@ -236,7 +236,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
             }
             super::IfExpression => Some(super::IfExpression),
             super::IfExpressionWithNoElse => Some(super::IfExpressionWithNoElse),
-            super::EquatePredicate => Some(super::EquatePredicate),
             super::MainFunctionType => Some(super::MainFunctionType),
             super::StartFunctionType => Some(super::StartFunctionType),
             super::IntrinsicType => Some(super::IntrinsicType),
@@ -364,260 +363,200 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
     }
 }
 
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<'tcx, N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableImplData {
-            impl_def_id: self.impl_def_id,
-            substs: self.substs.fold_with(folder),
-            nested: self.nested.fold_with(folder),
-        }
-    }
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableImplData<'tcx, N> {
+        impl_def_id, substs, nested
+    } where N: TypeFoldable<'tcx>
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.substs.visit_with(visitor) || self.nested.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableGeneratorData<'tcx, N> {
+        closure_def_id, substs, nested
+    } where N: TypeFoldable<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableClosureData<'tcx, N> {
+        closure_def_id, substs, nested
+    } where N: TypeFoldable<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableAutoImplData<N> {
+        trait_def_id, nested
+    } where N: TypeFoldable<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableBuiltinData<N> {
+        nested
+    } where N: TypeFoldable<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx, N> {
+        upcast_trait_ref, vtable_base, nested
+    } where N: TypeFoldable<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::VtableFnPointerData<'tcx, N> {
+        fn_ty,
+        nested
+    } where N: TypeFoldable<'tcx>
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx, N> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
+        (traits::VtableImpl)(a),
+        (traits::VtableAutoImpl)(a),
+        (traits::VtableGenerator)(a),
+        (traits::VtableClosure)(a),
+        (traits::VtableFnPointer)(a),
+        (traits::VtableParam)(a),
+        (traits::VtableBuiltin)(a),
+        (traits::VtableObject)(a),
+    } where N: TypeFoldable<'tcx>
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx, T> TypeFoldable<'tcx> for Normalized<'tcx, T> {
+        value,
+        obligations
+    } where T: TypeFoldable<'tcx>
+}
+
+impl<'tcx> fmt::Display for traits::WhereClauseAtom<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::WhereClauseAtom::*;
+
+        match self {
+            Implemented(trait_ref) => write!(fmt, "Implemented({})", trait_ref),
+            ProjectionEq(projection) => write!(fmt, "ProjectionEq({})", projection),
+        }
     }
 }
 
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableGeneratorData<'tcx, N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableGeneratorData {
-            closure_def_id: self.closure_def_id,
-            substs: self.substs.fold_with(folder),
-            nested: self.nested.fold_with(folder),
-        }
-    }
+impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::DomainGoal::*;
+        use traits::WhereClauseAtom::*;
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.substs.visit_with(visitor) || self.nested.visit_with(visitor)
+        match self {
+            Holds(wc) => write!(fmt, "{}", wc),
+            WellFormed(Implemented(trait_ref)) => write!(fmt, "WellFormed({})", trait_ref),
+            WellFormed(ProjectionEq(projection)) => write!(fmt, "WellFormed({})", projection),
+            FromEnv(Implemented(trait_ref)) => write!(fmt, "FromEnv({})", trait_ref),
+            FromEnv(ProjectionEq(projection)) => write!(fmt, "FromEnv({})", projection),
+            WellFormedTy(ty) => write!(fmt, "WellFormed({})", ty),
+            FromEnvTy(ty) => write!(fmt, "FromEnv({})", ty),
+            RegionOutlives(predicate) => write!(fmt, "RegionOutlives({})", predicate),
+            TypeOutlives(predicate) => write!(fmt, "TypeOutlives({})", predicate),
+        }
     }
 }
 
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableClosureData<'tcx, N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableClosureData {
-            closure_def_id: self.closure_def_id,
-            substs: self.substs.fold_with(folder),
-            nested: self.nested.fold_with(folder),
-        }
-    }
+impl fmt::Display for traits::QuantifierKind {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::QuantifierKind::*;
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.substs.visit_with(visitor) || self.nested.visit_with(visitor)
+        match self {
+            Universal => write!(fmt, "forall"),
+            Existential => write!(fmt, "exists"),
+        }
     }
 }
 
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableAutoImplData<N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableAutoImplData {
-            trait_def_id: self.trait_def_id,
-            nested: self.nested.fold_with(folder),
-        }
-    }
+impl<'tcx> fmt::Display for traits::Goal<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::Goal::*;
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.nested.visit_with(visitor)
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinData<N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableBuiltinData {
-            nested: self.nested.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.nested.visit_with(visitor)
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx, N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableObjectData {
-            upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
-            vtable_base: self.vtable_base,
-            nested: self.nested.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.upcast_trait_ref.visit_with(visitor) || self.nested.visit_with(visitor)
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableFnPointerData<'tcx, N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::VtableFnPointerData {
-            fn_ty: self.fn_ty.fold_with(folder),
-            nested: self.nested.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.fn_ty.visit_with(visitor) || self.nested.visit_with(visitor)
-    }
-}
-
-impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
-            traits::VtableAutoImpl(ref t) => traits::VtableAutoImpl(t.fold_with(folder)),
-            traits::VtableGenerator(ref d) => {
-                traits::VtableGenerator(d.fold_with(folder))
+        match self {
+            Implies(hypotheses, goal) => {
+                write!(fmt, "if (")?;
+                for (index, hyp) in hypotheses.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{}", hyp)?;
+                }
+                write!(fmt, ") {{ {} }}", goal)
             }
-            traits::VtableClosure(ref d) => {
-                traits::VtableClosure(d.fold_with(folder))
-            }
-            traits::VtableFnPointer(ref d) => {
-                traits::VtableFnPointer(d.fold_with(folder))
-            }
-            traits::VtableParam(ref n) => traits::VtableParam(n.fold_with(folder)),
-            traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
-            traits::VtableObject(ref d) => traits::VtableObject(d.fold_with(folder)),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            traits::VtableImpl(ref v) => v.visit_with(visitor),
-            traits::VtableAutoImpl(ref t) => t.visit_with(visitor),
-            traits::VtableGenerator(ref d) => d.visit_with(visitor),
-            traits::VtableClosure(ref d) => d.visit_with(visitor),
-            traits::VtableFnPointer(ref d) => d.visit_with(visitor),
-            traits::VtableParam(ref n) => n.visit_with(visitor),
-            traits::VtableBuiltin(ref d) => d.visit_with(visitor),
-            traits::VtableObject(ref d) => d.visit_with(visitor),
-        }
-    }
-}
-
-impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        Normalized {
-            value: self.value.fold_with(folder),
-            obligations: self.obligations.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.value.visit_with(visitor) || self.obligations.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            super::ExprAssignable |
-            super::MatchExpressionArm { arm_span: _, source: _ } |
-            super::IfExpression |
-            super::IfExpressionWithNoElse |
-            super::EquatePredicate |
-            super::MainFunctionType |
-            super::StartFunctionType |
-            super::IntrinsicType |
-            super::MethodReceiver |
-            super::MiscObligation |
-            super::SliceOrArrayElem |
-            super::TupleElem |
-            super::ItemObligation(_) |
-            super::AssignmentLhsSized |
-            super::TupleInitializerSized |
-            super::StructInitializerSized |
-            super::VariableType(_) |
-            super::ReturnType(_) |
-            super::SizedReturnType |
-            super::SizedYieldType |
-            super::ReturnNoExpression |
-            super::RepeatVec |
-            super::FieldSized(_) |
-            super::ConstSized |
-            super::SharedStatic |
-            super::BlockTailExpression(_) |
-            super::CompareImplMethodObligation { .. } => self.clone(),
-
-            super::ProjectionWf(proj) => super::ProjectionWf(proj.fold_with(folder)),
-            super::ReferenceOutlivesReferent(ty) => {
-                super::ReferenceOutlivesReferent(ty.fold_with(folder))
-            }
-            super::ObjectTypeBound(ty, r) => {
-                super::ObjectTypeBound(ty.fold_with(folder), r.fold_with(folder))
-            }
-            super::ObjectCastObligation(ty) => {
-                super::ObjectCastObligation(ty.fold_with(folder))
-            }
-            super::BuiltinDerivedObligation(ref cause) => {
-                super::BuiltinDerivedObligation(cause.fold_with(folder))
-            }
-            super::ImplDerivedObligation(ref cause) => {
-                super::ImplDerivedObligation(cause.fold_with(folder))
+            And(goal1, goal2) => write!(fmt, "({} && {})", goal1, goal2),
+            Not(goal) => write!(fmt, "not {{ {} }}", goal),
+            DomainGoal(goal) => write!(fmt, "{}", goal),
+            Quantified(qkind, goal) => {
+                // FIXME: appropriate binder names
+                write!(fmt, "{}<> {{ {} }}", qkind, goal.skip_binder())
             }
         }
     }
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            super::ExprAssignable |
-            super::MatchExpressionArm { arm_span: _, source: _ } |
-            super::IfExpression |
-            super::IfExpressionWithNoElse |
-            super::EquatePredicate |
-            super::MainFunctionType |
-            super::StartFunctionType |
-            super::IntrinsicType |
-            super::MethodReceiver |
-            super::MiscObligation |
-            super::SliceOrArrayElem |
-            super::TupleElem |
-            super::ItemObligation(_) |
-            super::AssignmentLhsSized |
-            super::TupleInitializerSized |
-            super::StructInitializerSized |
-            super::VariableType(_) |
-            super::ReturnType(_) |
-            super::SizedReturnType |
-            super::SizedYieldType |
-            super::ReturnNoExpression |
-            super::RepeatVec |
-            super::FieldSized(_) |
-            super::ConstSized |
-            super::SharedStatic |
-            super::BlockTailExpression(_) |
-            super::CompareImplMethodObligation { .. } => false,
+impl<'tcx> fmt::Display for traits::Clause<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        use traits::Clause::*;
 
-            super::ProjectionWf(proj) => proj.visit_with(visitor),
-            super::ReferenceOutlivesReferent(ty) => ty.visit_with(visitor),
-            super::ObjectTypeBound(ty, r) => ty.visit_with(visitor) || r.visit_with(visitor),
-            super::ObjectCastObligation(ty) => ty.visit_with(visitor),
-            super::BuiltinDerivedObligation(ref cause) => cause.visit_with(visitor),
-            super::ImplDerivedObligation(ref cause) => cause.visit_with(visitor)
+        match self {
+            Implies(hypotheses, goal) => {
+                write!(fmt, "{}", goal)?;
+                if !hypotheses.is_empty() {
+                    write!(fmt, " :- ")?;
+                    for (index, condition) in hypotheses.iter().enumerate() {
+                        if index > 0 {
+                            write!(fmt, ", ")?;
+                        }
+                        write!(fmt, "{}", condition)?;
+                    }
+                }
+                write!(fmt, ".")
+            }
+            DomainGoal(domain_goal) => write!(fmt, "{}.", domain_goal),
+            ForAll(clause) => {
+                // FIXME: appropriate binder names
+                write!(fmt, "forall<> {{ {} }}", clause.skip_binder())
+            }
         }
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for traits::DerivedObligationCause<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::DerivedObligationCause {
-            parent_trait_ref: self.parent_trait_ref.fold_with(folder),
-            parent_code: self.parent_code.fold_with(folder)
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.parent_trait_ref.visit_with(visitor) || self.parent_code.visit_with(visitor)
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::WhereClauseAtom<'tcx> {
+        (traits::WhereClauseAtom::Implemented)(trait_ref),
+        (traits::WhereClauseAtom::ProjectionEq)(projection),
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCause<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::ObligationCause {
-            span: self.span,
-            body_id: self.body_id,
-            code: self.code.fold_with(folder),
-        }
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::DomainGoal<'tcx> {
+        (traits::DomainGoal::Holds)(wc),
+        (traits::DomainGoal::WellFormed)(wc),
+        (traits::DomainGoal::FromEnv)(wc),
+        (traits::DomainGoal::WellFormedTy)(ty),
+        (traits::DomainGoal::FromEnvTy)(ty),
+        (traits::DomainGoal::RegionOutlives)(predicate),
+        (traits::DomainGoal::TypeOutlives)(predicate),
     }
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.code.visit_with(visitor)
+CloneTypeFoldableImpls! {
+    traits::QuantifierKind,
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::Goal<'tcx> {
+        (traits::Goal::Implies)(hypotheses, goal),
+        (traits::Goal::And)(goal1, goal2),
+        (traits::Goal::Not)(goal),
+        (traits::Goal::DomainGoal)(domain_goal),
+        (traits::Goal::Quantified)(qkind, goal),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::Clause<'tcx> {
+        (traits::Clause::Implies)(hypotheses, goal),
+        (traits::Clause::DomainGoal)(domain_goal),
+        (traits::Clause::ForAll)(clause),
     }
 }

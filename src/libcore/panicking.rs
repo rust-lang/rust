@@ -64,7 +64,8 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
     #[allow(improper_ctypes)]
     extern {
         #[lang = "panic_fmt"]
-        #[unwind]
+        #[cfg_attr(stage0, unwind)]
+        #[cfg_attr(not(stage0), unwind(allowed))]
         fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32, col: u32) -> !;
     }
     let (file, line, col) = *file_line_col;

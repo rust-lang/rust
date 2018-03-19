@@ -12,7 +12,6 @@
 #![allow(unused_assignments)]
 #![allow(dead_code)]
 #![deny(unreachable_code)]
-#![feature(never_type)]
 
 fn a() {
     loop { return; }

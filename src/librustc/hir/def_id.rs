@@ -220,7 +220,6 @@ impl serialize::UseSpecializedDecodable for DefId {}
 pub struct LocalDefId(DefIndex);
 
 impl LocalDefId {
-
     #[inline]
     pub fn from_def_id(def_id: DefId) -> LocalDefId {
         assert!(def_id.is_local());

@@ -1,10 +1,11 @@
 error[E0038]: the trait `Baz` cannot be made into an object
   --> $DIR/object-safety-supertrait-mentions-Self.rs:25:31
    |
-25 | fn make_baz<T:Baz>(t: &T) -> &Baz {
+LL | fn make_baz<T:Baz>(t: &T) -> &Baz {
    |                               ^^^ the trait `Baz` cannot be made into an object
    |
    = note: the trait cannot use `Self` as a type parameter in the supertraits or where-clauses
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0038`.

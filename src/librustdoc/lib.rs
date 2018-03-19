@@ -24,6 +24,7 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(vec_remove_item)]
+#![feature(entry_and_modify)]
 
 extern crate arena;
 extern crate getopts;
@@ -99,9 +100,11 @@ struct Output {
 
 pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
-    env_logger::init().unwrap();
+    env_logger::init();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
-        get_args().map(|args| main_args(&args)).unwrap_or(1)
+        syntax::with_globals(move || {
+            get_args().map(|args| main_args(&args)).unwrap_or(1)
+        })
     }).unwrap().join().unwrap_or(101);
     process::exit(res as i32);
 }
@@ -260,6 +263,13 @@ pub fn opts() -> Vec<RustcOptGroup> {
                        "check if given theme is valid",
                        "FILES")
         }),
+        unstable("resource-suffix", |o| {
+            o.optopt("",
+                     "resource-suffix",
+                     "suffix to add to CSS and JavaScript files, e.g. \"main.css\" will become \
+                      \"main-suffix.css\"",
+                     "PATH")
+        }),
     ]
 }
 
@@ -416,6 +426,7 @@ pub fn main_args(args: &[String]) -> isize {
     let display_warnings = matches.opt_present("display-warnings");
     let linker = matches.opt_str("linker").map(PathBuf::from);
     let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
+    let resource_suffix = matches.opt_str("resource-suffix");
 
     match (should_test, markdown_input) {
         (true, true) => {
@@ -441,6 +452,7 @@ pub fn main_args(args: &[String]) -> isize {
             Some("html") | None => {
                 html::render::run(krate, &external_html, playground_url,
                                   output.unwrap_or(PathBuf::from("doc")),
+                                  resource_suffix.unwrap_or(String::new()),
                                   passes.into_iter().collect(),
                                   css_file_extension,
                                   renderinfo,
@@ -544,12 +556,14 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     });
 
     let (tx, rx) = channel();
-    rustc_driver::monitor(move || {
+
+    rustc_driver::monitor(move || syntax::with_globals(move || {
         use rustc::session::config::Input;
 
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
-                           display_warnings, force_unstable_if_unmarked);
+                           display_warnings, crate_name.clone(),
+                           force_unstable_if_unmarked);
 
         info!("finished with rustc");
 
@@ -612,7 +626,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         let krate = pm.run_plugins(krate);
 
         tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
-    });
+    }));
     rx.recv().unwrap()
 }
 

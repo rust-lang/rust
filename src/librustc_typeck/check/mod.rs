@@ -93,13 +93,14 @@ use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::anon_types::AnonTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::middle::region;
+use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
-use rustc::ty::util::{Representability, IntTypeExt};
+use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
@@ -110,7 +111,7 @@ use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
@@ -132,7 +133,6 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map::Node;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
-use rustc_const_math::ConstInt;
 
 mod autoderef;
 pub mod dropck;
@@ -362,7 +362,8 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     /// hard constraint exists, creates a fresh type variable.
     fn coercion_target_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
         self.only_has_type(fcx)
-            .unwrap_or_else(|| fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span)))
+            .unwrap_or_else(|| fcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                               TypeVariableOrigin::MiscVariable(span)))
     }
 }
 
@@ -813,7 +814,7 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> Rc<DefIdSet> {
+                              -> Lrc<DefIdSet> {
     tcx.typeck_tables_of(def_id).used_trait_imports.clone()
 }
 
@@ -872,11 +873,12 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         // All type checking constraints were added, try to fallback unsolved variables.
-        fcx.select_obligations_where_possible();
+        fcx.select_obligations_where_possible(false);
+        let mut fallback_has_occurred = false;
         for ty in &fcx.unsolved_variables() {
-            fcx.fallback_if_possible(ty);
+            fallback_has_occurred |= fcx.fallback_if_possible(ty);
         }
-        fcx.select_obligations_where_possible();
+        fcx.select_obligations_where_possible(fallback_has_occurred);
 
         // Even though coercion casts provide type hints, we check casts after fallback for
         // backwards compatibility. This makes fallback a stronger type hint than a cast coercion.
@@ -921,7 +923,8 @@ impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
         match ty_opt {
             None => {
                 // infer the variable's type
-                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+                let var_ty = self.fcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                                  TypeVariableOrigin::TypeInference(span));
                 self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
@@ -1025,7 +1028,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let span = body.value.span;
 
     if body.is_generator && can_be_generator.is_some() {
-        let yield_ty = fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
+        let yield_ty = fcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                       TypeVariableOrigin::TypeInference(span));
         fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
         fcx.yield_ty = Some(yield_ty);
     }
@@ -1058,7 +1062,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator.is_some() && body.is_generator {
-        let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
+        let witness = fcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                      TypeVariableOrigin::MiscVariable(span));
         let interior = ty::GeneratorInterior {
             witness,
             movable: can_be_generator.unwrap() == hir::GeneratorMovability::Movable,
@@ -1096,11 +1101,12 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let mut actual_return_ty = coercion.complete(&fcx);
     if actual_return_ty.is_never() {
         actual_return_ty = fcx.next_diverging_ty_var(
+            ty::UniverseIndex::ROOT,
             TypeVariableOrigin::DivergingFn(span));
     }
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
 
-    if fcx.tcx.sess.features.borrow().termination_trait {
+    if fcx.tcx.features().termination_trait {
         // If the termination trait language item is activated, check that the main return type
         // implements the termination trait.
         if let Some(term_id) = fcx.tcx.lang_items().termination() {
@@ -1217,9 +1223,11 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
                 if !generics.types.is_empty() {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
-                    span_help!(&mut err, item.span,
-                        "consider using specialization instead of \
-                        type parameters");
+                    err.span_label(item.span, "can't have type parameters");
+                    // FIXME: once we start storing spans for type arguments, turn this into a
+                    // suggestion.
+                    err.help("use specialization instead of type parameters by replacing them \
+                              with concrete types like `u32`");
                     err.emit();
                 }
 
@@ -1611,7 +1619,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.sess.features.borrow().repr128 {
+        if !tcx.features().repr128 {
             emit_feature_err(&tcx.sess.parse_sess,
                              "repr128",
                              sp,
@@ -1626,10 +1634,10 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let mut disr_vals: Vec<ConstInt> = Vec::new();
+    let mut disr_vals: Vec<Discr<'tcx>> = Vec::new();
     for (discr, v) in def.discriminants(tcx).zip(vs) {
         // Check for duplicate discriminant values
-        if let Some(i) = disr_vals.iter().position(|&x| x == discr) {
+        if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
             let variant_i_node_id = tcx.hir.as_local_node_id(def.variants[i].did).unwrap();
             let variant_i = tcx.hir.expect_variant(variant_i_node_id);
             let i_span = match variant_i.node.disr_expr {
@@ -1687,14 +1695,14 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
-        self.next_ty_var(TypeVariableOrigin::TypeInference(span))
+        self.next_ty_var(ty::UniverseIndex::ROOT,
+                         TypeVariableOrigin::TypeInference(span))
     }
 
     fn ty_infer_for_def(&self,
                         ty_param_def: &ty::TypeParameterDef,
-                        substs: &[Kind<'tcx>],
                         span: Span) -> Ty<'tcx> {
-        self.type_var_for_def(span, ty_param_def, substs)
+        self.type_var_for_def(ty::UniverseIndex::ROOT, span, ty_param_def)
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -1832,7 +1840,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        self.select_obligations_where_possible();
+        self.select_obligations_where_possible(false);
         ty = self.resolve_type_vars_if_possible(&ty);
 
         debug!("resolve_type_vars_with_obligations: ty={:?}", ty);
@@ -2149,18 +2157,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn resolve_generator_interiors(&self, def_id: DefId) {
         let mut generators = self.deferred_generator_interiors.borrow_mut();
         for (body_id, interior) in generators.drain(..) {
-            self.select_obligations_where_possible();
+            self.select_obligations_where_possible(false);
             generator_interior::resolve_interior(self, def_id, body_id, interior);
         }
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.
-    // Non-numerics get replaced with ! or () (depending on whether
-    // feature(never_type) is enabled), unconstrained ints with i32,
+    // Non-numerics get replaced with !, unconstrained ints with i32,
     // unconstrained floats with f64.
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to TyError.
-    fn fallback_if_possible(&self, ty: Ty<'tcx>) {
+    // The return value indicates whether fallback has occured.
+    fn fallback_if_possible(&self, ty: Ty<'tcx>) -> bool {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -2169,25 +2177,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
-            Neither => return
+            Neither if self.type_var_diverges(ty) => self.tcx.types.never,
+            Neither => return false,
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);
         self.demand_eqtype(syntax_pos::DUMMY_SP, ty, fallback);
+        true
     }
 
     fn select_all_obligations_or_error(&self) {
         debug!("select_all_obligations_or_error");
         if let Err(errors) = self.fulfillment_cx.borrow_mut().select_all_or_error(&self) {
-            self.report_fulfillment_errors(&errors, self.inh.body_id);
+            self.report_fulfillment_errors(&errors, self.inh.body_id, false);
         }
     }
 
     /// Select as many obligations as we can at present.
-    fn select_obligations_where_possible(&self) {
+    fn select_obligations_where_possible(&self, fallback_has_occurred: bool) {
         match self.fulfillment_cx.borrow_mut().select_where_possible(self) {
             Ok(()) => { }
-            Err(errors) => { self.report_fulfillment_errors(&errors, self.inh.body_id); }
+            Err(errors) => {
+                self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
+            },
         }
     }
 
@@ -2316,7 +2327,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // If some lookup succeeds, write callee into table and extract index/element
             // type from the method signature.
             // If some lookup succeeded, install method in table
-            let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
+            let input_ty = self.next_ty_var(ty::UniverseIndex::ROOT,
+                                            TypeVariableOrigin::AutoDeref(base_expr.span));
             let method = self.try_overloaded_place_op(
                 expr.span, self_ty, &[input_ty], needs, PlaceOp::Index);
 
@@ -2432,7 +2444,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             let err_inputs = match tuple_arguments {
                 DontTupleArguments => err_inputs,
-                TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..], false)],
+                TupleArguments => vec![self.tcx.intern_tup(&err_inputs[..])],
             };
 
             self.check_argument_types(sp, expr_sp, &err_inputs[..], &[], args_no_rcvr,
@@ -2508,7 +2520,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if sugg_unit {
                 let sugg_span = sess.codemap().end_point(expr_sp);
                 // remove closing `)` from the span
-                let sugg_span = sugg_span.with_hi(sugg_span.lo());
+                let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
                     sugg_span,
                     "expected the unit value `()`; create it with empty parentheses",
@@ -2525,16 +2537,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
-                ty::TyTuple(arg_types, _) if arg_types.len() != args.len() => {
+                ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
                     parameter_count_error(tcx.sess, sp, expr_sp, arg_types.len(), args.len(),
                                           "E0057", false, def_span, false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
                 }
-                ty::TyTuple(arg_types, _) => {
+                ty::TyTuple(arg_types) => {
                     expected_arg_tys = match expected_arg_tys.get(0) {
                         Some(&ty) => match ty.sty {
-                            ty::TyTuple(ref tys, _) => &tys,
+                            ty::TyTuple(ref tys) => &tys,
                             _ => &[]
                         },
                         None => &[]
@@ -2590,7 +2602,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // an "opportunistic" vtable resolution of any trait bounds on
             // the call. This helps coercions.
             if check_closures {
-                self.select_obligations_where_possible();
+                self.select_obligations_where_possible(false);
             }
 
             // For variadic functions, we don't have a declared type for all of
@@ -2755,6 +2767,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
+                ty::UniverseIndex::ROOT,
                 TypeVariableOrigin::AdjustmentType(expr.span));
             self.apply_adjustments(expr, vec![Adjustment {
                 kind: Adjust::NeverToAny,
@@ -2832,7 +2845,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ity = self.tcx.type_of(did);
         debug!("impl_self_ty: ity={:?}", ity);
 
-        let substs = self.fresh_substs_for_item(span, did);
+        let substs = self.fresh_substs_for_item(ty::UniverseIndex::ROOT, span, did);
         let substd_ty = self.instantiate_type_scheme(span, &substs, &ity);
 
         TypeAndSubsts { substs: substs, ty: substd_ty }
@@ -3089,10 +3102,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             };
                     }
                     ty::TyRawPtr(..) => {
-                        err.note(&format!("`{0}` is a native pointer; perhaps you need to deref \
-                                           with `(*{0}).{1}`",
-                                          self.tcx.hir.node_to_pretty_string(base.id),
-                                          field.node));
+                        let base = self.tcx.hir.node_to_pretty_string(base.id);
+                        let msg = format!("`{}` is a native pointer; try dereferencing it", base);
+                        let suggestion = format!("(*{}).{}", base, field.node);
+                        err.span_suggestion(field.span, &msg, suggestion);
                     }
                     _ => {}
                 }
@@ -3186,7 +3199,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         None
                     }
                 }
-                ty::TyTuple(ref v, _) => {
+                ty::TyTuple(ref v) => {
                     tuple_like = true;
                     v.get(idx.node).cloned()
                 }
@@ -3938,7 +3951,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let t_cast = self.resolve_type_vars_if_possible(&t_cast);
             let t_expr = self.check_expr_with_expectation(e, ExpectCastableToType(t_cast));
             let t_cast = self.resolve_type_vars_if_possible(&t_cast);
-            let diverges = self.diverges.get();
 
             // Eagerly check for some obvious errors.
             if t_expr.references_error() || t_cast.references_error() {
@@ -3946,7 +3958,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 // Defer other checks until we're done type checking.
                 let mut deferred_cast_checks = self.deferred_cast_checks.borrow_mut();
-                match cast::CastCheck::new(self, e, t_expr, diverges, t_cast, t.span, expr.span) {
+                match cast::CastCheck::new(self, e, t_expr, t_cast, t.span, expr.span) {
                     Ok(cast_check) => {
                         deferred_cast_checks.push(cast_check);
                         t_cast
@@ -3972,7 +3984,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               let element_ty = if !args.is_empty() {
                   let coerce_to = uty.unwrap_or_else(
-                      || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
+                      || self.next_ty_var(ty::UniverseIndex::ROOT,
+                                          TypeVariableOrigin::TypeInference(expr.span)));
                   let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
                   assert_eq!(self.diverges.get(), Diverges::Maybe);
                   for e in args {
@@ -3982,18 +3995,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   }
                   coerce.complete(self)
               } else {
-                  self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
+                  self.next_ty_var(ty::UniverseIndex::ROOT,
+                                   TypeVariableOrigin::TypeInference(expr.span))
               };
               tcx.mk_array(element_ty, args.len() as u64)
           }
           hir::ExprRepeat(ref element, count) => {
             let count_def_id = tcx.hir.body_owner_def_id(count);
-            let param_env = ty::ParamEnv::empty(traits::Reveal::UserFacing);
+            let param_env = ty::ParamEnv::empty();
             let substs = Substs::identity_for_item(tcx.global_tcx(), count_def_id);
-            let count = tcx.const_eval(param_env.and((count_def_id, substs)));
+            let instance = ty::Instance::resolve(
+                tcx.global_tcx(),
+                param_env,
+                count_def_id,
+                substs,
+            ).unwrap();
+            let global_id = GlobalId {
+                instance,
+                promoted: None
+            };
+            let count = tcx.const_eval(param_env.and(global_id));
 
             if let Err(ref err) = count {
-               err.report(tcx, tcx.def_span(count_def_id), "constant expression");
+                err.report(tcx, tcx.def_span(count_def_id), "constant expression");
             }
 
             let uty = match expected {
@@ -4012,16 +4036,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     (uty, uty)
                 }
                 None => {
-                    let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
+                    let t: Ty = self.next_ty_var(ty::UniverseIndex::ROOT,
+                                                 TypeVariableOrigin::MiscVariable(element.span));
                     let element_ty = self.check_expr_has_type_or_error(&element, t);
                     (element_ty, t)
                 }
             };
 
             if let Ok(count) = count {
-                let zero_or_one = count.val.to_const_int().and_then(|count| {
-                    count.to_u64().map(|count| count <= 1)
-                }).unwrap_or(false);
+                let zero_or_one = count.val.to_raw_bits().map_or(false, |count| count <= 1);
                 if !zero_or_one {
                     // For [foo, ..n] where n > 1, `foo` must have
                     // Copy type:
@@ -4042,7 +4065,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let flds = expected.only_has_type(self).and_then(|ty| {
                 let ty = self.resolve_type_vars_with_obligations(ty);
                 match ty.sty {
-                    ty::TyTuple(ref flds, _) => Some(&flds[..]),
+                    ty::TyTuple(ref flds) => Some(&flds[..]),
                     _ => None
                 }
             });
@@ -4060,7 +4083,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 t
             });
-            let tuple = tcx.mk_tup(elt_ts_iter, false);
+            let tuple = tcx.mk_tup(elt_ts_iter);
             if tuple.references_error() {
                 tcx.types.err
             } else {
@@ -4793,7 +4816,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Handle Self first, so we can adjust the index to match the AST.
                 if has_self && i == 0 {
                     return opt_self_ty.unwrap_or_else(|| {
-                        self.type_var_for_def(span, def, substs)
+                        self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
                     });
                 }
                 i -= has_self as usize;
@@ -4826,7 +4849,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This can also be reached in some error cases:
                 // We prefer to use inference variables instead of
                 // TyError to let type inference recover somewhat.
-                self.type_var_for_def(span, def, substs)
+                self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
             }
         });
 
@@ -5052,9 +5075,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty
         } else {
             if !self.is_tainted_by_errors() {
-                type_error_struct!(self.tcx.sess, sp, ty, E0619,
-                                    "the type of this value must be known in this context")
-                .emit();
+                self.need_type_info((**self).body_id, sp, ty);
             }
             self.demand_suptype(sp, self.tcx.types.err, ty);
             self.tcx.types.err

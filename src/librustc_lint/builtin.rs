@@ -33,7 +33,7 @@ use rustc::hir::def_id::DefId;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -525,7 +525,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
-        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+        let param_env = ty::ParamEnv::empty();
         if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }
@@ -679,77 +679,6 @@ impl EarlyLintPass for DeprecatedAttr {
                 return;
             }
         }
-    }
-}
-
-declare_lint! {
-    pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-    Warn,
-    "floating-point literals cannot be used in patterns"
-}
-
-/// Checks for floating point literals in patterns.
-#[derive(Clone)]
-pub struct IllegalFloatLiteralPattern;
-
-impl LintPass for IllegalFloatLiteralPattern {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN)
-    }
-}
-
-fn fl_lit_check_expr(cx: &EarlyContext, expr: &ast::Expr) {
-    use self::ast::{ExprKind, LitKind};
-    match expr.node {
-        ExprKind::Lit(ref l) => {
-            match l.node {
-                LitKind::FloatUnsuffixed(..) |
-                LitKind::Float(..) => {
-                    cx.span_lint(ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                                 l.span,
-                                 "floating-point literals cannot be used in patterns");
-                    },
-                _ => (),
-            }
-        }
-        // These may occur in patterns
-        // and can maybe contain float literals
-        ExprKind::Unary(_, ref f) => fl_lit_check_expr(cx, f),
-        // Other kinds of exprs can't occur in patterns so we don't have to check them
-        // (ast_validation will emit an error if they occur)
-        _ => (),
-    }
-}
-
-impl EarlyLintPass for IllegalFloatLiteralPattern {
-    fn check_pat(&mut self, cx: &EarlyContext, pat: &ast::Pat) {
-        use self::ast::PatKind;
-        pat.walk(&mut |p| {
-            match p.node {
-                // Wildcard patterns and paths are uninteresting for the lint
-                PatKind::Wild |
-                PatKind::Path(..) => (),
-
-                // The walk logic recurses inside these
-                PatKind::Ident(..) |
-                PatKind::Struct(..) |
-                PatKind::Tuple(..) |
-                PatKind::TupleStruct(..) |
-                PatKind::Ref(..) |
-                PatKind::Box(..) |
-                PatKind::Slice(..) => (),
-
-                // Extract the expressions and check them
-                PatKind::Lit(ref e) => fl_lit_check_expr(cx, e),
-                PatKind::Range(ref st, ref en, _) => {
-                    fl_lit_check_expr(cx, st);
-                    fl_lit_check_expr(cx, en);
-                },
-
-                PatKind::Mac(_) => bug!("lint must run post-expansion"),
-            }
-            true
-        });
     }
 }
 
@@ -1153,7 +1082,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        let insertion_span = it.span.with_hi(it.span.lo());
+                        let insertion_span = it.span.shrink_to_lo();
                         if it.vis == hir::Visibility::Inherited {
                             err.span_suggestion(insertion_span,
                                                 "try making it public",
@@ -1178,7 +1107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                    !cx.access_levels.is_reachable(it.id) {
                        let msg = "static is marked #[no_mangle], but not exported";
                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                       let insertion_span = it.span.with_hi(it.span.lo());
+                       let insertion_span = it.span.shrink_to_lo();
                        if it.vis == hir::Visibility::Inherited {
                            err.span_suggestion(insertion_span,
                                                "try making it public",
@@ -1334,7 +1263,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
 pub struct UnreachablePub;
 
 declare_lint! {
-    UNREACHABLE_PUB,
+    pub UNREACHABLE_PUB,
     Allow,
     "`pub` items not reachable from crate root"
 }
@@ -1355,7 +1284,7 @@ impl UnreachablePub {
             // visibility is token at start of declaration (can be macro
             // variable rather than literal `pub`)
             let pub_span = cx.tcx.sess.codemap().span_until_char(def_span, ' ');
-            let replacement = if cx.tcx.sess.features.borrow().crate_visibility_modifier {
+            let replacement = if cx.tcx.features().crate_visibility_modifier {
                 "crate"
             } else {
                 "pub(crate)"
@@ -1384,5 +1313,52 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
 
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
         self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
+    }
+}
+
+/// Lint for trait and lifetime bounds that are (accidentally) accepted by the parser, but
+/// ignored later.
+
+pub struct IgnoredGenericBounds;
+
+declare_lint! {
+    IGNORED_GENERIC_BOUNDS,
+    Warn,
+    "these generic bounds are ignored"
+}
+
+impl LintPass for IgnoredGenericBounds {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(IGNORED_GENERIC_BOUNDS)
+    }
+}
+
+impl EarlyLintPass for IgnoredGenericBounds {
+    fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
+        let type_alias_generics = match item.node {
+            ast::ItemKind::Ty(_, ref generics) => generics,
+            _ => return,
+        };
+        // There must not be a where clause
+        if !type_alias_generics.where_clause.predicates.is_empty() {
+            let spans : Vec<_> = type_alias_generics.where_clause.predicates.iter()
+                .map(|pred| pred.span()).collect();
+            cx.span_lint(IGNORED_GENERIC_BOUNDS, spans,
+                "where clauses are ignored in type aliases");
+        }
+        // The parameters must not have bounds
+        for param in type_alias_generics.params.iter() {
+            let spans : Vec<_> = match param {
+                &ast::GenericParam::Lifetime(ref l) => l.bounds.iter().map(|b| b.span).collect(),
+                &ast::GenericParam::Type(ref ty) => ty.bounds.iter().map(|b| b.span()).collect(),
+            };
+            if !spans.is_empty() {
+                cx.span_lint(
+                    IGNORED_GENERIC_BOUNDS,
+                    spans,
+                    "bounds on generic parameters are ignored in type aliases",
+                );
+            }
+        }
     }
 }

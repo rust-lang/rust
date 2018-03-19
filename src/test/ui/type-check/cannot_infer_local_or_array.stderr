@@ -1,10 +1,11 @@
 error[E0282]: type annotations needed
   --> $DIR/cannot_infer_local_or_array.rs:12:13
    |
-12 |     let x = []; //~ ERROR type annotations needed
+LL |     let x = []; //~ ERROR type annotations needed
    |         -   ^^ cannot infer type for `_`
    |         |
    |         consider giving `x` a type
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0282`.

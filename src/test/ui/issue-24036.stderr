@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/issue-24036.rs:13:9
    |
-13 |     x = |c| c + 1;
+LL |     x = |c| c + 1;
    |         ^^^^^^^^^ expected closure, found a different closure
    |
    = note: expected type `[closure@$DIR/issue-24036.rs:12:17: 12:26]`
@@ -12,14 +12,14 @@ error[E0308]: mismatched types
 error[E0308]: match arms have incompatible types
   --> $DIR/issue-24036.rs:18:13
    |
-18 |       let x = match 1usize {
+LL |       let x = match 1usize {
    |  _____________^
-19 | |     //~^ ERROR match arms have incompatible types
-20 | |         1 => |c| c + 1,
-21 | |         2 => |c| c - 1,
+LL | |     //~^ ERROR match arms have incompatible types
+LL | |         1 => |c| c + 1,
+LL | |         2 => |c| c - 1,
    | |              --------- match arm with an incompatible type
-22 | |         _ => |c| c - 1
-23 | |     };
+LL | |         _ => |c| c - 1
+LL | |     };
    | |_____^ expected closure, found a different closure
    |
    = note: expected type `[closure@$DIR/issue-24036.rs:20:14: 20:23]`
@@ -29,3 +29,4 @@ error[E0308]: match arms have incompatible types
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

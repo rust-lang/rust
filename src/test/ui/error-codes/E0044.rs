@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern { fn some_func<T>(x: T); } //~ ERROR E0044
+extern {
+    fn sqrt<T>(f: T) -> T;
+    //~^ ERROR foreign items may not have type parameters [E0044]
+    //~| HELP use specialization instead of type parameters by replacing them with concrete types
+    //~| NOTE can't have type parameters
+}
 
 fn main() {
 }

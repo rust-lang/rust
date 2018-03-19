@@ -1,10 +1,11 @@
 error[E0658]: unsafe_destructor_blind_to_params has been replaced by may_dangle and will be removed in the future (see issue #28498)
   --> $DIR/feature-gate-dropck-ugeh.rs:29:5
    |
-29 |     #[unsafe_destructor_blind_to_params] // This is the UGEH attribute
+LL |     #[unsafe_destructor_blind_to_params] // This is the UGEH attribute
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(dropck_parametricity)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

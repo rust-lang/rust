@@ -1,20 +1,35 @@
 error[E0369]: binary operation `+` cannot be applied to type `&str`
   --> $DIR/issue-39018.rs:12:13
    |
-12 |     let x = "Hello " + "World!";
+LL |     let x = "Hello " + "World!";
    |             ^^^^^^^^^^^^^^^^^^^ `+` can't be used to concatenate two `&str` strings
 help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
    |
-12 |     let x = "Hello ".to_owned() + "World!";
+LL |     let x = "Hello ".to_owned() + "World!";
    |             ^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: binary operation `+` cannot be applied to type `World`
   --> $DIR/issue-39018.rs:18:13
    |
-18 |     let y = World::Hello + World::Goodbye;
+LL |     let y = World::Hello + World::Goodbye;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: an implementation of `std::ops::Add` might be missing for `World`
 
-error: aborting due to 2 previous errors
+error[E0369]: binary operation `+` cannot be applied to type `&str`
+  --> $DIR/issue-39018.rs:21:13
+   |
+LL |     let x = "Hello " + "World!".to_owned();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `+` can't be used to concatenate a `&str` with a `String`
+help: `to_owned()` can be used to create an owned `String` from a string reference. String concatenation appends the string on the right to the string on the left and may require reallocation. This requires ownership of the string on the left
+   |
+LL |     let x = "Hello ".to_owned() + "World!".to_owned();
+   |             ^^^^^^^^^^^^^^^^^^^
+help: you also need to borrow the `String` on the right to get a `&str`
+   |
+LL |     let x = "Hello " + &"World!".to_owned();
+   |                        ^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0369`.

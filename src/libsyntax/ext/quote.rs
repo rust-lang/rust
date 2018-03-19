@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ast::{self, Arg, Arm, Block, Expr, Item, Pat, Stmt, Ty};
+use codemap::respan;
 use syntax_pos::Span;
 use ext::base::ExtCtxt;
 use ext::base;
@@ -708,7 +709,6 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Pound        => "Pound",
         token::Dollar       => "Dollar",
         token::Question     => "Question",
-        token::Underscore   => "Underscore",
         token::Eof          => "Eof",
 
         token::Whitespace | token::Comment | token::Shebang(_) => {
@@ -855,7 +855,12 @@ fn expand_wrapper(cx: &ExtCtxt,
     let mut stmts = imports.iter().map(|path| {
         // make item: `use ...;`
         let path = path.iter().map(|s| s.to_string()).collect();
-        cx.stmt_item(sp, cx.item_use_glob(sp, ast::Visibility::Inherited, ids_ext(path)))
+        let use_item = cx.item_use_glob(
+            sp,
+            respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            ids_ext(path),
+        );
+        cx.stmt_item(sp, use_item)
     }).chain(Some(stmt_let_ext_cx)).collect::<Vec<_>>();
     stmts.push(cx.stmt_expr(expr));
 

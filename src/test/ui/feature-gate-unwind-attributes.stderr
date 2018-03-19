@@ -1,10 +1,11 @@
 error[E0658]: #[unwind] is experimental
   --> $DIR/feature-gate-unwind-attributes.rs:21:5
    |
-21 |     #[unwind] //~ ERROR #[unwind] is experimental
+LL |     #[unwind] //~ ERROR #[unwind] is experimental
    |     ^^^^^^^^^
    |
    = help: add #![feature(unwind_attributes)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

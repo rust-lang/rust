@@ -260,10 +260,10 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
 
 fn for_each_region_constraint(
     closure_region_requirements: &ClosureRegionRequirements,
-    with_msg: &mut FnMut(&str) -> io::Result<()>,
+    with_msg: &mut dyn FnMut(&str) -> io::Result<()>,
 ) -> io::Result<()> {
     for req in &closure_region_requirements.outlives_requirements {
-        let subject: &Debug = match &req.subject {
+        let subject: &dyn Debug = match &req.subject {
             ClosureOutlivesSubject::Region(subject) => subject,
             ClosureOutlivesSubject::Ty(ty) => ty,
         };

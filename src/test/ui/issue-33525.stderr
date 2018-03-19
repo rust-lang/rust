@@ -1,20 +1,22 @@
 error[E0425]: cannot find value `a` in this scope
   --> $DIR/issue-33525.rs:12:5
    |
-12 |     a; //~ ERROR cannot find value `a`
+LL |     a; //~ ERROR cannot find value `a`
    |     ^ not found in this scope
 
 error[E0609]: no field `lorem` on type `&'static str`
   --> $DIR/issue-33525.rs:13:8
    |
-13 |     "".lorem; //~ ERROR no field
+LL |     "".lorem; //~ ERROR no field
    |        ^^^^^
 
 error[E0609]: no field `ipsum` on type `&'static str`
   --> $DIR/issue-33525.rs:14:8
    |
-14 |     "".ipsum; //~ ERROR no field
+LL |     "".ipsum; //~ ERROR no field
    |        ^^^^^
 
 error: aborting due to 3 previous errors
 
+Some errors occurred: E0425, E0609.
+For more information about an error, try `rustc --explain E0425`.

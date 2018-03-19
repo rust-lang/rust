@@ -12,13 +12,7 @@ use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
-    let mut base = super::linux_musl_base::opts();
-
-    // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
-    // target.
-    base.features = "+v7,+vfp3,+neon".to_string();
-    base.cpu = "cortex-a8".to_string();
-    base.max_atomic_width = Some(64);
+    let base = super::linux_musl_base::opts();
     Ok(Target {
         // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
         // uses it to determine the calling convention and float ABI, and LLVM
@@ -33,9 +27,15 @@ pub fn target() -> TargetResult {
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
         linker_flavor: LinkerFlavor::Gcc,
+
+        // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
+        // target.
         options: TargetOptions {
+            features: "+v7,+vfp3,+d16,+thumb2,-neon".to_string(),
+            cpu: "generic".to_string(),
+            max_atomic_width: Some(64),
             abi_blacklist: super::arm_base::abi_blacklist(),
             .. base
-        },
+        }
     })
 }

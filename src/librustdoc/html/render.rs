@@ -32,12 +32,13 @@
 //! for creating the corresponding search index and source file renderings.
 //! These threads are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
+
 pub use self::ExternalLocation::*;
 
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, VecDeque};
 use std::default::Default;
 use std::error;
 use std::fmt::{self, Display, Formatter, Write as FmtWrite};
@@ -128,6 +129,9 @@ pub struct SharedContext {
     pub sort_modules_alphabetically: bool,
     /// Additional themes to be added to the generated docs.
     pub themes: Vec<PathBuf>,
+    /// Suffix to be added on resource files (if suffix is "-v2" then "main.css" becomes
+    /// "main-v2.css").
+    pub resource_suffix: String,
 }
 
 impl SharedContext {
@@ -270,6 +274,18 @@ pub struct Cache {
     /// generating explicit hyperlinks to other crates.
     pub external_paths: FxHashMap<DefId, (Vec<String>, ItemType)>,
 
+    /// Maps local def ids of exported types to fully qualified paths.
+    /// Unlike 'paths', this mapping ignores any renames that occur
+    /// due to 'use' statements.
+    ///
+    /// This map is used when writing out the special 'implementors'
+    /// javascript file. By using the exact path that the type
+    /// is declared with, we ensure that each path will be identical
+    /// to the path used if the corresponding type is inlined. By
+    /// doing this, we can detect duplicate impls on a trait page, and only display
+    /// the impl for the inlined type.
+    pub exact_paths: FxHashMap<DefId, Vec<String>>,
+
     /// This map contains information about all known traits of this crate.
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
@@ -322,6 +338,7 @@ pub struct RenderInfo {
     pub inlined: FxHashSet<DefId>,
     pub external_paths: ::core::ExternalPaths,
     pub external_typarams: FxHashMap<DefId, String>,
+    pub exact_paths: FxHashMap<DefId, Vec<String>>,
     pub deref_trait_did: Option<DefId>,
     pub deref_mut_trait_did: Option<DefId>,
     pub owned_box_did: Option<DefId>,
@@ -436,7 +453,9 @@ fn init_ids() -> FxHashMap<String, usize> {
      "required-methods",
      "provided-methods",
      "implementors",
+     "synthetic-implementors",
      "implementors-list",
+     "synthetic-implementors-list",
      "methods",
      "deref-methods",
      "implementations",
@@ -477,6 +496,7 @@ pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            playground_url: Option<String>,
            dst: PathBuf,
+           resource_suffix: String,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
@@ -505,6 +525,7 @@ pub fn run(mut krate: clean::Crate,
         created_dirs: RefCell::new(FxHashSet()),
         sort_modules_alphabetically,
         themes,
+        resource_suffix,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -556,6 +577,7 @@ pub fn run(mut krate: clean::Crate,
         inlined: _,
         external_paths,
         external_typarams,
+        exact_paths,
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
@@ -568,6 +590,7 @@ pub fn run(mut krate: clean::Crate,
     let mut cache = Cache {
         impls: FxHashMap(),
         external_paths,
+        exact_paths,
         paths: FxHashMap(),
         implementors: FxHashMap(),
         stack: Vec::new(),
@@ -717,7 +740,7 @@ fn write_shared(cx: &Context,
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
-    write(cx.dst.join("rustdoc.css"),
+    write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/rustdoc.css"))?;
 
     // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
@@ -729,16 +752,19 @@ fn write_shared(cx: &Context,
 
         let mut f = try_err!(File::open(&entry), &entry);
         try_err!(f.read_to_end(&mut content), &entry);
-        write(cx.dst.join(try_none!(entry.file_name(), &entry)), content.as_slice())?;
-        themes.insert(try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry).to_owned());
+        let theme = try_none!(try_none!(entry.file_stem(), &entry).to_str(), &entry);
+        let extension = try_none!(try_none!(entry.extension(), &entry).to_str(), &entry);
+        write(cx.dst.join(format!("{}{}.{}", theme, cx.shared.resource_suffix, extension)),
+              content.as_slice())?;
+        themes.insert(theme.to_owned());
     }
 
-    write(cx.dst.join("brush.svg"),
+    write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/brush.svg"))?;
-    write(cx.dst.join("main.css"),
+    write(cx.dst.join(&format!("main{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/main.css"))?;
     themes.insert("main".to_owned());
-    write(cx.dst.join("dark.css"),
+    write(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/dark.css"))?;
     themes.insert("dark".to_owned());
 
@@ -746,7 +772,8 @@ fn write_shared(cx: &Context,
     themes.sort();
     // To avoid theme switch latencies as much as possible, we put everything theme related
     // at the beginning of the html files into another js file.
-    write(cx.dst.join("theme.js"), format!(
+    write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
+          format!(
 r#"var themes = document.getElementById("theme-choices");
 var themePicker = document.getElementById("theme-picker");
 themePicker.onclick = function() {{
@@ -768,19 +795,28 @@ themePicker.onclick = function() {{
     }};
     themes.appendChild(but);
 }});
-"#, themes.iter()
-          .map(|s| format!("\"{}\"", s))
-          .collect::<Vec<String>>()
-          .join(",")).as_bytes())?;
+"#,
+                 themes.iter()
+                       .map(|s| format!("\"{}\"", s))
+                       .collect::<Vec<String>>()
+                       .join(",")).as_bytes(),
+    )?;
 
-    write(cx.dst.join("main.js"), include_bytes!("static/main.js"))?;
-    write(cx.dst.join("storage.js"), include_bytes!("static/storage.js"))?;
+    write(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
+                      include_bytes!("static/main.js"))?;
+
+    {
+        let mut data = format!("var resourcesSuffix = \"{}\";\n",
+                               cx.shared.resource_suffix).into_bytes();
+        data.extend_from_slice(include_bytes!("static/storage.js"));
+        write(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)), &data)?;
+    }
 
     if let Some(ref css) = cx.shared.css_file_extension {
-        let out = cx.dst.join("theme.css");
+        let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
         try_err!(fs::copy(css, out), css);
     }
-    write(cx.dst.join("normalize.css"),
+    write(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/normalize.css"))?;
     write(cx.dst.join("FiraSans-Regular.woff"),
           include_bytes!("static/FiraSans-Regular.woff"))?;
@@ -873,7 +909,10 @@ themePicker.onclick = function() {{
             // should add it.
             if !imp.impl_item.def_id.is_local() { continue }
             have_impls = true;
-            write!(implementors, "{},", as_json(&imp.inner_impl().to_string())).unwrap();
+            write!(implementors, "{{text:{},synthetic:{},types:{}}},",
+                   as_json(&imp.inner_impl().to_string()),
+                   imp.inner_impl().synthetic,
+                   as_json(&collect_paths_for_type(imp.inner_impl().for_.clone()))).unwrap();
         }
         implementors.push_str("];");
 
@@ -1064,6 +1103,7 @@ impl<'a> SourceCollector<'a> {
             root_path: &root_path,
             description: &desc,
             keywords: BASIC_KEYWORDS,
+            resource_suffix: &self.scx.resource_suffix,
         };
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
@@ -1426,6 +1466,7 @@ impl Context {
             title: &title,
             description: &desc,
             keywords: &keywords,
+            resource_suffix: &self.shared.resource_suffix,
         };
 
         reset_ids(true);
@@ -1856,8 +1897,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     document(w, cx, item)?;
 
-    let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped())
-                                      .collect::<Vec<usize>>();
+    let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
 
     // the order of item types in the listing
     fn reorder(ty: ItemType) -> u8 {
@@ -2201,6 +2241,50 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)
 }
 
+fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
+                      implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> Result<(), fmt::Error> {
+    write!(w, "<li>")?;
+    if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
+        write!(w, "<div class='out-of-band'>")?;
+        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                    l, "goto source code")?;
+        write!(w, "</div>")?;
+    }
+    write!(w, "<code>")?;
+    // If there's already another implementor that has the same abbridged name, use the
+    // full path, for example in `std::iter::ExactSizeIterator`
+    let use_absolute = match implementor.inner_impl().for_ {
+        clean::ResolvedPath { ref path, is_generic: false, .. } |
+        clean::BorrowedRef {
+            type_: box clean::ResolvedPath { ref path, is_generic: false, .. },
+            ..
+        } => implementor_dups[path.last_name()].1,
+        _ => false,
+    };
+    fmt_impl_for_trait_page(&implementor.inner_impl(), w, use_absolute)?;
+    for it in &implementor.inner_impl().items {
+        if let clean::TypedefItem(ref tydef, _) = it.inner {
+            write!(w, "<span class=\"where fmt-newline\">  ")?;
+            assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
+            write!(w, ";</span>")?;
+        }
+    }
+    writeln!(w, "</code></li>")?;
+    Ok(())
+}
+
+fn render_impls(cx: &Context, w: &mut fmt::Formatter,
+                traits: Vec<&&Impl>,
+                containing_item: &clean::Item) -> Result<(), fmt::Error> {
+    for i in &traits {
+        let did = i.trait_did().unwrap();
+        let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
+        render_impl(w, cx, i, assoc_link,
+                    RenderMode::Normal, containing_item.stable_since(), true)?;
+    }
+    Ok(())
+}
+
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
@@ -2380,6 +2464,16 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         </h2>
         <ul class='item-list' id='implementors-list'>
     ";
+
+    let synthetic_impl_header = "
+        <h2 id='synthetic-implementors' class='small-section-header'>
+          Auto implementors<a href='#synthetic-implementors' class='anchor'></a>
+        </h2>
+        <ul class='item-list' id='synthetic-implementors-list'>
+    ";
+
+    let mut synthetic_types = Vec::new();
+
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
@@ -2405,6 +2499,11 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             .partition::<Vec<_>, _>(|i| i.inner_impl().for_.def_id()
                                          .map_or(true, |d| cache.paths.contains_key(&d)));
 
+
+        let (synthetic, concrete) = local.iter()
+            .partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
+
+
         if !foreign.is_empty() {
             write!(w, "
                 <h2 id='foreign-impls' class='small-section-header'>
@@ -2422,42 +2521,35 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
 
         write!(w, "{}", impl_header)?;
+        for implementor in concrete {
+            render_implementor(cx, implementor, w, &implementor_dups)?;
+        }
+        write!(w, "</ul>")?;
 
-        for implementor in local {
-            write!(w, "<li>")?;
-            if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
-                write!(w, "<div class='out-of-band'>")?;
-                write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                            l, "goto source code")?;
-                write!(w, "</div>")?;
+        if t.auto {
+            write!(w, "{}", synthetic_impl_header)?;
+            for implementor in synthetic {
+                synthetic_types.extend(
+                    collect_paths_for_type(implementor.inner_impl().for_.clone())
+                );
+                render_implementor(cx, implementor, w, &implementor_dups)?;
             }
-            write!(w, "<code>")?;
-            // If there's already another implementor that has the same abbridged name, use the
-            // full path, for example in `std::iter::ExactSizeIterator`
-            let use_absolute = match implementor.inner_impl().for_ {
-                clean::ResolvedPath { ref path, is_generic: false, .. } |
-                clean::BorrowedRef {
-                    type_: box clean::ResolvedPath { ref path, is_generic: false, .. },
-                    ..
-                } => implementor_dups[path.last_name()].1,
-                _ => false,
-            };
-            fmt_impl_for_trait_page(&implementor.inner_impl(), w, use_absolute)?;
-            for it in &implementor.inner_impl().items {
-                if let clean::TypedefItem(ref tydef, _) = it.inner {
-                    write!(w, "<span class=\"where fmt-newline\">  ")?;
-                    assoc_type(w, it, &vec![], Some(&tydef.type_), AssocItemLink::Anchor(None))?;
-                    write!(w, ";</span>")?;
-                }
-            }
-            writeln!(w, "</code></li>")?;
+            write!(w, "</ul>")?;
         }
     } else {
         // even without any implementations to write in, we still want the heading and list, so the
         // implementors javascript file pulled in below has somewhere to write the impls into
         write!(w, "{}", impl_header)?;
+        write!(w, "</ul>")?;
+
+        if t.auto {
+            write!(w, "{}", synthetic_impl_header)?;
+            write!(w, "</ul>")?;
+        }
     }
-    write!(w, "</ul>")?;
+    write!(w, r#"<script type="text/javascript">window.inlined_types=new Set({});</script>"#,
+           as_json(&synthetic_types))?;
+
     write!(w, r#"<script type="text/javascript" async
                          src="{root_path}/implementors/{path}/{ty}.{name}.js">
                  </script>"#,
@@ -3075,16 +3167,29 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }).is_some();
             render_deref_methods(w, cx, impl_, containing_item, has_deref_mut)?;
         }
+
+        let (synthetic, concrete) = traits
+            .iter()
+            .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
+
         write!(w, "
             <h2 id='implementations' class='small-section-header'>
               Trait Implementations<a href='#implementations' class='anchor'></a>
             </h2>
+            <div id='implementations-list'>
         ")?;
-        for i in &traits {
-            let did = i.trait_did().unwrap();
-            let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
-            render_impl(w, cx, i, assoc_link,
-                        RenderMode::Normal, containing_item.stable_since(), true)?;
+        render_impls(cx, w, concrete, containing_item)?;
+        write!(w, "</div>")?;
+
+        if !synthetic.is_empty() {
+            write!(w, "
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            ")?;
+            render_impls(cx, w, synthetic, containing_item)?;
+            write!(w, "</div>")?;
         }
     }
     Ok(())
@@ -3418,11 +3523,9 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let cx = self.cx;
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
-        let mut should_close = false;
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
-            || it.is_enum() || it.is_mod() || it.is_typedef()
-        {
+            || it.is_enum() || it.is_mod() || it.is_typedef() {
             write!(fmt, "<p class='location'>")?;
             match it.inner {
                 clean::StructItem(..) => write!(fmt, "Struct ")?,
@@ -3441,30 +3544,29 @@ impl<'a> fmt::Display for Sidebar<'a> {
             }
             write!(fmt, "{}", it.name.as_ref().unwrap())?;
             write!(fmt, "</p>")?;
+        }
 
-            if it.is_crate() {
-                if let Some(ref version) = cache().crate_version {
-                    write!(fmt,
-                           "<div class='block version'>\
-                            <p>Version {}</p>\
-                            </div>",
-                           version)?;
-                }
+        if it.is_crate() {
+            if let Some(ref version) = cache().crate_version {
+                write!(fmt,
+                       "<div class='block version'>\
+                        <p>Version {}</p>\
+                        </div>",
+                       version)?;
             }
+        }
 
-            write!(fmt, "<div class=\"sidebar-elems\">")?;
-            should_close = true;
-            match it.inner {
-                clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
-                clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
-                clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
-                clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
-                clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
-                clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
-                clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
-                clean::ForeignTypeItem => sidebar_foreign_type(fmt, it)?,
-                _ => (),
-            }
+        write!(fmt, "<div class=\"sidebar-elems\">")?;
+        match it.inner {
+            clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
+            clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
+            clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
+            clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
+            clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
+            clean::TypedefItem(ref t, _) => sidebar_typedef(fmt, it, t)?,
+            clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
+            clean::ForeignTypeItem => sidebar_foreign_type(fmt, it)?,
+            _ => (),
         }
 
         // The sidebar is designed to display sibling functions, modules and
@@ -3504,10 +3606,8 @@ impl<'a> fmt::Display for Sidebar<'a> {
             write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                    path = relpath)?;
         }
-        if should_close {
-            // Closes sidebar-elems div.
-            write!(fmt, "</div>")?;
-        }
+        // Closes sidebar-elems div.
+        write!(fmt, "</div>")?;
 
         Ok(())
     }
@@ -3586,32 +3686,48 @@ fn sidebar_assoc_items(it: &clean::Item) -> String {
                     }
                 }
             }
-            let mut links = HashSet::new();
-            let ret = v.iter()
-                       .filter_map(|i| {
-                           let is_negative_impl = is_negative_impl(i.inner_impl());
-                           if let Some(ref i) = i.inner_impl().trait_ {
-                               let i_display = format!("{:#}", i);
-                               let out = Escape(&i_display);
-                               let encoded = small_url_encode(&format!("{:#}", i));
-                               let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
-                                                       encoded,
-                                                       if is_negative_impl { "!" } else { "" },
-                                                       out);
-                               if !links.contains(&generated) && links.insert(generated.clone()) {
-                                   Some(generated)
+            let format_impls = |impls: Vec<&Impl>| {
+                let mut links = HashSet::new();
+                impls.iter()
+                           .filter_map(|i| {
+                               let is_negative_impl = is_negative_impl(i.inner_impl());
+                               if let Some(ref i) = i.inner_impl().trait_ {
+                                   let i_display = format!("{:#}", i);
+                                   let out = Escape(&i_display);
+                                   let encoded = small_url_encode(&format!("{:#}", i));
+                                   let generated = format!("<a href=\"#impl-{}\">{}{}</a>",
+                                                           encoded,
+                                                           if is_negative_impl { "!" } else { "" },
+                                                           out);
+                                   if links.insert(generated.clone()) {
+                                       Some(generated)
+                                   } else {
+                                       None
+                                   }
                                } else {
                                    None
                                }
-                           } else {
-                               None
-                           }
-                       })
-                       .collect::<String>();
-            if !ret.is_empty() {
+                           })
+                           .collect::<String>()
+            };
+
+            let (synthetic, concrete) = v
+                .iter()
+                .partition::<Vec<_>, _>(|i| i.inner_impl().synthetic);
+
+            let concrete_format = format_impls(concrete);
+            let synthetic_format = format_impls(synthetic);
+
+            if !concrete_format.is_empty() {
                 out.push_str("<a class=\"sidebar-title\" href=\"#implementations\">\
                               Trait Implementations</a>");
-                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", ret));
+                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", concrete_format));
+            }
+
+            if !synthetic_format.is_empty() {
+                out.push_str("<a class=\"sidebar-title\" href=\"#synthetic-implementations\">\
+                              Auto Trait Implementations</a>");
+                out.push_str(&format!("<div class=\"sidebar-links\">{}</div>", synthetic_format));
             }
         }
     }
@@ -3734,7 +3850,7 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
     if let Some(implementors) = c.implementors.get(&it.def_id) {
         let res = implementors.iter()
                               .filter(|i| i.inner_impl().for_.def_id()
-                                           .map_or(false, |d| !c.paths.contains_key(&d)))
+                              .map_or(false, |d| !c.paths.contains_key(&d)))
                               .filter_map(|i| {
                                   match extract_for_impl_name(&i.impl_item) {
                                       Some((ref name, ref url)) => {
@@ -3755,6 +3871,10 @@ fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
     }
 
     sidebar.push_str("<a class=\"sidebar-title\" href=\"#implementors\">Implementors</a>");
+    if t.auto {
+        sidebar.push_str("<a class=\"sidebar-title\" \
+                          href=\"#synthetic-implementors\">Auto Implementors</a>");
+    }
 
     sidebar.push_str(&sidebar_assoc_items(it));
 
@@ -3967,6 +4087,66 @@ fn get_index_type(clean_type: &clean::Type) -> Type {
         generics: get_generics(clean_type),
     };
     t
+}
+
+/// Returns a list of all paths used in the type.
+/// This is used to help deduplicate imported impls
+/// for reexported types. If any of the contained
+/// types are re-exported, we don't use the corresponding
+/// entry from the js file, as inlining will have already
+/// picked up the impl
+fn collect_paths_for_type(first_ty: clean::Type) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut visited = FxHashSet();
+    let mut work = VecDeque::new();
+    let cache = cache();
+
+    work.push_back(first_ty);
+
+    while let Some(ty) = work.pop_front() {
+        if !visited.insert(ty.clone()) {
+            continue;
+        }
+
+        match ty {
+            clean::Type::ResolvedPath { did, .. } => {
+                let get_extern = || cache.external_paths.get(&did).map(|s| s.0.clone());
+                let fqp = cache.exact_paths.get(&did).cloned().or_else(get_extern);
+
+                match fqp {
+                    Some(path) => {
+                        out.push(path.join("::"));
+                    },
+                    _ => {}
+                };
+
+            },
+            clean::Type::Tuple(tys) => {
+                work.extend(tys.into_iter());
+            },
+            clean::Type::Slice(ty) => {
+                work.push_back(*ty);
+            }
+            clean::Type::Array(ty, _) => {
+                work.push_back(*ty);
+            },
+            clean::Type::Unique(ty) => {
+                work.push_back(*ty);
+            },
+            clean::Type::RawPointer(_, ty) => {
+                work.push_back(*ty);
+            },
+            clean::Type::BorrowedRef { type_, .. } => {
+                work.push_back(*type_);
+            },
+            clean::Type::QPath { self_type, trait_, .. } => {
+                work.push_back(*self_type);
+                work.push_back(*trait_);
+            },
+            _ => {}
+        }
+    };
+    out
 }
 
 fn get_index_type_name(clean_type: &clean::Type, accept_generic: bool) -> Option<String> {

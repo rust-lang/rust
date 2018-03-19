@@ -21,6 +21,8 @@
 
 #if LLVM_VERSION_GE(5, 0)
 #include "llvm/ADT/Optional.h"
+#else
+#include <cstdlib>
 #endif
 
 //===----------------------------------------------------------------------===
@@ -1395,3 +1397,98 @@ LLVMRustModuleCost(LLVMModuleRef M) {
   auto f = unwrap(M)->functions();
   return std::distance(std::begin(f), std::end(f));
 }
+
+// Vector reductions:
+#if LLVM_VERSION_GE(5, 0)
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc),unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFMul(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateFMulReduce(unwrap(Acc),unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceAdd(LLVMBuilderRef B, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateAddReduce(unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceMul(LLVMBuilderRef B, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateMulReduce(unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceAnd(LLVMBuilderRef B, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateAndReduce(unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceOr(LLVMBuilderRef B, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateOrReduce(unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceXor(LLVMBuilderRef B, LLVMValueRef Src) {
+    return wrap(unwrap(B)->CreateXorReduce(unwrap(Src)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceMin(LLVMBuilderRef B, LLVMValueRef Src, bool IsSigned) {
+    return wrap(unwrap(B)->CreateIntMinReduce(unwrap(Src), IsSigned));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceMax(LLVMBuilderRef B, LLVMValueRef Src, bool IsSigned) {
+    return wrap(unwrap(B)->CreateIntMaxReduce(unwrap(Src), IsSigned));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFMin(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
+   return wrap(unwrap(B)->CreateFPMinReduce(unwrap(Src), NoNaN));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
+  return wrap(unwrap(B)->CreateFPMaxReduce(unwrap(Src), NoNaN));
+}
+
+#else
+
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef, LLVMValueRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFMul(LLVMBuilderRef, LLVMValueRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceAdd(LLVMBuilderRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceMul(LLVMBuilderRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceAnd(LLVMBuilderRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceOr(LLVMBuilderRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceXor(LLVMBuilderRef, LLVMValueRef) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceMin(LLVMBuilderRef, LLVMValueRef, bool) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceMax(LLVMBuilderRef, LLVMValueRef, bool) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFMin(LLVMBuilderRef, LLVMValueRef, bool) {
+  return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildVectorReduceFMax(LLVMBuilderRef, LLVMValueRef, bool) {
+  return nullptr;
+}
+#endif

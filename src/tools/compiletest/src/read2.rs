@@ -119,7 +119,7 @@ mod imp {
     use self::miow::iocp::{CompletionPort, CompletionStatus};
     use self::miow::pipe::NamedPipe;
     use self::miow::Overlapped;
-    use self::winapi::ERROR_BROKEN_PIPE;
+    use self::winapi::shared::winerror::ERROR_BROKEN_PIPE;
 
     struct Pipe<'a> {
         dst: &'a mut Vec<u8>,

@@ -24,20 +24,20 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::traits;
-use rustc::util::common::{ErrorReported, time};
+use rustc::util::common::{ErrorReported, time, install_panic_hook};
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
 use rustc_incremental;
 use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
+use rustc_traits;
 use rustc_trans_utils::trans_crate::TransCrate;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{self, ast_validation, loops, consts, static_recursion, hir_stats};
-use rustc_const_eval::{self, check_match};
+use rustc_passes::{self, ast_validation, loops, rvalue_promotion, hir_stats};
 use super::Compilation;
 
 use serialize::json;
@@ -49,7 +49,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::ext::base::ExtCtxt;
@@ -90,7 +90,7 @@ pub fn compile_input(trans: Box<TransCrate>,
     }
 
     if sess.profile_queries() {
-        profile::begin();
+        profile::begin(sess);
     }
 
     // We need nested scopes here, because the intermediate results can keep
@@ -123,6 +123,8 @@ pub fn compile_input(trans: Box<TransCrate>,
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name =
             ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
+        install_panic_hook();
+
         let ExpansionResult { expanded_crate, defs, analysis, resolutions, mut hir_forest } = {
             phase_2_configure_and_expand(
                 sess,
@@ -180,7 +182,7 @@ pub fn compile_input(trans: Box<TransCrate>,
         let arenas = AllArenas::new();
 
         // Construct the HIR map
-        let hir_map = time(sess.time_passes(),
+        let hir_map = time(sess,
                            "indexing hir",
                            || hir_map::map_crate(sess, cstore, &mut hir_forest, &defs));
 
@@ -516,10 +518,10 @@ pub fn phase_1_parse_input<'a>(control: &CompileController,
     sess.diagnostic().set_continue_after_error(control.continue_parse_after_error);
 
     if sess.profile_queries() {
-        profile::begin();
+        profile::begin(sess);
     }
 
-    let krate = time(sess.time_passes(), "parsing", || {
+    let krate = time(sess, "parsing", || {
         match *input {
             Input::File(ref file) => {
                 parse::parse_crate_from_file(file, &sess.parse_sess)
@@ -619,7 +621,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
                 },
 
                 analysis: ty::CrateAnalysis {
-                    access_levels: Rc::new(AccessLevels::default()),
+                    access_levels: Lrc::new(AccessLevels::default()),
                     name: crate_name.to_string(),
                     glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
                 },
@@ -644,11 +646,11 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                        -> Result<InnerExpansionResult<'a>, CompileIncomplete>
     where F: FnOnce(&ast::Crate) -> CompileResult,
 {
-    let time_passes = sess.time_passes();
-
-    let (mut krate, features) = syntax::config::features(krate, &sess.parse_sess, sess.opts.test);
+    let (mut krate, features) = syntax::config::features(krate, &sess.parse_sess,
+                                                         sess.opts.test,
+                                                         sess.opts.debugging_opts.epoch);
     // these need to be set "early" so that expansion sees `quote` if enabled.
-    *sess.features.borrow_mut() = features;
+    sess.init_features(features);
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
 
@@ -661,7 +663,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
     );
 
     if sess.opts.incremental.is_some() {
-        time(time_passes, "garbage collect incremental cache directory", || {
+        time(sess, "garbage collect incremental cache directory", || {
             if let Err(e) = rustc_incremental::garbage_collect_session_directories(sess) {
                 warn!("Error while trying to garbage collect incremental \
                        compilation cache directory: {}", e);
@@ -671,22 +673,22 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 
     // If necessary, compute the dependency graph (in the background).
     let future_dep_graph = if sess.opts.build_dep_graph() {
-        Some(rustc_incremental::load_dep_graph(sess, time_passes))
+        Some(rustc_incremental::load_dep_graph(sess))
     } else {
         None
     };
 
-    time(time_passes, "recursion limit", || {
+    time(sess, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);
     });
 
-    krate = time(time_passes, "crate injection", || {
-        let alt_std_name = sess.opts.alt_std_name.clone();
+    krate = time(sess, "crate injection", || {
+        let alt_std_name = sess.opts.alt_std_name.as_ref().map(|s| &**s);
         syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name)
     });
 
     let mut addl_plugins = Some(addl_plugins);
-    let registrars = time(time_passes, "plugin loading", || {
+    let registrars = time(sess, "plugin loading", || {
         plugin::load::load_plugins(sess,
                                    &cstore,
                                    &krate,
@@ -696,8 +698,8 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 
     let mut registry = registry.unwrap_or(Registry::new(sess, krate.span));
 
-    time(time_passes, "plugin registration", || {
-        if sess.features.borrow().rustc_diagnostic_macros {
+    time(sess, "plugin registration", || {
+        if sess.features_untracked().rustc_diagnostic_macros {
             registry.register_macro("__diagnostic_used",
                                     diagnostics::plugin::expand_diagnostic_used);
             registry.register_macro("__register_diagnostic",
@@ -735,7 +737,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
-        super::describe_lints(&sess.lint_store.borrow(), true);
+        super::describe_lints(&sess, &sess.lint_store.borrow(), true);
         return Err(CompileIncomplete::Stopped);
     }
 
@@ -747,9 +749,9 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                      crate_loader,
                                      &resolver_arenas);
     resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
-    syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
+    syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features_untracked().quote);
 
-    krate = time(time_passes, "expansion", || {
+    krate = time(sess, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
         // dependencies. It's up to us to tell the system where to find all the
         // dependent dlls. Note that this uses cfg!(windows) as opposed to
@@ -778,7 +780,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                          .filter(|p| env::join_paths(iter::once(p)).is_ok()))
                      .unwrap());
         }
-        let features = sess.features.borrow();
+        let features = sess.features_untracked();
         let cfg = syntax::ext::expand::ExpansionConfig {
             features: Some(&features),
             recursion_limit: sess.recursion_limit.get(),
@@ -811,12 +813,13 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         krate
     });
 
-    krate = time(time_passes, "maybe building test harness", || {
+    krate = time(sess, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
                                          &mut resolver,
                                          sess.opts.test,
                                          krate,
-                                         sess.diagnostic())
+                                         sess.diagnostic(),
+                                         &sess.features_untracked())
     });
 
     // If we're actually rustdoc then there's no need to actually compile
@@ -829,7 +832,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
     // bunch of checks in the `modify` function below. For now just skip this
     // step entirely if we're rustdoc as it's not too useful anyway.
     if !sess.opts.actually_rustdoc {
-        krate = time(time_passes, "maybe creating a macro crate", || {
+        krate = time(sess, "maybe creating a macro crate", || {
             let crate_types = sess.crate_types.borrow();
             let num_crate_types = crate_types.len();
             let is_proc_macro_crate = crate_types.contains(&config::CrateTypeProcMacro);
@@ -844,7 +847,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         });
     }
 
-    krate = time(time_passes, "creating allocators", || {
+    krate = time(sess, "creating allocators", || {
         allocator::expand::modify(&sess.parse_sess,
                                   &mut resolver,
                                   krate,
@@ -865,36 +868,38 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         println!("{}", json::as_json(&krate));
     }
 
-    time(time_passes,
+    time(sess,
          "AST validation",
          || ast_validation::check_crate(sess, &krate));
 
-    time(time_passes, "name resolution", || -> CompileResult {
+    time(sess, "name resolution", || -> CompileResult {
         resolver.resolve_crate(&krate);
         Ok(())
     })?;
 
-    if resolver.found_unresolved_macro {
-        sess.parse_sess.span_diagnostic.abort_if_errors();
-    }
-
     // Needs to go *after* expansion to be able to check the results of macro expansion.
-    time(time_passes, "complete gated feature checking", || {
+    time(sess, "complete gated feature checking", || {
         sess.track_errors(|| {
             syntax::feature_gate::check_crate(&krate,
                                               &sess.parse_sess,
-                                              &sess.features.borrow(),
+                                              &sess.features_untracked(),
                                               &attributes,
                                               sess.opts.unstable_features);
         })
     })?;
+
+    // Unresolved macros might be due to mistyped `#[macro_use]`,
+    // so abort after checking for unknown attributes. (#49074)
+    if resolver.found_unresolved_macro {
+        sess.parse_sess.span_diagnostic.abort_if_errors();
+    }
 
     // Lower ast -> hir.
     // First, we need to collect the dep_graph.
     let dep_graph = match future_dep_graph {
         None => DepGraph::new_disabled(),
         Some(future) => {
-            let prev_graph = time(time_passes, "blocked while dep-graph loading finishes", || {
+            let prev_graph = time(sess, "blocked while dep-graph loading finishes", || {
                 future.open()
                       .expect("Could not join with background dep_graph thread")
                       .open(sess)
@@ -902,7 +907,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
             DepGraph::new(prev_graph)
         }
     };
-    let hir_forest = time(time_passes, "lowering ast -> hir", || {
+    let hir_forest = time(sess, "lowering ast -> hir", || {
         let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, &mut resolver);
 
         if sess.opts.debugging_opts.hir_stats {
@@ -912,7 +917,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         hir_map::Forest::new(hir_crate, &dep_graph)
     });
 
-    time(time_passes,
+    time(sess,
          "early lint checks",
          || lint::check_ast_crate(sess, &krate));
 
@@ -929,6 +934,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 }
 
 pub fn default_provide(providers: &mut ty::maps::Providers) {
+    hir::provide(providers);
     borrowck::provide(providers);
     mir::provide(providers);
     reachable::provide(providers);
@@ -938,8 +944,8 @@ pub fn default_provide(providers: &mut ty::maps::Providers) {
     ty::provide(providers);
     traits::provide(providers);
     reachable::provide(providers);
-    rustc_const_eval::provide(providers);
     rustc_passes::provide(providers);
+    rustc_traits::provide(providers);
     middle::region::provide(providers);
     cstore::provide(providers);
     lint::provide(providers);
@@ -969,28 +975,22 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
                             mpsc::Receiver<Box<Any + Send>>,
                             CompileResult) -> R
 {
-    let time_passes = sess.time_passes();
-
-    let query_result_on_disk_cache = time(time_passes,
+    let query_result_on_disk_cache = time(sess,
         "load query result cache",
         || rustc_incremental::load_query_result_cache(sess));
 
-    time(time_passes,
+    time(sess,
          "looking for entry point",
-         || middle::entry::find_entry_point(sess, &hir_map));
+         || middle::entry::find_entry_point(sess, &hir_map, name));
 
-    sess.plugin_registrar_fn.set(time(time_passes, "looking for plugin registrar", || {
+    sess.plugin_registrar_fn.set(time(sess, "looking for plugin registrar", || {
         plugin::build::find_plugin_registrar(sess.diagnostic(), &hir_map)
     }));
     sess.derive_registrar_fn.set(derive_registrar::find(&hir_map));
 
-    time(time_passes,
+    time(sess,
          "loop checking",
          || loops::check_crate(sess, &hir_map));
-
-    time(time_passes,
-              "static item recursion checking",
-              || static_recursion::check_crate(sess, &hir_map))?;
 
     let mut local_providers = ty::maps::Providers::default();
     default_provide(&mut local_providers);
@@ -1020,11 +1020,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
         // tcx available.
         rustc_incremental::dep_graph_tcx_init(tcx);
 
-        time(sess.time_passes(), "attribute checking", || {
+        time(sess, "attribute checking", || {
             hir::check_attr::check_crate(tcx)
         });
 
-        time(time_passes,
+        time(sess,
              "stability checking",
              || stability::check_unstable_api_usage(tcx));
 
@@ -1037,38 +1037,38 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
             }
         }
 
-        time(time_passes,
-             "const checking",
-             || consts::check_crate(tcx));
+        time(sess,
+             "rvalue promotion",
+             || rvalue_promotion::check_crate(tcx));
 
         analysis.access_levels =
-            time(time_passes, "privacy checking", || rustc_privacy::check_crate(tcx));
+            time(sess, "privacy checking", || rustc_privacy::check_crate(tcx));
 
-        time(time_passes,
+        time(sess,
              "intrinsic checking",
              || middle::intrinsicck::check_crate(tcx));
 
-        time(time_passes,
+        time(sess,
              "match checking",
-             || check_match::check_crate(tcx));
+             || mir::matchck_crate(tcx));
 
         // this must run before MIR dump, because
         // "not all control paths return a value" is reported here.
         //
         // maybe move the check to a MIR pass?
-        time(time_passes,
+        time(sess,
              "liveness checking",
              || middle::liveness::check_crate(tcx));
 
-        time(time_passes,
+        time(sess,
              "borrow checking",
              || borrowck::check_crate(tcx));
 
-        time(time_passes,
+        time(sess,
              "MIR borrow checking",
              || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id); });
 
-        time(time_passes,
+        time(sess,
              "MIR effect checking",
              || for def_id in tcx.body_owners() {
                  mir::transform::check_unsafety::check_unsafety(tcx, def_id)
@@ -1083,13 +1083,17 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(trans: &TransCrate,
             return Ok(f(tcx, analysis, rx, sess.compile_status()));
         }
 
-        time(time_passes, "death checking", || middle::dead::check_crate(tcx));
+        time(sess, "death checking", || middle::dead::check_crate(tcx));
 
-        time(time_passes, "unused lib feature checking", || {
+        time(sess, "unused lib feature checking", || {
             stability::check_unused_or_stable_features(tcx)
         });
 
-        time(time_passes, "lint checking", || lint::check_crate(tcx));
+        time(sess, "lint checking", || lint::check_crate(tcx));
+
+        time(sess,
+             "dumping chalk-like clauses",
+             || rustc_traits::lowering::dump_program_clauses(tcx));
 
         return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));
     })
@@ -1101,18 +1105,16 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(trans: &TransCrate,
                                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            rx: mpsc::Receiver<Box<Any + Send>>)
                                            -> Box<Any> {
-    let time_passes = tcx.sess.time_passes();
-
-    time(time_passes,
+    time(tcx.sess,
          "resolving dependency formats",
          || ::rustc::middle::dependency_format::calculate(tcx));
 
     let translation =
-        time(time_passes, "translation", move || {
+        time(tcx.sess, "translation", move || {
             trans.trans_crate(tcx, rx)
         });
     if tcx.sess.profile_queries() {
-        profile::dump("profile_queries".to_string())
+        profile::dump(&tcx.sess, "profile_queries".to_string())
     }
 
     translation

@@ -1,9 +1,9 @@
 error[E0573]: expected type, found function `f`
   --> $DIR/type-ascription-with-fn-call.rs:15:5
    |
-14 |     f()  :
+LL |     f()  :
    |          - help: did you mean to use `;` here instead?
-15 |     f(); //~ ERROR expected type, found function
+LL |     f(); //~ ERROR expected type, found function
    |     ^^^
    |     |
    |     not a type
@@ -11,3 +11,4 @@ error[E0573]: expected type, found function `f`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0573`.

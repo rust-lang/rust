@@ -19,11 +19,12 @@ use hir::map::Map;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use hir::ItemLocalId;
+use hir::LifetimeName;
 use ty::{self, TyCtxt};
 
 use std::cell::Cell;
 use std::mem::replace;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
@@ -212,10 +213,10 @@ struct NamedRegionMap {
 
 /// See `NamedRegionMap`.
 pub struct ResolveLifetimes {
-    defs: FxHashMap<LocalDefId, Rc<FxHashMap<ItemLocalId, Region>>>,
-    late_bound: FxHashMap<LocalDefId, Rc<FxHashSet<ItemLocalId>>>,
+    defs: FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Region>>>,
+    late_bound: FxHashMap<LocalDefId, Lrc<FxHashSet<ItemLocalId>>>,
     object_lifetime_defaults:
-        FxHashMap<LocalDefId, Rc<FxHashMap<ItemLocalId, Rc<Vec<ObjectLifetimeDefault>>>>>,
+        FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>>,
 }
 
 impl_stable_hash_for!(struct ::middle::resolve_lifetime::ResolveLifetimes {
@@ -269,6 +270,19 @@ enum Scope<'a> {
         /// if we extend this scope with another scope, what is the next index
         /// we should use for an early-bound region?
         next_early_index: u32,
+
+        /// Whether or not this binder would serve as the parent
+        /// binder for abstract types introduced within. For example:
+        ///
+        ///     fn foo<'a>() -> impl for<'b> Trait<Item = impl Trait2<'a>>
+        ///
+        /// Here, the abstract types we create for the `impl Trait`
+        /// and `impl Trait2` references will both have the `foo` item
+        /// as their parent. When we get to `impl Trait2`, we find
+        /// that it is nested within the `for<>` binder -- this flag
+        /// allows us to skip that when looking for the parent binder
+        /// of the resulting abstract type.
+        abstract_type_parent: bool,
 
         s: ScopeRef<'a>,
     },
@@ -363,7 +377,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 fn resolve_lifetimes<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     for_krate: CrateNum,
-) -> Rc<ResolveLifetimes> {
+) -> Lrc<ResolveLifetimes> {
     assert_eq!(for_krate, LOCAL_CRATE);
 
     let named_region_map = krate(tcx);
@@ -372,29 +386,29 @@ fn resolve_lifetimes<'tcx>(
     for (k, v) in named_region_map.defs {
         let hir_id = tcx.hir.node_to_hir_id(k);
         let map = defs.entry(hir_id.owner_local_def_id())
-            .or_insert_with(|| Rc::new(FxHashMap()));
-        Rc::get_mut(map).unwrap().insert(hir_id.local_id, v);
+            .or_insert_with(|| Lrc::new(FxHashMap()));
+        Lrc::get_mut(map).unwrap().insert(hir_id.local_id, v);
     }
     let mut late_bound = FxHashMap();
     for k in named_region_map.late_bound {
         let hir_id = tcx.hir.node_to_hir_id(k);
         let map = late_bound
             .entry(hir_id.owner_local_def_id())
-            .or_insert_with(|| Rc::new(FxHashSet()));
-        Rc::get_mut(map).unwrap().insert(hir_id.local_id);
+            .or_insert_with(|| Lrc::new(FxHashSet()));
+        Lrc::get_mut(map).unwrap().insert(hir_id.local_id);
     }
     let mut object_lifetime_defaults = FxHashMap();
     for (k, v) in named_region_map.object_lifetime_defaults {
         let hir_id = tcx.hir.node_to_hir_id(k);
         let map = object_lifetime_defaults
             .entry(hir_id.owner_local_def_id())
-            .or_insert_with(|| Rc::new(FxHashMap()));
-        Rc::get_mut(map)
+            .or_insert_with(|| Lrc::new(FxHashMap()));
+        Lrc::get_mut(map)
             .unwrap()
-            .insert(hir_id.local_id, Rc::new(v));
+            .insert(hir_id.local_id, Lrc::new(v));
     }
 
-    Rc::new(ResolveLifetimes {
+    Lrc::new(ResolveLifetimes {
         defs,
         late_bound,
         object_lifetime_defaults,
@@ -498,6 +512,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 let scope = Scope::Binder {
                     lifetimes,
                     next_early_index,
+                    abstract_type_parent: true,
                     s: ROOT_SCOPE,
                 };
                 self.with(scope, |old_scope, this| {
@@ -541,6 +556,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         .collect(),
                     s: self.scope,
                     next_early_index,
+                    abstract_type_parent: false,
                 };
                 self.with(scope, |old_scope, this| {
                     // a bare fn has no bounds, so everything
@@ -554,10 +570,26 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                 }
-                if lifetime.is_elided() {
-                    self.resolve_object_lifetime_default(lifetime)
-                } else {
-                    self.visit_lifetime(lifetime);
+                match lifetime.name {
+                    LifetimeName::Implicit => {
+                        // If the user does not write *anything*, we
+                        // use the object lifetime defaulting
+                        // rules. So e.g. `Box<dyn Debug>` becomes
+                        // `Box<dyn Debug + 'static>`.
+                        self.resolve_object_lifetime_default(lifetime)
+                    }
+                    LifetimeName::Underscore => {
+                        // If the user writes `'_`, we use the *ordinary* elision
+                        // rules. So the `'_` in e.g. `Box<dyn Debug + '_>` will be
+                        // resolved the same as the `'_` in `&'_ Foo`.
+                        //
+                        // cc #48468
+                        self.resolve_elided_lifetimes(slice::from_ref(lifetime), false)
+                    }
+                    LifetimeName::Static | LifetimeName::Name(_) => {
+                        // If the user wrote an explicit name, use that.
+                        self.visit_lifetime(lifetime);
+                    }
                 }
             }
             hir::TyRptr(ref lifetime_ref, ref mt) => {
@@ -614,7 +646,10 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     ref generics,
                     ref bounds,
                 } = *exist_ty;
-                let mut index = self.next_early_index();
+
+                // We want to start our early-bound indices at the end of the parent scope,
+                // not including any parent `impl Trait`s.
+                let mut index = self.next_early_index_for_abstract_type();
                 debug!("visit_ty: index = {}", index);
 
                 let mut elision = None;
@@ -638,7 +673,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         s: self.scope
                     };
                     self.with(scope, |_old_scope, this| {
-                        let scope = Scope::Binder { lifetimes, next_early_index, s: this.scope };
+                        let scope = Scope::Binder {
+                            lifetimes,
+                            next_early_index,
+                            s: this.scope,
+                            abstract_type_parent: false,
+                        };
                         this.with(scope, |_old_scope, this| {
                             this.visit_generics(generics);
                             for bound in bounds {
@@ -647,7 +687,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         });
                     });
                 } else {
-                    let scope = Scope::Binder { lifetimes, next_early_index, s: self.scope };
+                    let scope = Scope::Binder {
+                        lifetimes,
+                        next_early_index,
+                        s: self.scope,
+                        abstract_type_parent: false,
+                    };
                     self.with(scope, |_old_scope, this| {
                         this.visit_generics(generics);
                         for bound in bounds {
@@ -681,7 +726,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .collect();
 
                 let next_early_index = index + generics.ty_params().count() as u32;
-                let scope = Scope::Binder { lifetimes, next_early_index, s: self.scope };
+                let scope = Scope::Binder {
+                    lifetimes,
+                    next_early_index,
+                    s: self.scope,
+                    abstract_type_parent: true,
+                };
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
                     for bound in bounds {
@@ -721,7 +771,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .collect();
 
                 let next_early_index = index + generics.ty_params().count() as u32;
-                let scope = Scope::Binder { lifetimes, next_early_index, s: self.scope };
+                let scope = Scope::Binder {
+                    lifetimes,
+                    next_early_index,
+                    s: self.scope,
+                    abstract_type_parent: true,
+                };
                 self.with(scope, |_old_scope, this| {
                     this.visit_generics(generics);
                     this.visit_ty(ty);
@@ -792,6 +847,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                                 .collect(),
                             s: self.scope,
                             next_early_index,
+                            abstract_type_parent: false,
                         };
                         let result = self.with(scope, |old_scope, this| {
                             this.check_lifetime_params(old_scope, &bound_generic_params);
@@ -853,6 +909,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     .collect(),
                 s: self.scope,
                 next_early_index,
+                abstract_type_parent: false,
             };
             self.with(scope, |old_scope, this| {
                 this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
@@ -1046,6 +1103,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
                     ref lifetimes,
                     s,
                     next_early_index: _,
+                    abstract_type_parent: _,
                 } => {
                     // FIXME (#24278): non-hygienic comparison
                     if let Some(def) = lifetimes.get(&hir::LifetimeName::Name(label)) {
@@ -1303,6 +1361,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             lifetimes,
             next_early_index,
             s: self.scope,
+            abstract_type_parent: true,
         };
         self.with(scope, move |old_scope, this| {
             this.check_lifetime_params(old_scope, &generics.params);
@@ -1310,23 +1369,39 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         });
     }
 
-    /// Returns the next index one would use for an early-bound-region
-    /// if extending the current scope.
-    fn next_early_index(&self) -> u32 {
+    fn next_early_index_helper(&self, only_abstract_type_parent: bool) -> u32 {
         let mut scope = self.scope;
         loop {
             match *scope {
                 Scope::Root => return 0,
 
                 Scope::Binder {
-                    next_early_index, ..
-                } => return next_early_index,
+                    next_early_index,
+                    abstract_type_parent,
+                    ..
+                } if (!only_abstract_type_parent || abstract_type_parent)
+                => return next_early_index,
 
-                Scope::Body { s, .. }
+                Scope::Binder { s, .. }
+                | Scope::Body { s, .. }
                 | Scope::Elision { s, .. }
                 | Scope::ObjectLifetimeDefault { s, .. } => scope = s,
             }
         }
+    }
+
+    /// Returns the next index one would use for an early-bound-region
+    /// if extending the current scope.
+    fn next_early_index(&self) -> u32 {
+        self.next_early_index_helper(true)
+    }
+
+    /// Returns the next index one would use for an `impl Trait` that
+    /// is being converted into an `abstract type`. This will be the
+    /// next early index from the enclosing item, for the most
+    /// part. See the `abstract_type_parent` field for more info.
+    fn next_early_index_for_abstract_type(&self) -> u32 {
+        self.next_early_index_helper(false)
     }
 
     fn resolve_lifetime_ref(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
@@ -1353,6 +1428,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     ref lifetimes,
                     s,
                     next_early_index: _,
+                    abstract_type_parent: _,
                 } => {
                     if let Some(&def) = lifetimes.get(&lifetime_ref.name) {
                         break Some(def.shifted(late_depth));
@@ -2102,6 +2178,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     ref lifetimes,
                     s,
                     next_early_index: _,
+                    abstract_type_parent: _,
                 } => {
                     if let Some(&def) = lifetimes.get(&lifetime.name) {
                         let node_id = self.tcx.hir.as_local_node_id(def.id().unwrap()).unwrap();

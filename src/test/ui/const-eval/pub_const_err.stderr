@@ -1,0 +1,14 @@
+error: attempt to subtract with overflow
+  --> $DIR/pub_const_err.rs:15:20
+   |
+LL | pub const Z: u32 = 0 - 1;
+   |                    ^^^^^
+   |
+note: lint level defined here
+  --> $DIR/pub_const_err.rs:11:9
+   |
+LL | #![deny(const_err)]
+   |         ^^^^^^^^^
+
+error: aborting due to previous error
+

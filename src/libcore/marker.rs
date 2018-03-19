@@ -343,8 +343,21 @@ pub trait Copy : Clone {
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
-#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be shared between threads safely",
+    label="`{Self}` cannot be shared between threads safely"
+)]
 pub unsafe auto trait Sync {
+    // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
+    // lands in beta, and it has been extended to check whether a closure is
+    // anywhere in the requirement chain, extend it as such (#48534):
+    // ```
+    // on(
+    //     closure,
+    //     note="`{Self}` cannot be shared safely, consider marking the closure `move`"
+    // ),
+    // ```
+
     // Empty
 }
 

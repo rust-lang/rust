@@ -27,7 +27,8 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
-use syntax::codemap::{FilePathMapping, FileName};
+use syntax::codemap::{FileName, FilePathMapping};
+use syntax::epoch::Epoch;
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -41,7 +42,7 @@ use std::collections::btree_map::Iter as BTreeMapIter;
 use std::collections::btree_map::Keys as BTreeMapKeysIter;
 use std::collections::btree_map::Values as BTreeMapValuesIter;
 
-use std::fmt;
+use std::{fmt, str};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
@@ -64,12 +65,12 @@ pub enum Sanitizer {
 
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub enum OptLevel {
-    No, // -O0
-    Less, // -O1
-    Default, // -O2
+    No,         // -O0
+    Less,       // -O1
+    Default,    // -O2
     Aggressive, // -O3
-    Size, // -Os
-    SizeMin, // -Oz
+    Size,       // -Os
+    SizeMin,    // -Oz
 }
 
 #[derive(Clone, Copy, PartialEq, Hash)]
@@ -99,8 +100,7 @@ pub enum DebugInfoLevel {
     FullDebugInfo,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord,
-         RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
 pub enum OutputType {
     Bitcode,
     Assembly,
@@ -112,30 +112,6 @@ pub enum OutputType {
     DepInfo,
 }
 
-/// The epoch of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq)]
-#[non_exhaustive]
-pub enum Epoch {
-    // epochs must be kept in order, newest to oldest
-
-    /// The 2015 epoch
-    Epoch2015,
-    /// The 2018 epoch
-    Epoch2018,
-
-    // when adding new epochs, be sure to update:
-    //
-    // - the list in the `parse_epoch` static
-    // - the match in the `parse_epoch` function
-    // - add a `rust_####()` function to the session
-    // - update the enum in Cargo's sources as well
-    //
-    // When -Zepoch becomes --epoch, there will
-    // also be a check for the epoch being nightly-only
-    // somewhere. That will need to be updated
-    // whenever we're stabilizing/introducing a new epoch
-    // as well as changing the default Cargo template.
-}
 
 impl_stable_hash_for!(enum self::OutputType {
     Bitcode,
@@ -148,10 +124,10 @@ impl_stable_hash_for!(enum self::OutputType {
     DepInfo
 });
 
-impl<'tcx> ToStableHashKey<StableHashingContext<'tcx>> for OutputType {
+impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for OutputType {
     type KeyType = OutputType;
     #[inline]
-    fn to_stable_hash_key(&self, _: &StableHashingContext<'tcx>) -> Self::KeyType {
+    fn to_stable_hash_key(&self, _: &StableHashingContext<'a>) -> Self::KeyType {
         *self
     }
 }
@@ -159,14 +135,13 @@ impl<'tcx> ToStableHashKey<StableHashingContext<'tcx>> for OutputType {
 impl OutputType {
     fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
         match *self {
-            OutputType::Exe |
-            OutputType::DepInfo => true,
-            OutputType::Bitcode |
-            OutputType::Assembly |
-            OutputType::LlvmAssembly |
-            OutputType::Mir |
-            OutputType::Object |
-            OutputType::Metadata => false,
+            OutputType::Exe | OutputType::DepInfo => true,
+            OutputType::Bitcode
+            | OutputType::Assembly
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::Object
+            | OutputType::Metadata => false,
         }
     }
 
@@ -185,14 +160,14 @@ impl OutputType {
 
     fn from_shorthand(shorthand: &str) -> Option<Self> {
         Some(match shorthand {
-             "asm" => OutputType::Assembly,
-             "llvm-ir" => OutputType::LlvmAssembly,
-             "mir" => OutputType::Mir,
-             "llvm-bc" => OutputType::Bitcode,
-             "obj" => OutputType::Object,
-             "metadata" => OutputType::Metadata,
-             "link" => OutputType::Exe,
-             "dep-info" => OutputType::DepInfo,
+            "asm" => OutputType::Assembly,
+            "llvm-ir" => OutputType::LlvmAssembly,
+            "mir" => OutputType::Mir,
+            "llvm-bc" => OutputType::Bitcode,
+            "obj" => OutputType::Object,
+            "metadata" => OutputType::Metadata,
+            "link" => OutputType::Exe,
+            "dep-info" => OutputType::DepInfo,
             _ => return None,
         })
     }
@@ -250,8 +225,9 @@ impl_stable_hash_for!(tuple_struct self::OutputTypes {
 
 impl OutputTypes {
     pub fn new(entries: &[(OutputType, Option<PathBuf>)]) -> OutputTypes {
-        OutputTypes(BTreeMap::from_iter(entries.iter()
-                                               .map(|&(k, ref v)| (k, v.clone()))))
+        OutputTypes(BTreeMap::from_iter(
+            entries.iter().map(|&(k, ref v)| (k, v.clone())),
+        ))
     }
 
     pub fn get(&self, key: &OutputType) -> Option<&Option<PathBuf>> {
@@ -273,18 +249,16 @@ impl OutputTypes {
     // True if any of the output types require codegen or linking.
     pub fn should_trans(&self) -> bool {
         self.0.keys().any(|k| match *k {
-            OutputType::Bitcode |
-            OutputType::Assembly |
-            OutputType::LlvmAssembly |
-            OutputType::Mir |
-            OutputType::Object |
-            OutputType::Exe => true,
-            OutputType::Metadata |
-            OutputType::DepInfo => false,
+            OutputType::Bitcode
+            | OutputType::Assembly
+            | OutputType::LlvmAssembly
+            | OutputType::Mir
+            | OutputType::Object
+            | OutputType::Exe => true,
+            OutputType::Metadata | OutputType::DepInfo => false,
         })
     }
 }
-
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
@@ -310,7 +284,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
-                              $opt_expr as &dep_tracking::DepTrackingHash).is_some() {
+                              $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
             bug!("Duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
@@ -389,10 +363,7 @@ top_level_options!(
         lint_cap: Option<lint::Level> [TRACKED],
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
-        // FIXME(mw): We track this for now but it actually doesn't make too
-        //            much sense: The search path can stay the same while the
-        //            things discovered there might have changed on disk.
-        search_paths: SearchPaths [TRACKED],
+        search_paths: SearchPaths [UNTRACKED],
         libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
@@ -411,13 +382,10 @@ top_level_options!(
         // version of `debugging_opts.borrowck`, which is just a plain string.
         borrowck_mode: BorrowckMode [UNTRACKED],
         cg: CodegenOptions [TRACKED],
-        // FIXME(mw): We track this for now but it actually doesn't make too
-        //            much sense: The value of this option can stay the same
-        //            while the files they refer to might have changed on disk.
-        externs: Externs [TRACKED],
+        externs: Externs [UNTRACKED],
         crate_name: Option<String> [TRACKED],
         // An optional name to use as the crate for std during std injection,
-        // written `extern crate std = "name"`. Default to "std". Used by
+        // written `extern crate name as std`. Defaults to `std`. Used by
         // out-of-tree drivers.
         alt_std_name: Option<String> [TRACKED],
         // Indicates how the compiler should treat unstable features
@@ -435,6 +403,9 @@ top_level_options!(
         // if we otherwise use the defaults of rustc.
         cli_forced_codegen_units: Option<usize> [UNTRACKED],
         cli_forced_thinlto_off: bool [UNTRACKED],
+
+        // Remap source path prefixes in all output (messages, object files, debug, etc)
+        remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
     }
 );
 
@@ -494,8 +465,7 @@ pub enum Input {
 impl Input {
     pub fn filestem(&self) -> String {
         match *self {
-            Input::File(ref ifile) => ifile.file_stem().unwrap()
-                                           .to_str().unwrap().to_string(),
+            Input::File(ref ifile) => ifile.file_stem().unwrap().to_str().unwrap().to_string(),
             Input::Str { .. } => "rust_out".to_string(),
         }
     }
@@ -522,7 +492,9 @@ pub const RUST_CGU_EXT: &str = "rcgu";
 
 impl OutputFilenames {
     pub fn path(&self, flavor: OutputType) -> PathBuf {
-        self.outputs.get(&flavor).and_then(|p| p.to_owned())
+        self.outputs
+            .get(&flavor)
+            .and_then(|p| p.to_owned())
             .or_else(|| self.single_output_file.clone())
             .unwrap_or_else(|| self.temp_path(flavor, None))
     }
@@ -530,20 +502,14 @@ impl OutputFilenames {
     /// Get the path where a compilation artifact of the given type for the
     /// given codegen unit should be placed on disk. If codegen_unit_name is
     /// None, a path distinct from those of any codegen unit will be generated.
-    pub fn temp_path(&self,
-                     flavor: OutputType,
-                     codegen_unit_name: Option<&str>)
-                     -> PathBuf {
+    pub fn temp_path(&self, flavor: OutputType, codegen_unit_name: Option<&str>) -> PathBuf {
         let extension = flavor.extension();
         self.temp_path_ext(extension, codegen_unit_name)
     }
 
     /// Like temp_path, but also supports things where there is no corresponding
     /// OutputType, like no-opt-bitcode or lto-bitcode.
-    pub fn temp_path_ext(&self,
-                         ext: &str,
-                         codegen_unit_name: Option<&str>)
-                         -> PathBuf {
+    pub fn temp_path_ext(&self, ext: &str, codegen_unit_name: Option<&str>) -> PathBuf {
         let base = self.out_directory.join(&self.filestem());
 
         let mut extension = String::new();
@@ -567,7 +533,9 @@ impl OutputFilenames {
     }
 
     pub fn with_extension(&self, extension: &str) -> PathBuf {
-        self.out_directory.join(&self.filestem()).with_extension(extension)
+        self.out_directory
+            .join(&self.filestem())
+            .with_extension(extension)
     }
 
     pub fn filestem(&self) -> String {
@@ -584,8 +552,7 @@ pub fn host_triple() -> &'static str {
     // Instead of grabbing the host triple (for the current host), we grab (at
     // compile time) the target triple that this rustc is built with and
     // calling that (at runtime) the host triple.
-    (option_env!("CFG_COMPILER_HOST_TRIPLE")).
-        expect("CFG_COMPILER_HOST_TRIPLE")
+    (option_env!("CFG_COMPILER_HOST_TRIPLE")).expect("CFG_COMPILER_HOST_TRIPLE")
 }
 
 /// Some reasonable defaults
@@ -617,29 +584,25 @@ pub fn basic_options() -> Options {
         actually_rustdoc: false,
         cli_forced_codegen_units: None,
         cli_forced_thinlto_off: false,
+        remap_path_prefix: Vec::new(),
     }
 }
 
 impl Options {
     /// True if there is a reason to build the dep graph.
     pub fn build_dep_graph(&self) -> bool {
-        self.incremental.is_some() ||
-            self.debugging_opts.dump_dep_graph ||
-            self.debugging_opts.query_dep_graph
+        self.incremental.is_some() || self.debugging_opts.dump_dep_graph
+            || self.debugging_opts.query_dep_graph
     }
 
     #[inline(always)]
     pub fn enable_dep_node_debug_strs(&self) -> bool {
-        cfg!(debug_assertions) &&
-            (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
+        cfg!(debug_assertions)
+            && (self.debugging_opts.query_dep_graph || self.debugging_opts.incremental_info)
     }
 
     pub fn file_path_mapping(&self) -> FilePathMapping {
-        FilePathMapping::new(
-            self.debugging_opts.remap_path_prefix_from.iter().zip(
-                self.debugging_opts.remap_path_prefix_to.iter()
-            ).map(|(src, dst)| (src.clone(), dst.clone())).collect()
-        )
+        FilePathMapping::new(self.remap_path_prefix.clone())
     }
 
     /// True if there will be an output file generated
@@ -814,9 +777,10 @@ macro_rules! options {
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto, Epoch};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
+        use syntax::epoch::Epoch;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -1021,11 +985,17 @@ macro_rules! options {
 
         fn parse_epoch(slot: &mut Epoch, v: Option<&str>) -> bool {
             match v {
-                Some("2015") => *slot = Epoch::Epoch2015,
-                Some("2018") => *slot = Epoch::Epoch2018,
-                _ => return false,
+                Some(s) => {
+                    let epoch = s.parse();
+                    if let Ok(parsed) = epoch {
+                        *slot = parsed;
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
             }
-            true
         }
     }
 ) }
@@ -1269,10 +1239,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "set the optimization fuel quota for a crate"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make Rustc print the total optimization fuel used by a crate"),
-    remap_path_prefix_from: Vec<PathBuf> = (vec![], parse_pathbuf_push, [UNTRACKED],
-        "add a source pattern to the file path remapping config"),
-    remap_path_prefix_to: Vec<PathBuf> = (vec![], parse_pathbuf_push, [UNTRACKED],
-        "add a mapping target to the file path remapping config"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable"),
     pre_link_arg: Vec<String> = (vec![], parse_string_push, [UNTRACKED],
@@ -1285,8 +1251,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "choose which RELRO level to use"),
     nll: bool = (false, parse_bool, [UNTRACKED],
                  "run the non-lexical lifetimes MIR pass"),
-    nll_dump_cause: bool = (false, parse_bool, [UNTRACKED],
-                 "dump cause information when reporting errors from NLL"),
     trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
         "generate a graphical HTML report of time spent in trans and LLVM"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -1322,6 +1286,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          epoch). Crates compiled with different epochs can be linked together."),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
           "run `dsymutil` and delete intermediate object files"),
+    ui_testing: bool = (false, parse_bool, [UNTRACKED],
+          "format compiler diagnostics in a way that's better suitable for UI testing"),
+    embed_bitcode: bool = (false, parse_bool, [TRACKED],
+          "embed LLVM bitcode in object files"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1349,18 +1317,30 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     }
     ret.insert((Symbol::intern("target_arch"), Some(Symbol::intern(arch))));
     ret.insert((Symbol::intern("target_endian"), Some(Symbol::intern(end))));
-    ret.insert((Symbol::intern("target_pointer_width"), Some(Symbol::intern(wordsz))));
+    ret.insert((
+        Symbol::intern("target_pointer_width"),
+        Some(Symbol::intern(wordsz)),
+    ));
     ret.insert((Symbol::intern("target_env"), Some(Symbol::intern(env))));
-    ret.insert((Symbol::intern("target_vendor"), Some(Symbol::intern(vendor))));
+    ret.insert((
+        Symbol::intern("target_vendor"),
+        Some(Symbol::intern(vendor)),
+    ));
     if sess.target.target.options.has_elf_tls {
         ret.insert((Symbol::intern("target_thread_local"), None));
     }
     for &i in &[8, 16, 32, 64, 128] {
         if i >= min_atomic_width && i <= max_atomic_width {
             let s = i.to_string();
-            ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern(&s))));
+            ret.insert((
+                Symbol::intern("target_has_atomic"),
+                Some(Symbol::intern(&s)),
+            ));
             if &s == wordsz {
-                ret.insert((Symbol::intern("target_has_atomic"), Some(Symbol::intern("ptr"))));
+                ret.insert((
+                    Symbol::intern("target_has_atomic"),
+                    Some(Symbol::intern("ptr")),
+                ));
             }
         }
     }
@@ -1373,9 +1353,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     return ret;
 }
 
-pub fn build_configuration(sess: &Session,
-                           mut user_cfg: ast::CrateConfig)
-                           -> ast::CrateConfig {
+pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items
     let default_cfg = default_configuration(sess);
@@ -1402,8 +1380,11 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
         "16" => (ast::IntTy::I16, ast::UintTy::U16),
         "32" => (ast::IntTy::I32, ast::UintTy::U32),
         "64" => (ast::IntTy::I64, ast::UintTy::U64),
-        w    => sp.fatal(&format!("target specification was invalid: \
-                                          unrecognized target-pointer-width {}", w)).raise(),
+        w => sp.fatal(&format!(
+            "target specification was invalid: \
+             unrecognized target-pointer-width {}",
+            w
+        )).raise(),
     };
 
     Config {
@@ -1421,7 +1402,7 @@ pub enum OptionStability {
 }
 
 pub struct RustcOptGroup {
-    pub apply: Box<Fn(&mut getopts::Options) -> &mut getopts::Options>,
+    pub apply: Box<dyn Fn(&mut getopts::Options) -> &mut getopts::Options>,
     pub name: &'static str,
     pub stability: OptionStability,
 }
@@ -1432,7 +1413,8 @@ impl RustcOptGroup {
     }
 
     pub fn stable<F>(name: &'static str, f: F) -> RustcOptGroup
-        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
+    where
+        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
         RustcOptGroup {
             name,
@@ -1442,7 +1424,8 @@ impl RustcOptGroup {
     }
 
     pub fn unstable<F>(name: &'static str, f: F) -> RustcOptGroup
-        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
+    where
+        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
         RustcOptGroup {
             name,
@@ -1470,13 +1453,15 @@ mod opt {
     pub type S = &'static str;
 
     fn stable<F>(name: S, f: F) -> R
-        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static
+    where
+        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
         RustcOptGroup::stable(name, f)
     }
 
     fn unstable<F>(name: S, f: F) -> R
-        where F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static
+    where
+        F: Fn(&mut getopts::Options) -> &mut getopts::Options + 'static,
     {
         RustcOptGroup::unstable(name, f)
     }
@@ -1529,42 +1514,88 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
     vec![
         opt::flag_s("h", "help", "Display this message"),
         opt::multi_s("", "cfg", "Configure the compilation environment", "SPEC"),
-        opt::multi_s("L", "",   "Add a directory to the library search path. The
+        opt::multi_s(
+            "L",
+            "",
+            "Add a directory to the library search path. The
                              optional KIND can be one of dependency, crate, native,
-                             framework or all (the default).", "[KIND=]PATH"),
-        opt::multi_s("l", "",   "Link the generated crate(s) to the specified native
+                             framework or all (the default).",
+            "[KIND=]PATH",
+        ),
+        opt::multi_s(
+            "l",
+            "",
+            "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of
                              static, dylib, or framework. If omitted, dylib is
-                             assumed.", "[KIND=]NAME"),
-        opt::multi_s("", "crate-type", "Comma separated list of types of crates
+                             assumed.",
+            "[KIND=]NAME",
+        ),
+        opt::multi_s(
+            "",
+            "crate-type",
+            "Comma separated list of types of crates
                                     for the compiler to emit",
-                   "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]"),
-        opt::opt_s("", "crate-name", "Specify the name of the crate being built",
-               "NAME"),
-        opt::multi_s("", "emit", "Comma separated list of types of output for \
-                              the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]"),
-        opt::multi_s("", "print", "Comma separated list of compiler information to \
-                               print on stdout",
-                     "[crate-name|file-names|sysroot|cfg|target-list|\
-                       target-cpus|target-features|relocation-models|\
-                       code-models|tls-models|target-spec-json|native-static-libs]"),
-        opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
+            "[bin|lib|rlib|dylib|cdylib|staticlib|proc-macro]",
+        ),
+        opt::opt_s(
+            "",
+            "crate-name",
+            "Specify the name of the crate being built",
+            "NAME",
+        ),
+        opt::multi_s(
+            "",
+            "emit",
+            "Comma separated list of types of output for \
+             the compiler to emit",
+            "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]",
+        ),
+        opt::multi_s(
+            "",
+            "print",
+            "Comma separated list of compiler information to \
+             print on stdout",
+            "[crate-name|file-names|sysroot|cfg|target-list|\
+             target-cpus|target-features|relocation-models|\
+             code-models|tls-models|target-spec-json|native-static-libs]",
+        ),
+        opt::flagmulti_s("g", "", "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
-        opt::opt_s("",  "out-dir", "Write output to compiler-chosen filename \
-                                in <dir>", "DIR"),
-        opt::opt_s("", "explain", "Provide a detailed explanation of an error \
-                               message", "OPT"),
+        opt::opt_s(
+            "",
+            "out-dir",
+            "Write output to compiler-chosen filename \
+             in <dir>",
+            "DIR",
+        ),
+        opt::opt_s(
+            "",
+            "explain",
+            "Provide a detailed explanation of an error \
+             message",
+            "OPT",
+        ),
         opt::flag_s("", "test", "Build a test harness"),
-        opt::opt_s("", "target", "Target triple for which the code is compiled", "TARGET"),
+        opt::opt_s(
+            "",
+            "target",
+            "Target triple for which the code is compiled",
+            "TARGET",
+        ),
         opt::multi_s("W", "warn", "Set lint warnings", "OPT"),
         opt::multi_s("A", "allow", "Set lint allowed", "OPT"),
         opt::multi_s("D", "deny", "Set lint denied", "OPT"),
         opt::multi_s("F", "forbid", "Set lint forbidden", "OPT"),
-        opt::multi_s("", "cap-lints", "Set the most restrictive lint level. \
-                                     More restrictive lints are capped at this \
-                                     level", "LEVEL"),
+        opt::multi_s(
+            "",
+            "cap-lints",
+            "Set the most restrictive lint level. \
+             More restrictive lints are capped at this \
+             level",
+            "LEVEL",
+        ),
         opt::multi_s("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt::flag_s("V", "version", "Print version info and exit"),
         opt::flag_s("v", "verbose", "Use verbose output"),
@@ -1577,63 +1608,95 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
 pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     let mut opts = rustc_short_optgroups();
     opts.extend(vec![
-        opt::multi_s("", "extern", "Specify where an external rust library is located",
-                     "NAME=PATH"),
+        opt::multi_s(
+            "",
+            "extern",
+            "Specify where an external rust library is located",
+            "NAME=PATH",
+        ),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
-        opt::opt_s("", "error-format",
-                      "How errors and other messages are produced",
-                      "human|json|short"),
-        opt::opt_s("", "color", "Configure coloring of output:
+        opt::opt_s(
+            "",
+            "error-format",
+            "How errors and other messages are produced",
+            "human|json|short",
+        ),
+        opt::opt_s(
+            "",
+            "color",
+            "Configure coloring of output:
                                  auto   = colorize, if output goes to a tty (default);
                                  always = always colorize output;
-                                 never  = never colorize output", "auto|always|never"),
-
-        opt::opt("", "pretty",
-                 "Pretty-print the input instead of compiling;
+                                 never  = never colorize output",
+            "auto|always|never",
+        ),
+        opt::opt(
+            "",
+            "pretty",
+            "Pretty-print the input instead of compiling;
                   valid types are: `normal` (un-annotated source),
                   `expanded` (crates expanded), or
                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                 "TYPE"),
+            "TYPE",
+        ),
+        opt::multi_s(
+            "",
+            "remap-path-prefix",
+            "Remap source names in all output (compiler messages and output files)",
+            "FROM=TO",
+        ),
     ]);
     opts
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
-    cfgspecs.into_iter().map(|s| {
-        let sess = parse::ParseSess::new(FilePathMapping::empty());
-        let mut parser =
-            parse::new_parser_from_source_str(&sess, FileName::CfgSpec, s.to_string());
+pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
+    cfgspecs
+        .into_iter()
+        .map(|s| {
+            let sess = parse::ParseSess::new(FilePathMapping::empty());
+            let mut parser =
+                parse::new_parser_from_source_str(&sess, FileName::CfgSpec, s.to_string());
 
-        let meta_item = panictry!(parser.parse_meta_item());
+            let meta_item = panictry!(parser.parse_meta_item());
 
-        if parser.token != token::Eof {
-            early_error(ErrorOutputType::default(), &format!("invalid --cfg argument: {}", s))
-        } else if meta_item.is_meta_item_list() {
-            let msg =
-                format!("invalid predicate in --cfg command line argument: `{}`", meta_item.name());
-            early_error(ErrorOutputType::default(), &msg)
-        }
+            if parser.token != token::Eof {
+                early_error(
+                    ErrorOutputType::default(),
+                    &format!("invalid --cfg argument: {}", s),
+                )
+            } else if meta_item.is_meta_item_list() {
+                let msg = format!(
+                    "invalid predicate in --cfg command line argument: `{}`",
+                    meta_item.name()
+                );
+                early_error(ErrorOutputType::default(), &msg)
+            }
 
-        (meta_item.name(), meta_item.value_str())
-    }).collect::<ast::CrateConfig>()
+            (meta_item.name(), meta_item.value_str())
+        })
+        .collect::<ast::CrateConfig>()
 }
 
-pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
-                                              -> (Options, ast::CrateConfig) {
+pub fn build_session_options_and_crate_config(
+    matches: &getopts::Matches,
+) -> (Options, ast::CrateConfig) {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-        Some("auto")   => ColorConfig::Auto,
+        Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
-        Some("never")  => ColorConfig::Never,
+        Some("never") => ColorConfig::Never,
 
         None => ColorConfig::Auto,
 
-        Some(arg) => {
-            early_error(ErrorOutputType::default(), &format!("argument for --color must be auto, \
-                                                              always or never (instead was `{}`)",
-                                                            arg))
-        }
+        Some(arg) => early_error(
+            ErrorOutputType::default(),
+            &format!(
+                "argument for --color must be auto, \
+                 always or never (instead was `{}`)",
+                arg
+            ),
+        ),
     };
 
     // We need the opts_present check because the driver will send us Matches
@@ -1643,25 +1706,31 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
             Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json")  => ErrorOutputType::Json(false),
+            Some("json") => ErrorOutputType::Json(false),
             Some("pretty-json") => ErrorOutputType::Json(true),
             Some("short") => {
                 if nightly_options::is_unstable_enabled(matches) {
                     ErrorOutputType::Short(color)
                 } else {
-                    early_error(ErrorOutputType::default(),
-                                &format!("the `-Z unstable-options` flag must also be passed to \
-                                          enable the short error message option"));
+                    early_error(
+                        ErrorOutputType::default(),
+                        &format!(
+                            "the `-Z unstable-options` flag must also be passed to \
+                             enable the short error message option"
+                        ),
+                    );
                 }
             }
             None => ErrorOutputType::HumanReadable(color),
 
-            Some(arg) => {
-                early_error(ErrorOutputType::HumanReadable(color),
-                            &format!("argument for --error-format must be `human`, `json` or \
-                                      `short` (instead was `{}`)",
-                                     arg))
-            }
+            Some(arg) => early_error(
+                ErrorOutputType::HumanReadable(color),
+                &format!(
+                    "argument for --error-format must be `human`, `json` or \
+                     `short` (instead was `{}`)",
+                    arg
+                ),
+            ),
         }
     } else {
         ErrorOutputType::HumanReadable(color)
@@ -1685,15 +1754,17 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
-        lint::Level::from_str(&cap).unwrap_or_else(|| {
-            early_error(error_format, &format!("unknown lint level: `{}`", cap))
-        })
+        lint::Level::from_str(&cap)
+            .unwrap_or_else(|| early_error(error_format, &format!("unknown lint level: `{}`", cap)))
     });
 
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
     if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
-        early_error(ErrorOutputType::Json(false), "--error-format=pretty-json is unstable");
+        early_error(
+            ErrorOutputType::Json(false),
+            "--error-format=pretty-json is unstable",
+        );
     }
 
     let mut output_types = BTreeMap::new();
@@ -1704,10 +1775,14 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                 let shorthand = parts.next().unwrap();
                 let output_type = match OutputType::from_shorthand(shorthand) {
                     Some(output_type) => output_type,
-                    None => early_error(error_format, &format!(
-                        "unknown emission type: `{}` - expected one of: {}",
-                        shorthand, OutputType::shorthands_display(),
-                    )),
+                    None => early_error(
+                        error_format,
+                        &format!(
+                            "unknown emission type: `{}` - expected one of: {}",
+                            shorthand,
+                            OutputType::shorthands_display(),
+                        ),
+                    ),
                 };
                 let path = parts.next().map(PathBuf::from);
                 output_types.insert(output_type, path);
@@ -1718,34 +1793,16 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         output_types.insert(OutputType::Exe, None);
     }
 
-    let remap_path_prefix_sources = debugging_opts.remap_path_prefix_from.len();
-    let remap_path_prefix_targets = debugging_opts.remap_path_prefix_to.len();
-
-    if remap_path_prefix_targets < remap_path_prefix_sources {
-        for source in &debugging_opts.remap_path_prefix_from[remap_path_prefix_targets..] {
-            early_error(error_format,
-                &format!("option `-Zremap-path-prefix-from='{}'` does not have \
-                         a corresponding `-Zremap-path-prefix-to`", source.display()))
-        }
-    } else if remap_path_prefix_targets > remap_path_prefix_sources {
-        for target in &debugging_opts.remap_path_prefix_to[remap_path_prefix_sources..] {
-            early_error(error_format,
-                &format!("option `-Zremap-path-prefix-to='{}'` does not have \
-                          a corresponding `-Zremap-path-prefix-from`", target.display()))
-        }
-    }
-
     let mut cg = build_codegen_options(matches, error_format);
     let mut codegen_units = cg.codegen_units;
     let mut disable_thinlto = false;
 
     // Issue #30063: if user requests llvm-related output to one
     // particular path, disable codegen-units.
-    let incompatible: Vec<_> = output_types.iter()
+    let incompatible: Vec<_> = output_types
+        .iter()
         .map(|ot_path| ot_path.0)
-        .filter(|ot| {
-            !ot.is_compatible_with_codegen_units_and_single_output_file()
-        })
+        .filter(|ot| !ot.is_compatible_with_codegen_units_and_single_output_file())
         .map(|ot| ot.shorthand())
         .collect();
     if !incompatible.is_empty() {
@@ -1753,9 +1810,14 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             Some(n) if n > 1 => {
                 if matches.opt_present("o") {
                     for ot in &incompatible {
-                        early_warn(error_format, &format!("--emit={} with -o incompatible with \
-                                                         -C codegen-units=N for N > 1",
-                                                        ot));
+                        early_warn(
+                            error_format,
+                            &format!(
+                                "--emit={} with -o incompatible with \
+                                 -C codegen-units=N for N > 1",
+                                ot
+                            ),
+                        );
                     }
                     early_warn(error_format, "resetting to default -C codegen-units=1");
                     codegen_units = Some(1);
@@ -1770,21 +1832,30 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }
 
     if debugging_opts.query_threads == Some(0) {
-        early_error(error_format, "Value for query threads must be a positive nonzero integer");
+        early_error(
+            error_format,
+            "Value for query threads must be a positive nonzero integer",
+        );
     }
 
     if codegen_units == Some(0) {
-        early_error(error_format, "Value for codegen units must be a positive nonzero integer");
+        early_error(
+            error_format,
+            "Value for codegen units must be a positive nonzero integer",
+        );
     }
 
     let incremental = match (&debugging_opts.incremental, &cg.incremental) {
         (&Some(ref path1), &Some(ref path2)) => {
             if path1 != path2 {
-                early_error(error_format,
-                    &format!("conflicting paths for `-Z incremental` and \
-                              `-C incremental` specified: {} versus {}",
-                              path1,
-                              path2));
+                early_error(
+                    error_format,
+                    &format!(
+                        "conflicting paths for `-Z incremental` and \
+                         `-C incremental` specified: {} versus {}",
+                        path1, path2
+                    ),
+                );
             } else {
                 Some(path1)
             }
@@ -1795,7 +1866,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     }.map(|m| PathBuf::from(m));
 
     if cg.lto != Lto::No && incremental.is_some() {
-        early_error(error_format, "can't perform LTO when compiling incrementally");
+        early_error(
+            error_format,
+            "can't perform LTO when compiling incrementally",
+        );
     }
 
     let mut prints = Vec::<PrintRequest>::new();
@@ -1815,7 +1889,11 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         prints.push(PrintRequest::CodeModels);
         cg.code_model = None;
     }
-    if debugging_opts.tls_model.as_ref().map_or(false, |s| s == "help") {
+    if debugging_opts
+        .tls_model
+        .as_ref()
+        .map_or(false, |s| s == "help")
+    {
         prints.push(PrintRequest::TlsModels);
         debugging_opts.tls_model = None;
     }
@@ -1823,8 +1901,9 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
     let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
-    let target = matches.opt_str("target").unwrap_or(
-        host_triple().to_string());
+    let target = matches
+        .opt_str("target")
+        .unwrap_or(host_triple().to_string());
     let opt_level = {
         if matches.opt_present("O") {
             if cg.opt_level.is_some() {
@@ -1832,8 +1911,10 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             }
             OptLevel::Default
         } else {
-            match (cg.opt_level.as_ref().map(String::as_ref),
-                   nightly_options::is_nightly_build()) {
+            match (
+                cg.opt_level.as_ref().map(String::as_ref),
+                nightly_options::is_nightly_build(),
+            ) {
                 (None, _) => OptLevel::No,
                 (Some("0"), _) => OptLevel::No,
                 (Some("1"), _) => OptLevel::Less,
@@ -1842,13 +1923,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                 (Some("s"), true) => OptLevel::Size,
                 (Some("z"), true) => OptLevel::SizeMin,
                 (Some("s"), false) | (Some("z"), false) => {
-                    early_error(error_format, &format!("the optimizations s or z are only \
-                                                        accepted on the nightly compiler"));
-                },
+                    early_error(
+                        error_format,
+                        &format!(
+                            "the optimizations s or z are only \
+                             accepted on the nightly compiler"
+                        ),
+                    );
+                }
                 (Some(arg), _) => {
-                    early_error(error_format, &format!("optimization level needs to be \
-                                                      between 0-3 (instead was `{}`)",
-                                                     arg));
+                    early_error(
+                        error_format,
+                        &format!(
+                            "optimization level needs to be \
+                             between 0-3 (instead was `{}`)",
+                            arg
+                        ),
+                    );
                 }
             }
         }
@@ -1865,9 +1956,14 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             Some(1) => LimitedDebugInfo,
             Some(2) => FullDebugInfo,
             Some(arg) => {
-                early_error(error_format, &format!("debug info level needs to be between \
-                                                  0-2 (instead was `{}`)",
-                                                 arg));
+                early_error(
+                    error_format,
+                    &format!(
+                        "debug info level needs to be between \
+                         0-2 (instead was `{}`)",
+                        arg
+                    ),
+                );
             }
         }
     };
@@ -1877,76 +1973,91 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         search_paths.add_path(&s[..], error_format);
     }
 
-    let libs = matches.opt_strs("l").into_iter().map(|s| {
-        // Parse string of the form "[KIND=]lib[:new_name]",
-        // where KIND is one of "dylib", "framework", "static".
-        let mut parts = s.splitn(2, '=');
-        let kind = parts.next().unwrap();
-        let (name, kind) = match (parts.next(), kind) {
-            (None, name) => (name, None),
-            (Some(name), "dylib") => (name, Some(cstore::NativeUnknown)),
-            (Some(name), "framework") => (name, Some(cstore::NativeFramework)),
-            (Some(name), "static") => (name, Some(cstore::NativeStatic)),
-            (Some(name), "static-nobundle") => (name, Some(cstore::NativeStaticNobundle)),
-            (_, s) => {
-                early_error(error_format, &format!("unknown library kind `{}`, expected \
-                                                  one of dylib, framework, or static",
-                                                 s));
+    let libs = matches
+        .opt_strs("l")
+        .into_iter()
+        .map(|s| {
+            // Parse string of the form "[KIND=]lib[:new_name]",
+            // where KIND is one of "dylib", "framework", "static".
+            let mut parts = s.splitn(2, '=');
+            let kind = parts.next().unwrap();
+            let (name, kind) = match (parts.next(), kind) {
+                (None, name) => (name, None),
+                (Some(name), "dylib") => (name, Some(cstore::NativeUnknown)),
+                (Some(name), "framework") => (name, Some(cstore::NativeFramework)),
+                (Some(name), "static") => (name, Some(cstore::NativeStatic)),
+                (Some(name), "static-nobundle") => (name, Some(cstore::NativeStaticNobundle)),
+                (_, s) => {
+                    early_error(
+                        error_format,
+                        &format!(
+                            "unknown library kind `{}`, expected \
+                             one of dylib, framework, or static",
+                            s
+                        ),
+                    );
+                }
+            };
+            if kind == Some(cstore::NativeStaticNobundle) && !nightly_options::is_nightly_build() {
+                early_error(
+                    error_format,
+                    &format!(
+                        "the library kind 'static-nobundle' is only \
+                         accepted on the nightly compiler"
+                    ),
+                );
             }
-        };
-        if kind == Some(cstore::NativeStaticNobundle) && !nightly_options::is_nightly_build() {
-            early_error(error_format, &format!("the library kind 'static-nobundle' is only \
-                                                accepted on the nightly compiler"));
-        }
-        let mut name_parts = name.splitn(2, ':');
-        let name = name_parts.next().unwrap();
-        let new_name = name_parts.next();
-        (name.to_string(), new_name.map(|n| n.to_string()), kind)
-    }).collect();
+            let mut name_parts = name.splitn(2, ':');
+            let name = name_parts.next().unwrap();
+            let new_name = name_parts.next();
+            (name.to_string(), new_name.map(|n| n.to_string()), kind)
+        })
+        .collect();
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
 
-    prints.extend(matches.opt_strs("print").into_iter().map(|s| {
-        match &*s {
-            "crate-name" => PrintRequest::CrateName,
-            "file-names" => PrintRequest::FileNames,
-            "sysroot" => PrintRequest::Sysroot,
-            "cfg" => PrintRequest::Cfg,
-            "target-list" => PrintRequest::TargetList,
-            "target-cpus" => PrintRequest::TargetCPUs,
-            "target-features" => PrintRequest::TargetFeatures,
-            "relocation-models" => PrintRequest::RelocationModels,
-            "code-models" => PrintRequest::CodeModels,
-            "tls-models" => PrintRequest::TlsModels,
-            "native-static-libs" => PrintRequest::NativeStaticLibs,
-            "target-spec-json" => {
-                if nightly_options::is_unstable_enabled(matches) {
-                    PrintRequest::TargetSpec
-                } else {
-                    early_error(error_format,
-                                &format!("the `-Z unstable-options` flag must also be passed to \
-                                          enable the target-spec-json print option"));
-                }
-            },
-            req => {
-                early_error(error_format, &format!("unknown print request `{}`", req))
+    prints.extend(matches.opt_strs("print").into_iter().map(|s| match &*s {
+        "crate-name" => PrintRequest::CrateName,
+        "file-names" => PrintRequest::FileNames,
+        "sysroot" => PrintRequest::Sysroot,
+        "cfg" => PrintRequest::Cfg,
+        "target-list" => PrintRequest::TargetList,
+        "target-cpus" => PrintRequest::TargetCPUs,
+        "target-features" => PrintRequest::TargetFeatures,
+        "relocation-models" => PrintRequest::RelocationModels,
+        "code-models" => PrintRequest::CodeModels,
+        "tls-models" => PrintRequest::TlsModels,
+        "native-static-libs" => PrintRequest::NativeStaticLibs,
+        "target-spec-json" => {
+            if nightly_options::is_unstable_enabled(matches) {
+                PrintRequest::TargetSpec
+            } else {
+                early_error(
+                    error_format,
+                    &format!(
+                        "the `-Z unstable-options` flag must also be passed to \
+                         enable the target-spec-json print option"
+                    ),
+                );
             }
         }
+        req => early_error(error_format, &format!("unknown print request `{}`", req)),
     }));
 
     let borrowck_mode = match debugging_opts.borrowck.as_ref().map(|s| &s[..]) {
         None | Some("ast") => BorrowckMode::Ast,
         Some("mir") => BorrowckMode::Mir,
         Some("compare") => BorrowckMode::Compare,
-        Some(m) => {
-            early_error(error_format, &format!("unknown borrowck mode `{}`", m))
-        },
+        Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
-        early_warn(error_format, "-C remark will not show source locations without \
-                                --debuginfo");
+        early_warn(
+            error_format,
+            "-C remark will not show source locations without \
+             --debuginfo",
+        );
     }
 
     let mut externs = BTreeMap::new();
@@ -1958,63 +2069,85 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         };
         let location = match parts.next() {
             Some(s) => s,
-            None => early_error(error_format, "--extern value must be of the format `foo=bar`"),
+            None => early_error(
+                error_format,
+                "--extern value must be of the format `foo=bar`",
+            ),
         };
 
-        externs.entry(name.to_string())
-               .or_insert_with(BTreeSet::new)
-               .insert(location.to_string());
+        externs
+            .entry(name.to_string())
+            .or_insert_with(BTreeSet::new)
+            .insert(location.to_string());
     }
 
     let crate_name = matches.opt_str("crate-name");
 
-    (Options {
-        crate_types,
-        optimize: opt_level,
-        debuginfo,
-        lint_opts,
-        lint_cap,
-        describe_lints,
-        output_types: OutputTypes(output_types),
-        search_paths,
-        maybe_sysroot: sysroot_opt,
-        target_triple: target,
-        test,
-        incremental,
-        debugging_opts,
-        prints,
-        borrowck_mode,
-        cg,
-        error_format,
-        externs: Externs(externs),
-        crate_name,
-        alt_std_name: None,
-        libs,
-        unstable_features: UnstableFeatures::from_environment(),
-        debug_assertions,
-        actually_rustdoc: false,
-        cli_forced_codegen_units: codegen_units,
-        cli_forced_thinlto_off: disable_thinlto,
-    },
-    cfg)
+    let remap_path_prefix = matches
+        .opt_strs("remap-path-prefix")
+        .into_iter()
+        .map(|remap| {
+            let mut parts = remap.rsplitn(2, '='); // reverse iterator
+            let to = parts.next();
+            let from = parts.next();
+            match (from, to) {
+                (Some(from), Some(to)) => (PathBuf::from(from), PathBuf::from(to)),
+                _ => early_error(
+                    error_format,
+                    "--remap-path-prefix must contain '=' between FROM and TO",
+                ),
+            }
+        })
+        .collect();
+
+    (
+        Options {
+            crate_types,
+            optimize: opt_level,
+            debuginfo,
+            lint_opts,
+            lint_cap,
+            describe_lints,
+            output_types: OutputTypes(output_types),
+            search_paths,
+            maybe_sysroot: sysroot_opt,
+            target_triple: target,
+            test,
+            incremental,
+            debugging_opts,
+            prints,
+            borrowck_mode,
+            cg,
+            error_format,
+            externs: Externs(externs),
+            crate_name,
+            alt_std_name: None,
+            libs,
+            unstable_features: UnstableFeatures::from_environment(),
+            debug_assertions,
+            actually_rustdoc: false,
+            cli_forced_codegen_units: codegen_units,
+            cli_forced_thinlto_off: disable_thinlto,
+            remap_path_prefix,
+        },
+        cfg,
+    )
 }
 
-pub fn parse_crate_types_from_list(list_list: Vec<String>)
-                                   -> Result<Vec<CrateType>, String> {
+pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
     let mut crate_types: Vec<CrateType> = Vec::new();
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
-                "lib"       => default_lib_output(),
-                "rlib"      => CrateTypeRlib,
+                "lib" => default_lib_output(),
+                "rlib" => CrateTypeRlib,
                 "staticlib" => CrateTypeStaticlib,
-                "dylib"     => CrateTypeDylib,
-                "cdylib"    => CrateTypeCdylib,
-                "bin"       => CrateTypeExecutable,
+                "dylib" => CrateTypeDylib,
+                "cdylib" => CrateTypeCdylib,
+                "bin" => CrateTypeExecutable,
                 "proc-macro" => CrateTypeProcMacro,
                 _ => {
-                    return Err(format!("unknown crate type: `{}`",
-                                       part));
+                    return Err(format!("unknown crate type: `{}`", part));
                 }
             };
             if !crate_types.contains(&new_part) {
@@ -2033,7 +2166,11 @@ pub mod nightly_options {
     use session::early_error;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
-        is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
+        is_nightly_build()
+            && matches
+                .opt_strs("Z")
+                .iter()
+                .any(|x| *x == "unstable-options")
     }
 
     pub fn is_nightly_build() -> bool {
@@ -2041,30 +2178,40 @@ pub mod nightly_options {
     }
 
     pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
-        let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
-        let really_allows_unstable_options = UnstableFeatures::from_environment()
-            .is_nightly_build();
+        let has_z_unstable_option = matches
+            .opt_strs("Z")
+            .iter()
+            .any(|x| *x == "unstable-options");
+        let really_allows_unstable_options =
+            UnstableFeatures::from_environment().is_nightly_build();
 
         for opt in flags.iter() {
             if opt.stability == OptionStability::Stable {
-                continue
+                continue;
             }
             if !matches.opt_present(opt.name) {
-                continue
+                continue;
             }
             if opt.name != "Z" && !has_z_unstable_option {
-                early_error(ErrorOutputType::default(),
-                            &format!("the `-Z unstable-options` flag must also be passed to enable \
-                                      the flag `{}`",
-                                     opt.name));
+                early_error(
+                    ErrorOutputType::default(),
+                    &format!(
+                        "the `-Z unstable-options` flag must also be passed to enable \
+                         the flag `{}`",
+                        opt.name
+                    ),
+                );
             }
             if really_allows_unstable_options {
-                continue
+                continue;
             }
             match opt.stability {
                 OptionStability::Unstable => {
-                    let msg = format!("the option `{}` is only accepted on the \
-                                       nightly compiler", opt.name);
+                    let msg = format!(
+                        "the option `{}` is only accepted on the \
+                         nightly compiler",
+                        opt.name
+                    );
                     early_error(ErrorOutputType::default(), &msg);
                 }
                 OptionStability::Stable => {}
@@ -2107,13 +2254,12 @@ impl fmt::Display for CrateType {
 mod dep_tracking {
     use lint;
     use middle::cstore;
-    use session::search_paths::{PathKind, SearchPaths};
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
-    use super::{Passes, CrateType, OptLevel, DebugInfoLevel, Lto,
-                OutputTypes, Externs, ErrorOutputType, Sanitizer, Epoch};
+    use super::{CrateType, DebugInfoLevel, Epoch, ErrorOutputType, Lto, OptLevel, OutputTypes,
+                Passes, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
 
@@ -2170,7 +2316,6 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Lto);
     impl_dep_tracking_hash_via_hash!(DebugInfoLevel);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
-    impl_dep_tracking_hash_via_hash!(Externs);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
@@ -2181,22 +2326,17 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
-    impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
-                                                 Option<cstore::NativeLibraryKind>));
+    impl_dep_tracking_hash_for_sortable_vec_of!((
+        String,
+        Option<String>,
+        Option<cstore::NativeLibraryKind>
+    ));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
-    impl DepTrackingHash for SearchPaths {
-        fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
-            let mut elems: Vec<_> = self
-                .iter(PathKind::All)
-                .collect();
-            elems.sort();
-            Hash::hash(&elems, hasher);
-        }
-    }
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
-        where T1: DepTrackingHash,
-              T2: DepTrackingHash
+    where
+        T1: DepTrackingHash,
+        T2: DepTrackingHash,
     {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
             Hash::hash(&0, hasher);
@@ -2207,9 +2347,10 @@ mod dep_tracking {
     }
 
     impl<T1, T2, T3> DepTrackingHash for (T1, T2, T3)
-        where T1: DepTrackingHash,
-              T2: DepTrackingHash,
-              T3: DepTrackingHash
+    where
+        T1: DepTrackingHash,
+        T2: DepTrackingHash,
+        T3: DepTrackingHash,
     {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
             Hash::hash(&0, hasher);
@@ -2222,9 +2363,11 @@ mod dep_tracking {
     }
 
     // This is a stable hash because BTreeMap is a sorted container
-    pub fn stable_hash(sub_hashes: BTreeMap<&'static str, &DepTrackingHash>,
-                       hasher: &mut DefaultHasher,
-                       error_format: ErrorOutputType) {
+    pub fn stable_hash(
+        sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
+        hasher: &mut DefaultHasher,
+        error_format: ErrorOutputType,
+    ) {
         for (key, sub_hash) in sub_hashes {
             // Using Hash::hash() instead of DepTrackingHash::hash() is fine for
             // the keys, as they are just plain strings
@@ -2247,16 +2390,17 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
     use std::path::PathBuf;
-    use super::{OutputType, OutputTypes, Externs};
+    use super::{Externs, OutputType, OutputTypes};
     use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
+    use syntax;
 
     fn optgroups() -> getopts::Options {
         let mut opts = getopts::Options::new();
         for group in super::rustc_optgroups() {
             (group.apply)(&mut opts);
         }
-        return opts
+        return opts;
     }
 
     fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
@@ -2270,70 +2414,66 @@ mod tests {
     // When the user supplies --test we should implicitly supply --cfg test
     #[test]
     fn test_switch_implies_cfg_test() {
-        let matches =
-            &match optgroups().parse(&["--test".to_string()]) {
-              Ok(m) => m,
-              Err(f) => panic!("test_switch_implies_cfg_test: {}", f)
+        syntax::with_globals(|| {
+            let matches = &match optgroups().parse(&["--test".to_string()]) {
+                Ok(m) => m,
+                Err(f) => panic!("test_switch_implies_cfg_test: {}", f),
             };
-        let registry = errors::registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, None, registry);
-        let cfg = build_configuration(&sess, cfg);
-        assert!(cfg.contains(&(Symbol::intern("test"), None)));
+            let registry = errors::registry::Registry::new(&[]);
+            let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+            let sess = build_session(sessopts, None, registry);
+            let cfg = build_configuration(&sess, cfg);
+            assert!(cfg.contains(&(Symbol::intern("test"), None)));
+        });
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
-        let matches =
-            &match optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]) {
-              Ok(m) => m,
-              Err(f) => {
-                panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f)
-              }
+        syntax::with_globals(|| {
+            let matches = &match optgroups().parse(&["--test".to_string(),
+                                                     "--cfg=test".to_string()]) {
+                Ok(m) => m,
+                Err(f) => panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f),
             };
-        let registry = errors::registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, None, registry);
-        let cfg = build_configuration(&sess, cfg);
-        let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
-        assert!(test_items.next().is_some());
-        assert!(test_items.next().is_none());
+            let registry = errors::registry::Registry::new(&[]);
+            let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+            let sess = build_session(sessopts, None, registry);
+            let cfg = build_configuration(&sess, cfg);
+            let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
+            assert!(test_items.next().is_some());
+            assert!(test_items.next().is_none());
+        });
     }
 
     #[test]
     fn test_can_print_warnings() {
-        {
-            let matches = optgroups().parse(&[
-                "-Awarnings".to_string()
-            ]).unwrap();
+        syntax::with_globals(|| {
+            let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
             assert!(!sess.diagnostic().flags.can_emit_warnings);
-        }
+        });
 
-        {
-            let matches = optgroups().parse(&[
-                "-Awarnings".to_string(),
-                "-Dwarnings".to_string()
-            ]).unwrap();
+        syntax::with_globals(|| {
+            let matches = optgroups()
+                .parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()])
+                .unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
-        }
+        });
 
-        {
-            let matches = optgroups().parse(&[
-                "-Adead_code".to_string()
-            ]).unwrap();
+        syntax::with_globals(|| {
+            let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
             let registry = errors::registry::Registry::new(&[]);
             let (sessopts, _) = build_session_options_and_crate_config(&matches);
             let sess = build_session(sessopts, None, registry);
             assert!(sess.diagnostic().flags.can_emit_warnings);
-        }
+        });
     }
 
     #[test]
@@ -2342,10 +2482,10 @@ mod tests {
         let mut v2 = super::basic_options();
         let mut v3 = super::basic_options();
 
-        v1.output_types = OutputTypes::new(&[(OutputType::Exe,
-                                              Some(PathBuf::from("./some/thing")))]);
-        v2.output_types = OutputTypes::new(&[(OutputType::Exe,
-                                              Some(PathBuf::from("/some/thing")))]);
+        v1.output_types =
+            OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("./some/thing")))]);
+        v2.output_types =
+            OutputTypes::new(&[(OutputType::Exe, Some(PathBuf::from("/some/thing")))]);
         v3.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
 
         assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
@@ -2380,67 +2520,42 @@ mod tests {
     }
 
     #[test]
-    fn test_externs_tracking_hash_different_values() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
-
-        v1.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("d"), mk_set(vec![String::from("e"),
-                                            String::from("f")])),
-        ]));
-
-        v2.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("X"), mk_set(vec![String::from("e"),
-                                            String::from("f")])),
-        ]));
-
-        v3.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("d"), mk_set(vec![String::from("X"),
-                                            String::from("f")])),
-        ]));
-
-        assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
-        assert!(v2.dep_tracking_hash() != v3.dep_tracking_hash());
-
-        // Check clone
-        assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
-        assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
-        assert_eq!(v3.dep_tracking_hash(), v3.clone().dep_tracking_hash());
-    }
-
-    #[test]
     fn test_externs_tracking_hash_different_construction_order() {
         let mut v1 = super::basic_options();
         let mut v2 = super::basic_options();
         let mut v3 = super::basic_options();
 
         v1.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("d"), mk_set(vec![String::from("e"),
-                                            String::from("f")])),
+            (
+                String::from("a"),
+                mk_set(vec![String::from("b"), String::from("c")]),
+            ),
+            (
+                String::from("d"),
+                mk_set(vec![String::from("e"), String::from("f")]),
+            ),
         ]));
 
         v2.externs = Externs::new(mk_map(vec![
-            (String::from("d"), mk_set(vec![String::from("e"),
-                                            String::from("f")])),
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
+            (
+                String::from("d"),
+                mk_set(vec![String::from("e"), String::from("f")]),
+            ),
+            (
+                String::from("a"),
+                mk_set(vec![String::from("b"), String::from("c")]),
+            ),
         ]));
 
         v3.externs = Externs::new(mk_map(vec![
-            (String::from("a"), mk_set(vec![String::from("b"),
-                                            String::from("c")])),
-            (String::from("d"), mk_set(vec![String::from("f"),
-                                            String::from("e")])),
+            (
+                String::from("a"),
+                mk_set(vec![String::from("b"), String::from("c")]),
+            ),
+            (
+                String::from("d"),
+                mk_set(vec![String::from("f"), String::from("e")]),
+            ),
         ]));
 
         assert_eq!(v1.dep_tracking_hash(), v2.dep_tracking_hash());
@@ -2459,20 +2574,26 @@ mod tests {
         let mut v2 = super::basic_options();
         let mut v3 = super::basic_options();
 
-        v1.lint_opts = vec![(String::from("a"), lint::Allow),
-                            (String::from("b"), lint::Warn),
-                            (String::from("c"), lint::Deny),
-                            (String::from("d"), lint::Forbid)];
+        v1.lint_opts = vec![
+            (String::from("a"), lint::Allow),
+            (String::from("b"), lint::Warn),
+            (String::from("c"), lint::Deny),
+            (String::from("d"), lint::Forbid),
+        ];
 
-        v2.lint_opts = vec![(String::from("a"), lint::Allow),
-                            (String::from("b"), lint::Warn),
-                            (String::from("X"), lint::Deny),
-                            (String::from("d"), lint::Forbid)];
+        v2.lint_opts = vec![
+            (String::from("a"), lint::Allow),
+            (String::from("b"), lint::Warn),
+            (String::from("X"), lint::Deny),
+            (String::from("d"), lint::Forbid),
+        ];
 
-        v3.lint_opts = vec![(String::from("a"), lint::Allow),
-                            (String::from("b"), lint::Warn),
-                            (String::from("c"), lint::Forbid),
-                            (String::from("d"), lint::Deny)];
+        v3.lint_opts = vec![
+            (String::from("a"), lint::Allow),
+            (String::from("b"), lint::Warn),
+            (String::from("c"), lint::Forbid),
+            (String::from("d"), lint::Deny),
+        ];
 
         assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
@@ -2489,84 +2610,25 @@ mod tests {
         let mut v1 = super::basic_options();
         let mut v2 = super::basic_options();
 
-        v1.lint_opts = vec![(String::from("a"), lint::Allow),
-                            (String::from("b"), lint::Warn),
-                            (String::from("c"), lint::Deny),
-                            (String::from("d"), lint::Forbid)];
+        v1.lint_opts = vec![
+            (String::from("a"), lint::Allow),
+            (String::from("b"), lint::Warn),
+            (String::from("c"), lint::Deny),
+            (String::from("d"), lint::Forbid),
+        ];
 
-        v2.lint_opts = vec![(String::from("a"), lint::Allow),
-                            (String::from("c"), lint::Deny),
-                            (String::from("b"), lint::Warn),
-                            (String::from("d"), lint::Forbid)];
+        v2.lint_opts = vec![
+            (String::from("a"), lint::Allow),
+            (String::from("c"), lint::Deny),
+            (String::from("b"), lint::Warn),
+            (String::from("d"), lint::Forbid),
+        ];
 
         assert_eq!(v1.dep_tracking_hash(), v2.dep_tracking_hash());
 
         // Check clone
         assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
         assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
-    }
-
-    #[test]
-    fn test_search_paths_tracking_hash_different_values() {
-        let mut v1 = super::basic_options();
-        let mut v2 = super::basic_options();
-        let mut v3 = super::basic_options();
-        let mut v4 = super::basic_options();
-        let mut v5 = super::basic_options();
-
-        // Reference
-        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Native changed
-        v2.search_paths.add_path("native=XXX", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Crate changed
-        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("crate=XXX", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Dependency changed
-        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("dependency=XXX", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // Framework changed
-        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("framework=XXX", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-
-        // All changed
-        v5.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v5.search_paths.add_path("all=XXX", super::ErrorOutputType::Json(false));
-
-        assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v4.dep_tracking_hash());
-        assert!(v1.dep_tracking_hash() != v5.dep_tracking_hash());
-
-        // Check clone
-        assert_eq!(v1.dep_tracking_hash(), v1.clone().dep_tracking_hash());
-        assert_eq!(v2.dep_tracking_hash(), v2.clone().dep_tracking_hash());
-        assert_eq!(v3.dep_tracking_hash(), v3.clone().dep_tracking_hash());
-        assert_eq!(v4.dep_tracking_hash(), v4.clone().dep_tracking_hash());
-        assert_eq!(v5.dep_tracking_hash(), v5.clone().dep_tracking_hash());
     }
 
     #[test]
@@ -2577,29 +2639,49 @@ mod tests {
         let mut v4 = super::basic_options();
 
         // Reference
-        v1.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v1.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
+        v1.search_paths
+            .add_path("native=abc", super::ErrorOutputType::Json(false));
+        v1.search_paths
+            .add_path("crate=def", super::ErrorOutputType::Json(false));
+        v1.search_paths
+            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v1.search_paths
+            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v1.search_paths
+            .add_path("all=mno", super::ErrorOutputType::Json(false));
 
-        v2.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v2.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
+        v2.search_paths
+            .add_path("native=abc", super::ErrorOutputType::Json(false));
+        v2.search_paths
+            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v2.search_paths
+            .add_path("crate=def", super::ErrorOutputType::Json(false));
+        v2.search_paths
+            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v2.search_paths
+            .add_path("all=mno", super::ErrorOutputType::Json(false));
 
-        v3.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v3.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
+        v3.search_paths
+            .add_path("crate=def", super::ErrorOutputType::Json(false));
+        v3.search_paths
+            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v3.search_paths
+            .add_path("native=abc", super::ErrorOutputType::Json(false));
+        v3.search_paths
+            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v3.search_paths
+            .add_path("all=mno", super::ErrorOutputType::Json(false));
 
-        v4.search_paths.add_path("all=mno", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("native=abc", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("crate=def", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("dependency=ghi", super::ErrorOutputType::Json(false));
-        v4.search_paths.add_path("framework=jkl", super::ErrorOutputType::Json(false));
+        v4.search_paths
+            .add_path("all=mno", super::ErrorOutputType::Json(false));
+        v4.search_paths
+            .add_path("native=abc", super::ErrorOutputType::Json(false));
+        v4.search_paths
+            .add_path("crate=def", super::ErrorOutputType::Json(false));
+        v4.search_paths
+            .add_path("dependency=ghi", super::ErrorOutputType::Json(false));
+        v4.search_paths
+            .add_path("framework=jkl", super::ErrorOutputType::Json(false));
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
@@ -2620,24 +2702,36 @@ mod tests {
         let mut v4 = super::basic_options();
 
         // Reference
-        v1.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("b"), None, Some(cstore::NativeFramework)),
-                       (String::from("c"), None, Some(cstore::NativeUnknown))];
+        v1.libs = vec![
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (String::from("b"), None, Some(cstore::NativeFramework)),
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+        ];
 
         // Change label
-        v2.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("X"), None, Some(cstore::NativeFramework)),
-                       (String::from("c"), None, Some(cstore::NativeUnknown))];
+        v2.libs = vec![
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (String::from("X"), None, Some(cstore::NativeFramework)),
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+        ];
 
         // Change kind
-        v3.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("b"), None, Some(cstore::NativeStatic)),
-                       (String::from("c"), None, Some(cstore::NativeUnknown))];
+        v3.libs = vec![
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (String::from("b"), None, Some(cstore::NativeStatic)),
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+        ];
 
         // Change new-name
-        v4.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("b"), Some(String::from("X")), Some(cstore::NativeFramework)),
-                       (String::from("c"), None, Some(cstore::NativeUnknown))];
+        v4.libs = vec![
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (
+                String::from("b"),
+                Some(String::from("X")),
+                Some(cstore::NativeFramework),
+            ),
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+        ];
 
         assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
@@ -2657,17 +2751,23 @@ mod tests {
         let mut v3 = super::basic_options();
 
         // Reference
-        v1.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("b"), None, Some(cstore::NativeFramework)),
-                       (String::from("c"), None, Some(cstore::NativeUnknown))];
+        v1.libs = vec![
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (String::from("b"), None, Some(cstore::NativeFramework)),
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+        ];
 
-        v2.libs = vec![(String::from("b"), None, Some(cstore::NativeFramework)),
-                       (String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("c"), None, Some(cstore::NativeUnknown))];
+        v2.libs = vec![
+            (String::from("b"), None, Some(cstore::NativeFramework)),
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+        ];
 
-        v3.libs = vec![(String::from("c"), None, Some(cstore::NativeUnknown)),
-                       (String::from("a"), None, Some(cstore::NativeStatic)),
-                       (String::from("b"), None, Some(cstore::NativeFramework))];
+        v3.libs = vec![
+            (String::from("c"), None, Some(cstore::NativeUnknown)),
+            (String::from("a"), None, Some(cstore::NativeStatic)),
+            (String::from("b"), None, Some(cstore::NativeFramework)),
+        ];
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
@@ -2706,8 +2806,7 @@ mod tests {
         opts.cg.codegen_units = Some(42);
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
-        opts.cg.remark = super::SomePasses(vec![String::from("pass1"),
-                                                String::from("pass2")]);
+        opts.cg.remark = super::SomePasses(vec![String::from("pass1"), String::from("pass2")]);
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts.cg.save_temps = true;
@@ -2715,7 +2814,6 @@ mod tests {
 
         opts.cg.incremental = Some(String::from("abc"));
         assert_eq!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
-
 
         // Make sure changing a [TRACKED] option changes the hash
         opts = reference.clone();

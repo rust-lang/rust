@@ -1,7 +1,7 @@
 error[E0658]: raw pointer `self` is unstable (see issue #44874)
   --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:19:18
    |
-19 |     fn bar(self: *const Self);
+LL |     fn bar(self: *const Self);
    |                  ^^^^^^^^^^^
    |
    = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
@@ -10,7 +10,7 @@ error[E0658]: raw pointer `self` is unstable (see issue #44874)
 error[E0658]: raw pointer `self` is unstable (see issue #44874)
   --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:14:18
    |
-14 |     fn foo(self: *const Self) {}
+LL |     fn foo(self: *const Self) {}
    |                  ^^^^^^^^^^^
    |
    = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
@@ -19,7 +19,7 @@ error[E0658]: raw pointer `self` is unstable (see issue #44874)
 error[E0658]: raw pointer `self` is unstable (see issue #44874)
   --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:24:18
    |
-24 |     fn bar(self: *const Self) {}
+LL |     fn bar(self: *const Self) {}
    |                  ^^^^^^^^^^^
    |
    = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
@@ -27,3 +27,4 @@ error[E0658]: raw pointer `self` is unstable (see issue #44874)
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

@@ -1,7 +1,7 @@
 error[E0460]: found possibly newer version of crate `a` which `b` depends on
   --> $DIR/svh-change-trait-bound.rs:20:1
    |
-20 | extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
+LL | extern crate b; //~ ERROR: found possibly newer version of crate `a` which `b` depends on
    | ^^^^^^^^^^^^^^^
    |
    = note: perhaps that crate needs to be recompiled?
@@ -11,3 +11,4 @@ error[E0460]: found possibly newer version of crate `a` which `b` depends on
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0460`.

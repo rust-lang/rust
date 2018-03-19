@@ -71,7 +71,7 @@ impl<'tcx> Place {
 
     pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
         match ty.sty {
-            ty::TyArray(elem, n) => (elem, n.val.to_const_int().unwrap().to_u64().unwrap() as u64),
+            ty::TyArray(elem, n) => (elem, n.val.unwrap_u64() as u64),
 
             ty::TySlice(elem) => {
                 match self {
@@ -90,7 +90,7 @@ impl<'tcx> Place {
     }
 }
 
-impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
+impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Reads a value from the place without going through the intermediate step of obtaining
     /// a `miri::Place`
     pub fn try_read_place(
@@ -103,15 +103,40 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             Local(mir::RETURN_PLACE) => err!(ReadFromReturnPointer),
             // Directly reading a local will always succeed
             Local(local) => self.frame().get_local(local).map(Some),
-            // Directly reading a static will always succeed
-            Static(ref static_) => {
-                let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                Ok(Some(self.read_global_as_value(GlobalId {
-                    instance,
-                    promoted: None,
-                }, self.layout_of(self.place_ty(place))?)))
-            }
+            // No fast path for statics. Reading from statics is rare and would require another
+            // Machine function to handle differently in miri.
+            Static(_) => Ok(None),
             Projection(ref proj) => self.try_read_place_projection(proj),
+        }
+    }
+
+    pub fn read_field(
+        &self,
+        base: Value,
+        variant: Option<usize>,
+        field: mir::Field,
+        base_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Option<(Value, Ty<'tcx>)>> {
+        let mut base_layout = self.layout_of(base_ty)?;
+        if let Some(variant_index) = variant {
+            base_layout = base_layout.for_variant(self, variant_index);
+        }
+        let field_index = field.index();
+        let field = base_layout.field(self, field_index)?;
+        if field.size.bytes() == 0 {
+            return Ok(Some((Value::ByVal(PrimVal::Undef), field.ty)))
+        }
+        let offset = base_layout.fields.offset(field_index);
+        match base {
+            // the field covers the entire type
+            Value::ByValPair(..) |
+            Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some((base, field.ty))),
+            // split fat pointers, 2 element tuples, ...
+            Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
+                let val = [a, b][field_index];
+                Ok(Some((Value::ByVal(val), field.ty)))
+            },
+            _ => Ok(None),
         }
     }
 
@@ -126,23 +151,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
         };
         let base_ty = self.place_ty(&proj.base);
         match proj.elem {
-            Field(field, _) => {
-                let base_layout = self.layout_of(base_ty)?;
-                let field_index = field.index();
-                let field = base_layout.field(&self, field_index)?;
-                let offset = base_layout.fields.offset(field_index);
-                match base {
-                    // the field covers the entire type
-                    Value::ByValPair(..) |
-                    Value::ByVal(_) if offset.bytes() == 0 && field.size == base_layout.size => Ok(Some(base)),
-                    // split fat pointers, 2 element tuples, ...
-                    Value::ByValPair(a, b) if base_layout.fields.count() == 2 => {
-                        let val = [a, b][field_index];
-                        Ok(Some(Value::ByVal(val)))
-                    },
-                    _ => Ok(None),
-                }
-            },
+            Field(field, _) => Ok(self.read_field(base, None, field, base_ty)?.map(|(f, _)| f)),
             // The NullablePointer cases should work fine, need to take care for normal enums
             Downcast(..) |
             Subslice { .. } |
@@ -188,17 +197,29 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
             },
 
             Static(ref static_) => {
-                let instance = ty::Instance::mono(self.tcx, static_.def_id);
-                let gid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
+                let alloc = self
+                    .tcx
+                    .interpret_interner
+                    .get_cached(static_.def_id);
                 let layout = self.layout_of(self.place_ty(mir_place))?;
-                let alloc = self.tcx.interpret_interner.borrow().get_cached(gid).expect("uncached global");
-                Place::Ptr {
-                    ptr: MemoryPointer::new(alloc, 0).into(),
-                    align: layout.align,
-                    extra: PlaceExtra::None,
+                if let Some(alloc) = alloc {
+                    Place::Ptr {
+                        ptr: MemoryPointer::new(alloc, 0).into(),
+                        align: layout.align,
+                        extra: PlaceExtra::None,
+                    }
+                } else {
+                    let instance = ty::Instance::mono(*self.tcx, static_.def_id);
+                    let cid = GlobalId {
+                        instance,
+                        promoted: None
+                    };
+                    let alloc = Machine::init_static(self, cid)?;
+                    Place::Ptr {
+                        ptr: MemoryPointer::new(alloc, 0).into(),
+                        align: layout.align,
+                        extra: PlaceExtra::None,
+                    }
                 }
             }
 
@@ -424,7 +445,7 @@ impl<'a, 'tcx, M: Machine<'tcx>> EvalContext<'a, 'tcx, M> {
 
     pub fn place_ty(&self, place: &mir::Place<'tcx>) -> Ty<'tcx> {
         self.monomorphize(
-            place.ty(self.mir(), self.tcx).to_ty(self.tcx),
+            place.ty(self.mir(), *self.tcx).to_ty(*self.tcx),
             self.substs(),
         )
     }

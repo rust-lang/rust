@@ -1,10 +1,11 @@
 error[E0658]: #[doc(spotlight)] is experimental (see issue #45040)
   --> $DIR/feature-gate-doc_spotlight.rs:11:1
    |
-11 | #[doc(spotlight)] //~ ERROR: #[doc(spotlight)] is experimental
+LL | #[doc(spotlight)] //~ ERROR: #[doc(spotlight)] is experimental
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(doc_spotlight)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

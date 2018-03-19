@@ -1,7 +1,7 @@
 error[E0393]: the type parameter `RHS` must be explicitly specified
   --> $DIR/issue-21950.rs:17:14
    |
-17 |             &Add;
+LL |             &Add;
    |              ^^^ missing reference to `RHS`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
@@ -9,8 +9,10 @@ error[E0393]: the type parameter `RHS` must be explicitly specified
 error[E0191]: the value of the associated type `Output` (from the trait `std::ops::Add`) must be specified
   --> $DIR/issue-21950.rs:17:14
    |
-17 |             &Add;
+LL |             &Add;
    |              ^^^ missing associated type `Output` value
 
 error: aborting due to 2 previous errors
 
+Some errors occurred: E0191, E0393.
+For more information about an error, try `rustc --explain E0191`.

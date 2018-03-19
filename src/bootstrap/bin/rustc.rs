@@ -61,6 +61,11 @@ fn main() {
         args.remove(n);
     }
 
+    if let Some(s) = env::var_os("RUSTC_ERROR_FORMAT") {
+        args.push("--error-format".into());
+        args.push(s);
+    }
+
     // Detect whether or not we're a build script depending on whether --target
     // is passed (a bit janky...)
     let target = args.windows(2)
@@ -90,7 +95,7 @@ fn main() {
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
     let mut dylib_path = bootstrap::util::dylib_path();
-    dylib_path.insert(0, PathBuf::from(libdir));
+    dylib_path.insert(0, PathBuf::from(&libdir));
 
     let mut cmd = Command::new(rustc);
     cmd.args(&args)
@@ -102,7 +107,7 @@ fn main() {
     if let Some(target) = target {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option.
-        cmd.arg("--sysroot").arg(sysroot);
+        cmd.arg("--sysroot").arg(&sysroot);
 
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
@@ -170,9 +175,6 @@ fn main() {
         if let Ok(s) = env::var("RUSTC_CODEGEN_UNITS") {
             cmd.arg("-C").arg(format!("codegen-units={}", s));
         }
-        if env::var("RUSTC_THINLTO").is_ok() {
-            cmd.arg("-Ccodegen-units=16").arg("-Zthinlto");
-        }
 
         // Emit save-analysis info.
         if env::var("RUSTC_SAVE_ANALYSIS") == Ok("api".to_string()) {
@@ -219,7 +221,7 @@ fn main() {
                 // flesh out rpath support more fully in the future.
                 cmd.arg("-Z").arg("osx-rpath-install-name");
                 Some("-Wl,-rpath,@loader_path/../lib")
-            } else if !target.contains("windows") {
+            } else if !target.contains("windows") && !target.contains("wasm32") {
                 Some("-Wl,-rpath,$ORIGIN/../lib")
             } else {
                 None
@@ -275,6 +277,8 @@ fn main() {
 
     if verbose > 1 {
         eprintln!("rustc command: {:?}", cmd);
+        eprintln!("sysroot: {:?}", sysroot);
+        eprintln!("libdir: {:?}", libdir);
     }
 
     // Actually run the compiler!

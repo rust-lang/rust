@@ -387,10 +387,11 @@ impl UnixStream {
     /// Sets the read timeout for the socket.
     ///
     /// If the provided value is [`None`], then [`read`] calls will block
-    /// indefinitely. It is an error to pass the zero [`Duration`] to this
+    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
     /// [`read`]: ../../../../std/io/trait.Read.html#tymethod.read
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
@@ -403,6 +404,20 @@ impl UnixStream {
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
     /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::os::unix::net::UnixStream;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
+    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
@@ -411,11 +426,12 @@ impl UnixStream {
     /// Sets the write timeout for the socket.
     ///
     /// If the provided value is [`None`], then [`write`] calls will block
-    /// indefinitely. It is an error to pass the zero [`Duration`] to this
-    /// method.
+    /// indefinitely. An [`Err`] is returned if the zero [`Duration`] is
+    /// passed to this method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`read`]: ../../../../std/io/trait.Write.html#tymethod.write
+    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
+    /// [`write`]: ../../../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples
@@ -426,6 +442,20 @@ impl UnixStream {
     ///
     /// let socket = UnixStream::connect("/tmp/sock").unwrap();
     /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::net::UdpSocket;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
+    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -1250,10 +1280,11 @@ impl UnixDatagram {
     /// Sets the read timeout for the socket.
     ///
     /// If the provided value is [`None`], then [`recv`] and [`recv_from`] calls will
-    /// block indefinitely. It is an error to pass the zero [`Duration`] to this
-    /// method.
+    /// block indefinitely. An [`Err`] is returned if the zero [`Duration`]
+    /// is passed to this method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
+    /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
     /// [`recv`]: #method.recv
     /// [`recv_from`]: #method.recv_from
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
@@ -1267,6 +1298,20 @@ impl UnixDatagram {
     /// let sock = UnixDatagram::unbound().unwrap();
     /// sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
     /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::os::unix::net::UnixDatagram;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
@@ -1275,7 +1320,7 @@ impl UnixDatagram {
     /// Sets the write timeout for the socket.
     ///
     /// If the provided value is [`None`], then [`send`] and [`send_to`] calls will
-    /// block indefinitely. It is an error to pass the zero [`Duration`] to this
+    /// block indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
@@ -1292,6 +1337,20 @@ impl UnixDatagram {
     /// let sock = UnixDatagram::unbound().unwrap();
     /// sock.set_write_timeout(Some(Duration::new(1, 0)))
     ///     .expect("set_write_timeout function failed");
+    /// ```
+    ///
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this
+    /// method:
+    ///
+    /// ```no_run
+    /// use std::io;
+    /// use std::os::unix::net::UnixDatagram;
+    /// use std::time::Duration;
+    ///
+    /// let socket = UnixDatagram::unbound().unwrap();
+    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
+    /// let err = result.unwrap_err();
+    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -1410,7 +1469,7 @@ impl IntoRawFd for UnixDatagram {
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod test {
     use thread;
-    use io;
+    use io::{self, ErrorKind};
     use io::prelude::*;
     use time::Duration;
     use sys_common::io::test::tmpdir;
@@ -1613,6 +1672,27 @@ mod test {
         assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
     }
 
+    // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
+    // when passed zero Durations
+    #[test]
+    fn test_unix_stream_timeout_zero_duration() {
+        let dir = tmpdir();
+        let socket_path = dir.path().join("sock");
+
+        let listener = or_panic!(UnixListener::bind(&socket_path));
+        let stream = or_panic!(UnixStream::connect(&socket_path));
+
+        let result = stream.set_write_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        let result = stream.set_read_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        drop(listener);
+    }
+
     #[test]
     fn test_unix_datagram() {
         let dir = tmpdir();
@@ -1710,6 +1790,24 @@ mod test {
         drop(s2);
 
         thread.join().unwrap();
+    }
+
+    // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
+    // when passed zero Durations
+    #[test]
+    fn test_unix_datagram_timeout_zero_duration() {
+        let dir = tmpdir();
+        let path = dir.path().join("sock");
+
+        let datagram = or_panic!(UnixDatagram::bind(&path));
+
+        let result = datagram.set_write_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
+
+        let result = datagram.set_read_timeout(Some(Duration::new(0, 0)));
+        let err = result.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::InvalidInput);
     }
 
     #[test]

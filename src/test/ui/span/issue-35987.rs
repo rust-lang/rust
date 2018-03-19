@@ -20,3 +20,5 @@ impl<T: Clone, Add> Add for Foo<T> {
         unimplemented!();
     }
 }
+
+fn main() {}

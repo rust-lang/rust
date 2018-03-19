@@ -31,6 +31,7 @@ use core::cmp;
 
 use raw_vec::RawVec;
 
+use super::allocator::CollectionAllocErr;
 use super::range::RangeArgument;
 use Bound::{Excluded, Included, Unbounded};
 use super::vec::Vec;
@@ -564,6 +565,97 @@ impl<T> VecDeque<T> {
                 self.handle_cap_increase(old_cap);
             }
         }
+    }
+
+    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// be inserted in the given `VecDeque<T>`. After calling `reserve_exact`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve` if future insertions are expected.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::CollectionAllocErr;
+    /// use std::collections::VecDeque;
+    ///
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, CollectionAllocErr> {
+    ///     let mut output = VecDeque::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve_exact(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
+    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+        self.try_reserve(additional)
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `VecDeque<T>`. The collection may reserve more space to avoid
+    /// frequent reallocations. After calling `reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional`. Does nothing if
+    /// capacity is already sufficient.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::CollectionAllocErr;
+    /// use std::collections::VecDeque;
+    ///
+    /// fn process_data(data: &[u32]) -> Result<VecDeque<u32>, CollectionAllocErr> {
+    ///     let mut output = VecDeque::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
+    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        let old_cap = self.cap();
+        let used_cap = self.len() + 1;
+        let new_cap = used_cap.checked_add(additional)
+            .and_then(|needed_cap| needed_cap.checked_next_power_of_two())
+            .ok_or(CollectionAllocErr::CapacityOverflow)?;
+
+        if new_cap > old_cap {
+            self.buf.try_reserve_exact(used_cap, new_cap - used_cap)?;
+            unsafe {
+                self.handle_cap_increase(old_cap);
+            }
+        }
+        Ok(())
     }
 
     /// Shrinks the capacity of the `VecDeque` as much as possible.
@@ -1991,7 +2083,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 
@@ -2084,7 +2176,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 /// An owning iterator over the elements of a `VecDeque`.
@@ -2140,7 +2232,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for IntoIter<T> {}
 
 /// A draining iterator over the elements of a `VecDeque`.
@@ -2247,7 +2339,7 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
 #[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, T: 'a> FusedIterator for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

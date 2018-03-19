@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll g2p
+// revisions: lxl nll
 //[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
 //[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+
 //[g2p]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll -Z two-phase-beyond-autoref
+// the above revision is disabled until two-phase-beyond-autoref support is better
 
 // This is a test checking that when we limit two-phase borrows to
 // method receivers, we do not let other kinds of auto-ref to leak
@@ -30,8 +32,6 @@
 // #![feature(rustc_attrs)]
 
 use std::ops::{Index, IndexMut};
-use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
-use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 
 // This is case outlined by Niko that we want to ensure we reject
 // (at least initially).
@@ -72,10 +72,8 @@ fn overloaded_call_traits() {
     fn twice_ten_sm<F: FnMut(i32) -> i32>(f: &mut F) {
         f(f(10));
         //[lxl]~^     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[lxl]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~^^^   ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[g2p]~^^^^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[nll]~^^   ERROR cannot borrow `*f` as mutable more than once at a time
+        //[g2p]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_si<F: Fn(i32) -> i32>(f: &mut F) {
         f(f(10));
@@ -90,10 +88,8 @@ fn overloaded_call_traits() {
     fn twice_ten_om(f: &mut FnMut(i32) -> i32) {
         f(f(10));
         //[lxl]~^     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[lxl]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~^^^   ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~|     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[g2p]~^^^^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[nll]~^^   ERROR cannot borrow `*f` as mutable more than once at a time
+        //[g2p]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_oi(f: &mut Fn(i32) -> i32) {
         f(f(10));
@@ -105,14 +101,10 @@ fn overloaded_call_traits() {
         //[lxl]~^^^           ERROR use of moved value: `*f`
         //[nll]~^^^^          ERROR cannot move a value of type
         //[nll]~^^^^^         ERROR cannot move a value of type
-        //[nll]~^^^^^^        ERROR cannot move a value of type
-        //[nll]~^^^^^^^       ERROR cannot move a value of type
-        //[nll]~^^^^^^^^      ERROR use of moved value: `*f`
-        //[g2p]~^^^^^^^^^     ERROR cannot move a value of type
-        //[g2p]~^^^^^^^^^^    ERROR cannot move a value of type
-        //[g2p]~^^^^^^^^^^^   ERROR cannot move a value of type
-        //[g2p]~^^^^^^^^^^^^  ERROR cannot move a value of type
-        //[g2p]~^^^^^^^^^^^^^ ERROR use of moved value: `*f`
+        //[nll]~^^^^^^        ERROR use of moved value: `*f`
+        //[g2p]~^^^^^^^       ERROR cannot move a value of type
+        //[g2p]~^^^^^^^^      ERROR cannot move a value of type
+        //[g2p]~^^^^^^^^^     ERROR use of moved value: `*f`
     }
 
     twice_ten_sm(&mut |x| x + 1);
@@ -186,56 +178,6 @@ fn coerce_index_op() {
     //[nll]~^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
 }
 
-struct A(i32);
-
-macro_rules! trivial_binop {
-    ($Trait:ident, $m:ident) => {
-        impl $Trait<i32> for A { fn $m(&mut self, rhs: i32) { self.0 = rhs; } }
-    }
-}
-
-trivial_binop!(AddAssign, add_assign);
-trivial_binop!(SubAssign, sub_assign);
-trivial_binop!(MulAssign, mul_assign);
-trivial_binop!(DivAssign, div_assign);
-trivial_binop!(RemAssign, rem_assign);
-trivial_binop!(BitAndAssign, bitand_assign);
-trivial_binop!(BitOrAssign, bitor_assign);
-trivial_binop!(BitXorAssign, bitxor_assign);
-trivial_binop!(ShlAssign, shl_assign);
-trivial_binop!(ShrAssign, shr_assign);
-
-fn overloaded_binops() {
-    let mut a = A(10);
-    a += a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a -= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a *= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a /= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a &= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a |= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a ^= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a <<= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-    a >>= a.0;
-    //[lxl]~^   ERROR cannot use `a.0` because it was mutably borrowed
-    //[nll]~^^  ERROR cannot use `a.0` because it was mutably borrowed
-}
-
 fn main() {
 
     // As a reminder, this is the basic case we want to ensure we handle.
@@ -256,5 +198,4 @@ fn main() {
 
     coerce_unsized();
     coerce_index_op();
-    overloaded_binops();
 }

@@ -32,18 +32,16 @@ use ich;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;
-use util::nodemap::NodeSet;
 
 use std::any::Any;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
-use rustc_data_structures::owning_ref::ErasedBoxRef;
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_back::target::Target;
+use rustc_data_structures::sync::{MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
 
@@ -139,7 +137,7 @@ pub struct NativeLibrary {
 
 pub enum LoadedMacro {
     MacroDef(ast::Item),
-    ProcMacro(Rc<SyntaxExtension>),
+    ProcMacro(Lrc<SyntaxExtension>),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -187,11 +185,11 @@ pub trait MetadataLoader {
     fn get_rlib_metadata(&self,
                          target: &Target,
                          filename: &Path)
-                         -> Result<ErasedBoxRef<[u8]>, String>;
+                         -> Result<MetadataRef, String>;
     fn get_dylib_metadata(&self,
                           target: &Target,
                           filename: &Path)
-                          -> Result<ErasedBoxRef<[u8]>, String>;
+                          -> Result<MetadataRef, String>;
 }
 
 #[derive(Clone)]
@@ -206,7 +204,7 @@ pub struct ExternConstBody<'tcx> {
 
 #[derive(Clone)]
 pub struct ExternBodyNestedBodies {
-    pub nested_bodies: Rc<BTreeMap<hir::BodyId, hir::Body>>,
+    pub nested_bodies: Lrc<BTreeMap<hir::BodyId, hir::Body>>,
 
     // It would require a lot of infrastructure to enable stable-hashing Bodies
     // from other crates, so we hash on export and just store the fingerprint
@@ -225,16 +223,16 @@ pub struct ExternBodyNestedBodies {
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>;
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>;
 
     // access to the metadata loader
-    fn metadata_loader(&self) -> &MetadataLoader;
+    fn metadata_loader(&self) -> &dyn MetadataLoader;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
     fn def_path(&self, def: DefId) -> hir_map::DefPath;
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash;
-    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable>;
+    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable>;
 
     // "queries" used in resolve that aren't tracked for incremental compilation
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility;
@@ -258,8 +256,7 @@ pub trait CrateStore {
     // utility functions
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
@@ -297,7 +294,7 @@ pub struct DummyCrateStore;
 
 #[allow(unused_variables)]
 impl CrateStore for DummyCrateStore {
-    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Rc<Any>
+    fn crate_data_as_rc_any(&self, krate: CrateNum) -> Lrc<dyn Any>
         { bug!("crate_data_as_rc_any") }
     // item info
     fn visibility_untracked(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
@@ -325,7 +322,7 @@ impl CrateStore for DummyCrateStore {
     fn def_path_hash(&self, def: DefId) -> hir_map::DefPathHash {
         bug!("def_path_hash")
     }
-    fn def_path_table(&self, cnum: CrateNum) -> Rc<DefPathTable> {
+    fn def_path_table(&self, cnum: CrateNum) -> Lrc<DefPathTable> {
         bug!("def_path_table")
     }
     fn struct_field_names_untracked(&self, def: DefId) -> Vec<ast::Name> {
@@ -342,8 +339,7 @@ impl CrateStore for DummyCrateStore {
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 reachable: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata {
         bug!("encode_metadata")
     }
@@ -351,7 +347,7 @@ impl CrateStore for DummyCrateStore {
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum> { bug!("postorder_cnums_untracked") }
 
     // access to the metadata loader
-    fn metadata_loader(&self) -> &MetadataLoader { bug!("metadata_loader") }
+    fn metadata_loader(&self) -> &dyn MetadataLoader { bug!("metadata_loader") }
 }
 
 pub trait CrateLoader {
@@ -398,7 +394,7 @@ pub fn used_crates(tcx: TyCtxt, prefer: LinkagePreference)
         })
         .collect::<Vec<_>>();
     let mut ordering = tcx.postorder_cnums(LOCAL_CRATE);
-    Rc::make_mut(&mut ordering).reverse();
+    Lrc::make_mut(&mut ordering).reverse();
     libs.sort_by_key(|&(a, _)| {
         ordering.iter().position(|x| *x == a)
     });

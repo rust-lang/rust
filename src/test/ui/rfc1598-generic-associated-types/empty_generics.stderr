@@ -1,7 +1,7 @@
 error: expected one of `>`, identifier, or lifetime, found `,`
   --> $DIR/empty_generics.rs:14:14
    |
-14 |     type Bar<,>;
+LL |     type Bar<,>;
    |              ^ expected one of `>`, identifier, or lifetime here
 
 error: aborting due to previous error

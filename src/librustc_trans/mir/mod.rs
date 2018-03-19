@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
@@ -15,7 +16,6 @@ use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
-use rustc::infer::TransNormalize;
 use rustc::session::config::FullDebugInfo;
 use base;
 use builder::Builder;
@@ -23,6 +23,7 @@ use common::{CodegenCx, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
 use abi::{ArgAttribute, FnType, PassMode};
+use type_::Type;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
@@ -42,6 +43,8 @@ use self::operand::{OperandRef, OperandValue};
 
 /// Master context for translating MIR.
 pub struct FunctionCx<'a, 'tcx:'a> {
+    instance: Instance<'tcx>,
+
     mir: &'a mir::Mir<'tcx>,
 
     debug_context: debuginfo::FunctionDebugContext,
@@ -104,9 +107,13 @@ pub struct FunctionCx<'a, 'tcx:'a> {
 
 impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     pub fn monomorphize<T>(&self, value: &T) -> T
-        where T: TransNormalize<'tcx>
+        where T: TypeFoldable<'tcx>
     {
-        self.cx.tcx.trans_apply_param_substs(self.param_substs, value)
+        self.cx.tcx.subst_and_normalize_erasing_regions(
+            self.param_substs,
+            ty::ParamEnv::reveal_all(),
+            value,
+        )
     }
 
     pub fn set_debug_loc(&mut self, bx: &Builder, source_info: mir::SourceInfo) {
@@ -222,9 +229,10 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
     // Compute debuginfo scopes from MIR scopes.
     let scopes = debuginfo::create_mir_scopes(cx, mir, &debug_context);
-    let (landing_pads, funclets) = create_funclets(&bx, &cleanup_kinds, &block_bxs);
+    let (landing_pads, funclets) = create_funclets(mir, &bx, &cleanup_kinds, &block_bxs);
 
     let mut fx = FunctionCx {
+        instance,
         mir,
         llfn,
         fn_ty,
@@ -333,6 +341,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 }
 
 fn create_funclets<'a, 'tcx>(
+    mir: &'a Mir<'tcx>,
     bx: &Builder<'a, 'tcx>,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, BasicBlockRef>)
@@ -341,14 +350,59 @@ fn create_funclets<'a, 'tcx>(
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
-            CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {
-                let cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
-                let cleanup = cleanup_bx.cleanup_pad(None, &[]);
-                cleanup_bx.br(llbb);
-                (Some(cleanup_bx.llbb()), Some(Funclet::new(cleanup)))
-            }
-            _ => (None, None)
+            CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
+            _ => return (None, None)
         }
+
+        let cleanup;
+        let ret_llbb;
+        match mir[bb].terminator.as_ref().map(|t| &t.kind) {
+            // This is a basic block that we're aborting the program for,
+            // notably in an `extern` function. These basic blocks are inserted
+            // so that we assert that `extern` functions do indeed not panic,
+            // and if they do we abort the process.
+            //
+            // On MSVC these are tricky though (where we're doing funclets). If
+            // we were to do a cleanuppad (like below) the normal functions like
+            // `longjmp` would trigger the abort logic, terminating the
+            // program. Instead we insert the equivalent of `catch(...)` for C++
+            // which magically doesn't trigger when `longjmp` files over this
+            // frame.
+            //
+            // Lots more discussion can be found on #48251 but this codegen is
+            // modeled after clang's for:
+            //
+            //      try {
+            //          foo();
+            //      } catch (...) {
+            //          bar();
+            //      }
+            Some(&mir::TerminatorKind::Abort) => {
+                let cs_bx = bx.build_sibling_block(&format!("cs_funclet{:?}", bb));
+                let cp_bx = bx.build_sibling_block(&format!("cp_funclet{:?}", bb));
+                ret_llbb = cs_bx.llbb();
+
+                let cs = cs_bx.catch_switch(None, None, 1);
+                cs_bx.add_handler(cs, cp_bx.llbb());
+
+                // The "null" here is actually a RTTI type descriptor for the
+                // C++ personality function, but `catch (...)` has no type so
+                // it's null. The 64 here is actually a bitfield which
+                // represents that this is a catch-all block.
+                let null = C_null(Type::i8p(bx.cx));
+                let sixty_four = C_i32(bx.cx, 64);
+                cleanup = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
+                cp_bx.br(llbb);
+            }
+            _ => {
+                let cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
+                ret_llbb = cleanup_bx.llbb();
+                cleanup = cleanup_bx.cleanup_pad(None, &[]);
+                cleanup_bx.br(llbb);
+            }
+        };
+
+        (Some(ret_llbb), Some(Funclet::new(cleanup)))
     }).unzip()
 }
 
@@ -394,7 +448,7 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
             let arg_ty = fx.monomorphize(&arg_decl.ty);
             let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys, _) => tys,
+                ty::TyTuple(ref tys) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 

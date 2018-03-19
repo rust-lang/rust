@@ -1,7 +1,7 @@
 error[E0308]: mismatched types
   --> $DIR/trait-bounds-cant-coerce.rs:24:7
    |
-24 |     a(x); //~ ERROR mismatched types [E0308]
+LL |     a(x); //~ ERROR mismatched types [E0308]
    |       ^ expected trait `Foo + std::marker::Send`, found trait `Foo`
    |
    = note: expected type `std::boxed::Box<Foo + std::marker::Send + 'static>`
@@ -9,3 +9,4 @@ error[E0308]: mismatched types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

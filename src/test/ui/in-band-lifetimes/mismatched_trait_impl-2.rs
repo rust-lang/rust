@@ -20,3 +20,5 @@ impl Deref for Struct {
     }
 }
 //~^^^^ ERROR cannot infer an appropriate lifetime for lifetime parameter
+
+fn main() {}

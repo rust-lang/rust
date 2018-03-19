@@ -14,11 +14,14 @@
 // ignore-cloudabi no env and process
 // ignore-emscripten no processes
 
+#![feature(unwind_attributes)]
+
 use std::{env, panic};
 use std::io::prelude::*;
 use std::io;
 use std::process::{Command, Stdio};
 
+#[unwind(aborts)]
 extern "C" fn panic_in_ffi() {
     panic!("Test");
 }

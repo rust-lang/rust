@@ -1,10 +1,11 @@
 error[E0658]: `crate` in paths is experimental (see issue #45477)
   --> $DIR/feature-gate-crate_in_paths.rs:14:15
    |
-14 |     let _ = ::crate::S; //~ ERROR `crate` in paths is experimental
+LL |     let _ = ::crate::S; //~ ERROR `crate` in paths is experimental
    |               ^^^^^
    |
    = help: add #![feature(crate_in_paths)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

@@ -453,6 +453,10 @@ impl File {
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
     ///
+    /// The file's cursor isn't changed. In particular, if the cursor was at the
+    /// end and the file is shrunk using this operation, the cursor will now be
+    /// past the end.
+    ///
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.

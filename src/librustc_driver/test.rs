@@ -17,8 +17,8 @@ use driver;
 use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc::middle::region;
-use rustc::ty::subst::{Kind, Subst};
-use rustc::traits::{ObligationCause, Reveal};
+use rustc::ty::subst::Subst;
+use rustc::traits::ObligationCause;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::maps::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
@@ -28,7 +28,8 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
+use syntax;
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::{CodeMap, FilePathMapping, FileName};
@@ -93,8 +94,18 @@ fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
 }
 
 fn test_env<F>(source_string: &str,
-               (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+               args: (Box<Emitter + Send>, usize),
                body: F)
+    where F: FnOnce(Env)
+{
+    syntax::with_globals(|| {
+        test_env_impl(source_string, args, body)
+    });
+}
+
+fn test_env_impl<F>(source_string: &str,
+                    (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+                    body: F)
     where F: FnOnce(Env)
 {
     let mut options = config::basic_options();
@@ -105,8 +116,8 @@ fn test_env<F>(source_string: &str,
     let sess = session::build_session_(options,
                                        None,
                                        diagnostic_handler,
-                                       Rc::new(CodeMap::new(FilePathMapping::empty())));
-    let cstore = Rc::new(CStore::new(::get_trans(&sess).metadata_loader()));
+                                       Lrc::new(CodeMap::new(FilePathMapping::empty())));
+    let cstore = CStore::new(::get_trans(&sess).metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let input = config::Input::Str {
         name: FileName::Anon,
@@ -128,7 +139,7 @@ fn test_env<F>(source_string: &str,
     };
 
     let arenas = ty::AllArenas::new();
-    let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
+    let hir_map = hir_map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
 
     // run just enough stuff to build a tcx:
     let (tx, _rx) = mpsc::channel();
@@ -140,7 +151,7 @@ fn test_env<F>(source_string: &str,
         outputs: OutputTypes::new(&[]),
     };
     TyCtxt::create_and_enter(&sess,
-                             &*cstore,
+                             &cstore,
                              ty::maps::Providers::default(),
                              ty::maps::Providers::default(),
                              &arenas,
@@ -153,7 +164,7 @@ fn test_env<F>(source_string: &str,
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
             let mut region_scope_tree = region::ScopeTree::default();
-            let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+            let param_env = ty::ParamEnv::empty();
             body(Env {
                 infcx: &infcx,
                 region_scope_tree: &mut region_scope_tree,
@@ -287,7 +298,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.intern_tup(&[ty1, ty2], false)
+        self.infcx.tcx.intern_tup(&[ty1, ty2])
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
@@ -444,7 +455,8 @@ fn sub_free_bound_false_infer() {
     //! does NOT hold for any instantiation of `_#1`.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let t_infer1 = env.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+        let t_infer1 = env.infcx.next_ty_var(ty::UniverseIndex::ROOT,
+                                             TypeVariableOrigin::MiscVariable(DUMMY_SP));
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         env.check_not_sub(env.t_fn(&[t_infer1], env.tcx().types.isize),
                           env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
@@ -468,7 +480,7 @@ fn subst_ty_renumber_bound() {
             env.t_fn(&[t_param], env.t_nil())
         };
 
-        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
+        let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -503,7 +515,7 @@ fn subst_ty_renumber_some_bounds() {
             env.t_pair(t_param, env.t_fn(&[t_param], env.t_nil()))
         };
 
-        let substs = env.infcx.tcx.intern_substs(&[Kind::from(t_rptr_bound1)]);
+        let substs = env.infcx.tcx.intern_substs(&[t_rptr_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = (&'a isize, fn(&'a isize))
@@ -565,7 +577,7 @@ fn subst_region_renumber_region() {
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
         };
 
-        let substs = env.infcx.tcx.intern_substs(&[Kind::from(re_bound1)]);
+        let substs = env.infcx.tcx.intern_substs(&[re_bound1.into()]);
         let t_substituted = t_source.subst(env.infcx.tcx, substs);
 
         // t_expected = fn(&'a isize)
@@ -592,8 +604,8 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let usize_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty]);
         let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
                    [tup2_ty, tup1_ty, int_ty, usize_ty, int_ty, usize_ty, tup1_ty, int_ty,
@@ -607,8 +619,8 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let usize_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty]);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.

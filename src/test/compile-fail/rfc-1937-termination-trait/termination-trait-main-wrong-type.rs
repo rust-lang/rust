@@ -10,6 +10,6 @@
 #![feature(termination_trait)]
 
 fn main() -> char {
-//~^ ERROR: the trait bound `char: std::Termination` is not satisfied
+//~^ ERROR: the trait bound `char: std::process::Termination` is not satisfied
     ' '
 }

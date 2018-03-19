@@ -15,11 +15,10 @@
 
 use hir::def_id::DefId;
 use middle::const_val::ConstVal;
-use traits::Reveal;
-use ty::subst::{Kind, Substs};
+use ty::subst::{Kind, UnpackedKind, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
-use ty::fold::{TypeVisitor, TypeFolder};
 use ty::error::{ExpectedFound, TypeError};
+use mir::interpret::{GlobalId, Value, PrimVal};
 use util::common::ErrorReported;
 use std::rc::Rc;
 use std::iter;
@@ -142,13 +141,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
     let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
-        if let (Some(a_ty), Some(b_ty)) = (a.as_type(), b.as_type()) {
-            Ok(Kind::from(relation.relate_with_variance(variance, &a_ty, &b_ty)?))
-        } else if let (Some(a_r), Some(b_r)) = (a.as_region(), b.as_region()) {
-            Ok(Kind::from(relation.relate_with_variance(variance, &a_r, &b_r)?))
-        } else {
-            bug!()
-        }
+        relation.relate_with_variance(variance, a, b)
     });
 
     Ok(tcx.mk_substs(params)?)
@@ -323,13 +316,9 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
 #[derive(Debug, Clone)]
 struct GeneratorWitness<'tcx>(&'tcx ty::Slice<Ty<'tcx>>);
 
-impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        GeneratorWitness(self.0.fold_with(folder))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.0.visit_with(visitor)
+TupleStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
+        a
     }
 }
 
@@ -480,19 +469,35 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             assert_eq!(sz_b.ty, tcx.types.usize);
             let to_u64 = |x: &'tcx ty::Const<'tcx>| -> Result<u64, ErrorReported> {
                 match x.val {
-                    ConstVal::Integral(x) => Ok(x.to_u64().unwrap()),
+                    ConstVal::Value(Value::ByVal(prim)) => Ok(prim.to_u64().unwrap()),
                     ConstVal::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
-                        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                        let param_env = ty::ParamEnv::empty();
                         match tcx.lift_to_global(&substs) {
                             Some(substs) => {
-                                match tcx.const_eval(param_env.and((def_id, substs))) {
-                                    Ok(&ty::Const { val: ConstVal::Integral(x), .. }) => {
-                                        return Ok(x.to_u64().unwrap());
+                                let instance = ty::Instance::resolve(
+                                    tcx.global_tcx(),
+                                    param_env,
+                                    def_id,
+                                    substs,
+                                );
+                                if let Some(instance) = instance {
+                                    let cid = GlobalId {
+                                        instance,
+                                        promoted: None
+                                    };
+                                    match tcx.const_eval(param_env.and(cid)) {
+                                        Ok(&ty::Const {
+                                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
+                                            ..
+                                        }) => {
+                                            assert_eq!(b as u64 as u128, b);
+                                            return Ok(b as u64);
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
                                 }
-                            }
+                            },
                             None => {}
                         }
                         tcx.sess.delay_span_bug(tcx.def_span(def_id),
@@ -524,11 +529,10 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_slice(t))
         }
 
-        (&ty::TyTuple(as_, a_defaulted), &ty::TyTuple(bs, b_defaulted)) =>
+        (&ty::TyTuple(as_), &ty::TyTuple(bs)) =>
         {
             if as_.len() == bs.len() {
-                let defaulted = a_defaulted || b_defaulted;
-                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)), defaulted)?)
+                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)))?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))
@@ -676,6 +680,27 @@ impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for Box<T> {
         let a: &T = a;
         let b: &T = b;
         Ok(Box::new(relation.relate(a, b)?))
+    }
+}
+
+impl<'tcx> Relate<'tcx> for Kind<'tcx> {
+    fn relate<'a, 'gcx, R>(
+        relation: &mut R,
+        a: &Kind<'tcx>,
+        b: &Kind<'tcx>
+    ) -> RelateResult<'tcx, Kind<'tcx>>
+    where
+        R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a,
+    {
+        match (a.unpack(), b.unpack()) {
+            (UnpackedKind::Lifetime(a_lt), UnpackedKind::Lifetime(b_lt)) => {
+                Ok(relation.relate(&a_lt, &b_lt)?.into())
+            }
+            (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
+                Ok(relation.relate(&a_ty, &b_ty)?.into())
+            }
+            (UnpackedKind::Lifetime(_), _) | (UnpackedKind::Type(_), _) => bug!()
+        }
     }
 }
 

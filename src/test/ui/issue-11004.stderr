@@ -1,18 +1,15 @@
 error[E0609]: no field `x` on type `*mut A`
   --> $DIR/issue-11004.rs:17:21
    |
-17 |     let x : i32 = n.x; //~ no field `x` on type `*mut A`
-   |                     ^
-   |
-   = note: `n` is a native pointer; perhaps you need to deref with `(*n).x`
+LL |     let x : i32 = n.x; //~ no field `x` on type `*mut A`
+   |                     ^ help: `n` is a native pointer; try dereferencing it: `(*n).x`
 
 error[E0609]: no field `y` on type `*mut A`
   --> $DIR/issue-11004.rs:18:21
    |
-18 |     let y : f64 = n.y; //~ no field `y` on type `*mut A`
-   |                     ^
-   |
-   = note: `n` is a native pointer; perhaps you need to deref with `(*n).y`
+LL |     let y : f64 = n.y; //~ no field `y` on type `*mut A`
+   |                     ^ help: `n` is a native pointer; try dereferencing it: `(*n).y`
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0609`.

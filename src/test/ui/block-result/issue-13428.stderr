@@ -1,15 +1,15 @@
 error[E0308]: mismatched types
   --> $DIR/issue-13428.rs:13:20
    |
-13 |   fn foo() -> String {  //~ ERROR mismatched types
+LL |   fn foo() -> String {  //~ ERROR mismatched types
    |  ____________________^
-14 | |     format!("Hello {}",
-15 | |             "world")
-16 | |     // Put the trailing semicolon on its own line to test that the
-17 | |     // note message gets the offending semicolon exactly
-18 | |     ;
+LL | |     format!("Hello {}",
+LL | |             "world")
+LL | |     // Put the trailing semicolon on its own line to test that the
+LL | |     // note message gets the offending semicolon exactly
+LL | |     ;
    | |     - help: consider removing this semicolon
-19 | | }
+LL | | }
    | |_^ expected struct `std::string::String`, found ()
    |
    = note: expected type `std::string::String`
@@ -18,12 +18,12 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/issue-13428.rs:21:20
    |
-21 |   fn bar() -> String {  //~ ERROR mismatched types
+LL |   fn bar() -> String {  //~ ERROR mismatched types
    |  ____________________^
-22 | |     "foobar".to_string()
-23 | |     ;
+LL | |     "foobar".to_string()
+LL | |     ;
    | |     - help: consider removing this semicolon
-24 | | }
+LL | | }
    | |_^ expected struct `std::string::String`, found ()
    |
    = note: expected type `std::string::String`
@@ -31,3 +31,4 @@ error[E0308]: mismatched types
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

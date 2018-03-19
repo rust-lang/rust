@@ -1,19 +1,19 @@
 warning: not reporting region error due to -Znll
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:51:9
    |
-51 |         demand_y(x, y, x.get())
+LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 note: External requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:47
    |
-48 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-49 | |         //~^ ERROR does not outlive free region
-50 | |         // Only works if 'x: 'y:
-51 | |         demand_y(x, y, x.get())
-52 | |         //~^ WARNING not reporting region error due to -Znll
-53 | |     });
+LL | |         //~^ ERROR does not outlive free region
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
+LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:18 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -26,25 +26,25 @@ note: External requirements
 error: free region `ReFree(DefId(0/0:6 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]), BrNamed(crate0:DefIndex(1:16), 'a))` does not outlive free region `ReStatic`
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:48:47
    |
-48 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-49 | |         //~^ ERROR does not outlive free region
-50 | |         // Only works if 'x: 'y:
-51 | |         demand_y(x, y, x.get())
-52 | |         //~^ WARNING not reporting region error due to -Znll
-53 | |     });
+LL | |         //~^ ERROR does not outlive free region
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
+LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |     });
    | |_____^
 
 note: No external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:47:1
    |
-47 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-48 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-49 | |         //~^ ERROR does not outlive free region
-50 | |         // Only works if 'x: 'y:
+LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL | |         //~^ ERROR does not outlive free region
+LL | |         // Only works if 'x: 'y:
 ...  |
-53 | |     });
-54 | | }
+LL | |     });
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_approximated_shorter_to_static_wrong_bound[317d]::supply[0]) with substs []

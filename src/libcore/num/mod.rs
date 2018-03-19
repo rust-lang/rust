@@ -321,6 +321,33 @@ $EndFeature, "
             (self as $UnsignedT).swap_bytes() as Self
         }
 
+        /// Reverses the bit pattern of the integer.
+        ///
+        /// # Examples
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `i16` is used here.
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(reverse_bits)]
+        ///
+        /// let n: i16 = 0b0000000_01010101;
+        /// assert_eq!(n, 85);
+        ///
+        /// let m = n.reverse_bits();
+        ///
+        /// assert_eq!(m as u16, 0b10101010_00000000);
+        /// assert_eq!(m, -22016);
+        /// ```
+        #[unstable(feature = "reverse_bits", issue = "48763")]
+        #[cfg(not(stage0))]
+        #[inline]
+        pub fn reverse_bits(self) -> Self {
+            (self as $UnsignedT).reverse_bits() as Self
+        }
+
         doc_comment! {
             concat!("Converts an integer from big endian to the target's endianness.
 
@@ -635,6 +662,46 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
+overflow occurred.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(8", stringify!($SelfT), ".checked_pow(2), Some(64));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);",
+$EndFeature, "
+```"),
+
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.checked_mul(base)?;
+                    }
+                    exp /= 2;
+                    base = base.checked_mul(base)?;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.checked_mul(base)?;
+                }
+
+                Some(acc)
+            }
+        }
+
+        doc_comment! {
             concat!("Saturating integer addition. Computes `self + rhs`, saturating at the numeric
 bounds instead of overflowing.
 
@@ -710,6 +777,34 @@ $EndFeature, "
                         Self::min_value()
                     }
                 })
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer exponentiation. Computes `self.pow(exp)`,
+saturating at the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!((-4", stringify!($SelfT), ").saturating_pow(3), -64);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(2), ", stringify!($SelfT), "::MAX);
+assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT), "::MIN);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn saturating_pow(self, exp: u32) -> Self {
+                match self.checked_pow(exp) {
+                    Some(x) => x,
+                    None if self < 0 && exp % 2 == 1 => Self::min_value(),
+                    None => Self::max_value(),
+                }
             }
         }
 
@@ -944,6 +1039,46 @@ $EndFeature, "
                 } else {
                     self
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
+wrapping around at the boundary of the type.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(4), 81);
+assert_eq!(3i8.wrapping_pow(5), -13);
+assert_eq!(3i8.wrapping_pow(6), -39);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.wrapping_mul(base);
+                }
+
+                acc
             }
         }
 
@@ -1202,6 +1337,56 @@ $EndFeature, "
         doc_comment! {
             concat!("Raises self to the power of `exp`, using exponentiation by squaring.
 
+Returns a tuple of the exponentiation along with a bool indicating
+whether an overflow happened.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(4), (81, false));
+assert_eq!(3i8.overflowing_pow(5), (-13, true));",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                let mut base = self;
+                let mut acc: Self = 1;
+                let mut overflown = false;
+                // Scratch space for storing results of overflowing_mul.
+                let mut r;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        r = acc.overflowing_mul(base);
+                        acc = r.0;
+                        overflown |= r.1;
+                    }
+                    exp /= 2;
+                    r = base.overflowing_mul(base);
+                    base = r.0;
+                    overflown |= r.1;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    r = acc.overflowing_mul(base);
+                    acc = r.0;
+                    overflown |= r.1;
+                }
+
+                (acc, overflown)
+            }
+        }
+
+        doc_comment! {
+            concat!("Raises self to the power of `exp`, using exponentiation by squaring.
+
 # Examples
 
 Basic usage:
@@ -1209,7 +1394,7 @@ Basic usage:
 ```
 ", $Feature, "let x: ", stringify!($SelfT), " = 2; // or any other integer type
 
-assert_eq!(x.pow(4), 16);",
+assert_eq!(x.pow(5), 32);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
@@ -1615,6 +1800,33 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
             unsafe { intrinsics::bswap(self as $ActualT) as Self }
         }
 
+        /// Reverses the bit pattern of the integer.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// Please note that this example is shared between integer types.
+        /// Which explains why `u16` is used here.
+        ///
+        /// ```
+        /// #![feature(reverse_bits)]
+        ///
+        /// let n: u16 = 0b0000000_01010101;
+        /// assert_eq!(n, 85);
+        ///
+        /// let m = n.reverse_bits();
+        ///
+        /// assert_eq!(m, 0b10101010_00000000);
+        /// assert_eq!(m, 43520);
+        /// ```
+        #[unstable(feature = "reverse_bits", issue = "48763")]
+        #[cfg(not(stage0))]
+        #[inline]
+        pub fn reverse_bits(self) -> Self {
+            unsafe { intrinsics::bitreverse(self as $ActualT) as Self }
+        }
+
         doc_comment! {
             concat!("Converts an integer from big endian to the target's endianness.
 
@@ -1888,6 +2100,44 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
         }
 
         doc_comment! {
+            concat!("Checked exponentiation. Computes `self.pow(exp)`, returning `None` if
+overflow occurred.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".checked_pow(5), Some(32));
+assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.checked_mul(base)?;
+                    }
+                    exp /= 2;
+                    base = base.checked_mul(base)?;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.checked_mul(base)?;
+                }
+
+                Some(acc)
+            }
+        }
+
+        doc_comment! {
             concat!("Saturating integer addition. Computes `self + rhs`, saturating at
 the numeric bounds instead of overflowing.
 
@@ -1950,6 +2200,32 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
             #[inline]
             pub fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or(Self::max_value())
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating integer exponentiation. Computes `self.pow(exp)`,
+saturating at the numeric bounds instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!(4", stringify!($SelfT), ".saturating_pow(3), 64);
+assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT), "::MAX);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn saturating_pow(self, exp: u32) -> Self {
+                match self.checked_pow(exp) {
+                    Some(x) => x,
+                    None => Self::max_value(),
+                }
             }
         }
 
@@ -2144,6 +2420,44 @@ assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
                 unsafe {
                     intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
                 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping (modular) exponentiation. Computes `self.pow(exp)`,
+wrapping around at the boundary of the type.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".wrapping_pow(5), 243);
+assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn wrapping_pow(self, mut exp: u32) -> Self {
+                let mut base = self;
+                let mut acc: Self = 1;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        acc = acc.wrapping_mul(base);
+                    }
+                    exp /= 2;
+                    base = base.wrapping_mul(base);
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    acc = acc.wrapping_mul(base);
+                }
+
+                acc
             }
         }
 
@@ -2353,7 +2667,55 @@ assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $E
             pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
             }
+        }
 
+        doc_comment! {
+            concat!("Raises self to the power of `exp`, using exponentiation by squaring.
+
+Returns a tuple of the exponentiation along with a bool indicating
+whether an overflow happened.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(no_panic_pow)]
+", $Feature, "assert_eq!(3", stringify!($SelfT), ".overflowing_pow(5), (243, false));
+assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
+```"),
+            #[unstable(feature = "no_panic_pow", issue = "48320")]
+            #[inline]
+            pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
+                let mut base = self;
+                let mut acc: Self = 1;
+                let mut overflown = false;
+                // Scratch space for storing results of overflowing_mul.
+                let mut r;
+
+                while exp > 1 {
+                    if (exp & 1) == 1 {
+                        r = acc.overflowing_mul(base);
+                        acc = r.0;
+                        overflown |= r.1;
+                    }
+                    exp /= 2;
+                    r = base.overflowing_mul(base);
+                    base = r.0;
+                    overflown |= r.1;
+                }
+
+                // Deal with the final bit of the exponent separately, since
+                // squaring the base afterwards is not necessary and may cause a
+                // needless overflow.
+                if exp == 1 {
+                    r = acc.overflowing_mul(base);
+                    acc = r.0;
+                    overflown |= r.1;
+                }
+
+                (acc, overflown)
+            }
         }
 
         doc_comment! {
@@ -2364,7 +2726,7 @@ assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $E
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(4), 16);", $EndFeature, "
+", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -2892,7 +3254,7 @@ impl u8 {
     }
 
     /// Checks if the value is an ASCII graphic character:
-    /// U+0021 '@' ... U+007E '~'.
+    /// U+0021 '!' ... U+007E '~'.
     ///
     /// # Examples
     ///
@@ -3538,6 +3900,13 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 /// This error is used as the error type for the `from_str_radix()` functions
 /// on the primitive integer types, such as [`i8::from_str_radix`].
 ///
+/// # Potential causes
+///
+/// Among other causes, `ParseIntError` can be thrown because of leading or trailing whitespace
+/// in the string e.g. when it is obtained from the standard input.
+/// Using the [`str.trim()`] method ensures that no whitespace remains before parsing.
+///
+/// [`str.trim()`]: ../../std/primitive.str.html#method.trim
 /// [`i8::from_str_radix`]: ../../std/primitive.i8.html#method.from_str_radix
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]

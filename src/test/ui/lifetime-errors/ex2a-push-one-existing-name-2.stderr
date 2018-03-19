@@ -1,10 +1,11 @@
 error[E0621]: explicit lifetime required in the type of `x`
   --> $DIR/ex2a-push-one-existing-name-2.rs:16:12
    |
-15 | fn foo<'a>(x: Ref<i32>, y: &mut Vec<Ref<'a, i32>>) {
+LL | fn foo<'a>(x: Ref<i32>, y: &mut Vec<Ref<'a, i32>>) {
    |            - consider changing the type of `x` to `Ref<'a, i32>`
-16 |     y.push(x); //~ ERROR explicit lifetime
+LL |     y.push(x); //~ ERROR explicit lifetime
    |            ^ lifetime `'a` required
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0621`.

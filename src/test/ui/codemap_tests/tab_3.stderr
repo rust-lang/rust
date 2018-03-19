@@ -1,13 +1,14 @@
 error[E0382]: use of moved value: `some_vec`
   --> $DIR/tab_3.rs:17:20
    |
-15 |     some_vec.into_iter();
+LL |     some_vec.into_iter();
    |     -------- value moved here
-16 |     {
-17 |         println!("{:?}", some_vec); //~ ERROR use of moved
+LL |     {
+LL |         println!("{:?}", some_vec); //~ ERROR use of moved
    |                          ^^^^^^^^ value used here after move
    |
    = note: move occurs because `some_vec` has type `std::vec::Vec<&str>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0382`.

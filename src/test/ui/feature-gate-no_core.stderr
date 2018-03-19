@@ -1,10 +1,11 @@
 error[E0658]: no_core is experimental (see issue #29639)
   --> $DIR/feature-gate-no_core.rs:11:1
    |
-11 | #![no_core] //~ ERROR no_core is experimental
+LL | #![no_core] //~ ERROR no_core is experimental
    | ^^^^^^^^^^^
    |
    = help: add #![feature(no_core)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

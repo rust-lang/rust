@@ -1,10 +1,11 @@
 error[E0658]: the `#[rustc_const_unstable]` attribute is an internal feature
   --> $DIR/feature-gate-rustc_const_unstable.rs:18:1
    |
-18 | #[rustc_const_unstable(feature="fzzzzzt")] //~ERROR internal feature
+LL | #[rustc_const_unstable(feature="fzzzzzt")] //~ERROR internal feature
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(rustc_const_unstable)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

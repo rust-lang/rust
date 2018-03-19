@@ -1,10 +1,11 @@
 error[E0393]: the type parameter `T` must be explicitly specified
   --> $DIR/issue-22370.rs:15:10
    |
-15 | fn f(a: &A) {}
+LL | fn f(a: &A) {}
    |          ^ missing reference to `T`
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0393`.

@@ -1,10 +1,11 @@
 error[E0658]: the `#[default_lib_allocator]` attribute is an experimental feature
   --> $DIR/feature-gate-allocator_internals.rs:11:1
    |
-11 | #![default_lib_allocator] //~ ERROR: attribute is an experimental feature
+LL | #![default_lib_allocator] //~ ERROR: attribute is an experimental feature
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(allocator_internals)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

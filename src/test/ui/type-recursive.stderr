@@ -1,13 +1,14 @@
 error[E0072]: recursive type `t1` has infinite size
   --> $DIR/type-recursive.rs:11:1
    |
-11 | struct t1 { //~ ERROR E0072
+LL | struct t1 { //~ ERROR E0072
    | ^^^^^^^^^ recursive type has infinite size
-12 |     foo: isize,
-13 |     foolish: t1
+LL |     foo: isize,
+LL |     foolish: t1
    |     ----------- recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `t1` representable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0072`.

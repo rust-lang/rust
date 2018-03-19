@@ -28,7 +28,8 @@ fn main() {
     let x = 0.0;
     match x {
         f32::INFINITY => { }
-        //~^ ERROR floating point constants cannot be used in patterns
+        //~^ WARNING floating-point types cannot be used in patterns
+        //~| WARNING will become a hard error in a future release
         _ => { }
     }
 }

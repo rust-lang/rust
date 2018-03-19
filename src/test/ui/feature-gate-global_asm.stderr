@@ -1,10 +1,11 @@
 error[E0658]: `global_asm!` is not stable enough for use and is subject to change (see issue #35119)
   --> $DIR/feature-gate-global_asm.rs:11:1
    |
-11 | global_asm!(""); //~ ERROR `global_asm!` is not stable
+LL | global_asm!(""); //~ ERROR `global_asm!` is not stable
    | ^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(global_asm)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

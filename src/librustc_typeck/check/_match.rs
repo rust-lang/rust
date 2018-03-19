@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
             if pat_adjustments.len() > 0 {
-                if tcx.sess.features.borrow().match_default_bindings {
+                if tcx.features().match_default_bindings {
                     debug!("default binding mode is now {:?}", def_bm);
                     self.inh.tables.borrow_mut()
                         .pat_adjustments_mut()
@@ -151,6 +151,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.emit();
                 }
             }
+        } else if let PatKind::Ref(..) = pat.node {
+            // When you encounter a `&pat` pattern, reset to "by
+            // value". This is so that `x` and `y` here are by value,
+            // as they appear to be:
+            //
+            // ```
+            // match &(&22, &44) {
+            //   (&x, &y) => ...
+            // }
+            // ```
+            //
+            // cc #46688
+            def_bm = ty::BindByValue(hir::MutImmutable);
         }
 
         // Lose mutability now that we know binding mode and discriminant type.
@@ -306,7 +319,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let mut expected_len = elements.len();
                 if ddpos.is_some() {
                     // Require known type only when `..` is present
-                    if let ty::TyTuple(ref tys, _) =
+                    if let ty::TyTuple(ref tys) =
                             self.structurally_resolved_type(pat.span, expected).sty {
                         expected_len = tys.len();
                     }
@@ -316,9 +329,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(
                     // FIXME: MiscVariable for now, obtaining the span and name information
                     //       from all tuple elements isn't trivial.
+                    ty::UniverseIndex::ROOT,
                     TypeVariableOrigin::TypeInference(pat.span)));
                 let element_tys = tcx.mk_type_list(element_tys_iter);
-                let pat_ty = tcx.mk_ty(ty::TyTuple(element_tys, false));
+                let pat_ty = tcx.mk_ty(ty::TyTuple(element_tys));
                 self.demand_eqtype(pat.span, expected, pat_ty);
                 for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
                     self.check_pat_walk(elem, &element_tys[i], def_bm, true);
@@ -326,7 +340,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 pat_ty
             }
             PatKind::Box(ref inner) => {
-                let inner_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(inner.span));
+                let inner_ty = self.next_ty_var(ty::UniverseIndex::ROOT,
+                                                TypeVariableOrigin::TypeInference(inner.span));
                 let uniq_ty = tcx.mk_box(inner_ty);
 
                 if self.check_dereferencable(pat.span, expected, &inner) {
@@ -359,6 +374,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                         _ => {
                             let inner_ty = self.next_ty_var(
+                                ty::UniverseIndex::ROOT,
                                 TypeVariableOrigin::TypeInference(inner.span));
                             let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
                             let region = self.next_region_var(infer::PatternRegion(pat.span));
@@ -397,7 +413,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let expected_ty = self.structurally_resolved_type(pat.span, expected);
                 let (inner_ty, slice_ty) = match expected_ty.sty {
                     ty::TyArray(inner_ty, size) => {
-                        let size = size.val.to_const_int().unwrap().to_u64().unwrap();
+                        let size = size.val.unwrap_u64();
                         let min_len = before.len() as u64 + after.len() as u64;
                         if slice.is_none() {
                             if min_len != size {
@@ -617,7 +633,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             // ...but otherwise we want to use any supertype of the
             // discriminant. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
+            discrim_ty = self.next_ty_var(ty::UniverseIndex::ROOT,
+                                          TypeVariableOrigin::TypeInference(discrim.span));
             self.check_expr_has_type_or_error(discrim, discrim_ty);
         };
 
@@ -678,7 +695,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 // arm for inconsistent arms or to the whole match when a `()` type
                 // is required).
                 Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => ety,
-                _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
+                _ => self.next_ty_var(ty::UniverseIndex::ROOT,
+                                      TypeVariableOrigin::MiscVariable(expr.span)),
             };
             CoerceMany::with_coercion_sites(coerce_first, arms)
         };

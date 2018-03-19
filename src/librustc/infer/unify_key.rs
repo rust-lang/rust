@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
-use ty::{self, IntVarValue, Ty, TyCtxt};
-use rustc_data_structures::unify::{Combine, UnifyKey};
+use ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt};
+use rustc_data_structures::unify::{NoError, EqUnifyValue, UnifyKey, UnifyValue};
 
 pub trait ToType {
     fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
@@ -20,7 +19,10 @@ impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
     fn index(&self) -> u32 { self.index }
     fn from_index(i: u32) -> ty::IntVid { ty::IntVid { index: i } }
-    fn tag(_: Option<ty::IntVid>) -> &'static str { "IntVid" }
+    fn tag() -> &'static str { "IntVid" }
+}
+
+impl EqUnifyValue for IntVarValue {
 }
 
 #[derive(PartialEq, Copy, Clone, Debug)]
@@ -31,15 +33,17 @@ pub struct RegionVidKey {
     pub min_vid: ty::RegionVid
 }
 
-impl Combine for RegionVidKey {
-    fn combine(&self, other: &RegionVidKey) -> RegionVidKey {
-        let min_vid = if self.min_vid.index() < other.min_vid.index() {
-            self.min_vid
+impl UnifyValue for RegionVidKey {
+    type Error = NoError;
+
+    fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
+        let min_vid = if value1.min_vid.index() < value2.min_vid.index() {
+            value1.min_vid
         } else {
-            other.min_vid
+            value2.min_vid
         };
 
-        RegionVidKey { min_vid: min_vid }
+        Ok(RegionVidKey { min_vid: min_vid })
     }
 }
 
@@ -47,7 +51,7 @@ impl UnifyKey for ty::RegionVid {
     type Value = RegionVidKey;
     fn index(&self) -> u32 { self.0 }
     fn from_index(i: u32) -> ty::RegionVid { ty::RegionVid(i) }
-    fn tag(_: Option<ty::RegionVid>) -> &'static str { "RegionVid" }
+    fn tag() -> &'static str { "RegionVid" }
 }
 
 impl ToType for IntVarValue {
@@ -62,21 +66,17 @@ impl ToType for IntVarValue {
 // Floating point type keys
 
 impl UnifyKey for ty::FloatVid {
-    type Value = Option<ast::FloatTy>;
+    type Value = Option<FloatVarValue>;
     fn index(&self) -> u32 { self.index }
     fn from_index(i: u32) -> ty::FloatVid { ty::FloatVid { index: i } }
-    fn tag(_: Option<ty::FloatVid>) -> &'static str { "FloatVid" }
+    fn tag() -> &'static str { "FloatVid" }
 }
 
-impl ToType for ast::FloatTy {
+impl EqUnifyValue for FloatVarValue {
+}
+
+impl ToType for FloatVarValue {
     fn to_type<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_mach_float(*self)
+        tcx.mk_mach_float(self.0)
     }
-}
-
-impl UnifyKey for ty::TyVid {
-    type Value = ();
-    fn index(&self) -> u32 { self.index }
-    fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
-    fn tag(_: Option<ty::TyVid>) -> &'static str { "TyVid" }
 }

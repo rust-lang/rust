@@ -1,10 +1,11 @@
 error[E0658]: `macro` is experimental (see issue #39412)
   --> $DIR/feature-gate-decl_macro.rs:13:1
    |
-13 | macro m() {} //~ ERROR `macro` is experimental (see issue #39412)
+LL | macro m() {} //~ ERROR `macro` is experimental (see issue #39412)
    | ^^^^^^^^^^^^
    |
    = help: add #![feature(decl_macro)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

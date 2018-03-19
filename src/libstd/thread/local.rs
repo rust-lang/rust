@@ -195,64 +195,20 @@ macro_rules! __thread_local_inner {
     }
 }
 
-/// Indicator of the state of a thread local storage key.
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum LocalKeyState {
-    /// All keys are in this state whenever a thread starts. Keys will
-    /// transition to the `Valid` state once the first call to [`with`] happens
-    /// and the initialization expression succeeds.
-    ///
-    /// Keys in the `Uninitialized` state will yield a reference to the closure
-    /// passed to [`with`] so long as the initialization routine does not panic.
-    ///
-    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
-    Uninitialized,
-
-    /// Once a key has been accessed successfully, it will enter the `Valid`
-    /// state. Keys in the `Valid` state will remain so until the thread exits,
-    /// at which point the destructor will be run and the key will enter the
-    /// `Destroyed` state.
-    ///
-    /// Keys in the `Valid` state will be guaranteed to yield a reference to the
-    /// closure passed to [`with`].
-    ///
-    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
-    Valid,
-
-    /// When a thread exits, the destructors for keys will be run (if
-    /// necessary). While a destructor is running, and possibly after a
-    /// destructor has run, a key is in the `Destroyed` state.
-    ///
-    /// Keys in the `Destroyed` states will trigger a panic when accessed via
-    /// [`with`].
-    ///
-    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
-    Destroyed,
-}
-
 /// An error returned by [`LocalKey::try_with`](struct.LocalKey.html#method.try_with).
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 pub struct AccessError {
     _private: (),
 }
 
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Debug for AccessError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("AccessError").finish()
     }
 }
 
-#[unstable(feature = "thread_local_state",
-           reason = "state querying was recently added",
-           issue = "27716")]
+#[stable(feature = "thread_local_try_with", since = "1.26.0")]
 impl fmt::Display for AccessError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt("already destroyed", f)
@@ -312,64 +268,21 @@ impl<T: 'static> LocalKey<T> {
         (*ptr).as_ref().unwrap()
     }
 
-    /// Query the current state of this key.
-    ///
-    /// A key is initially in the `Uninitialized` state whenever a thread
-    /// starts. It will remain in this state up until the first call to [`with`]
-    /// within a thread has run the initialization expression successfully.
-    ///
-    /// Once the initialization expression succeeds, the key transitions to the
-    /// `Valid` state which will guarantee that future calls to [`with`] will
-    /// succeed within the thread. Some keys might skip the `Uninitialized`
-    /// state altogether and start in the `Valid` state as an optimization
-    /// (e.g. keys initialized with a constant expression), but no guarantees
-    /// are made.
-    ///
-    /// When a thread exits, each key will be destroyed in turn, and as keys are
-    /// destroyed they will enter the `Destroyed` state just before the
-    /// destructor starts to run. Keys may remain in the `Destroyed` state after
-    /// destruction has completed. Keys without destructors (e.g. with types
-    /// that are [`Copy`]), may never enter the `Destroyed` state.
-    ///
-    /// Keys in the `Uninitialized` state can be accessed so long as the
-    /// initialization does not panic. Keys in the `Valid` state are guaranteed
-    /// to be able to be accessed. Keys in the `Destroyed` state will panic on
-    /// any call to [`with`].
-    ///
-    /// [`with`]: ../../std/thread/struct.LocalKey.html#method.with
-    /// [`Copy`]: ../../std/marker/trait.Copy.html
-    #[unstable(feature = "thread_local_state",
-               reason = "state querying was recently added",
-               issue = "27716")]
-    pub fn state(&'static self) -> LocalKeyState {
-        unsafe {
-            match (self.inner)() {
-                Some(cell) => {
-                    match *cell.get() {
-                        Some(..) => LocalKeyState::Valid,
-                        None => LocalKeyState::Uninitialized,
-                    }
-                }
-                None => LocalKeyState::Destroyed,
-            }
-        }
-    }
-
     /// Acquires a reference to the value in this TLS key.
     ///
     /// This will lazily initialize the value if this thread has not referenced
     /// this key yet. If the key has been destroyed (which may happen if this is called
-    /// in a destructor), this function will return a ThreadLocalError.
+    /// in a destructor), this function will return a `ThreadLocalError`.
     ///
     /// # Panics
     ///
     /// This function will still `panic!()` if the key is uninitialized and the
     /// key's initializer panics.
-    #[unstable(feature = "thread_local_state",
-               reason = "state querying was recently added",
-               issue = "27716")]
+    #[stable(feature = "thread_local_try_with", since = "1.26.0")]
     pub fn try_with<F, R>(&'static self, f: F) -> Result<R, AccessError>
-                      where F: FnOnce(&T) -> R {
+    where
+        F: FnOnce(&T) -> R,
+    {
         unsafe {
             let slot = (self.inner)().ok_or(AccessError {
                 _private: (),
@@ -530,7 +443,6 @@ pub mod os {
 mod tests {
     use sync::mpsc::{channel, Sender};
     use cell::{Cell, UnsafeCell};
-    use super::LocalKeyState;
     use thread;
 
     struct Foo(Sender<()>);
@@ -569,21 +481,13 @@ mod tests {
         struct Foo;
         impl Drop for Foo {
             fn drop(&mut self) {
-                assert!(FOO.state() == LocalKeyState::Destroyed);
+                assert!(FOO.try_with(|_| ()).is_err());
             }
         }
-        fn foo() -> Foo {
-            assert!(FOO.state() == LocalKeyState::Uninitialized);
-            Foo
-        }
-        thread_local!(static FOO: Foo = foo());
+        thread_local!(static FOO: Foo = Foo);
 
         thread::spawn(|| {
-            assert!(FOO.state() == LocalKeyState::Uninitialized);
-            FOO.with(|_| {
-                assert!(FOO.state() == LocalKeyState::Valid);
-            });
-            assert!(FOO.state() == LocalKeyState::Valid);
+            assert!(FOO.try_with(|_| ()).is_ok());
         }).join().ok().unwrap();
     }
 
@@ -613,7 +517,7 @@ mod tests {
             fn drop(&mut self) {
                 unsafe {
                     HITS += 1;
-                    if K2.state() == LocalKeyState::Destroyed {
+                    if K2.try_with(|_| ()).is_err() {
                         assert_eq!(HITS, 3);
                     } else {
                         if HITS == 1 {
@@ -629,7 +533,7 @@ mod tests {
             fn drop(&mut self) {
                 unsafe {
                     HITS += 1;
-                    assert!(K1.state() != LocalKeyState::Destroyed);
+                    assert!(K1.try_with(|_| ()).is_ok());
                     assert_eq!(HITS, 2);
                     K1.with(|s| *s.get() = Some(S1));
                 }
@@ -648,7 +552,7 @@ mod tests {
 
         impl Drop for S1 {
             fn drop(&mut self) {
-                assert!(K1.state() == LocalKeyState::Destroyed);
+                assert!(K1.try_with(|_| ()).is_err());
             }
         }
 
@@ -672,9 +576,7 @@ mod tests {
             fn drop(&mut self) {
                 let S1(ref tx) = *self;
                 unsafe {
-                    if K2.state() != LocalKeyState::Destroyed {
-                        K2.with(|s| *s.get() = Some(Foo(tx.clone())));
-                    }
+                    let _ = K2.try_with(|s| *s.get() = Some(Foo(tx.clone())));
                 }
             }
         }

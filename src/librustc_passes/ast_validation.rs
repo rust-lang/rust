@@ -37,7 +37,9 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, lifetime: &Lifetime) {
-        let valid_names = [keywords::StaticLifetime.name(), keywords::Invalid.name()];
+        let valid_names = [keywords::UnderscoreLifetime.name(),
+                           keywords::StaticLifetime.name(),
+                           keywords::Invalid.name()];
         if !valid_names.contains(&lifetime.ident.name) &&
             token::Ident(lifetime.ident.without_first_quote()).is_reserved_ident() {
             self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
@@ -45,7 +47,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_label(&self, label: Ident, span: Span) {
-        if token::Ident(label.without_first_quote()).is_reserved_ident() || label.name == "'_" {
+        if token::Ident(label.without_first_quote()).is_reserved_ident() {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
     }
@@ -58,14 +60,14 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn invalid_visibility(&self, vis: &Visibility, span: Span, note: Option<&str>) {
-        if vis != &Visibility::Inherited {
+    fn invalid_visibility(&self, vis: &Visibility, note: Option<&str>) {
+        if vis.node != VisibilityKind::Inherited {
             let mut err = struct_span_err!(self.session,
-                                           span,
+                                           vis.span,
                                            E0449,
                                            "unnecessary visibility qualifier");
-            if vis == &Visibility::Public {
-                err.span_label(span, "`pub` not needed here");
+            if vis.node == VisibilityKind::Public {
+                err.span_label(vis.span, "`pub` not needed here");
             }
             if let Some(note) = note {
                 err.note(note);
@@ -136,6 +138,33 @@ impl<'a> AstValidator<'a> {
                                                          in patterns")
         }
     }
+
+    fn check_late_bound_lifetime_defs(&self, params: &Vec<GenericParam>) {
+        // Check: Only lifetime parameters
+        let non_lifetime_param_spans : Vec<_> = params.iter()
+            .filter_map(|param| match *param {
+                GenericParam::Lifetime(_) => None,
+                GenericParam::Type(ref t) => Some(t.span),
+            }).collect();
+        if !non_lifetime_param_spans.is_empty() {
+            self.err_handler().span_err(non_lifetime_param_spans,
+                "only lifetime parameters can be used in this context");
+        }
+
+        // Check: No bounds on lifetime parameters
+        for param in params.iter() {
+            match *param {
+                GenericParam::Lifetime(ref l) => {
+                    if !l.bounds.is_empty() {
+                        let spans : Vec<_> = l.bounds.iter().map(|b| b.span).collect();
+                        self.err_handler().span_err(spans,
+                            "lifetime bounds cannot be used in this context");
+                    }
+                }
+                GenericParam::Type(_) => {}
+            }
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
@@ -157,6 +186,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     struct_span_err!(self.session, span, E0561,
                                      "patterns aren't allowed in function pointer types").emit();
                 });
+                self.check_late_bound_lifetime_defs(&bfty.generic_params);
             }
             TyKind::TraitObject(ref bounds, ..) => {
                 let mut any_lifetime_bounds = false;
@@ -216,7 +246,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_item(&mut self, item: &'a Item) {
         match item.node {
             ItemKind::Impl(unsafety, polarity, _, _, Some(..), ref ty, ref impl_items) => {
-                self.invalid_visibility(&item.vis, item.span, None);
+                self.invalid_visibility(&item.vis, None);
                 if ty.node == TyKind::Err {
                     self.err_handler()
                         .struct_span_err(item.span, "`impl Trait for .. {}` is an obsolete syntax")
@@ -226,7 +256,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     span_err!(self.session, item.span, E0198, "negative impls cannot be unsafe");
                 }
                 for impl_item in impl_items {
-                    self.invalid_visibility(&impl_item.vis, impl_item.span, None);
+                    self.invalid_visibility(&impl_item.vis, None);
                     if let ImplItemKind::Method(ref sig, _) = impl_item.node {
                         self.check_trait_fn_not_const(sig.constness);
                     }
@@ -234,7 +264,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Impl(unsafety, polarity, defaultness, _, None, _, _) => {
                 self.invalid_visibility(&item.vis,
-                                        item.span,
                                         Some("place qualifiers on individual impl items instead"));
                 if unsafety == Unsafety::Unsafe {
                     span_err!(self.session, item.span, E0197, "inherent impls cannot be unsafe");
@@ -247,16 +276,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::ForeignMod(..) => {
-                self.invalid_visibility(&item.vis,
-                                        item.span,
-                                        Some("place qualifiers on individual foreign items \
-                                              instead"));
+                self.invalid_visibility(
+                    &item.vis,
+                    Some("place qualifiers on individual foreign items instead"),
+                );
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
                     self.invalid_non_exhaustive_attribute(variant);
                     for field in variant.node.data.fields() {
-                        self.invalid_visibility(&field.vis, field.span, None);
+                        self.invalid_visibility(&field.vis, None);
                     }
                 }
             }
@@ -359,8 +388,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_vis(&mut self, vis: &'a Visibility) {
-        match *vis {
-            Visibility::Restricted { ref path, .. } => {
+        match vis.node {
+            VisibilityKind::Restricted { ref path, .. } => {
                 path.segments.iter().find(|segment| segment.parameters.is_some()).map(|segment| {
                     self.err_handler().span_err(segment.parameters.as_ref().unwrap().span(),
                                                 "generic arguments in visibility path");
@@ -418,8 +447,156 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
         visit::walk_pat(self, pat)
     }
+
+    fn visit_where_predicate(&mut self, p: &'a WherePredicate) {
+        if let &WherePredicate::BoundPredicate(ref bound_predicate) = p {
+            // A type binding, eg `for<'c> Foo: Send+Clone+'c`
+            self.check_late_bound_lifetime_defs(&bound_predicate.bound_generic_params);
+        }
+        visit::walk_where_predicate(self, p);
+    }
+
+    fn visit_poly_trait_ref(&mut self, t: &'a PolyTraitRef, m: &'a TraitBoundModifier) {
+        self.check_late_bound_lifetime_defs(&t.bound_generic_params);
+        visit::walk_poly_trait_ref(self, t, m);
+    }
+}
+
+// Bans nested `impl Trait`, e.g. `impl Into<impl Debug>`.
+// Nested `impl Trait` _is_ allowed in associated type position,
+// e.g `impl Iterator<Item=impl Debug>`
+struct NestedImplTraitVisitor<'a> {
+    session: &'a Session,
+    outer_impl_trait: Option<Span>,
+}
+
+impl<'a> NestedImplTraitVisitor<'a> {
+    fn with_impl_trait<F>(&mut self, outer_impl_trait: Option<Span>, f: F)
+        where F: FnOnce(&mut NestedImplTraitVisitor<'a>)
+    {
+        let old_outer_impl_trait = self.outer_impl_trait;
+        self.outer_impl_trait = outer_impl_trait;
+        f(self);
+        self.outer_impl_trait = old_outer_impl_trait;
+    }
+}
+
+
+impl<'a> Visitor<'a> for NestedImplTraitVisitor<'a> {
+    fn visit_ty(&mut self, t: &'a Ty) {
+        if let TyKind::ImplTrait(_) = t.node {
+            if let Some(outer_impl_trait) = self.outer_impl_trait {
+                struct_span_err!(self.session, t.span, E0666,
+                                 "nested `impl Trait` is not allowed")
+                    .span_label(outer_impl_trait, "outer `impl Trait`")
+                    .span_label(t.span, "nested `impl Trait` here")
+                    .emit();
+
+            }
+            self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t));
+        } else {
+            visit::walk_ty(self, t);
+        }
+    }
+    fn visit_path_parameters(&mut self, _: Span, path_parameters: &'a PathParameters) {
+        match *path_parameters {
+            PathParameters::AngleBracketed(ref params) => {
+                for type_ in &params.types {
+                    self.visit_ty(type_);
+                }
+                for type_binding in &params.bindings {
+                    // Type bindings such as `Item=impl Debug` in `Iterator<Item=Debug>`
+                    // are allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, &type_binding.ty));
+                }
+            }
+            PathParameters::Parenthesized(ref params) => {
+                for type_ in &params.inputs {
+                    self.visit_ty(type_);
+                }
+                if let Some(ref type_) = params.output {
+                    // `-> Foo` syntax is essentially an associated type binding,
+                    // so it is also allowed to contain nested `impl Trait`.
+                    self.with_impl_trait(None, |this| visit::walk_ty(this, type_));
+                }
+            }
+        }
+    }
+}
+
+// Bans `impl Trait` in path projections like `<impl Iterator>::Item` or `Foo::Bar<impl Trait>`.
+struct ImplTraitProjectionVisitor<'a> {
+    session: &'a Session,
+    is_banned: bool,
+}
+
+impl<'a> ImplTraitProjectionVisitor<'a> {
+    fn with_ban<F>(&mut self, f: F)
+        where F: FnOnce(&mut ImplTraitProjectionVisitor<'a>)
+    {
+        let old_is_banned = self.is_banned;
+        self.is_banned = true;
+        f(self);
+        self.is_banned = old_is_banned;
+    }
+}
+
+impl<'a> Visitor<'a> for ImplTraitProjectionVisitor<'a> {
+    fn visit_ty(&mut self, t: &'a Ty) {
+        match t.node {
+            TyKind::ImplTrait(_) => {
+                if self.is_banned {
+                    struct_span_err!(self.session, t.span, E0667,
+                                 "`impl Trait` is not allowed in path parameters")
+                        .emit();
+                }
+            }
+            TyKind::Path(ref qself, ref path) => {
+                // We allow these:
+                //  - `Option<impl Trait>`
+                //  - `option::Option<impl Trait>`
+                //  - `option::Option<T>::Foo<impl Trait>
+                //
+                // But not these:
+                //  - `<impl Trait>::Foo`
+                //  - `option::Option<impl Trait>::Foo`.
+                //
+                // To implement this, we disallow `impl Trait` from `qself`
+                // (for cases like `<impl Trait>::Foo>`)
+                // but we allow `impl Trait` in `PathParameters`
+                // iff there are no more PathSegments.
+                if let Some(ref qself) = *qself {
+                    // `impl Trait` in `qself` is always illegal
+                    self.with_ban(|this| this.visit_ty(&qself.ty));
+                }
+
+                for (i, segment) in path.segments.iter().enumerate() {
+                    // Allow `impl Trait` iff we're on the final path segment
+                    if i == (path.segments.len() - 1) {
+                        visit::walk_path_segment(self, path.span, segment);
+                    } else {
+                        self.with_ban(|this|
+                            visit::walk_path_segment(this, path.span, segment));
+                    }
+                }
+            }
+            _ => visit::walk_ty(self, t),
+        }
+    }
 }
 
 pub fn check_crate(session: &Session, krate: &Crate) {
+    visit::walk_crate(
+        &mut NestedImplTraitVisitor {
+            session,
+            outer_impl_trait: None,
+        }, krate);
+
+    visit::walk_crate(
+        &mut ImplTraitProjectionVisitor {
+            session,
+            is_banned: false,
+        }, krate);
+
     visit::walk_crate(&mut AstValidator { session: session }, krate)
 }

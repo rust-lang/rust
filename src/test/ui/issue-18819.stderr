@@ -1,11 +1,12 @@
 error[E0061]: this function takes 2 parameters but 1 parameter was supplied
   --> $DIR/issue-18819.rs:26:5
    |
-21 | fn print_x(_: &Foo<Item=bool>, extra: &str) {
+LL | fn print_x(_: &Foo<Item=bool>, extra: &str) {
    | ------------------------------------------- defined here
 ...
-26 |     print_x(X);
+LL |     print_x(X);
    |     ^^^^^^^^^^ expected 2 parameters
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0061`.

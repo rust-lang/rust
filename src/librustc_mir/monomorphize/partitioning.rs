@@ -180,7 +180,9 @@ pub trait CodegenUnitExt<'tcx> {
                         }
                     }
                 }
-                MonoItem::Static(node_id) |
+                MonoItem::Static(def_id) => {
+                    tcx.hir.as_local_node_id(def_id)
+                }
                 MonoItem::GlobalAsm(node_id) => {
                     Some(node_id)
                 }
@@ -361,7 +363,7 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     can_be_internalized = false;
                                     Visibility::Hidden
                                 } else if def_id.is_local() {
-                                    if tcx.is_exported_symbol(def_id) {
+                                    if tcx.is_reachable_non_generic(def_id) {
                                         can_be_internalized = false;
                                         default_visibility(def_id)
                                     } else {
@@ -382,10 +384,18 @@ fn place_root_translation_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         };
                         (Linkage::External, visibility)
                     }
-                    MonoItem::Static(node_id) |
+                    MonoItem::Static(def_id) => {
+                        let visibility = if tcx.is_reachable_non_generic(def_id) {
+                            can_be_internalized = false;
+                            default_visibility(def_id)
+                        } else {
+                            Visibility::Hidden
+                        };
+                        (Linkage::External, visibility)
+                    }
                     MonoItem::GlobalAsm(node_id) => {
                         let def_id = tcx.hir.local_def_id(node_id);
-                        let visibility = if tcx.is_exported_symbol(def_id) {
+                        let visibility = if tcx.is_reachable_non_generic(def_id) {
                             can_be_internalized = false;
                             default_visibility(def_id)
                         } else {
@@ -635,7 +645,11 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = tcx.trans_impl_self_ty(impl_def_id, instance.substs);
+                let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
+                    instance.substs,
+                    ty::ParamEnv::reveal_all(),
+                    &tcx.type_of(impl_def_id),
+                );
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }
@@ -643,7 +657,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             Some(def_id)
         }
-        MonoItem::Static(node_id) |
+        MonoItem::Static(def_id) => Some(def_id),
         MonoItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }

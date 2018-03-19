@@ -1,8 +1,9 @@
 error[E0282]: type annotations needed
   --> $DIR/issue-23041.rs:16:22
    |
-16 |     b.downcast_ref::<fn(_)->_>(); //~ ERROR E0282
+LL |     b.downcast_ref::<fn(_)->_>(); //~ ERROR E0282
    |                      ^^^^^^^^ cannot infer type for `_`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0282`.

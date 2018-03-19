@@ -13,6 +13,7 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
+use rustc::mir::interpret::{Value, PrimVal};
 use transform::{MirPass, MirSource};
 
 use std::borrow::Cow;
@@ -40,10 +41,10 @@ impl MirPass for SimplifyBranches {
                 TerminatorKind::SwitchInt { discr: Operand::Constant(box Constant {
                     literal: Literal::Value { ref value }, ..
                 }), ref values, ref targets, .. } => {
-                    if let Some(ref constint) = value.val.to_const_int() {
+                    if let Some(constint) = value.val.to_raw_bits() {
                         let (otherwise, targets) = targets.split_last().unwrap();
                         let mut ret = TerminatorKind::Goto { target: *otherwise };
-                        for (v, t) in values.iter().zip(targets.iter()) {
+                        for (&v, t) in values.iter().zip(targets.iter()) {
                             if v == constint {
                                 ret = TerminatorKind::Goto { target: *t };
                                 break;
@@ -56,9 +57,12 @@ impl MirPass for SimplifyBranches {
                 },
                 TerminatorKind::Assert { target, cond: Operand::Constant(box Constant {
                     literal: Literal::Value {
-                        value: &ty::Const { val: ConstVal::Bool(cond), .. }
+                        value: &ty::Const {
+                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(cond))),
+                        .. }
                     }, ..
-                }), expected, .. } if cond == expected => {
+                }), expected, .. } if (cond == 1) == expected => {
+                    assert!(cond <= 1);
                     TerminatorKind::Goto { target: target }
                 },
                 TerminatorKind::FalseEdges { real_target, .. } => {

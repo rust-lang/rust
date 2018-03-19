@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only -Z continue-parse-after-error
+// compile-flags: -Z parse-only
 
-type A = for<'a: 'b + 'c> fn(); // OK
-type A = for<'a: 'b,> fn(); // OK
 type A = for<'a:> fn(); // OK
 type A = for<'a:,> fn(); // OK
 type A = for<'a> fn(); // OK
 type A = for<> fn(); // OK
-type A = for<'a: 'b +> fn(); // OK
-
-type A = for<'a, T> fn(); //~ ERROR only lifetime parameters can be used in this context
+type A = for<'a: 'b + 'c> fn(); // OK (rejected later by ast_validation)
+type A = for<'a: 'b,> fn(); // OK(rejected later by ast_validation)
+type A = for<'a: 'b +> fn(); // OK (rejected later by ast_validation)
+type A = for<'a, T> fn(); // OK (rejected later by ast_validation)
 type A = for<,> fn(); //~ ERROR expected one of `>`, identifier, or lifetime, found `,`
 
 fn main() {}

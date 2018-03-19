@@ -1,7 +1,7 @@
 error[E0282]: type annotations needed
   --> $DIR/cannot_infer_local_or_vec.rs:12:13
    |
-12 |     let x = vec![];
+LL |     let x = vec![];
    |         -   ^^^^^^ cannot infer type for `T`
    |         |
    |         consider giving `x` a type
@@ -10,3 +10,4 @@ error[E0282]: type annotations needed
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0282`.

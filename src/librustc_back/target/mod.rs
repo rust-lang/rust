@@ -58,7 +58,6 @@ mod arm_base;
 mod bitrig_base;
 mod cloudabi_base;
 mod dragonfly_base;
-mod emscripten_base;
 mod freebsd_base;
 mod haiku_base;
 mod linux_base;
@@ -143,9 +142,11 @@ supported_targets! {
     ("mips64el-unknown-linux-gnuabi64", mips64el_unknown_linux_gnuabi64),
     ("mipsel-unknown-linux-gnu", mipsel_unknown_linux_gnu),
     ("powerpc-unknown-linux-gnu", powerpc_unknown_linux_gnu),
+    ("powerpc-unknown-linux-gnuspe", powerpc_unknown_linux_gnuspe),
     ("powerpc64-unknown-linux-gnu", powerpc64_unknown_linux_gnu),
     ("powerpc64le-unknown-linux-gnu", powerpc64le_unknown_linux_gnu),
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
+    ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
@@ -186,6 +187,7 @@ supported_targets! {
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
     ("i686-unknown-netbsd", i686_unknown_netbsd),
+    ("powerpc-unknown-netbsd", powerpc_unknown_netbsd),
     ("sparc64-unknown-netbsd", sparc64_unknown_netbsd),
     ("x86_64-unknown-netbsd", x86_64_unknown_netbsd),
     ("x86_64-rumprun-netbsd", x86_64_rumprun_netbsd),
@@ -276,8 +278,8 @@ pub struct TargetOptions {
     /// Whether the target is built-in or loaded from a custom target specification.
     pub is_builtin: bool,
 
-    /// Linker to invoke. Defaults to "cc".
-    pub linker: String,
+    /// Linker to invoke
+    pub linker: Option<String>,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -471,6 +473,9 @@ pub struct TargetOptions {
     /// The default visibility for symbols in this target should be "hidden"
     /// rather than "default"
     pub default_hidden_visibility: bool,
+
+    /// Whether or not bitcode is embedded in object files
+    pub embed_bitcode: bool,
 }
 
 impl Default for TargetOptions {
@@ -479,7 +484,7 @@ impl Default for TargetOptions {
     fn default() -> TargetOptions {
         TargetOptions {
             is_builtin: false,
-            linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
+            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
@@ -512,7 +517,7 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_default_libraries: true,
             position_independent_executables: false,
-            relro_level: RelroLevel::Off,
+            relro_level: RelroLevel::None,
             pre_link_objects_exe: Vec::new(),
             pre_link_objects_dll: Vec::new(),
             post_link_objects: Vec::new(),
@@ -542,6 +547,7 @@ impl Default for TargetOptions {
             i128_lowering: false,
             codegen_backend: "llvm".to_string(),
             default_hidden_visibility: false,
+            embed_bitcode: false,
         }
     }
 }
@@ -729,7 +735,7 @@ impl Target {
         }
 
         key!(is_builtin, bool);
-        key!(linker);
+        key!(linker, optional);
         key!(pre_link_args, link_args);
         key!(pre_link_objects_exe, list);
         key!(pre_link_objects_dll, list);
@@ -790,6 +796,7 @@ impl Target {
         key!(no_builtins, bool);
         key!(codegen_backend);
         key!(default_hidden_visibility, bool);
+        key!(embed_bitcode, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -988,6 +995,7 @@ impl ToJson for Target {
         target_option_val!(no_builtins);
         target_option_val!(codegen_backend);
         target_option_val!(default_hidden_visibility);
+        target_option_val!(embed_bitcode);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

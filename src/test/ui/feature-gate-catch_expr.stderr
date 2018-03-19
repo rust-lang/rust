@@ -1,14 +1,15 @@
 error[E0658]: `catch` expression is experimental (see issue #31436)
   --> $DIR/feature-gate-catch_expr.rs:12:24
    |
-12 |       let catch_result = do catch { //~ ERROR `catch` expression is experimental
+LL |       let catch_result = do catch { //~ ERROR `catch` expression is experimental
    |  ________________________^
-13 | |         let x = 5;
-14 | |         x
-15 | |     };
+LL | |         let x = 5;
+LL | |         x
+LL | |     };
    | |_____^
    |
    = help: add #![feature(catch_expr)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

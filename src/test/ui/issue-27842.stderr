@@ -1,16 +1,17 @@
 error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
   --> $DIR/issue-27842.rs:14:13
    |
-14 |     let _ = tup[0];
+LL |     let _ = tup[0];
    |             ^^^^^^ help: to access tuple elements, use: `tup.0`
 
 error[E0608]: cannot index into a value of type `({integer}, {integer}, {integer})`
   --> $DIR/issue-27842.rs:19:13
    |
-19 |     let _ = tup[i];
+LL |     let _ = tup[i];
    |             ^^^^^^
    |
    = help: to access tuple elements, use tuple indexing syntax (e.g. `tuple.0`)
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0608`.

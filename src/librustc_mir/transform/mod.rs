@@ -18,8 +18,8 @@ use rustc::ty::steal::Steal;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::util::nodemap::DefIdSet;
+use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
-use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -41,6 +41,7 @@ pub mod dump_mir;
 pub mod deaggregator;
 pub mod instcombine;
 pub mod copy_prop;
+pub mod const_prop;
 pub mod generator;
 pub mod inline;
 pub mod lower_128bit;
@@ -67,7 +68,7 @@ fn is_mir_available<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> boo
 /// Finds the full set of def-ids within the current crate that have
 /// MIR associated with them.
 fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
-                      -> Rc<DefIdSet> {
+                      -> Lrc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
 
     let mut set = DefIdSet();
@@ -102,7 +103,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
         set: &mut set,
     }.as_deep_visitor());
 
-    Rc::new(set)
+    Lrc::new(set)
 }
 
 fn mir_built<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Steal<Mir<'tcx>> {
@@ -161,7 +162,7 @@ pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $
             promoted
         };
         let mut index = 0;
-        let mut run_pass = |pass: &MirPass| {
+        let mut run_pass = |pass: &dyn MirPass| {
             let run_hooks = |mir: &_, index, is_after| {
                 dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
                                       &pass.name(), source, mir, is_after);
@@ -257,15 +258,22 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
 
 
         // Optimizations begin.
+        uniform_array_move_out::RestoreSubsliceArrayMoveOut,
         inline::Inline,
+
+        // Lowering generator control-flow and variables
+        // has to happen before we do anything else to them.
+        generator::StateTransform,
+
         instcombine::InstCombine,
+        const_prop::ConstProp,
+        simplify_branches::SimplifyBranches::new("after-const-prop"),
         deaggregator::Deaggregator,
         copy_prop::CopyPropagation,
         remove_noop_landing_pads::RemoveNoopLandingPads,
         simplify::SimplifyCfg::new("final"),
         simplify::SimplifyLocals,
 
-        generator::StateTransform,
         add_call_guards::CriticalCallEdges,
         dump_mir::Marker("PreTrans"),
     ];

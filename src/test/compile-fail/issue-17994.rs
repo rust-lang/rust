@@ -10,5 +10,5 @@
 
 trait Tr {}
 type Huh<T> where T: Tr = isize; //~  ERROR type parameter `T` is unused
-                                 //~| WARNING E0122
+                                 //~| WARNING where clauses are ignored in type aliases
 fn main() {}

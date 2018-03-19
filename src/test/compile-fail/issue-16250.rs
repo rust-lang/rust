@@ -13,7 +13,7 @@
 pub struct Foo;
 
 extern {
-    pub fn foo(x: (Foo)); //~ ERROR found struct without
+    pub fn foo(x: (Foo)); //~ ERROR unspecified layout
 }
 
 fn main() {

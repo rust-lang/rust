@@ -26,7 +26,7 @@ use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
 use errors::DiagnosticId;
 use errors::emitter::{Emitter, EmitterWriter};
 
-use std::rc::Rc;
+use rustc_data_structures::sync::{self, Lrc};
 use std::io::{self, Write};
 use std::vec;
 use std::sync::{Arc, Mutex};
@@ -36,15 +36,16 @@ use rustc_serialize::json::{as_json, as_pretty_json};
 pub struct JsonEmitter {
     dst: Box<Write + Send>,
     registry: Option<Registry>,
-    cm: Rc<CodeMapper + 'static>,
+    cm: Lrc<CodeMapper + sync::Send + sync::Sync>,
     pretty: bool,
     /// Whether "approximate suggestions" are enabled in the config
     approximate_suggestions: bool,
+    ui_testing: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
-                  code_map: Rc<CodeMap>,
+                  code_map: Lrc<CodeMap>,
                   pretty: bool,
                   approximate_suggestions: bool) -> JsonEmitter {
         JsonEmitter {
@@ -53,18 +54,19 @@ impl JsonEmitter {
             cm: code_map,
             pretty,
             approximate_suggestions,
+            ui_testing: false,
         }
     }
 
     pub fn basic(pretty: bool) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
-        JsonEmitter::stderr(None, Rc::new(CodeMap::new(file_path_mapping)),
+        JsonEmitter::stderr(None, Lrc::new(CodeMap::new(file_path_mapping)),
                             pretty, false)
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<Registry>,
-               code_map: Rc<CodeMap>,
+               code_map: Lrc<CodeMap>,
                pretty: bool,
                approximate_suggestions: bool) -> JsonEmitter {
         JsonEmitter {
@@ -73,7 +75,12 @@ impl JsonEmitter {
             cm: code_map,
             pretty,
             approximate_suggestions,
+            ui_testing: false,
         }
+    }
+
+    pub fn ui_testing(self, ui_testing: bool) -> Self {
+        Self { ui_testing, ..self }
     }
 }
 
@@ -199,7 +206,8 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false, false).emit(db);
+        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false, false)
+            .ui_testing(je.ui_testing).emit(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 

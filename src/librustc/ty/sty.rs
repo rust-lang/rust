@@ -15,10 +15,9 @@ use hir::def_id::DefId;
 use middle::const_val::ConstVal;
 use middle::region;
 use rustc_data_structures::indexed_vec::Idx;
-use ty::subst::{Substs, Subst};
+use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
-use ty::subst::Kind;
 
 use std::iter;
 use std::cmp::Ordering;
@@ -149,11 +148,7 @@ pub enum TypeVariants<'tcx> {
     TyNever,
 
     /// A tuple type.  For example, `(i32, bool)`.
-    /// The bool indicates whether this is a unit tuple and was created by
-    /// defaulting a diverging type variable with feature(never_type) disabled.
-    /// It's only purpose is for raising future-compatibility warnings for when
-    /// diverging type variables start defaulting to ! instead of ().
-    TyTuple(&'tcx Slice<Ty<'tcx>>, bool),
+    TyTuple(&'tcx Slice<Ty<'tcx>>),
 
     /// The projection of an associated type.  For example,
     /// `<T as Trait<..>>::N`.
@@ -297,8 +292,8 @@ impl<'tcx> ClosureSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
         let parent_len = generics.parent_count();
         SplitClosureSubsts {
-            closure_kind_ty: self.substs[parent_len].as_type().expect("CK should be a type"),
-            closure_sig_ty: self.substs[parent_len + 1].as_type().expect("CS should be a type"),
+            closure_kind_ty: self.substs.type_at(parent_len),
+            closure_sig_ty: self.substs.type_at(parent_len + 1),
             upvar_kinds: &self.substs[parent_len + 2..],
         }
     }
@@ -308,7 +303,13 @@ impl<'tcx> ClosureSubsts<'tcx> {
         impl Iterator<Item=Ty<'tcx>> + 'tcx
     {
         let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
-        upvar_kinds.iter().map(|t| t.as_type().expect("upvar should be type"))
+        upvar_kinds.iter().map(|t| {
+            if let UnpackedKind::Type(ty) = t.unpack() {
+                ty
+            } else {
+                bug!("upvar should be type")
+            }
+        })
     }
 
     /// Returns the closure kind for this closure; may return a type
@@ -620,7 +621,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
         ty::TraitRef {
             def_id: self.def_id,
             substs: tcx.mk_substs(
-                iter::once(Kind::from(self_ty)).chain(self.substs.iter().cloned()))
+                iter::once(self_ty.into()).chain(self.substs.iter().cloned()))
         }
     }
 }
@@ -645,7 +646,7 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
 /// erase, or otherwise "discharge" these bound regions, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Binder<T>(pub T);
 
 impl<T> Binder<T> {
@@ -745,7 +746,7 @@ impl<T> Binder<T> {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
     pub substs: &'tcx Substs<'tcx>,
@@ -1023,7 +1024,7 @@ pub enum RegionKind {
 
     /// A skolemized region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    ReSkolemized(SkolemizedRegionVid, BoundRegion),
+    ReSkolemized(ty::UniverseIndex, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1042,6 +1043,9 @@ pub enum RegionKind {
     /// `ClosureRegionRequirements` that are produced by MIR borrowck.
     /// See `ClosureRegionRequirements` for more details.
     ReClosureBound(RegionVid),
+
+    /// Canonicalized region, used only when preparing a trait query.
+    ReCanonical(CanonicalVar),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1074,11 +1078,6 @@ newtype_index!(RegionVid
         DEBUG_FORMAT = custom,
     });
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
-pub struct SkolemizedRegionVid {
-    pub index: u32,
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum InferTy {
     TyVar(TyVid),
@@ -1091,7 +1090,12 @@ pub enum InferTy {
     FreshTy(u32),
     FreshIntTy(u32),
     FreshFloatTy(u32),
+
+    /// Canonicalized type variable, used only when preparing a trait query.
+    CanonicalTy(CanonicalVar),
 }
+
+newtype_index!(CanonicalVar);
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1127,7 +1131,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
             projection_ty: ty::ProjectionTy {
                 item_def_id: self.item_def_id,
                 substs: tcx.mk_substs(
-                iter::once(Kind::from(self_ty)).chain(self.substs.iter().cloned())),
+                iter::once(self_ty.into()).chain(self.substs.iter().cloned())),
             },
             ty: self.ty,
         }
@@ -1213,6 +1217,10 @@ impl RegionKind {
             }
             ty::ReErased => {
             }
+            ty::ReCanonical(..) => {
+                flags = flags | TypeFlags::HAS_FREE_REGIONS;
+                flags = flags | TypeFlags::HAS_CANONICAL_VARS;
+            }
             ty::ReClosureBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
@@ -1262,7 +1270,7 @@ impl RegionKind {
 impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_nil(&self) -> bool {
         match self.sty {
-            TyTuple(ref tys, _) => tys.is_empty(),
+            TyTuple(ref tys) => tys.is_empty(),
             _ => false,
         }
     }
@@ -1270,15 +1278,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_never(&self) -> bool {
         match self.sty {
             TyNever => true,
-            _ => false,
-        }
-    }
-
-    /// Test whether this is a `()` which was produced by defaulting a
-    /// diverging type variable with feature(never_type) disabled.
-    pub fn is_defaulted_unit(&self) -> bool {
-        match self.sty {
-            TyTuple(_, true) => true,
             _ => false,
         }
     }

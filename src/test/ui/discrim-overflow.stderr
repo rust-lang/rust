@@ -1,66 +1,67 @@
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:25:9
    |
-25 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 127i8
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 127
    |
-   = note: explicitly set `OhNo = -128i8` if that is desired outcome
+   = note: explicitly set `OhNo = -128` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:36:9
    |
-36 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 255u8
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 255
    |
-   = note: explicitly set `OhNo = 0u8` if that is desired outcome
+   = note: explicitly set `OhNo = 0` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:47:9
    |
-47 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 32767i16
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 32767
    |
-   = note: explicitly set `OhNo = -32768i16` if that is desired outcome
+   = note: explicitly set `OhNo = -32768` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:58:9
    |
-58 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 65535u16
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 65535
    |
-   = note: explicitly set `OhNo = 0u16` if that is desired outcome
+   = note: explicitly set `OhNo = 0` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:70:9
    |
-70 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 2147483647i32
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 2147483647
    |
-   = note: explicitly set `OhNo = -2147483648i32` if that is desired outcome
+   = note: explicitly set `OhNo = -2147483648` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:82:9
    |
-82 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 4294967295u32
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 4294967295
    |
-   = note: explicitly set `OhNo = 0u32` if that is desired outcome
+   = note: explicitly set `OhNo = 0` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
   --> $DIR/discrim-overflow.rs:94:9
    |
-94 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-   |         ^^^^ overflowed on value after 9223372036854775807i64
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 9223372036854775807
    |
-   = note: explicitly set `OhNo = -9223372036854775808i64` if that is desired outcome
+   = note: explicitly set `OhNo = -9223372036854775808` if that is desired outcome
 
 error[E0370]: enum discriminant overflowed
-   --> $DIR/discrim-overflow.rs:106:9
-    |
-106 |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
-    |         ^^^^ overflowed on value after 18446744073709551615u64
-    |
-    = note: explicitly set `OhNo = 0u64` if that is desired outcome
+  --> $DIR/discrim-overflow.rs:106:9
+   |
+LL |         OhNo, //~ ERROR enum discriminant overflowed [E0370]
+   |         ^^^^ overflowed on value after 18446744073709551615
+   |
+   = note: explicitly set `OhNo = 0` if that is desired outcome
 
 error: aborting due to 8 previous errors
 
+For more information about this error, try `rustc --explain E0370`.

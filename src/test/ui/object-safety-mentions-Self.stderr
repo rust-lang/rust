@@ -1,7 +1,7 @@
 error[E0038]: the trait `Bar` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:27:1
    |
-27 | fn make_bar<T:Bar>(t: &T) -> &Bar {
+LL | fn make_bar<T:Bar>(t: &T) -> &Bar {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` cannot be made into an object
    |
    = note: method `bar` references the `Self` type in its arguments or return type
@@ -9,10 +9,11 @@ error[E0038]: the trait `Bar` cannot be made into an object
 error[E0038]: the trait `Baz` cannot be made into an object
   --> $DIR/object-safety-mentions-Self.rs:32:1
    |
-32 | fn make_baz<T:Baz>(t: &T) -> &Baz {
+LL | fn make_baz<T:Baz>(t: &T) -> &Baz {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Baz` cannot be made into an object
    |
    = note: method `bar` references the `Self` type in its arguments or return type
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0038`.

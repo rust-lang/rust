@@ -1,9 +1,9 @@
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:20:5
    |
-20 |     y.borrow().clone()
+LL |     y.borrow().clone()
    |     ^ borrowed value does not live long enough
-21 | }
+LL | }
    | - `y` dropped here while still borrowed
    |
    = note: values in a scope are dropped in the opposite order they are created
@@ -11,12 +11,13 @@ error[E0597]: `y` does not live long enough
 error[E0597]: `y` does not live long enough
   --> $DIR/issue-23338-locals-die-before-temps-of-body.rs:27:9
    |
-27 |         y.borrow().clone()
+LL |         y.borrow().clone()
    |         ^ borrowed value does not live long enough
-28 |     };
+LL |     };
    |     -- borrowed value needs to live until here
    |     |
    |     `y` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0597`.

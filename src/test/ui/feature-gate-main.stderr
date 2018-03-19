@@ -1,10 +1,11 @@
 error[E0658]: declaration of a nonstandard #[main] function may change over time, for now a top-level `fn main()` is required (see issue #29634)
   --> $DIR/feature-gate-main.rs:12:1
    |
-12 | fn foo() {} //~ ERROR: declaration of a nonstandard #[main] function may change over time
+LL | fn foo() {} //~ ERROR: declaration of a nonstandard #[main] function may change over time
    | ^^^^^^^^^^^
    |
    = help: add #![feature(main)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

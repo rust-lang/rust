@@ -41,7 +41,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
-use syntax::codemap::{dummy_spanned, respan};
+use syntax::codemap::{dummy_spanned, respan, BytePos, CodeMap};
 use syntax::ext::hygiene::{Mark, MarkKind, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -59,6 +59,7 @@ use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
 use syntax::parse::token;
+use syntax::ptr::P;
 
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -69,7 +70,7 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::iter;
 use std::mem::replace;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, LegacyScope, MacroBinding};
@@ -122,7 +123,7 @@ impl Ord for BindingError {
 
 enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
-    TypeParametersFromOuterFunction,
+    TypeParametersFromOuterFunction(Def),
     /// error E0403: the name is already used for a type parameter in this type parameter list
     NameAlreadyUsedInTypeParameterList(Name, &'a Span),
     /// error E0407: method is not a member of trait
@@ -172,13 +173,51 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                    resolution_error: ResolutionError<'a>)
                                    -> DiagnosticBuilder<'sess> {
     match resolution_error {
-        ResolutionError::TypeParametersFromOuterFunction => {
+        ResolutionError::TypeParametersFromOuterFunction(outer_def) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0401,
-                                           "can't use type parameters from outer function; \
-                                           try using a local type parameter instead");
+                                           "can't use type parameters from outer function");
             err.span_label(span, "use of type variable from outer function");
+
+            let cm = resolver.session.codemap();
+            match outer_def {
+                Def::SelfTy(_, maybe_impl_defid) => {
+                    if let Some(impl_span) = maybe_impl_defid.map_or(None,
+                            |def_id| resolver.definitions.opt_span(def_id)) {
+                        err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
+                                    "`Self` type implicitely declared here, on the `impl`");
+                    }
+                },
+                Def::TyParam(typaram_defid) => {
+                    if let Some(typaram_span) = resolver.definitions.opt_span(typaram_defid) {
+                        err.span_label(typaram_span, "type variable from outer function");
+                    }
+                },
+                Def::Mod(..) | Def::Struct(..) | Def::Union(..) | Def::Enum(..) | Def::Variant(..) |
+                Def::Trait(..) | Def::TyAlias(..) | Def::TyForeign(..) | Def::TraitAlias(..) |
+                Def::AssociatedTy(..) | Def::PrimTy(..) | Def::Fn(..) | Def::Const(..) |
+                Def::Static(..) | Def::StructCtor(..) | Def::VariantCtor(..) | Def::Method(..) |
+                Def::AssociatedConst(..) | Def::Local(..) | Def::Upvar(..) | Def::Label(..) |
+                Def::Macro(..) | Def::GlobalAsm(..) | Def::Err =>
+                    bug!("TypeParametersFromOuterFunction should only be used with Def::SelfTy or \
+                         Def::TyParam")
+            }
+
+            // Try to retrieve the span of the function signature and generate a new message with
+            // a local type parameter
+            let sugg_msg = "try using a local type parameter instead";
+            if let Some((sugg_span, new_snippet)) = generate_local_type_param_snippet(cm, span) {
+                // Suggest the modification to the user
+                err.span_suggestion(sugg_span,
+                                    sugg_msg,
+                                    new_snippet);
+            } else if let Some(sp) = generate_fn_name_span(cm, span) {
+                err.span_label(sp, "try adding a local type parameter in this method instead");
+            } else {
+                err.help("try using a local type parameter instead");
+            }
+
             err
         }
         ResolutionError::NameAlreadyUsedInTypeParameterList(name, first_use_span) => {
@@ -355,6 +394,90 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
     }
+}
+
+/// Adjust the impl span so that just the `impl` keyword is taken by removing
+/// everything after `<` (`"impl<T> Iterator for A<T> {}" -> "impl"`) and
+/// everything after the first whitespace (`"impl Iterator for A" -> "impl"`)
+///
+/// Attention: The method used is very fragile since it essentially duplicates the work of the
+/// parser. If you need to use this function or something similar, please consider updating the
+/// codemap functions and this function to something more robust.
+fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
+    let impl_span = cm.span_until_char(impl_span, '<');
+    let impl_span = cm.span_until_whitespace(impl_span);
+    impl_span
+}
+
+fn generate_fn_name_span(cm: &CodeMap, span: Span) -> Option<Span> {
+    let prev_span = cm.span_extend_to_prev_str(span, "fn", true);
+    cm.span_to_snippet(prev_span).map(|snippet| {
+        let len = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+            .expect("no label after fn");
+        prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32))
+    }).ok()
+}
+
+/// Take the span of a type parameter in a function signature and try to generate a span for the
+/// function name (with generics) and a new snippet for this span with the pointed type parameter as
+/// a new local type parameter.
+///
+/// For instance:
+/// ```
+/// // Given span
+/// fn my_function(param: T)
+///                       ^ Original span
+///
+/// // Result
+/// fn my_function(param: T)
+///    ^^^^^^^^^^^ Generated span with snippet `my_function<T>`
+/// ```
+///
+/// Attention: The method used is very fragile since it essentially duplicates the work of the
+/// parser. If you need to use this function or something similar, please consider updating the
+/// codemap functions and this function to something more robust.
+fn generate_local_type_param_snippet(cm: &CodeMap, span: Span) -> Option<(Span, String)> {
+    // Try to extend the span to the previous "fn" keyword to retrieve the function
+    // signature
+    let sugg_span = cm.span_extend_to_prev_str(span, "fn", false);
+    if sugg_span != span {
+        if let Ok(snippet) = cm.span_to_snippet(sugg_span) {
+            // Consume the function name
+            let mut offset = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+                .expect("no label after fn");
+
+            // Consume the generics part of the function signature
+            let mut bracket_counter = 0;
+            let mut last_char = None;
+            for c in snippet[offset..].chars() {
+                match c {
+                    '<' => bracket_counter += 1,
+                    '>' => bracket_counter -= 1,
+                    '(' => if bracket_counter == 0 { break; }
+                    _ => {}
+                }
+                offset += c.len_utf8();
+                last_char = Some(c);
+            }
+
+            // Adjust the suggestion span to encompass the function name with its generics
+            let sugg_span = sugg_span.with_hi(BytePos(sugg_span.lo().0 + offset as u32));
+
+            // Prepare the new suggested snippet to append the type parameter that triggered
+            // the error in the generics of the function signature
+            let mut new_snippet = if last_char == Some('>') {
+                format!("{}, ", &snippet[..(offset - '>'.len_utf8())])
+            } else {
+                format!("{}<", &snippet[..offset])
+            };
+            new_snippet.push_str(&cm.span_to_snippet(span).unwrap_or("T".to_string()));
+            new_snippet.push('>');
+
+            return Some((sugg_span, new_snippet));
+        }
+    }
+
+    None
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -633,7 +756,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
                     if item.span.ctxt().outer().expn_info().is_none() {
-                        self.span = Some(item.span.with_hi(item.span.lo()));
+                        self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
                     }
@@ -645,12 +768,12 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     if item.span.ctxt().outer().expn_info().is_none() {
                         // don't insert between attributes and an item
                         if item.attrs.is_empty() {
-                            self.span = Some(item.span.with_hi(item.span.lo()));
+                            self.span = Some(item.span.shrink_to_lo());
                         } else {
                             // find the first attribute on the item
                             for attr in &item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
-                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }
@@ -1117,7 +1240,7 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    fn get_macro(&self, resolver: &mut Resolver<'a>) -> Rc<SyntaxExtension> {
+    fn get_macro(&self, resolver: &mut Resolver<'a>) -> Lrc<SyntaxExtension> {
         resolver.get_macro(self.def_ignoring_ambiguity())
     }
 
@@ -1323,7 +1446,7 @@ pub struct Resolver<'a> {
     global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     pub all_macros: FxHashMap<Name, Def>,
     lexical_macro_resolutions: Vec<(Ident, &'a Cell<LegacyScope<'a>>)>,
-    macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
+    macro_map: FxHashMap<DefId, Lrc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
     local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     macro_exports: Vec<Export>,
@@ -1523,7 +1646,7 @@ impl<'a> Resolver<'a> {
         invocations.insert(Mark::root(),
                            arenas.alloc_invocation_data(InvocationData::root(graph_root)));
 
-        let features = session.features.borrow();
+        let features = session.features_untracked();
 
         let mut macro_defs = FxHashMap();
         macro_defs.insert(Mark::root(), root_def_id);
@@ -2041,8 +2164,9 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::Use(ref use_tree) => {
+                // Imports are resolved as global by default, add starting root segment.
                 let path = Path {
-                    segments: vec![],
+                    segments: use_tree.prefix.make_root().into_iter().collect(),
                     span: use_tree.span,
                 };
                 self.resolve_use_tree(item.id, use_tree, &path);
@@ -2162,6 +2286,7 @@ impl<'a> Resolver<'a> {
         result
     }
 
+    /// This is called to resolve a trait reference from an `impl` (i.e. `impl Trait for Foo`)
     fn with_optional_trait_ref<T, F>(&mut self, opt_trait_ref: Option<&TraitRef>, f: F) -> T
         where F: FnOnce(&mut Resolver, Option<DefId>) -> T
     {
@@ -2171,13 +2296,13 @@ impl<'a> Resolver<'a> {
             let path: Vec<_> = trait_ref.path.segments.iter()
                 .map(|seg| respan(seg.span, seg.identifier))
                 .collect();
-            let def = self.smart_resolve_path_fragment(trait_ref.ref_id,
-                                                       None,
-                                                       &path,
-                                                       trait_ref.path.span,
-                                                       trait_ref.path.segments.last().unwrap().span,
-                                                       PathSource::Trait(AliasPossibility::No))
-                .base_def();
+            let def = self.smart_resolve_path_fragment(
+                trait_ref.ref_id,
+                None,
+                &path,
+                trait_ref.path.span,
+                PathSource::Trait(AliasPossibility::No)
+            ).base_def();
             if def != Def::Err {
                 new_id = Some(def.def_id());
                 let span = trait_ref.path.span;
@@ -2329,17 +2454,17 @@ impl<'a> Resolver<'a> {
 
     // check that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
-    fn check_consistent_bindings(&mut self, arm: &Arm) {
-        if arm.pats.is_empty() {
+    fn check_consistent_bindings(&mut self, pats: &[P<Pat>]) {
+        if pats.is_empty() {
             return;
         }
 
         let mut missing_vars = FxHashMap();
         let mut inconsistent_vars = FxHashMap();
-        for (i, p) in arm.pats.iter().enumerate() {
+        for (i, p) in pats.iter().enumerate() {
             let map_i = self.binding_mode_map(&p);
 
-            for (j, q) in arm.pats.iter().enumerate() {
+            for (j, q) in pats.iter().enumerate() {
                 if i == j {
                     continue;
                 }
@@ -2404,9 +2529,8 @@ impl<'a> Resolver<'a> {
             self.resolve_pattern(&pattern, PatternSource::Match, &mut bindings_list);
         }
 
-        // This has to happen *after* we determine which
-        // pat_idents are variants
-        self.check_consistent_bindings(arm);
+        // This has to happen *after* we determine which pat_idents are variants
+        self.check_consistent_bindings(&arm.pats);
 
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
@@ -2490,7 +2614,9 @@ impl<'a> Resolver<'a> {
                         &ident.node.name.as_str())
                 );
             }
-            Some(..) if pat_src == PatternSource::Match => {
+            Some(..) if pat_src == PatternSource::Match ||
+                        pat_src == PatternSource::IfLet ||
+                        pat_src == PatternSource::WhileLet => {
                 // `Variant1(a) | Variant2(a)`, ok
                 // Reuse definition from the first `a`.
                 def = self.ribs[ValueNS].last_mut().unwrap().bindings[&ident.node];
@@ -2605,8 +2731,7 @@ impl<'a> Resolver<'a> {
         let segments = &path.segments.iter()
             .map(|seg| respan(seg.span, seg.identifier))
             .collect::<Vec<_>>();
-        let ident_span = path.segments.last().map_or(path.span, |seg| seg.span);
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, ident_span, source)
+        self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -2614,9 +2739,9 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[SpannedIdent],
                                    span: Span,
-                                   ident_span: Span,
                                    source: PathSource)
                                    -> PathResolution {
+        let ident_span = path.last().map_or(span, |ident| ident.span);
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
         let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
@@ -2964,7 +3089,7 @@ impl<'a> Resolver<'a> {
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                       span, span, PathSource::TraitItem(ns));
+                                                       span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -2994,7 +3119,7 @@ impl<'a> Resolver<'a> {
                 let prim = self.primitive_type_table.primitive_types[&path[0].node.name];
                 match prim {
                     TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
-                        if !self.session.features.borrow().i128_type {
+                        if !self.session.features_untracked().i128_type {
                             emit_feature_err(&self.session.parse_sess,
                                                 "i128_type", span, GateIssue::Language,
                                                 "128-bit type is unstable");
@@ -3085,7 +3210,7 @@ impl<'a> Resolver<'a> {
                     let prev_name = path[0].node.name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&
-                       self.session.features.borrow().extern_absolute_paths {
+                       self.session.features_untracked().extern_absolute_paths {
                         // `::extern_crate::a::b`
                         let crate_id = self.crate_loader.resolve_crate_from_path(name, ident.span);
                         let crate_root =
@@ -3276,7 +3401,7 @@ impl<'a> Resolver<'a> {
                             // its scope.
                             if record_used {
                                 resolve_error(self, span,
-                                              ResolutionError::TypeParametersFromOuterFunction);
+                                    ResolutionError::TypeParametersFromOuterFunction(def));
                             }
                             return Def::Err;
                         }
@@ -3480,11 +3605,16 @@ impl<'a> Resolver<'a> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
+            ExprKind::IfLet(ref pats, ref subexpression, ref if_block, ref optional_else) => {
                 self.visit_expr(subexpression);
 
                 self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::IfLet, &mut FxHashMap());
+                let mut bindings_list = FxHashMap();
+                for pat in pats {
+                    self.resolve_pattern(pat, PatternSource::IfLet, &mut bindings_list);
+                }
+                // This has to happen *after* we determine which pat_idents are variants
+                self.check_consistent_bindings(pats);
                 self.visit_block(if_block);
                 self.ribs[ValueNS].pop();
 
@@ -3500,11 +3630,16 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
+            ExprKind::WhileLet(ref pats, ref subexpression, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
                     this.visit_expr(subexpression);
                     this.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                    this.resolve_pattern(pattern, PatternSource::WhileLet, &mut FxHashMap());
+                    let mut bindings_list = FxHashMap();
+                    for pat in pats {
+                        this.resolve_pattern(pat, PatternSource::WhileLet, &mut bindings_list);
+                    }
+                    // This has to happen *after* we determine which pat_idents are variants
+                    this.check_consistent_bindings(pats);
                     this.visit_block(block);
                     this.ribs[ValueNS].pop();
                 });
@@ -3796,15 +3931,21 @@ impl<'a> Resolver<'a> {
     }
 
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
-        match *vis {
-            ast::Visibility::Public => ty::Visibility::Public,
-            ast::Visibility::Crate(..) => ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
-            ast::Visibility::Inherited => {
+        match vis.node {
+            ast::VisibilityKind::Public => ty::Visibility::Public,
+            ast::VisibilityKind::Crate(..) => {
+                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+            }
+            ast::VisibilityKind::Inherited => {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
-            ast::Visibility::Restricted { ref path, id } => {
-                let def = self.smart_resolve_path(id, None, path,
-                                                  PathSource::Visibility).base_def();
+            ast::VisibilityKind::Restricted { ref path, id, .. } => {
+                // Visibilities are resolved as global by default, add starting root segment.
+                let segments = path.make_root().iter().chain(path.segments.iter())
+                    .map(|seg| respan(seg.span, seg.identifier))
+                    .collect::<Vec<_>>();
+                let def = self.smart_resolve_path_fragment(id, None, &segments, path.span,
+                                                           PathSource::Visibility).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
                 } else {
@@ -4183,5 +4324,4 @@ pub enum MakeGlobMap {
     No,
 }
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }

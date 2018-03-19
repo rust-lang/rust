@@ -1,10 +1,11 @@
 error[E0658]: :vis fragment specifier is experimental and subject to change (see issue #41022)
   --> $DIR/feature-gate-macro-vis-matcher.rs:14:19
    |
-14 | macro_rules! m { ($v:vis) => {} }
+LL | macro_rules! m { ($v:vis) => {} }
    |                   ^^^^^^
    |
    = help: add #![feature(macro_vis_matcher)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

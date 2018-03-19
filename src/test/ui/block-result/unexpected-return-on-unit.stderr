@@ -1,19 +1,20 @@
 error[E0308]: mismatched types
   --> $DIR/unexpected-return-on-unit.rs:19:5
    |
-19 |     foo() //~ ERROR mismatched types
+LL |     foo() //~ ERROR mismatched types
    |     ^^^^^ expected (), found usize
    |
    = note: expected type `()`
               found type `usize`
 help: try adding a semicolon
    |
-19 |     foo(); //~ ERROR mismatched types
+LL |     foo(); //~ ERROR mismatched types
    |          ^
 help: try adding a return type
    |
-18 | fn bar() -> usize {
+LL | fn bar() -> usize {
    |          ^^^^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

@@ -173,12 +173,6 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
                 ty::TyInfer(_) => {
                     bug!("Unexpected type in full type resolver: {:?}", t);
                 }
-                ty::TyTuple(tys, true) => {
-                    // Un-default defaulted tuples - we are going to a
-                    // different infcx, and the default will just cause
-                    // pollution.
-                    self.tcx().intern_tup(tys, false)
-                }
                 _ => {
                     t.super_fold_with(self)
                 }

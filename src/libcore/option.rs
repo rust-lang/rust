@@ -233,11 +233,11 @@ impl<T> Option<T> {
     /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
-    /// let num_as_str: Option<String> = Some("10".to_string());
+    /// let text: Option<String> = Some("Hello, world!".to_string());
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
-    /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
-    /// let num_as_int: Option<usize> = num_as_str.as_ref().map(|n| n.len());
-    /// println!("still can print num_as_str: {:?}", num_as_str);
+    /// // then consume *that* with `map`, leaving `text` on the stack.
+    /// let text_length: Option<usize> = text.as_ref().map(|s| s.len());
+    /// println!("still can print text: {:?}", text);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -829,14 +829,13 @@ impl<'a, T: Clone> Option<&'a mut T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_ref_mut_cloned)]
     /// let mut x = 12;
     /// let opt_x = Some(&mut x);
     /// assert_eq!(opt_x, Some(&mut 12));
     /// let cloned = opt_x.cloned();
     /// assert_eq!(cloned, Some(12));
     /// ```
-    #[unstable(feature = "option_ref_mut_cloned", issue = "43738")]
+    #[stable(since = "1.26.0", feature = "option_ref_mut_cloned")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.clone())
     }
@@ -1051,7 +1050,7 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> ExactSizeIterator for Iter<'a, A> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, A> FusedIterator for Iter<'a, A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
@@ -1096,7 +1095,7 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, A> FusedIterator for IterMut<'a, A> {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
@@ -1133,7 +1132,7 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for IntoIter<A> {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IntoIter<A> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]

@@ -17,14 +17,17 @@
 
 #![feature(proc_macro_internals)]
 #![feature(decl_macro)]
+#![feature(str_escape)]
 
 extern crate fmt_macros;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate proc_macro;
+extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 
+mod assert;
 mod asm;
 mod cfg;
 mod compile_error;
@@ -44,7 +47,7 @@ pub mod deriving;
 
 pub mod proc_macro_impl;
 
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
 use syntax::symbol::Symbol;
@@ -55,7 +58,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
-        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
+        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Lrc::new(ext));
     };
 
     macro_rules! register {
@@ -66,6 +69,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                         def_info: None,
                         allow_internal_unstable: false,
                         allow_internal_unsafe: false,
+                        unstable_feature: None,
                     });
         )* }
     }
@@ -110,6 +114,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         log_syntax: log_syntax::expand_syntax_ext,
         trace_macros: trace_macros::expand_trace_macros,
         compile_error: compile_error::expand_compile_error,
+        assert: assert::expand_assert,
     }
 
     // format_args uses `unstable` things internally.
@@ -119,6 +124,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                 def_info: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
+                unstable_feature: None
             });
 
     for (name, ext) in user_exts {

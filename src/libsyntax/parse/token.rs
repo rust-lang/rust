@@ -27,7 +27,7 @@ use tokenstream;
 
 use std::cell::Cell;
 use std::{cmp, fmt};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -122,6 +122,7 @@ fn ident_can_begin_type(ident: ast::Ident) -> bool {
     !ident_token.is_reserved_ident() ||
     ident_token.is_path_segment_keyword() ||
     [
+        keywords::Underscore.name(),
         keywords::For.name(),
         keywords::Impl.name(),
         keywords::Fn.name(),
@@ -175,12 +176,11 @@ pub enum Token {
 
     /* Name components */
     Ident(ast::Ident),
-    Underscore,
     Lifetime(ast::Ident),
 
     // The `LazyTokenStream` is a pure function of the `Nonterminal`,
     // and so the `LazyTokenStream` can be ignored by Eq, Hash, etc.
-    Interpolated(Rc<(Nonterminal, LazyTokenStream)>),
+    Interpolated(Lrc<(Nonterminal, LazyTokenStream)>),
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
@@ -200,7 +200,7 @@ pub enum Token {
 
 impl Token {
     pub fn interpolated(nt: Nonterminal) -> Token {
-        Token::Interpolated(Rc::new((nt, LazyTokenStream::new())))
+        Token::Interpolated(Lrc::new((nt, LazyTokenStream::new())))
     }
 
     /// Returns `true` if the token starts with '>'.
@@ -242,7 +242,6 @@ impl Token {
             Ident(ident)                => ident_can_begin_type(ident), // type name or keyword
             OpenDelim(Paren)            | // tuple
             OpenDelim(Bracket)          | // array
-            Underscore                  | // placeholder
             Not                         | // never
             BinOp(Star)                 | // raw pointer
             BinOp(And)                  | // reference
@@ -362,6 +361,7 @@ impl Token {
                         id.name == keywords::SelfType.name() ||
                         id.name == keywords::Extern.name() ||
                         id.name == keywords::Crate.name() ||
+                        id.name == keywords::CrateRoot.name() ||
                         id.name == keywords::DollarCrate.name(),
             None => false,
         }
@@ -371,7 +371,7 @@ impl Token {
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
         match self.ident() {
-            Some(id) => id.name <= keywords::DollarCrate.name(),
+            Some(id) => id.name <= keywords::Underscore.name(),
             _ => false,
         }
     }
@@ -441,7 +441,7 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | DotEq |
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
-            Question | OpenDelim(..) | CloseDelim(..) | Underscore => return None,
+            Question | OpenDelim(..) | CloseDelim(..) => return None,
 
             Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
             Whitespace | Comment | Shebang(..) | Eof => return None,
@@ -573,7 +573,7 @@ impl fmt::Debug for Nonterminal {
 pub fn is_op(tok: &Token) -> bool {
     match *tok {
         OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
-        Ident(..) | Underscore | Lifetime(..) | Interpolated(..) |
+        Ident(..) | Lifetime(..) | Interpolated(..) |
         Whitespace | Comment | Shebang(..) | Eof => false,
         _ => true,
     }

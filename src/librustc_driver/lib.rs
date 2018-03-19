@@ -35,7 +35,6 @@ extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_back;
 extern crate rustc_borrowck;
-extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_passes;
@@ -47,6 +46,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
+extern crate rustc_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -62,6 +62,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
+use rustc_data_structures::sync::Lrc;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, ErrorOutputType};
@@ -92,7 +93,6 @@ use std::mem;
 use std::panic;
 use std::path::{PathBuf, Path};
 use std::process::{self, Command, Stdio};
-use std::rc::Rc;
 use std::str;
 use std::sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use std::sync::{Once, ONCE_INIT};
@@ -138,6 +138,19 @@ pub mod target_features {
 
 const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.\
                                       md#bug-reports";
+
+const ICE_REPORT_COMPILER_FLAGS: &'static [&'static str] = &[
+    "Z",
+    "C",
+    "crate-type",
+];
+const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &'static [&'static str] = &[
+    "metadata",
+    "extra-filename",
+];
+const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &'static [&'static str] = &[
+    "incremental",
+];
 
 pub fn abort_on_err<T>(result: Result<T, CompileIncomplete>, sess: &Session) -> T {
     match result {
@@ -290,7 +303,9 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
     let sysroot = sysroot_candidates.iter()
         .map(|sysroot| {
             let libdir = filesearch::relative_target_lib_path(&sysroot, &target);
-            sysroot.join(libdir).with_file_name("codegen-backends")
+            sysroot.join(libdir)
+                .with_file_name(option_env!("CFG_CODEGEN_BACKENDS_DIR")
+                                .unwrap_or("codegen-backends"))
         })
         .filter(|f| {
             info!("codegen backend candidate: {}", f.display());
@@ -429,9 +444,20 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
-                        file_loader: Option<Box<FileLoader + 'static>>,
+                        file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
+{
+    syntax::with_globals(|| {
+        run_compiler_impl(args, callbacks, file_loader, emitter_dest)
+    })
+}
+
+fn run_compiler_impl<'a>(args: &[String],
+                         callbacks: &mut CompilerCalls<'a>,
+                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
+                         emitter_dest: Option<Box<Write + Send>>)
+                         -> (CompileResult, Option<Session>)
 {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
@@ -469,7 +495,7 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
-    let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
+    let codemap = Lrc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
         sopts, input_file_path.clone(), descriptions, codemap, emitter_dest,
     );
@@ -774,15 +800,15 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 -> Option<(Input, Option<PathBuf>)> {
         match matches.free.len() {
             0 => {
-                if sopts.describe_lints {
-                    let mut ls = lint::LintStore::new();
-                    rustc_lint::register_builtins(&mut ls, None);
-                    describe_lints(&ls, false);
-                    return None;
-                }
                 let mut sess = build_session(sopts.clone(),
                     None,
                     descriptions.clone());
+                if sopts.describe_lints {
+                    let mut ls = lint::LintStore::new();
+                    rustc_lint::register_builtins(&mut ls, Some(&sess));
+                    describe_lints(&sess, &ls, false);
+                    return None;
+                }
                 rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let mut cfg = config::build_configuration(&sess, cfg.clone());
                 let trans = get_trans(&sess);
@@ -900,7 +926,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 pub fn enable_save_analysis(control: &mut CompileController) {
     control.keep_ast = true;
     control.after_analysis.callback = box |state| {
-        time(state.session.time_passes(), "save analysis", || {
+        time(state.session, "save analysis", || {
             save::process_crate(state.tcx.unwrap(),
                                 state.expanded_crate.unwrap(),
                                 state.analysis.unwrap(),
@@ -1121,7 +1147,16 @@ fn usage(verbose: bool, include_unstable_options: bool) {
              verbose_help);
 }
 
-fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
+fn print_wall_help() {
+    println!("
+The flag `-Wall` does not exist in `rustc`. Most useful lints are enabled by
+default. Use `rustc -W help` to see all available lints. It's more common to put
+warning settings in the crate root using `#![warn(LINT_NAME)]` instead of using
+the command line flag directly.
+");
+}
+
+fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
     println!("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -1133,10 +1168,10 @@ Available lint options:
 
 ");
 
-    fn sort_lints(lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
+    fn sort_lints(sess: &Session, lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
         lints.sort_by(|x: &&Lint, y: &&Lint| {
-            match x.default_level.cmp(&y.default_level) {
+            match x.default_level(sess).cmp(&y.default_level(sess)) {
                 // The sort doesn't case-fold but it's doubtful we care.
                 Equal => x.name.cmp(y.name),
                 r => r,
@@ -1159,8 +1194,8 @@ Available lint options:
                                                    .iter()
                                                    .cloned()
                                                    .partition(|&(_, p)| p);
-    let plugin = sort_lints(plugin);
-    let builtin = sort_lints(builtin);
+    let plugin = sort_lints(sess, plugin);
+    let builtin = sort_lints(sess, builtin);
 
     let (plugin_groups, builtin_groups): (Vec<_>, _) = lint_store.get_lint_groups()
                                                                  .iter()
@@ -1365,6 +1400,13 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         return None;
     }
 
+    // Handle the special case of -Wall.
+    let wall = matches.opt_strs("W");
+    if wall.iter().any(|x| *x == "all") {
+        print_wall_help();
+        return None;
+    }
+
     // Don't handle -W help here, because we might first load plugins.
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| *x == "help") {
@@ -1431,6 +1473,63 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
     thread.unwrap().join()
 }
 
+/// Get a list of extra command-line flags provided by the user, as strings.
+///
+/// This function is used during ICEs to show more information useful for
+/// debugging, since some ICEs only happens with non-default compiler flags
+/// (and the users don't always report them).
+fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
+    let mut args = Vec::new();
+    for arg in env::args_os() {
+        args.push(arg.to_string_lossy().to_string());
+    }
+
+    // Avoid printing help because of empty args. This can suggest the compiler
+    // itself is not the program root (consider RLS).
+    if args.len() < 2 {
+        return None;
+    }
+
+    let matches = if let Some(matches) = handle_options(&args) {
+        matches
+    } else {
+        return None;
+    };
+
+    let mut result = Vec::new();
+    let mut excluded_cargo_defaults = false;
+    for flag in ICE_REPORT_COMPILER_FLAGS {
+        let prefix = if flag.len() == 1 { "-" } else { "--" };
+
+        for content in &matches.opt_strs(flag) {
+            // Split always returns the first element
+            let name = if let Some(first) = content.split('=').next() {
+                first
+            } else {
+                &content
+            };
+
+            let content = if ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.contains(&name) {
+                name
+            } else {
+                content
+            };
+
+            if !ICE_REPORT_COMPILER_FLAGS_EXCLUDE.contains(&name) {
+                result.push(format!("{}{} {}", prefix, flag, content));
+            } else {
+                excluded_cargo_defaults = true;
+            }
+        }
+    }
+
+    if result.len() > 0 {
+        Some((result, excluded_cargo_defaults))
+    } else {
+        None
+    }
+}
+
 /// Run a procedure which will detect panics in the compiler and print nicer
 /// error messages rather than just failing the test.
 ///
@@ -1462,11 +1561,22 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                              errors::Level::Bug);
             }
 
-            let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
-                      format!("we would appreciate a bug report: {}", BUG_REPORT_URL),
-                      format!("rustc {} running on {}",
-                              option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-                              config::host_triple())];
+            let mut xs = vec![
+                "the compiler unexpectedly panicked. this is a bug.".to_string(),
+                format!("we would appreciate a bug report: {}", BUG_REPORT_URL),
+                format!("rustc {} running on {}",
+                        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+                        config::host_triple()),
+            ];
+
+            if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+                xs.push(format!("compiler flags: {}", flags.join(" ")));
+
+                if excluded_cargo_defaults {
+                    xs.push("some of the compiler flags provided by cargo are hidden".to_string());
+                }
+            }
+
             for note in &xs {
                 handler.emit(&MultiSpan::new(),
                              &note,
@@ -1478,14 +1588,6 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
     }
 }
 
-#[cfg(stage0)]
-pub fn diagnostics_registry() -> errors::registry::Registry {
-    use errors::registry::Registry;
-
-    Registry::new(&[])
-}
-
-#[cfg(not(stage0))]
 pub fn diagnostics_registry() -> errors::registry::Registry {
     use errors::registry::Registry;
 
@@ -1497,7 +1599,6 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     // FIXME: need to figure out a way to get these back in here
     // all_errors.extend_from_slice(get_trans(sess).diagnostics());
     all_errors.extend_from_slice(&rustc_trans_utils::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_metadata::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_passes::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_plugin::DIAGNOSTICS);
@@ -1507,8 +1608,14 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
     Registry::new(&all_errors)
 }
 
+/// This allows tools to enable rust logging without having to magically match rustc's
+/// log crate version
+pub fn init_rustc_env_logger() {
+    env_logger::init();
+}
+
 pub fn main() {
-    env_logger::init().unwrap();
+    init_rustc_env_logger();
     let result = run(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {

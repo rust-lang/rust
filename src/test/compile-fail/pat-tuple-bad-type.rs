@@ -12,7 +12,7 @@ fn main() {
     let x;
 
     match x {
-        (..) => {} //~ ERROR the type of this value must be known in this context
+        (..) => {} //~ ERROR type annotations needed
         _ => {}
     }
 

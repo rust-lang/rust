@@ -1,11 +1,12 @@
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/region-extra-2.rs:19:5
    |
-15 |     fn renew<'b: 'a>(self) -> &'b mut [T];
+LL |     fn renew<'b: 'a>(self) -> &'b mut [T];
    |     -------------------------------------- definition of `renew` from trait
 ...
-19 |     fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
+LL |     fn renew<'b: 'a>(self) -> &'b mut [T] where 'a: 'b {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `'a: 'b`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0276`.

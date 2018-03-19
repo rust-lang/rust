@@ -959,10 +959,10 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
 /// [`Iterator::fuse`]: ../../std/iter/trait.Iterator.html#method.fuse
 /// [`Fuse`]: ../../std/iter/struct.Fuse.html
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 pub trait FusedIterator: Iterator {}
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
 
 /// An iterator that reports an accurate length using size_hint.

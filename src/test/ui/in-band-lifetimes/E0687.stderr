@@ -1,26 +1,27 @@
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
   --> $DIR/E0687.rs:14:15
    |
-14 | fn foo(x: fn(&'a u32)) {} //~ ERROR must be explicitly
+LL | fn foo(x: fn(&'a u32)) {} //~ ERROR must be explicitly
    |               ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
   --> $DIR/E0687.rs:16:16
    |
-16 | fn bar(x: &Fn(&'a u32)) {} //~ ERROR must be explicitly
+LL | fn bar(x: &Fn(&'a u32)) {} //~ ERROR must be explicitly
    |                ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
   --> $DIR/E0687.rs:18:15
    |
-18 | fn baz(x: fn(&'a u32), y: &'a u32) {} //~ ERROR must be explicitly
+LL | fn baz(x: fn(&'a u32), y: &'a u32) {} //~ ERROR must be explicitly
    |               ^^ in-band lifetime definition
 
 error[E0687]: lifetimes used in `fn` or `Fn` syntax must be explicitly declared using `<...>` binders
   --> $DIR/E0687.rs:23:26
    |
-23 |     fn bar(&self, x: fn(&'a u32)) {} //~ ERROR must be explicitly
+LL |     fn bar(&self, x: fn(&'a u32)) {} //~ ERROR must be explicitly
    |                          ^^ in-band lifetime definition
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0687`.

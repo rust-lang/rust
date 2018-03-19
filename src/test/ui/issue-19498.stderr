@@ -1,46 +1,47 @@
 error[E0255]: the name `A` is defined multiple times
   --> $DIR/issue-19498.rs:13:1
    |
-11 | use self::A;
+LL | use self::A;
    |     ------- previous import of the module `A` here
-12 | use self::B;
-13 | mod A {} //~ ERROR the name `A` is defined multiple times
+LL | use self::B;
+LL | mod A {} //~ ERROR the name `A` is defined multiple times
    | ^^^^^ `A` redefined here
    |
    = note: `A` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-11 | use self::A as OtherA;
+LL | use self::A as OtherA;
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `B` is defined multiple times
   --> $DIR/issue-19498.rs:15:1
    |
-12 | use self::B;
+LL | use self::B;
    |     ------- previous import of the module `B` here
 ...
-15 | pub mod B {} //~ ERROR the name `B` is defined multiple times
+LL | pub mod B {} //~ ERROR the name `B` is defined multiple times
    | ^^^^^^^^^ `B` redefined here
    |
    = note: `B` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-12 | use self::B as OtherB;
+LL | use self::B as OtherB;
    |     ^^^^^^^^^^^^^^^^^
 
 error[E0255]: the name `D` is defined multiple times
   --> $DIR/issue-19498.rs:19:5
    |
-18 |     use C::D;
+LL |     use C::D;
    |         ---- previous import of the module `D` here
-19 |     mod D {} //~ ERROR the name `D` is defined multiple times
+LL |     mod D {} //~ ERROR the name `D` is defined multiple times
    |     ^^^^^ `D` redefined here
    |
    = note: `D` must be defined only once in the type namespace of this module
 help: You can use `as` to change the binding name of the import
    |
-18 |     use C::D as OtherD;
+LL |     use C::D as OtherD;
    |         ^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0255`.

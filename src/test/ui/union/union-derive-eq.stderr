@@ -1,10 +1,11 @@
 error[E0277]: the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
   --> $DIR/union-derive-eq.rs:25:5
    |
-25 |     a: PartialEqNotEq, //~ ERROR the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
+LL |     a: PartialEqNotEq, //~ ERROR the trait bound `PartialEqNotEq: std::cmp::Eq` is not satisfied
    |     ^^^^^^^^^^^^^^^^^ the trait `std::cmp::Eq` is not implemented for `PartialEqNotEq`
    |
    = note: required by `std::cmp::AssertParamIsEq`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

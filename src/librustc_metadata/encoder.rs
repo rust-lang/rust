@@ -16,18 +16,20 @@ use schema::*;
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
                             EncodedMetadata};
 use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::ich::Fingerprint;
 use rustc::middle::dependency_format::Linkage;
+use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
+                                      metadata_symbol_name};
 use rustc::middle::lang_items;
-use rustc::mir;
+use rustc::mir::{self, interpret};
 use rustc::traits::specialization_graph;
-use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
-use rustc::util::nodemap::{FxHashMap, NodeSet};
+use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
@@ -36,7 +38,7 @@ use std::hash::Hash;
 use std::io::prelude::*;
 use std::io::Cursor;
 use std::path::Path;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
@@ -53,14 +55,14 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     link_meta: &'a LinkMeta,
-    exported_symbols: &'a NodeSet,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
+    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
 
     // This is used to speed up Span encoding.
-    filemap_cache: Rc<FileMap>,
+    filemap_cache: Lrc<FileMap>,
 }
 
 macro_rules! encoder_methods {
@@ -179,9 +181,41 @@ impl<'a, 'tcx> SpecializedEncoder<Span> for EncodeContext<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> SpecializedEncoder<LocalDefId> for EncodeContext<'a, 'tcx> {
+    #[inline]
+    fn specialized_encode(&mut self, def_id: &LocalDefId) -> Result<(), Self::Error> {
+        self.specialized_encode(&def_id.to_def_id())
+    }
+}
+
 impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         ty_codec::encode_with_shorthand(self, ty, |ecx| &mut ecx.type_shorthands)
+    }
+}
+
+impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
+    fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
+        use std::collections::hash_map::Entry;
+        let tcx = self.tcx;
+        let pos = self.position();
+        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
+            Entry::Occupied(entry) => Some(entry.get().clone()),
+            Entry::Vacant(entry) => {
+                // ensure that we don't place any AllocIds at the very beginning
+                // of the metadata file, because that would end up making our 0 and 1 indices
+                // not special. This is essentially impossible, but let's make sure
+                assert!(pos != 0 && pos != 1);
+                entry.insert(pos);
+                None
+            },
+        };
+        interpret::specialized_encode_alloc_id(
+            self,
+            tcx,
+            *alloc_id,
+            shorthand,
+        )
     }
 }
 
@@ -323,7 +357,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 // paths because any relative paths are potentially relative to
                 // a wrong directory.
                 // However, if a path has been modified via
-                // `-Zremap-path-prefix` we assume the user has already set
+                // `--remap-path-prefix` we assume the user has already set
                 // things up the way they want and don't touch the path values
                 // anymore.
                 match filemap.name {
@@ -342,7 +376,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                                 adapted.name.hash(&mut hasher);
                                 hasher.finish()
                             };
-                            Rc::new(adapted)
+                            Lrc::new(adapted)
                         }
                     },
                     // expanded code, not from a file
@@ -395,9 +429,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         // Encode exported symbols info.
         i = self.position();
+        let exported_symbols = self.tcx.exported_symbols(LOCAL_CRATE);
         let exported_symbols = self.tracked(
             IsolatedEncoder::encode_exported_symbols,
-            self.exported_symbols);
+            &exported_symbols);
         let exported_symbols_bytes = self.position() - i;
 
         // Encode and index the items.
@@ -830,7 +865,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         } else if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
             let generics = self.tcx.generics_of(def_id);
             let types = generics.parent_types as usize + generics.types.len();
-            let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
+            let needs_inline = types > 0 || tcx.trans_fn_attrs(def_id).requests_inline();
             let is_const_fn = sig.constness == hir::Constness::Const;
             let ast = if is_const_fn { Some(body) } else { None };
             let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
@@ -1115,13 +1150,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 _ => None,
             },
             mir: match item.node {
-                hir::ItemStatic(..) if self.tcx.sess.opts.debugging_opts.always_encode_mir => {
+                hir::ItemStatic(..) => {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let has_tps = generics.ty_params().next().is_some();
-                    let needs_inline = has_tps || attr::requests_inline(&item.attrs);
+                    let needs_inline = has_tps || tcx.trans_fn_attrs(def_id).requests_inline();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {
                         self.encode_optimized_mir(def_id)
@@ -1388,9 +1423,25 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // middle::reachable module but filters out items that either don't have a
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
-    fn encode_exported_symbols(&mut self, exported_symbols: &NodeSet) -> LazySeq<DefIndex> {
-        let tcx = self.tcx;
-        self.lazy_seq(exported_symbols.iter().map(|&id| tcx.hir.local_def_id(id).index))
+    fn encode_exported_symbols(&mut self,
+                               exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
+                               -> LazySeq<(ExportedSymbol, SymbolExportLevel)> {
+
+        // The metadata symbol name is special. It should not show up in
+        // downstream crates.
+        let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
+
+        self.lazy_seq(exported_symbols
+            .iter()
+            .filter(|&&(ref exported_symbol, _)| {
+                match *exported_symbol {
+                    ExportedSymbol::NoDefId(symbol_name) => {
+                        symbol_name != metadata_symbol_name
+                    },
+                    _ => true,
+                }
+            })
+            .cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {
@@ -1663,8 +1714,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'a, 'tcx> {
 // generated regardless of trailing bytes that end up in it.
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 link_meta: &LinkMeta,
-                                 exported_symbols: &NodeSet)
+                                 link_meta: &LinkMeta)
                                  -> EncodedMetadata
 {
     let mut cursor = Cursor::new(vec![]);
@@ -1678,11 +1728,11 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             opaque: opaque::Encoder::new(&mut cursor),
             tcx,
             link_meta,
-            exported_symbols,
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
+            interpret_alloc_shorthands: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.

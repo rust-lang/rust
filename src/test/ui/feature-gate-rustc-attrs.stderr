@@ -1,7 +1,7 @@
 error[E0658]: the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable (see issue #29642)
   --> $DIR/feature-gate-rustc-attrs.rs:15:1
    |
-15 | #[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
+LL | #[rustc_variance] //~ ERROR the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable
    | ^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
@@ -9,7 +9,7 @@ error[E0658]: the `#[rustc_variance]` attribute is just used for rustc unit test
 error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable (see issue #29642)
   --> $DIR/feature-gate-rustc-attrs.rs:16:1
    |
-16 | #[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
+LL | #[rustc_error] //~ ERROR the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable
    | ^^^^^^^^^^^^^^
    |
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
@@ -17,10 +17,11 @@ error[E0658]: the `#[rustc_error]` attribute is just used for rustc unit tests a
 error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics (see issue #29642)
   --> $DIR/feature-gate-rustc-attrs.rs:17:1
    |
-17 | #[rustc_foo]
+LL | #[rustc_foo]
    | ^^^^^^^^^^^^
    |
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

@@ -1,13 +1,13 @@
 error: a macro named `panic` has already been exported
   --> $DIR/duplicate-check-macro-exports.rs:16:1
    |
-16 | macro_rules! panic { () => {} } //~ ERROR a macro named `panic` has already been exported
+LL | macro_rules! panic { () => {} } //~ ERROR a macro named `panic` has already been exported
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `panic` already exported
    |
 note: previous macro export here
   --> $DIR/duplicate-check-macro-exports.rs:13:9
    |
-13 | pub use std::panic;
+LL | pub use std::panic;
    |         ^^^^^^^^^^
 
 error: aborting due to previous error

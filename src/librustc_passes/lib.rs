@@ -23,8 +23,9 @@
 
 #[macro_use]
 extern crate rustc;
-extern crate rustc_const_eval;
+extern crate rustc_mir;
 extern crate rustc_const_math;
+extern crate rustc_data_structures;
 
 #[macro_use]
 extern crate log;
@@ -38,15 +39,13 @@ use rustc::ty::maps::Providers;
 mod diagnostics;
 
 pub mod ast_validation;
-pub mod consts;
+pub mod rvalue_promotion;
 pub mod hir_stats;
 pub mod loops;
 mod mir_stats;
-pub mod static_recursion;
 
-#[cfg(not(stage0))] // remove after the next snapshot
 __build_diagnostic_array! { librustc_passes, DIAGNOSTICS }
 
 pub fn provide(providers: &mut Providers) {
-    consts::provide(providers);
+    rvalue_promotion::provide(providers);
 }

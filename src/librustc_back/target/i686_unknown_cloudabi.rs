@@ -15,7 +15,7 @@ pub fn target() -> TargetResult {
     let mut base = super::cloudabi_base::opts();
     base.cpu = "pentium4".to_string();
     base.max_atomic_width = Some(64);
-    base.linker = "i686-unknown-cloudabi-cc".to_string();
+    base.linker = Some("i686-unknown-cloudabi-cc".to_string());
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m32".to_string());
     base.stack_probes = true;
 

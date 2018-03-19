@@ -59,7 +59,7 @@ pub use version::UnicodeVersion;
 /// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ToLowercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -70,7 +70,7 @@ impl Iterator for ToLowercase {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
@@ -81,7 +81,7 @@ impl FusedIterator for ToLowercase {}
 /// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ToUppercase(CaseMappingIter);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -92,10 +92,10 @@ impl Iterator for ToUppercase {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToUppercase {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum CaseMappingIter {
     Three(char, char, char),
     Two(char, char),
@@ -1332,7 +1332,7 @@ impl char {
     }
 
     /// Checks if the value is an ASCII graphic character:
-    /// U+0021 '@' ... U+007E '~'.
+    /// U+0021 '!' ... U+007E '~'.
     ///
     /// # Examples
     ///

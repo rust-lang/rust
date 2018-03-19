@@ -18,6 +18,6 @@ fn main() {
     let x = 0;
     let y = &x as *const _;
     let _ = y.is_null();
-    //~^ error: the type of this value must be known in this context [tyvar_behind_raw_pointer]
+    //~^ error: type annotations needed [tyvar_behind_raw_pointer]
     //~^^ warning: this was previously accepted
 }

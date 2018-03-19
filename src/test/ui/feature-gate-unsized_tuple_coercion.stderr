@@ -1,10 +1,11 @@
 error[E0658]: Unsized tuple coercion is not stable enough for use and is subject to change (see issue #42877)
   --> $DIR/feature-gate-unsized_tuple_coercion.rs:12:24
    |
-12 |     let _ : &(Send,) = &((),);
+LL |     let _ : &(Send,) = &((),);
    |                        ^^^^^^
    |
    = help: add #![feature(unsized_tuple_coercion)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

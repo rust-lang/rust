@@ -34,11 +34,13 @@
 #![feature(underscore_lifetimes)]
 #![feature(macro_vis_matcher)]
 #![feature(allow_internal_unstable)]
+#![feature(universal_impl_trait)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
 
 extern crate core;
+extern crate ena;
 #[macro_use]
 extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
@@ -63,10 +65,10 @@ pub mod indexed_vec;
 pub mod obligation_forest;
 pub mod sip128;
 pub mod snapshot_map;
-pub mod snapshot_vec;
+pub use ena::snapshot_vec;
 pub mod stable_hasher;
 pub mod transitive_relation;
-pub mod unify;
+pub use ena::unify;
 pub mod fx;
 pub mod tuple_slice;
 pub mod control_flow_graph;

@@ -29,13 +29,7 @@ extern crate syntax;
 extern crate serialize as rustc_serialize; // used by deriving
 
 mod float;
-mod int;
-mod usize;
-mod isize;
 mod err;
 
 pub use float::*;
-pub use int::*;
-pub use usize::*;
-pub use isize::*;
 pub use err::{ConstMathErr, Op};

@@ -1,8 +1,9 @@
 error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-35139.rs:19:6
    |
-19 | impl<'a> MethodType for MTFn { //~ ERROR E0207
+LL | impl<'a> MethodType for MTFn { //~ ERROR E0207
    |      ^^ unconstrained lifetime parameter
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0207`.

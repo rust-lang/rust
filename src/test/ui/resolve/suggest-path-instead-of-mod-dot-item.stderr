@@ -1,7 +1,7 @@
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:27:5
    |
-27 |     a.I
+LL |     a.I
    |     ^--
    |     |
    |     did you mean `a::I`?
@@ -9,7 +9,7 @@ error[E0423]: expected value, found module `a`
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:32:5
    |
-32 |     a.g()
+LL |     a.g()
    |     ^----
    |     |
    |     did you mean `a::g(...)`?
@@ -17,7 +17,7 @@ error[E0423]: expected value, found module `a`
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:37:5
    |
-37 |     a.b.J
+LL |     a.b.J
    |     ^--
    |     |
    |     did you mean `a::b`?
@@ -25,7 +25,7 @@ error[E0423]: expected value, found module `a`
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:42:5
    |
-42 |     a::b.J
+LL |     a::b.J
    |     ^^^---
    |     |  |
    |     |  did you mean `I`?
@@ -34,7 +34,7 @@ error[E0423]: expected value, found module `a::b`
 error[E0423]: expected value, found module `a`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:47:5
    |
-47 |     a.b.f();
+LL |     a.b.f();
    |     ^--
    |     |
    |     did you mean `a::b`?
@@ -42,7 +42,7 @@ error[E0423]: expected value, found module `a`
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:50:12
    |
-50 |     v.push(a::b);
+LL |     v.push(a::b);
    |            ^^^-
    |               |
    |               did you mean `I`?
@@ -50,7 +50,7 @@ error[E0423]: expected value, found module `a::b`
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:55:5
    |
-55 |     a::b.f()
+LL |     a::b.f()
    |     ^^^-----
    |     |  |
    |     |  did you mean `I`?
@@ -59,7 +59,7 @@ error[E0423]: expected value, found module `a::b`
 error[E0423]: expected value, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:60:5
    |
-60 |     a::b
+LL |     a::b
    |     ^^^-
    |        |
    |        did you mean `I`?
@@ -67,12 +67,11 @@ error[E0423]: expected value, found module `a::b`
 error[E0423]: expected function, found module `a::b`
   --> $DIR/suggest-path-instead-of-mod-dot-item.rs:65:5
    |
-65 |     a::b()
+LL |     a::b()
    |     ^^^-
    |        |
    |        did you mean `I`?
 
-error[E0601]: main function not found
+error: aborting due to 9 previous errors
 
-error: aborting due to 10 previous errors
-
+For more information about this error, try `rustc --explain E0423`.

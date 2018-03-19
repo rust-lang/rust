@@ -1,7 +1,7 @@
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:12:22
    |
-12 |     println!("Test", 123, 456, 789);
+LL |     println!("Test", 123, 456, 789);
    |     -----------------^^^--^^^--^^^-- multiple unused arguments in this statement
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -9,14 +9,14 @@ error: multiple unused formatting arguments
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:16:9
    |
-15 | /     println!("Test2",
-16 | |         123,  //~ ERROR multiple unused formatting arguments
+LL | /     println!("Test2",
+LL | |         123,  //~ ERROR multiple unused formatting arguments
    | |         ^^^
-17 | |         456,
+LL | |         456,
    | |         ^^^
-18 | |         789
+LL | |         789
    | |         ^^^
-19 | |     );
+LL | |     );
    | |______- multiple unused arguments in this statement
    |
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
@@ -24,19 +24,19 @@ error: multiple unused formatting arguments
 error: named argument never used
   --> $DIR/format-unused-lables.rs:21:35
    |
-21 |     println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
+LL |     println!("Some stuff", UNUSED="args"); //~ ERROR named argument never used
    |                                   ^^^^^^
 
 error: multiple unused formatting arguments
   --> $DIR/format-unused-lables.rs:24:9
    |
-23 | /     println!("Some more $STUFF",
-24 | |         "woo!",  //~ ERROR multiple unused formatting arguments
+LL | /     println!("Some more $STUFF",
+LL | |         "woo!",  //~ ERROR multiple unused formatting arguments
    | |         ^^^^^^
-25 | |             STUFF=
-26 | |        "things"
+LL | |             STUFF=
+LL | |        "things"
    | |        ^^^^^^^^
-27 | |              , UNUSED="args");
+LL | |              , UNUSED="args");
    | |_______________________^^^^^^_- multiple unused arguments in this statement
    |
    = help: `$STUFF` should be written as `{STUFF}`

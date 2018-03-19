@@ -1,7 +1,7 @@
 error[E0382]: use of moved value: `x` (Ast)
   --> $DIR/moves-based-on-type-tuple.rs:16:13
    |
-16 |     box (x, x)
+LL |     box (x, x)
    |          -  ^ value used here after move
    |          |
    |          value moved here
@@ -11,7 +11,7 @@ error[E0382]: use of moved value: `x` (Ast)
 error[E0382]: use of moved value: `x` (Mir)
   --> $DIR/moves-based-on-type-tuple.rs:16:13
    |
-16 |     box (x, x)
+LL |     box (x, x)
    |          -  ^ value used here after move
    |          |
    |          value moved here
@@ -20,3 +20,4 @@ error[E0382]: use of moved value: `x` (Mir)
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0382`.

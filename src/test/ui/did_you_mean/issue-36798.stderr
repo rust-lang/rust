@@ -1,8 +1,9 @@
 error[E0609]: no field `baz` on type `Foo`
   --> $DIR/issue-36798.rs:17:7
    |
-17 |     f.baz; //~ ERROR no field
+LL |     f.baz; //~ ERROR no field
    |       ^^^ did you mean `bar`?
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0609`.

@@ -14,6 +14,7 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
 use native_libs::relevant_lib;
 use schema::CrateRoot;
+use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX};
 use rustc::hir::svh::Svh;
@@ -29,10 +30,8 @@ use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 
-use std::cell::{RefCell, Cell};
 use std::ops::Deref;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::{cmp, fs};
 
 use syntax::ast;
@@ -63,7 +62,7 @@ fn dump_crates(cstore: &CStore) {
         info!("  name: {}", data.name());
         info!("  cnum: {}", data.cnum);
         info!("  hash: {}", data.hash());
-        info!("  reqd: {:?}", data.dep_kind.get());
+        info!("  reqd: {:?}", *data.dep_kind.lock());
         let CrateSource { dylib, rlib, rmeta } = data.source.clone();
         dylib.map(|dl| info!("  dylib: {}", dl.0.display()));
         rlib.map(|rl|  info!("   rlib: {}", rl.0.display()));
@@ -79,7 +78,7 @@ struct ExtensionCrate {
 }
 
 enum PMDSource {
-    Registered(Rc<cstore::CrateMetadata>),
+    Registered(Lrc<cstore::CrateMetadata>),
     Owned(Library),
 }
 
@@ -194,7 +193,7 @@ impl<'a> CrateLoader<'a> {
                       span: Span,
                       lib: Library,
                       dep_kind: DepKind)
-                      -> (CrateNum, Rc<cstore::CrateMetadata>) {
+                      -> (CrateNum, Lrc<cstore::CrateMetadata>) {
         info!("register crate `extern crate {} as {}`", name, ident);
         let crate_root = lib.metadata.get_root();
         self.verify_no_symbol_conflicts(span, &crate_root);
@@ -225,9 +224,6 @@ impl<'a> CrateLoader<'a> {
             crate_root.def_path_table.decode((&metadata, self.sess))
         });
 
-        let exported_symbols = crate_root.exported_symbols
-                                         .decode((&metadata, self.sess))
-                                         .collect();
         let trait_impls = crate_root
             .impls
             .decode((&metadata, self.sess))
@@ -236,20 +232,19 @@ impl<'a> CrateLoader<'a> {
 
         let mut cmeta = cstore::CrateMetadata {
             name,
-            extern_crate: Cell::new(None),
-            def_path_table: Rc::new(def_path_table),
-            exported_symbols,
+            extern_crate: Lock::new(None),
+            def_path_table: Lrc::new(def_path_table),
             trait_impls,
             proc_macros: crate_root.macro_derive_registrar.map(|_| {
                 self.load_derive_macros(&crate_root, dylib.clone().map(|p| p.0), span)
             }),
             root: crate_root,
             blob: metadata,
-            cnum_map: RefCell::new(cnum_map),
+            cnum_map: Lock::new(cnum_map),
             cnum,
-            codemap_import_info: RefCell::new(vec![]),
-            attribute_cache: RefCell::new([Vec::new(), Vec::new()]),
-            dep_kind: Cell::new(dep_kind),
+            codemap_import_info: RwLock::new(vec![]),
+            attribute_cache: Lock::new([Vec::new(), Vec::new()]),
+            dep_kind: Lock::new(dep_kind),
             source: cstore::CrateSource {
                 dylib,
                 rlib,
@@ -274,7 +269,7 @@ impl<'a> CrateLoader<'a> {
 
         cmeta.dllimport_foreign_items = dllimports;
 
-        let cmeta = Rc::new(cmeta);
+        let cmeta = Lrc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());
         (cnum, cmeta)
     }
@@ -287,7 +282,7 @@ impl<'a> CrateLoader<'a> {
                      span: Span,
                      path_kind: PathKind,
                      mut dep_kind: DepKind)
-                     -> (CrateNum, Rc<cstore::CrateMetadata>) {
+                     -> (CrateNum, Lrc<cstore::CrateMetadata>) {
         info!("resolving crate `extern crate {} as {}`", name, ident);
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             LoadResult::Previous(cnum)
@@ -339,7 +334,9 @@ impl<'a> CrateLoader<'a> {
                 if data.root.macro_derive_registrar.is_some() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
-                data.dep_kind.set(cmp::max(data.dep_kind.get(), dep_kind));
+                data.dep_kind.with_lock(|data_dep_kind| {
+                    *data_dep_kind = cmp::max(*data_dep_kind, dep_kind);
+                });
                 (cnum, data)
             }
             LoadResult::Loaded(library) => {
@@ -383,14 +380,14 @@ impl<'a> CrateLoader<'a> {
         if !visited.insert((cnum, extern_crate.direct)) { return }
 
         let cmeta = self.cstore.get_crate_data(cnum);
-        let old_extern_crate = cmeta.extern_crate.get();
+        let mut old_extern_crate = cmeta.extern_crate.borrow_mut();
 
         // Prefer:
         // - something over nothing (tuple.0);
         // - direct extern crate to indirect (tuple.1);
         // - shorter paths to longer (tuple.2).
         let new_rank = (true, extern_crate.direct, !extern_crate.path_len);
-        let old_rank = match old_extern_crate {
+        let old_rank = match *old_extern_crate {
             None => (false, false, !0),
             Some(ref c) => (true, c.direct, !c.path_len),
         };
@@ -399,7 +396,9 @@ impl<'a> CrateLoader<'a> {
             return; // no change needed
         }
 
-        cmeta.extern_crate.set(Some(extern_crate));
+        *old_extern_crate = Some(extern_crate);
+        drop(old_extern_crate);
+
         // Propagate the extern crate info to dependencies.
         extern_crate.direct = false;
         for &dep_cnum in cmeta.cnum_map.borrow().iter() {
@@ -513,7 +512,7 @@ impl<'a> CrateLoader<'a> {
     /// custom derive (and other macro-1.1 style features) are implemented via
     /// executables and custom IPC.
     fn load_derive_macros(&mut self, root: &CrateRoot, dylib: Option<PathBuf>, span: Span)
-                          -> Vec<(ast::Name, Rc<SyntaxExtension>)> {
+                          -> Vec<(ast::Name, Lrc<SyntaxExtension>)> {
         use std::{env, mem};
         use proc_macro::TokenStream;
         use proc_macro::__internal::Registry;
@@ -541,7 +540,7 @@ impl<'a> CrateLoader<'a> {
             mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
         };
 
-        struct MyRegistrar(Vec<(ast::Name, Rc<SyntaxExtension>)>);
+        struct MyRegistrar(Vec<(ast::Name, Lrc<SyntaxExtension>)>);
 
         impl Registry for MyRegistrar {
             fn register_custom_derive(&mut self,
@@ -551,7 +550,7 @@ impl<'a> CrateLoader<'a> {
                 let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 let derive = ProcMacroDerive::new(expand, attrs.clone());
                 let derive = SyntaxExtension::ProcMacroDerive(Box::new(derive), attrs);
-                self.0.push((Symbol::intern(trait_name), Rc::new(derive)));
+                self.0.push((Symbol::intern(trait_name), Lrc::new(derive)));
             }
 
             fn register_attr_proc_macro(&mut self,
@@ -560,7 +559,7 @@ impl<'a> CrateLoader<'a> {
                 let expand = SyntaxExtension::AttrProcMacro(
                     Box::new(AttrProcMacro { inner: expand })
                 );
-                self.0.push((Symbol::intern(name), Rc::new(expand)));
+                self.0.push((Symbol::intern(name), Lrc::new(expand)));
             }
 
             fn register_bang_proc_macro(&mut self,
@@ -569,7 +568,7 @@ impl<'a> CrateLoader<'a> {
                 let expand = SyntaxExtension::ProcMacro(
                     Box::new(BangProcMacro { inner: expand })
                 );
-                self.0.push((Symbol::intern(name), Rc::new(expand)));
+                self.0.push((Symbol::intern(name), Lrc::new(expand)));
             }
         }
 
@@ -650,7 +649,7 @@ impl<'a> CrateLoader<'a> {
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
                                           &|data| data.needs_panic_runtime(sess));
-                runtime_found = runtime_found || data.dep_kind.get() == DepKind::Explicit;
+                runtime_found = runtime_found || *data.dep_kind.lock() == DepKind::Explicit;
             }
         });
 
@@ -1056,12 +1055,14 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
     fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
         match item.node {
-            ast::ItemKind::ExternCrate(rename) => {
-                debug!("resolving extern crate stmt. ident: {} rename: {:?}", item.ident, rename);
-                let rename = match rename {
-                    Some(rename) => {
-                        validate_crate_name(Some(self.sess), &rename.as_str(), Some(item.span));
-                        rename
+            ast::ItemKind::ExternCrate(orig_name) => {
+                debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
+                       item.ident, orig_name);
+                let orig_name = match orig_name {
+                    Some(orig_name) => {
+                        validate_crate_name(Some(self.sess), &orig_name.as_str(),
+                                            Some(item.span));
+                        orig_name
                     }
                     None => item.ident.name,
                 };
@@ -1072,7 +1073,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 };
 
                 let (cnum, ..) = self.resolve_crate(
-                    &None, item.ident.name, rename, None, item.span, PathKind::Crate, dep_kind,
+                    &None, item.ident.name, orig_name, None, item.span, PathKind::Crate, dep_kind,
                 );
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();

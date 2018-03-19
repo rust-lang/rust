@@ -1,10 +1,11 @@
 error[E0623]: lifetime mismatch
   --> $DIR/ex2d-push-inference-variable-2.rs:16:33
    |
-15 | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
    |                                   ------------      ------------ these two types are declared with different lifetimes...
-16 |     let a: &mut Vec<Ref<i32>> = x; //~ ERROR lifetime mismatch
+LL |     let a: &mut Vec<Ref<i32>> = x; //~ ERROR lifetime mismatch
    |                                 ^ ...but data from `y` flows into `x` here
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0623`.

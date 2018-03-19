@@ -1,0 +1,80 @@
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:40:11
+   |
+LL |     foo!(a?a?a); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:41:11
+   |
+LL |     foo!(a?a); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:42:11
+   |
+LL |     foo!(a?); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:43:11
+   |
+LL |     baz!(a?a?a); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:44:11
+   |
+LL |     baz!(a?a); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:45:11
+   |
+LL |     baz!(a?); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-ambig.rs:46:11
+   |
+LL |     baz!(a,); //~ ERROR unexpected end of macro invocation
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:47:11
+   |
+LL |     baz!(a?a?a,); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:48:11
+   |
+LL |     baz!(a?a,); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: no rules expected the token `?`
+  --> $DIR/macro-at-most-once-rep-ambig.rs:49:11
+   |
+LL |     baz!(a?,); //~ ERROR no rules expected the token `?`
+   |           ^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-ambig.rs:50:5
+   |
+LL |     barplus!(); //~ ERROR unexpected end of macro invocation
+   |     ^^^^^^^^^^^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-ambig.rs:51:15
+   |
+LL |     barplus!(a?); //~ ERROR unexpected end of macro invocation
+   |               ^
+
+error: unexpected end of macro invocation
+  --> $DIR/macro-at-most-once-rep-ambig.rs:52:15
+   |
+LL |     barstar!(a?); //~ ERROR unexpected end of macro invocation
+   |               ^
+
+error: aborting due to 13 previous errors
+

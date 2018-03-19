@@ -77,3 +77,15 @@ pub trait SoAmbiguous {}
 
 #[allow(bad_style)]
 pub fn SoAmbiguous() {}
+
+
+// @has - '//a/@href' '../intra_links/struct.ThisType.html'
+// @has - '//a/@href' '../intra_links/struct.ThisType.html#method.this_method'
+// @has - '//a/@href' '../intra_links/enum.ThisEnum.html'
+// @has - '//a/@href' '../intra_links/enum.ThisEnum.html#ThisVariant.v'
+/// Shortcut links for:
+/// * [`ThisType`]
+/// * [`ThisType::this_method`]
+/// * [ThisEnum]
+/// * [ThisEnum::ThisVariant]
+pub struct SomeOtherType;

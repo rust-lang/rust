@@ -14,3 +14,4 @@ proc_macro = { path = "../libproc_macro" }
 rustc_errors = { path = "../librustc_errors" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+rustc_data_structures = { path = "../librustc_data_structures" }

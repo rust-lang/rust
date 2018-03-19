@@ -12,8 +12,7 @@
 
 #![feature(unsized_tuple_coercion)]
 
-type Fat<T: ?Sized> = (isize, &'static str, T);
-//~^ WARNING bounds are ignored
+type Fat<T> = (isize, &'static str, T);
 
 #[derive(PartialEq,Eq)]
 struct Bar;

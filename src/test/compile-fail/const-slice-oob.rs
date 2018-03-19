@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deny(const_err)]
+
 const FOO: &'static[u32] = &[1, 2, 3];
 const BAR: u32 = FOO[5];
 //~^ ERROR constant evaluation error [E0080]

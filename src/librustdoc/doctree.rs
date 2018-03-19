@@ -210,6 +210,7 @@ pub struct Trait {
     pub depr: Option<attr::Deprecation>,
 }
 
+#[derive(Debug)]
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub polarity: hir::ImplPolarity,

@@ -129,9 +129,6 @@ CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.
 python x.py build
 ```
 
-If you are seeing build failure when compiling `rustc_binaryen`, make sure the path
-length of the rust folder is not longer than 22 characters.
-
 #### Specifying an ABI
 [specifying-an-abi]: #specifying-an-abi
 
@@ -227,9 +224,13 @@ variety of channels on Mozilla's IRC network, irc.mozilla.org. The
 most popular channel is [#rust], a venue for general discussion about
 Rust. And a good place to ask for help would be [#rust-beginners].
 
+Also, the [rustc guide] might be a good place to start if you want to
+find out how various parts of the compiler work.
+
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
 [#rust]: irc://irc.mozilla.org/rust
 [#rust-beginners]: irc://irc.mozilla.org/rust-beginners
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
 
 ## License
 [license]: #license

@@ -1,25 +1,25 @@
 warning: not reporting region error due to -Znll
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:51:9
    |
-51 |         demand_y(x, y, x.get())
+LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_wrong_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(2))` does not outlive free region `ReFree(DefId(0/1:18 ~ propagate_fail_to_approximate_longer_wrong_bounds[317d]::supply[0]::{{closure}}[0]), BrAnon(4))`
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:51:18
    |
-51 |         demand_y(x, y, x.get())
+LL |         demand_y(x, y, x.get())
    |                  ^
 
 note: No external requirements
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:49:47
    |
-49 |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
-50 | |         // Only works if 'x: 'y:
-51 | |         demand_y(x, y, x.get())
-52 | |         //~^ WARN not reporting region error due to -Znll
-53 | |         //~| ERROR does not outlive free region
-54 | |     });
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
+LL | |         //~^ WARN not reporting region error due to -Znll
+LL | |         //~| ERROR does not outlive free region
+LL | |     });
    | |_____^
    |
    = note: defining type: DefId(0/1:18 ~ propagate_fail_to_approximate_longer_wrong_bounds[317d]::supply[0]::{{closure}}[0]) with closure substs [
@@ -30,13 +30,13 @@ note: No external requirements
 note: No external requirements
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:48:1
    |
-48 | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-49 | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-50 | |         // Only works if 'x: 'y:
-51 | |         demand_y(x, y, x.get())
+LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+LL | |         // Only works if 'x: 'y:
+LL | |         demand_y(x, y, x.get())
 ...  |
-54 | |     });
-55 | | }
+LL | |     });
+LL | | }
    | |_^
    |
    = note: defining type: DefId(0/0:6 ~ propagate_fail_to_approximate_longer_wrong_bounds[317d]::supply[0]) with substs []

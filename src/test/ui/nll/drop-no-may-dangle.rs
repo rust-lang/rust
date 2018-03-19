@@ -13,7 +13,7 @@
 // because of destructor. (Note that the stderr also identifies this
 // destructor in the error message.)
 
-// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause
+// compile-flags:-Znll -Zborrowck=mir
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]

@@ -115,7 +115,7 @@ impl<'a> SpanUtils<'a> {
         // We keep track of the following two counts - the depth of nesting of
         // angle brackets, and the depth of nesting of square brackets. For the
         // angle bracket count, we only count tokens which occur outside of any
-        // square brackets (i.e. bracket_count == 0). The intutition here is
+        // square brackets (i.e. bracket_count == 0). The intuition here is
         // that we want to count angle brackets in the type, but not any which
         // could be in expression context (because these could mean 'less than',
         // etc.).
@@ -151,18 +151,20 @@ impl<'a> SpanUtils<'a> {
             }
             prev = next;
         }
-        if angle_count != 0 || bracket_count != 0 {
-            let loc = self.sess.codemap().lookup_char_pos(span.lo());
-            span_bug!(
-                span,
-                "Mis-counted brackets when breaking path? Parsing '{}' \
-                 in {}, line {}",
-                self.snippet(span),
-                loc.file.name,
-                loc.line
-            );
+        #[cfg(debug_assertions)] {
+            if angle_count != 0 || bracket_count != 0 {
+                let loc = self.sess.codemap().lookup_char_pos(span.lo());
+                span_bug!(
+                    span,
+                    "Mis-counted brackets when breaking path? Parsing '{}' \
+                     in {}, line {}",
+                    self.snippet(span),
+                    loc.file.name,
+                    loc.line
+                );
+            }
         }
-        if result.is_none() && prev.tok.is_ident() && angle_count == 0 {
+        if result.is_none() && prev.tok.is_ident() {
             return Some(prev.sp);
         }
         result

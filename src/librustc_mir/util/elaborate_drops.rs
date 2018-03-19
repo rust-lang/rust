@@ -11,13 +11,14 @@
 use std::fmt;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::middle::const_val::{ConstInt, ConstVal};
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use util::patch::MirPatch;
+use rustc::mir::interpret::{Value, PrimVal};
 
 use std::{iter, u32};
 
@@ -205,11 +206,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             let field = Field::new(i);
             let subpath = self.elaborator.field_subpath(variant_path, field);
 
-            let field_ty =
-                self.tcx().normalize_associated_type_in_env(
-                    &f.ty(self.tcx(), substs),
-                    self.elaborator.param_env()
-                );
+            let field_ty = self.tcx().normalize_erasing_regions(
+                self.elaborator.param_env(),
+                f.ty(self.tcx(), substs),
+            );
             (base_place.clone().field(field, field_ty), subpath)
         }).collect()
     }
@@ -425,7 +425,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     variant_path,
                     &adt.variants[variant_index],
                     substs);
-                values.push(discr);
+                values.push(discr.val);
                 if let Unwind::To(unwind) = unwind {
                     // We can't use the half-ladder from the original
                     // drop ladder, because this breaks the
@@ -480,7 +480,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn adt_switch_block(&mut self,
                         adt: &'tcx ty::AdtDef,
                         blocks: Vec<BasicBlock>,
-                        values: &[ConstInt],
+                        values: &[u128],
                         succ: BasicBlock,
                         unwind: Unwind)
                         -> BasicBlock {
@@ -788,7 +788,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 self.open_drop_for_tuple(tys)
             }
             ty::TyAdt(def, _) if def.is_box() => {
@@ -803,7 +803,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
             ty::TyArray(ety, size) => self.open_drop_for_array(
-                ety, size.val.to_const_int().and_then(|v| v.to_u64())),
+                ety, size.val.to_raw_bits().map(|i| i as u64)),
             ty::TySlice(ety) => self.open_drop_for_array(ety, None),
 
             _ => bug!("open drop from non-ADT `{:?}`", ty)
@@ -949,7 +949,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty: self.tcx().types.usize,
             literal: Literal::Value {
                 value: self.tcx().mk_const(ty::Const {
-                    val: ConstVal::Integral(self.tcx().const_usize(val)),
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.into()))),
                     ty: self.tcx().types.usize
                 })
             }

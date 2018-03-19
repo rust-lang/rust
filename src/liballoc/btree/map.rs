@@ -1156,7 +1156,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for Iter<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1235,7 +1235,7 @@ impl<'a, K: 'a, V: 'a> ExactSizeIterator for IterMut<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1365,7 +1365,7 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<K, V> FusedIterator for IntoIter<K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1395,7 +1395,7 @@ impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for Keys<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1432,7 +1432,7 @@ impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for Values<'a, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1482,7 +1482,7 @@ impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
 
 
@@ -1561,7 +1561,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for Range<'a, K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
@@ -1630,7 +1630,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     }
 }
 
-#[unstable(feature = "fused", issue = "35602")]
+#[stable(feature = "fused", since = "1.26.0")]
 impl<'a, K, V> FusedIterator for RangeMut<'a, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
@@ -2114,7 +2114,6 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(entry_and_modify)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, usize> = BTreeMap::new();
@@ -2129,7 +2128,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
-    #[unstable(feature = "entry_and_modify", issue = "44733")]
+    #[stable(feature = "entry_and_modify", since = "1.26.0")]
     pub fn and_modify<F>(self, mut f: F) -> Self
         where F: FnMut(&mut V)
     {

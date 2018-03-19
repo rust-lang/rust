@@ -1,0 +1,18 @@
+error[E0597]: `*v.0` does not live long enough
+  --> $DIR/issue-31567.rs:22:26
+   |
+LL |     let s_inner: &'a S = &*v.0; //~ ERROR `*v.0` does not live long enough
+   |                          ^^^^^ borrowed value does not live long enough
+LL |     &s_inner.0
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 21:1...
+  --> $DIR/issue-31567.rs:21:1
+   |
+LL | fn get_dangling<'a>(v: VecWrapper<'a>) -> &'a u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

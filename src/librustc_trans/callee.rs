@@ -25,7 +25,6 @@ use type_of::LayoutLlvmExt;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
-use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc_back::PanicStrategy;
 
@@ -149,9 +148,9 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         unsafe {
             llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
 
-            if cx.tcx.is_translated_function(instance_def_id) {
+            if cx.tcx.is_translated_item(instance_def_id) {
                 if instance_def_id.is_local() {
-                    if !cx.tcx.is_exported_symbol(instance_def_id) {
+                    if !cx.tcx.is_reachable_non_generic(instance_def_id) {
                         llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
                     }
                 } else {
@@ -185,7 +184,7 @@ pub fn resolve_and_get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         cx,
         ty::Instance::resolve(
             cx.tcx,
-            ty::ParamEnv::empty(traits::Reveal::All),
+            ty::ParamEnv::reveal_all(),
             def_id,
             substs
         ).unwrap()

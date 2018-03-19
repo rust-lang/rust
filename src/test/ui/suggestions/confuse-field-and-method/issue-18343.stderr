@@ -1,13 +1,14 @@
 error[E0599]: no method named `closure` found for type `Obj<[closure@$DIR/issue-18343.rs:16:28: 16:33]>` in the current scope
   --> $DIR/issue-18343.rs:17:7
    |
-11 | struct Obj<F> where F: FnMut() -> u32 {
+LL | struct Obj<F> where F: FnMut() -> u32 {
    | ------------------------------------- method `closure` not found for this
 ...
-17 |     o.closure();
+LL |     o.closure();
    |       ^^^^^^^ field, not a method
    |
    = help: use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0599`.

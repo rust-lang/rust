@@ -9,6 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
+ena = "0.9.1"
 log = "0.4"
 serialize = { path = "../libserialize" }
 cfg-if = "0.1.2"

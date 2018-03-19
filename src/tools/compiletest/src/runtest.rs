@@ -1623,14 +1623,18 @@ impl<'test> TestCx<'test> {
                 if self.props.error_patterns.is_empty() {
                     rustc.args(&["--error-format", "json"]);
                 }
+                if !self.props.disable_ui_testing_normalization {
+                    rustc.arg("-Zui-testing");
+                }
             }
-            Ui => if !self.props
-                .compile_flags
-                .iter()
-                .any(|s| s.starts_with("--error-format"))
-            {
-                rustc.args(&["--error-format", "json"]);
-            },
+            Ui => {
+                if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
+                    rustc.args(&["--error-format", "json"]);
+                }
+                if !self.props.disable_ui_testing_normalization {
+                    rustc.arg("-Zui-testing");
+                }
+            }
             MirOpt => {
                 rustc.args(&[
                     "-Zdump-mir=all",
@@ -2407,7 +2411,14 @@ impl<'test> TestCx<'test> {
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
             .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
             .env("LLVM_COMPONENTS", &self.config.llvm_components)
-            .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags);
+            .env("LLVM_CXXFLAGS", &self.config.llvm_cxxflags)
+
+            // We for sure don't want these tests to run in parallel, so make
+            // sure they don't have access to these vars if we we run via `make`
+            // at the top level
+            .env_remove("MAKEFLAGS")
+            .env_remove("MFLAGS")
+            .env_remove("CARGO_MAKEFLAGS");
 
         if let Some(ref linker) = self.config.linker {
             cmd.env("RUSTC_LINKER", linker);

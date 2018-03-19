@@ -1,24 +1,9 @@
 #![allow(unknown_lints)]
 
 use ty::layout::{Align, HasDataLayout};
+use ty;
 
 use super::{EvalResult, MemoryPointer, PointerArithmetic};
-use syntax::ast::FloatTy;
-use rustc_const_math::ConstFloat;
-
-pub fn bytes_to_f32(bits: u128) -> ConstFloat {
-    ConstFloat {
-        bits,
-        ty: FloatTy::F32,
-    }
-}
-
-pub fn bytes_to_f64(bits: u128) -> ConstFloat {
-    ConstFloat {
-        bits,
-        ty: FloatTy::F64,
-    }
-}
 
 /// A `Value` represents a single self-contained Rust value.
 ///
@@ -29,11 +14,20 @@ pub fn bytes_to_f64(bits: u128) -> ConstFloat {
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ByValPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's trans.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum Value {
     ByRef(Pointer, Align),
     ByVal(PrimVal),
     ByValPair(PrimVal, PrimVal),
+}
+
+impl<'tcx> ty::TypeFoldable<'tcx> for Value {
+    fn super_fold_with<'gcx: 'tcx, F: ty::fold::TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+    fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
+    }
 }
 
 /// A wrapper type around `PrimVal` that cannot be turned back into a `PrimVal` accidentally.
@@ -43,9 +37,9 @@ pub enum Value {
 /// I (@oli-obk) believe it is less easy to mix up generic primvals and primvals that are just
 /// the representation of pointers. Also all the sites that convert between primvals and pointers
 /// are explicit now (and rare!)
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Pointer {
-    primval: PrimVal,
+    pub primval: PrimVal,
 }
 
 impl<'tcx> Pointer {
@@ -138,7 +132,7 @@ impl ::std::convert::From<MemoryPointer> for Pointer {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `PrimVal` can either represent the raw bytes
 /// of a simple value, a pointer into another `Allocation`, or be undefined.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum PrimVal {
     /// The raw bytes of a simple value.
     Bytes(u128),
@@ -170,10 +164,6 @@ impl<'tcx> PrimVal {
 
     pub fn from_i128(n: i128) -> Self {
         PrimVal::Bytes(n as u128)
-    }
-
-    pub fn from_float(f: ConstFloat) -> Self {
-        PrimVal::Bytes(f.bits)
     }
 
     pub fn from_bool(b: bool) -> Self {
@@ -248,14 +238,6 @@ impl<'tcx> PrimVal {
             assert_eq!(b as i64 as u128, b);
             b as i64
         })
-    }
-
-    pub fn to_f32(self) -> EvalResult<'tcx, ConstFloat> {
-        self.to_bytes().map(bytes_to_f32)
-    }
-
-    pub fn to_f64(self) -> EvalResult<'tcx, ConstFloat> {
-        self.to_bytes().map(bytes_to_f64)
     }
 
     pub fn to_bool(self) -> EvalResult<'tcx, bool> {

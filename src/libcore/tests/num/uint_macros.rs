@@ -98,6 +98,17 @@ mod tests {
     }
 
     #[test]
+    fn test_reverse_bits() {
+        assert_eq!(A.reverse_bits().reverse_bits(), A);
+        assert_eq!(B.reverse_bits().reverse_bits(), B);
+        assert_eq!(C.reverse_bits().reverse_bits(), C);
+
+        // Swapping these should make no difference
+        assert_eq!(_0.reverse_bits(), _0);
+        assert_eq!(_1.reverse_bits(), _1);
+    }
+
+    #[test]
     fn test_le() {
         assert_eq!($T::from_le(A.to_le()), A);
         assert_eq!($T::from_le(B.to_le()), B);

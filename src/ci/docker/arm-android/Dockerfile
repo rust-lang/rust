@@ -31,9 +31,7 @@ ENV PATH=$PATH:/android/sdk/platform-tools
 
 ENV TARGETS=arm-linux-androideabi
 
-ENV RUST_CONFIGURE_ARGS \
-      --target=$TARGETS \
-      --arm-linux-androideabi-ndk=/android/ndk/arm-14
+ENV RUST_CONFIGURE_ARGS --arm-linux-androideabi-ndk=/android/ndk/arm-14
 
 ENV SCRIPT python2.7 ../x.py test --target $TARGETS
 

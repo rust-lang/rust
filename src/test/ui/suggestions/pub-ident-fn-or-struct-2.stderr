@@ -1,7 +1,7 @@
 error: missing `fn` or `struct` for method or struct definition
   --> $DIR/pub-ident-fn-or-struct-2.rs:11:4
    |
-11 | pub S();
+LL | pub S();
    | ---^- help: if you meant to call a macro, write instead: `S!`
 
 error: aborting due to previous error

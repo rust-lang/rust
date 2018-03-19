@@ -1,10 +1,11 @@
 error[E0369]: binary operation `+` cannot be applied to type `&std::string::String`
   --> $DIR/str-concat-on-double-ref.rs:14:13
    |
-14 |     let c = a + b;
+LL |     let c = a + b;
    |             ^^^^^
    |
    = note: an implementation of `std::ops::Add` might be missing for `&std::string::String`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0369`.

@@ -1,9 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:26:5
    |
-25 | fn a() -> Foo {
+LL | fn a() -> Foo {
    |           --- expected `Foo` because of return type
-26 |     Some(Foo { bar: 1 }) //~ ERROR mismatched types
+LL |     Some(Foo { bar: 1 }) //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::option::Option`
    |
    = note: expected type `Foo`
@@ -12,9 +12,9 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:30:5
    |
-29 | fn a2() -> Foo {
+LL | fn a2() -> Foo {
    |            --- expected `Foo` because of return type
-30 |     Ok(Foo { bar: 1}) //~ ERROR mismatched types
+LL |     Ok(Foo { bar: 1}) //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^^^^ expected struct `Foo`, found enum `std::result::Result`
    |
    = note: expected type `Foo`
@@ -23,9 +23,9 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:34:5
    |
-33 | fn b() -> Option<Foo> {
+LL | fn b() -> Option<Foo> {
    |           ----------- expected `std::option::Option<Foo>` because of return type
-34 |     Foo { bar: 1 } //~ ERROR mismatched types
+LL |     Foo { bar: 1 } //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
    |
    = note: expected type `std::option::Option<Foo>`
@@ -34,9 +34,9 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:38:5
    |
-37 | fn c() -> Result<Foo, Bar> {
+LL | fn c() -> Result<Foo, Bar> {
    |           ---------------- expected `std::result::Result<Foo, Bar>` because of return type
-38 |     Foo { bar: 1 } //~ ERROR mismatched types
+LL |     Foo { bar: 1 } //~ ERROR mismatched types
    |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
    |
    = note: expected type `std::result::Result<Foo, Bar>`
@@ -45,10 +45,10 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:49:5
    |
-41 | fn d() -> X<X<String, String>, String> {
+LL | fn d() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
 ...
-49 |     x //~ ERROR mismatched types
+LL |     x //~ ERROR mismatched types
    |     ^ expected struct `std::string::String`, found integral variable
    |
    = note: expected type `X<X<_, std::string::String>, std::string::String>`
@@ -57,10 +57,10 @@ error[E0308]: mismatched types
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:60:5
    |
-52 | fn e() -> X<X<String, String>, String> {
+LL | fn e() -> X<X<String, String>, String> {
    |           ---------------------------- expected `X<X<std::string::String, std::string::String>, std::string::String>` because of return type
 ...
-60 |     x //~ ERROR mismatched types
+LL |     x //~ ERROR mismatched types
    |     ^ expected struct `std::string::String`, found integral variable
    |
    = note: expected type `X<X<_, std::string::String>, _>`
@@ -68,3 +68,4 @@ error[E0308]: mismatched types
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

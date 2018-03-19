@@ -1,15 +1,16 @@
 error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
   --> $DIR/regions-nested-fns-2.rs:16:9
    |
-16 |         |z| {
+LL |         |z| {
    |         ^^^ may outlive borrowed value `y`
-17 |             //~^ ERROR E0373
-18 |             if false { &y } else { z }
+LL |             //~^ ERROR E0373
+LL |             if false { &y } else { z }
    |                         - `y` is borrowed here
 help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
    |
-16 |         move |z| {
+LL |         move |z| {
    |         ^^^^^^^^
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0373`.

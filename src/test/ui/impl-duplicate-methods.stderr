@@ -1,10 +1,11 @@
 error[E0201]: duplicate definitions with name `orange`:
   --> $DIR/impl-duplicate-methods.rs:15:5
    |
-14 |     fn orange(&self) {}
+LL |     fn orange(&self) {}
    |     ------------------- previous definition of `orange` here
-15 |     fn orange(&self) {}
+LL |     fn orange(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^ duplicate definition
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0201`.

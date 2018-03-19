@@ -27,7 +27,7 @@ use middle::region;
 use ty::{self, TyCtxt, adjustment};
 
 use hir::{self, PatKind};
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -239,7 +239,7 @@ impl OverloadedCallType {
 // This is the code that actually walks the tree.
 pub struct ExprUseVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
-    delegate: &'a mut Delegate<'tcx>,
+    delegate: &'a mut dyn Delegate<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
@@ -274,12 +274,12 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     ///   `None` means that rvalues will be given more conservative lifetimes.
     ///
     /// See also `with_infer`, which is used *during* typeck.
-    pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
+    pub fn new(delegate: &'a mut (dyn Delegate<'tcx>+'a),
                tcx: TyCtxt<'a, 'tcx, 'tcx>,
                param_env: ty::ParamEnv<'tcx>,
                region_scope_tree: &'a region::ScopeTree,
                tables: &'a ty::TypeckTables<'tcx>,
-               rvalue_promotable_map: Option<Rc<ItemLocalSet>>)
+               rvalue_promotable_map: Option<Lrc<ItemLocalSet>>)
                -> Self
     {
         ExprUseVisitor {
@@ -294,7 +294,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
-    pub fn with_infer(delegate: &'a mut (Delegate<'tcx>+'a),
+    pub fn with_infer(delegate: &'a mut (dyn Delegate<'tcx>+'a),
                       infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
                       param_env: ty::ParamEnv<'tcx>,
                       region_scope_tree: &'a region::ScopeTree,

@@ -1,13 +1,14 @@
 error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
   --> $DIR/feature-gate-allow-internal-unsafe-nested-macro.rs:18:9
    |
-18 |         #[allow_internal_unsafe] //~ ERROR allow_internal_unsafe side-steps
+LL |         #[allow_internal_unsafe] //~ ERROR allow_internal_unsafe side-steps
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 ...
-25 | bar!();
+LL | bar!();
    | ------- in this macro invocation
    |
    = help: add #![feature(allow_internal_unsafe)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

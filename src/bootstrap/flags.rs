@@ -29,7 +29,7 @@ use cache::{Interned, INTERNER};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
-    pub verbose: usize, // verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
+    pub verbose: usize, // number of -v args; each extra -v after the first is passed to Cargo
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,
@@ -43,6 +43,7 @@ pub struct Flags {
     pub cmd: Subcommand,
     pub incremental: bool,
     pub exclude: Vec<PathBuf>,
+    pub rustc_error_format: Option<String>,
 }
 
 pub enum Subcommand {
@@ -118,6 +119,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
+        opts.optopt("", "error-format", "rustc error format", "FORMAT");
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {
@@ -370,6 +372,7 @@ Arguments:
             verbose: matches.opt_count("verbose"),
             stage,
             on_fail: matches.opt_str("on-fail"),
+            rustc_error_format: matches.opt_str("error-format"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
             build: matches.opt_str("build").map(|s| INTERNER.intern_string(s)),
             host: split(matches.opt_strs("host"))

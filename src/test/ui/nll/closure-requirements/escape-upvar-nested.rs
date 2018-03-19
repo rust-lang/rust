@@ -15,7 +15,7 @@
 //
 // except that the closure does so via a second closure.
 
-// compile-flags:-Znll -Zborrowck=mir -Znll-dump-cause -Zverbose
+// compile-flags:-Znll -Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 

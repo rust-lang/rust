@@ -16,7 +16,7 @@ use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
-use rustc_const_math::{ConstInt, ConstUsize};
+use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -303,7 +303,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
         ty::TyArray(ty, len) => {
-            let len = len.val.to_const_int().unwrap().to_u64().unwrap();
+            let len = len.val.unwrap_u64();
             builder.array_shim(dest, src, ty, len)
         }
         ty::TyClosure(def_id, substs) => {
@@ -312,7 +312,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 substs.upvar_tys(def_id, tcx)
             )
         }
-        ty::TyTuple(tys, _) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
+        ty::TyTuple(tys) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }
@@ -443,7 +443,8 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             ty: func_ty,
             literal: Literal::Value {
                 value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Function(self.def_id, substs),
+                    // ZST function type
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                     ty: func_ty
                 }),
             },
@@ -501,13 +502,12 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
     }
 
     fn make_usize(&self, value: u64) -> Box<Constant<'tcx>> {
-        let value = ConstUsize::new(value, self.tcx.sess.target.usize_ty).unwrap();
         box Constant {
             span: self.span,
             ty: self.tcx.types.usize,
             literal: Literal::Value {
                 value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Integral(ConstInt::Usize(value)),
+                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into()))),
                     ty: self.tcx.types.usize,
                 })
             }
@@ -739,8 +739,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ty,
                 literal: Literal::Value {
                     value: tcx.mk_const(ty::Const {
-                        val: ConstVal::Function(def_id,
-                            Substs::identity_for_item(tcx, def_id)),
+                        // ZST function type
+                        val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
                         ty
                     }),
                 },
@@ -832,14 +832,11 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     let tcx = infcx.tcx;
     let gcx = tcx.global_tcx();
     let def_id = tcx.hir.local_def_id(ctor_id);
-    let sig = gcx.fn_sig(def_id).no_late_bound_regions()
-        .expect("LBR in ADT constructor signature");
-    let sig = gcx.erase_regions(&sig);
     let param_env = gcx.param_env(def_id);
 
-    // Normalize the sig now that we have liberated the late-bound
-    // regions.
-    let sig = gcx.normalize_associated_type_in_env(&sig, param_env);
+    // Normalize the sig.
+    let sig = gcx.fn_sig(def_id).no_late_bound_regions().expect("LBR in ADT constructor signature");
+    let sig = gcx.normalize_erasing_regions(param_env, sig);
 
     let (adt_def, substs) = match sig.output().sty {
         ty::TyAdt(adt_def, substs) => (adt_def, substs),

@@ -1,10 +1,11 @@
 error[E0658]: is feature gated (see issue #37406)
   --> $DIR/feature-gate-link_cfg.rs:11:1
    |
-11 | #[link(name = "foo", cfg(foo))]
+LL | #[link(name = "foo", cfg(foo))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(link_cfg)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

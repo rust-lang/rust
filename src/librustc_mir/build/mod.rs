@@ -11,7 +11,7 @@
 
 use build;
 use hair::cx::Cx;
-use hair::LintLevel;
+use hair::{LintLevel, BindingMode, PatternKind};
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LocalDefId};
 use rustc::middle::region;
@@ -21,13 +21,13 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::NodeMap;
 use rustc_back::PanicStrategy;
-use rustc_const_eval::pattern::{BindingMode, PatternKind};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
 use std::mem;
 use std::u32;
 use syntax::abi::Abi;
 use syntax::ast;
+use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 use transform::MirSource;
@@ -355,10 +355,9 @@ macro_rules! unpack {
 }
 
 fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         fn_id: ast::NodeId,
+                                         fn_def_id: DefId,
                                          abi: Abi)
                                          -> bool {
-
     // Not callable from C, so we can safely unwind through these
     if abi == Abi::Rust || abi == Abi::RustCall { return false; }
 
@@ -370,9 +369,17 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     // This is a special case: some functions have a C abi but are meant to
     // unwind anyway. Don't stop them.
-    if tcx.has_attr(tcx.hir.local_def_id(fn_id), "unwind") { return false; }
+    let attrs = &tcx.get_attrs(fn_def_id);
+    match attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs) {
+        None => {
+            // FIXME(rust-lang/rust#48251) -- Had to disable
+            // abort-on-panic for backwards compatibility reasons.
+            false
+        }
 
-    return true;
+        Some(UnwindAttr::Allowed) => false,
+        Some(UnwindAttr::Aborts) => true,
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -399,13 +406,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         safety,
         return_ty);
 
+    let fn_def_id = tcx.hir.local_def_id(fn_id);
     let call_site_scope = region::Scope::CallSite(body.value.hir_id.local_id);
     let arg_scope = region::Scope::Arguments(body.value.hir_id.local_id);
     let mut block = START_BLOCK;
     let source_info = builder.source_info(span);
     let call_site_s = (call_site_scope, source_info);
     unpack!(block = builder.in_scope(call_site_s, LintLevel::Inherited, block, |builder| {
-        if should_abort_on_panic(tcx, fn_id, abi) {
+        if should_abort_on_panic(tcx, fn_def_id, abi) {
             builder.schedule_abort();
         }
 
@@ -414,7 +422,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace
-        let fn_end = span.with_lo(span.hi());
+        let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
         builder.cfg.terminate(block, source_info,

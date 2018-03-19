@@ -1,10 +1,11 @@
 error[E0658]: the `#[fundamental]` attribute is an experimental feature (see issue #29635)
   --> $DIR/feature-gate-fundamental.rs:11:1
    |
-11 | #[fundamental] //~ ERROR the `#[fundamental]` attribute is an experimental feature
+LL | #[fundamental] //~ ERROR the `#[fundamental]` attribute is an experimental feature
    | ^^^^^^^^^^^^^^
    |
    = help: add #![feature(fundamental)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

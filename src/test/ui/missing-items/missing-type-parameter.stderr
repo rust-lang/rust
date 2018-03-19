@@ -1,8 +1,9 @@
 error[E0282]: type annotations needed
   --> $DIR/missing-type-parameter.rs:14:5
    |
-14 |     foo(); //~ ERROR type annotations needed
+LL |     foo(); //~ ERROR type annotations needed
    |     ^^^ cannot infer type for `X`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0282`.

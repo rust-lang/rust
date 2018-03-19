@@ -1,9 +1,9 @@
 error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:11:1
    |
-11 | / extern "rust-intrinsic" {   //~ ERROR intrinsics are subject to change
-12 | |     fn bar();
-13 | | }
+LL | / extern "rust-intrinsic" {   //~ ERROR intrinsics are subject to change
+LL | |     fn bar();
+LL | | }
    | |_^
    |
    = help: add #![feature(intrinsics)] to the crate attributes to enable
@@ -11,11 +11,12 @@ error[E0658]: intrinsics are subject to change
 error[E0658]: intrinsics are subject to change
   --> $DIR/feature-gate-intrinsics.rs:15:1
    |
-15 | / extern "rust-intrinsic" fn baz() {  //~ ERROR intrinsics are subject to change
-16 | | }
+LL | / extern "rust-intrinsic" fn baz() {  //~ ERROR intrinsics are subject to change
+LL | | }
    | |_^
    |
    = help: add #![feature(intrinsics)] to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

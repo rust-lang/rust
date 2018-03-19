@@ -21,12 +21,12 @@ use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, Ty
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use util::nodemap::FxHashSet;
+use mir::interpret::{Value, PrimVal};
 
 use std::cell::Cell;
 use std::fmt;
 use std::usize;
 
-use rustc_const_math::ConstInt;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
@@ -340,7 +340,7 @@ impl PrintContext {
 
         if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
             let projection_ty = projections[0].ty;
-            if let TyTuple(ref args, _) = substs.type_at(1).sty {
+            if let TyTuple(ref args) = substs.type_at(1).sty {
                 return self.fn_sig(f, args, false, projection_ty);
             }
         }
@@ -721,6 +721,9 @@ define_print! {
                 ty::ReEarlyBound(ref data) => {
                     write!(f, "{}", data.name)
                 }
+                ty::ReCanonical(_) => {
+                    write!(f, "'_")
+                }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
                 ty::ReSkolemized(_, br) => {
@@ -785,8 +788,12 @@ define_print! {
                     write!(f, "{:?}", vid)
                 }
 
+                ty::ReCanonical(c) => {
+                    write!(f, "'?{}", c.index())
+                }
+
                 ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
+                    write!(f, "ReSkolemized({:?}, {:?})", id, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
@@ -888,6 +895,7 @@ define_print! {
                     ty::TyVar(_) => write!(f, "_"),
                     ty::IntVar(_) => write!(f, "{}", "{integer}"),
                     ty::FloatVar(_) => write!(f, "{}", "{float}"),
+                    ty::CanonicalTy(_) => write!(f, "_"),
                     ty::FreshTy(v) => write!(f, "FreshTy({})", v),
                     ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
                     ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
@@ -899,6 +907,7 @@ define_print! {
                 ty::TyVar(ref v) => write!(f, "{:?}", v),
                 ty::IntVar(ref v) => write!(f, "{:?}", v),
                 ty::FloatVar(ref v) => write!(f, "{:?}", v),
+                ty::CanonicalTy(v) => write!(f, "?{:?}", v.index()),
                 ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
                 ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
                 ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
@@ -913,6 +922,12 @@ impl fmt::Debug for ty::IntVarValue {
             ty::IntType(ref v) => v.fmt(f),
             ty::UintType(ref v) => v.fmt(f),
         }
+    }
+}
+
+impl fmt::Debug for ty::FloatVarValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
@@ -933,7 +948,6 @@ define_print_multi! {
     ('tcx) ty::Binder<ty::TraitRef<'tcx>>,
     ('tcx) ty::Binder<ty::FnSig<'tcx>>,
     ('tcx) ty::Binder<ty::TraitPredicate<'tcx>>,
-    ('tcx) ty::Binder<ty::EquatePredicate<'tcx>>,
     ('tcx) ty::Binder<ty::SubtypePredicate<'tcx>>,
     ('tcx) ty::Binder<ty::ProjectionPredicate<'tcx>>,
     ('tcx) ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>,
@@ -999,7 +1013,7 @@ define_print! {
                     tm.print(f, cx)
                 }
                 TyNever => write!(f, "!"),
-                TyTuple(ref tys, _) => {
+                TyTuple(ref tys) => {
                     write!(f, "(")?;
                     let mut tys = tys.iter();
                     if let Some(&ty) = tys.next() {
@@ -1160,7 +1174,7 @@ define_print! {
                 TyArray(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz.val {
-                        ConstVal::Integral(ConstInt::Usize(sz)) => {
+                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
                             write!(f, "{}", sz)?;
                         }
                         ConstVal::Unevaluated(_def_id, substs) => {
@@ -1207,14 +1221,6 @@ define_print! {
     (self, f, cx) {
         display {
             print!(f, cx, print(self.0), write(" : "), print(self.1))
-        }
-    }
-}
-
-define_print! {
-    ('tcx) ty::EquatePredicate<'tcx>, (self, f, cx) {
-        display {
-            print!(f, cx, print(self.0), write(" == "), print(self.1))
         }
     }
 }
@@ -1286,7 +1292,6 @@ define_print! {
         display {
             match *self {
                 ty::Predicate::Trait(ref data) => data.print(f, cx),
-                ty::Predicate::Equate(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::Subtype(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::RegionOutlives(ref predicate) => predicate.print(f, cx),
                 ty::Predicate::TypeOutlives(ref predicate) => predicate.print(f, cx),
@@ -1311,7 +1316,6 @@ define_print! {
         debug {
             match *self {
                 ty::Predicate::Trait(ref a) => a.print(f, cx),
-                ty::Predicate::Equate(ref pair) => pair.print(f, cx),
                 ty::Predicate::Subtype(ref pair) => pair.print(f, cx),
                 ty::Predicate::RegionOutlives(ref pair) => pair.print(f, cx),
                 ty::Predicate::TypeOutlives(ref pair) => pair.print(f, cx),

@@ -10,16 +10,14 @@
 
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
-use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
-use rustc::traits;
 use rustc::mir;
 use abi::{Abi, FnType, ArgType, PassMode};
 use base;
 use callee;
 use builder::Builder;
-use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_undef};
+use common::{self, C_bool, C_str_slice, C_struct, C_u32, C_uint_big, C_undef};
 use consts;
 use meth;
 use monomorphize;
@@ -30,7 +28,6 @@ use syntax::symbol::Symbol;
 use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::Const;
 use super::place::PlaceRef;
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
@@ -196,19 +193,21 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 if switch_ty == bx.tcx().types.bool {
                     let lltrue = llblock(self, targets[0]);
                     let llfalse = llblock(self, targets[1]);
-                    if let [ConstInt::U8(0)] = values[..] {
+                    if let [0] = values[..] {
                         bx.cond_br(discr.immediate(), llfalse, lltrue);
                     } else {
+                        assert_eq!(&values[..], &[1]);
                         bx.cond_br(discr.immediate(), lltrue, llfalse);
                     }
                 } else {
                     let (otherwise, targets) = targets.split_last().unwrap();
                     let switch = bx.switch(discr.immediate(),
                                             llblock(self, *otherwise), values.len());
-                    for (value, target) in values.iter().zip(targets) {
-                        let val = Const::from_constint(bx.cx, value);
+                    let switch_llty = bx.cx.layout_of(switch_ty).immediate_llvm_type(bx.cx);
+                    for (&value, target) in values.iter().zip(targets) {
+                        let llval = C_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);
-                        bx.add_case(switch, val.llval, llbb)
+                        bx.add_case(switch, llval, llbb)
                     }
                 }
             }
@@ -282,7 +281,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     ty::TyDynamic(..) => {
                         let fn_ty = drop_fn.ty(bx.cx.tcx);
                         let sig = common::ty_fn_sig(bx.cx, fn_ty);
-                        let sig = bx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                        let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                            ty::ParamEnv::reveal_all(),
+                            &sig,
+                        );
                         let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
                         args = &args[..1];
                         (meth::DESTRUCTOR.get_fn(&bx, place.llextra, &fn_ty), fn_ty)
@@ -351,17 +353,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     .max(tcx.data_layout.pointer_align);
 
                 // Put together the arguments to the panic entry point.
-                let (lang_item, args, const_err) = match *msg {
+                let (lang_item, args) = match *msg {
                     mir::AssertMessage::BoundsCheck { ref len, ref index } => {
                         let len = self.trans_operand(&mut bx, len).immediate();
                         let index = self.trans_operand(&mut bx, index).immediate();
-
-                        let const_err = common::const_to_opt_u128(len, false)
-                            .and_then(|len| common::const_to_opt_u128(index, false)
-                                .map(|index| ErrKind::IndexOutOfBounds {
-                                    len: len as u64,
-                                    index: index as u64
-                                }));
 
                         let file_line_col = C_struct(bx.cx, &[filename, line, col], false);
                         let file_line_col = consts::addr_of(bx.cx,
@@ -369,8 +364,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                             align,
                                                             "panic_bounds_check_loc");
                         (lang_items::PanicBoundsCheckFnLangItem,
-                         vec![file_line_col, index, len],
-                         const_err)
+                         vec![file_line_col, index, len])
                     }
                     mir::AssertMessage::Math(ref err) => {
                         let msg_str = Symbol::intern(err.description()).as_str();
@@ -383,8 +377,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                                 align,
                                                                 "panic_loc");
                         (lang_items::PanicFnLangItem,
-                         vec![msg_file_line_col],
-                         Some(ErrKind::Math(err.clone())))
+                         vec![msg_file_line_col])
                     }
                     mir::AssertMessage::GeneratorResumedAfterReturn |
                     mir::AssertMessage::GeneratorResumedAfterPanic => {
@@ -403,22 +396,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                                 align,
                                                                 "panic_loc");
                         (lang_items::PanicFnLangItem,
-                         vec![msg_file_line_col],
-                         None)
+                         vec![msg_file_line_col])
                     }
                 };
-
-                // If we know we always panic, and the error message
-                // is also constant, then we can produce a warning.
-                if const_cond == Some(!expected) {
-                    if let Some(err) = const_err {
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        let mut diag = bx.tcx().sess.struct_span_warn(
-                            span, "this expression will panic at run-time");
-                        err.note(bx.tcx(), span, "expression", &mut diag);
-                        diag.emit();
-                    }
-                }
 
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
@@ -441,7 +421,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
                         (Some(ty::Instance::resolve(bx.cx.tcx,
-                                                    ty::ParamEnv::empty(traits::Reveal::All),
+                                                    ty::ParamEnv::reveal_all(),
                                                     def_id,
                                                     substs).unwrap()),
                          None)
@@ -453,7 +433,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 };
                 let def = instance.map(|i| i.def);
                 let sig = callee.layout.ty.fn_sig(bx.tcx());
-                let sig = bx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
                 let abi = sig.abi;
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
@@ -529,10 +512,13 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                     span_bug!(span, "shuffle indices must be constant");
                                 }
                                 mir::Operand::Constant(ref constant) => {
-                                    let val = self.trans_constant(&bx, constant);
+                                    let (llval, ty) = self.simd_shuffle_indices(
+                                        &bx,
+                                        constant,
+                                    );
                                     return OperandRef {
-                                        val: Immediate(val.llval),
-                                        layout: bx.cx.layout_of(val.ty)
+                                        val: Immediate(llval),
+                                        layout: bx.cx.layout_of(ty)
                                     };
                                 }
                             }
@@ -724,7 +710,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             let layout = cx.layout_of(cx.tcx.intern_tup(&[
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 cx.tcx.types.i32
-            ], false));
+            ]));
             let slot = PlaceRef::alloca(bx, layout, "personalityslot");
             self.personality_slot = Some(slot);
             slot

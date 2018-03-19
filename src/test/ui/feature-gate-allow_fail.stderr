@@ -1,10 +1,11 @@
 error[E0658]: allow_fail attribute is currently unstable (see issue #42219)
   --> $DIR/feature-gate-allow_fail.rs:13:1
    |
-13 | #[allow_fail] //~ ERROR allow_fail attribute is currently unstable
+LL | #[allow_fail] //~ ERROR allow_fail attribute is currently unstable
    | ^^^^^^^^^^^^^
    |
    = help: add #![feature(allow_fail)] to the crate attributes to enable
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0658`.

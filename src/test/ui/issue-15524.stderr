@@ -1,28 +1,29 @@
-error[E0081]: discriminant value `1isize` already exists
+error[E0081]: discriminant value `1` already exists
   --> $DIR/issue-15524.rs:15:9
    |
-14 |     A = 1,
-   |         - first use of `1isize`
-15 |     B = 1,
-   |         ^ enum already has `1isize`
+LL |     A = 1,
+   |         - first use of `1`
+LL |     B = 1,
+   |         ^ enum already has `1`
 
-error[E0081]: discriminant value `1isize` already exists
+error[E0081]: discriminant value `1` already exists
   --> $DIR/issue-15524.rs:18:5
    |
-14 |     A = 1,
-   |         - first use of `1isize`
+LL |     A = 1,
+   |         - first use of `1`
 ...
-18 |     D,
-   |     ^ enum already has `1isize`
+LL |     D,
+   |     ^ enum already has `1`
 
-error[E0081]: discriminant value `1isize` already exists
+error[E0081]: discriminant value `1` already exists
   --> $DIR/issue-15524.rs:21:9
    |
-14 |     A = 1,
-   |         - first use of `1isize`
+LL |     A = 1,
+   |         - first use of `1`
 ...
-21 |     E = N,
-   |         ^ enum already has `1isize`
+LL |     E = N,
+   |         ^ enum already has `1`
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0081`.

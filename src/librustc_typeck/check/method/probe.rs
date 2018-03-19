@@ -324,7 +324,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // possible that there will be multiple applicable methods.
                 if !is_suggestion.0 {
                     if reached_raw_pointer
-                    && !self.tcx.sess.features.borrow().arbitrary_self_types {
+                    && !self.tcx.features().arbitrary_self_types {
                         // this case used to be allowed by the compiler,
                         // so we do a future-compat lint here for the 2015 epoch
                         // (see https://github.com/rust-lang/rust/issues/46906)
@@ -337,7 +337,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                                 scope_expr_id,
                                 span,
-                                &format!("the type of this value must be known in this context"));
+                                &format!("type annotations needed"));
                         }
                     } else {
                         let t = self.structurally_resolved_type(span, final_ty);
@@ -635,7 +635,6 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             _ => None,
                         }
                     }
-                    ty::Predicate::Equate(..) |
                     ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::RegionOutlives(..) |
@@ -730,7 +729,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             Def::Method(def_id) => {
                 let fty = self.tcx.fn_sig(def_id);
                 self.probe(|_| {
-                    let substs = self.fresh_substs_for_item(self.span, method.def_id);
+                    let substs = self.fresh_substs_for_item(ty::UniverseIndex::ROOT,
+                                                            self.span,
+                                                            method.def_id);
                     let fty = fty.subst(self.tcx, substs);
                     let (fty, _) = self.replace_late_bound_regions_with_fresh_var(
                         self.span, infer::FnCall, &fty);
@@ -1304,12 +1305,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     // `impl_self_ty()` for an explanation.
                     self.tcx.types.re_erased
                 }
-            }, |def, cur_substs| {
+            }, |def, _cur_substs| {
                 let i = def.index as usize;
                 if i < substs.len() {
                     substs.type_at(i)
                 } else {
-                    self.type_var_for_def(self.span, def, cur_substs)
+                    self.type_var_for_def(ty::UniverseIndex::ROOT, self.span, def)
                 }
             });
             xform_fn_sig.subst(self.tcx, substs)
@@ -1326,6 +1327,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                          def_id,
                          |_, _| self.tcx.types.re_erased,
                          |_, _| self.next_ty_var(
+                             ty::UniverseIndex::ROOT,
                              TypeVariableOrigin::SubstitutionPlaceholder(
                                  self.tcx.def_span(def_id))))
     }

@@ -1,13 +1,13 @@
 error: unreachable expression
-  --> $DIR/expr_repeat.rs:20:25
+  --> $DIR/expr_repeat.rs:19:25
    |
-20 |     let x: [usize; 2] = [return; 2]; //~ ERROR unreachable
+LL |     let x: [usize; 2] = [return; 2]; //~ ERROR unreachable
    |                         ^^^^^^^^^^^
    |
 note: lint level defined here
   --> $DIR/expr_repeat.rs:14:9
    |
-14 | #![deny(unreachable_code)]
+LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

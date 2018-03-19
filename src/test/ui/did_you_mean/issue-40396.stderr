@@ -1,7 +1,7 @@
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:12:37
    |
-12 |     println!("{:?}", (0..13).collect<Vec<i32>>()); //~ ERROR chained comparison
+LL |     println!("{:?}", (0..13).collect<Vec<i32>>()); //~ ERROR chained comparison
    |                                     ^^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
@@ -10,7 +10,7 @@ error: chained comparison operators require parentheses
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:16:25
    |
-16 |     println!("{:?}", Vec<i32>::new()); //~ ERROR chained comparison
+LL |     println!("{:?}", Vec<i32>::new()); //~ ERROR chained comparison
    |                         ^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
@@ -19,7 +19,7 @@ error: chained comparison operators require parentheses
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:20:37
    |
-20 |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
+LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
    |                                     ^^^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
@@ -28,7 +28,7 @@ error: chained comparison operators require parentheses
 error: chained comparison operators require parentheses
   --> $DIR/issue-40396.rs:20:41
    |
-20 |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
+LL |     println!("{:?}", (0..13).collect<Vec<i32>()); //~ ERROR chained comparison
    |                                         ^^^^^^
    |
    = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
