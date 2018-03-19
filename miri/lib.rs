@@ -268,6 +268,12 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
+ecx.const_eval(cid)?;
+        return Ok(ecx
+            .tcx
+            .interpret_interner
+            .get_cached(cid.instance.def_id())
+            .expect("uncached static"));
         let def_id = cid.instance.def_id();
         let ty = ecx.tcx.type_of(def_id);
         let layout = ecx.tcx.layout_of(ty::ParamEnvAnd {
