@@ -75,16 +75,18 @@ pub fn matches_os(triple: &str, name: &str) -> bool {
     if triple == "wasm32-unknown-unknown" {
         return name == "emscripten" || name == "wasm32-bare"
     }
+    let triple: Vec<_> = triple.split('-').collect();
     for &(triple_os, os) in OS_TABLE {
-        if triple.contains(triple_os) {
+        if triple.contains(&triple_os) {
             return os == name;
         }
     }
     panic!("Cannot determine OS from triple");
 }
 pub fn get_arch(triple: &str) -> &'static str {
+    let triple: Vec<_> = triple.split('-').collect();
     for &(triple_arch, arch) in ARCH_TABLE {
-        if triple.contains(triple_arch) {
+        if triple.contains(&triple_arch) {
             return arch;
         }
     }
