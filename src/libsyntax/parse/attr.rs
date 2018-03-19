@@ -90,7 +90,7 @@ impl<'a> Parser<'a> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);
-        let (span, path, tokens, mut style) = match self.token {
+        let (span, path, tokens, style) = match self.token {
             token::Pound => {
                 let lo = self.span;
                 self.bump();
@@ -128,15 +128,6 @@ impl<'a> Parser<'a> {
                 return Err(self.fatal(&format!("expected `#`, found `{}`", token_str)));
             }
         };
-
-        if inner_parse_policy == InnerAttributeParsePolicy::Permitted &&
-           self.token == token::Semi {
-            self.bump();
-            self.span_warn(span,
-                           "this inner attribute syntax is deprecated. The new syntax is \
-                            `#![foo]`, with a bang and no semicolon");
-            style = ast::AttrStyle::Inner;
-        }
 
         Ok(ast::Attribute {
             id: attr::mk_attr_id(),
