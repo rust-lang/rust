@@ -1356,9 +1356,9 @@ impl TypeAliasBounds {
 
     fn suggest_changing_assoc_types(ty: &hir::Ty, err: &mut DiagnosticBuilder) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
-        // bound.  Let's see of this type does that.
+        // bound.  Let's see if this type does that.
 
-        // We use an AST visitor to walk the type.
+        // We use a HIR visitor to walk the type.
         use rustc::hir::intravisit::{self, Visitor};
         use syntax::ast::NodeId;
         struct WalkAssocTypes<'a, 'db> where 'db: 'a {
@@ -1373,8 +1373,8 @@ impl TypeAliasBounds {
             fn visit_qpath(&mut self, qpath: &'v hir::QPath, id: NodeId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(span,
-                        "use absolute paths (i.e., <T as Trait>::Assoc) to refer to associated \
-                         types in type aliases");
+                        "use fully disambiguated paths (i.e., `<T as Trait>::Assoc`) to refer to \
+                         associated types in type aliases");
                 }
                 intravisit::walk_qpath(self, qpath, id, span)
             }
