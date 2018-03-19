@@ -470,6 +470,30 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 
+/// Check whether an item marked with `deprecated(since="X")` is currently
+/// deprecated (i.e. whether X is not greater than the current rustc version).
+pub fn deprecation_in_effect(since: &str) -> bool {
+    fn parse_version(ver: &str) -> Vec<u32> {
+        // We ignore non-integer components of the version (e.g. "nightly").
+        ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
+    }
+
+    if let Some(rustc) = option_env!("CFG_RELEASE") {
+        let since: Vec<u32> = parse_version(since);
+        let rustc: Vec<u32> = parse_version(rustc);
+        // We simply treat invalid `since` attributes as relating to a previous
+        // Rust version, thus always displaying the warning.
+        if since.len() != 3 {
+            return true;
+        }
+        since <= rustc
+    } else {
+        // By default, a deprecation warning applies to
+        // the current version of the compiler.
+        true
+    }
+}
+
 struct Checker<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
@@ -559,33 +583,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
-                fn deprecation_in_effect(since: Option<&str>, rustc: Option<&str>) -> bool {
-                    fn parse_version(ver: &str) -> Vec<u32> {
-                        // We ignore non-integer components of the version (e.g. "nightly").
-                        ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
-                    }
-
-                    if since.is_none() || rustc.is_none() {
-                        // By default, a deprecation warning applies to
-                        // the current version of the compiler.
-                        true
-                    } else {
-                        let since: Vec<u32> = parse_version(since.unwrap());
-                        let rustc: Vec<u32> = parse_version(rustc.unwrap());
-                        // We simply treat invalid `since` attributes as relating to a previous
-                        // Rust version, thus always displaying the warning.
-                        if since.len() != 3 {
-                            return true;
-                        }
-                        since <= rustc
-                    }
-                }
-
                 // If the deprecation is scheduled for a future Rust
                 // version, then we should display no warning message.
                 let deprecated_in_future_version = if let Some(sym) = depr_entry.attr.since {
                     let since = sym.as_str();
-                    !deprecation_in_effect(Some(since.as_ref()), option_env!("CFG_RELEASE"))
+                    !deprecation_in_effect(since.as_ref())
                 } else {
                     false
                 };
