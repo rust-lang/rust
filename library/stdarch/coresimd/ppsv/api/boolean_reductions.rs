@@ -18,6 +18,7 @@ macro_rules! impl_bool_reductions {
             #[inline]
             pub fn all(self) -> bool {
                 // FIXME: Broken on AArch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 self.and()
             }
 
@@ -35,6 +36,7 @@ macro_rules! impl_bool_reductions {
             #[inline]
             pub fn any(self) -> bool {
                 // FIXME: Broken on AArch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 self.or()
             }
 

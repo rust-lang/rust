@@ -23,6 +23,7 @@ macro_rules! impl_minmax_reductions {
             #[inline]
             pub fn max(self) -> $elem_ty {
                 // FIXME: broken on AArch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 use ::num::Float;
                 use ::cmp::Ord;
                 let mut x = self.extract(0);
@@ -51,6 +52,7 @@ macro_rules! impl_minmax_reductions {
             #[inline]
             pub fn min(self) -> $elem_ty {
                 // FIXME: broken on AArch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 use ::num::Float;
                 use ::cmp::Ord;
                 let mut x = self.extract(0);

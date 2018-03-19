@@ -18,6 +18,7 @@ macro_rules! impl_bitwise_reductions {
             #[inline]
             pub fn and(self) -> $elem_ty {
                 // FIXME: broken on aarch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 let mut x = self.extract(0) as $elem_ty;
                 for i in 1..$id::lanes() {
                     x &= self.extract(i) as $elem_ty;
@@ -39,6 +40,7 @@ macro_rules! impl_bitwise_reductions {
             #[inline]
             pub fn or(self) -> $elem_ty {
                 // FIXME: broken on aarch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 let mut x = self.extract(0) as $elem_ty;
                 for i in 1..$id::lanes() {
                     x |= self.extract(i) as $elem_ty;
@@ -60,6 +62,7 @@ macro_rules! impl_bitwise_reductions {
             #[inline]
             pub fn xor(self) -> $elem_ty {
                 // FIXME: broken on aarch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 let mut x = self.extract(0) as $elem_ty;
                 for i in 1..$id::lanes() {
                     x ^= self.extract(i) as $elem_ty;
@@ -88,6 +91,7 @@ macro_rules! impl_bool_bitwise_reductions {
             #[inline]
             pub fn and(self) -> $elem_ty {
                 // FIXME: broken on aarch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 let mut x = self.extract(0) as $elem_ty;
                 for i in 1..$id::lanes() {
                     x &= self.extract(i) as $elem_ty;
@@ -110,6 +114,7 @@ macro_rules! impl_bool_bitwise_reductions {
             #[inline]
             pub fn or(self) -> $elem_ty {
                 // FIXME: broken on aarch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 let mut x = self.extract(0) as $elem_ty;
                 for i in 1..$id::lanes() {
                     x |= self.extract(i) as $elem_ty;
@@ -132,6 +137,7 @@ macro_rules! impl_bool_bitwise_reductions {
             #[inline]
             pub fn xor(self) -> $elem_ty {
                 // FIXME: broken on aarch64
+                // https://bugs.llvm.org/show_bug.cgi?id=36796
                 let mut x = self.extract(0) as $elem_ty;
                 for i in 1..$id::lanes() {
                     x ^= self.extract(i) as $elem_ty;
