@@ -33,6 +33,7 @@
     - [Canonical queries](./traits-canonical-queries.md)
       - [Canonicalization](./traits-canonicalization.md)
     - [Lowering rules](./traits-lowering-rules.md)
+      - [The lowering module in rustc](./traits-lowering-module.md)
     - [Well-formedness checking](./traits-wf.md)
     - [The SLG solver](./traits-slg.md)
     - [Bibliography](./traits-bibliography.md)
