@@ -406,9 +406,9 @@ fn diff_adts(changes: &mut ChangeSet,
                 for items2 in fields.values() {
                     match *items2 {
                         (Some(o), Some(n)) => {
-                            id_mapping.add_subitem(old_def_id, o.did, n.did);
-
-                            if o.vis != Public && n.vis == Public {
+                            if o.vis == Public && n.vis == Public {
+                                id_mapping.add_subitem(old_def_id, o.did, n.did);
+                            } else if o.vis != Public && n.vis == Public {
                                 changes.add_change(ItemMadePublic,
                                                    old_def_id,
                                                    Some(tcx.def_span(n.did)));

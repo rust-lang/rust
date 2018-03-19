@@ -2,4 +2,4 @@ pub fn abc<A>(a: A) -> A {
     a
 }
 
-pub struct Abc<A>(A, A);
+pub struct Abc<A>(pub A, pub A);
