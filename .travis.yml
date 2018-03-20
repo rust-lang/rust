@@ -318,6 +318,8 @@ before_deploy:
 
 deploy:
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
@@ -334,6 +336,8 @@ deploy:
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
@@ -351,6 +355,8 @@ deploy:
   # try branch. Travis does not appear to provide a way to use "or" in these
   # conditions.
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
@@ -365,6 +371,8 @@ deploy:
       condition: $DEPLOY = 1
 
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
