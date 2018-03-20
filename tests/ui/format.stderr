@@ -2,7 +2,7 @@ error: useless use of `format!`
  --> $DIR/format.rs:6:5
   |
 6 |     format!("foo");
-  |     ^^^^^^^^^^^^^^^
+  |     ^^^^^^^^^^^^^^^ help: consider using .to_string(): `"foo".to_string()`
   |
   = note: `-D useless-format` implied by `-D warnings`
 
