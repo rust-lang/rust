@@ -646,3 +646,63 @@ impl<'a, T: ?Sized + 'a> RangeBounds<T> for (Bound<&'a T>, Bound<&'a T>) {
         self.1
     }
 }
+
+#[unstable(feature = "collections_range",
+           reason = "might be replaced with `Into<_>` and a type containing two `Bound` values",
+           issue = "30877")]
+impl<'a, T> RangeBounds<T> for RangeFrom<&'a T> {
+    fn start(&self) -> Bound<&T> {
+        Included(self.start)
+    }
+    fn end(&self) -> Bound<&T> {
+        Unbounded
+    }
+}
+
+#[unstable(feature = "collections_range",
+           reason = "might be replaced with `Into<_>` and a type containing two `Bound` values",
+           issue = "30877")]
+impl<'a, T> RangeBounds<T> for RangeTo<&'a T> {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
+    fn end(&self) -> Bound<&T> {
+        Excluded(self.end)
+    }
+}
+
+#[unstable(feature = "collections_range",
+           reason = "might be replaced with `Into<_>` and a type containing two `Bound` values",
+           issue = "30877")]
+impl<'a, T> RangeBounds<T> for Range<&'a T> {
+    fn start(&self) -> Bound<&T> {
+        Included(self.start)
+    }
+    fn end(&self) -> Bound<&T> {
+        Excluded(self.end)
+    }
+}
+
+#[unstable(feature = "collections_range",
+           reason = "might be replaced with `Into<_>` and a type containing two `Bound` values",
+           issue = "30877")]
+impl<'a, T> RangeBounds<T> for RangeInclusive<&'a T> {
+    fn start(&self) -> Bound<&T> {
+        Included(self.start)
+    }
+    fn end(&self) -> Bound<&T> {
+        Included(self.end)
+    }
+}
+
+#[unstable(feature = "collections_range",
+           reason = "might be replaced with `Into<_>` and a type containing two `Bound` values",
+           issue = "30877")]
+impl<'a, T> RangeBounds<T> for RangeToInclusive<&'a T> {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
+    fn end(&self) -> Bound<&T> {
+        Included(self.end)
+    }
+}
