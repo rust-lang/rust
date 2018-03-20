@@ -78,7 +78,7 @@ impl MultiItemModifier for ProcMacroDerive {
         let token = Token::interpolated(token::NtItem(item));
         let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
 
-        let server = ::proc_macro::rustc::Rustc::new(ecx);
+        let server = ::proc_macro_server::Rustc::new(ecx);
         let stream = match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {

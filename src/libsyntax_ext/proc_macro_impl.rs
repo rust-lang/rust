@@ -32,7 +32,7 @@ impl base::AttrProcMacro for AttrProcMacro {
                    annotation: TokenStream,
                    annotated: TokenStream)
                    -> TokenStream {
-        let server = ::proc_macro::rustc::Rustc::new(ecx);
+        let server = ::proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
             Ok(stream) => stream,
             Err(e) => {
@@ -61,7 +61,7 @@ impl base::ProcMacro for BangProcMacro {
                    span: Span,
                    input: TokenStream)
                    -> TokenStream {
-        let server = ::proc_macro::rustc::Rustc::new(ecx);
+        let server = ::proc_macro_server::Rustc::new(ecx);
         match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {

@@ -28,7 +28,6 @@
        test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![feature(nll)]
-#![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(const_fn)]
 #![feature(extern_types)]
@@ -39,18 +38,9 @@
 
 #![recursion_limit="256"]
 
-extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_errors;
-extern crate rustc_data_structures;
-
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod bridge;
-
-#[unstable(feature = "proc_macro_internals", issue = "27812")]
-#[doc(hidden)]
-pub mod rustc;
 
 mod diagnostic;
 

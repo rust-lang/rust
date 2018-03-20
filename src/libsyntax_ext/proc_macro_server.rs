@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use bridge::{server, TokenTree};
-use {Delimiter, Level, LineColumn, Spacing};
+use errors::{self, Diagnostic, DiagnosticBuilder};
+use std::panic;
+
+use proc_macro::bridge::{server, TokenTree};
+use proc_macro::{Delimiter, Level, LineColumn, Spacing};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{self as errors, Diagnostic, DiagnosticBuilder};
 use std::ascii;
 use std::ops::Bound;
 use syntax::ast;
@@ -24,7 +26,15 @@ use syntax_pos::hygiene::{SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
-impl Delimiter {
+trait FromInternal<T> {
+    fn from_internal(x: T) -> Self;
+}
+
+trait ToInternal<T> {
+    fn to_internal(self) -> T;
+}
+
+impl FromInternal<token::DelimToken> for Delimiter {
     fn from_internal(delim: token::DelimToken) -> Delimiter {
         match delim {
             token::Paren => Delimiter::Parenthesis,
@@ -33,7 +43,9 @@ impl Delimiter {
             token::NoDelim => Delimiter::None,
         }
     }
+}
 
+impl ToInternal<token::DelimToken> for Delimiter {
     fn to_internal(self) -> token::DelimToken {
         match self {
             Delimiter::Parenthesis => token::Paren,
@@ -44,8 +56,10 @@ impl Delimiter {
     }
 }
 
-impl TokenTree<Group, Punct, Ident, Literal> {
-    fn from_internal(stream: TokenStream, sess: &ParseSess, stack: &mut Vec<Self>) -> Self {
+impl FromInternal<(TokenStream, &'_ ParseSess, &'_ mut Vec<Self>)>
+    for TokenTree<Group, Punct, Ident, Literal>
+{
+    fn from_internal((stream, sess, stack): (TokenStream, &ParseSess, &mut Vec<Self>)) -> Self {
         use syntax::parse::token::*;
 
         let (tree, joint) = stream.as_tree();
@@ -204,7 +218,9 @@ impl TokenTree<Group, Punct, Ident, Literal> {
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
         }
     }
+}
 
+impl ToInternal<TokenStream> for TokenTree<Group, Punct, Ident, Literal> {
     fn to_internal(self) -> TokenStream {
         use syntax::parse::token::*;
 
@@ -292,13 +308,14 @@ impl TokenTree<Group, Punct, Ident, Literal> {
     }
 }
 
-impl Level {
+impl ToInternal<errors::Level> for Level {
     fn to_internal(self) -> errors::Level {
         match self {
             Level::Error => errors::Level::Error,
             Level::Warning => errors::Level::Warning,
             Level::Note => errors::Level::Note,
             Level::Help => errors::Level::Help,
+            _ => unreachable!("unknown proc_macro::Level variant: {:?}", self),
         }
     }
 }
@@ -339,7 +356,7 @@ pub struct Literal {
     span: Span,
 }
 
-pub struct Rustc<'a> {
+pub(crate) struct Rustc<'a> {
     sess: &'a ParseSess,
     def_site: Span,
     call_site: Span,
@@ -429,7 +446,7 @@ impl server::TokenStreamIter for Rustc<'_> {
         loop {
             let tree = iter.stack.pop().or_else(|| {
                 let next = iter.cursor.next_as_stream()?;
-                Some(TokenTree::from_internal(next, self.sess, &mut iter.stack))
+                Some(TokenTree::from_internal((next, self.sess, &mut iter.stack)))
             })?;
             // HACK: The condition "dummy span + group with empty delimiter" represents an AST
             // fragment approximately converted into a token stream. This may happen, for
