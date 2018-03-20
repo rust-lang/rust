@@ -12,11 +12,8 @@
 
 use infer::SubregionOrigin;
 use infer::RegionVariableOrigin;
-use infer::region_constraints::Constraint;
-use infer::region_constraints::GenericKind;
-use infer::region_constraints::RegionConstraintData;
-use infer::region_constraints::VarOrigins;
-use infer::region_constraints::VerifyBound;
+use infer::region_constraints::{Constraint, GenericKind, RegionConstraintData,
+                                VarInfos, VerifyBound, region_universe};
 use middle::free_region::RegionRelations;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fx::FxHashSet;
@@ -37,7 +34,7 @@ mod graphviz;
 /// all the variables as well as a set of errors that must be reported.
 pub fn resolve<'tcx>(
     region_rels: &RegionRelations<'_, '_, 'tcx>,
-    var_origins: VarOrigins,
+    var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
 ) -> (
     LexicalRegionResolutions<'tcx>,
@@ -47,7 +44,7 @@ pub fn resolve<'tcx>(
     let mut errors = vec![];
     let mut resolver = LexicalResolver {
         region_rels,
-        var_origins,
+        var_infos,
         data,
     };
     let values = resolver.infer_variable_values(&mut errors);
@@ -103,7 +100,7 @@ type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     region_rels: &'cx RegionRelations<'cx, 'gcx, 'tcx>,
-    var_origins: VarOrigins,
+    var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
 }
 
@@ -132,7 +129,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     }
 
     fn num_vars(&self) -> usize {
-        self.var_origins.len()
+        self.var_infos.len()
     }
 
     /// Initially, the value for all variables is set to `'empty`, the
@@ -232,16 +229,48 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
         match *b_data {
             VarValue::Value(cur_region) => {
-                let lub = self.lub_concrete_regions(a_region, cur_region);
+                let b_universe = self.var_infos[b_vid].universe;
+                let mut lub = self.lub_concrete_regions(a_region, cur_region);
                 if lub == cur_region {
                     return false;
                 }
 
+                // Find the universe of the new value (`lub`) and
+                // check whether this value is something that we can
+                // legally name in this variable. If not, promote the
+                // variable to `'static`, which is surely greater than
+                // or equal to `lub`. This is obviously a kind of sub-optimal
+                // choice -- in the future, when we incorporate a knowledge
+                // of the parameter environment, we might be able to find a
+                // tighter bound than `'static`.
+                //
+                // To make this more concrete, imagine a bound like:
+                //
+                //     for<'a> '0: 'a
+                //
+                // Here we have that `'0` must outlive `'a` -- no
+                // matter what `'a` is. When solving such a
+                // constraint, we would initially assign `'0` to be
+                // `'empty`. We would then compute the LUB of `'empty`
+                // and `'a` (which is something like `ReSkolemized(1)`),
+                // resulting in `'a`.
+                //
+                // At this point, `lub_universe` would be `1` and
+                // `b_universe` would be `0`, and hence we would wind
+                // up promoting `lub` to `'static`.
+                let lub_universe = region_universe(&self.var_infos, lub);
+                if !lub_universe.is_visible_in(b_universe) {
+                    lub = self.region_rels.tcx.types.re_static;
+                }
+
                 debug!(
-                    "Expanding value of {:?} from {:?} to {:?}",
+                    "Expanding value of {:?} from {:?} to {:?} \
+                     (lub_universe={:?}, b_universe={:?})",
                     b_vid,
                     cur_region,
-                    lub
+                    lub,
+                    lub_universe,
+                    b_universe
                 );
 
                 *b_data = VarValue::Value(lub);
@@ -279,7 +308,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
             (&ReVar(v_id), _) | (_, &ReVar(v_id)) => {
                 span_bug!(
-                    self.var_origins[v_id].span(),
+                    self.var_infos[v_id].origin.span(),
                     "lub_concrete_regions invoked with non-concrete \
                      regions: {:?}, {:?}",
                     a,
@@ -576,7 +605,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 if !self.region_rels
                     .is_subregion_of(lower_bound.region, upper_bound.region)
                 {
-                    let origin = self.var_origins[node_idx].clone();
+                    let origin = self.var_infos[node_idx].origin.clone();
                     debug!(
                         "region inference error at {:?} for {:?}: SubSupConflict sub: {:?} \
                          sup: {:?}",
@@ -598,7 +627,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         }
 
         span_bug!(
-            self.var_origins[node_idx].span(),
+            self.var_infos[node_idx].origin.span(),
             "collect_error_for_expanding_node() could not find \
              error for var {:?}, lower_bounds={:?}, \
              upper_bounds={:?}",

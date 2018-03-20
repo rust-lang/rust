@@ -209,8 +209,8 @@ impl<'a, 'gcx, 'tcx> Trace<'a, 'gcx, 'tcx> {
         debug!("sub({:?} <: {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
-            fields.sub(a_is_expected)
+            let mut fields = at.infcx.combine_fields(trace);
+            fields.sub(at.param_env, a_is_expected)
                   .relate(a, b)
                   .map(move |_| InferOk { value: (), obligations: fields.obligations })
         })
@@ -227,8 +227,8 @@ impl<'a, 'gcx, 'tcx> Trace<'a, 'gcx, 'tcx> {
         debug!("eq({:?} == {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
-            fields.equate(a_is_expected)
+            let mut fields = at.infcx.combine_fields(trace);
+            fields.equate(at.param_env, a_is_expected)
                   .relate(a, b)
                   .map(move |_| InferOk { value: (), obligations: fields.obligations })
         })
@@ -243,8 +243,8 @@ impl<'a, 'gcx, 'tcx> Trace<'a, 'gcx, 'tcx> {
         debug!("lub({:?} \\/ {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
-            fields.lub(a_is_expected)
+            let mut fields = at.infcx.combine_fields(trace);
+            fields.lub(at.param_env, a_is_expected)
                   .relate(a, b)
                   .map(move |t| InferOk { value: t, obligations: fields.obligations })
         })
@@ -259,8 +259,8 @@ impl<'a, 'gcx, 'tcx> Trace<'a, 'gcx, 'tcx> {
         debug!("glb({:?} /\\ {:?})", a, b);
         let Trace { at, trace, a_is_expected } = self;
         at.infcx.commit_if_ok(|_| {
-            let mut fields = at.infcx.combine_fields(trace, at.param_env);
-            fields.glb(a_is_expected)
+            let mut fields = at.infcx.combine_fields(trace);
+            fields.glb(at.param_env, a_is_expected)
                   .relate(a, b)
                   .map(move |t| InferOk { value: t, obligations: fields.obligations })
         })

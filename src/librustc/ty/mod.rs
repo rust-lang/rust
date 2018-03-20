@@ -1337,7 +1337,7 @@ pub struct UniverseIndex(u32);
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
-    pub const ROOT: UniverseIndex = UniverseIndex(0);
+    pub const ROOT: Self = UniverseIndex(0);
 
     /// A "subuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
@@ -1354,10 +1354,6 @@ impl UniverseIndex {
         UniverseIndex(self.0.checked_add(1).unwrap())
     }
 
-    pub fn from(v: u32) -> UniverseIndex {
-        UniverseIndex(v)
-    }
-
     pub fn as_u32(&self) -> u32 {
         self.0
     }
@@ -1366,11 +1362,16 @@ impl UniverseIndex {
         self.0 as usize
     }
 
-    /// Gets the "depth" of this universe in the universe tree. This
-    /// is not really useful except for e.g. the `HashStable`
-    /// implementation
-    pub fn depth(&self) -> u32 {
-        self.0
+    /// Indicates whether a name in this universe is visible in the
+    /// universe `other`.
+    pub fn is_visible_in(self, other: UniverseIndex) -> bool {
+        self <= other
+    }
+}
+
+impl From<u32> for UniverseIndex {
+    fn from(index: u32) -> Self {
+        UniverseIndex(index)
     }
 }
 
@@ -1388,17 +1389,6 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
-
-    /// What is the innermost universe we have created? Starts out as
-    /// `UniverseIndex::root()` but grows from there as we enter
-    /// universal quantifiers.
-    ///
-    /// NB: At present, we exclude the universal quantifiers on the
-    /// item we are type-checking, and just consider those names as
-    /// part of the root universe. So this would only get incremented
-    /// when we enter into a higher-ranked (`for<..>`) type or trait
-    /// bound.
-    pub universe: UniverseIndex,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1407,7 +1397,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Trait`) are left hidden, so this is suitable for ordinary
     /// type-checking.
     pub fn empty() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::UserFacing, ty::UniverseIndex::ROOT)
+        Self::new(ty::Slice::empty(), Reveal::UserFacing)
     }
 
     /// Construct a trait environment with no where clauses in scope
@@ -1418,15 +1408,14 @@ impl<'tcx> ParamEnv<'tcx> {
     /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
     pub fn reveal_all() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::All, ty::UniverseIndex::ROOT)
+        Self::new(ty::Slice::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
-               reveal: Reveal,
-               universe: ty::UniverseIndex)
+               reveal: Reveal)
                -> Self {
-        ty::ParamEnv { caller_bounds, reveal, universe }
+        ty::ParamEnv { caller_bounds, reveal }
     }
 
     /// Returns a new parameter environment with the same clauses, but
@@ -2725,8 +2714,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // sure that this will succeed without errors anyway.
 
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                             traits::Reveal::UserFacing,
-                                             ty::UniverseIndex::ROOT);
+                                             traits::Reveal::UserFacing);
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)

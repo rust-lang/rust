@@ -933,7 +933,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.check_and_note_conflicting_crates(diag, terr, span);
-        self.tcx.note_and_explain_type_err(diag, terr, span);
+        self.tcx.note_and_explain_type_err(diag, terr);
 
         // It reads better to have the error origin as the final
         // thing.

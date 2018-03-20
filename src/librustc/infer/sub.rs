@@ -22,13 +22,16 @@ use std::mem;
 pub struct Sub<'combine, 'infcx: 'combine, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
     a_is_expected: bool,
+    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'combine, 'infcx, 'gcx, 'tcx> Sub<'combine, 'infcx, 'gcx, 'tcx> {
-    pub fn new(f: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>, a_is_expected: bool)
-        -> Sub<'combine, 'infcx, 'gcx, 'tcx>
+    pub fn new(fields: &'combine mut CombineFields<'infcx, 'gcx, 'tcx>,
+               param_env: ty::ParamEnv<'tcx>,
+               a_is_expected: bool)
+               -> Sub<'combine, 'infcx, 'gcx, 'tcx>
     {
-        Sub { fields: f, a_is_expected: a_is_expected }
+        Sub { fields, a_is_expected, param_env }
     }
 
     fn with_expected_switched<R, F: FnOnce(&mut Self) -> R>(&mut self, f: F) -> R {
@@ -64,7 +67,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                                              -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
+            ty::Invariant => self.fields.equate(self.param_env, self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
             ty::Bivariant => Ok(a.clone()),
             ty::Contravariant => self.with_expected_switched(|this| { this.relate(b, a) }),
@@ -96,7 +99,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                 self.fields.obligations.push(
                     Obligation::new(
                         self.fields.trace.cause.clone(),
-                        self.fields.param_env,
+                        self.param_env,
                         ty::Predicate::Subtype(
                             ty::Binder(ty::SubtypePredicate {
                                 a_is_expected: self.a_is_expected,
@@ -107,12 +110,19 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                 Ok(a)
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields
-                    .instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
+                self.fields.instantiate(self.param_env,
+                                        b,
+                                        RelationDir::SupertypeOf,
+                                        a_id,
+                                        !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, RelationDir::SubtypeOf, b_id, self.a_is_expected)?;
+                self.fields.instantiate(self.param_env,
+                                        a,
+                                        RelationDir::SubtypeOf,
+                                        b_id,
+                                        self.a_is_expected)?;
                 Ok(a)
             }
 
@@ -147,6 +157,6 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        self.fields.higher_ranked_sub(a, b, self.a_is_expected)
+        self.fields.higher_ranked_sub(self.param_env, a, b, self.a_is_expected)
     }
 }

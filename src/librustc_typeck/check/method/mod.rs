@@ -257,7 +257,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else if let Some(ref input_types) = opt_input_types {
                 input_types[def.index as usize - 1]
             } else {
-                self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
+                self.type_var_for_def(span, def)
             }
         });
 
