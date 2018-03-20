@@ -11,6 +11,10 @@ macro_rules! is_arm_feature_detected {
         cfg!(target_feature = "pmull") ||
             $crate::arch::detect::check_for($crate::arch::detect::Feature::pmull)
     };
+    ("v7") => { compile_error!("\"v7\" feature cannot be detected at run-time") };
+    ("vfp2") => { compile_error!("\"vfp2\" feature cannot be detected at run-time") };
+    ("vfp3") => { compile_error!("\"vfp3\" feature cannot be detected at run-time") };
+    ("vfp4") => { compile_error!("\"vfp4\" feature cannot be detected at run-time") };
     ($t:tt) => { compile_error!(concat!("unknown arm target feature: ", $t)) };
 }
 

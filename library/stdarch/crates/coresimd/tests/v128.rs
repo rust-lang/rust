@@ -1,7 +1,8 @@
 //! coresimd 128-bit wide vector tests
 
 #![cfg_attr(feature = "strict", deny(warnings))]
-#![feature(stdsimd, link_llvm_intrinsics, simd_ffi, core_float)]
+#![feature(stdsimd, link_llvm_intrinsics, simd_ffi, core_float,
+           cfg_target_feature)]
 #![allow(unused_imports, dead_code)]
 
 #[cfg(test)]
@@ -30,7 +31,7 @@ macro_rules! vector_impl {
 mod ppsv;
 
 #[cfg(test)]
-use std::marker;
+use std::{marker, mem};
 
 #[cfg(all(test, target_arch = "aarch64"))]
 use std::cmp;

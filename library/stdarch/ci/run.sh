@@ -12,6 +12,16 @@ export RUST_TEST_THREADS=1
 
 FEATURES="strict,$FEATURES"
 
+# FIXME: on armv7 neon intrinsics require the neon target-feature to be
+# unconditionally enabled.
+case ${TARGET} in
+    armv7*)
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+neon"
+        ;;
+    *)
+        ;;
+esac
+
 echo "RUSTFLAGS=${RUSTFLAGS}"
 echo "FEATURES=${FEATURES}"
 echo "OBJDUMP=${OBJDUMP}"

@@ -11,7 +11,5 @@
 mod v8;
 pub use self::v8::*;
 
-#[cfg(target_feature = "neon")]
 mod neon;
-#[cfg(target_feature = "neon")]
 pub use self::neon::*;

@@ -57,6 +57,73 @@ simd_f_ty! {
     /// A 64-bit vector with 2 `f32` lanes.
 }
 
+#[cfg(target_arch = "x86")]
+use coresimd::arch::x86::__m64;
+
+#[cfg(target_arch = "x86_64")]
+use coresimd::arch::x86_64::__m64;
+
+macro_rules! from_bits_x86 {
+    ($id:ident, $elem_ty:ident, $test_mod:ident) => {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        impl_from_bits_!($id: __m64);
+    }
+}
+
+#[cfg(all(target_arch = "arm", target_feature = "v7"))]
+use coresimd::arch::arm::{// FIXME: float16x4_t,
+                          float32x2_t,
+                          int16x4_t,
+                          int32x2_t,
+                          int64x1_t,
+                          int8x8_t,
+                          poly16x4_t,
+                          poly8x8_t,
+                          uint16x4_t,
+                          uint32x2_t,
+                          uint64x1_t,
+                          uint8x8_t};
+
+#[cfg(target_arch = "aarch64")]
+use coresimd::arch::aarch64::{// FIXME: float16x4_t,
+                              float32x2_t,
+                              float64x1_t,
+                              int16x4_t,
+                              int32x2_t,
+                              int64x1_t,
+                              int8x8_t,
+                              poly16x4_t,
+                              poly8x8_t,
+                              uint16x4_t,
+                              uint32x2_t,
+                              uint64x1_t,
+                              uint8x8_t};
+
+macro_rules! from_bits_arm {
+    ($id:ident, $elem_ty:ident, $test_mod_arm:ident, $test_mod_a64:ident) => {
+        #[cfg(any(all(target_arch = "arm", target_feature = "v7"), target_arch = "aarch64"))]
+        impl_from_bits_!(
+            $id:
+            int64x1_t,
+            uint64x1_t,
+            uint32x2_t,
+            int32x2_t,
+            float32x2_t,
+            uint16x4_t,
+            int16x4_t,
+            // FIXME: float16x4_t
+            poly16x4_t,
+            uint8x8_t,
+            int8x8_t,
+            poly8x8_t
+        );
+        #[cfg(target_arch = "aarch64")]
+        impl_from_bits_!(
+            $id: float64x1_t
+        );
+    }
+}
+
 impl_from_bits!(
     u32x2: u32,
     u32x2_from_bits,
@@ -68,6 +135,9 @@ impl_from_bits!(
     i8x8,
     b8x8
 );
+from_bits_x86!(u32x2, u32, u32x2_from_bits_x86);
+from_bits_arm!(u32x2, u32, u32x2_from_bits_arm, u32x2_from_bits_aarch64);
+
 impl_from_bits!(
     i32x2: i32,
     i32x2_from_bits,
@@ -79,6 +149,9 @@ impl_from_bits!(
     i8x8,
     b8x8
 );
+from_bits_x86!(i32x2, i32, i32x2_from_bits_x86);
+from_bits_arm!(i32x2, i32, i32x2_from_bits_arm, i32x2_from_bits_aarch64);
+
 impl_from_bits!(
     f32x2: f32,
     f32x2_from_bits,
@@ -90,6 +163,9 @@ impl_from_bits!(
     i8x8,
     b8x8
 );
+from_bits_x86!(f32x2, f32, f32x2_from_bits_x86);
+from_bits_arm!(f32x2, f32, f32x2_from_bits_arm, f32x2_from_bits_aarch64);
+
 impl_from_bits!(
     u16x4: u16,
     u16x4_from_bits,
@@ -100,6 +176,9 @@ impl_from_bits!(
     i8x8,
     b8x8
 );
+from_bits_x86!(u16x4, u16, u16x4_from_bits_x86);
+from_bits_arm!(u16x4, u16, u16x4_from_bits_arm, u16x4_from_bits_aarch64);
+
 impl_from_bits!(
     i16x4: i16,
     i16x4_from_bits,
@@ -110,6 +189,9 @@ impl_from_bits!(
     i8x8,
     b8x8
 );
+from_bits_x86!(i16x4, i16, i16x4_from_bits_x86);
+from_bits_arm!(i16x4, i16, i16x4_from_bits_arm, i16x4_from_bits_aarch64);
+
 impl_from_bits!(
     u8x8: u8,
     u8x8_from_bits,
@@ -120,6 +202,9 @@ impl_from_bits!(
     i8x8,
     b8x8
 );
+from_bits_x86!(u8x8, u8, u8x8_from_bits_x86);
+from_bits_arm!(u8x8, u8, u8x8_from_bits_arm, u8x8_from_bits_aarch64);
+
 impl_from_bits!(
     i8x8: i8,
     i8x8_from_bits,
@@ -130,27 +215,8 @@ impl_from_bits!(
     u8x8,
     b8x8
 );
-
-#[cfg(target_arch = "x86")]
-use coresimd::arch::x86::__m64;
-
-#[cfg(target_arch = "x86_64")]
-use coresimd::arch::x86_64::__m64;
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(f32x2: __m64);
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(u32x2: __m64);
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(i32x2: __m64);
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(u16x4: __m64);
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(i16x4: __m64);
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(u8x8: __m64);
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-impl_from_bits_!(i8x8: __m64);
+from_bits_x86!(i8x8, i8, i8x8_from_bits_x86);
+from_bits_arm!(i8x8, i8, i8x8_from_bits_arm, i8x8_from_bits_aarch64);
 
 impl_from!(
     f32x2: f32,

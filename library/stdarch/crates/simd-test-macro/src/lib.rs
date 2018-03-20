@@ -77,7 +77,7 @@ pub fn simd_test(
         .expect(&format!("target triple contained no \"-\": {}", target))
     {
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
-        "arm" => "is_arm_feature_detected",
+        "arm" | "armv7" => "is_arm_feature_detected",
         "aarch64" => "is_aarch64_feature_detected",
         "powerpc64" => "is_powerpc64_feature_detected",
         "mips" | "mipsel" => {

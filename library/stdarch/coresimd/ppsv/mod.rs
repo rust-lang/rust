@@ -59,18 +59,19 @@ pub trait IntoBits<T>: ::marker::Sized {
     fn into_bits(self) -> T;
 }
 
-// FromBits implies IntoBits
+// FromBits implies IntoBits.
 impl<T, U> IntoBits<U> for T
 where
     U: FromBits<T>,
 {
     #[inline]
     fn into_bits(self) -> U {
+        debug_assert!(::mem::size_of::<Self>() == ::mem::size_of::<U>());
         U::from_bits(self)
     }
 }
 
-// FromBits (and thus IntoBits) is reflexive
+// FromBits (and thus IntoBits) is reflexive.
 impl<T> FromBits<T> for T {
     #[inline]
     fn from_bits(t: Self) -> Self {

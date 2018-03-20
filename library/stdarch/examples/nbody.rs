@@ -43,21 +43,21 @@ impl Frsqrt for f64x2 {
             };
             Self::new(u.extract(0), u.extract(1))
         }
-        #[cfg(all(any(target_arch = "arm", target_arch = "aarch64"),
-                  target_feature = "neon"))]
+        #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
         {
             #[cfg(target_arch = "arm")]
             use stdsimd::arch::arm::*;
             #[cfg(target_arch = "aarch64")]
             use stdsimd::arch::aarch64::*;
 
-            unsafe { vrsqrte_f32((*self).into()).into() }
+            let t: f32x2 = (*self).into();
+            let t: f32x2 = unsafe { vrsqrte_f32(t.into_bits()).into_bits() };
+            t.into()
         }
         #[cfg(not(any(all(any(target_arch = "x86",
                               target_arch = "x86_64"),
                           target_feature = "sse"),
-                      all(any(target_arch = "arm",
-                              target_arch = "aarch64"),
+                      all(target_arch = "aarch64",
                           target_feature = "neon"))))]
         {
             self.replace(0, 1. / self.extract(0).sqrt());

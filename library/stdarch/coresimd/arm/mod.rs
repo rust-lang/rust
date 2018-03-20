@@ -7,14 +7,21 @@
 //! http://infocenter.arm.com/help/topic/com.arm.doc.
 //! ihi0073a/IHI0073A_arm_neon_intrinsics_ref.pdf
 //! [arm_dat]: https://developer.arm.com/technologies/neon/intrinsics
+#![allow(non_camel_case_types)]
 
 mod v6;
 pub use self::v6::*;
 
+#[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 mod v7;
+#[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 pub use self::v7::*;
 
-#[cfg(target_feature = "neon")]
+// NEON is supported on AArch64, and on ARM when built with the v7 and neon
+// features. Building ARM without neon produces incorrect codegen.
+#[cfg(any(target_arch = "aarch64",
+          all(target_feature = "v7", target_feature = "neon")))]
 mod neon;
-#[cfg(target_feature = "neon")]
+#[cfg(any(target_arch = "aarch64",
+          all(target_feature = "v7", target_feature = "neon")))]
 pub use self::neon::*;

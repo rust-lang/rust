@@ -1,6 +1,9 @@
 //! `coresimd`
 
 #[macro_use]
+mod macros;
+
+#[macro_use]
 mod ppsv;
 
 /// Platform independent SIMD vector types and operations.

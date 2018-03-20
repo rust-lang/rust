@@ -14,38 +14,41 @@ use stdsimd_test::assert_instr;
 
 /// Count Leading Zeros.
 #[inline]
-#[cfg_attr(test, assert_instr(clz))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
+// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/382
+// #[cfg_attr(all(test, target_arch = "arm"), assert_instr(clz))]
 pub unsafe fn _clz_u8(x: u8) -> u8 {
     x.leading_zeros() as u8
 }
 
 /// Count Leading Zeros.
 #[inline]
-#[cfg_attr(test, assert_instr(clz))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
+// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/382
+// #[cfg_attr(all(test, target_arch = "arm"), assert_instr(clz))]
 pub unsafe fn _clz_u16(x: u16) -> u16 {
     x.leading_zeros() as u16
 }
 
 /// Count Leading Zeros.
 #[inline]
-#[cfg_attr(test, assert_instr(clz))]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(clz))]
+// FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/382
+// #[cfg_attr(all(test, target_arch = "arm"), assert_instr(clz))]
 pub unsafe fn _clz_u32(x: u32) -> u32 {
     x.leading_zeros() as u32
 }
 
 /// Reverse the bit order.
 #[inline]
-#[cfg_attr(test, assert_instr(rbit))]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-#[cfg(dont_compile_me)] // FIXME need to add `v7` upstream in rustc
+#[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn _rbit_u32(x: u32) -> u32 {
-    rbit_u32(x as i32) as u32
-}
-
-#[allow(dead_code)]
-extern "C" {
-    #[link_name = "llvm.bitreverse.i32"]
-    fn rbit_u32(i: i32) -> i32;
+    use intrinsics::bitreverse;
+    bitreverse(x)
 }
 
 #[cfg(test)]

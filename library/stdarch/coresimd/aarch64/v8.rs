@@ -22,17 +22,12 @@ pub unsafe fn _clz_u64(x: u64) -> u64 {
     x.leading_zeros() as u64
 }
 
-#[allow(dead_code)]
-extern "C" {
-    #[link_name = "llvm.bitreverse.i64"]
-    fn rbit_u64(i: i64) -> i64;
-}
-
 /// Reverse the bit order.
 #[inline]
 #[cfg_attr(test, assert_instr(rbit))]
 pub unsafe fn _rbit_u64(x: u64) -> u64 {
-    rbit_u64(x as i64) as u64
+    use intrinsics::bitreverse;
+    bitreverse(x)
 }
 
 /// Counts the leading most significant bits set.

@@ -6,27 +6,6 @@ use mem;
 #[macro_use]
 mod macros;
 
-macro_rules! types {
-    ($(
-        $(#[$doc:meta])*
-        pub struct $name:ident($($fields:tt)*);
-    )*) => ($(
-        $(#[$doc])*
-        #[derive(Copy, Debug)]
-        #[allow(non_camel_case_types)]
-        #[repr(simd)]
-        pub struct $name($($fields)*);
-
-        #[cfg_attr(feature = "cargo-clippy", allow(expl_impl_clone_on_copy))]
-        impl Clone for $name {
-            #[inline] // currently needed for correctness
-            fn clone(&self) -> $name {
-                *self
-            }
-        }
-    )*)
-}
-
 types! {
     /// 64-bit wide integer vector type, x86-specific
     ///
@@ -459,12 +438,12 @@ impl m256iExt for __m256i {
     }
 }
 
-use coresimd::simd::{b8x16, b8x32, b8x8, f32x4, f32x8, f64x2, f64x4, i16x16,
-                     i16x4, i16x8, i32x2, i32x4, i32x8, i64x2, i64x4, i8x16,
-                     i8x32, i8x8, u16x16, u16x4, u16x8, u32x2, u32x4, u32x8,
-                     u64x2, u64x4, u8x16, u8x32, u8x8};
+use coresimd::simd::{b8x16, b8x32, b8x8, f32x2, f32x4, f32x8, f64x2, f64x4,
+                     i16x16, i16x4, i16x8, i32x2, i32x4, i32x8, i64x2, i64x4,
+                     i8x16, i8x32, i8x8, u16x16, u16x4, u16x8, u32x2, u32x4,
+                     u32x8, u64x2, u64x4, u8x16, u8x32, u8x8};
 
-impl_from_bits_!(__m64: u32x2, i32x2, u16x4, i16x4, u8x8, i8x8, b8x8);
+impl_from_bits_!(__m64: u32x2, i32x2, f32x2, u16x4, i16x4, u8x8, i8x8, b8x8);
 impl_from_bits_!(
     __m128: u64x2,
     i64x2,
