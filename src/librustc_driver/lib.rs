@@ -1480,9 +1480,9 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
             rlim.rlim_cur = STACK_SIZE as libc::rlim_t;
             if libc::setrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
                 let err = io::Error::last_os_error();
-                // We have already deinited the stack. Further corruption is
-                // not allowed.
-                panic!("in_rustc_thread: error calling setrlimit: {}", err);
+                error!("in_rustc_thread: error calling setrlimit: {}", err);
+                std::rt::update_stack_guard();
+                true
             } else {
                 std::rt::update_stack_guard();
                 false
