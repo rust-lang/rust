@@ -1188,6 +1188,11 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
                     None => None,
                 }
             }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.iter.size_hint()
+            }
         }
 
         let mut adapter = Adapter { iter: iter.into_iter(), found_none: false };

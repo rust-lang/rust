@@ -272,6 +272,11 @@ pub mod printf {
             self.s = tail;
             Some(sub)
         }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            // Substitutions are at least 2 characters long.
+            (0, Some(self.s.len() / 2))
+        }
     }
 
     enum State {
@@ -781,6 +786,10 @@ pub mod shell {
                 },
                 None => None,
             }
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (0, Some(self.s.len()))
         }
     }
 

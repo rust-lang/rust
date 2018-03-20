@@ -902,6 +902,11 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
             }
         })
     }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
 }
 
 #[unstable(feature = "decode_utf8", issue = "33906")]

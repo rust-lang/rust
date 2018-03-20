@@ -901,6 +901,10 @@ impl<I, T, E> Iterator for ResultShunt<I, E>
             None => None,
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 #[stable(feature = "iter_arith_traits_result", since="1.16.0")]
