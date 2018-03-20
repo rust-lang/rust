@@ -1366,7 +1366,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) {
         debug!("check_if_reassignment_to_immutable_state({:?})", place);
         // determine if this path has a non-mut owner (and thus needs checking).
-        if let Ok(_) = self.is_mutable(place, LocalMutationIsAllowed::No) {
+        if let Ok(..) = self.is_mutable(place, LocalMutationIsAllowed::No) {
             return;
         }
         debug!(
@@ -1681,24 +1681,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { .. }))
             | Write(WriteKind::MutableBorrow(BorrowKind::Mut { .. })) => {
                 match self.is_mutable(place, is_local_mutation_allowed) {
-                    Ok(Place::Local(local))
-                        if is_local_mutation_allowed != LocalMutationIsAllowed::Yes =>
-                    {
-                        // If the local may be initialized, and it is now currently being
-                        // mutated, then it is justified to be annotated with the `mut` keyword,
-                        // since the mutation may be a possible reassignment.
-                        let mpi = self.move_data.rev_lookup.find_local(*local);
-                        if flow_state.inits.contains(&mpi) {
-                            self.used_mut.insert(*local);
+                    Ok((Place::Local(local), mut_allowed)) => {
+                        if mut_allowed != LocalMutationIsAllowed::Yes {
+                            // If the local may be initialized, and it is now currently being
+                            // mutated, then it is justified to be annotated with the `mut`
+                            // keyword, since the mutation may be a possible reassignment.
+                            let mpi = self.move_data.rev_lookup.find_local(*local);
+                            if flow_state.inits.contains(&mpi) {
+                                self.used_mut.insert(*local);
+                            }
                         }
                     }
-                    Ok(Place::Projection(ref proj)) => {
+                    Ok((Place::Projection(ref proj), _mut_allowed)) => {
                         if let Some(field) = self.is_upvar_field_projection(&proj.base) {
                             self.used_mut_upvars.push(field);
                         }
                     }
-                    Ok(Place::Local(_)) |
-                    Ok(Place::Static(..)) => {}
+                    Ok((Place::Static(..), _mut_allowed)) => {}
                     Err(place_err) => {
                         error_reported = true;
                         let item_msg = self.get_default_err_msg(place);
@@ -1719,24 +1718,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
                 match self.is_mutable(place, is_local_mutation_allowed) {
-                    Ok(Place::Local(local))
-                        if is_local_mutation_allowed != LocalMutationIsAllowed::Yes =>
-                    {
-                        // If the local may be initialized, and it is now currently being
-                        // mutated, then it is justified to be annotated with the `mut` keyword,
-                        // since the mutation may be a possible reassignment.
-                        let mpi = self.move_data.rev_lookup.find_local(*local);
-                        if flow_state.inits.contains(&mpi) {
-                            self.used_mut.insert(*local);
+                    Ok((Place::Local(local), mut_allowed)) => {
+                        if mut_allowed != LocalMutationIsAllowed::Yes {
+                            // If the local may be initialized, and it is now currently being
+                            // mutated, then it is justified to be annotated with the `mut`
+                            // keyword, since the mutation may be a possible reassignment.
+                            let mpi = self.move_data.rev_lookup.find_local(*local);
+                            if flow_state.inits.contains(&mpi) {
+                                self.used_mut.insert(*local);
+                            }
                         }
                     }
-                    Ok(Place::Projection(ref proj)) => {
+                    Ok((Place::Projection(ref proj), _mut_allowed)) => {
                         if let Some(field) = self.is_upvar_field_projection(&proj.base) {
                             self.used_mut_upvars.push(field);
                         }
                     }
-                    Ok(Place::Local(_)) |
-                    Ok(Place::Static(..)) => {}
+                    Ok((Place::Static(..), _mut_allowed)) => {}
                     Err(place_err) => {
                         error_reported = true;
 
@@ -1835,25 +1833,28 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &self,
         place: &'d Place<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
-    ) -> Result<&'d Place<'tcx>, &'d Place<'tcx>> {
+    ) -> Result<(&'d Place<'tcx>, LocalMutationIsAllowed), &'d Place<'tcx>> {
         match *place {
             Place::Local(local) => {
                 let local = &self.mir.local_decls[local];
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
-                        LocalMutationIsAllowed::Yes | LocalMutationIsAllowed::ExceptUpvars => {
-                            Ok(place)
+                        LocalMutationIsAllowed::Yes => {
+                            Ok((place, LocalMutationIsAllowed::Yes))
+                        }
+                        LocalMutationIsAllowed::ExceptUpvars => {
+                            Ok((place, LocalMutationIsAllowed::ExceptUpvars))
                         }
                         LocalMutationIsAllowed::No => Err(place),
                     },
-                    Mutability::Mut => Ok(place),
+                    Mutability::Mut => Ok((place, is_local_mutation_allowed)),
                 }
             }
             Place::Static(ref static_) =>
                 if self.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
                     Err(place)
                 } else {
-                    Ok(place)
+                    Ok((place, is_local_mutation_allowed))
                 },
             Place::Projection(ref proj) => {
                 match proj.elem {
@@ -1891,7 +1892,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     hir::MutImmutable => return Err(place),
                                     // `*mut` raw pointers are always mutable, regardless of context
                                     // The users have to check by themselve.
-                                    hir::MutMutable => return Ok(place),
+                                    hir::MutMutable => return Ok((place, is_local_mutation_allowed)),
                                 }
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
