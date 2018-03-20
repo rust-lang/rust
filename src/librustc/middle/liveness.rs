@@ -117,7 +117,7 @@ use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
 use syntax::symbol::keywords;
-use syntax_pos::Span;
+use syntax_pos::{Span, MultiSpan};
 
 use hir::Expr;
 use hir;
@@ -1363,8 +1363,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 
 fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local) {
     match local.init {
-        Some(_) => {
-            this.warn_about_unused_or_dead_vars_in_pat(&local.pat);
+        Some(ref init_expr) => {
+            this.warn_about_unused_or_dead_vars_in_pat(&local.pat, init_expr.span);
         },
         None => {
             this.pat_bindings(&local.pat, |this, ln, var, sp, id| {
@@ -1388,19 +1388,21 @@ fn check_arm<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, arm: &'tcx hir::Arm) {
 
 fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
-      hir::ExprAssign(ref l, _) => {
-        this.check_place(&l);
+        hir::ExprAssign(ref l, ref r) => {
+            let msp = MultiSpan::from_spans(vec![l.span, r.span]);
+            this.check_place(&l, msp);
 
-        intravisit::walk_expr(this, expr);
-      }
-
-      hir::ExprAssignOp(_, ref l, _) => {
-        if !this.tables.is_method_call(expr) {
-            this.check_place(&l);
+            intravisit::walk_expr(this, expr);
         }
 
-        intravisit::walk_expr(this, expr);
-      }
+        hir::ExprAssignOp(_, ref l, ref r) => {
+            if !this.tables.is_method_call(expr) {
+                let msp = MultiSpan::from_spans(vec![l.span, r.span]);
+                this.check_place(&l, msp);
+            }
+
+            intravisit::walk_expr(this, expr);
+        }
 
       hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
         for input in inputs {
@@ -1410,7 +1412,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
         // Output operands must be places
         for (o, output) in ia.outputs.iter().zip(outputs) {
           if !o.is_indirect {
-            this.check_place(output);
+            this.check_place(output, MultiSpan::from_span(output.span));
           }
           this.visit_expr(output);
         }
@@ -1435,7 +1437,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
-    fn check_place(&mut self, expr: &'tcx Expr) {
+    fn check_place(&mut self, expr: &'tcx Expr, msp: MultiSpan) {
         match expr.node {
             hir::ExprPath(hir::QPath::Resolved(_, ref path)) => {
                 if let Def::Local(nid) = path.def {
@@ -1445,7 +1447,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // as being used.
                     let ln = self.live_node(expr.id, expr.span);
                     let var = self.variable(nid, expr.span);
-                    self.warn_about_dead_assign(expr.span, expr.id, ln, var);
+                    self.warn_about_dead_assign(msp, expr.id, ln, var);
                 }
             }
             _ => {
@@ -1482,10 +1484,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn warn_about_unused_or_dead_vars_in_pat(&mut self, pat: &hir::Pat) {
+    fn warn_about_unused_or_dead_vars_in_pat(&mut self, pat: &hir::Pat, assign_span: Span) {
         self.pat_bindings(pat, |this, ln, var, sp, id| {
             if !this.warn_about_unused(sp, id, ln, var) {
-                this.warn_about_dead_assign(sp, id, ln, var);
+                let msp = MultiSpan::from_spans(vec![sp, assign_span]);
+                this.warn_about_dead_assign(msp, id, ln, var);
             }
         })
     }
@@ -1538,16 +1541,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn warn_about_dead_assign(&self,
-                              sp: Span,
+                              msp: MultiSpan,
                               id: NodeId,
                               ln: LiveNode,
                               var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
-            self.report_dead_assign(id, sp, var, false);
+            self.report_dead_assign(id, msp, var, false);
         }
     }
 
-    fn report_dead_assign(&self, id: NodeId, sp: Span, var: Variable, is_argument: bool) {
+    fn report_dead_assign<S: Into<MultiSpan>>(&self, id: NodeId, sp: S,
+                                              var: Variable, is_argument: bool) {
         if let Some(name) = self.should_warn(var) {
             if is_argument {
                 self.ir.tcx.lint_node(lint::builtin::UNUSED_ASSIGNMENTS, id, sp,

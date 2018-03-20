@@ -52,7 +52,7 @@ warning: value assigned to `x` is never read
   --> $DIR/liveness-unused.rs:42:5
    |
 LL |     x += 4;
-   |     ^
+   |     ^    ^
    |
 note: lint level defined here
   --> $DIR/liveness-unused.rs:13:27
@@ -104,5 +104,5 @@ warning: value assigned to `x` is never read
   --> $DIR/liveness-unused.rs:126:9
    |
 LL |         x = 0;  //~ WARN value assigned to `x` is never read
-   |         ^
+   |         ^   ^
 

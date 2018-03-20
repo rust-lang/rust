@@ -1,8 +1,8 @@
 warning: value assigned to `x` is never read
-  --> $DIR/liveness-dead.rs:21:9
+  --> $DIR/liveness-dead.rs:21:10
    |
-LL |     let mut x: isize = 3; //~ WARN: value assigned to `x` is never read
-   |         ^^^^^
+LL |     let (mut x, y) = (3, 4); //~ WARN: value assigned to `x` is never read
+   |          ^^^^^       ^^^^^^
    |
 note: lint level defined here
   --> $DIR/liveness-dead.rs:14:9
@@ -14,7 +14,7 @@ warning: value assigned to `x` is never read
   --> $DIR/liveness-dead.rs:29:5
    |
 LL |     x = 4; //~ WARN: value assigned to `x` is never read
-   |     ^
+   |     ^   ^
 
 warning: value passed to `x` is never read
   --> $DIR/liveness-dead.rs:32:7
@@ -26,5 +26,5 @@ warning: value assigned to `x` is never read
   --> $DIR/liveness-dead.rs:39:5
    |
 LL |     x = 4; //~ WARN: value assigned to `x` is never read
-   |     ^
+   |     ^   ^
 

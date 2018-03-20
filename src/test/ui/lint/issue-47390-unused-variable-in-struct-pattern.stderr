@@ -29,7 +29,7 @@ warning: value assigned to `hours_are_suns` is never read
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:32:9
    |
 LL |         hours_are_suns = false;
-   |         ^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^   ^^^^^
    |
 note: lint level defined here
   --> $DIR/issue-47390-unused-variable-in-struct-pattern.rs:13:9

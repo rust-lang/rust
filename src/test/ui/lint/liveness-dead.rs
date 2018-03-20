@@ -18,7 +18,7 @@ fn f1(x: &mut isize) {
 }
 
 fn f2() {
-    let mut x: isize = 3; //~ WARN: value assigned to `x` is never read
+    let (mut x, y) = (3, 4); //~ WARN: value assigned to `x` is never read
     x = 4;
     x.clone();
 }
