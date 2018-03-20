@@ -203,9 +203,9 @@ impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx
             Entry::Occupied(entry) => Some(entry.get().clone()),
             Entry::Vacant(entry) => {
                 // ensure that we don't place any AllocIds at the very beginning
-                // of the metadata file, because that would end up making our 0 and 1 indices
+                // of the metadata file, because that would end up making our indices
                 // not special. This is essentially impossible, but let's make sure
-                assert!(pos != 0 && pos != 1);
+                assert!(pos >= interpret::SHORTHAND_START);
                 entry.insert(pos);
                 None
             },

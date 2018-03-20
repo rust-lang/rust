@@ -819,7 +819,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<
                 // of the metadata file, because that would end up making our indices
                 // not special. It is essentially impossible for that to happen,
                 // but let's make sure
-                assert!(pos != interpret::ALLOC_DISCRIMINANT && pos != interpret::FN_DISCRIMINANT);
+                assert!(pos >= interpret::SHORTHAND_START);
                 entry.insert(pos);
                 None
             },

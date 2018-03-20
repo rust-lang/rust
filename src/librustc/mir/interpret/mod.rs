@@ -156,6 +156,8 @@ impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 pub const ALLOC_DISCRIMINANT: usize = 0;
 pub const FN_DISCRIMINANT: usize = 1;
+pub const EXTERN_STATIC_DISCRIMINANT: usize = 2;
+pub const SHORTHAND_START: usize = 3;
 
 pub fn specialized_encode_alloc_id<
     'a, 'tcx,
@@ -173,6 +175,7 @@ pub fn specialized_encode_alloc_id<
         trace!("encoding {:?} with {:#?}", alloc_id, alloc);
         ALLOC_DISCRIMINANT.encode(encoder)?;
         alloc.encode(encoder)?;
+        // encode whether this allocation is the root allocation of a static
         tcx.interpret_interner
             .get_corresponding_static_def_id(alloc_id)
             .encode(encoder)?;
@@ -180,6 +183,10 @@ pub fn specialized_encode_alloc_id<
         trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
         FN_DISCRIMINANT.encode(encoder)?;
         fn_instance.encode(encoder)?;
+    } else if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(alloc_id) {
+        // extern "C" statics don't have allocations, just encode its def_id
+        EXTERN_STATIC_DISCRIMINANT.encode(encoder)?;
+        did.encode(encoder)?;
     } else {
         bug!("alloc id without corresponding allocation: {}", alloc_id);
     }
@@ -224,6 +231,13 @@ pub fn specialized_decode_alloc_id<
             trace!("created fn alloc id: {:?}", id);
             cache(decoder, pos, id);
             Ok(id)
+        },
+        EXTERN_STATIC_DISCRIMINANT => {
+            trace!("creating extern static alloc id at {}", pos);
+            let did = DefId::decode(decoder)?;
+            let alloc_id = tcx.interpret_interner.reserve();
+            tcx.interpret_interner.cache(did, alloc_id);
+            Ok(alloc_id)
         },
         shorthand => {
             trace!("loading shorthand {}", shorthand);
