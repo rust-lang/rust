@@ -281,7 +281,18 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn debuginfo(&mut self) {
-        // Don't do anything special here for GNU-style linkers.
+        match self.sess.opts.debuginfo {
+            DebugInfoLevel::NoDebugInfo => {
+                // If we are building without debuginfo enabled and we were called with
+                // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
+                // found when linking to get rid of symbols from libstd.
+                match self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
+                    Some(true) => { self.linker_arg("-S"); },
+                    _ => {},
+                }
+            },
+            _ => {},
+        };
     }
 
     fn no_default_libraries(&mut self) {
