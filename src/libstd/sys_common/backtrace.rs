@@ -77,10 +77,6 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     writeln!(w, "stack backtrace:")?;
 
     for (index, frame, is_on_filter_edge) in filtered_frames {
-        // Don't use ANSI escape codes on windows, because most terminals on it don't support them
-        if is_on_filter_edge && cfg!(not(windows)) {
-            write!(w, "\x1B[2m")?;
-        }
         resolve_symname(*frame, |symname| {
             output(w, index, *frame, symname, format)
         }, &context)?;
@@ -89,9 +85,6 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
         }, &context)?;
         if has_more_filenames {
             w.write_all(b" <... and possibly more>")?;
-        }
-        if cfg!(not(windows)) {
-            write!(w, "\x1B[0m")?;
         }
     }
 
