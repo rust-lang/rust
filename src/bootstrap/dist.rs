@@ -102,7 +102,7 @@ impl Step for Docs {
 
         let dst = image.join("share/doc/rust/html");
         t!(fs::create_dir_all(&dst));
-        let src = build.out.join(host).join("doc");
+        let src = build.doc_out(host);
         cp_r(&src, &dst);
 
         let mut cmd = rust_installer(builder);
@@ -120,13 +120,68 @@ impl Step for Docs {
         build.run(&mut cmd);
         t!(fs::remove_dir_all(&image));
 
-        // As part of this step, *also* copy the docs directory to a directory which
-        // buildbot typically uploads.
-        if host == build.build {
-            let dst = distdir(build).join("doc").join(build.rust_package_vers());
-            t!(fs::create_dir_all(&dst));
-            cp_r(&src, &dst);
+        distdir(build).join(format!("{}-{}.tar.gz", name, host))
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustcDocs {
+    pub stage: u32,
+    pub host: Interned<String>,
+}
+
+impl Step for RustcDocs {
+    type Output = PathBuf;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/librustc")
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(RustcDocs {
+            stage: run.builder.top_stage,
+            host: run.target,
+        });
+    }
+
+    /// Builds the `rustc-docs` installer component.
+    fn run(self, builder: &Builder) -> PathBuf {
+        let build = builder.build;
+        let host = self.host;
+
+        let name = pkgname(build, "rustc-docs");
+
+        println!("Dist compiler docs ({})", host);
+        if !build.config.compiler_docs {
+            println!("\tskipping - compiler docs disabled");
+            return distdir(build).join(format!("{}-{}.tar.gz", name, host));
         }
+
+        builder.default_doc(None);
+
+        let image = tmpdir(build).join(format!("{}-{}-image", name, host));
+        let _ = fs::remove_dir_all(&image);
+
+        let dst = image.join("share/doc/rustc/html");
+        t!(fs::create_dir_all(&dst));
+        let src = build.compiler_doc_out(host);
+        cp_r(&src, &dst);
+
+        let mut cmd = rust_installer(builder);
+        cmd.arg("generate")
+           .arg("--product-name=Rustc-Documentation")
+           .arg("--rel-manifest-dir=rustlib")
+           .arg("--success-message=Rustc-documentation-is-installed.")
+           .arg("--image-dir").arg(&image)
+           .arg("--work-dir").arg(&tmpdir(build))
+           .arg("--output-dir").arg(&distdir(build))
+           .arg(format!("--package-name={}-{}", name, host))
+           .arg("--component-name=rustc-docs")
+           .arg("--legacy-manifest-dirs=rustlib,cargo")
+           .arg("--bulk-dirs=share/doc/rustc/html");
+        build.run(&mut cmd);
+        t!(fs::remove_dir_all(&image));
 
         distdir(build).join(format!("{}-{}.tar.gz", name, host))
     }

@@ -483,20 +483,16 @@ impl Step for Std {
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
         compile::std_cargo(builder, &compiler, target, &mut cargo);
 
-        // We don't want to build docs for internal std dependencies unless
-        // in compiler-docs mode. When not in that mode, we whitelist the crates
-        // for which docs must be built.
-        if !build.config.compiler_docs {
-            cargo.arg("--no-deps");
-            for krate in &["alloc", "core", "std", "std_unicode"] {
-                cargo.arg("-p").arg(krate);
-                // Create all crate output directories first to make sure rustdoc uses
-                // relative links.
-                // FIXME: Cargo should probably do this itself.
-                t!(fs::create_dir_all(out_dir.join(krate)));
-            }
+        // Keep a whitelist so we do not build internal stdlib crates, these will be
+        // build by the rustc step later if enabled.
+        cargo.arg("--no-deps");
+        for krate in &["alloc", "core", "std", "std_unicode"] {
+            cargo.arg("-p").arg(krate);
+            // Create all crate output directories first to make sure rustdoc uses
+            // relative links.
+            // FIXME: Cargo should probably do this itself.
+            t!(fs::create_dir_all(out_dir.join(krate)));
         }
-
 
         build.run(&mut cargo);
         cp_r(&my_out, &out);
@@ -564,12 +560,12 @@ impl Step for Test {
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct Rustc {
+pub struct WhitelistedRustc {
     stage: u32,
     target: Interned<String>,
 }
 
-impl Step for Rustc {
+impl Step for WhitelistedRustc {
     type Output = ();
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
@@ -580,21 +576,26 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig) {
-        run.builder.ensure(Rustc {
+        run.builder.ensure(WhitelistedRustc {
             stage: run.builder.top_stage,
             target: run.target,
         });
     }
 
-    /// Generate all compiler documentation.
+    /// Generate whitelisted compiler crate documentation.
     ///
-    /// This will generate all documentation for the compiler libraries and their
-    /// dependencies. This is largely just a wrapper around `cargo doc`.
+    /// This will generate all documentation for crates that are whitelisted
+    /// to be included in the standard documentation. This documentation is
+    /// included in the standard Rust documentation, so we should always
+    /// document it and symlink to merge with the rest of the std and test
+    /// documentation. We don't build other compiler documentation
+    /// here as we want to be able to keep it separate from the standard
+    /// documentation. This is largely just a wrapper around `cargo doc`.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} compiler ({})", stage, target);
+        println!("Documenting stage{} whitelisted compiler ({})", stage, target);
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -620,18 +621,92 @@ impl Step for Rustc {
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
         compile::rustc_cargo(build, &mut cargo);
 
-        if build.config.compiler_docs {
-            // src/rustc/Cargo.toml contains a bin crate called rustc which
-            // would otherwise overwrite the docs for the real rustc lib crate.
-            cargo.arg("-p").arg("rustc_driver");
-        } else {
-            // Like with libstd above if compiler docs aren't enabled then we're not
-            // documenting internal dependencies, so we have a whitelist.
-            cargo.arg("--no-deps");
-            for krate in &["proc_macro"] {
-                cargo.arg("-p").arg(krate);
-            }
+        // We don't want to build docs for internal compiler dependencies in this
+        // step (there is another step for that). Therefore, we whitelist the crates
+        // for which docs must be built.
+        cargo.arg("--no-deps");
+        for krate in &["proc_macro"] {
+            cargo.arg("-p").arg(krate);
         }
+
+        build.run(&mut cargo);
+        cp_r(&my_out, &out);
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct Rustc {
+    stage: u32,
+    target: Interned<String>,
+}
+
+impl Step for Rustc {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.krate("rustc-main").default_condition(builder.build.config.docs)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(Rustc {
+            stage: run.builder.top_stage,
+            target: run.target,
+        });
+    }
+
+    /// Generate compiler documentation.
+    ///
+    /// This will generate all documentation for compiler and dependencies.
+    /// Compiler documentation is distributed separately, so we make sure
+    /// we do not merge it with the other documentation from std, test and
+    /// proc_macros. This is largely just a wrapper around `cargo doc`.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let stage = self.stage;
+        let target = self.target;
+        println!("Documenting stage{} compiler ({})", stage, target);
+        let out = build.compiler_doc_out(target);
+        t!(fs::create_dir_all(&out));
+        let compiler = builder.compiler(stage, build.build);
+        let rustdoc = builder.rustdoc(compiler.host);
+        let compiler = if build.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
+        } else {
+            compiler
+        };
+
+        if !build.config.compiler_docs {
+            println!("\tskipping - compiler docs disabled");
+            return;
+        }
+
+        // Build libstd docs so that we generate relative links
+        builder.ensure(Std { stage, target });
+
+        builder.ensure(compile::Rustc { compiler, target });
+        let out_dir = build.stage_out(compiler, Mode::Librustc)
+                           .join(target).join("doc");
+
+        // See docs in std above for why we symlink
+        //
+        // This step must happen after other documentation steps. This
+        // invariant ensures that compiler documentation is not included
+        // in the standard documentation tarballs but that all the
+        // documentation from the standard documentation tarballs is included
+        // in the compiler documentation tarball.
+        let my_out = build.crate_doc_out(target);
+        build.clear_if_dirty(&my_out, &rustdoc);
+        t!(symlink_dir_force(&my_out, &out_dir));
+
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
+        compile::rustc_cargo(build, &mut cargo);
+
+        // src/rustc/Cargo.toml contains a bin crate called rustc which
+        // would otherwise overwrite the docs for the real rustc lib crate.
+        cargo.arg("-p").arg("rustc_driver");
 
         build.run(&mut cargo);
         cp_r(&my_out, &out);
