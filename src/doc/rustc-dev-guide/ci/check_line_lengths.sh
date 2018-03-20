@@ -1,5 +1,21 @@
 #!/bin/bash
 
+if [ "$1" == "--help" ]; then
+    echo 'Usage:'
+    echo '  MAX_LINE_LENGTH=80' "$0" 'src/**/*.md'
+    exit 1
+fi
+
+if [ "$MAX_LINE_LENGTH" == "" ]; then
+    echo '`MAX_LINE_LENGTH` environment variable not set. Try --help.'
+    exit 1
+fi
+
+if [ "$1" == "" ]; then
+    echo 'No files provided.'
+    exit 1
+fi
+
 echo "Checking line lengths in all source files <= $MAX_LINE_LENGTH chars..."
 
 echo "Offending files and lines:"
