@@ -24,8 +24,7 @@ use syntax_pos::Span;
 use syntax_pos::symbol::keywords;
 
 /// The types of pointers
-#[derive(Clone, Eq, PartialEq)]
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum PtrTy<'a> {
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
@@ -35,7 +34,7 @@ pub enum PtrTy<'a> {
 
 /// A path, e.g. `::std::option::Option::<i32>` (global). Has support
 /// for type parameters and a lifetime.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub struct Path<'a> {
     path: Vec<&'a str>,
     lifetime: Option<&'a str>,
@@ -43,7 +42,7 @@ pub struct Path<'a> {
     kind: PathKind,
 }
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub enum PathKind {
     Local,
     Global,
@@ -107,7 +106,7 @@ impl<'a> Path<'a> {
 }
 
 /// A type. Supports pointers, Self, and literals
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone)]
 pub enum Ty<'a> {
     Self_,
     /// &/Box/ Ty

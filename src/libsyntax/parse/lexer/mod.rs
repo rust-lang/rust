@@ -26,7 +26,7 @@ pub mod comments;
 mod tokentrees;
 mod unicode_chars;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Debug)]
 pub struct TokenAndSpan {
     pub tok: token::Token,
     pub sp: Span,

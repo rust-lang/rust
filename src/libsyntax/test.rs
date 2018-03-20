@@ -329,7 +329,6 @@ fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
     sp.with_ctxt(cx.ctxt)
 }
 
-#[derive(PartialEq)]
 enum HasTestSignature {
     Yes,
     No(BadTestSignature),
@@ -354,7 +353,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                 // type implements the `Termination` trait as `libtest` enforces that.
                 let has_output = match decl.output {
                     ast::FunctionRetTy::Default(..) => false,
-                    ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => false,
+                    ast::FunctionRetTy::Ty(ref t) if t.node.is_empty_tuple() => false,
                     _ => true
                 };
 

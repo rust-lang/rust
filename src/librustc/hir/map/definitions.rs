@@ -171,7 +171,7 @@ pub struct Definitions {
 /// A unique identifier that we can use to lookup a definition
 /// precisely. It combines the index of the definition's parent (if
 /// any) with a `DisambiguatedDefPathData`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefKey {
     /// Parent path.
     pub parent: Option<DefIndex>,
@@ -223,13 +223,13 @@ impl DefKey {
 /// between them. This introduces some artificial ordering dependency
 /// but means that if you have (e.g.) two impls for the same type in
 /// the same module, they do get distinct def-ids.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DisambiguatedDefPathData {
     pub data: DefPathData,
     pub disambiguator: u32
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub struct DefPath {
     /// the path leading from the crate root to the item
     pub data: Vec<DisambiguatedDefPathData>,
@@ -311,7 +311,7 @@ impl DefPath {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -668,8 +668,7 @@ macro_rules! define_global_metadata_kind {
     (pub enum GlobalMetaDataKind {
         $($variant:ident),*
     }) => (
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
-                 RustcEncodable, RustcDecodable)]
+        #[derive(Clone, Copy, Debug, Hash, RustcEncodable, RustcDecodable)]
         pub enum GlobalMetaDataKind {
             $($variant),*
         }

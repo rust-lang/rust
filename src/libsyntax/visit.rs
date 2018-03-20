@@ -28,7 +28,7 @@ use syntax_pos::Span;
 use parse::token::Token;
 use tokenstream::{TokenTree, TokenStream};
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
     ItemFn(Ident, FnHeader, &'a Visibility, &'a Block),

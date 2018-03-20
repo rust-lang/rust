@@ -2641,7 +2641,9 @@ impl<'a> State<'a> {
                                    |s, p| s.print_pat(p))?;
                 if let Some(ref p) = *slice {
                     if !before.is_empty() { self.word_space(",")?; }
-                    if p.node != PatKind::Wild {
+                    if let PatKind::Wild = p.node {
+                        // Print nothing
+                    } else {
                         self.print_pat(p)?;
                     }
                     self.s.word("..")?;

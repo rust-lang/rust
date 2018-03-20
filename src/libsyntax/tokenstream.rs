@@ -36,7 +36,7 @@ use std::{fmt, iter, mem};
 use std::hash::{self, Hash};
 
 /// A delimited sequence of token trees
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Delimited {
     /// The type of delimiter
     pub delim: token::DelimToken,
@@ -93,7 +93,7 @@ impl Delimited {
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable, Hash)]
 pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),

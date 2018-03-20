@@ -456,7 +456,7 @@ enum AliasPossibility {
     Maybe,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum PathSource<'a> {
     // Type paths `Path`.
     Type,

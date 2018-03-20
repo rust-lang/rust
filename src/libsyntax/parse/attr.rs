@@ -16,7 +16,7 @@ use parse::token::{self, Nonterminal};
 use parse::parser::{Parser, TokenType, PathStyle};
 use tokenstream::TokenStream;
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug)]
 enum InnerAttributeParsePolicy<'a> {
     Permitted,
     NotPermitted { reason: &'a str },
@@ -94,7 +94,7 @@ impl<'a> Parser<'a> {
                 let lo = self.span;
                 self.bump();
 
-                if inner_parse_policy == InnerAttributeParsePolicy::Permitted {
+                if let InnerAttributeParsePolicy::Permitted = inner_parse_policy {
                     self.expected_tokens.push(TokenType::Token(token::Not));
                 }
                 let style = if self.token == token::Not {

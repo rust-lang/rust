@@ -30,7 +30,7 @@ use std::{cmp, fmt};
 use std::mem;
 use rustc_data_structures::sync::{Lrc, Lock};
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -45,7 +45,7 @@ pub enum BinOpToken {
 }
 
 /// A delimiter token
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -67,7 +67,7 @@ impl DelimToken {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -139,7 +139,7 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     ].contains(&ident.name)
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Hash, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,
@@ -638,7 +638,7 @@ impl Token {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),

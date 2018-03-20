@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
 
         let (span_1, span_2, main_label, span_label) = match (sup_is_ret_type, sub_is_ret_type) {
             (None, None) => {
-                let (main_label_1, span_label_1) = if ty_sup == ty_sub {
+                let (main_label_1, span_label_1) = if ty_sup.id == ty_sub.id {
                     (
                         format!("this type is declared with multiple lifetimes..."),
                         format!(

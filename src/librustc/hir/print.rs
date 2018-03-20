@@ -1914,7 +1914,9 @@ impl<'a> State<'a> {
                     if !before.is_empty() {
                         self.word_space(",")?;
                     }
-                    if p.node != PatKind::Wild {
+                    if let PatKind::Wild = p.node {
+                        // Print nothing
+                    } else {
                         self.print_pat(&p)?;
                     }
                     self.s.word("..")?;
@@ -2033,7 +2035,9 @@ impl<'a> State<'a> {
             s.ann.nested(s, Nested::BodyArgPat(body_id, i))?;
             i += 1;
 
-            if ty.node != hir::TyInfer {
+            if let hir::TyInfer = ty.node {
+                // Print nothing
+            } else {
                 s.s.word(":")?;
                 s.s.space()?;
                 s.print_type(ty)?;

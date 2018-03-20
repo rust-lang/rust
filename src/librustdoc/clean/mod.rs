@@ -754,7 +754,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Default, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default, Hash)]
 pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
@@ -973,6 +973,18 @@ impl Attributes {
         }).collect()
     }
 }
+
+impl PartialEq for Attributes {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.doc_strings == rhs.doc_strings &&
+        self.cfg == rhs.cfg &&
+        self.span == rhs.span &&
+        self.links == rhs.links &&
+        self.other_attrs.id == rhs.other_attrs.id
+    }
+}
+
+impl Eq for Attributes {}
 
 impl AttributesExt for Attributes {
     fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
@@ -1830,7 +1842,7 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Hash)]
 pub enum GenericParamDefKind {
     Lifetime,
     Type {
@@ -1840,6 +1852,8 @@ pub enum GenericParamDefKind {
         synthetic: Option<hir::SyntheticTyParamKind>,
     },
 }
+
+impl Eq for GenericParamDefKind {}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParamDef {

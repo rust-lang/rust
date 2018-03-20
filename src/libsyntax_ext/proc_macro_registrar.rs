@@ -103,7 +103,7 @@ impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate &&
            self.in_root &&
-           vis.node == ast::VisibilityKind::Public {
+           vis.node.is_public() {
             self.handler.span_err(sp,
                                   "`proc-macro` crate types cannot \
                                    export any items other than functions \
@@ -181,7 +181,7 @@ impl<'a> CollectProcMacros<'a> {
             Vec::new()
         };
 
-        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
+        if self.in_root && item.vis.node.is_public() {
             self.derives.push(ProcMacroDerive {
                 span: item.span,
                 trait_name,
@@ -206,7 +206,7 @@ impl<'a> CollectProcMacros<'a> {
             return;
         }
 
-        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
+        if self.in_root && item.vis.node.is_public() {
             self.attr_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -229,7 +229,7 @@ impl<'a> CollectProcMacros<'a> {
             return;
         }
 
-        if self.in_root && item.vis.node == ast::VisibilityKind::Public {
+        if self.in_root && item.vis.node.is_public() {
             self.bang_macros.push(ProcMacroDef {
                 span: item.span,
                 function_name: item.ident,
@@ -271,7 +271,8 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let msg = if attr.path == prev_attr.path {
+                    let msg = if attr.path.segments[0].ident.name ==
+                                 prev_attr.path.segments[0].ident.name {
                         format!("Only one `#[{}]` attribute is allowed on any given function",
                                 attr.path)
                     } else {
