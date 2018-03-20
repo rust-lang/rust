@@ -168,8 +168,36 @@ impl<R: Read> BufReader<R> {
     /// # }
     /// ```
     #[unstable(feature = "bufreader_is_empty", issue = "45323", reason = "recently added")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use .buffer().is_empty() instead")]
     pub fn is_empty(&self) -> bool {
-        self.pos == self.cap
+        self.buffer().is_empty()
+    }
+
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(bufreader_buffer)]
+    /// use std::io::{BufReader, BufRead};
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let f = File::open("log.txt")?;
+    /// let mut reader = BufReader::new(f);
+    /// assert!(reader.buffer().is_empty());
+    ///
+    /// if reader.fill_buf()?.len() > 0 {
+    ///     assert!(!reader.buffer().is_empty());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    pub fn buffer(&self) -> &[u8] {
+        &self.buf[self.pos..self.cap]
     }
 
     /// Unwraps this `BufReader`, returning the underlying reader.

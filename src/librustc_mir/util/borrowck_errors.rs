@@ -52,30 +52,30 @@ impl Origin {
     }
 }
 
-pub trait BorrowckErrors {
-    fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
-                                                         sp: S,
-                                                         msg: &str,
-                                                         code: DiagnosticId)
-                                                         -> DiagnosticBuilder<'a>;
+pub trait BorrowckErrors<'cx>: Sized + Copy {
+    fn struct_span_err_with_code<S: Into<MultiSpan>>(self,
+                                                     sp: S,
+                                                     msg: &str,
+                                                     code: DiagnosticId)
+                                                     -> DiagnosticBuilder<'cx>;
 
-    fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
-                                               sp: S,
-                                               msg: &str)
-                                               -> DiagnosticBuilder<'a>;
+    fn struct_span_err<S: Into<MultiSpan>>(self,
+                                           sp: S,
+                                           msg: &str)
+                                           -> DiagnosticBuilder<'cx>;
 
     /// Cancels the given error if we shouldn't emit errors for a given
     /// origin in the current mode.
     ///
     /// Always make sure that the error gets passed through this function
     /// before you return it.
-    fn cancel_if_wrong_origin<'a>(&'a self,
-                                diag: DiagnosticBuilder<'a>,
-                                o: Origin)
-                                -> DiagnosticBuilder<'a>;
+    fn cancel_if_wrong_origin(self,
+                              diag: DiagnosticBuilder<'cx>,
+                              o: Origin)
+                              -> DiagnosticBuilder<'cx>;
 
-    fn cannot_move_when_borrowed(&self, span: Span, desc: &str, o: Origin)
-                                 -> DiagnosticBuilder<'_>
+    fn cannot_move_when_borrowed(self, span: Span, desc: &str, o: Origin)
+                                 -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0505,
                                    "cannot move out of `{}` because it is borrowed{OGN}",
@@ -83,13 +83,13 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_use_when_mutably_borrowed(&self,
+    fn cannot_use_when_mutably_borrowed(self,
                                         span: Span,
                                         desc: &str,
                                         borrow_span: Span,
                                         borrow_desc: &str,
                                         o: Origin)
-                                        -> DiagnosticBuilder<'_>
+                                        -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, span, E0503,
                          "cannot use `{}` because it was mutably borrowed{OGN}",
@@ -101,12 +101,12 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_act_on_uninitialized_variable(&self,
+    fn cannot_act_on_uninitialized_variable(self,
                                             span: Span,
                                             verb: &str,
                                             desc: &str,
                                             o: Origin)
-                                            -> DiagnosticBuilder
+                                            -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0381,
                                    "{} of possibly uninitialized variable: `{}`{OGN}",
@@ -114,7 +114,7 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_mutably_borrow_multiply(&self,
+    fn cannot_mutably_borrow_multiply(self,
                                       new_loan_span: Span,
                                       desc: &str,
                                       opt_via: &str,
@@ -122,7 +122,7 @@ pub trait BorrowckErrors {
                                       old_opt_via: &str,
                                       old_load_end_span: Option<Span>,
                                       o: Origin)
-                                      -> DiagnosticBuilder
+                                      -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, new_loan_span, E0499,
                          "cannot borrow `{}`{} as mutable more than once at a time{OGN}",
@@ -148,13 +148,13 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_uniquely_borrow_by_two_closures(&self,
+    fn cannot_uniquely_borrow_by_two_closures(self,
                                               new_loan_span: Span,
                                               desc: &str,
                                               old_loan_span: Span,
                                               old_load_end_span: Option<Span>,
                                               o: Origin)
-                                              -> DiagnosticBuilder
+                                              -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, new_loan_span, E0524,
                          "two closures require unique access to `{}` at the same time{OGN}",
@@ -173,7 +173,7 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_uniquely_borrow_by_one_closure(&self,
+    fn cannot_uniquely_borrow_by_one_closure(self,
                                              new_loan_span: Span,
                                              desc_new: &str,
                                              opt_via: &str,
@@ -182,7 +182,7 @@ pub trait BorrowckErrors {
                                              old_opt_via: &str,
                                              previous_end_span: Option<Span>,
                                              o: Origin)
-                                             -> DiagnosticBuilder
+                                             -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, new_loan_span, E0500,
                          "closure requires unique access to `{}` but {} is already borrowed{}{OGN}",
@@ -197,7 +197,7 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_reborrow_already_uniquely_borrowed(&self,
+    fn cannot_reborrow_already_uniquely_borrowed(self,
                                                  new_loan_span: Span,
                                                  desc_new: &str,
                                                  opt_via: &str,
@@ -206,7 +206,7 @@ pub trait BorrowckErrors {
                                                  old_opt_via: &str,
                                                  previous_end_span: Option<Span>,
                                                  o: Origin)
-                                                 -> DiagnosticBuilder
+                                                 -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, new_loan_span, E0501,
                          "cannot borrow `{}`{} as {} because previous closure \
@@ -222,7 +222,7 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_reborrow_already_borrowed(&self,
+    fn cannot_reborrow_already_borrowed(self,
                                         span: Span,
                                         desc_new: &str,
                                         msg_new: &str,
@@ -233,7 +233,7 @@ pub trait BorrowckErrors {
                                         msg_old: &str,
                                         old_load_end_span: Option<Span>,
                                         o: Origin)
-                                        -> DiagnosticBuilder
+                                        -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, span, E0502,
                          "cannot borrow `{}`{} as {} because {} is also borrowed as {}{}{OGN}",
@@ -246,8 +246,8 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign_to_borrowed(&self, span: Span, borrow_span: Span, desc: &str, o: Origin)
-                                 -> DiagnosticBuilder
+    fn cannot_assign_to_borrowed(self, span: Span, borrow_span: Span, desc: &str, o: Origin)
+                                 -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, span, E0506,
                          "cannot assign to `{}` because it is borrowed{OGN}",
@@ -259,8 +259,8 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_move_into_closure(&self, span: Span, desc: &str, o: Origin)
-                                -> DiagnosticBuilder
+    fn cannot_move_into_closure(self, span: Span, desc: &str, o: Origin)
+                                -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0504,
                                    "cannot move `{}` into closure because it is borrowed{OGN}",
@@ -269,8 +269,8 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_reassign_immutable(&self, span: Span, desc: &str, is_arg: bool, o: Origin)
-                                 -> DiagnosticBuilder
+    fn cannot_reassign_immutable(self, span: Span, desc: &str, is_arg: bool, o: Origin)
+                                 -> DiagnosticBuilder<'cx>
     {
         let msg = if is_arg {
             "to immutable argument"
@@ -284,7 +284,7 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign(&self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder
+    fn cannot_assign(self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0594,
                                   "cannot assign to {}{OGN}",
@@ -292,14 +292,14 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign_static(&self, span: Span, desc: &str, o: Origin)
-                            -> DiagnosticBuilder
+    fn cannot_assign_static(self, span: Span, desc: &str, o: Origin)
+                            -> DiagnosticBuilder<'cx>
     {
         self.cannot_assign(span, &format!("immutable static item `{}`", desc), o)
     }
 
-    fn cannot_move_out_of(&self, move_from_span: Span, move_from_desc: &str, o: Origin)
-                          -> DiagnosticBuilder
+    fn cannot_move_out_of(self, move_from_span: Span, move_from_desc: &str, o: Origin)
+                          -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, move_from_span, E0507,
                                        "cannot move out of {}{OGN}",
@@ -311,12 +311,12 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_move_out_of_interior_noncopy(&self,
+    fn cannot_move_out_of_interior_noncopy(self,
                                            move_from_span: Span,
                                            ty: ty::Ty,
                                            is_index: bool,
                                            o: Origin)
-                                           -> DiagnosticBuilder
+                                           -> DiagnosticBuilder<'cx>
     {
         let type_name = match (&ty.sty, is_index) {
             (&ty::TyArray(_, _), true) => "array",
@@ -332,11 +332,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_move_out_of_interior_of_drop(&self,
+    fn cannot_move_out_of_interior_of_drop(self,
                                            move_from_span: Span,
                                            container_ty: ty::Ty,
                                            o: Origin)
-                                           -> DiagnosticBuilder
+                                           -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, move_from_span, E0509,
                                        "cannot move out of type `{}`, \
@@ -347,13 +347,13 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_act_on_moved_value(&self,
+    fn cannot_act_on_moved_value(self,
                                  use_span: Span,
                                  verb: &str,
                                  optional_adverb_for_moved: &str,
                                  moved_path: &str,
                                  o: Origin)
-                                 -> DiagnosticBuilder
+                                 -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, use_span, E0382,
                                    "{} of {}moved value: `{}`{OGN}",
@@ -362,11 +362,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_partially_reinit_an_uninit_struct(&self,
+    fn cannot_partially_reinit_an_uninit_struct(self,
                                                 span: Span,
                                                 uninit_path: &str,
                                                 o: Origin)
-                                                -> DiagnosticBuilder
+                                                -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self,
                                    span,
@@ -377,11 +377,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn closure_cannot_assign_to_borrowed(&self,
+    fn closure_cannot_assign_to_borrowed(self,
                                          span: Span,
                                          descr: &str,
                                          o: Origin)
-                                         -> DiagnosticBuilder
+                                         -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0595, "closure cannot assign to {}{OGN}",
                                    descr, OGN=o);
@@ -389,11 +389,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_borrow_path_as_mutable(&self,
+    fn cannot_borrow_path_as_mutable(self,
                                      span: Span,
                                      path: &str,
                                      o: Origin)
-                                     -> DiagnosticBuilder
+                                     -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0596, "cannot borrow {} as mutable{OGN}",
                                    path, OGN=o);
@@ -401,11 +401,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_borrow_across_generator_yield(&self,
+    fn cannot_borrow_across_generator_yield(self,
                                             span: Span,
                                             yield_span: Span,
                                             o: Origin)
-                                            -> DiagnosticBuilder
+                                            -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self,
                                        span,
@@ -417,11 +417,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn path_does_not_live_long_enough(&self,
+    fn path_does_not_live_long_enough(self,
                                       span: Span,
                                       path: &str,
                                       o: Origin)
-                                      -> DiagnosticBuilder
+                                      -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0597, "{} does not live long enough{OGN}",
                                    path, OGN=o);
@@ -429,11 +429,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn lifetime_too_short_for_reborrow(&self,
+    fn lifetime_too_short_for_reborrow(self,
                                        span: Span,
                                        path: &str,
                                        o: Origin)
-                                       -> DiagnosticBuilder
+                                       -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0598,
                                    "lifetime of {} is too short to guarantee \
@@ -443,12 +443,12 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_act_on_capture_in_sharable_fn(&self,
+    fn cannot_act_on_capture_in_sharable_fn(self,
                                             span: Span,
                                             bad_thing: &str,
                                             help: (Span, &str),
                                             o: Origin)
-                                            -> DiagnosticBuilder
+                                            -> DiagnosticBuilder<'cx>
     {
         let (help_span, help_msg) = help;
         let mut err = struct_span_err!(self, span, E0387,
@@ -459,11 +459,11 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign_into_immutable_reference(&self,
+    fn cannot_assign_into_immutable_reference(self,
                                               span: Span,
                                               bad_thing: &str,
                                               o: Origin)
-                                              -> DiagnosticBuilder
+                                              -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, span, E0389, "{} in a `&` reference{OGN}",
                                        bad_thing, OGN=o);
@@ -472,12 +472,12 @@ pub trait BorrowckErrors {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_capture_in_long_lived_closure(&self,
+    fn cannot_capture_in_long_lived_closure(self,
                                             closure_span: Span,
                                             borrowed_path: &str,
                                             capture_span: Span,
                                             o: Origin)
-                                            -> DiagnosticBuilder
+                                            -> DiagnosticBuilder<'cx>
     {
         let mut err = struct_span_err!(self, closure_span, E0373,
                                        "closure may outlive the current function, \
@@ -491,28 +491,28 @@ pub trait BorrowckErrors {
     }
 }
 
-impl<'b, 'gcx, 'tcx> BorrowckErrors for TyCtxt<'b, 'gcx, 'tcx> {
-    fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
-                                                         sp: S,
-                                                         msg: &str,
-                                                         code: DiagnosticId)
-                                                         -> DiagnosticBuilder<'a>
+impl<'cx, 'gcx, 'tcx> BorrowckErrors<'cx> for TyCtxt<'cx, 'gcx, 'tcx> {
+    fn struct_span_err_with_code<S: Into<MultiSpan>>(self,
+                                                     sp: S,
+                                                     msg: &str,
+                                                     code: DiagnosticId)
+                                                     -> DiagnosticBuilder<'cx>
     {
         self.sess.struct_span_err_with_code(sp, msg, code)
     }
 
-    fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
-                                               sp: S,
-                                               msg: &str)
-                                               -> DiagnosticBuilder<'a>
+    fn struct_span_err<S: Into<MultiSpan>>(self,
+                                           sp: S,
+                                           msg: &str)
+                                           -> DiagnosticBuilder<'cx>
     {
         self.sess.struct_span_err(sp, msg)
     }
 
-    fn cancel_if_wrong_origin<'a>(&'a self,
-                                mut diag: DiagnosticBuilder<'a>,
-                                o: Origin)
-                                -> DiagnosticBuilder<'a>
+    fn cancel_if_wrong_origin(self,
+                              mut diag: DiagnosticBuilder<'cx>,
+                              o: Origin)
+                              -> DiagnosticBuilder<'cx>
     {
         if !o.should_emit_errors(self.borrowck_mode()) {
             self.sess.diagnostic().cancel(&mut diag);

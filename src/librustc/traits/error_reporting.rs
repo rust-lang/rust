@@ -606,6 +606,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         }
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
+                        self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
@@ -839,6 +840,54 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                 format!("&{}", snippet));
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
+    /// suggest removing these references until we reach a type that implements the trait.
+    fn suggest_remove_reference(&self,
+                                obligation: &PredicateObligation<'tcx>,
+                                err: &mut DiagnosticBuilder<'tcx>,
+                                trait_ref: &ty::Binder<ty::TraitRef<'tcx>>) {
+        let ty::Binder(trait_ref) = trait_ref;
+        let span = obligation.cause.span;
+
+        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+            let refs_number = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .take_while(|c| *c == '&')
+                .count();
+
+            let mut trait_type = trait_ref.self_ty();
+            let mut selcx = SelectionContext::new(self);
+
+            for refs_remaining in 0..refs_number {
+                if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
+                    trait_type.sty {
+
+                    trait_type = t_type;
+
+                    let substs = self.tcx.mk_substs_trait(trait_type, &[]);
+                    let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
+                    let new_obligation = Obligation::new(ObligationCause::dummy(),
+                                                         obligation.param_env,
+                                                         new_trait_ref.to_predicate());
+
+                    if selcx.evaluate_obligation(&new_obligation) {
+                        let sp = self.tcx.sess.codemap()
+                            .span_take_while(span, |c| c.is_whitespace() || *c == '&');
+
+                        let remove_refs = refs_remaining + 1;
+                        let format_str = format!("consider removing {} leading `&`-references",
+                                                 remove_refs);
+
+                        err.span_suggestion_short(sp, &format_str, String::from(""));
+                        break;
+                    }
+                } else {
+                    break;
                 }
             }
         }

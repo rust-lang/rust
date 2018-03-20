@@ -1003,4 +1003,5 @@ impl_load_from_cache!(
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
     TransFnAttrs => trans_fn_attrs,
+    SpecializationGraph => specialization_graph_of,
 );

@@ -1,13 +1,15 @@
 # Region inference
 
+> WARNING: This README is obsolete and will be removed soon! For
+> more info on how the current borrowck works, see the [rustc guide].
+
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir-borrowck.html
+
 ## Terminology
 
 Note that we use the terms region and lifetime interchangeably.
 
 ## Introduction
-
-See the [general inference README](../README.md) for an overview of
-how lexical-region-solving fits into the bigger picture.
 
 Region inference uses a somewhat more involved algorithm than type
 inference. It is not the most efficient thing ever written though it

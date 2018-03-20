@@ -232,6 +232,7 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<symbol_name, _>(tcx, enc, qri)?;
                 encode_query_results::<check_match, _>(tcx, enc, qri)?;
                 encode_query_results::<trans_fn_attrs, _>(tcx, enc, qri)?;
+                encode_query_results::<specialization_graph_of, _>(tcx, enc, qri)?;
 
                 // const eval is special, it only encodes successfully evaluated constants
                 use ty::maps::plumbing::GetCacheInternal;

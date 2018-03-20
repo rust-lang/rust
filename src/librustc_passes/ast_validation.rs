@@ -67,7 +67,7 @@ impl<'a> AstValidator<'a> {
                                            E0449,
                                            "unnecessary visibility qualifier");
             if vis.node == VisibilityKind::Public {
-                err.span_label(vis.span, "`pub` not needed here");
+                err.span_label(vis.span, "`pub` not permitted here because it's implied");
             }
             if let Some(note) = note {
                 err.note(note);

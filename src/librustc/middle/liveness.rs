@@ -402,12 +402,10 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
 
 fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
     for pat in &arm.pats {
-        // for struct patterns, take note of which fields used shorthand (`x`
-        // rather than `x: x`)
+        // for struct patterns, take note of which fields used shorthand (`x` rather than `x: x`)
         //
-        // FIXME: according to the rust-lang-nursery/rustc-guide book and
-        // librustc/README.md, `NodeId`s are to be phased out in favor of
-        // `HirId`s; however, we need to match the signature of `each_binding`,
+        // FIXME: according to the rust-lang-nursery/rustc-guide book, `NodeId`s are to be phased
+        // out in favor of `HirId`s; however, we need to match the signature of `each_binding`,
         // which uses `NodeIds`.
         let mut shorthand_field_ids = NodeSet();
         if let hir::PatKind::Struct(_, ref fields, _) = pat.node {

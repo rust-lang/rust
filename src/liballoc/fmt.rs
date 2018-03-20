@@ -114,7 +114,7 @@
 //! * *nothing* ⇒ [`Display`]
 //! * `?` ⇒ [`Debug`]
 //! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
-//! * `X?` ⇒ [`Debug`] with lower-case hexadecimal integers
+//! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
 //! * `o` ⇒ [`Octal`](trait.Octal.html)
 //! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
 //! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
