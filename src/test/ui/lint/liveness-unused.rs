@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(unused)]
-#![deny(unused_variables)]
-#![deny(unused_assignments)]
+// must-compile-successfully
+
+#![warn(unused_variables, unused_assignments, unreachable_code)]
 #![allow(dead_code, non_camel_case_types, trivial_numeric_casts)]
 
 use std::ops::AddAssign;
 
 fn f1(x: isize) {
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
 }
 
 fn f1b(x: &mut isize) {
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
 }
 
 #[allow(unused_variables)]
@@ -28,24 +28,24 @@ fn f1c(x: isize) {}
 
 fn f1d() {
     let x: isize;
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
 }
 
 fn f2() {
     let x = 3;
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
 }
 
 fn f3() {
     let mut x = 3;
-    //~^ ERROR variable `x` is assigned to, but never used
+    //~^ WARN variable `x` is assigned to, but never used
     x += 4;
-    //~^ ERROR value assigned to `x` is never read
+    //~^ WARN value assigned to `x` is never read
 }
 
 fn f3b() {
     let mut z = 3;
-    //~^ ERROR variable `z` is assigned to, but never used
+    //~^ WARN variable `z` is assigned to, but never used
     loop {
         z += 4;
     }
@@ -67,7 +67,7 @@ fn f3d() {
 fn f4() {
     match Some(3) {
       Some(i) => {
-        //~^ ERROR unused variable: `i`
+        //~^ WARN unused variable: `i`
       }
       None => {}
     }
@@ -87,19 +87,19 @@ fn f4b() -> isize {
 
 fn f5a() {
     for x in 1..10 { }
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
 }
 
 fn f5b() {
     for (x, _) in [1, 2, 3].iter().enumerate() { }
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
 }
 
 fn f5c() {
     for (_, x) in [1, 2, 3].iter().enumerate() {
-    //~^ ERROR unused variable: `x`
+    //~^ WARN unused variable: `x`
         continue;
-        drop(*x as i32); //~ WARNING unreachable statement
+        drop(*x as i32); //~ WARN unreachable statement
     }
 }
 
@@ -120,10 +120,10 @@ fn f6() {
     // ensure an error shows up for x even if lhs of an overloaded add assign
 
     let x;
-    //~^ ERROR variable `x` is assigned to, but never used
+    //~^ WARN variable `x` is assigned to, but never used
 
     *({
-        x = 0;  //~ ERROR value assigned to `x` is never read
+        x = 0;  //~ WARN value assigned to `x` is never read
         &mut v
     }) += 1;
 }
