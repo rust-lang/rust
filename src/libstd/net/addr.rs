@@ -28,7 +28,7 @@ use slice;
 /// as possibly some version-dependent additional information. See [`SocketAddrV4`]'s and
 /// [`SocketAddrV6`]'s respective documentation for more details.
 ///
-/// The size of a SocketAddr instance may vary depending on the target operating
+/// The size of a `SocketAddr` instance may vary depending on the target operating
 /// system.
 ///
 /// [IP address]: ../../std/net/enum.IpAddr.html
