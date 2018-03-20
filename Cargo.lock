@@ -1927,7 +1927,6 @@ dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "polonius-engine 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc_macro 0.0.0",
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_apfloat 0.0.0",
@@ -2345,7 +2344,6 @@ dependencies = [
  "flate2 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc_macro 0.0.0",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -2884,7 +2882,6 @@ version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc_macro 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
@@ -2974,6 +2971,7 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc_macro 0.0.0",
  "term 0.0.0",
 ]
 
