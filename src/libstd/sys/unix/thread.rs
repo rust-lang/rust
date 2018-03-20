@@ -284,10 +284,10 @@ pub mod guard {
         ret
     }
 
-    pub unsafe fn init() -> Option<Guard> {
-        PAGE_SIZE = os::page_size();
-
-        let mut stackaddr = get_stack_start()?;
+    // Precondition: PAGE_SIZE is initialized.
+    unsafe fn get_stack_start_aligned() -> Option<*mut libc::c_void> {
+        assert!(PAGE_SIZE != 0);
+        let stackaddr = get_stack_start()?;
 
         // Ensure stackaddr is page aligned! A parent process might
         // have reset RLIMIT_STACK to be non-page aligned. The
@@ -296,10 +296,17 @@ pub mod guard {
         // page-aligned, calculate the fix such that stackaddr <
         // new_page_aligned_stackaddr < stackaddr + stacksize
         let remainder = (stackaddr as usize) % PAGE_SIZE;
-        if remainder != 0 {
-            stackaddr = ((stackaddr as usize) + PAGE_SIZE - remainder)
-                as *mut libc::c_void;
-        }
+        Some(if remainder == 0 {
+            stackaddr
+        } else {
+            ((stackaddr as usize) + PAGE_SIZE - remainder) as *mut libc::c_void
+        })
+    }
+
+    pub unsafe fn init() -> Option<Guard> {
+        PAGE_SIZE = os::page_size();
+
+        let stackaddr = get_stack_start_aligned()?;
 
         if cfg!(target_os = "linux") {
             // Linux doesn't allocate the whole stack right away, and
@@ -338,14 +345,7 @@ pub mod guard {
 
     pub unsafe fn deinit() {
         if !cfg!(target_os = "linux") {
-            if let Some(mut stackaddr) = get_stack_start() {
-                // Ensure address is aligned. Same as above.
-                let remainder = (stackaddr as usize) % PAGE_SIZE;
-                if remainder != 0 {
-                    stackaddr = ((stackaddr as usize) + PAGE_SIZE - remainder)
-                        as *mut libc::c_void;
-                }
-
+            if let Some(stackaddr) = get_stack_start_aligned() {
                 // Undo the guard page mapping.
                 if munmap(stackaddr, PAGE_SIZE) != 0 {
                     panic!("unable to deallocate the guard page");
