@@ -4,14 +4,6 @@
 /// Minimal interface: all packed SIMD vector types implement this.
 macro_rules! impl_minimal {
     ($id:ident, $elem_ty:ident, $elem_count:expr, $($elem_name:ident),+) => {
-        #[cfg_attr(feature = "cargo-clippy", allow(expl_impl_clone_on_copy))]
-        impl ::clone::Clone for $id {
-            #[inline] // currently needed for correctness
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-
         impl $id {
             /// Creates a new instance with each vector elements initialized
             /// with the provided values.

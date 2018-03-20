@@ -59,8 +59,8 @@
 macro_rules! define_ty {
     ($id:ident, $($elem_tys:ident),+ | $(#[$doc:meta])*) => {
         $(#[$doc])*
-            #[repr(simd)]
-        #[derive(Copy, Debug, /*FIXME:*/ PartialOrd)]
+        #[repr(simd)]
+        #[derive(Copy, Clone, Debug, /*FIXME:*/ PartialOrd)]
         #[allow(non_camel_case_types)]
         pub struct $id($($elem_tys),*);
     }
