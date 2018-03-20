@@ -1114,8 +1114,9 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                     Some(config::EntryMain) => {
                         let substs = fcx.tcx.mk_substs(iter::once(Kind::from(ret_ty)));
                         let trait_ref = ty::TraitRef::new(term_id, substs);
+                        let return_ty_span = decl.output.span();
                         let cause = traits::ObligationCause::new(
-                            span, fn_id, ObligationCauseCode::MainFunctionType);
+                            return_ty_span, fn_id, ObligationCauseCode::MainFunctionType);
 
                         inherited.register_predicate(
                             traits::Obligation::new(
