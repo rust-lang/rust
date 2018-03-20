@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:`main` can only return types that implement std::process::Termination, not `char
 fn main() -> char {
-//~^ ERROR: the trait bound `char: std::process::Termination` is not satisfied
     ' '
 }

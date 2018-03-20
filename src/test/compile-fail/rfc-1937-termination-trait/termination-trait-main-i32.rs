@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:`main` can only return types that implement std::process::Termination, not `i32`
 fn main() -> i32 {
-//~^ ERROR the trait bound `i32: std::process::Termination` is not satisfied [E0277]
     0
 }
