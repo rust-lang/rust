@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:subspan.rs
-// ignore-stage1
 
 extern crate subspan;
 

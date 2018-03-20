@@ -11,7 +11,6 @@
 #![allow(unused_variables)]
 #![allow(unused_imports)]
 // aux-build:call-site.rs
-// ignore-stage1
 
 #![feature(proc_macro_hygiene)]
 

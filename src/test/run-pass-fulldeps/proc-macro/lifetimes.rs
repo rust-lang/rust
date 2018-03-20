@@ -10,7 +10,6 @@
 
 #![allow(unused_variables)]
 // aux-build:lifetimes.rs
-// ignore-stage1
 
 extern crate lifetimes;
 use lifetimes::*;

@@ -10,7 +10,6 @@
 
 #![allow(path_statements)]
 // aux-build:issue-50061.rs
-// ignore-stage1
 
 #![feature(decl_macro)]
 

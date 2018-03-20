@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:proc_macro_def.rs
-// ignore-stage1
 // ignore-cross-compile
 
 #![feature(proc_macro_hygiene)]

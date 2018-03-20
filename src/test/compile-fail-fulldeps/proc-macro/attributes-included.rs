@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attributes-included.rs
-// ignore-stage1
 // compile-pass
 
 #![warn(unused)]

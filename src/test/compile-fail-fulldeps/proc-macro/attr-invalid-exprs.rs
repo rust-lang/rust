@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attr-stmt-expr.rs
-// ignore-stage1
 
 //! Attributes producing expressions in invalid locations
 

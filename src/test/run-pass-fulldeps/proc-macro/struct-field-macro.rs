@@ -10,7 +10,6 @@
 
 #![allow(dead_code)]
 // aux-build:derive-nothing.rs
-// ignore-stage1
 
 #[macro_use]
 extern crate derive_nothing;

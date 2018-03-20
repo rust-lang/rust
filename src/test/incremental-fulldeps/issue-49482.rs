@@ -10,7 +10,6 @@
 
 // aux-build:issue_49482_macro_def.rs
 // aux-build:issue_49482_reexport.rs
-// ignore-stage1
 // revisions: rpass1
 
 extern crate issue_49482_reexport;

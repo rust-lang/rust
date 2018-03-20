@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue_54059.rs
-// ignore-stage1
 // ignore-wasm32-bare no libc for ffi testing
 // ignore-windows - dealing with weird symbols issues on dylibs isn't worth it
 // revisions: rpass1

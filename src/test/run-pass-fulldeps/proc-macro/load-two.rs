@@ -12,7 +12,6 @@
 #![allow(dead_code)]
 // aux-build:derive-atob.rs
 // aux-build:derive-ctod.rs
-// ignore-stage1
 
 #[macro_use]
 extern crate derive_atob;

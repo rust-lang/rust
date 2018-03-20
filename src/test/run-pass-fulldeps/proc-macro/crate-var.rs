@@ -10,7 +10,6 @@
 
 // aux-build:double.rs
 // aux-build:external-crate-var.rs
-// ignore-stage1
 
 #![allow(unused)]
 

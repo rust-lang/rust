@@ -1,6 +1,5 @@
 // compile-pass
 // aux-build:plugin.rs
-// ignore-stage1
 
 #[macro_use(WithHelper)]
 extern crate plugin;

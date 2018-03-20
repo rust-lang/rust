@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attribute-with-error.rs
-// ignore-stage1
 
 #![feature(custom_inner_attributes)]
 

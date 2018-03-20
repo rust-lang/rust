@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:incremental_proc_macro_aux.rs
-// ignore-stage1
 // revisions: cfail1 cfail2
 // compile-pass
 

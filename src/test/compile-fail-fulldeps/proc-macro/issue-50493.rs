@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue_50493.rs
-// ignore-stage1
 
 #[macro_use]
 extern crate issue_50493;

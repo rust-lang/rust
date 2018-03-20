@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attr-on-trait.rs
-// ignore-stage1
 
 extern crate attr_on_trait;
 

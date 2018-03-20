@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:derive-b.rs
-// ignore-stage1
 
 #![allow(warnings)]
 

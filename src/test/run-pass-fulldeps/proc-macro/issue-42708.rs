@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:issue-42708.rs
-// ignore-stage1
 
 #![feature(decl_macro)]
 #![allow(unused)]

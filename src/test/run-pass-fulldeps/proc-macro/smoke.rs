@@ -11,7 +11,6 @@
 #![allow(unused_must_use)]
 #![allow(path_statements)]
 // aux-build:derive-a.rs
-// ignore-stage1
 
 #[macro_use]
 extern crate derive_a;

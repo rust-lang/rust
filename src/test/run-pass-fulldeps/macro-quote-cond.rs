@@ -10,7 +10,6 @@
 
 #![allow(unused_parens)]
 // aux-build:cond_plugin.rs
-// ignore-stage1
 
 #![feature(proc_macro_hygiene)]
 

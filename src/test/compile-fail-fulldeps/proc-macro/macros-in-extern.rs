@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:test-macros.rs
-// ignore-stage1
 // ignore-wasm32
 
 extern crate test_macros;

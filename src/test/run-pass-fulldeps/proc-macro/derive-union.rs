@@ -10,7 +10,6 @@
 
 #![allow(unused_variables)]
 // aux-build:derive-union.rs
-// ignore-stage1
 
 #[macro_use]
 extern crate derive_union;

@@ -10,7 +10,6 @@
 
 #![allow(dead_code)]
 // aux-build:derive-attr-cfg.rs
-// ignore-stage1
 
 extern crate derive_attr_cfg;
 use derive_attr_cfg::Foo;

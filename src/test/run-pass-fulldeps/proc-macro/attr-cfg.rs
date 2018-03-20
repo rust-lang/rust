@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:attr-cfg.rs
-// ignore-stage1
 // revisions: foo bar
 
 extern crate attr_cfg;

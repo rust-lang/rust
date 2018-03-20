@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:three-equals.rs
-// ignore-stage1
+
 
 #![feature(proc_macro_hygiene)]
 

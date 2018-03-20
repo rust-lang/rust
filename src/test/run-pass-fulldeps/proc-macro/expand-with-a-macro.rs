@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:expand-with-a-macro.rs
-// ignore-stage1
 
 #![deny(warnings)]
 

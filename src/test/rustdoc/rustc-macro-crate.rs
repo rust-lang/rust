@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-// ignore-stage1
 
 #![crate_type = "proc-macro"]
 
