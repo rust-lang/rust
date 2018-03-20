@@ -778,6 +778,12 @@ impl<'a> Builder<'a> {
             if cmd != "bench" {
                 cargo.arg("--release");
             }
+            if compiler.stage == 0 &&
+                (env::var_os("TRAVIS").is_some() || env::var_os("APPVEYOR").is_some()) {
+                // If we run on travis-ci or appveyor, build stage0 with
+                // several codegenunits for lower build times.
+                cargo.env("RUSTC_CODEGEN_UNITS", "16");
+            }
         }
 
         if self.config.locked_deps {
