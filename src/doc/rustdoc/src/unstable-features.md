@@ -345,3 +345,16 @@ bug][issue-display-warnings], this flag doesn't 100% work as intended. See the l
 details.
 
 [issue-display-warnings]: https://github.com/rust-lang/rust/issues/41574
+
+### `-Z force-unstable-if-unmarked`
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z force-unstable-if-unmarked
+```
+
+This is an internal flag intended for the standard library and compiler that applies an
+`#[unstable]` attribute to any dependent crate that doesn't have another stability attribute. This
+allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
+library, as an equivalent command-line argument is provided to `rustc` when building those crates.
