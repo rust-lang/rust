@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::TypeFoldable;
+use std::fmt::Debug;
 
 use super::*;
 
@@ -1081,18 +1082,25 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     return None;
                 }
 
+                let mut bounds_vec = bounds.into_iter().collect();
+                self.sort_where_bounds(&mut bounds_vec);
+
                 Some(WherePredicate::BoundPredicate {
                     ty,
-                    bounds: bounds.into_iter().collect(),
+                    bounds: bounds_vec,
                 })
             })
             .chain(
                 lifetime_to_bounds
                     .into_iter()
                     .filter(|&(_, ref bounds)| !bounds.is_empty())
-                    .map(|(lifetime, bounds)| WherePredicate::RegionPredicate {
-                        lifetime,
-                        bounds: bounds.into_iter().collect(),
+                    .map(|(lifetime, bounds)| {
+                        let mut bounds_vec = bounds.into_iter().collect();
+                        self.sort_where_lifetimes(&mut bounds_vec);
+                        WherePredicate::RegionPredicate {
+                            lifetime,
+                            bounds: bounds_vec,
+                        }
                     }),
             )
             .collect()
@@ -1372,40 +1380,64 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // a given set of predicates always appears in the same order -
     // both for visual consistency between 'rustdoc' runs, and to
     // make writing tests much easier
-    fn sort_where_predicates(&self, predicates: &mut Vec<WherePredicate>) {
+    #[inline]
+    fn sort_where_predicates(&self, mut predicates: &mut Vec<WherePredicate>) {
         // We should never have identical bounds - and if we do,
         // they're visually identical as well. Therefore, using
         // an unstable sort is fine.
-        predicates.sort_unstable_by(|first, second| {
-            // This might look horrendously hacky, but it's actually not that bad.
-            //
-            // For performance reasons, we use several different FxHashMaps
-            // in the process of computing the final set of where predicates.
-            // However, the iteration order of a HashMap is completely unspecified.
-            // In fact, the iteration of an FxHashMap can even vary between platforms,
-            // since FxHasher has different behavior for 32-bit and 64-bit platforms.
-            //
-            // Obviously, it's extremely undesireable for documentation rendering
-            // to be depndent on the platform it's run on. Apart from being confusing
-            // to end users, it makes writing tests much more difficult, as predicates
-            // can appear in any order in the final result.
-            //
-            // To solve this problem, we sort WherePredicates by their Debug
-            // string. The thing to keep in mind is that we don't really
-            // care what the final order is - we're synthesizing an impl
-            // ourselves, so any order can be considered equally valid.
-            // By sorting the predicates, however, we ensure that for
-            // a given codebase, all auto-trait impls always render
-            // in exactly the same way.
-            //
-            // Using the Debug impementation for sorting prevents
-            // us from needing to write quite a bit of almost
-            // entirely useless code (e.g. how should two
-            // Types be sorted relative to each other).
-            // This approach is probably somewhat slower, but
-            // the small number of items involved (impls
-            // rarely have more than a few bounds) means
-            // that it shouldn't matter in practice.
+        self.unstable_debug_sort(&mut predicates);
+    }
+    
+    // Ensure that the bounds are in a consistent order. The precise
+    // ordering doesn't actually matter, but it's important that
+    // a given set of bounds always appears in the same order -
+    // both for visual consistency between 'rustdoc' runs, and to
+    // make writing tests much easier
+    #[inline]
+    fn sort_where_bounds(&self, mut bounds: &mut Vec<TyParamBound>) {
+        // We should never have identical bounds - and if we do,
+        // they're visually identical as well. Therefore, using
+        // an unstable sort is fine.
+        self.unstable_debug_sort(&mut bounds);
+    }
+    
+    #[inline]
+    fn sort_where_lifetimes(&self, mut bounds: &mut Vec<Lifetime>) {
+        // We should never have identical bounds - and if we do,
+        // they're visually identical as well. Therefore, using
+        // an unstable sort is fine.
+        self.unstable_debug_sort(&mut bounds);
+    }
+
+    // This might look horrendously hacky, but it's actually not that bad.
+    //
+    // For performance reasons, we use several different FxHashMaps
+    // in the process of computing the final set of where predicates.
+    // However, the iteration order of a HashMap is completely unspecified.
+    // In fact, the iteration of an FxHashMap can even vary between platforms,
+    // since FxHasher has different behavior for 32-bit and 64-bit platforms.
+    //
+    // Obviously, it's extremely undesireable for documentation rendering
+    // to be depndent on the platform it's run on. Apart from being confusing
+    // to end users, it makes writing tests much more difficult, as predicates
+    // can appear in any order in the final result.
+    //
+    // To solve this problem, we sort WherePredicates and TyParamBounds
+    // by their Debug string. The thing to keep in mind is that we don't really
+    // care what the final order is - we're synthesizing an impl or bound
+    // ourselves, so any order can be considered equally valid. By sorting the
+    // predicates and bounds, however, we ensure that for a given codebase, all
+    // auto-trait impls always render in exactly the same way.
+    //
+    // Using the Debug impementation for sorting prevents us from needing to
+    // write quite a bit of almost entirely useless code (e.g. how should two
+    // Types be sorted relative to each other). It also allows us to solve the
+    // problem for both WherePredicates and TyParamBounds at the same time. This
+    // approach is probably somewhat slower, but the small number of items
+    // involved (impls rarely have more than a few bounds) means that it
+    // shouldn't matter in practice.
+    fn unstable_debug_sort<T: Debug>(&self, vec: &mut Vec<T>) {
+        vec.sort_unstable_by(|first, second| {
             format!("{:?}", first).cmp(&format!("{:?}", second))
         });
     }
