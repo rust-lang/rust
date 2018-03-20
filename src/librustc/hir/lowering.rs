@@ -1585,6 +1585,7 @@ impl<'a> LoweringContext<'a> {
                                .filter(|attr| attr.check_name("rustc_synthetic"))
                                .map(|_| hir::SyntheticTyParamKind::ImplTrait)
                                .nth(0),
+            attrs: self.lower_attrs(&tp.attrs),
         }
     }
 
