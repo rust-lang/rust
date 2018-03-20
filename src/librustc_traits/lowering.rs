@@ -118,15 +118,24 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
         return Lrc::new(vec![]);
     }
 
-    // Rule Implemented-From-Impl
+    // Rule Implemented-From-Impl (see rustc guide)
     //
-    // (see rustc guide)
+    // `impl<P0..Pn> Trait<A1..An> for A0 where WC { .. }`
+    //
+    // ```
+    // forall<P0..Pn> {
+    //   Implemented(A0: Trait<A1..An>) :- WC
+    // }
+    // ```
 
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
-    let trait_ref = ty::TraitPredicate { trait_ref }.lower();
+    // `Implemented(A0: Trait<A1..An>)`
+    let trait_pred = ty::TraitPredicate { trait_ref }.lower();
+     // `WC`
     let where_clauses = tcx.predicates_of(def_id).predicates.lower();
 
-    let clause = Clause::Implies(where_clauses, trait_ref);
+     // `Implemented(A0: Trait<A1..An>) :- WC`
+    let clause = Clause::Implies(where_clauses, trait_pred);
     Lrc::new(vec![clause])
 }
 
