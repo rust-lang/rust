@@ -1387,7 +1387,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         // an unstable sort is fine.
         self.unstable_debug_sort(&mut predicates);
     }
-    
+
     // Ensure that the bounds are in a consistent order. The precise
     // ordering doesn't actually matter, but it's important that
     // a given set of bounds always appears in the same order -
@@ -1400,7 +1400,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         // an unstable sort is fine.
         self.unstable_debug_sort(&mut bounds);
     }
-    
+
     #[inline]
     fn sort_where_lifetimes(&self, mut bounds: &mut Vec<Lifetime>) {
         // We should never have identical bounds - and if we do,
