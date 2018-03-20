@@ -901,7 +901,7 @@ impl<'a> StringReader<'a> {
                     None => {}  // EOF here is an error that will be checked later.
                     Some(e) => {
                         return match e {
-                            'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
+                            'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' | 'e' => true,
                             'x' => self.scan_byte_escape(delim, !ascii_only),
                             'u' => {
                                 let valid = if self.ch_is('{') {
