@@ -1667,7 +1667,6 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
-    // FIXME(eddyb) Replace this with a miri value.
     pub val: ConstVal<'tcx>,
 }
 
