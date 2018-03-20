@@ -111,7 +111,6 @@
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
 #![feature(slice_get_slice)]
-#![feature(slice_patterns)]
 #![feature(slice_rsplit)]
 #![feature(specialization)]
 #![feature(staged_api)]

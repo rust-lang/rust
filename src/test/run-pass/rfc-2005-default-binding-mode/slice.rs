@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slice_patterns)]
 #![feature(match_default_bindings)]
+#![feature(slice_patterns)]
 
 fn slice_pat() {
     let sl: &[u8] = b"foo";

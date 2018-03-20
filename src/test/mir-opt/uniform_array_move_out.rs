@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax, slice_patterns, advanced_slice_patterns)]
+#![feature(box_syntax)]
+#![feature(slice_patterns)]
 
 fn move_out_from_end() {
     let a = [box 1, box 2];

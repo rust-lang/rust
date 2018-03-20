@@ -72,7 +72,7 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
-#![feature(advanced_slice_patterns)]
+#![cfg_attr(stage0, feature(advanced_slice_patterns))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]

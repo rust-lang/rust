@@ -10,8 +10,6 @@
 
 // compile-flags: -Zmir-opt-level=1
 
-#![feature(slice_patterns)]
-
 use std::mem;
 
 #[derive(Copy, Clone)]

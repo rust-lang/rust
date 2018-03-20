@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slice_patterns)]
-
 // NB: this test was introduced in #23121 and will have to change when default match binding modes
 // stabilizes.
+
+#![feature(slice_patterns)]
 
 fn slice_pat(x: &[u8]) {
     // OLD!
