@@ -125,11 +125,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 })
                             }));
                     } else {
+                        // FIXME: We currently only insert `UserAssertTy` statements for patterns
+                        // that are bindings, this is as we do not want to deconstruct the type
+                        // being assertion to match the pattern.
+                        if let PatternKind::Binding { var, .. } = *pattern.kind {
+                            if let Some(ty) = ty {
+                                this.user_assert_ty(block, ty, var, span);
+                            }
+                        }
+
                         this.visit_bindings(&pattern, &mut |this, _, _, node, span, _| {
                             this.storage_live_binding(block, node, span);
-                            if let Some(ty) = ty {
-                                this.user_assert_ty(block, ty, node, span);
-                            }
                             this.schedule_drop_for_binding(node, span);
                         })
                     }
