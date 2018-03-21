@@ -416,6 +416,7 @@ fn partition_source(s: &str) -> (String, String) {
         let trimline = line.trim();
         let header = trimline.is_whitespace() ||
             trimline.starts_with("#![") ||
+            trimline.starts_with("#[macro_use] extern crate") ||
             trimline.starts_with("extern crate");
         if !header || after_header {
             after_header = true;
@@ -819,6 +820,24 @@ assert_eq!(2+2, 4);";
         let expected =
 "#![allow(unused)]
 extern crate asdf;
+fn main() {
+use asdf::qwop;
+assert_eq!(2+2, 4);
+}".to_string();
+        let output = make_test(input, Some("asdf"), false, &opts);
+        assert_eq!(output, (expected, 2));
+    }
+
+    #[test]
+    fn make_test_manual_extern_crate_with_macro_use() {
+        let opts = TestOptions::default();
+        let input =
+"#[macro_use] extern crate asdf;
+use asdf::qwop;
+assert_eq!(2+2, 4);";
+        let expected =
+"#![allow(unused)]
+#[macro_use] extern crate asdf;
 fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
