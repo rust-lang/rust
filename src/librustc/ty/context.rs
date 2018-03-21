@@ -1521,6 +1521,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn local_crate_exports_generics(self) -> bool {
+        debug_assert!(self.share_generics());
+
         self.sess.crate_types.borrow().iter().any(|crate_type| {
             match crate_type {
                 CrateTypeExecutable |

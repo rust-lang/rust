@@ -247,19 +247,37 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         use rustc::mir::mono::{Linkage, Visibility, MonoItem};
         use rustc::ty::InstanceDef;
 
+        // Normally, we require that shared monomorphizations are not hidden,
+        // because if we want to re-use a monomorphization from a Rust dylib, it
+        // needs to be exported.
+        // However, on platforms that don't allow for Rust dylibs, having
+        // external linkage is enough for monomorphization to be linked to.
+        let need_visibility = tcx.sess.target.target.options.dynamic_linking &&
+                              !tcx.sess.target.target.options.only_cdylib;
+
         let (_, cgus) = tcx.collect_and_partition_translation_items(LOCAL_CRATE);
 
         for (mono_item, &(linkage, visibility)) in cgus.iter()
                                                        .flat_map(|cgu| cgu.items().iter()) {
-            if linkage == Linkage::External && visibility == Visibility::Default {
-                if let &MonoItem::Fn(Instance {
-                    def: InstanceDef::Item(def_id),
-                    substs,
-                }) = mono_item {
-                    if substs.types().next().is_some() {
-                        symbols.push((ExportedSymbol::Generic(def_id, substs),
-                                      SymbolExportLevel::Rust));
-                    }
+            if linkage != Linkage::External {
+                // We can only re-use things with external linkage, otherwise
+                // we'll get a linker error
+                continue
+            }
+
+            if need_visibility && visibility == Visibility::Hidden {
+                // If we potentially share things from Rust dylibs, they must
+                // not be hidden
+                continue
+            }
+
+            if let &MonoItem::Fn(Instance {
+                def: InstanceDef::Item(def_id),
+                substs,
+            }) = mono_item {
+                if substs.types().next().is_some() {
+                    symbols.push((ExportedSymbol::Generic(def_id, substs),
+                                  SymbolExportLevel::Rust));
                 }
             }
         }
