@@ -503,6 +503,13 @@ impl<I: Idx, T> IndexVec<I, T> {
             (c1, c2)
         }
     }
+
+    pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
+        IndexVec {
+            raw: self.raw,
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<I: Idx, T: Clone> IndexVec<I, T> {

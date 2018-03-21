@@ -162,7 +162,7 @@ fn encode_dep_graph(tcx: TyCtxt,
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap();
 
-        for (i, &(node, _)) in serialized_graph.nodes.iter_enumerated() {
+        for (i, &node) in serialized_graph.nodes.iter_enumerated() {
             let stat = counts.entry(node.kind).or_insert(Stat {
                 kind: node.kind,
                 node_counter: 0,
