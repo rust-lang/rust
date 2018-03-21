@@ -1416,6 +1416,8 @@ mod fn_impls {
 
     #[cfg(test)]
     mod tests {
+        use super::Rc;
+
         #[test]
         fn is_fn() {
             use_fn(Rc::new(|x| x + 1));

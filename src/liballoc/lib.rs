@@ -125,8 +125,9 @@
 #![feature(exact_chunks)]
 #![feature(pointer_methods)]
 #![feature(inclusive_range_fields)]
+#![feature(fn_traits)]
 
-#![cfg_attr(not(test), feature(fn_traits, placement_new_protocol, swap_with_slice, i128))]
+#![cfg_attr(not(test), feature(placement_new_protocol, swap_with_slice, i128))]
 #![cfg_attr(test, feature(test, box_heap))]
 
 // Allow testing this library

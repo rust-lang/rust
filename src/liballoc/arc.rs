@@ -1441,6 +1441,8 @@ mod fn_impls {
 
     #[cfg(test)]
     mod tests {
+        use super::Arc;
+
         #[test]
         fn is_fn() {
             use_fn(Arc::new(|x| x + 1));
