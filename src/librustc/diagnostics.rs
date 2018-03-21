@@ -2081,6 +2081,8 @@ appear within the `impl Trait` itself.
 Erroneous code example:
 
 ```compile-fail,E0909
+#![feature(conservative_impl_trait)]
+
 use std::cell::Cell;
 
 trait Trait<'a> { }
