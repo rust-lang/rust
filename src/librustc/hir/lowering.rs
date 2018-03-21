@@ -600,6 +600,29 @@ impl<'a> LoweringContext<'a> {
         (params, res)
     }
 
+    /// When there is a reference to some lifetime `'a`, and in-band
+    /// lifetimes are enabled, then we want to push that lifetime into
+    /// the vector of names to define later. In that case, it will get
+    /// added to the appropriate generics.
+    fn maybe_collect_in_band_lifetime(&mut self, span: Span, name: Name) {
+        if !self.is_collecting_in_band_lifetimes {
+            return;
+        }
+
+        if self.in_scope_lifetimes.contains(&name) {
+            return;
+        }
+
+        if self.lifetimes_to_define
+            .iter()
+            .any(|(_, lt_name)| *lt_name == name)
+        {
+            return;
+        }
+
+        self.lifetimes_to_define.push((span, name));
+    }
+
     // Evaluates `f` with the lifetimes in `lt_defs` in-scope.
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
@@ -1726,15 +1749,7 @@ impl<'a> LoweringContext<'a> {
             x if x == "'_" => hir::LifetimeName::Underscore,
             x if x == "'static" => hir::LifetimeName::Static,
             name => {
-                if self.is_collecting_in_band_lifetimes && !self.in_scope_lifetimes.contains(&name)
-                    && self.lifetimes_to_define
-                        .iter()
-                        .find(|&&(_, lt_name)| lt_name == name)
-                        .is_none()
-                {
-                    self.lifetimes_to_define.push((l.span, name));
-                }
-
+                self.maybe_collect_in_band_lifetime(l.span, name);
                 hir::LifetimeName::Name(name)
             }
         };
@@ -2132,18 +2147,32 @@ impl<'a> LoweringContext<'a> {
                 polarity,
                 defaultness,
                 ref ast_generics,
-                ref ifce,
+                ref trait_ref,
                 ref ty,
                 ref impl_items,
             ) => {
                 let def_id = self.resolver.definitions().local_def_id(id);
-                let (generics, (ifce, lowered_ty)) =
+
+                // Lower the "impl header" first. This ordering is important
+                // for in-band lifetimes! Consider `'a` here:
+                //
+                //     impl Foo<'a> for u32 {
+                //         fn method(&'a self) { .. }
+                //     }
+                //
+                // Because we start by lowering the `Foo<'a> for u32`
+                // part, we will add `'a` to the list of generics on
+                // the impl. When we then encounter it later in the
+                // method, it will not be considered an in-band
+                // lifetime to be added, but rather a reference to a
+                // parent lifetime.
+                let (generics, (trait_ref, lowered_ty)) =
                     self.add_in_band_defs(ast_generics, def_id, |this| {
-                        let ifce = ifce.as_ref().map(|trait_ref| {
+                        let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(trait_ref, ImplTraitContext::Disallowed)
                         });
 
-                        if let Some(ref trait_ref) = ifce {
+                        if let Some(ref trait_ref) = trait_ref {
                             if let Def::Trait(def_id) = trait_ref.path.def {
                                 this.trait_impls.entry(def_id).or_insert(vec![]).push(id);
                             }
@@ -2151,7 +2180,7 @@ impl<'a> LoweringContext<'a> {
 
                         let lowered_ty = this.lower_ty(ty, ImplTraitContext::Disallowed);
 
-                        (ifce, lowered_ty)
+                        (trait_ref, lowered_ty)
                     });
 
                 let new_impl_items = self.with_in_scope_lifetime_defs(
@@ -2172,7 +2201,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_impl_polarity(polarity),
                     self.lower_defaultness(defaultness, true /* [1] */),
                     generics,
-                    ifce,
+                    trait_ref,
                     lowered_ty,
                     new_impl_items,
                 )
