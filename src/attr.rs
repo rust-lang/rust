@@ -167,7 +167,7 @@ impl Rewrite for ast::NestedMetaItem {
 
 fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
     // Look at before and after comment and see if there are any empty lines.
-    let comment_begin = comment.chars().position(|c| c == '/');
+    let comment_begin = comment.find('/');
     let len = comment_begin.unwrap_or_else(|| comment.len());
     let mlb = count_newlines(&comment[..len]) > 1;
     let mla = if comment_begin.is_none() {

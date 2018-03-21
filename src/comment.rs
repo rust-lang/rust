@@ -187,7 +187,7 @@ pub fn combine_strs_with_missing_comments(
     // expression and the second expression or the missing comment. We will preserve the original
     // layout whenever possible.
     let original_snippet = context.snippet(span);
-    let prefer_same_line = if let Some(pos) = original_snippet.chars().position(|c| c == '/') {
+    let prefer_same_line = if let Some(pos) = original_snippet.find('/') {
         !original_snippet[..pos].contains('\n')
     } else {
         !original_snippet.contains('\n')
@@ -523,7 +523,7 @@ pub fn recover_missing_comment_in_span(
         Some(String::new())
     } else {
         let missing_snippet = context.snippet(span);
-        let pos = missing_snippet.chars().position(|c| c == '/').unwrap_or(0);
+        let pos = missing_snippet.find('/').unwrap_or(0);
         // 1 = ` `
         let total_width = missing_comment.len() + used_width + 1;
         let force_new_line_before_comment =
