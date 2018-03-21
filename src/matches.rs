@@ -309,7 +309,7 @@ fn flatten_arm_body<'a>(context: &'a RewriteContext, body: &'a ast::Expr) -> (bo
         {
             if let ast::StmtKind::Expr(ref expr) = block.stmts[0].node {
                 (
-                    !context.config.force_multiline_blocks() && can_extend_match_arm_body(expr),
+                    !context.config.force_multiline_blocks() && can_flatten_block_around_this(expr),
                     &*expr,
                 )
             } else {
@@ -503,15 +503,17 @@ fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String
     })
 }
 
-fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
+fn can_flatten_block_around_this(body: &ast::Expr) -> bool {
     match body.node {
         // We do not allow `if` to stay on the same line, since we could easily mistake
         // `pat => if cond { ... }` and `pat if cond => { ... }`.
         ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => false,
-        ast::ExprKind::ForLoop(..)
-        | ast::ExprKind::Loop(..)
-        | ast::ExprKind::While(..)
-        | ast::ExprKind::WhileLet(..)
+        // We do not allow collapsing a block around expression with condition
+        // to avoid it being cluttered with match arm.
+        ast::ExprKind::ForLoop(..) | ast::ExprKind::While(..) | ast::ExprKind::WhileLet(..) => {
+            false
+        }
+        ast::ExprKind::Loop(..)
         | ast::ExprKind::Match(..)
         | ast::ExprKind::Block(..)
         | ast::ExprKind::Closure(..)
@@ -525,7 +527,7 @@ fn can_extend_match_arm_body(body: &ast::Expr) -> bool {
         | ast::ExprKind::Box(ref expr)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Cast(ref expr, _) => can_extend_match_arm_body(expr),
+        | ast::ExprKind::Cast(ref expr, _) => can_flatten_block_around_this(expr),
         _ => false,
     }
 }
