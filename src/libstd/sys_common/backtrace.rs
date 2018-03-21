@@ -114,7 +114,7 @@ fn should_show_frame(frame: &Frame, context: &BacktraceContext) -> bool {
                 }
             }
             for filtered_symbol_part in FILTERED_SYMBOL_PARTS {
-                if mangled_symbol_name.begins_with(filtered_symbol_part) {
+                if mangled_symbol_name.starts_with(filtered_symbol_part) {
                     should_show = false;
                     return Ok(());
                 }
