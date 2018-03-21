@@ -18,6 +18,7 @@ use GLOBALS;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
@@ -351,9 +352,15 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until thread death
 /// somehow.
-#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialOrd, Eq, Ord)]
 pub struct InternedString {
     string: &'static str,
+}
+
+impl Hash for InternedString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_ptr().hash(state);
+    }
 }
 
 impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::convert::AsRef<U> {
