@@ -547,11 +547,7 @@ impl<'a> LoweringContext<'a> {
     // Creates a new hir::GenericParam for every new lifetime and type parameter
     // encountered while evaluating `f`. Definitions are created with the parent
     // provided. If no `parent_id` is provided, no definitions will be returned.
-    fn collect_in_band_defs<T, F>(
-        &mut self,
-        parent_id: Option<DefId>,
-        f: F,
-    ) -> (Vec<hir::GenericParam>, T)
+    fn collect_in_band_defs<T, F>(&mut self, parent_id: DefId, f: F) -> (Vec<hir::GenericParam>, T)
     where
         F: FnOnce(&mut LoweringContext) -> T,
     {
@@ -568,42 +564,38 @@ impl<'a> LoweringContext<'a> {
         let in_band_ty_params = self.in_band_ty_params.split_off(0);
         let lifetimes_to_define = self.lifetimes_to_define.split_off(0);
 
-        let mut params = match parent_id {
-            Some(parent_id) => lifetimes_to_define
-                .into_iter()
-                .map(|(span, name)| {
-                    let def_node_id = self.next_id().node_id;
+        let params = lifetimes_to_define
+            .into_iter()
+            .map(|(span, name)| {
+                let def_node_id = self.next_id().node_id;
 
-                    // Add a definition for the in-band lifetime def
-                    self.resolver.definitions().create_def_with_parent(
-                        parent_id.index,
-                        def_node_id,
-                        DefPathData::LifetimeDef(name.as_str()),
-                        DefIndexAddressSpace::High,
-                        Mark::root(),
+                // Add a definition for the in-band lifetime def
+                self.resolver.definitions().create_def_with_parent(
+                    parent_id.index,
+                    def_node_id,
+                    DefPathData::LifetimeDef(name.as_str()),
+                    DefIndexAddressSpace::High,
+                    Mark::root(),
+                    span,
+                );
+
+                hir::GenericParam::Lifetime(hir::LifetimeDef {
+                    lifetime: hir::Lifetime {
+                        id: def_node_id,
                         span,
-                    );
-
-                    hir::GenericParam::Lifetime(hir::LifetimeDef {
-                        lifetime: hir::Lifetime {
-                            id: def_node_id,
-                            span,
-                            name: hir::LifetimeName::Name(name),
-                        },
-                        bounds: Vec::new().into(),
-                        pure_wrt_drop: false,
-                        in_band: true,
-                    })
+                        name: hir::LifetimeName::Name(name),
+                    },
+                    bounds: Vec::new().into(),
+                    pure_wrt_drop: false,
+                    in_band: true,
                 })
-                .collect(),
-            None => Vec::new(),
-        };
-
-        params.extend(
-            in_band_ty_params
-                .into_iter()
-                .map(|tp| hir::GenericParam::Type(tp)),
-        );
+            })
+            .chain(
+                in_band_ty_params
+                    .into_iter()
+                    .map(|tp| hir::GenericParam::Type(tp)),
+            )
+            .collect();
 
         (params, res)
     }
@@ -654,20 +646,17 @@ impl<'a> LoweringContext<'a> {
     fn add_in_band_defs<F, T>(
         &mut self,
         generics: &Generics,
-        parent_id: Option<DefId>,
+        parent_id: DefId,
         f: F,
     ) -> (hir::Generics, T)
     where
         F: FnOnce(&mut LoweringContext) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
-            generics
-                .params
-                .iter()
-                .filter_map(|p| match p {
-                    GenericParam::Lifetime(ld) => Some(ld),
-                    _ => None,
-                }),
+            generics.params.iter().filter_map(|p| match p {
+                GenericParam::Lifetime(ld) => Some(ld),
+                _ => None,
+            }),
             |this| {
                 this.collect_in_band_defs(parent_id, |this| {
                     (this.lower_generics(generics), f(this))
@@ -926,12 +915,10 @@ impl<'a> LoweringContext<'a> {
                 hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(
-                f.generic_params
-                    .iter()
-                    .filter_map(|p| match p {
-                        GenericParam::Lifetime(ld) => Some(ld),
-                        _ => None,
-                    }),
+                f.generic_params.iter().filter_map(|p| match p {
+                    GenericParam::Lifetime(ld) => Some(ld),
+                    _ => None,
+                }),
                 |this| {
                     hir::TyBareFn(P(hir::BareFnTy {
                         generic_params: this.lower_generic_params(&f.generic_params, &NodeMap()),
@@ -1876,12 +1863,10 @@ impl<'a> LoweringContext<'a> {
                 span,
             }) => {
                 self.with_in_scope_lifetime_defs(
-                    bound_generic_params
-                        .iter()
-                        .filter_map(|p| match p {
-                            GenericParam::Lifetime(ld) => Some(ld),
-                            _ => None,
-                        }),
+                    bound_generic_params.iter().filter_map(|p| match p {
+                        GenericParam::Lifetime(ld) => Some(ld),
+                        _ => None,
+                    }),
                     |this| {
                         hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                             bound_generic_params: this.lower_generic_params(
@@ -2097,14 +2082,14 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemConst(self.lower_ty(t, ImplTraitContext::Disallowed), value)
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
-                let fn_def_id = self.resolver.definitions().opt_local_def_id(id);
+                let fn_def_id = self.resolver.definitions().local_def_id(id);
                 self.with_new_scopes(|this| {
                     let body_id = this.lower_body(Some(decl), |this| {
                         let body = this.lower_block(body, false);
                         this.expr_block(body, ThinVec::new())
                     });
                     let (generics, fn_decl) = this.add_in_band_defs(generics, fn_def_id, |this| {
-                        this.lower_fn_decl(decl, fn_def_id, true)
+                        this.lower_fn_decl(decl, Some(fn_def_id), true)
                     });
 
                     hir::ItemFn(
@@ -2151,7 +2136,7 @@ impl<'a> LoweringContext<'a> {
                 ref ty,
                 ref impl_items,
             ) => {
-                let def_id = self.resolver.definitions().opt_local_def_id(id);
+                let def_id = self.resolver.definitions().local_def_id(id);
                 let (generics, (ifce, lowered_ty)) =
                     self.add_in_band_defs(ast_generics, def_id, |this| {
                         let ifce = ifce.as_ref().map(|trait_ref| {
@@ -2170,13 +2155,10 @@ impl<'a> LoweringContext<'a> {
                     });
 
                 let new_impl_items = self.with_in_scope_lifetime_defs(
-                    ast_generics
-                        .params
-                        .iter()
-                        .filter_map(|p| match p {
-                            GenericParam::Lifetime(ld) => Some(ld),
-                            _ => None,
-                        }),
+                    ast_generics.params.iter().filter_map(|p| match p {
+                        GenericParam::Lifetime(ld) => Some(ld),
+                        _ => None,
+                    }),
                     |this| {
                         impl_items
                             .iter()
@@ -2341,7 +2323,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
         self.with_parent_def(i.id, |this| {
             let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
-            let fn_def_id = this.resolver.definitions().opt_local_def_id(node_id);
+            let trait_item_def_id = this.resolver.definitions().local_def_id(node_id);
 
             let (generics, node) = match i.node {
                 TraitItemKind::Const(ref ty, ref default) => (
@@ -2355,9 +2337,9 @@ impl<'a> LoweringContext<'a> {
                 ),
                 TraitItemKind::Method(ref sig, None) => {
                     let names = this.lower_fn_args_to_names(&sig.decl);
-                    this.add_in_band_defs(&i.generics, fn_def_id, |this| {
+                    this.add_in_band_defs(&i.generics, trait_item_def_id, |this| {
                         hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, fn_def_id, false),
+                            this.lower_method_sig(sig, trait_item_def_id, false),
                             hir::TraitMethod::Required(names),
                         )
                     })
@@ -2368,9 +2350,9 @@ impl<'a> LoweringContext<'a> {
                         this.expr_block(body, ThinVec::new())
                     });
 
-                    this.add_in_band_defs(&i.generics, fn_def_id, |this| {
+                    this.add_in_band_defs(&i.generics, trait_item_def_id, |this| {
                         hir::TraitItemKind::Method(
-                            this.lower_method_sig(sig, fn_def_id, false),
+                            this.lower_method_sig(sig, trait_item_def_id, false),
                             hir::TraitMethod::Provided(body_id),
                         )
                     })
@@ -2427,7 +2409,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
         self.with_parent_def(i.id, |this| {
             let LoweredNodeId { node_id, hir_id } = this.lower_node_id(i.id);
-            let fn_def_id = this.resolver.definitions().opt_local_def_id(node_id);
+            let impl_item_def_id = this.resolver.definitions().local_def_id(node_id);
 
             let (generics, node) = match i.node {
                 ImplItemKind::Const(ref ty, ref expr) => {
@@ -2447,9 +2429,9 @@ impl<'a> LoweringContext<'a> {
                     });
                     let impl_trait_return_allow = !this.is_in_trait_impl;
 
-                    this.add_in_band_defs(&i.generics, fn_def_id, |this| {
+                    this.add_in_band_defs(&i.generics, impl_item_def_id, |this| {
                         hir::ImplItemKind::Method(
-                            this.lower_method_sig(sig, fn_def_id, impl_trait_return_allow),
+                            this.lower_method_sig(sig, impl_item_def_id, impl_trait_return_allow),
                             body_id,
                         )
                     })
@@ -2575,10 +2557,10 @@ impl<'a> LoweringContext<'a> {
                 attrs: this.lower_attrs(&i.attrs),
                 node: match i.node {
                     ForeignItemKind::Fn(ref fdec, ref generics) => {
-                        // Disallow impl Trait in foreign items
                         let (generics, (fn_dec, fn_args)) =
-                            this.add_in_band_defs(generics, Some(def_id), |this| {
+                            this.add_in_band_defs(generics, def_id, |this| {
                                 (
+                                    // Disallow impl Trait in foreign items
                                     this.lower_fn_decl(fdec, None, false),
                                     this.lower_fn_args_to_names(fdec),
                                 )
@@ -2600,14 +2582,14 @@ impl<'a> LoweringContext<'a> {
     fn lower_method_sig(
         &mut self,
         sig: &MethodSig,
-        fn_def_id: Option<DefId>,
+        fn_def_id: DefId,
         impl_trait_return_allow: bool,
     ) -> hir::MethodSig {
         hir::MethodSig {
             abi: sig.abi,
             unsafety: self.lower_unsafety(sig.unsafety),
             constness: self.lower_constness(sig.constness),
-            decl: self.lower_fn_decl(&sig.decl, fn_def_id, impl_trait_return_allow),
+            decl: self.lower_fn_decl(&sig.decl, Some(fn_def_id), impl_trait_return_allow),
         }
     }
 
