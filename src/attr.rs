@@ -173,13 +173,11 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
     let mla = if comment_begin.is_none() {
         mlb
     } else {
-        let comment_end = comment.chars().rev().position(|c| !c.is_whitespace());
-        let len = comment_end.unwrap();
         comment
             .chars()
             .rev()
-            .take(len)
-            .filter(|c| *c == '\n')
+            .take_while(|c| c.is_whitespace())
+            .filter(|&c| c == '\n')
             .count() > 1
     };
     (if mlb { "\n" } else { "" }, if mla { "\n" } else { "" })
