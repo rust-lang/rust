@@ -1500,3 +1500,12 @@ LLVMBuildExactUDiv(LLVMBuilderRef B, LLVMValueRef LHS,
   return wrap(unwrap(B)->CreateExactUDiv(unwrap(LHS), unwrap(RHS), Name));
 }
 #endif
+
+extern "C" LLVMValueRef
+LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
+    return wrap(unwrap(B)->CreateMinNum(unwrap(LHS),unwrap(RHS)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
+    return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
+}

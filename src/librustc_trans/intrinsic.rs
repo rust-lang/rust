@@ -1432,6 +1432,8 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_and: TyUint, TyInt => and;
         simd_or: TyUint, TyInt => or;
         simd_xor: TyUint, TyInt => xor;
+        simd_fmax: TyFloat => maxnum;
+        simd_fmin: TyFloat => minnum;
     }
     span_bug!(span, "unknown SIMD intrinsic");
 }

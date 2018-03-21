@@ -917,6 +917,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn minnum(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("minnum");
+        unsafe {
+            llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs)
+        }
+    }
+    pub fn maxnum(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("maxnum");
+        unsafe {
+            llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs)
+        }
+    }
+
     pub fn select(&self, cond: ValueRef, then_val: ValueRef, else_val: ValueRef) -> ValueRef {
         self.count_insn("select");
         unsafe {
