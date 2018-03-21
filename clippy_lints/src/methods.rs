@@ -1034,7 +1034,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr, arg_t
 }
 
 fn lint_clone_on_ref_ptr(cx: &LateContext, expr: &hir::Expr, arg: &hir::Expr) {
-    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(arg));
+    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(arg));
 
     if let ty::TyAdt(_, subst) = obj_ty.sty {
         let caller_type = if match_type(cx, obj_ty, &paths::RC) {
@@ -1063,7 +1063,7 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
     let arg = &args[1];
     if let Some(arglists) = method_chain_args(arg, &["chars"]) {
         let target = &arglists[0][0];
-        let (self_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(target));
+        let self_ty = walk_ptrs_ty(cx.tables.expr_ty(target));
         let ref_str = if self_ty.sty == ty::TyStr {
             ""
         } else if match_type(cx, self_ty, &paths::STRING) {
@@ -1089,7 +1089,7 @@ fn lint_string_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
 }
 
 fn lint_extend(cx: &LateContext, expr: &hir::Expr, args: &[hir::Expr]) {
-    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&args[0]));
+    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&args[0]));
     if match_type(cx, obj_ty, &paths::STRING) {
         lint_string_extend(cx, expr, args);
     }
@@ -1327,7 +1327,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
 
 /// lint use of `unwrap()` for `Option`s and `Result`s
 fn lint_unwrap(cx: &LateContext, expr: &hir::Expr, unwrap_args: &[hir::Expr]) {
-    let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&unwrap_args[0]));
+    let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&unwrap_args[0]));
 
     let mess = if match_type(cx, obj_ty, &paths::OPTION) {
         Some((OPTION_UNWRAP_USED, "an Option", "None"))
