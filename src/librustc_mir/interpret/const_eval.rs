@@ -339,6 +339,14 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
+        let alloc = ecx
+                    .tcx
+                    .interpret_interner
+                    .get_cached(cid.instance.def_id());
+        // Don't evaluate when already cached to prevent cycles
+        if let Some(alloc) = alloc {
+            return Ok(alloc)
+        }
         // ensure the static is computed
         ecx.const_eval(cid)?;
         Ok(ecx
