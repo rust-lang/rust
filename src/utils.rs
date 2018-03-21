@@ -251,7 +251,8 @@ pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
 
 #[inline]
 pub fn count_newlines(input: &str) -> usize {
-    input.chars().filter(|&c| c == '\n').count()
+    // Using `as_bytes` to omit UTF-8 decoding
+    input.as_bytes().iter().filter(|&&c| c == b'\n').count()
 }
 
 macro_rules! msg {
