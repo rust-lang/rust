@@ -382,7 +382,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U>
     }
 }
 
-// FIXME (#23442): replace the above impls for &/&mut with the following more general one:
+// FIXME (#45742): replace the above impls for &/&mut with the following more general one:
 // // As lifts over Deref
 // impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
 //     fn as_ref(&self) -> &U {
@@ -399,7 +399,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U>
     }
 }
 
-// FIXME (#23442): replace the above impl for &mut with the following more general one:
+// FIXME (#45742): replace the above impl for &mut with the following more general one:
 // // AsMut lifts over DerefMut
 // impl<D: ?Sized + Deref, U: ?Sized> AsMut<U> for D where D::Target: AsMut<U> {
 //     fn as_mut(&mut self) -> &mut U {
