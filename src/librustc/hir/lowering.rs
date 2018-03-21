@@ -129,6 +129,7 @@ pub struct LoweringContext<'a> {
     // This will always be false unless the `in_band_lifetimes` feature is
     // enabled.
     is_collecting_in_band_lifetimes: bool,
+
     // Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
     // When `is_collectin_in_band_lifetimes` is true, each lifetime is checked
     // against this list to see if it is already in-scope, or if a definition
@@ -945,7 +946,7 @@ impl<'a> LoweringContext<'a> {
                 let span = t.span.shrink_to_lo();
                 let lifetime = match *region {
                     Some(ref lt) => self.lower_lifetime(lt),
-                    None => self.elided_lifetime(span),
+                    None => self.elided_ref_lifetime(span),
                 };
                 hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
             }
@@ -1013,7 +1014,8 @@ impl<'a> LoweringContext<'a> {
                         }
                     })
                     .collect();
-                let lifetime_bound = lifetime_bound.unwrap_or_else(|| self.elided_lifetime(t.span));
+                let lifetime_bound =
+                    lifetime_bound.unwrap_or_else(|| self.elided_dyn_bound(t.span));
                 if kind != TraitObjectSyntax::Dyn {
                     self.maybe_lint_bare_trait(t.span, t.id, false);
                 }
@@ -1536,9 +1538,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         if !parameters.parenthesized && parameters.lifetimes.is_empty() {
-            parameters.lifetimes = (0..expected_lifetimes)
-                .map(|_| self.elided_lifetime(path_span))
-                .collect();
+            parameters.lifetimes = self.elided_path_lifetimes(path_span, expected_lifetimes);
         }
 
         hir::PathSegment::new(
@@ -3999,7 +3999,7 @@ impl<'a> LoweringContext<'a> {
                     // The original ID is taken by the `PolyTraitRef`,
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
-                    hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
+                    hir::TyTraitObject(hir_vec![principal], self.elided_dyn_bound(span))
                 } else {
                     hir::TyPath(hir::QPath::Resolved(None, path))
                 }
@@ -4014,7 +4014,29 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn elided_lifetime(&mut self, span: Span) -> hir::Lifetime {
+    /// Invoked to create the lifetime argument for a type `&T`
+    /// with no explicit lifetime.
+    fn elided_ref_lifetime(&mut self, span: Span) -> hir::Lifetime {
+        self.new_implicit_lifetime(span)
+    }
+
+    /// Invoked to create the lifetime argument(s) for a path like
+    /// `std::cell::Ref<T>`; note that implicit lifetimes in these
+    /// sorts of cases are deprecated. This may therefore report a warning or an
+    /// error, depending on the mode.
+    fn elided_path_lifetimes(&mut self, span: Span, count: usize) -> P<[hir::Lifetime]> {
+        (0..count).map(|_| self.new_implicit_lifetime(span)).collect()
+    }
+
+    /// Invoked to create the lifetime argument(s) for an elided trait object
+    /// bound, like the bound in `Box<dyn Debug>`. This method is not invoked
+    /// when the bound is written, even if it is written with `'_` like in
+    /// `Box<dyn Debug + '_>`. In those cases, `lower_lifetime` is invoked.
+    fn elided_dyn_bound(&mut self, span: Span) -> hir::Lifetime {
+        self.new_implicit_lifetime(span)
+    }
+
+    fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
         hir::Lifetime {
             id: self.next_id().node_id,
             span,
