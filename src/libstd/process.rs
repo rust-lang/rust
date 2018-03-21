@@ -1443,7 +1443,7 @@ pub fn id() -> u32 {
 #[cfg_attr(not(test), lang = "termination")]
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 #[rustc_on_unimplemented =
-  "`main` can only return types that implement {Termination}, not `{Self}`"]
+  "`main` can only return types like `()` that implement {Termination}, not `{Self}`"]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:`main` can only return types that implement std::process::Termination, not `i32`
+// error-pattern:`main` can only return types like `()` that implement std::process::Termination, no
 fn main() -> i32 {
     0
 }
