@@ -2,7 +2,7 @@ use rustc::hir::{Expr, ExprLit, ExprMethodCall};
 use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
-use utils::{match_type, paths, span_lint, walk_ptrs_ty_depth};
+use utils::{match_type, paths, span_lint, walk_ptrs_ty};
 
 /// **What it does:** Checks for duplicate open options as well as combinations
 /// that make no sense.
@@ -22,7 +22,6 @@ declare_lint! {
     "nonsensical combination of options for opening a file"
 }
 
-
 #[derive(Copy, Clone)]
 pub struct NonSensical;
 
@@ -35,7 +34,7 @@ impl LintPass for NonSensical {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSensical {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprMethodCall(ref path, _, ref arguments) = e.node {
-            let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&arguments[0]));
+            let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
             if path.name == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
@@ -63,7 +62,7 @@ enum OpenOption {
 
 fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOption, Argument)>) {
     if let ExprMethodCall(ref path, _, ref arguments) = argument.node {
-        let (obj_ty, _) = walk_ptrs_ty_depth(cx.tables.expr_ty(&arguments[0]));
+        let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
         if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
