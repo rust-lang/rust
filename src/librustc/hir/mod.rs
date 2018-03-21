@@ -203,9 +203,16 @@ pub struct Lifetime {
 
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum LifetimeName {
+    /// User typed nothing. e.g. the lifetime in `&u32`.
     Implicit,
+
+    /// User typed `'_`.
     Underscore,
+
+    /// User wrote `'static`
     Static,
+
+    /// Some user-given name like `'x`
     Name(Name),
 }
 

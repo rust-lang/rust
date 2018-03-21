@@ -121,7 +121,8 @@ pub struct LoweringContext<'a> {
     // (i.e. it doesn't appear in the in_scope_lifetimes list), it is added
     // to this list. The results of this list are then added to the list of
     // lifetime definitions in the corresponding impl or function generics.
-    lifetimes_to_define: Vec<(Span, Name)>,
+    lifetimes_to_define: Vec<(Span, hir::LifetimeName)>,
+
     // Whether or not in-band lifetimes are being collected. This is used to
     // indicate whether or not we're in a place where new lifetimes will result
     // in in-band lifetime definitions, such a function or an impl header.
@@ -566,14 +567,23 @@ impl<'a> LoweringContext<'a> {
 
         let params = lifetimes_to_define
             .into_iter()
-            .map(|(span, name)| {
+            .map(|(span, hir_name)| {
                 let def_node_id = self.next_id().node_id;
+
+                let str_name = match hir_name {
+                    hir::LifetimeName::Name(n) => n.as_str(),
+                    hir::LifetimeName::Implicit
+                    | hir::LifetimeName::Underscore
+                    | hir::LifetimeName::Static => {
+                        span_bug!(span, "unexpected in-band lifetime name: {:?}", hir_name)
+                    }
+                };
 
                 // Add a definition for the in-band lifetime def
                 self.resolver.definitions().create_def_with_parent(
                     parent_id.index,
                     def_node_id,
-                    DefPathData::LifetimeDef(name.as_str()),
+                    DefPathData::LifetimeDef(str_name),
                     DefIndexAddressSpace::High,
                     Mark::root(),
                     span,
@@ -583,7 +593,7 @@ impl<'a> LoweringContext<'a> {
                     lifetime: hir::Lifetime {
                         id: def_node_id,
                         span,
-                        name: hir::LifetimeName::Name(name),
+                        name: hir_name,
                     },
                     bounds: Vec::new().into(),
                     pure_wrt_drop: false,
@@ -613,14 +623,16 @@ impl<'a> LoweringContext<'a> {
             return;
         }
 
+        let hir_name = hir::LifetimeName::Name(name);
+
         if self.lifetimes_to_define
             .iter()
-            .any(|(_, lt_name)| *lt_name == name)
+            .any(|(_, lt_name)| *lt_name == hir_name)
         {
             return;
         }
 
-        self.lifetimes_to_define.push((span, name));
+        self.lifetimes_to_define.push((span, hir_name));
     }
 
     // Evaluates `f` with the lifetimes in `lt_defs` in-scope.
