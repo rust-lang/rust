@@ -18,6 +18,7 @@ use GLOBALS;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::Deref;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
@@ -154,9 +155,10 @@ impl Decodable for Symbol {
     }
 }
 
-impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
-    fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.deref()
+impl PartialEq<InternedString> for Symbol {
+    fn eq(&self, other: &InternedString) -> bool {
+        // Compare pointers
+        self.as_str() == *other
     }
 }
 
@@ -360,35 +362,48 @@ impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::co
     }
 }
 
-impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for InternedString {
-    fn eq(&self, other: &T) -> bool {
-        self.string == other.deref()
+impl ::std::cmp::PartialEq<InternedString> for InternedString {
+    fn eq(&self, other: &InternedString) -> bool {
+        self.as_ptr() == other.as_ptr()
     }
 }
 
-impl ::std::cmp::PartialEq<InternedString> for str {
-    fn eq(&self, other: &InternedString) -> bool {
-        self == other.string
-    }
+macro_rules! impl_partial_eq_for_symbol_and_interned_string {
+    ($(impl $(<$impl_lt:lifetime>)* for $t:ty;)*) => ($(
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<$t> for InternedString {
+            fn eq(&self, other: &$t) -> bool {
+                let s: &str = other.deref();
+                self.string == s
+            }
+        }
+
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<InternedString> for $t {
+            fn eq(&self, other: &InternedString) -> bool {
+                let s: &str = self.deref();
+                s == other.string
+            }
+        }
+
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<$t> for Symbol {
+            fn eq(&self, other: &$t) -> bool {
+                self.as_str() == *other
+            }
+        }
+
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<Symbol> for $t {
+            fn eq(&self, other: &Symbol) -> bool {
+                *self == other.as_str()
+            }
+        }
+    )*)
 }
 
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a str {
-    fn eq(&self, other: &InternedString) -> bool {
-        *self == other.string
-    }
-}
-
-impl ::std::cmp::PartialEq<InternedString> for String {
-    fn eq(&self, other: &InternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a String {
-    fn eq(&self, other: &InternedString) -> bool {
-        *self == other.string
-    }
-}
+impl_partial_eq_for_symbol_and_interned_string!(
+    impl for str;
+    impl for String;
+    impl<'a> for &'a str;
+    impl<'a> for &'a String;
+);
 
 impl !Send for InternedString { }
 
