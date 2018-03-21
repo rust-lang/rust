@@ -729,7 +729,7 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             }
             TyParam(p) => {
                 self.hash(p.idx);
-                self.hash(p.name.as_str());
+                self.hash(p.name);
             }
             TyProjection(ref data) => {
                 self.def_id(data.item_def_id);

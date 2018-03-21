@@ -70,11 +70,11 @@ use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
 use syntax::abi;
-use syntax::ast::{self, Name, NodeId};
+use syntax::ast::{self, NodeId};
 use syntax::attr;
 use syntax::codemap::MultiSpan;
 use syntax::feature_gate;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, keywords, InternedString};
 use syntax_pos::Span;
 
 use hir;
@@ -2395,12 +2395,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_param(self,
                     index: u32,
-                    name: Name) -> Ty<'tcx> {
+                    name: InternedString) -> Ty<'tcx> {
         self.mk_ty(TyParam(ParamTy { idx: index, name: name }))
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_param(0, keywords::SelfType.name())
+        self.mk_param(0, keywords::SelfType.name().as_str())
     }
 
     pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {

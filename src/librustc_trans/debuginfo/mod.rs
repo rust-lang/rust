@@ -42,7 +42,7 @@ use std::ptr;
 
 use syntax_pos::{self, Span, Pos};
 use syntax::ast;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, InternedString};
 use rustc::ty::layout::{self, LayoutOf};
 
 pub mod gdb;
@@ -393,7 +393,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             substs.types().zip(names).map(|(ty, name)| {
                 let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                let name = CString::new(name.as_str().as_bytes()).unwrap();
+                let name = CString::new(name.as_bytes()).unwrap();
                 unsafe {
                     llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -412,7 +412,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names(cx: &CodegenCx, generics: &ty::Generics) -> Vec<ast::Name> {
+    fn get_type_parameter_names(cx: &CodegenCx, generics: &ty::Generics) -> Vec<InternedString> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_type_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
