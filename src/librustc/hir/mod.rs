@@ -209,6 +209,21 @@ pub enum LifetimeName {
     /// User typed `'_`.
     Underscore,
 
+    /// Synthetic name generated when user elided a lifetime in an impl header,
+    /// e.g. the lifetimes in cases like these:
+    ///
+    ///     impl Foo for &u32
+    ///     impl Foo<'_> for u32
+    ///
+    /// in that case, we rewrite to
+    ///
+    ///     impl<'f> Foo for &'f u32
+    ///     impl<'f> Foo<'f> for u32
+    ///
+    /// where `'f` is something like `Fresh(0)`. The indices are
+    /// unique per impl, but not necessarily continuous.
+    Fresh(usize),
+
     /// User wrote `'static`
     Static,
 
@@ -221,7 +236,7 @@ impl LifetimeName {
         use self::LifetimeName::*;
         match *self {
             Implicit => keywords::Invalid.name(),
-            Underscore => keywords::UnderscoreLifetime.name(),
+            Fresh(_) | Underscore => keywords::UnderscoreLifetime.name(),
             Static => keywords::StaticLifetime.name(),
             Name(name) => name,
         }
@@ -242,7 +257,13 @@ impl Lifetime {
         use self::LifetimeName::*;
         match self.name {
             Implicit | Underscore => true,
-            Static | Name(_) => false,
+
+            // It might seem surprising that `Fresh(_)` counts as
+            // *not* elided -- but this is because, as far as the code
+            // in the compiler is concerned -- `Fresh(_)` variants act
+            // equivalently to "some fresh name". They correspond to
+            // early-bound regions on an impl, in other words.
+            Fresh(_) | Static | Name(_) => false,
         }
     }
 

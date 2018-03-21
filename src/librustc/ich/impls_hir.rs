@@ -145,6 +145,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
 impl_stable_hash_for!(enum hir::LifetimeName {
     Implicit,
     Underscore,
+    Fresh(index),
     Static,
     Name(name)
 });

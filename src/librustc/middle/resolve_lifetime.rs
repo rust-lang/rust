@@ -582,7 +582,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         // cc #48468
                         self.resolve_elided_lifetimes(slice::from_ref(lifetime), false)
                     }
-                    LifetimeName::Static | LifetimeName::Name(_) => {
+                    LifetimeName::Fresh(_) | LifetimeName::Static | LifetimeName::Name(_) => {
                         // If the user wrote an explicit name, use that.
                         self.visit_lifetime(lifetime);
                     }
@@ -2086,7 +2086,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         );
                         err.emit();
                     }
-                    hir::LifetimeName::Implicit | hir::LifetimeName::Name(_) => {}
+                    hir::LifetimeName::Fresh(_) | hir::LifetimeName::Implicit |
+                    hir::LifetimeName::Name(_) => {}
                 }
             }
 
@@ -2138,7 +2139,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             ))
                             .emit();
                     }
-                    hir::LifetimeName::Implicit | hir::LifetimeName::Name(_) => {
+                    hir::LifetimeName::Fresh(_) | hir::LifetimeName::Implicit |
+                    hir::LifetimeName::Name(_) => {
                         self.resolve_lifetime_ref(bound);
                     }
                 }
