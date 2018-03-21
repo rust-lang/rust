@@ -33,7 +33,7 @@ extern { fn some_func<T>(x: T); }
 
 This is used by the error index to ensure that the samples that correspond to a given error number
 properly emit that error code. However, these error codes aren't guaranteed to be the only thing
-that a piece of code emits from version to version, so this in unlikely to be stabilized in the
+that a piece of code emits from version to version, so this is unlikely to be stabilized in the
 future.
 
 Attempting to use these error numbers on stable will result in the code sample being interpreted as
@@ -134,9 +134,9 @@ pub struct UnixToken;
 In this sample, the tokens will only appear on their respective platforms, but they will both appear
 in documentation.
 
-`#[doc(cfg(...))]` was introduced to be used by the standard library and is currently controlled by
-a feature gate. For more information, see [its chapter in the Unstable Book][unstable-doc-cfg] and
-[its tracking issue][issue-doc-cfg].
+`#[doc(cfg(...))]` was introduced to be used by the standard library and currently requires the
+`#![feature(doc_cfg)]` feature gate. For more information, see [its chapter in the Unstable
+Book][unstable-doc-cfg] and [its tracking issue][issue-doc-cfg].
 
 [unstable-doc-cfg]: ../unstable-book/language-features/doc-cfg.html
 [issue-doc-cfg]: https://github.com/rust-lang/rust/issues/43781
@@ -155,8 +155,9 @@ In the standard library, the traits that qualify for inclusion are `Iterator`, `
 special marker attribute on them: `#[doc(spotlight)]`. This means that you could apply this
 attribute to your own trait to include it in the "Important Traits" dialog in documentation.
 
-The `#[doc(spotlight)]` attribute is controlled by a feature gate. For more information, see [its
-chapter in the Unstable Book][unstable-spotlight] and [its tracking issue][issue-spotlight].
+The `#[doc(spotlight)]` attribute currently requires the `#![feature(doc_spotlight)]` feature gate.
+For more information, see [its chapter in the Unstable Book][unstable-spotlight] and [its tracking
+issue][issue-spotlight].
 
 [unstable-spotlight]: ../unstable-book/language-features/doc-spotlight.html
 [issue-spotlight]: https://github.com/rust-lang/rust/issues/45040
@@ -174,9 +175,9 @@ To prevent internal types from being included in documentation, the standard lib
 attribute to their `extern crate` declarations: `#[doc(masked)]`. This causes Rustdoc to "mask out"
 types from these crates when building lists of trait implementations.
 
-The `#[doc(masked)]` attribute is intended to be used internally, and is controlled by a feature
-gate.  For more information, see [its chapter in the Unstable Book][unstable-masked] and [its
-tracking issue][issue-masked].
+The `#[doc(masked)]` attribute is intended to be used internally, and requires the
+`#![feature(doc_masked)]` feature gate.  For more information, see [its chapter in the Unstable
+Book][unstable-masked] and [its tracking issue][issue-masked].
 
 [unstable-masked]: ../unstable-book/language-features/doc-masked.html
 [issue-masked]: https://github.com/rust-lang/rust/issues/44027
@@ -191,8 +192,9 @@ as if it were written inline.
 
 [RFC 1990]: https://github.com/rust-lang/rfcs/pull/1990
 
-`#[doc(include = "...")]` is currently controlled by a feature gate. For more information, see [its
-chapter in the Unstable Book][unstable-include] and [its tracking issue][issue-include].
+`#[doc(include = "...")]` currently requires the `#![feature(external_doc)]` feature gate. For more
+information, see [its chapter in the Unstable Book][unstable-include] and [its tracking
+issue][issue-include].
 
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
