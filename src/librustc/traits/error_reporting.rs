@@ -585,20 +585,25 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          trait_ref.to_predicate(), post_message)
                             }));
 
+                        let explanation = match obligation.cause.code {
+                            ObligationCauseCode::MainFunctionType => {
+                                "consider using `()`, or a `Result`".to_owned()
+                            }
+                            _ => {
+                                format!("{}the trait `{}` is not implemented for `{}`",
+                                         pre_message,
+                                         trait_ref,
+                                         trait_ref.self_ty())
+                            }
+                        };
+
                         if let Some(ref s) = label {
                             // If it has a custom "#[rustc_on_unimplemented]"
                             // error message, let's display it as the label!
                             err.span_label(span, s.as_str());
-                            err.help(&format!("{}the trait `{}` is not implemented for `{}`",
-                                              pre_message,
-                                              trait_ref,
-                                              trait_ref.self_ty()));
+                            err.help(&explanation);
                         } else {
-                            err.span_label(span,
-                                           &*format!("{}the trait `{}` is not implemented for `{}`",
-                                                     pre_message,
-                                                     trait_ref,
-                                                     trait_ref.self_ty()));
+                            err.span_label(span, explanation);
                         }
                         if let Some(ref s) = note {
                             // If it has a custom "#[rustc_on_unimplemented]" note, let's display it

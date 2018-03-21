@@ -10,6 +10,6 @@
 
 fn main() -> i32 {
 //~^ ERROR `i32: std::process::Termination` is not satisfied
-//~| NOTE `main` can only return types like `()` that implement std::process::Termination, not `i32`
+//~| NOTE `main` can only return types that implement std::process::Termination, not `i32`
     0
 }
