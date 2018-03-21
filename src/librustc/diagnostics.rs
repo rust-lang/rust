@@ -2109,11 +2109,13 @@ type. For example, changing the return type to `impl Trait<'y> + 'x`
 would work:
 
 ```
+#![feature(conservative_impl_trait)]
+
 use std::cell::Cell;
 
 trait Trait<'a> { }
 
-impl Trait<'b> for Cell<&'a u32> { }
+impl<'a,'b> Trait<'b> for Cell<&'a u32> { }
 
 fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y> + 'x
 where 'x: 'y
