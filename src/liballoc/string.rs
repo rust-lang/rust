@@ -1177,8 +1177,6 @@ impl String {
     /// # Examples
     ///
     /// ```
-    /// #![feature(string_retain)]
-    ///
     /// let mut s = String::from("f_o_ob_ar");
     ///
     /// s.retain(|c| c != '_');
@@ -1186,7 +1184,7 @@ impl String {
     /// assert_eq!(s, "foobar");
     /// ```
     #[inline]
-    #[unstable(feature = "string_retain", issue = "43874")]
+    #[stable(feature = "string_retain", since = "1.26.0")]
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(char) -> bool
     {
