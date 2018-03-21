@@ -71,6 +71,7 @@ use Bound::{Excluded, Included, Unbounded};
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use vec::Vec;
 use boxed::Box;
+use super::allocator::CollectionAllocErr;
 
 /// A UTF-8 encoded, growable string.
 ///
@@ -918,6 +919,79 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.vec.reserve_exact(additional)
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `String`. The collection may reserve more space to avoid
+    /// frequent reallocations. After calling `reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional`. Does nothing if
+    /// capacity is already sufficient.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::CollectionAllocErr;
+    ///
+    /// fn process_data(data: &str) -> Result<String, CollectionAllocErr> {
+    ///     let mut output = String::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.push_str(data);
+    ///
+    ///     Ok(output)
+    /// }
+    /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        self.vec.try_reserve(additional)
+    }
+
+    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// be inserted in the given `String`. After calling `reserve_exact`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve` if future insertions are expected.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::CollectionAllocErr;
+    ///
+    /// fn process_data(data: &str) -> Result<String, CollectionAllocErr> {
+    ///     let mut output = String::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.push_str(data);
+    ///
+    ///     Ok(output)
+    /// }
+    /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+        self.vec.try_reserve_exact(additional)
     }
 
     /// Shrinks the capacity of this `String` to match its length.
@@ -1876,7 +1950,7 @@ impl ops::Index<ops::RangeFull> for String {
         unsafe { str::from_utf8_unchecked(&self.vec) }
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::Index<ops::RangeInclusive<usize>> for String {
     type Output = str;
 
@@ -1885,7 +1959,7 @@ impl ops::Index<ops::RangeInclusive<usize>> for String {
         Index::index(&**self, index)
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::Index<ops::RangeToInclusive<usize>> for String {
     type Output = str;
 
@@ -1923,14 +1997,14 @@ impl ops::IndexMut<ops::RangeFull> for String {
         unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::IndexMut<ops::RangeInclusive<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
         IndexMut::index_mut(&mut **self, index)
     }
 }
-#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+#[stable(feature = "inclusive_range", since = "1.26.0")]
 impl ops::IndexMut<ops::RangeToInclusive<usize>> for String {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {

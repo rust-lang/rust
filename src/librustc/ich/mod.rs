@@ -12,7 +12,7 @@
 
 pub use self::fingerprint::Fingerprint;
 pub use self::caching_codemap_view::CachingCodemapView;
-pub use self::hcx::{StableHashingContext, NodeIdHashingMode,
+pub use self::hcx::{StableHashingContextProvider, StableHashingContext, NodeIdHashingMode,
                     hash_stable_trait_impls, compute_ignored_attr_names};
 mod fingerprint;
 mod caching_codemap_view;

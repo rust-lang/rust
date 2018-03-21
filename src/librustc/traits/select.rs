@@ -53,7 +53,6 @@ use std::mem;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
-use lint;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 
@@ -526,54 +525,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("select({:?})", obligation);
         assert!(!obligation.predicate.has_escaping_regions());
 
-        let tcx = self.tcx();
-
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         let ret = match self.candidate_from_obligation(&stack)? {
             None => None,
             Some(candidate) => Some(self.confirm_candidate(obligation, candidate)?)
         };
 
-        // Test whether this is a `()` which was produced by defaulting a
-        // diverging type variable with `!` disabled. If so, we may need
-        // to raise a warning.
-        if obligation.predicate.skip_binder().self_ty().is_defaulted_unit() {
-            let mut raise_warning = true;
-            // Don't raise a warning if the trait is implemented for ! and only
-            // permits a trivial implementation for !. This stops us warning
-            // about (for example) `(): Clone` becoming `!: Clone` because such
-            // a switch can't cause code to stop compiling or execute
-            // differently.
-            let mut never_obligation = obligation.clone();
-            let def_id = never_obligation.predicate.skip_binder().trait_ref.def_id;
-            never_obligation.predicate = never_obligation.predicate.map_bound(|mut trait_pred| {
-                // Swap out () with ! so we can check if the trait is impld for !
-                {
-                    let trait_ref = &mut trait_pred.trait_ref;
-                    let unit_substs = trait_ref.substs;
-                    let mut never_substs = Vec::with_capacity(unit_substs.len());
-                    never_substs.push(tcx.types.never.into());
-                    never_substs.extend(&unit_substs[1..]);
-                    trait_ref.substs = tcx.intern_substs(&never_substs);
-                }
-                trait_pred
-            });
-            if let Ok(Some(..)) = self.select(&never_obligation) {
-                if !tcx.trait_relevant_for_never(def_id) {
-                    // The trait is also implemented for ! and the resulting
-                    // implementation cannot actually be invoked in any way.
-                    raise_warning = false;
-                }
-            }
-
-            if raise_warning {
-                tcx.lint_node(lint::builtin::RESOLVE_TRAIT_ON_DEFAULTED_UNIT,
-                              obligation.cause.body_id,
-                              obligation.cause.span,
-                              &format!("code relies on type inference rules which are likely \
-                                        to change"));
-            }
-        }
         Ok(ret)
     }
 
@@ -777,7 +734,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // value in order to work, so we can clear out the param env and get better
             // caching. (If the current param env is inconsistent, we don't care what happens).
             debug!("evaluate_trait_predicate_recursively({:?}) - in global", obligation);
-            obligation.param_env = ty::ParamEnv::empty(obligation.param_env.reveal);
+            obligation.param_env = obligation.param_env.without_caller_bounds();
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
@@ -1929,7 +1886,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // (.., T) -> (.., U).
-            (&ty::TyTuple(tys_a, _), &ty::TyTuple(tys_b, _)) => {
+            (&ty::TyTuple(tys_a), &ty::TyTuple(tys_b)) => {
                 tys_a.len() == tys_b.len()
             }
 
@@ -2068,7 +2025,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) | ty::TyForeign(..) => Never,
 
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 Where(ty::Binder(tys.last().into_iter().cloned().collect()))
             }
 
@@ -2083,9 +2040,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,
             ty::TyInfer(ty::TyVar(_)) => Ambiguous,
 
-            ty::TyInfer(ty::FreshTy(_))
-            | ty::TyInfer(ty::FreshIntTy(_))
-            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+            ty::TyInfer(ty::CanonicalTy(_)) |
+            ty::TyInfer(ty::FreshTy(_)) |
+            ty::TyInfer(ty::FreshIntTy(_)) |
+            ty::TyInfer(ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
@@ -2121,7 +2079,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(vec![element_ty]))
             }
 
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 // (*) binder moved here
                 Where(ty::Binder(tys.to_vec()))
             }
@@ -2154,9 +2112,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ambiguous
             }
 
-            ty::TyInfer(ty::FreshTy(_))
-            | ty::TyInfer(ty::FreshIntTy(_))
-            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+            ty::TyInfer(ty::CanonicalTy(_)) |
+            ty::TyInfer(ty::FreshTy(_)) |
+            ty::TyInfer(ty::FreshIntTy(_)) |
+            ty::TyInfer(ty::FreshFloatTy(_)) => {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
@@ -2195,6 +2154,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyParam(..) |
             ty::TyForeign(..) |
             ty::TyProjection(..) |
+            ty::TyInfer(ty::CanonicalTy(_)) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |
             ty::TyInfer(ty::FreshIntTy(_)) |
@@ -2212,7 +2172,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 vec![element_ty]
             }
 
-            ty::TyTuple(ref tys, _) => {
+            ty::TyTuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
                 tys.to_vec()
             }
@@ -3001,7 +2961,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // (.., T) -> (.., U).
-            (&ty::TyTuple(tys_a, _), &ty::TyTuple(tys_b, _)) => {
+            (&ty::TyTuple(tys_a), &ty::TyTuple(tys_b)) => {
                 assert_eq!(tys_a.len(), tys_b.len());
 
                 // The last field of the tuple has to exist.
@@ -3014,7 +2974,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
-                let new_tuple = tcx.mk_tup(a_mid.iter().chain(Some(b_last)), false);
+                let new_tuple = tcx.mk_tup(a_mid.iter().chain(Some(b_last)));
                 let InferOk { obligations, .. } =
                     self.infcx.at(&obligation.cause, obligation.param_env)
                               .eq(target, new_tuple)

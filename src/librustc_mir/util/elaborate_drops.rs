@@ -206,11 +206,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             let field = Field::new(i);
             let subpath = self.elaborator.field_subpath(variant_path, field);
 
-            let field_ty =
-                self.tcx().normalize_associated_type_in_env(
-                    &f.ty(self.tcx(), substs),
-                    self.elaborator.param_env()
-                );
+            let field_ty = self.tcx().normalize_erasing_regions(
+                self.elaborator.param_env(),
+                f.ty(self.tcx(), substs),
+            );
             (base_place.clone().field(field, field_ty), subpath)
         }).collect()
     }
@@ -789,7 +788,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 self.open_drop_for_tuple(tys)
             }
             ty::TyAdt(def, _) if def.is_box() => {

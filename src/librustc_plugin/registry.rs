@@ -106,14 +106,16 @@ impl<'a> Registry<'a> {
                 expander,
                 def_info: _,
                 allow_internal_unstable,
-                allow_internal_unsafe
+                allow_internal_unsafe,
+                unstable_feature
             } => {
                 let nid = ast::CRATE_NODE_ID;
                 NormalTT {
                     expander,
                     def_info: Some((nid, self.krate_span)),
                     allow_internal_unstable,
-                    allow_internal_unsafe
+                    allow_internal_unsafe,
+                    unstable_feature
                 }
             }
             IdentTT(ext, _, allow_internal_unstable) => {
@@ -149,6 +151,7 @@ impl<'a> Registry<'a> {
             def_info: None,
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
+            unstable_feature: None,
         });
     }
 

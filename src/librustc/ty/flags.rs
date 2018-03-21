@@ -112,8 +112,16 @@ impl FlagComputation {
                 match infer {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) => {}
-                    _ => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+                    ty::FreshFloatTy(_) |
+                    ty::CanonicalTy(_) => {
+                        self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
+                    }
+
+                    ty::TyVar(_) |
+                    ty::IntVar(_) |
+                    ty::FloatVar(_) => {
+                        self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX)
+                    }
                 }
             }
 
@@ -171,10 +179,7 @@ impl FlagComputation {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyTuple(ref ts, is_default) => {
-                if is_default {
-                    self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX);
-                }
+            &ty::TyTuple(ref ts) => {
                 self.add_tys(&ts[..]);
             }
 

@@ -8,4 +8,4 @@ LL |     let x_is_nonzero = x as bool; //~ ERROR E0054
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0054"
+For more information about this error, try `rustc --explain E0054`.

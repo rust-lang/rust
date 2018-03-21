@@ -22,8 +22,5 @@ error: expected expression, found `)`
 LL | } //~ ERROR: incorrect close delimiter
    | ^ expected expression
 
-error[E0601]: main function not found
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-If you want more information on this error, try using "rustc --explain E0601"

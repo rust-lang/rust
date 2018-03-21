@@ -14,4 +14,4 @@ LL | extern crate libc as alloc;
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0259"
+For more information about this error, try `rustc --explain E0259`.

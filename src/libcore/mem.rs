@@ -20,9 +20,9 @@ use cmp;
 use fmt;
 use hash;
 use intrinsics;
-use marker::{Copy, PhantomData, Sized};
+use marker::{Copy, PhantomData, Sized, Unpin, Unsize};
 use ptr;
-use ops::{Deref, DerefMut};
+use ops::{Deref, DerefMut, CoerceUnsized};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::transmute;
@@ -1105,3 +1105,111 @@ impl<T: ::hash::Hash> ::hash::Hash for ManuallyDrop<T> {
 pub unsafe fn unreachable() -> ! {
     intrinsics::unreachable()
 }
+
+/// A pinned reference.
+///
+/// A pinned reference is a lot like a mutable reference, except that it is not
+/// safe to move a value out of a pinned reference unless the type of that
+/// value implements the `Unpin` trait.
+#[unstable(feature = "pin", issue = "49150")]
+#[fundamental]
+pub struct Pin<'a, T: ?Sized + 'a> {
+    inner: &'a mut T,
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unpin> Pin<'a, T> {
+    /// Construct a new `Pin` around a reference to some data of a type that
+    /// implements `Unpin`.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn new(reference: &'a mut T) -> Pin<'a, T> {
+        Pin { inner: reference }
+    }
+}
+
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> Pin<'a, T> {
+    /// Construct a new `Pin` around a reference to some data of a type that
+    /// may or may not implement `Unpin`.
+    ///
+    /// This constructor is unsafe because we do not know what will happen with
+    /// that data after the reference ends. If you cannot guarantee that the
+    /// data will never move again, calling this constructor is invalid.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub unsafe fn new_unchecked(reference: &'a mut T) -> Pin<'a, T> {
+        Pin { inner: reference }
+    }
+
+    /// Borrow a Pin for a shorter lifetime than it already has.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn borrow<'b>(this: &'b mut Pin<'a, T>) -> Pin<'b, T> {
+        Pin { inner: this.inner }
+    }
+
+    /// Get a mutable reference to the data inside of this `Pin`.
+    ///
+    /// This function is unsafe. You must guarantee that you will never move
+    /// the data out of the mutable reference you receive when you call this
+    /// function.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub unsafe fn get_mut<'b>(this: &'b mut Pin<'a, T>) -> &'b mut T {
+        this.inner
+    }
+
+    /// Construct a new pin by mapping the interior value.
+    ///
+    /// For example, if you  wanted to get a `Pin` of a field of something, you
+    /// could use this to get access to that field in one line of code.
+    ///
+    /// This function is unsafe. You must guarantee that the data you return
+    /// will not move so long as the argument value does not move (for example,
+    /// because it is one of the fields of that value), and also that you do
+    /// not move out of the argument you receive to the interior function.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub unsafe fn map<'b, U, F>(this: &'b mut Pin<'a, T>, f: F) -> Pin<'b, U> where
+        F: FnOnce(&mut T) -> &mut U
+    {
+        Pin { inner: f(this.inner) }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> Deref for Pin<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unpin> DerefMut for Pin<'a, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: fmt::Debug + ?Sized> fmt::Debug for Pin<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: fmt::Display + ?Sized> fmt::Display for Pin<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized> fmt::Pointer for Pin<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&(&*self.inner as *const T), f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Pin<'a, U>> for Pin<'a, T> {}

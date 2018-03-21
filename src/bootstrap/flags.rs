@@ -29,7 +29,7 @@ use cache::{Interned, INTERNER};
 
 /// Deserialized version of all flags for this compile.
 pub struct Flags {
-    pub verbose: usize, // verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
+    pub verbose: usize, // number of -v args; each extra -v after the first is passed to Cargo
     pub on_fail: Option<String>,
     pub stage: Option<u32>,
     pub keep_stage: Option<u32>,

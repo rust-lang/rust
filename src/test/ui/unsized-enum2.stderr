@@ -188,4 +188,4 @@ LL |     VL{u: isize, x: Path4}, //~ ERROR `PathHelper4 + 'static: std::marker::
 
 error: aborting due to 20 previous errors
 
-If you want more information on this error, try using "rustc --explain E0277"
+For more information about this error, try `rustc --explain E0277`.

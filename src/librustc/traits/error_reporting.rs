@@ -21,7 +21,6 @@ use super::{
     TraitNotObjectSafe,
     ConstEvalFailure,
     PredicateObligation,
-    Reveal,
     SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
@@ -48,7 +47,8 @@ use syntax_pos::{DUMMY_SP, Span};
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn report_fulfillment_errors(&self,
                                      errors: &Vec<FulfillmentError<'tcx>>,
-                                     body_id: Option<hir::BodyId>) {
+                                     body_id: Option<hir::BodyId>,
+                                     fallback_has_occurred: bool) {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -108,7 +108,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         for (error, suppressed) in errors.iter().zip(is_suppressed) {
             if !suppressed {
-                self.report_fulfillment_error(error, body_id);
+                self.report_fulfillment_error(error, body_id, fallback_has_occurred);
             }
         }
     }
@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // FIXME: I'm just not taking associated types at all here.
                 // Eventually I'll need to implement param-env-aware
                 // `Γ₁ ⊦ φ₁ => Γ₂ ⊦ φ₂` logic.
-                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let param_env = ty::ParamEnv::empty();
                 if let Ok(_) = self.can_sub(param_env, error, implication) {
                     debug!("error_implies: {:?} -> {:?} -> {:?}", cond, error, implication);
                     return true
@@ -152,11 +152,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_fulfillment_error(&self, error: &FulfillmentError<'tcx>,
-                                body_id: Option<hir::BodyId>) {
+                                body_id: Option<hir::BodyId>,
+                                fallback_has_occurred: bool) {
         debug!("report_fulfillment_errors({:?})", error);
         match error.code {
             FulfillmentErrorCode::CodeSelectionError(ref e) => {
-                self.report_selection_error(&error.obligation, e);
+                self.report_selection_error(&error.obligation, e, fallback_has_occurred);
             }
             FulfillmentErrorCode::CodeProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e);
@@ -338,18 +339,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .unwrap_or(trait_ref.def_id());
         let trait_ref = *trait_ref.skip_binder();
 
-        let desugaring;
-        let method;
         let mut flags = vec![];
-        let direct = match obligation.cause.code {
+        match obligation.cause.code {
             ObligationCauseCode::BuiltinDerivedObligation(..) |
-            ObligationCauseCode::ImplDerivedObligation(..) => false,
-            _ => true
-        };
-        if direct {
-            // this is a "direct", user-specified, rather than derived,
-            // obligation.
-            flags.push(("direct".to_string(), None));
+            ObligationCauseCode::ImplDerivedObligation(..) => {}
+            _ => {
+                // this is a "direct", user-specified, rather than derived,
+                // obligation.
+                flags.push(("direct".to_string(), None));
+            }
         }
 
         if let ObligationCauseCode::ItemObligation(item) = obligation.cause.code {
@@ -359,21 +357,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //
             // Currently I'm leaving it for what I need for `try`.
             if self.tcx.trait_of_item(item) == Some(trait_ref.def_id) {
-                method = self.tcx.item_name(item);
+                let method = self.tcx.item_name(item);
                 flags.push(("from_method".to_string(), None));
                 flags.push(("from_method".to_string(), Some(method.to_string())));
             }
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {
-            desugaring = k.as_symbol().as_str();
+            let desugaring = k.as_symbol().as_str();
             flags.push(("from_desugaring".to_string(), None));
             flags.push(("from_desugaring".to_string(), Some(desugaring.to_string())));
         }
         let generics = self.tcx.generics_of(def_id);
         let self_ty = trait_ref.self_ty();
-        let self_ty_str = self_ty.to_string();
-        flags.push(("_Self".to_string(), Some(self_ty_str.clone())));
+        // This is also included through the generics list as `Self`,
+        // but the parser won't allow you to use it
+        flags.push(("_Self".to_string(), Some(self_ty.to_string())));
+        if let Some(def) = self_ty.ty_adt_def() {
+            // We also want to be able to select self's original
+            // signature with no type arguments resolved
+            flags.push(("_Self".to_string(), Some(self.tcx.type_of(def.did).to_string())));
+        }
 
         for param in generics.types.iter() {
             let name = param.name.as_str().to_string();
@@ -534,7 +538,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn report_selection_error(&self,
                                   obligation: &PredicateObligation<'tcx>,
-                                  error: &SelectionError<'tcx>)
+                                  error: &SelectionError<'tcx>,
+                                  fallback_has_occurred: bool)
     {
         let span = obligation.cause.span;
 
@@ -601,6 +606,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         }
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);
+                        self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
@@ -618,6 +624,39 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
+                        }
+
+                        // If this error is due to `!: Trait` not implemented but `(): Trait` is
+                        // implemented, and fallback has occured, then it could be due to a
+                        // variable that used to fallback to `()` now falling back to `!`. Issue a
+                        // note informing about the change in behaviour.
+                        if trait_predicate.skip_binder().self_ty().is_never()
+                            && fallback_has_occurred
+                        {
+                            let predicate = trait_predicate.map_bound(|mut trait_pred| {
+                                {
+                                    let trait_ref = &mut trait_pred.trait_ref;
+                                    let never_substs = trait_ref.substs;
+                                    let mut unit_substs = Vec::with_capacity(never_substs.len());
+                                    unit_substs.push(self.tcx.mk_nil().into());
+                                    unit_substs.extend(&never_substs[1..]);
+                                    trait_ref.substs = self.tcx.intern_substs(&unit_substs);
+                                }
+                                trait_pred
+                            });
+                            let unit_obligation = Obligation {
+                                predicate: ty::Predicate::Trait(predicate),
+                                .. obligation.clone()
+                            };
+                            let mut selcx = SelectionContext::new(self);
+                            if selcx.evaluate_obligation(&unit_obligation) {
+                                err.note("the trait is implemented for `()`. \
+                                         Possibly this error has been caused by changes to \
+                                         Rust's type-inference algorithm \
+                                         (see: https://github.com/rust-lang/rust/issues/48950 \
+                                         for more info). Consider whether you meant to use the \
+                                         type `()` here instead.");
+                            }
                         }
 
                         err
@@ -730,14 +769,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 }).map(|sp| self.tcx.sess.codemap().def_span(sp)); // the sp could be an fn def
 
                 let found = match found_trait_ref.skip_binder().substs.type_at(1).sty {
-                    ty::TyTuple(ref tys, _) => tys.iter()
+                    ty::TyTuple(ref tys) => tys.iter()
                         .map(|_| ArgKind::empty()).collect::<Vec<_>>(),
                     _ => vec![ArgKind::empty()],
                 };
                 let expected = match expected_trait_ref.skip_binder().substs.type_at(1).sty {
-                    ty::TyTuple(ref tys, _) => tys.iter()
+                    ty::TyTuple(ref tys) => tys.iter()
                         .map(|t| match t.sty {
-                            ty::TypeVariants::TyTuple(ref tys, _) => ArgKind::Tuple(
+                            ty::TypeVariants::TyTuple(ref tys) => ArgKind::Tuple(
                                 Some(span),
                                 tys.iter()
                                     .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))
@@ -801,6 +840,54 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                 format!("&{}", snippet));
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
+    /// suggest removing these references until we reach a type that implements the trait.
+    fn suggest_remove_reference(&self,
+                                obligation: &PredicateObligation<'tcx>,
+                                err: &mut DiagnosticBuilder<'tcx>,
+                                trait_ref: &ty::Binder<ty::TraitRef<'tcx>>) {
+        let ty::Binder(trait_ref) = trait_ref;
+        let span = obligation.cause.span;
+
+        if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+            let refs_number = snippet.chars()
+                .filter(|c| !c.is_whitespace())
+                .take_while(|c| *c == '&')
+                .count();
+
+            let mut trait_type = trait_ref.self_ty();
+            let mut selcx = SelectionContext::new(self);
+
+            for refs_remaining in 0..refs_number {
+                if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
+                    trait_type.sty {
+
+                    trait_type = t_type;
+
+                    let substs = self.tcx.mk_substs_trait(trait_type, &[]);
+                    let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
+                    let new_obligation = Obligation::new(ObligationCause::dummy(),
+                                                         obligation.param_env,
+                                                         new_trait_ref.to_predicate());
+
+                    if selcx.evaluate_obligation(&new_obligation) {
+                        let sp = self.tcx.sess.codemap()
+                            .span_take_while(span, |c| c.is_whitespace() || *c == '&');
+
+                        let remove_refs = refs_remaining + 1;
+                        let format_str = format!("consider removing {} leading `&`-references",
+                                                 remove_refs);
+
+                        err.span_suggestion_short(sp, &format_str, String::from(""));
+                        break;
+                    }
+                } else {
+                    break;
                 }
             }
         }
@@ -987,7 +1074,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         fn build_fn_sig_string<'a, 'gcx, 'tcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
                                                trait_ref: &ty::TraitRef<'tcx>) -> String {
             let inputs = trait_ref.substs.type_at(1);
-            let sig = if let ty::TyTuple(inputs, _) = inputs.sty {
+            let sig = if let ty::TyTuple(inputs) = inputs.sty {
                 tcx.mk_fn_sig(
                     inputs.iter().map(|&x| x),
                     tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
@@ -1423,7 +1510,7 @@ impl ArgKind {
     /// argument. This has no name (`_`) and no source spans..
     pub fn from_expected_ty(t: Ty<'_>) -> ArgKind {
         match t.sty {
-            ty::TyTuple(ref tys, _) => ArgKind::Tuple(
+            ty::TyTuple(ref tys) => ArgKind::Tuple(
                 None,
                 tys.iter()
                    .map(|ty| ("_".to_owned(), format!("{}", ty.sty)))

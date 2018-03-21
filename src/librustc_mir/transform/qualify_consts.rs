@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
@@ -1237,7 +1237,7 @@ impl MirPass for QualifyAndPromoteConstants {
             }
             let ty = mir.return_ty();
             tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+                let param_env = ty::ParamEnv::empty();
                 let cause = traits::ObligationCause::new(mir.span, id, traits::SharedStatic);
                 let mut fulfillment_cx = traits::FulfillmentContext::new();
                 fulfillment_cx.register_bound(&infcx,
@@ -1246,7 +1246,7 @@ impl MirPass for QualifyAndPromoteConstants {
                                               tcx.require_lang_item(lang_items::SyncTraitLangItem),
                                               cause);
                 if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
-                    infcx.report_fulfillment_errors(&err, None);
+                    infcx.report_fulfillment_errors(&err, None, false);
                 }
             });
         }

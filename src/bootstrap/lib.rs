@@ -113,8 +113,9 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-//#![deny(warnings)]
+#![deny(warnings)]
 #![feature(core_intrinsics)]
+#![feature(slice_concat_ext)]
 
 #[macro_use]
 extern crate build_helper;
@@ -603,10 +604,6 @@ impl Build {
 
     pub fn is_verbose(&self) -> bool {
         self.verbosity > 0
-    }
-
-    pub fn is_very_verbose(&self) -> bool {
-        self.verbosity > 1
     }
 
     /// Prints a message if this build is configured in verbose mode.

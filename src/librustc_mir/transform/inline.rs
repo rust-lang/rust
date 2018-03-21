@@ -19,7 +19,7 @@ use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
 use rustc::mir::*;
 use rustc::mir::visit::*;
-use rustc::ty::{self, Instance, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Instance, Ty, TyCtxt};
 use rustc::ty::subst::{Subst,Substs};
 
 use std::collections::VecDeque;
@@ -129,8 +129,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let callee_mir = match ty::queries::optimized_mir::try_get(self.tcx,
                                                                            callsite.location.span,
                                                                            callsite.callee) {
-                    Ok(ref callee_mir) if self.should_inline(callsite, callee_mir) => {
-                        subst_and_normalize(callee_mir, self.tcx, &callsite.substs, param_env)
+                    Ok(callee_mir) if self.should_inline(callsite, callee_mir) => {
+                        self.tcx.subst_and_normalize_erasing_regions(
+                            &callsite.substs,
+                            param_env,
+                            callee_mir,
+                        )
                     }
                     Ok(_) => continue,
 
@@ -595,7 +599,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             assert!(args.next().is_none());
 
             let tuple = Place::Local(tuple);
-            let tuple_tys = if let ty::TyTuple(s, _) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
+            let tuple_tys = if let ty::TyTuple(s) = tuple.ty(caller_mir, tcx).to_ty(tcx).sty {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");
@@ -662,30 +666,6 @@ fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
                           ty: Ty<'tcx>) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
-}
-
-fn subst_and_normalize<'a, 'tcx: 'a>(
-    mir: &Mir<'tcx>,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    substs: &'tcx ty::subst::Substs<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> Mir<'tcx> {
-    struct Folder<'a, 'tcx: 'a> {
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        substs: &'tcx ty::subst::Substs<'tcx>,
-    }
-    impl<'a, 'tcx: 'a> ty::fold::TypeFolder<'tcx, 'tcx> for Folder<'a, 'tcx> {
-        fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
-            self.tcx
-        }
-
-        fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-            self.tcx.trans_apply_param_substs_env(&self.substs, self.param_env, &t)
-        }
-    }
-    let mut f = Folder { tcx, param_env, substs };
-    mir.fold_with(&mut f)
 }
 
 /**

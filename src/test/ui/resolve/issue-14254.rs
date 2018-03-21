@@ -111,3 +111,5 @@ impl Foo for Box<isize> {
         //~^ ERROR cannot find value `bah`
     }
 }
+
+fn main() {}

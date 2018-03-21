@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/expr_assign.rs:20:5
+  --> $DIR/expr_assign.rs:19:5
    |
 LL |     x = return; //~ ERROR unreachable
    |     ^^^^^^^^^^
@@ -11,13 +11,13 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_assign.rs:30:14
+  --> $DIR/expr_assign.rs:29:14
    |
 LL |         *p = return; //~ ERROR unreachable
    |              ^^^^^^
 
 error: unreachable expression
-  --> $DIR/expr_assign.rs:36:15
+  --> $DIR/expr_assign.rs:35:15
    |
 LL |     *{return; &mut i} = 22; //~ ERROR unreachable
    |               ^^^^^^

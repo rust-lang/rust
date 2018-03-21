@@ -30,7 +30,7 @@ use abi::Abi;
 use common::CodegenCx;
 use builder::Builder;
 use monomorphize::Instance;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, ParamEnv, Ty};
 use rustc::mir;
 use rustc::session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
@@ -312,7 +312,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         // Return type -- llvm::DIBuilder wants this at index 0
         signature.push(match sig.output().sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => ptr::null_mut(),
+            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP)
         });
 
@@ -351,7 +351,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
 
         if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
-            if let ty::TyTuple(args, _) = sig.inputs()[sig.inputs().len() - 1].sty {
+            if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
                 }
@@ -378,7 +378,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 name_to_append_suffix_to.push_str(",");
             }
 
-            let actual_type = cx.tcx.fully_normalize_associated_types_in(&actual_type);
+            let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), actual_type);
             // Add actual type name to <...> clause of function name
             let actual_type_name = compute_debuginfo_type_name(cx,
                                                                actual_type,
@@ -391,7 +391,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             let names = get_type_parameter_names(cx, generics);
             substs.types().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx.fully_normalize_associated_types_in(&ty);
+                let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
                 let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {
@@ -429,7 +429,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let self_type = cx.tcx.impl_of_method(instance.def_id()).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx.trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty = cx.tcx.trans_impl_self_ty(impl_def_id, instance.substs);
+                let impl_self_ty = cx.tcx.subst_and_normalize_erasing_regions(
+                    instance.substs,
+                    ty::ParamEnv::reveal_all(),
+                    &cx.tcx.type_of(impl_def_id),
+                );
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).

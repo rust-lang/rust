@@ -6,4 +6,3 @@ LL | impl Bar for Baz { } //~ ERROR expected trait, found type alias
 
 error: cannot continue compilation due to previous error
 
-If you want more information on this error, try using "rustc --explain E0404"

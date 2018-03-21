@@ -16,7 +16,6 @@
 use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
-use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use hir;
 use ty::util::IntTypeExt;
 
@@ -100,25 +99,10 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        match *self {
-            PlaceTy::Ty { ty } => PlaceTy::Ty { ty: ty.fold_with(folder) },
-            PlaceTy::Downcast { adt_def, substs, variant_index } => {
-                PlaceTy::Downcast {
-                    adt_def,
-                    substs: substs.fold_with(folder),
-                    variant_index,
-                }
-            }
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match *self {
-            PlaceTy::Ty { ty } => ty.visit_with(visitor),
-            PlaceTy::Downcast { substs, .. } => substs.visit_with(visitor)
-        }
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
+        (PlaceTy::Ty) { ty },
+        (PlaceTy::Downcast) { adt_def, substs, variant_index },
     }
 }
 
@@ -171,7 +155,7 @@ impl<'tcx> Rvalue<'tcx> {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
-                tcx.intern_tup(&[ty, tcx.types.bool], false)
+                tcx.intern_tup(&[ty, tcx.types.bool])
             }
             Rvalue::UnaryOp(UnOp::Not, ref operand) |
             Rvalue::UnaryOp(UnOp::Neg, ref operand) => {
@@ -194,10 +178,7 @@ impl<'tcx> Rvalue<'tcx> {
                         tcx.mk_array(ty, ops.len() as u64)
                     }
                     AggregateKind::Tuple => {
-                        tcx.mk_tup(
-                            ops.iter().map(|op| op.ty(local_decls, tcx)),
-                            false
-                        )
+                        tcx.mk_tup(ops.iter().map(|op| op.ty(local_decls, tcx)))
                     }
                     AggregateKind::Adt(def, _, substs, _) => {
                         tcx.type_of(def.did).subst(tcx, substs)

@@ -118,4 +118,4 @@ LL |     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
 
 error: aborting due to 12 previous errors
 
-If you want more information on this error, try using "rustc --explain E0593"
+For more information about this error, try `rustc --explain E0593`.

@@ -20,7 +20,7 @@ trait Message : Send { }
 
 fn object_ref_with_static_bound_not_ok() {
     assert_send::<&'static (Dummy+'static)>();
-    //~^ ERROR : std::marker::Sync` is not satisfied
+    //~^ ERROR `Dummy + 'static` cannot be shared between threads safely [E0277]
 }
 
 fn box_object_with_no_bound_not_ok<'a>() {

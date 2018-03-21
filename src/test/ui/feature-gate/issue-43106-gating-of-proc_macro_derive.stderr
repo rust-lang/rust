@@ -34,8 +34,5 @@ error: the `#[proc_macro_derive]` attribute may only be used on bare functions
 LL |     #[proc_macro_derive = "2500"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0601]: main function not found
+error: aborting due to 6 previous errors
 
-error: aborting due to 7 previous errors
-
-If you want more information on this error, try using "rustc --explain E0601"

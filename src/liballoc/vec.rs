@@ -86,6 +86,7 @@ use borrow::Cow;
 use boxed::Box;
 use raw_vec::RawVec;
 use super::range::RangeArgument;
+use super::allocator::CollectionAllocErr;
 use Bound::{Excluded, Included, Unbounded};
 
 /// A contiguous growable array type, written `Vec<T>` but pronounced 'vector'.
@@ -487,6 +488,83 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.buf.reserve_exact(self.len, additional);
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `Vec<T>`. The collection may reserve more space to avoid
+    /// frequent reallocations. After calling `reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional`. Does nothing if
+    /// capacity is already sufficient.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::CollectionAllocErr;
+    ///
+    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, CollectionAllocErr> {
+    ///     let mut output = Vec::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
+    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+        self.buf.try_reserve(self.len, additional)
+    }
+
+    /// Tries to reserves the minimum capacity for exactly `additional` more elements to
+    /// be inserted in the given `Vec<T>`. After calling `reserve_exact`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the collection more space than it
+    /// requests. Therefore capacity can not be relied upon to be precisely
+    /// minimal. Prefer `reserve` if future insertions are expected.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::CollectionAllocErr;
+    ///
+    /// fn process_data(data: &[u32]) -> Result<Vec<u32>, CollectionAllocErr> {
+    ///     let mut output = Vec::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     output.try_reserve(data.len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     output.extend(data.iter().map(|&val| {
+    ///         val * 2 + 5 // very complicated
+    ///     }));
+    ///
+    ///     Ok(output)
+    /// }
+    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>  {
+        self.buf.try_reserve_exact(self.len, additional)
     }
 
     /// Shrinks the capacity of the vector as much as possible.
@@ -1212,8 +1290,9 @@ impl<T: Clone> Vec<T> {
     /// difference, with each additional slot filled with `value`.
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
-    /// This method requires `Clone` to clone the passed value. If you'd
-    /// rather create a value with `Default` instead, see [`resize_default`].
+    /// This method requires [`Clone`] to be able clone the passed value. If
+    /// you'd rather create a value with [`Default`] instead, see
+    /// [`resize_default`].
     ///
     /// # Examples
     ///
@@ -1227,6 +1306,8 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
+    /// [`Clone`]: ../../std/clone/trait.Clone.html
+    /// [`Default`]: ../../std/default/trait.Default.html
     /// [`resize_default`]: #method.resize_default
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
@@ -1244,7 +1325,7 @@ impl<T: Clone> Vec<T> {
     /// Iterates over the slice `other`, clones each element, and then appends
     /// it to this `Vec`. The `other` vector is traversed in-order.
     ///
-    /// Note that this function is same as `extend` except that it is
+    /// Note that this function is same as [`extend`] except that it is
     /// specialized to work with slices instead. If and when Rust gets
     /// specialization this function will likely be deprecated (but still
     /// available).
@@ -1256,6 +1337,8 @@ impl<T: Clone> Vec<T> {
     /// vec.extend_from_slice(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
+    ///
+    /// [`extend`]: #method.extend
     #[stable(feature = "vec_extend_from_slice", since = "1.6.0")]
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
@@ -1266,12 +1349,11 @@ impl<T: Default> Vec<T> {
     /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
-    /// difference, with each additional slot filled with `Default::default()`.
+    /// difference, with each additional slot filled with [`Default::default()`].
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
-    /// This method uses `Default` to create new values on every push. If
-    /// you'd rather `Clone` a given value, use [`resize`].
-    ///
+    /// This method uses [`Default`] to create new values on every push. If
+    /// you'd rather [`Clone`] a given value, use [`resize`].
     ///
     /// # Examples
     ///
@@ -1288,6 +1370,9 @@ impl<T: Default> Vec<T> {
     /// ```
     ///
     /// [`resize`]: #method.resize
+    /// [`Default::default()`]: ../../std/default/trait.Default.html#tymethod.default
+    /// [`Default`]: ../../std/default/trait.Default.html
+    /// [`Clone`]: ../../std/clone/trait.Clone.html
     #[unstable(feature = "vec_resize_default", issue = "41758")]
     pub fn resize_default(&mut self, new_len: usize) {
         let len = self.len();

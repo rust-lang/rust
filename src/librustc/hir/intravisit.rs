@@ -444,10 +444,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_name(item.span, item.name);
     match item.node {
-        ItemExternCrate(opt_name) => {
+        ItemExternCrate(orig_name) => {
             visitor.visit_id(item.id);
-            if let Some(name) = opt_name {
-                visitor.visit_name(item.span, name);
+            if let Some(orig_name) = orig_name {
+                visitor.visit_name(item.span, orig_name);
             }
         }
         ItemUse(ref path, _) => {

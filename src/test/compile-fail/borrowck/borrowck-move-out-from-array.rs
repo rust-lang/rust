@@ -11,7 +11,8 @@
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
 
-#![feature(box_syntax, slice_patterns, advanced_slice_patterns)]
+#![feature(box_syntax)]
+#![feature(slice_patterns)]
 
 fn move_out_from_begin_and_end() {
     let a = [box 1, box 2];

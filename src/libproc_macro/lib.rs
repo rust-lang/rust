@@ -680,7 +680,6 @@ impl TokenTree {
             Pound => op!('#'),
             Dollar => op!('$'),
             Question => op!('?'),
-            Underscore => op!('_'),
 
             Ident(ident) | Lifetime(ident) => TokenNode::Term(Term(ident.name)),
             Literal(..) | DocComment(..) => TokenNode::Literal(self::Literal(token)),
@@ -743,7 +742,6 @@ impl TokenTree {
             '#' => Pound,
             '$' => Dollar,
             '?' => Question,
-            '_' => Underscore,
             _ => panic!("unsupported character {}", op),
         };
 

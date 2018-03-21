@@ -10,4 +10,3 @@ LL | use issue_21221_4::T;
 
 error: cannot continue compilation due to previous error
 
-If you want more information on this error, try using "rustc --explain E0405"

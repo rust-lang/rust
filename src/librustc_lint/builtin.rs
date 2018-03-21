@@ -33,7 +33,7 @@ use rustc::hir::def_id::DefId;
 use rustc::cfg;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
-use rustc::traits::{self, Reveal};
+use rustc::traits;
 use rustc::hir::map as hir_map;
 use util::nodemap::NodeSet;
 use lint::{LateContext, LintContext, LintArray};
@@ -525,7 +525,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
-        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+        let param_env = ty::ParamEnv::empty();
         if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }
@@ -1082,7 +1082,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                     if !cx.access_levels.is_reachable(it.id) {
                         let msg = "function is marked #[no_mangle], but not exported";
                         let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg);
-                        let insertion_span = it.span.with_hi(it.span.lo());
+                        let insertion_span = it.span.shrink_to_lo();
                         if it.vis == hir::Visibility::Inherited {
                             err.span_suggestion(insertion_span,
                                                 "try making it public",
@@ -1107,7 +1107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                    !cx.access_levels.is_reachable(it.id) {
                        let msg = "static is marked #[no_mangle], but not exported";
                        let mut err = cx.struct_span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg);
-                       let insertion_span = it.span.with_hi(it.span.lo());
+                       let insertion_span = it.span.shrink_to_lo();
                        if it.vis == hir::Visibility::Inherited {
                            err.span_suggestion(insertion_span,
                                                "try making it public",

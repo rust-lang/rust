@@ -32,4 +32,4 @@ LL |     **x = 3; //~ ERROR cannot borrow
 
 error: aborting due to 4 previous errors
 
-If you want more information on this error, try using "rustc --explain E0596"
+For more information about this error, try `rustc --explain E0596`.

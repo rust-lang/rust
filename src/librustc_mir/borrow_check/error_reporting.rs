@@ -18,7 +18,7 @@ use rustc_data_structures::sync::Lrc;
 
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::{ActiveBorrows, BorrowData, FlowAtLocation, MovingOutStatements};
+use dataflow::{Borrows, BorrowData, FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -250,7 +250,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let new_closure_span = self.find_closure_span(span, context.loc);
         let span = new_closure_span.map(|(args, _)| args).unwrap_or(span);
-        let old_closure_span = self.find_closure_span(issued_span, issued_borrow.location);
+        let old_closure_span = self.find_closure_span(issued_span, issued_borrow.reserve_location);
         let issued_span = old_closure_span
             .map(|(args, _)| args)
             .unwrap_or(issued_span);
@@ -372,15 +372,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrows: &ActiveBorrows<'cx, 'gcx, 'tcx>,
+        borrows: &Borrows<'cx, 'gcx, 'tcx>
     ) {
         let end_span = borrows.opt_region_end_span(&borrow.region);
-        let scope_tree = borrows.0.scope_tree();
+        let scope_tree = borrows.scope_tree();
         let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
             .last()
             .unwrap();
 
-        let borrow_span = self.mir.source_info(borrow.location).span;
+        let borrow_span = self.mir.source_info(borrow.reserve_location).span;
         let proper_span = match *root_place {
             Place::Local(local) => self.mir.local_decls[local].source_info.span,
             _ => drop_span,
@@ -457,6 +457,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             (RegionKind::ReLateBound(_, _), _)
             | (RegionKind::ReSkolemized(_, _), _)
             | (RegionKind::ReClosureBound(_), _)
+            | (RegionKind::ReCanonical(_), _)
             | (RegionKind::ReErased, _) => {
                 span_bug!(drop_span, "region does not make sense in this context");
             }
@@ -788,7 +789,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 } else {
                     format!("{}", def.non_enum_variant().fields[field.index()].name)
                 },
-                ty::TyTuple(_, _) => format!("{}", field.index()),
+                ty::TyTuple(_) => format!("{}", field.index()),
                 ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
                     self.describe_field_from_ty(&tnm.ty, field)
                 }
@@ -817,7 +818,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     // Retrieve span of given borrow from the current MIR representation
     pub fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
-        self.mir.source_info(borrow.location).span
+        self.mir.source_info(borrow.reserve_location).span
     }
 
     // Retrieve type of a place for the current MIR representation

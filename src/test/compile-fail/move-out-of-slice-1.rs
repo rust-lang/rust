@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slice_patterns, box_patterns)]
+#![feature(box_patterns)]
 
 struct A;
 

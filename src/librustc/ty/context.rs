@@ -23,6 +23,7 @@ use hir::map as hir_map;
 use hir::map::DefPathHash;
 use lint::{self, Lint};
 use ich::{StableHashingContext, NodeIdHashingMode};
+use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use infer::outlives::free_region_map::FreeRegionMap;
 use middle::const_val::ConstVal;
 use middle::cstore::{CrateStore, LinkMeta};
@@ -131,6 +132,7 @@ pub struct CtxtInterners<'tcx> {
     type_: RefCell<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
     type_list: RefCell<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
     substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
+    canonical_var_infos: RefCell<FxHashSet<Interned<'tcx, Slice<CanonicalVarInfo>>>>,
     region: RefCell<FxHashSet<Interned<'tcx, RegionKind>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
     predicates: RefCell<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
@@ -146,6 +148,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             substs: RefCell::new(FxHashSet()),
             region: RefCell::new(FxHashSet()),
             existential_predicates: RefCell::new(FxHashSet()),
+            canonical_var_infos: RefCell::new(FxHashSet()),
             predicates: RefCell::new(FxHashSet()),
             const_: RefCell::new(FxHashSet()),
         }
@@ -1508,7 +1511,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
 /// pointer differs. The latter case is possible if a primitive type,
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
-    type Lifted;
+    type Lifted: 'tcx;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
@@ -1838,6 +1841,12 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, Slice<Ty<'tcx>>> {
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<[CanonicalVarInfo]> for Interned<'tcx, Slice<CanonicalVarInfo>> {
+    fn borrow<'a>(&'a self) -> &'a [CanonicalVarInfo] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a [Kind<'lcx>] {
         &self.0[..]
@@ -1970,6 +1979,22 @@ slice_interners!(
     substs: _intern_substs(Kind)
 );
 
+// This isn't a perfect fit: CanonicalVarInfo slices are always
+// allocated in the global arena, so this `intern_method!` macro is
+// overly general.  But we just return false for the code that checks
+// whether they belong in the thread-local arena, so no harm done, and
+// seems better than open-coding the rest.
+intern_method! {
+    'tcx,
+    canonical_var_infos: _intern_canonical_var_infos(
+        &[CanonicalVarInfo],
+        alloc_slice,
+        Deref::deref,
+        |xs: &[CanonicalVarInfo]| -> &Slice<CanonicalVarInfo> { unsafe { mem::transmute(xs) } },
+        |_xs: &[CanonicalVarInfo]| -> bool { false }
+    ) -> Slice<CanonicalVarInfo>
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
     /// that is, a `fn` type that is equivalent in every way for being
@@ -1989,7 +2014,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn coerce_closure_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         let converted_sig = sig.map_bound(|s| {
             let params_iter = match s.inputs()[0].sty {
-                ty::TyTuple(params, _) => {
+                ty::TyTuple(params) => {
                     params.into_iter().cloned()
                 }
                 _ => bug!(),
@@ -2109,25 +2134,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TySlice(ty))
     }
 
-    pub fn intern_tup(self, ts: &[Ty<'tcx>], defaulted: bool) -> Ty<'tcx> {
-        self.mk_ty(TyTuple(self.intern_type_list(ts), defaulted))
+    pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
+        self.mk_ty(TyTuple(self.intern_type_list(ts)))
     }
 
-    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I,
-                                                     defaulted: bool) -> I::Output {
-        iter.intern_with(|ts| self.mk_ty(TyTuple(self.intern_type_list(ts), defaulted)))
+    pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
+        iter.intern_with(|ts| self.mk_ty(TyTuple(self.intern_type_list(ts))))
     }
 
     pub fn mk_nil(self) -> Ty<'tcx> {
-        self.intern_tup(&[], false)
-    }
-
-    pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type {
-            self.types.never
-        } else {
-            self.intern_tup(&[], true)
-        }
+        self.intern_tup(&[])
     }
 
     pub fn mk_bool(self) -> Ty<'tcx> {
@@ -2254,6 +2270,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             Slice::empty()
         } else {
             self._intern_substs(ts)
+        }
+    }
+
+    pub fn intern_canonical_var_infos(self, ts: &[CanonicalVarInfo]) -> CanonicalVarInfos<'gcx> {
+        if ts.len() == 0 {
+            Slice::empty()
+        } else {
+            self.global_tcx()._intern_canonical_var_infos(ts)
         }
     }
 
@@ -2503,9 +2527,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.has_clone_closures = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.features().clone_closures
-    };
-    providers.fully_normalize_monormophic_ty = |tcx, ty| {
-        tcx.fully_normalize_associated_types_in(&ty)
     };
     providers.features_query = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

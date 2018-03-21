@@ -312,7 +312,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 substs.upvar_tys(def_id, tcx)
             )
         }
-        ty::TyTuple(tys, _) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
+        ty::TyTuple(tys) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }
@@ -832,14 +832,11 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     let tcx = infcx.tcx;
     let gcx = tcx.global_tcx();
     let def_id = tcx.hir.local_def_id(ctor_id);
-    let sig = gcx.fn_sig(def_id).no_late_bound_regions()
-        .expect("LBR in ADT constructor signature");
-    let sig = gcx.erase_regions(&sig);
     let param_env = gcx.param_env(def_id);
 
-    // Normalize the sig now that we have liberated the late-bound
-    // regions.
-    let sig = gcx.normalize_associated_type_in_env(&sig, param_env);
+    // Normalize the sig.
+    let sig = gcx.fn_sig(def_id).no_late_bound_regions().expect("LBR in ADT constructor signature");
+    let sig = gcx.normalize_erasing_regions(param_env, sig);
 
     let (adt_def, substs) = match sig.output().sty {
         ty::TyAdt(adt_def, substs) => (adt_def, substs),

@@ -10,4 +10,4 @@ LL |         3_i32.f()
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0689"
+For more information about this error, try `rustc --explain E0689`.

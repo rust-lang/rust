@@ -60,7 +60,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
             asm,
             ctxt: cx.backtrace(),
         })),
-        vis: respan(sp.empty(), ast::VisibilityKind::Inherited),
+        vis: respan(sp.shrink_to_lo(), ast::VisibilityKind::Inherited),
         span: sp,
         tokens: None,
     })))

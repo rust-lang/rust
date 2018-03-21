@@ -1,7 +1,7 @@
-error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `[std::fmt::ArgumentV1<'_>]`
+error[E0277]: `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
   --> $DIR/send-sync.rs:18:5
    |
-LL |     send(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
+LL |     send(format_args!("{:?}", c)); //~ ERROR E0277
    |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
    |
    = help: within `[std::fmt::ArgumentV1<'_>]`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
@@ -18,10 +18,10 @@ note: required by `send`
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `*mut std::ops::Fn() + 'static: std::marker::Sync` is not satisfied in `std::fmt::Arguments<'_>`
+error[E0277]: `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
   --> $DIR/send-sync.rs:19:5
    |
-LL |     sync(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
+LL |     sync(format_args!("{:?}", c)); //~ ERROR E0277
    |     ^^^^ `*mut std::ops::Fn() + 'static` cannot be shared between threads safely
    |
    = help: within `std::fmt::Arguments<'_>`, the trait `std::marker::Sync` is not implemented for `*mut std::ops::Fn() + 'static`
@@ -40,4 +40,4 @@ LL | fn sync<T: Sync>(_: T) {}
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0277"
+For more information about this error, try `rustc --explain E0277`.

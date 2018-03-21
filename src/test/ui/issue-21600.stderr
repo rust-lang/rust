@@ -29,4 +29,4 @@ LL |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a 
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0387"
+For more information about this error, try `rustc --explain E0387`.

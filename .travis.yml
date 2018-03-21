@@ -56,7 +56,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     - env: >
@@ -70,7 +70,7 @@ matrix:
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
@@ -275,11 +275,12 @@ after_failure:
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
+      -name '*.crash'
       -not -name '*.stage2-*.crash'
       -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
-      -exec echo travis_fold":"end:crashlog \;
+      -exec echo travis_fold":"end:crashlog \; || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
@@ -317,6 +318,8 @@ before_deploy:
 
 deploy:
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
@@ -333,6 +336,8 @@ deploy:
   # this is the same as the above deployment provider except that it uploads to
   # a slightly different directory and has a different trigger
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
@@ -350,6 +355,8 @@ deploy:
   # try branch. Travis does not appear to provide a way to use "or" in these
   # conditions.
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy
@@ -364,6 +371,8 @@ deploy:
       condition: $DEPLOY = 1
 
   - provider: s3
+    edge:
+      branch: s3-eager-autoload
     bucket: rust-lang-ci2
     skip_cleanup: true
     local_dir: deploy

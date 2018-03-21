@@ -46,6 +46,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
+extern crate rustc_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -443,9 +444,20 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
-                        file_loader: Option<Box<FileLoader + 'static>>,
+                        file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
+{
+    syntax::with_globals(|| {
+        run_compiler_impl(args, callbacks, file_loader, emitter_dest)
+    })
+}
+
+fn run_compiler_impl<'a>(args: &[String],
+                         callbacks: &mut CompilerCalls<'a>,
+                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
+                         emitter_dest: Option<Box<Write + Send>>)
+                         -> (CompileResult, Option<Session>)
 {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
@@ -914,7 +926,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 pub fn enable_save_analysis(control: &mut CompileController) {
     control.keep_ast = true;
     control.after_analysis.callback = box |state| {
-        time(state.session.time_passes(), "save analysis", || {
+        time(state.session, "save analysis", || {
             save::process_crate(state.tcx.unwrap(),
                                 state.expanded_crate.unwrap(),
                                 state.analysis.unwrap(),
@@ -1133,6 +1145,15 @@ fn usage(verbose: bool, include_unstable_options: bool) {
              options.usage(&message),
              nightly_help,
              verbose_help);
+}
+
+fn print_wall_help() {
+    println!("
+The flag `-Wall` does not exist in `rustc`. Most useful lints are enabled by
+default. Use `rustc -W help` to see all available lints. It's more common to put
+warning settings in the crate root using `#![warn(LINT_NAME)]` instead of using
+the command line flag directly.
+");
 }
 
 fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
@@ -1379,6 +1400,13 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         return None;
     }
 
+    // Handle the special case of -Wall.
+    let wall = matches.opt_strs("W");
+    if wall.iter().any(|x| *x == "all") {
+        print_wall_help();
+        return None;
+    }
+
     // Don't handle -W help here, because we might first load plugins.
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| *x == "help") {
@@ -1454,6 +1482,12 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     let mut args = Vec::new();
     for arg in env::args_os() {
         args.push(arg.to_string_lossy().to_string());
+    }
+
+    // Avoid printing help because of empty args. This can suggest the compiler
+    // itself is not the program root (consider RLS).
+    if args.len() < 2 {
+        return None;
     }
 
     let matches = if let Some(matches) = handle_options(&args) {

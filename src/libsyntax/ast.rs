@@ -108,17 +108,16 @@ impl Path {
         }
     }
 
-    // Add starting "crate root" segment to all paths except those that
-    // already have it or start with `self`, `super`, `Self` or `$crate`.
-    pub fn default_to_global(mut self) -> Path {
-        if !self.is_global() {
-            let ident = self.segments[0].identifier;
-            if !::parse::token::Ident(ident).is_path_segment_keyword() ||
-               ident.name == keywords::Crate.name() {
-                self.segments.insert(0, PathSegment::crate_root(self.span));
+    // Make a "crate root" segment for this path unless it already has it
+    // or starts with something like `self`/`super`/`$crate`/etc.
+    pub fn make_root(&self) -> Option<PathSegment> {
+        if let Some(ident) = self.segments.get(0).map(|seg| seg.identifier) {
+            if ::parse::token::Ident(ident).is_path_segment_keyword() &&
+               ident.name != keywords::Crate.name() {
+                return None;
             }
         }
-        self
+        Some(PathSegment::crate_root(self.span.shrink_to_lo()))
     }
 
     pub fn is_global(&self) -> bool {
@@ -1878,18 +1877,35 @@ pub struct Variant_ {
 
 pub type Variant = Spanned<Variant_>;
 
+/// Part of `use` item to the right of its prefix.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum UseTreeKind {
-    Simple(Ident),
-    Glob,
+    /// `use prefix` or `use prefix as rename`
+    Simple(Option<Ident>),
+    /// `use prefix::{...}`
     Nested(Vec<(UseTree, NodeId)>),
+    /// `use prefix::*`
+    Glob,
 }
 
+/// A tree of paths sharing common prefixes.
+/// Used in `use` items both at top-level and inside of braces in import groups.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct UseTree {
-    pub kind: UseTreeKind,
     pub prefix: Path,
+    pub kind: UseTreeKind,
     pub span: Span,
+}
+
+impl UseTree {
+    pub fn ident(&self) -> Ident {
+        match self.kind {
+            UseTreeKind::Simple(Some(rename)) => rename,
+            UseTreeKind::Simple(None) =>
+                self.prefix.segments.last().expect("empty prefix in a simple import").identifier,
+            _ => panic!("`UseTree::ident` can only be used on a simple import"),
+        }
+    }
 }
 
 /// Distinguishes between Attributes that decorate items and Attributes that
@@ -2055,7 +2071,7 @@ pub struct Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ItemKind {
-    /// An `extern crate` item, with optional original crate name.
+    /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
     /// E.g. `extern crate foo` or `extern crate foo_bar as foo`
     ExternCrate(Option<Name>),

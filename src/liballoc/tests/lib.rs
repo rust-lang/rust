@@ -14,7 +14,7 @@
 #![feature(alloc_system)]
 #![feature(attr_literals)]
 #![feature(box_syntax)]
-#![feature(inclusive_range_syntax)]
+#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(collection_placement)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
@@ -26,9 +26,11 @@
 #![feature(splice)]
 #![feature(str_escape)]
 #![feature(string_retain)]
+#![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(exact_chunks)]
+#![feature(inclusive_range_fields)]
 
 extern crate alloc_system;
 extern crate std_unicode;

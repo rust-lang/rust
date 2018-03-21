@@ -8,4 +8,4 @@ LL |     f.s.push('x'); //~ ERROR cannot borrow data mutably
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0389"
+For more information about this error, try `rustc --explain E0389`.

@@ -12,7 +12,6 @@ use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
-use rustc::traits;
 use rustc::mir;
 use abi::{Abi, FnType, ArgType, PassMode};
 use base;
@@ -282,7 +281,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     ty::TyDynamic(..) => {
                         let fn_ty = drop_fn.ty(bx.cx.tcx);
                         let sig = common::ty_fn_sig(bx.cx, fn_ty);
-                        let sig = bx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                        let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                            ty::ParamEnv::reveal_all(),
+                            &sig,
+                        );
                         let fn_ty = FnType::new_vtable(bx.cx, sig, &[]);
                         args = &args[..1];
                         (meth::DESTRUCTOR.get_fn(&bx, place.llextra, &fn_ty), fn_ty)
@@ -419,7 +421,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::TyFnDef(def_id, substs) => {
                         (Some(ty::Instance::resolve(bx.cx.tcx,
-                                                    ty::ParamEnv::empty(traits::Reveal::All),
+                                                    ty::ParamEnv::reveal_all(),
                                                     def_id,
                                                     substs).unwrap()),
                          None)
@@ -431,7 +433,10 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 };
                 let def = instance.map(|i| i.def);
                 let sig = callee.layout.ty.fn_sig(bx.tcx());
-                let sig = bx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                let sig = bx.tcx().normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
                 let abi = sig.abi;
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
@@ -705,7 +710,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             let layout = cx.layout_of(cx.tcx.intern_tup(&[
                 cx.tcx.mk_mut_ptr(cx.tcx.types.u8),
                 cx.tcx.types.i32
-            ], false));
+            ]));
             let slot = PlaceRef::alloca(bx, layout, "personalityslot");
             self.personality_slot = Some(slot);
             slot

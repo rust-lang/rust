@@ -20,9 +20,9 @@
 #![deny(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
-#![feature(slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(macro_lifetime_matcher)]
 #![feature(i128_type)]
 #![feature(from_ref)]
 

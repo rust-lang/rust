@@ -11,6 +11,8 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
+use alloc::heap::{Heap, Alloc};
+use alloc::allocator::CollectionAllocErr;
 use cell::Cell;
 use borrow::Borrow;
 use cmp::max;
@@ -42,19 +44,26 @@ impl DefaultResizePolicy {
     /// provide that capacity, accounting for maximum loading. The raw capacity
     /// is always zero or a power of two.
     #[inline]
-    fn raw_capacity(&self, len: usize) -> usize {
+    fn try_raw_capacity(&self, len: usize) -> Result<usize, CollectionAllocErr> {
         if len == 0 {
-            0
+            Ok(0)
         } else {
             // 1. Account for loading: `raw_capacity >= len * 1.1`.
             // 2. Ensure it is a power of two.
             // 3. Ensure it is at least the minimum size.
-            let mut raw_cap = len * 11 / 10;
-            assert!(raw_cap >= len, "raw_cap overflow");
-            raw_cap = raw_cap.checked_next_power_of_two().expect("raw_capacity overflow");
+            let mut raw_cap = len.checked_mul(11)
+                .map(|l| l / 10)
+                .and_then(|l| l.checked_next_power_of_two())
+                .ok_or(CollectionAllocErr::CapacityOverflow)?;
+
             raw_cap = max(MIN_NONZERO_RAW_CAPACITY, raw_cap);
-            raw_cap
+            Ok(raw_cap)
         }
+    }
+
+    #[inline]
+    fn raw_capacity(&self, len: usize) -> usize {
+        self.try_raw_capacity(len).expect("raw_capacity overflow")
     }
 
     /// The capacity of the given raw capacity.
@@ -775,17 +784,45 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
+        match self.try_reserve(additional) {
+            Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
+            Err(CollectionAllocErr::AllocErr(e)) => Heap.oom(e),
+            Ok(()) => { /* yay */ }
+         }
+    }
+
+    /// Tries to reserve capacity for at least `additional` more elements to be inserted
+    /// in the given `HashMap<K,V>`. The collection may reserve more space to avoid
+    /// frequent reallocations.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(try_reserve)]
+    /// use std::collections::HashMap;
+    /// let mut map: HashMap<&str, isize> = HashMap::new();
+    /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// ```
+    #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
         let remaining = self.capacity() - self.len(); // this can't overflow
         if remaining < additional {
-            let min_cap = self.len().checked_add(additional).expect("reserve overflow");
-            let raw_cap = self.resize_policy.raw_capacity(min_cap);
-            self.resize(raw_cap);
+            let min_cap = self.len().checked_add(additional)
+                .ok_or(CollectionAllocErr::CapacityOverflow)?;
+            let raw_cap = self.resize_policy.try_raw_capacity(min_cap)?;
+            self.try_resize(raw_cap)?;
         } else if self.table.tag() && remaining <= self.len() {
             // Probe sequence is too long and table is half full,
             // resize early to reduce probing length.
             let new_capacity = self.table.capacity() * 2;
-            self.resize(new_capacity);
+            self.try_resize(new_capacity)?;
         }
+        Ok(())
     }
 
     /// Resizes the internal vectors to a new capacity. It's your
@@ -795,15 +832,15 @@ impl<K, V, S> HashMap<K, V, S>
     ///   2) Ensure `new_raw_cap` is a power of two or zero.
     #[inline(never)]
     #[cold]
-    fn resize(&mut self, new_raw_cap: usize) {
+    fn try_resize(&mut self, new_raw_cap: usize) -> Result<(), CollectionAllocErr> {
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 
-        let mut old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
+        let mut old_table = replace(&mut self.table, RawTable::try_new(new_raw_cap)?);
         let old_size = old_table.size();
 
         if old_table.size() == 0 {
-            return;
+            return Ok(());
         }
 
         let mut bucket = Bucket::head_bucket(&mut old_table);
@@ -838,6 +875,7 @@ impl<K, V, S> HashMap<K, V, S>
         }
 
         assert_eq!(self.table.size(), old_size);
+        Ok(())
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -2717,6 +2755,9 @@ mod test_map {
     use cell::RefCell;
     use rand::{thread_rng, Rng};
     use panic;
+    use realstd::collections::CollectionAllocErr::*;
+    use realstd::mem::size_of;
+    use realstd::usize;
 
     #[test]
     fn test_zero_capacities() {
@@ -3651,4 +3692,33 @@ mod test_map {
         let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { hm.entry(0) <- makepanic(); }));
         assert_eq!(hm.len(), 0);
     }
+
+    #[test]
+    fn test_try_reserve() {
+
+        let mut empty_bytes: HashMap<u8,u8> = HashMap::new();
+
+        const MAX_USIZE: usize = usize::MAX;
+
+        // HashMap and RawTables use complicated size calculations
+        // hashes_size is sizeof(HashUint) * capacity;
+        // pairs_size is sizeof((K. V)) * capacity;
+        // alignment_hashes_size is 8
+        // alignment_pairs size is 4
+        let size_of_multiplier = (size_of::<usize>() + size_of::<(u8, u8)>()).next_power_of_two();
+        // The following formula is used to calculate the new capacity
+        let max_no_ovf = ((MAX_USIZE / 11) * 10) / size_of_multiplier - 1;
+
+        if let Err(CapacityOverflow) = empty_bytes.try_reserve(MAX_USIZE) {
+        } else { panic!("usize::MAX should trigger an overflow!"); }
+
+        if size_of::<usize>() < 8 {
+            if let Err(CapacityOverflow) = empty_bytes.try_reserve(max_no_ovf) {
+            } else { panic!("isize::MAX + 1 should trigger a CapacityOverflow!") }
+        } else {
+            if let Err(AllocErr(_)) = empty_bytes.try_reserve(max_no_ovf) {
+            } else { panic!("isize::MAX + 1 should trigger an OOM!") }
+        }
+    }
+
 }

@@ -33,7 +33,7 @@ impl<T> Key<T> {
 use std::thread::__FastLocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
-//~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>: std::marker::Sync` is not satisfied
-//~| ERROR `std::cell::Cell<bool>: std::marker::Sync` is not satisfied
+//~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads
+//~| ERROR `std::cell::Cell<bool>` cannot be shared between threads safely [E0277]
 
 fn main() {}

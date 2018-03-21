@@ -24,4 +24,4 @@ LL |             *n += 1; //~ ERROR cannot assign to immutable
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0594"
+For more information about this error, try `rustc --explain E0594`.

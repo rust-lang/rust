@@ -66,5 +66,5 @@ LL |     let mut fail: *const str = 0 as *const str; //~ ERROR casting
 
 error: aborting due to 9 previous errors
 
-You've got a few errors: E0605, E0606, E0607
-If you want more information on an error, try using "rustc --explain E0605"
+Some errors occurred: E0605, E0606, E0607.
+For more information about an error, try `rustc --explain E0605`.

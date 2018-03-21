@@ -30,8 +30,6 @@ LL |     let x: u128 = 0; //~ ERROR 128-bit type is unstable
    |
    = help: add #![feature(i128_type)] to the crate attributes to enable
 
-error[E0601]: main function not found
-
 error[E0658]: repr with 128-bit type is unstable (see issue #35118)
   --> $DIR/feature-gate-i128_type2.rs:30:1
    |
@@ -42,7 +40,6 @@ LL | | }
    |
    = help: add #![feature(repr128)] to the crate attributes to enable
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
-You've got a few errors: E0601, E0658
-If you want more information on an error, try using "rustc --explain E0601"
+For more information about this error, try `rustc --explain E0658`.

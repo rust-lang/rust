@@ -8,4 +8,4 @@ LL |       alpha | beta => {} //~  ERROR variable `beta` is not bound in all pat
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0408"
+For more information about this error, try `rustc --explain E0408`.

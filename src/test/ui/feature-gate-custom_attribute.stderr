@@ -104,4 +104,4 @@ LL | #[fake_doc(r"doc")] //~ ERROR attribute `fake_doc` is currently unknown
 
 error: aborting due to 13 previous errors
 
-If you want more information on this error, try using "rustc --explain E0658"
+For more information about this error, try `rustc --explain E0658`.

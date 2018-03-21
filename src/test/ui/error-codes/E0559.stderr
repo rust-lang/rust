@@ -8,4 +8,4 @@ LL |     let s = Field::Fool { joke: 0 };
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0559"
+For more information about this error, try `rustc --explain E0559`.

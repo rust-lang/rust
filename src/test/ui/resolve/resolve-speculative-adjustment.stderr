@@ -24,4 +24,4 @@ LL |         method();
 
 error: aborting due to 4 previous errors
 
-If you want more information on this error, try using "rustc --explain E0425"
+For more information about this error, try `rustc --explain E0425`.

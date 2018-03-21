@@ -20,4 +20,4 @@ LL |     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0382"
+For more information about this error, try `rustc --explain E0382`.

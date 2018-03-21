@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // the `closures` table.
         let sig = bound_sig.map_bound(|sig| {
             self.tcx.mk_fn_sig(
-                iter::once(self.tcx.intern_tup(sig.inputs(), false)),
+                iter::once(self.tcx.intern_tup(sig.inputs())),
                 sig.output(),
                 sig.variadic,
                 sig.unsafety,
@@ -312,7 +312,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         let input_tys = match arg_param_ty.sty {
-            ty::TyTuple(tys, _) => tys.into_iter(),
+            ty::TyTuple(tys) => tys.into_iter(),
             _ => {
                 return None;
             }

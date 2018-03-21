@@ -17,14 +17,14 @@ fn main() {
     fn assert_send<T: Send>(_: T) {}
 
     assert_sync(|| {
-        //~^ ERROR: Sync` is not satisfied
+        //~^ ERROR: E0277
         let a = Cell::new(2);
         yield;
     });
 
     let a = Cell::new(2);
     assert_send(|| {
-        //~^ ERROR: Sync` is not satisfied
+        //~^ ERROR: E0277
         drop(&a);
         yield;
     });

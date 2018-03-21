@@ -70,7 +70,6 @@ pub struct Docs {
 impl Step for Docs {
     type Output = PathBuf;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src/doc")
@@ -204,11 +203,14 @@ fn make_win_dist(
         "libbcrypt.a",
         "libcomctl32.a",
         "libcomdlg32.a",
+        "libcredui.a",
         "libcrypt32.a",
+        "libdbghelp.a",
         "libgdi32.a",
         "libimagehlp.a",
         "libiphlpapi.a",
         "libkernel32.a",
+        "libmsimg32.a",
         "libmsvcrt.a",
         "libodbc32.a",
         "libole32.a",
@@ -216,8 +218,10 @@ fn make_win_dist(
         "libopengl32.a",
         "libpsapi.a",
         "librpcrt4.a",
+        "libsecur32.a",
         "libsetupapi.a",
         "libshell32.a",
+        "libsynchronization.a",
         "libuser32.a",
         "libuserenv.a",
         "libuuid.a",
@@ -226,8 +230,6 @@ fn make_win_dist(
         "libwinspool.a",
         "libws2_32.a",
         "libwsock32.a",
-        "libdbghelp.a",
-        "libmsimg32.a",
     ];
 
     //Find mingw artifacts we want to bundle
@@ -271,7 +273,6 @@ pub struct Mingw {
 impl Step for Mingw {
     type Output = Option<PathBuf>;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.never()
@@ -331,7 +332,6 @@ impl Step for Rustc {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src/librustc")
@@ -561,7 +561,6 @@ pub struct Std {
 impl Step for Std {
     type Output = PathBuf;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src/libstd")
@@ -569,7 +568,7 @@ impl Step for Std {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Std {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -638,7 +637,6 @@ pub struct Analysis {
 impl Step for Analysis {
     type Output = PathBuf;
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
@@ -647,7 +645,7 @@ impl Step for Analysis {
 
     fn make_run(run: RunConfig) {
         run.builder.ensure(Analysis {
-            compiler: run.builder.compiler(run.builder.top_stage, run.host),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.build.build),
             target: run.target,
         });
     }
@@ -755,8 +753,6 @@ impl Step for Src {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("src")
@@ -851,8 +847,6 @@ impl Step for PlainSourceTarball {
     type Output = PathBuf;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
@@ -1007,7 +1001,6 @@ pub struct Cargo {
 
 impl Step for Cargo {
     type Output = PathBuf;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1095,7 +1088,6 @@ pub struct Rls {
 
 impl Step for Rls {
     type Output = Option<PathBuf>;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1131,7 +1123,7 @@ impl Step for Rls {
         // state for RLS isn't testing.
         let rls = builder.ensure(tool::Rls {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build RLS, skipping dist"); None })?;
 
         install(&rls, &image.join("bin"), 0o755);
@@ -1177,7 +1169,6 @@ pub struct Rustfmt {
 
 impl Step for Rustfmt {
     type Output = Option<PathBuf>;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1211,11 +1202,11 @@ impl Step for Rustfmt {
         // Prepare the image directory
         let rustfmt = builder.ensure(tool::Rustfmt {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build Rustfmt, skipping dist"); None })?;
         let cargofmt = builder.ensure(tool::Cargofmt {
             compiler: builder.compiler(stage, build.build),
-            target
+            target, extra_features: Vec::new()
         }).or_else(|| { println!("Unable to build Cargofmt, skipping dist"); None })?;
 
         install(&rustfmt, &image.join("bin"), 0o755);
@@ -1263,7 +1254,6 @@ pub struct Extended {
 impl Step for Extended {
     type Output = ();
     const DEFAULT: bool = true;
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
@@ -1274,7 +1264,7 @@ impl Step for Extended {
     fn make_run(run: RunConfig) {
         run.builder.ensure(Extended {
             stage: run.builder.top_stage,
-            host: run.host,
+            host: run.builder.build.build,
             target: run.target,
         });
     }
@@ -1692,9 +1682,7 @@ pub struct HashSign;
 
 impl Step for HashSign {
     type Output = ();
-    const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
-    const ONLY_BUILD: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         run.path("hash-and-sign")

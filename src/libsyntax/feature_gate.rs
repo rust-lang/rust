@@ -26,7 +26,7 @@ use self::AttributeType::*;
 use self::AttributeGate::*;
 
 use abi::Abi;
-use ast::{self, NodeId, PatKind, RangeEnd, RangeSyntax};
+use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
 use epoch::Epoch;
 use codemap::Spanned;
@@ -145,7 +145,6 @@ declare_features! (
     // rustc internal
     (active, rustc_diagnostic_macros, "1.0.0", None, None),
     (active, rustc_const_unstable, "1.0.0", None, None),
-    (active, advanced_slice_patterns, "1.0.0", Some(23121), None),
     (active, box_syntax, "1.0.0", Some(27779), None),
     (active, placement_in_syntax, "1.0.0", Some(27779), None),
     (active, unboxed_closures, "1.0.0", Some(29625), None),
@@ -268,9 +267,6 @@ declare_features! (
     // rustc internal
     (active, abi_vectorcall, "1.7.0", None, None),
 
-    // a..=b and ..=b
-    (active, inclusive_range_syntax, "1.7.0", Some(28237), None),
-
     // X..Y patterns
     (active, exclusive_range_pattern, "1.11.0", Some(37854), None),
 
@@ -286,8 +282,8 @@ declare_features! (
     // Allows `impl Trait` in function arguments.
     (active, universal_impl_trait, "1.23.0", Some(34511), None),
 
-    // The `!` type
-    (active, never_type, "1.13.0", Some(35121), None),
+    // Allows exhaustive pattern matching on types that contain uninhabited types.
+    (active, exhaustive_patterns, "1.13.0", None, None),
 
     // Allows all literals in attribute lists and values of key-value pairs.
     (active, attr_literals, "1.13.0", Some(34981), None),
@@ -402,9 +398,6 @@ declare_features! (
     // allow `'_` placeholder lifetimes
     (active, underscore_lifetimes, "1.22.0", Some(44524), None),
 
-    // allow `..=` in patterns (RFC 1192)
-    (active, dotdoteq_in_patterns, "1.22.0", Some(28237), None),
-
     // Default match binding modes (RFC 2005)
     (active, match_default_bindings, "1.22.0", Some(42640), None),
 
@@ -455,6 +448,9 @@ declare_features! (
 
     // Parentheses in patterns
     (active, pattern_parentheses, "1.26.0", None, None),
+
+    // `use path as _;` and `extern crate c as _;`
+    (active, underscore_imports, "1.26.0", Some(48216), None),
 );
 
 declare_features! (
@@ -477,6 +473,8 @@ declare_features! (
     (removed, allocator, "1.0.0", None, None),
     // Allows the `#[simd]` attribute -- removed in favor of `#[repr(simd)]`
     (removed, simd, "1.0.0", Some(27731), None),
+    // Merged into `slice_patterns`
+    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None),
 );
 
 declare_features! (
@@ -554,6 +552,10 @@ declare_features! (
     (accepted, match_beginning_vert, "1.25.0", Some(44101), None),
     // Nested groups in `use` (RFC 2128)
     (accepted, use_nested_groups, "1.25.0", Some(44494), None),
+    // a..=b and ..=b
+    (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
+    // allow `..=` in patterns (RFC 1192)
+    (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -830,6 +832,13 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                           libcore functions that are inlined \
                                                           across crates and will never be stable",
                                                           cfg_fn!(rustc_attrs))),
+
+    ("rustc_dump_program_clauses", Whitelisted, Gated(Stability::Unstable,
+                                                     "rustc_attrs",
+                                                     "the `#[rustc_dump_program_clauses]` \
+                                                      attribute is just used for rustc unit \
+                                                      tests and will never be stable",
+                                                     cfg_fn!(rustc_attrs))),
 
     // RFC #2094
     ("nll", Whitelisted, Gated(Stability::Unstable,
@@ -1436,9 +1445,24 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
+    fn visit_use_tree(&mut self, use_tree: &'a ast::UseTree, id: NodeId, _nested: bool) {
+        if let ast::UseTreeKind::Simple(Some(ident)) = use_tree.kind {
+            if ident.name == "_" {
+                gate_feature_post!(&self, underscore_imports, use_tree.span,
+                                   "renaming imports with `_` is unstable");
+            }
+        }
+
+        visit::walk_use_tree(self, use_tree, id);
+    }
+
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
             ast::ItemKind::ExternCrate(_) => {
+                if i.ident.name == "_" {
+                    gate_feature_post!(&self, underscore_imports, i.span,
+                                       "renaming extern crates with `_` is unstable");
+                }
                 if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
                     gate_feature_post!(&self, macro_reexport, attr.span,
                                        "macros re-exports are experimental \
@@ -1566,10 +1590,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
             }
-            ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span,
-                                   "The `!` type is experimental");
-            },
             ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::Dyn) => {
                 gate_feature_post!(&self, dyn_trait, ty.span,
                                    "`dyn Trait` syntax is unstable");
@@ -1595,11 +1615,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::Type(..) => {
                 gate_feature_post!(&self, type_ascription, e.span,
                                   "type ascription is experimental");
-            }
-            ast::ExprKind::Range(_, _, ast::RangeLimits::Closed) => {
-                gate_feature_post!(&self, inclusive_range_syntax,
-                                  e.span,
-                                  "inclusive range syntax is experimental");
             }
             ast::ExprKind::InPlace(..) => {
                 gate_feature_post!(&self, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
@@ -1641,17 +1656,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
         match pattern.node {
-            PatKind::Slice(_, Some(_), ref last) if !last.is_empty() => {
-                gate_feature_post!(&self, advanced_slice_patterns,
-                                  pattern.span,
-                                  "multiple-element slice matches anywhere \
-                                   but at the end of a slice (e.g. \
-                                   `[0, ..xs, 0]`) are experimental")
-            }
-            PatKind::Slice(..) => {
+            PatKind::Slice(_, Some(ref subslice), _) => {
                 gate_feature_post!(&self, slice_patterns,
-                                  pattern.span,
-                                  "slice pattern syntax is experimental");
+                                   subslice.span,
+                                   "syntax for subslices in slice patterns is not yet stabilized");
             }
             PatKind::Box(..) => {
                 gate_feature_post!(&self, box_patterns,
@@ -1661,10 +1669,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             PatKind::Range(_, _, RangeEnd::Excluded) => {
                 gate_feature_post!(&self, exclusive_range_pattern, pattern.span,
                                    "exclusive range pattern syntax is experimental");
-            }
-            PatKind::Range(_, _, RangeEnd::Included(RangeSyntax::DotDotEq)) => {
-                gate_feature_post!(&self, dotdoteq_in_patterns, pattern.span,
-                                   "`..=` syntax in patterns is experimental");
             }
             PatKind::Paren(..) => {
                 gate_feature_post!(&self, pattern_parentheses, pattern.span,
@@ -1787,7 +1791,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_lifetime(&mut self, lt: &'a ast::Lifetime) {
-        if lt.ident.name == "'_" {
+        if lt.ident.name == keywords::UnderscoreLifetime.name() {
             gate_feature_post!(&self, underscore_lifetimes, lt.span,
                                "underscore lifetimes are unstable");
         }

@@ -46,7 +46,6 @@ export RUST_RELEASE_CHANNEL=nightly
 if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-thinlto"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
@@ -91,11 +90,19 @@ make check-bootstrap
 travis_fold end check-bootstrap
 travis_time_finish
 
+# Display the CPU and memory information. This helps us know why the CI timing
+# is fluctuating.
+travis_fold start log-system-info
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+    system_profiler SPHardwareDataType || true
+    sysctl hw || true
     ncpus=$(sysctl -n hw.ncpu)
 else
+    cat /proc/cpuinfo || true
+    cat /proc/meminfo || true
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
+travis_fold end log-system-info
 
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"

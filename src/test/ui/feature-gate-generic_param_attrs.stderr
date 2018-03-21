@@ -136,4 +136,4 @@ LL |     where Q: for <#[rustc_lt_hof] 'i> Fn(&'i [u32]) -> &'i u32
 
 error: aborting due to 17 previous errors
 
-If you want more information on this error, try using "rustc --explain E0658"
+For more information about this error, try `rustc --explain E0658`.

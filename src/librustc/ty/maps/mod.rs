@@ -14,6 +14,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
+use infer::canonical::{Canonical, QueryResult};
 use lint;
 use middle::borrowck::BorrowCheckResult;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
@@ -33,8 +34,12 @@ use mir::interpret::{GlobalId};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::Vtable;
+use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal, NoSolution};
+use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
+use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
-use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use traits::Clause;
+use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
@@ -82,7 +87,7 @@ pub use self::on_disk_cache::OnDiskCache;
 // the driver creates (using several `rustc_*` crates).
 //
 // The result of query must implement Clone. They must also implement ty::maps::values::Value
-// which produces an appropiate error value if the query resulted in a query cycle.
+// which produces an appropriate error value if the query resulted in a query cycle.
 // Queries marked with `fatal_cycle` do not need that implementation
 // as they will raise an fatal error on query cycles instead.
 define_maps! { <'tcx>
@@ -111,7 +116,9 @@ define_maps! { <'tcx>
     [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
-    [] fn adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+    [] fn adt_dtorck_constraint: DtorckConstraint(
+        DefId
+    ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
     /// True if this is a const fn
     [] fn is_const_fn: IsConstFn(DefId) -> bool,
@@ -378,7 +385,27 @@ define_maps! { <'tcx>
     // Normally you would just use `tcx.erase_regions(&value)`,
     // however, which uses this query as a kind of cache.
     [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
-    [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
+
+    /// Do not call this query directly: invoke `normalize` instead.
+    [] fn normalize_projection_ty: NormalizeProjectionTy(
+        CanonicalProjectionGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
+    [] fn normalize_ty_after_erasing_regions: NormalizeTyAfterErasingRegions(
+        ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Ty<'tcx>,
+
+    /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
+    [] fn dropck_outlives: DropckOutlives(
+        CanonicalTyGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
+        NoSolution,
+    >,
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
@@ -391,6 +418,8 @@ define_maps! { <'tcx>
         -> usize,
 
     [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
+
+    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<Clause<'tcx>>>,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -536,9 +565,6 @@ fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::VtableMethods{ trait_ref }
-}
-fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
-    DepConstructor::NormalizeTy
 }
 
 fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))

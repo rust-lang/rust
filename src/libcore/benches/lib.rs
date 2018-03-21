@@ -11,7 +11,6 @@
 #![deny(warnings)]
 
 #![feature(flt2dec)]
-#![feature(slice_patterns)]
 #![feature(test)]
 
 extern crate core;

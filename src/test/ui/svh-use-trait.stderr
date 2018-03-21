@@ -11,4 +11,4 @@ LL | extern crate utb; //~ ERROR: found possibly newer version of crate `uta` wh
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0460"
+For more information about this error, try `rustc --explain E0460`.

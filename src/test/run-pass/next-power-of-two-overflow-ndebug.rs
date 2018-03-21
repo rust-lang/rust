@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -C debug_assertions=no
+// ignore-emscripten dies with an LLVM error
 
 #![feature(i128_type)]
 

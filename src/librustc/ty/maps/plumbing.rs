@@ -164,8 +164,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
         if cfg!(debug_assertions) {
-            if  $tcx.sess.profile_queries() {
-                profq_msg($msg)
+            if $tcx.sess.profile_queries() {
+                profq_msg($tcx.sess, $msg)
             }
         }
     }
@@ -772,7 +772,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
         DepKind::EraseRegionsTy |
-        DepKind::NormalizeTy |
+        DepKind::NormalizeProjectionTy |
+        DepKind::NormalizeTyAfterErasingRegions |
+        DepKind::DropckOutlives |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::InstanceDefSizeEstimate |
 
@@ -933,6 +935,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
         DepKind::GetSymbolExportLevel => { force!(symbol_export_level, def_id!()); }
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
+
+        DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
     }
 
     true
@@ -999,4 +1003,5 @@ impl_load_from_cache!(
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
     TransFnAttrs => trans_fn_attrs,
+    SpecializationGraph => specialization_graph_of,
 );

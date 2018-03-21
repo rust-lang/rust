@@ -34,11 +34,10 @@ use syntax_pos::Span;
 use dataflow::{do_dataflow, DebugFormatted};
 use dataflow::FlowAtLocation;
 use dataflow::MoveDataParamEnv;
-use dataflow::{DataflowAnalysis, DataflowResultsConsumer};
+use dataflow::{DataflowResultsConsumer};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
 use dataflow::{BorrowData, Borrows, ReserveOrActivateIndex};
-use dataflow::{ActiveBorrows, Reservations};
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
@@ -53,8 +52,6 @@ use self::MutateMode::{JustWrite, WriteAndRead};
 mod error_reporting;
 mod flows;
 mod prefixes;
-
-use std::borrow::Cow;
 
 pub(crate) mod nll;
 
@@ -209,6 +206,18 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     };
     let flow_inits = flow_inits; // remove mut
 
+    let flow_borrows = FlowAtLocation::new(do_dataflow(
+        tcx,
+        mir,
+        id,
+        &attributes,
+        &dead_unwinds,
+        Borrows::new(tcx, mir, opt_regioncx.clone(), def_id, body_id),
+        |rs, i| {
+            DebugFormatted::new(&(i.kind(), rs.location(i.borrow_index())))
+        }
+    ));
+
     let movable_generator = !match tcx.hir.get(id) {
         hir::map::Node::NodeExpr(&hir::Expr {
             node: hir::ExprClosure(.., Some(hir::GeneratorMovability::Static)),
@@ -230,44 +239,12 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         },
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
-        nonlexical_regioncx: opt_regioncx.clone(),
+        nonlexical_regioncx: opt_regioncx,
         nonlexical_cause_info: None,
     };
 
-    let borrows = Borrows::new(tcx, mir, opt_regioncx, def_id, body_id);
-    let flow_reservations = do_dataflow(
-        tcx,
-        mir,
-        id,
-        &attributes,
-        &dead_unwinds,
-        Reservations::new(borrows),
-        |rs, i| {
-            // In principle we could make the dataflow ensure that
-            // only reservation bits show up, and assert so here.
-            //
-            // In practice it is easier to be looser; in particular,
-            // it is okay for the kill-sets to hold activation bits.
-            DebugFormatted::new(&(i.kind(), rs.location(i)))
-        },
-    );
-    let flow_active_borrows = {
-        let reservations_on_entry = flow_reservations.0.sets.entry_set_state();
-        let reservations = flow_reservations.0.operator;
-        let a = DataflowAnalysis::new_with_entry_sets(
-            mir,
-            &dead_unwinds,
-            Cow::Borrowed(reservations_on_entry),
-            ActiveBorrows::new(reservations),
-        );
-        let results = a.run(tcx, id, &attributes, |ab, i| {
-            DebugFormatted::new(&(i.kind(), ab.location(i)))
-        });
-        FlowAtLocation::new(results)
-    };
-
     let mut state = Flows::new(
-        flow_active_borrows,
+        flow_borrows,
         flow_inits,
         flow_uninits,
         flow_move_outs,
@@ -553,7 +530,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     // Look for any active borrows to locals
                     let domain = flow_state.borrows.operator();
                     let data = domain.borrows();
-                    flow_state.borrows.with_elems_outgoing(|borrows| {
+                    flow_state.borrows.with_iter_outgoing(|borrows| {
                         for i in borrows {
                             let borrow = &data[i.borrow_index()];
                             self.check_for_local_borrow(borrow, span);
@@ -569,7 +546,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // so this "extra check" serves as a kind of backup.
                 let domain = flow_state.borrows.operator();
                 let data = domain.borrows();
-                flow_state.borrows.with_elems_outgoing(|borrows| {
+                flow_state.borrows.with_iter_outgoing(|borrows| {
                     for i in borrows {
                         let borrow = &data[i.borrow_index()];
                         let context = ContextKind::StorageDead.new(loc);
@@ -755,7 +732,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 for (index, field) in def.all_fields().enumerate() {
                     let gcx = self.tcx.global_tcx();
                     let field_ty = field.ty(gcx, substs);
-                    let field_ty = gcx.normalize_associated_type_in_env(&field_ty, self.param_env);
+                    let field_ty = gcx.normalize_erasing_regions(self.param_env, field_ty);
                     let place = drop_place.clone().field(Field::new(index), field_ty);
 
                     self.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span);
@@ -1315,7 +1292,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             place
         );
 
-        for i in flow_state.ever_inits.elems_incoming() {
+        for i in flow_state.ever_inits.iter_incoming() {
             let init = self.move_data.inits[i];
             let init_place = &self.move_data.move_paths[init.path].place;
             if self.places_conflict(&init_place, place, Deep) {
@@ -2152,8 +2129,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        let mut elems_incoming = flow_state.borrows.elems_incoming();
-        while let Some(i) = elems_incoming.next() {
+        let mut iter_incoming = flow_state.borrows.iter_incoming();
+        while let Some(i) = iter_incoming.next() {
             let borrowed = &data[i.borrow_index()];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {

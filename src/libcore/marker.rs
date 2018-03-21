@@ -343,8 +343,21 @@ pub trait Copy : Clone {
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
-#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be shared between threads safely",
+    label="`{Self}` cannot be shared between threads safely"
+)]
 pub unsafe auto trait Sync {
+    // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
+    // lands in beta, and it has been extended to check whether a closure is
+    // anywhere in the requirement chain, extend it as such (#48534):
+    // ```
+    // on(
+    //     closure,
+    //     note="`{Self}` cannot be shared safely, consider marking the closure `move`"
+    // ),
+    // ```
+
     // Empty
 }
 
@@ -565,3 +578,13 @@ unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+
+/// Types which can be moved out of a `Pin`.
+///
+/// The `Unpin` trait is used to control the behavior of the [`Pin`] type. If a
+/// type implements `Unpin`, it is safe to move a value of that type out of the
+/// `Pin` pointer.
+///
+/// This trait is automatically implemented for almost every type.
+#[unstable(feature = "pin", issue = "49150")]
+pub unsafe auto trait Unpin {}

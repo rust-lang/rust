@@ -6,4 +6,4 @@ LL | const VAL: u32 = dummy(0xFFFF);
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0133"
+For more information about this error, try `rustc --explain E0133`.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type)]
+#![feature(exhaustive_patterns)]
 
 // Regression test for inhabitedness check. The old
 // cache used to cause us to incorrectly decide

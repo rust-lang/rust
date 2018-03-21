@@ -66,7 +66,6 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::lint;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
@@ -572,7 +571,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.report_selection_error(&obligation, &err);
+                    self.report_selection_error(&obligation, &err, false);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -752,26 +751,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn try_coerce(&self,
                       expr: &hir::Expr,
                       expr_ty: Ty<'tcx>,
-                      expr_diverges: Diverges,
                       target: Ty<'tcx>)
                       -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
-
-        // Special-ish case: we can coerce any type `T` into the `!`
-        // type, but only if the source expression diverges.
-        if target.is_never() && expr_diverges.always() {
-            debug!("permit coercion to `!` because expr diverges");
-            if self.can_eq(self.param_env, source, target).is_err() {
-                self.tcx.lint_node(
-                    lint::builtin::COERCE_NEVER,
-                    expr.id,
-                    expr.span,
-                    &format!("cannot coerce `{}` to !", source)
-                );
-                return Ok(target);
-            }
-        }
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause);
@@ -1123,7 +1106,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             if self.pushed == 0 {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
-                fcx.try_coerce(expression, expression_ty, expression_diverges, self.expected_ty)
+                fcx.try_coerce(expression, expression_ty, self.expected_ty)
             } else {
                 match self.expressions {
                     Expressions::Dynamic(ref exprs) =>

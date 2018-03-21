@@ -60,12 +60,6 @@ pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
     /// Run this rule for all hosts without cross compiling.
     const ONLY_HOSTS: bool = false;
 
-    /// Run this rule for all targets, but only with the native host.
-    const ONLY_BUILD_TARGETS: bool = false;
-
-    /// Only run this step with the build triple as host and target.
-    const ONLY_BUILD: bool = false;
-
     /// Primary function to execute this rule. Can call `builder.ensure(...)`
     /// with other steps to run those.
     fn run(self, builder: &Builder) -> Self::Output;
@@ -101,8 +95,6 @@ pub struct RunConfig<'a> {
 struct StepDescription {
     default: bool,
     only_hosts: bool,
-    only_build_targets: bool,
-    only_build: bool,
     should_run: fn(ShouldRun) -> ShouldRun,
     make_run: fn(RunConfig),
     name: &'static str,
@@ -138,8 +130,6 @@ impl StepDescription {
         StepDescription {
             default: S::DEFAULT,
             only_hosts: S::ONLY_HOSTS,
-            only_build_targets: S::ONLY_BUILD_TARGETS,
-            only_build: S::ONLY_BUILD,
             should_run: S::should_run,
             make_run: S::make_run,
             name: unsafe { ::std::intrinsics::type_name::<S>() },
@@ -155,18 +145,12 @@ impl StepDescription {
                 self.name, builder.config.exclude);
         }
         let build = builder.build;
-        let hosts = if self.only_build_targets || self.only_build {
-            build.build_triple()
-        } else {
-            &build.hosts
-        };
+        let hosts = &build.hosts;
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            if build.config.run_host_only {
-                &[]
-            } else if self.only_build {
-                build.build_triple()
+            if !build.config.run_host_only {
+                return; // don't run anything
             } else {
                 &build.hosts
             }
@@ -325,8 +309,8 @@ impl<'a> Builder<'a> {
                 test::CompileFailFullDeps, test::IncrementalFullDeps, test::Rustdoc, test::Pretty,
                 test::RunPassPretty, test::RunFailPretty, test::RunPassValgrindPretty,
                 test::RunPassFullDepsPretty, test::RunFailFullDepsPretty, test::RunMake,
-                test::Crate, test::CrateLibrustc, test::Rustdoc, test::Linkcheck, test::Cargotest,
-                test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
+                test::Crate, test::CrateLibrustc, test::CrateRustdoc, test::Linkcheck,
+                test::Cargotest, test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
                 test::Nomicon, test::Reference, test::RustdocBook, test::RustByExample,
                 test::TheBook, test::UnstableBook,
                 test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme),
@@ -775,9 +759,11 @@ impl<'a> Builder<'a> {
         // be resolved because MinGW has the import library. The downside is we
         // don't get newer functions from Windows, but we don't use any of them
         // anyway.
-        cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
+        if mode != Mode::Tool {
+            cargo.env("WINAPI_NO_BUNDLED_LIBRARIES", "1");
+        }
 
-        if self.is_very_verbose() {
+        for _ in 1..self.verbosity {
             cargo.arg("-v");
         }
 
@@ -791,17 +777,6 @@ impl<'a> Builder<'a> {
             // FIXME: cargo bench does not accept `--release`
             if cmd != "bench" {
                 cargo.arg("--release");
-            }
-
-            if self.config.rust_codegen_units.is_none() &&
-               self.build.is_rust_llvm(compiler.host) &&
-               self.config.rust_thinlto {
-                cargo.env("RUSTC_THINLTO", "1");
-            } else if self.config.rust_codegen_units.is_none() {
-                // Generally, if ThinLTO has been disabled for some reason, we
-                // want to set the codegen units to 1. However, we shouldn't do
-                // this if the option was specifically set by the user.
-                cargo.env("RUSTC_CODEGEN_UNITS", "1");
             }
         }
 

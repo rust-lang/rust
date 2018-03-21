@@ -88,7 +88,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
         closure_did, substs);
 
     let sig = substs.closure_sig(closure_did, tcx);
-    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
     let substs = tcx.mk_substs([
         Kind::from(self_ty),
@@ -154,7 +154,7 @@ pub fn resolve_drop_in_place<'a, 'tcx>(
 {
     let def_id = tcx.require_lang_item(DropInPlaceFnLangItem);
     let substs = tcx.intern_substs(&[ty.into()]);
-    Instance::resolve(tcx, ty::ParamEnv::empty(traits::Reveal::All), def_id, substs).unwrap()
+    Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap()
 }
 
 pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -168,7 +168,7 @@ pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         substs: tcx.mk_substs_trait(source_ty, &[target_ty])
     });
 
-    match tcx.trans_fulfill_obligation( (ty::ParamEnv::empty(traits::Reveal::All), trait_ref)) {
+    match tcx.trans_fulfill_obligation( (ty::ParamEnv::reveal_all(), trait_ref)) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
             tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }

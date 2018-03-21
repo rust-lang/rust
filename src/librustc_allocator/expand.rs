@@ -99,7 +99,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             f.cx.item_extern_crate(f.span, f.alloc),
             f.cx.item_use_simple(
                 f.span,
-                respan(f.span.empty(), VisibilityKind::Inherited),
+                respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
                 super_path,
             ),
         ];

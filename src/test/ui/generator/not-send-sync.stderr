@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `std::cell::Cell<i32>: std::marker::Sync` is not satisfied
+error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:26:5
    |
 LL |     assert_send(|| {
@@ -13,7 +13,7 @@ note: required by `main::assert_send`
 LL |     fn assert_send<T: Send>(_: T) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `std::cell::Cell<i32>: std::marker::Sync` is not satisfied in `[generator@$DIR/not-send-sync.rs:19:17: 23:6 {std::cell::Cell<i32>, ()}]`
+error[E0277]: `std::cell::Cell<i32>` cannot be shared between threads safely
   --> $DIR/not-send-sync.rs:19:5
    |
 LL |     assert_sync(|| {
@@ -30,4 +30,4 @@ LL |     fn assert_sync<T: Sync>(_: T) {}
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0277"
+For more information about this error, try `rustc --explain E0277`.

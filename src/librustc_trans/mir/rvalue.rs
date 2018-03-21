@@ -399,7 +399,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                                              lhs.immediate(), rhs.immediate(),
                                                              lhs.layout.ty);
                 let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = bx.tcx().intern_tup(&[val_ty, bx.tcx().types.bool], false);
+                let operand_ty = bx.tcx().intern_tup(&[val_ty, bx.tcx().types.bool]);
                 let operand = OperandRef {
                     val: result,
                     layout: bx.cx.layout_of(operand_ty)

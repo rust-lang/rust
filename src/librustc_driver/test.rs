@@ -18,7 +18,7 @@ use rustc_lint;
 use rustc_resolve::MakeGlobMap;
 use rustc::middle::region;
 use rustc::ty::subst::Subst;
-use rustc::traits::{ObligationCause, Reveal};
+use rustc::traits::ObligationCause;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::maps::OnDiskCache;
 use rustc::infer::{self, InferOk, InferResult};
@@ -29,6 +29,7 @@ use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
 use rustc_data_structures::sync::Lrc;
+use syntax;
 use syntax::ast;
 use syntax::abi::Abi;
 use syntax::codemap::{CodeMap, FilePathMapping, FileName};
@@ -93,8 +94,18 @@ fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
 }
 
 fn test_env<F>(source_string: &str,
-               (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+               args: (Box<Emitter + Send>, usize),
                body: F)
+    where F: FnOnce(Env)
+{
+    syntax::with_globals(|| {
+        test_env_impl(source_string, args, body)
+    });
+}
+
+fn test_env_impl<F>(source_string: &str,
+                    (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+                    body: F)
     where F: FnOnce(Env)
 {
     let mut options = config::basic_options();
@@ -153,7 +164,7 @@ fn test_env<F>(source_string: &str,
                              |tcx| {
         tcx.infer_ctxt().enter(|infcx| {
             let mut region_scope_tree = region::ScopeTree::default();
-            let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+            let param_env = ty::ParamEnv::empty();
             body(Env {
                 infcx: &infcx,
                 region_scope_tree: &mut region_scope_tree,
@@ -287,7 +298,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_pair(&self, ty1: Ty<'tcx>, ty2: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.intern_tup(&[ty1, ty2], false)
+        self.infcx.tcx.intern_tup(&[ty1, ty2])
     }
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
@@ -593,8 +604,8 @@ fn walk_ty() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let usize_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty]);
         let walked: Vec<_> = tup2_ty.walk().collect();
         assert_eq!(walked,
                    [tup2_ty, tup1_ty, int_ty, usize_ty, int_ty, usize_ty, tup1_ty, int_ty,
@@ -608,8 +619,8 @@ fn walk_ty_skip_subtree() {
         let tcx = env.infcx.tcx;
         let int_ty = tcx.types.isize;
         let usize_ty = tcx.types.usize;
-        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty], false);
-        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty], false);
+        let tup1_ty = tcx.intern_tup(&[int_ty, usize_ty, int_ty, usize_ty]);
+        let tup2_ty = tcx.intern_tup(&[tup1_ty, tup1_ty, usize_ty]);
 
         // types we expect to see (in order), plus a boolean saying
         // whether to skip the subtree.

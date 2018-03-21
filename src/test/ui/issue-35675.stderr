@@ -65,5 +65,5 @@ LL | fn qux() -> Some {
 
 error: aborting due to 7 previous errors
 
-You've got a few errors: E0412, E0425, E0573
-If you want more information on an error, try using "rustc --explain E0412"
+Some errors occurred: E0412, E0425, E0573.
+For more information about an error, try `rustc --explain E0412`.

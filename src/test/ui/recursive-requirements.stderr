@@ -12,4 +12,4 @@ LL |     let _: AssertSync<Foo> = unimplemented!(); //~ ERROR E0275
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0275"
+For more information about this error, try `rustc --explain E0275`.

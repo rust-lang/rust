@@ -19,7 +19,7 @@ use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
-use rustc::util::common::time;
+use rustc::util::common::time_ext;
 use time_graph::Timeline;
 use {ModuleTranslation, ModuleLlvm, ModuleKind, ModuleSource};
 
@@ -172,7 +172,7 @@ pub(crate) fn run(cgcx: &CodegenContext,
                 info!("adding bytecode {}", name);
                 let bc_encoded = data.data();
 
-                let (bc, id) = time(cgcx.time_passes, &format!("decode {}", name), || {
+                let (bc, id) = time_ext(cgcx.time_passes, None, &format!("decode {}", name), || {
                     match DecodedBytecode::new(bc_encoded) {
                         Ok(b) => Ok((b.bytecode(), b.identifier().to_string())),
                         Err(e) => Err(diag_handler.fatal(&e)),
@@ -253,7 +253,7 @@ fn fat_lto(cgcx: &CodegenContext,
     let mut linker = Linker::new(llmod);
     for (bc_decoded, name) in serialized_modules {
         info!("linking {:?}", name);
-        time(cgcx.time_passes, &format!("ll link {:?}", name), || {
+        time_ext(cgcx.time_passes, None, &format!("ll link {:?}", name), || {
             let data = bc_decoded.data();
             linker.add(&data).map_err(|()| {
                 let msg = format!("failed to load bc of {:?}", name);
@@ -498,7 +498,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
         assert!(!pass.is_null());
         llvm::LLVMRustAddPass(pm, pass);
 
-        time(cgcx.time_passes, "LTO passes", ||
+        time_ext(cgcx.time_passes, None, "LTO passes", ||
              llvm::LLVMRunPassManager(pm, llmod));
 
         llvm::LLVMDisposePassManager(pm);

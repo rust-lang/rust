@@ -13,6 +13,7 @@ use dep_graph::{DepGraph, DepKind, DepNodeIndex};
 use hir::def_id::{LOCAL_CRATE, CrateNum};
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::svh::Svh;
+use ich::Fingerprint;
 use middle::cstore::CrateStore;
 use session::CrateDisambiguator;
 use std::iter::repeat;
@@ -121,21 +122,24 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
         collector
     }
 
-    pub(super) fn finalize_and_compute_crate_hash(self,
+    pub(super) fn finalize_and_compute_crate_hash(mut self,
                                                   crate_disambiguator: CrateDisambiguator,
                                                   cstore: &dyn CrateStore,
                                                   codemap: &CodeMap,
                                                   commandline_args_hash: u64)
                                                   -> (Vec<MapEntry<'hir>>, Svh) {
-        let mut node_hashes: Vec<_> = self
+        self
+            .hir_body_nodes
+            .sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
+
+        let node_hashes = self
             .hir_body_nodes
             .iter()
-            .map(|&(def_path_hash, dep_node_index)| {
-                (def_path_hash, self.dep_graph.fingerprint_of(dep_node_index))
-            })
-            .collect();
-
-        node_hashes.sort_unstable_by(|&(ref d1, _), &(ref d2, _)| d1.cmp(d2));
+            .fold(Fingerprint::ZERO, |fingerprint , &(def_path_hash, dep_node_index)| {
+                fingerprint.combine(
+                    def_path_hash.0.combine(self.dep_graph.fingerprint_of(dep_node_index))
+                )
+            });
 
         let mut upstream_crates: Vec<_> = cstore.crates_untracked().iter().map(|&cnum| {
             let name = cstore.crate_name_untracked(cnum).as_str();

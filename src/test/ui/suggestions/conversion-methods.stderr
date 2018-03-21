@@ -48,4 +48,4 @@ LL |     let _prove_piercing_earnest: Vec<usize> = &[1, 2, 3]; //~ ERROR mismatc
 
 error: aborting due to 4 previous errors
 
-If you want more information on this error, try using "rustc --explain E0308"
+For more information about this error, try `rustc --explain E0308`.

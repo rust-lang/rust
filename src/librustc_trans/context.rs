@@ -14,7 +14,6 @@ use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::DepGraphSafe;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::traits;
 use debuginfo;
 use callee;
 use base;
@@ -435,7 +434,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 
     pub fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
         use syntax_pos::DUMMY_SP;
-        if ty.is_sized(self.tcx.at(DUMMY_SP), ty::ParamEnv::empty(traits::Reveal::All)) {
+        if ty.is_sized(self.tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all()) {
             return false;
         }
 
@@ -464,7 +463,7 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for &'a CodegenCx<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        self.tcx.layout_of(ty::ParamEnv::empty(traits::Reveal::All).and(ty))
+        self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
             .unwrap_or_else(|e| match e {
                 LayoutError::SizeOverflow(_) => self.sess().fatal(&e.to_string()),
                 _ => bug!("failed to get layout for `{}`: {}", ty, e)

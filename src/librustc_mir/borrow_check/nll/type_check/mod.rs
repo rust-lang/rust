@@ -20,7 +20,8 @@ use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, FulfillmentContext};
+use rustc::traits::{self, Normalized, FulfillmentContext};
+use rustc::traits::query::NoSolution;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
@@ -243,8 +244,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     fn sanitize_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
         debug!(
             "sanitize_constant(constant={:?}, location={:?})",
-            constant,
-            location
+            constant, location
         );
 
         let expected_ty = match constant.literal {
@@ -542,7 +542,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }),
                     };
                 }
-                ty::TyTuple(tys, _) => {
+                ty::TyTuple(tys) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
@@ -678,8 +678,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let data = self.infcx.take_and_reset_region_constraints();
         if !data.is_empty() {
-            debug!("fully_perform_op: constraints generated at {:?} are {:#?}",
-                   locations, data);
+            debug!(
+                "fully_perform_op: constraints generated at {:?} are {:#?}",
+                locations, data
+            );
             self.constraints
                 .outlives_sets
                 .push(OutlivesSet { locations, data });
@@ -1137,12 +1139,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             TerminatorKind::FalseUnwind {
                 real_target,
-                unwind
+                unwind,
             } => {
                 self.assert_iscleanup(mir, block_data, real_target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {
-                        span_mirbug!(self, block_data, "cleanup in cleanup block via false unwind");
+                        span_mirbug!(
+                            self,
+                            block_data,
+                            "cleanup in cleanup block via false unwind"
+                        );
                     }
                     self.assert_iscleanup(mir, block_data, unwind, true);
                 }
@@ -1435,8 +1441,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         debug!(
             "prove_aggregate_predicates(aggregate_kind={:?}, location={:?})",
-            aggregate_kind,
-            location
+            aggregate_kind, location
         );
 
         let instantiated_predicates = match aggregate_kind {
@@ -1502,8 +1507,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn prove_predicates(&mut self, predicates: &[ty::Predicate<'tcx>], location: Location) {
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates,
-            location
+            predicates, location
         );
         self.fully_perform_op(location.at_self(), |this| {
             let cause = this.misc(this.last_span);
@@ -1550,10 +1554,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
         self.fully_perform_op(location.at_self(), |this| {
-            let mut selcx = traits::SelectionContext::new(this.infcx);
-            let cause = this.misc(this.last_span);
-            let traits::Normalized { value, obligations } =
-                traits::normalize(&mut selcx, this.param_env, cause, value);
+            let Normalized { value, obligations } = this.infcx
+                .at(&this.misc(this.last_span), this.param_env)
+                .normalize(value)
+                .unwrap_or_else(|NoSolution| {
+                    span_bug!(
+                        this.last_span,
+                        "normalization of `{:?}` failed at {:?}",
+                        value,
+                        location,
+                    );
+                });
             Ok(InferOk { value, obligations })
         }).unwrap()
     }

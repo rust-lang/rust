@@ -267,11 +267,10 @@
 #![feature(fn_traits)]
 #![feature(fnbox)]
 #![feature(generic_param_attrs)]
-#![feature(hashmap_hasher)]
+#![feature(hashmap_internals)]
 #![feature(heap_api)]
 #![feature(i128)]
 #![feature(i128_type)]
-#![feature(inclusive_range)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -282,7 +281,7 @@
 #![feature(macro_reexport)]
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
-#![feature(never_type)]
+#![feature(exhaustive_patterns)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
@@ -299,7 +298,6 @@
 #![feature(raw)]
 #![feature(rustc_attrs)]
 #![feature(stdsimd)]
-#![feature(sip_hash_13)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
@@ -314,6 +312,7 @@
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
 #![feature(try_from)]
+#![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(untagged_unions)]
@@ -324,6 +323,7 @@
 #![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
+#![cfg_attr(stage0, feature(never_type))]
 
 #![default_lib_allocator]
 
@@ -354,8 +354,9 @@ use prelude::v1::*;
 // We want to re-export a few macros from core but libcore has already been
 // imported by the compiler (via our #[no_std] attribute) In this case we just
 // add a new crate name so we can attach the re-exports to it.
-#[macro_reexport(assert, assert_eq, assert_ne, debug_assert, debug_assert_eq,
+#[macro_reexport(assert_eq, assert_ne, debug_assert, debug_assert_eq,
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
+#[cfg_attr(stage0, macro_reexport(assert))]
 extern crate core as __core;
 
 #[macro_use]

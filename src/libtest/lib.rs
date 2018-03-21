@@ -1294,6 +1294,12 @@ fn get_concurrency() -> usize {
         // FIXME: implement
         1
     }
+
+    #[cfg(target_os = "l4re")]
+    fn num_cpus() -> usize {
+        // FIXME: implement
+        1
+    }
 }
 
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {

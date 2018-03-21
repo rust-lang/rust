@@ -92,6 +92,7 @@ const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw
                                                  "bmi1", "bmi2", "fma", "fxsr",
                                                  "lzcnt", "mmx", "pclmulqdq",
                                                  "popcnt", "rdrand", "rdseed",
+                                                 "sha",
                                                  "sse", "sse2", "sse3", "sse4.1",
                                                  "sse4.2", "sse4a", "ssse3",
                                                  "tbm", "xsave", "xsavec",
@@ -104,7 +105,7 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
                                                      "power8-vector", "power9-vector",
                                                      "vsx"];
 
-const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
+const MIPS_WHITELIST: &'static [&'static str] = &["fp64", "msa"];
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
     let arch = if sess.target.target.arch == "x86_64" {

@@ -218,8 +218,6 @@ An inclusive range was used with no end.
 Erroneous code example:
 
 ```compile_fail,E0586
-#![feature(inclusive_range_syntax)]
-
 fn main() {
     let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
     let x = &tmp[1..=]; // error: inclusive range was used with no end
@@ -239,8 +237,6 @@ fn main() {
 Or put an end to your inclusive range:
 
 ```
-#![feature(inclusive_range_syntax)]
-
 fn main() {
     let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
     let x = &tmp[1..=3]; // ok!

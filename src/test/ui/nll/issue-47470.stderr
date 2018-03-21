@@ -1,0 +1,17 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/issue-47470.rs:27:9
+   |
+LL |         &local //~ ERROR `local` does not live long enough
+   |         ^^^^^^ borrowed value does not live long enough
+LL |     }
+   |     - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the impl at 23:1...
+  --> $DIR/issue-47470.rs:23:1
+   |
+LL | impl<'a> Bar for Foo<'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

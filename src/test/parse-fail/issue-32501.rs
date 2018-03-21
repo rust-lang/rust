@@ -16,7 +16,5 @@ fn main() {
     let _ = 0;
     let mut b = 0;
     let mut _b = 0;
-    let mut _ = 0; //~ ERROR expected identifier, found `_`
-    //~^ NOTE `_` is a wildcard pattern, not an identifier
-    //~| NOTE expected identifier
+    let mut _ = 0; //~ ERROR expected identifier, found reserved identifier `_`
 }

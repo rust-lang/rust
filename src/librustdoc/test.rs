@@ -35,6 +35,7 @@ use rustc_resolve::MakeGlobMap;
 use syntax::ast;
 use syntax::codemap::CodeMap;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::with_globals;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use errors;
 use errors::emitter::ColorConfig;
@@ -518,7 +519,7 @@ impl Collector {
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {
-                    rustc_driver::in_rustc_thread(move || {
+                    rustc_driver::in_rustc_thread(move || with_globals(move || {
                         io::set_panic(panic);
                         io::set_print(print);
                         run_test(&test,
@@ -536,7 +537,7 @@ impl Collector {
                                  &opts,
                                  maybe_sysroot,
                                  linker)
-                    })
+                    }))
                 } {
                     Ok(()) => (),
                     Err(err) => panic::resume_unwind(err),

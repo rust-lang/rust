@@ -350,6 +350,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         mem::replace(data, RegionConstraintData::default())
     }
 
+    pub fn data(&self) -> &RegionConstraintData<'tcx> {
+        &self.data
+    }
+
     fn in_snapshot(&self) -> bool {
         !self.undo_log.is_empty()
     }
@@ -464,8 +468,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// the APIs in `higher_ranked/mod.rs`, such as
     /// `skolemize_late_bound_regions` and `plug_leaks`, which will
     /// guide you on this path (ensure that the `SkolemizationMap` is
-    /// consumed and you are good).  There are also somewhat extensive
-    /// comments in `higher_ranked/README.md`.
+    /// consumed and you are good). For more info on how skolemization
+    /// for HRTBs works, see the [rustc guide].
+    ///
+    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
     ///
     /// The `snapshot` argument to this function is not really used;
     /// it's just there to make it explicit which snapshot bounds the

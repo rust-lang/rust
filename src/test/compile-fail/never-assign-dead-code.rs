@@ -10,7 +10,7 @@
 
 // Test that an assignment of type ! makes the rest of the block dead code.
 
-#![feature(never_type, rustc_attrs)]
+#![feature(rustc_attrs)]
 #![warn(unused)]
 
 #[rustc_error]

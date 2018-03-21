@@ -10,31 +10,27 @@ all:  \
 
 smoke:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) linker.rs -O
 	$(RUSTC) reproducible-build-aux.rs
-	$(RUSTC) reproducible-build.rs -o"$(TMPDIR)/reproducible-build1"
-	$(RUSTC) reproducible-build.rs -o"$(TMPDIR)/reproducible-build2"
-	$(B2)
-	nm "$(TMPDIR)/reproducible-build1" | sort > "$(TMPDIR)/reproducible-build1.nm"
-	nm "$(TMPDIR)/reproducible-build2" | sort > "$(TMPDIR)/reproducible-build2.nm"
-	cmp "$(TMPDIR)/reproducible-build1.nm" "$(TMPDIR)/reproducible-build2.nm" || exit 1
+	$(RUSTC) reproducible-build.rs -C linker=$(call RUN_BINFILE,linker)
+	$(RUSTC) reproducible-build.rs -C linker=$(call RUN_BINFILE,linker)
+	diff -u "$(TMPDIR)/linker-arguments1" "$(TMPDIR)/linker-arguments2"
 
 debug:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) linker.rs -O
 	$(RUSTC) reproducible-build-aux.rs -g
-	$(RUSTC) reproducible-build.rs -o"$(TMPDIR)/reproducible-build1" -g
-	$(RUSTC) reproducible-build.rs -o"$(TMPDIR)/reproducible-build2" -g
-	nm "$(TMPDIR)/reproducible-build1" | sort > "$(TMPDIR)/reproducible-build1-debug.nm"
-	nm "$(TMPDIR)/reproducible-build2" | sort > "$(TMPDIR)/reproducible-build2-debug.nm"
-	cmp "$(TMPDIR)/reproducible-build1-debug.nm" "$(TMPDIR)/reproducible-build2-debug.nm" || exit 1
+	$(RUSTC) reproducible-build.rs -C linker=$(call RUN_BINFILE,linker) -g
+	$(RUSTC) reproducible-build.rs -C linker=$(call RUN_BINFILE,linker) -g
+	diff -u "$(TMPDIR)/linker-arguments1" "$(TMPDIR)/linker-arguments2"
 
 opt:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)
+	$(RUSTC) linker.rs -O
 	$(RUSTC) reproducible-build-aux.rs -O
-	$(RUSTC) reproducible-build.rs -o"$(TMPDIR)/reproducible-build1" -O
-	$(RUSTC) reproducible-build.rs -o"$(TMPDIR)/reproducible-build2" -O
-	nm "$(TMPDIR)/reproducible-build1" | sort > "$(TMPDIR)/reproducible-build1-opt.nm"
-	nm "$(TMPDIR)/reproducible-build2" | sort > "$(TMPDIR)/reproducible-build2-opt.nm"
-	cmp "$(TMPDIR)/reproducible-build1-opt.nm" "$(TMPDIR)/reproducible-build2-opt.nm" || exit 1
+	$(RUSTC) reproducible-build.rs -C linker=$(call RUN_BINFILE,linker) -O
+	$(RUSTC) reproducible-build.rs -C linker=$(call RUN_BINFILE,linker) -O
+	diff -u "$(TMPDIR)/linker-arguments1" "$(TMPDIR)/linker-arguments2"
 
 link_paths:
 	rm -rf $(TMPDIR) && mkdir $(TMPDIR)

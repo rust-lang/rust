@@ -16,10 +16,10 @@ use hir::map::{DefPathData, Node};
 use hir;
 use ich::NodeIdHashingMode;
 use middle::const_val::ConstVal;
-use traits::{self, Reveal};
+use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::fold::TypeVisitor;
-use ty::subst::{Subst, UnpackedKind};
+use ty::subst::UnpackedKind;
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
 use ty::layout::Integer;
@@ -182,30 +182,6 @@ pub enum Representability {
 }
 
 impl<'tcx> ty::ParamEnv<'tcx> {
-    /// Construct a trait environment suitable for contexts where
-    /// there are no where clauses in scope.
-    pub fn empty(reveal: Reveal) -> Self {
-        Self::new(ty::Slice::empty(), reveal, ty::UniverseIndex::ROOT)
-    }
-
-    /// Construct a trait environment with the given set of predicates.
-    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
-               reveal: Reveal,
-               universe: ty::UniverseIndex)
-               -> Self {
-        ty::ParamEnv { caller_bounds, reveal, universe }
-    }
-
-    /// Returns a new parameter environment with the same clauses, but
-    /// which "reveals" the true results of projections in all cases
-    /// (even for associated types that are specializable).  This is
-    /// the desired behavior during trans and certain other special
-    /// contexts; normally though we want to use `Reveal::UserFacing`,
-    /// which is the default.
-    pub fn reveal_all(self) -> Self {
-        ty::ParamEnv { reveal: Reveal::All, ..self }
-    }
-
     pub fn can_type_implement_copy<'a>(self,
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        self_type: Ty<'tcx>, span: Span)
@@ -293,7 +269,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // Don't use `non_enum_variant`, this may be a univariant enum.
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
-            (&TyTuple(ref v, _), None) => v.get(i).cloned(),
+            (&TyTuple(ref v), None) => v.get(i).cloned(),
             _ => None,
         }
     }
@@ -331,7 +307,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                ty::TyTuple(tys, _) => {
+                ty::TyTuple(tys) => {
                     if let Some((&last_ty, _)) = tys.split_last() {
                         ty = last_ty;
                     } else {
@@ -368,7 +344,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         break;
                     }
                 },
-                (&TyTuple(a_tys, _), &TyTuple(b_tys, _))
+                (&TyTuple(a_tys), &TyTuple(b_tys))
                         if a_tys.len() == b_tys.len() => {
                     if let Some(a_last) = a_tys.last() {
                         a = a_last;
@@ -561,99 +537,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         result
     }
 
-    /// Return a set of constraints that needs to be satisfied in
-    /// order for `ty` to be valid for destruction.
-    pub fn dtorck_constraint_for_ty(self,
-                                    span: Span,
-                                    for_ty: Ty<'tcx>,
-                                    depth: usize,
-                                    ty: Ty<'tcx>)
-                                    -> Result<ty::DtorckConstraint<'tcx>, ErrorReported>
-    {
-        debug!("dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})",
-               span, for_ty, depth, ty);
-
-        if depth >= self.sess.recursion_limit.get() {
-            let mut err = struct_span_err!(
-                self.sess, span, E0320,
-                "overflow while adding drop-check rules for {}", for_ty);
-            err.note(&format!("overflowed on {}", ty));
-            err.emit();
-            return Err(ErrorReported);
-        }
-
-        let result = match ty.sty {
-            ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
-            ty::TyFloat(_) | ty::TyStr | ty::TyNever | ty::TyForeign(..) |
-            ty::TyRawPtr(..) | ty::TyRef(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) |
-            ty::TyGeneratorWitness(..) => {
-                // these types never have a destructor
-                Ok(ty::DtorckConstraint::empty())
-            }
-
-            ty::TyArray(ety, _) | ty::TySlice(ety) => {
-                // single-element containers, behave like their element
-                self.dtorck_constraint_for_ty(span, for_ty, depth+1, ety)
-            }
-
-            ty::TyTuple(tys, _) => {
-                tys.iter().map(|ty| {
-                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
-                }).collect()
-            }
-
-            ty::TyClosure(def_id, substs) => {
-                substs.upvar_tys(def_id, self).map(|ty| {
-                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
-                }).collect()
-            }
-
-            ty::TyGenerator(def_id, substs, _) => {
-                // Note that the interior types are ignored here.
-                // Any type reachable inside the interior must also be reachable
-                // through the upvars.
-                substs.upvar_tys(def_id, self).map(|ty| {
-                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
-                }).collect()
-            }
-
-            ty::TyAdt(def, substs) => {
-                let ty::DtorckConstraint {
-                    dtorck_types, outlives
-                } = self.at(span).adt_dtorck_constraint(def.did);
-                Ok(ty::DtorckConstraint {
-                    // FIXME: we can try to recursively `dtorck_constraint_on_ty`
-                    // there, but that needs some way to handle cycles.
-                    dtorck_types: dtorck_types.subst(self, substs),
-                    outlives: outlives.subst(self, substs)
-                })
-            }
-
-            // Objects must be alive in order for their destructor
-            // to be called.
-            ty::TyDynamic(..) => Ok(ty::DtorckConstraint {
-                outlives: vec![ty.into()],
-                dtorck_types: vec![],
-            }),
-
-            // Types that can't be resolved. Pass them forward.
-            ty::TyProjection(..) | ty::TyAnon(..) | ty::TyParam(..) => {
-                Ok(ty::DtorckConstraint {
-                    outlives: vec![],
-                    dtorck_types: vec![ty],
-                })
-            }
-
-            ty::TyInfer(..) | ty::TyError => {
-                self.sess.delay_span_bug(span, "unresolved type in dtorck");
-                Err(ErrorReported)
-            }
-        };
-
-        debug!("dtorck_constraint_for_ty({:?}) = {:?}", ty, result);
-        result
-    }
-
     pub fn is_closure(self, def_id: DefId) -> bool {
         self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
     }
@@ -826,9 +709,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyGeneratorWitness(tys) => {
                 self.hash(tys.skip_binder().len());
             }
-            TyTuple(tys, defaulted) => {
+            TyTuple(tys) => {
                 self.hash(tys.len());
-                self.hash(defaulted);
             }
             TyParam(p) => {
                 self.hash(p.idx);
@@ -857,6 +739,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             ty::ReStatic |
             ty::ReEmpty => {
                 // No variant fields to hash for these ...
+            }
+            ty::ReCanonical(c) => {
+                self.hash(c);
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
                 self.hash(db.depth);
@@ -952,7 +837,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             -> Representability
         {
             match ty.sty {
-                TyTuple(ref ts, _) => {
+                TyTuple(ref ts) => {
                     // Find non representable
                     fold_repr(ts.iter().map(|ty| {
                         is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
@@ -1220,7 +1105,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // state transformation pass
         ty::TyGenerator(..) => true,
 
-        ty::TyTuple(ref tys, _) => tys.iter().cloned().any(needs_drop),
+        ty::TyTuple(ref tys) => tys.iter().cloned().any(needs_drop),
 
         // unions don't have destructors regardless of the child types
         ty::TyAdt(def, _) if def.is_union() => false,

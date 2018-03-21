@@ -41,7 +41,7 @@ use rustc::ty;
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 
-use syntax::codemap::{dummy_spanned, respan, CodeMap};
+use syntax::codemap::{dummy_spanned, respan, BytePos, CodeMap};
 use syntax::ext::hygiene::{Mark, MarkKind, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
@@ -179,11 +179,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
                                            E0401,
                                            "can't use type parameters from outer function");
             err.span_label(span, "use of type variable from outer function");
+
+            let cm = resolver.session.codemap();
             match outer_def {
                 Def::SelfTy(_, maybe_impl_defid) => {
                     if let Some(impl_span) = maybe_impl_defid.map_or(None,
                             |def_id| resolver.definitions.opt_span(def_id)) {
-                        let cm = resolver.session.codemap();
                         err.span_label(reduce_impl_span_to_impl_keyword(cm, impl_span),
                                     "`Self` type implicitely declared here, on the `impl`");
                     }
@@ -206,12 +207,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             // Try to retrieve the span of the function signature and generate a new message with
             // a local type parameter
             let sugg_msg = "try using a local type parameter instead";
-            if let Some((sugg_span, new_snippet)) = generate_local_type_param_snippet(
-                                                        resolver.session.codemap(), span) {
+            if let Some((sugg_span, new_snippet)) = generate_local_type_param_snippet(cm, span) {
                 // Suggest the modification to the user
                 err.span_suggestion(sugg_span,
                                     sugg_msg,
                                     new_snippet);
+            } else if let Some(sp) = generate_fn_name_span(cm, span) {
+                err.span_label(sp, "try adding a local type parameter in this method instead");
             } else {
                 err.help("try using a local type parameter instead");
             }
@@ -407,6 +409,15 @@ fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
     impl_span
 }
 
+fn generate_fn_name_span(cm: &CodeMap, span: Span) -> Option<Span> {
+    let prev_span = cm.span_extend_to_prev_str(span, "fn", true);
+    cm.span_to_snippet(prev_span).map(|snippet| {
+        let len = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+            .expect("no label after fn");
+        prev_span.with_hi(BytePos(prev_span.lo().0 + len as u32))
+    }).ok()
+}
+
 /// Take the span of a type parameter in a function signature and try to generate a span for the
 /// function name (with generics) and a new snippet for this span with the pointed type parameter as
 /// a new local type parameter.
@@ -428,17 +439,12 @@ fn reduce_impl_span_to_impl_keyword(cm: &CodeMap, impl_span: Span) -> Span {
 fn generate_local_type_param_snippet(cm: &CodeMap, span: Span) -> Option<(Span, String)> {
     // Try to extend the span to the previous "fn" keyword to retrieve the function
     // signature
-    let sugg_span = cm.span_extend_to_prev_str(span, "fn");
+    let sugg_span = cm.span_extend_to_prev_str(span, "fn", false);
     if sugg_span != span {
         if let Ok(snippet) = cm.span_to_snippet(sugg_span) {
-            use syntax::codemap::BytePos;
-
             // Consume the function name
-            let mut offset = 0;
-            for c in snippet.chars().take_while(|c| c.is_ascii_alphanumeric() ||
-                                                    *c == '_') {
-                offset += c.len_utf8();
-            }
+            let mut offset = snippet.find(|c: char| !c.is_alphanumeric() && c != '_')
+                .expect("no label after fn");
 
             // Consume the generics part of the function signature
             let mut bracket_counter = 0;
@@ -750,7 +756,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     // don't suggest placing a use before the prelude
                     // import or other generated ones
                     if item.span.ctxt().outer().expn_info().is_none() {
-                        self.span = Some(item.span.with_hi(item.span.lo()));
+                        self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
                     }
@@ -762,12 +768,12 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
                     if item.span.ctxt().outer().expn_info().is_none() {
                         // don't insert between attributes and an item
                         if item.attrs.is_empty() {
-                            self.span = Some(item.span.with_hi(item.span.lo()));
+                            self.span = Some(item.span.shrink_to_lo());
                         } else {
                             // find the first attribute on the item
                             for attr in &item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
-                                    self.span = Some(attr.span.with_hi(attr.span.lo()));
+                                    self.span = Some(attr.span.shrink_to_lo());
                                 }
                             }
                         }
@@ -2158,8 +2164,9 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::Use(ref use_tree) => {
+                // Imports are resolved as global by default, add starting root segment.
                 let path = Path {
-                    segments: vec![],
+                    segments: use_tree.prefix.make_root().into_iter().collect(),
                     span: use_tree.span,
                 };
                 self.resolve_use_tree(item.id, use_tree, &path);
@@ -2294,7 +2301,6 @@ impl<'a> Resolver<'a> {
                 None,
                 &path,
                 trait_ref.path.span,
-                trait_ref.path.segments.last().unwrap().span,
                 PathSource::Trait(AliasPossibility::No)
             ).base_def();
             if def != Def::Err {
@@ -2725,8 +2731,7 @@ impl<'a> Resolver<'a> {
         let segments = &path.segments.iter()
             .map(|seg| respan(seg.span, seg.identifier))
             .collect::<Vec<_>>();
-        let ident_span = path.segments.last().map_or(path.span, |seg| seg.span);
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, ident_span, source)
+        self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -2734,9 +2739,9 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[SpannedIdent],
                                    span: Span,
-                                   ident_span: Span,
                                    source: PathSource)
                                    -> PathResolution {
+        let ident_span = path.last().map_or(span, |ident| ident.span);
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
         let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
@@ -3084,7 +3089,7 @@ impl<'a> Resolver<'a> {
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                       span, span, PathSource::TraitItem(ns));
+                                                       span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -3935,8 +3940,12 @@ impl<'a> Resolver<'a> {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                let def = self.smart_resolve_path(id, None, path,
-                                                  PathSource::Visibility).base_def();
+                // Visibilities are resolved as global by default, add starting root segment.
+                let segments = path.make_root().iter().chain(path.segments.iter())
+                    .map(|seg| respan(seg.span, seg.identifier))
+                    .collect::<Vec<_>>();
+                let def = self.smart_resolve_path_fragment(id, None, &segments, path.span,
+                                                           PathSource::Visibility).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
                 } else {

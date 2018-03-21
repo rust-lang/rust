@@ -29,6 +29,7 @@ use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
+use std::convert::From;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -62,6 +63,8 @@ mod specialize;
 mod structural_impls;
 pub mod trans;
 mod util;
+
+pub mod query;
 
 // Whether to enable bug compatibility with issue #43355
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -241,6 +244,69 @@ pub struct DerivedObligationCause<'tcx> {
 pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
+
+/// The following types:
+/// * `WhereClauseAtom`
+/// * `DomainGoal`
+/// * `Goal`
+/// * `Clause`
+/// are used for representing the trait system in the form of
+/// logic programming clauses. They are part of the interface
+/// for the chalk SLG solver.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum WhereClauseAtom<'tcx> {
+    Implemented(ty::TraitPredicate<'tcx>),
+    ProjectionEq(ty::ProjectionPredicate<'tcx>),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum DomainGoal<'tcx> {
+    Holds(WhereClauseAtom<'tcx>),
+    WellFormed(WhereClauseAtom<'tcx>),
+    FromEnv(WhereClauseAtom<'tcx>),
+    WellFormedTy(Ty<'tcx>),
+    FromEnvTy(Ty<'tcx>),
+    RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
+    TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum QuantifierKind {
+    Universal,
+    Existential,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Goal<'tcx> {
+    // FIXME: use interned refs instead of `Box`
+    Implies(Vec<Clause<'tcx>>, Box<Goal<'tcx>>),
+    And(Box<Goal<'tcx>>, Box<Goal<'tcx>>),
+    Not(Box<Goal<'tcx>>),
+    DomainGoal(DomainGoal<'tcx>),
+    Quantified(QuantifierKind, Box<ty::Binder<Goal<'tcx>>>)
+}
+
+impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
+    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
+        Goal::DomainGoal(domain_goal)
+    }
+}
+
+impl<'tcx> From<DomainGoal<'tcx>> for Clause<'tcx> {
+    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
+        Clause::DomainGoal(domain_goal)
+    }
+}
+
+/// This matches the definition from Page 7 of "A Proof Procedure for the Logic of Hereditary
+/// Harrop Formulas".
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Clause<'tcx> {
+    // FIXME: again, use interned refs instead of `Box`
+    Implies(Vec<Goal<'tcx>>, DomainGoal<'tcx>),
+    DomainGoal(DomainGoal<'tcx>),
+    ForAll(Box<ty::Binder<Clause<'tcx>>>),
+}
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
@@ -578,7 +644,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ) {
             Ok(predicates) => predicates,
             Err(errors) => {
-                infcx.report_fulfillment_errors(&errors, None);
+                infcx.report_fulfillment_errors(&errors, None, false);
                 // An unnormalized env is better than nothing.
                 return elaborated_env;
             }
@@ -695,7 +761,7 @@ fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            predicates);
 
     let result = tcx.infer_ctxt().enter(|infcx| {
-        let param_env = ty::ParamEnv::empty(Reveal::All);
+        let param_env = ty::ParamEnv::reveal_all();
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();
@@ -768,7 +834,10 @@ fn vtable_methods<'a, 'tcx>(
                 // the trait type may have higher-ranked lifetimes in it;
                 // so erase them if they appear, so that we get the type
                 // at some particular call site
-                let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
+                let substs = tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &ty::Binder(substs),
+                );
 
                 // It's possible that the method relies on where clauses that
                 // do not hold for this particular set of type parameters.

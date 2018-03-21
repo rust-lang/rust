@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     data_ptr.valid_range.start = 1;
                 }
 
-                let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
+                let pointee = tcx.normalize_erasing_regions(param_env, pointee);
                 if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
                     return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                 }
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             // Arrays and slices.
             ty::TyArray(element, mut count) => {
                 if count.has_projections() {
-                    count = tcx.normalize_associated_type_in_env(&count, param_env);
+                    count = tcx.normalize_erasing_regions(param_env, count);
                     if count.has_projections() {
                         return Err(LayoutError::Unknown(ty));
                     }
@@ -1318,7 +1318,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     StructKind::AlwaysSized)?
             }
 
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 let kind = if tys.len() == 0 {
                     StructKind::AlwaysSized
                 } else {
@@ -1686,7 +1686,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             // Types with no meaningful known layout.
             ty::TyProjection(_) | ty::TyAnon(..) => {
-                let normalized = tcx.normalize_associated_type_in_env(&ty, param_env);
+                let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
                 }
@@ -1953,7 +1953,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) => {
-                let normalized = tcx.normalize_associated_type_in_env(&ty, param_env);
+                let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
                 } else {
@@ -2058,8 +2058,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = self.param_env.reveal_all();
-        let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env);
+        let param_env = self.param_env.with_reveal_all();
+        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
         let details = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyLayout {
             ty,
@@ -2084,9 +2084,9 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = self.param_env.reveal_all();
-        let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
-        let details = self.tcx.layout_raw(param_env.reveal_all().and(ty))?;
+        let param_env = self.param_env.with_reveal_all();
+        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
+        let details = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyLayout {
             ty,
             details
@@ -2243,7 +2243,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 substs.field_tys(def_id, tcx).nth(i).unwrap()
             }
 
-            ty::TyTuple(tys, _) => tys[i],
+            ty::TyTuple(tys) => tys[i],
 
             // SIMD vector types.
             ty::TyAdt(def, ..) if def.repr.simd() => {
