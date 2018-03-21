@@ -15,10 +15,11 @@ use syntax::symbol::keywords;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenTree;
 
-pub fn expand_trace_macros(cx: &mut ExtCtxt,
-                           sp: Span,
-                           tt: &[TokenTree])
-                           -> Box<base::MacResult + 'static> {
+pub fn expand_trace_macros<'cx>(
+    cx: &'cx mut ExtCtxt,
+    sp: Span,
+    tt: &[TokenTree]
+) -> Box<base::MacResult + 'cx> {
     if !cx.ecfg.enable_trace_macros() {
         feature_gate::emit_feature_err(&cx.parse_sess,
                                        "trace_macros",

@@ -20,10 +20,10 @@ use syntax::tokenstream;
 use syntax::parse::token;
 use syntax_pos::Span;
 
-pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
+pub fn expand_cfg<'cx>(cx: &'cx mut ExtCtxt,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
-                       -> Box<base::MacResult + 'static> {
+                       -> Box<base::MacResult + 'cx> {
     let sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
     let mut p = cx.new_parser_from_tts(tts);
     let cfg = panictry!(p.parse_meta_item());

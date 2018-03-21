@@ -305,15 +305,16 @@ impl<'a> LintLevelsBuilder<'a> {
                                                     forbidden_lint_name);
             diag_builder.span_label(lint_attr_span, "overruled by previous forbid");
             match forbid_src {
-                LintSource::Default => &mut diag_builder,
+                LintSource::Default => { }
                 LintSource::Node(_, forbid_source_span) => {
                     diag_builder.span_label(forbid_source_span,
-                                            "`forbid` level set here")
+                                            "`forbid` level set here");
                 },
                 LintSource::CommandLine(_) => {
-                    diag_builder.note("`forbid` lint level was set on command line")
+                    diag_builder.note("`forbid` lint level was set on command line");
                 }
-            }.emit();
+            }
+            diag_builder.emit();
             // don't set a separate error for every lint in the group
             break
         }

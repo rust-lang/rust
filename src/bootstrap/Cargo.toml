@@ -33,7 +33,7 @@ build_helper = { path = "../build_helper" }
 cmake = "0.1.23"
 filetime = "0.1"
 num_cpus = "1.0"
-getopts = "0.2"
+getopts = "0.2.17"
 cc = "1.0.1"
 libc = "0.2"
 serde = "1.0.8"

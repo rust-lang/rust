@@ -30,8 +30,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("foo", expand_foo);
 }
 
-fn expand_foo(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
-              -> Box<MacResult+'static> {
+fn expand_foo(cx: &'cx mut ExtCtxt, sp: Span, tts: &[TokenTree])
+              -> Box<MacResult+'cx> {
     let answer = other::the_answer();
     MacEager::expr(quote_expr!(cx, $answer))
 }

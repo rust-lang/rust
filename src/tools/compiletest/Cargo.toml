@@ -7,7 +7,7 @@ version = "0.0.0"
 diff = "0.1.10"
 env_logger = { version = "0.5", default-features = false }
 filetime = "0.1"
-getopts = "0.2"
+getopts = "0.2.17"
 log = "0.4"
 regex = "0.2"
 serde = "1.0"

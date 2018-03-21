@@ -34,8 +34,8 @@ use rustc_plugin::Registry;
 
 use std::cell::RefCell;
 
-fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
-        -> Box<MacResult + 'static> {
+fn expand_mbe_matches<'cx>(cx: &'cx mut ExtCtxt, _: Span, args: &[TokenTree])
+        -> Box<MacResult + 'cx> {
 
     let mbe_matcher = quote_tokens!(cx, $$matched:expr, $$($$pat:pat)|+);
     let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(),
