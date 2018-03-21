@@ -10,8 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-use std::ascii::AsciiExt;
-
 static NAME: &'static str = "hello world";
 
 fn main() {
