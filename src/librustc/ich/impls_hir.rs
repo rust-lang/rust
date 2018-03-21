@@ -203,7 +203,8 @@ impl_stable_hash_for!(struct hir::TyParam {
     default,
     span,
     pure_wrt_drop,
-    synthetic
+    synthetic,
+    attrs
 });
 
 impl_stable_hash_for!(enum hir::GenericParam {
