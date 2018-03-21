@@ -612,12 +612,16 @@ impl<'a> LoweringContext<'a> {
     // This is used to track which lifetimes have already been defined, and
     // which are new in-band lifetimes that need to have a definition created
     // for them.
-    fn with_in_scope_lifetime_defs<T, F>(&mut self, lt_defs: &[LifetimeDef], f: F) -> T
+    fn with_in_scope_lifetime_defs<'l, T, F>(
+        &mut self,
+        lt_defs: impl Iterator<Item = &'l LifetimeDef>,
+        f: F,
+    ) -> T
     where
         F: FnOnce(&mut LoweringContext) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
-        let lt_def_names = lt_defs.iter().map(|lt_def| lt_def.lifetime.ident.name);
+        let lt_def_names = lt_defs.map(|lt_def| lt_def.lifetime.ident.name);
         self.in_scope_lifetimes.extend(lt_def_names);
 
         let res = f(self);
@@ -657,14 +661,13 @@ impl<'a> LoweringContext<'a> {
         F: FnOnce(&mut LoweringContext) -> T,
     {
         let (in_band_defs, (mut lowered_generics, res)) = self.with_in_scope_lifetime_defs(
-            &generics
+            generics
                 .params
                 .iter()
-                .filter_map(|p| match *p {
-                    GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                .filter_map(|p| match p {
+                    GenericParam::Lifetime(ld) => Some(ld),
                     _ => None,
-                })
-                .collect::<Vec<_>>(),
+                }),
             |this| {
                 this.collect_in_band_defs(parent_id, |this| {
                     (this.lower_generics(generics), f(this))
@@ -923,13 +926,12 @@ impl<'a> LoweringContext<'a> {
                 hir::TyRptr(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(
-                &f.generic_params
+                f.generic_params
                     .iter()
-                    .filter_map(|p| match *p {
-                        GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                    .filter_map(|p| match p {
+                        GenericParam::Lifetime(ld) => Some(ld),
                         _ => None,
-                    })
-                    .collect::<Vec<_>>(),
+                    }),
                 |this| {
                     hir::TyBareFn(P(hir::BareFnTy {
                         generic_params: this.lower_generic_params(&f.generic_params, &NodeMap()),
@@ -1874,13 +1876,12 @@ impl<'a> LoweringContext<'a> {
                 span,
             }) => {
                 self.with_in_scope_lifetime_defs(
-                    &bound_generic_params
+                    bound_generic_params
                         .iter()
-                        .filter_map(|p| match *p {
-                            GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                        .filter_map(|p| match p {
+                            GenericParam::Lifetime(ld) => Some(ld),
                             _ => None,
-                        })
-                        .collect::<Vec<_>>(),
+                        }),
                     |this| {
                         hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                             bound_generic_params: this.lower_generic_params(
@@ -2169,14 +2170,13 @@ impl<'a> LoweringContext<'a> {
                     });
 
                 let new_impl_items = self.with_in_scope_lifetime_defs(
-                    &ast_generics
+                    ast_generics
                         .params
                         .iter()
-                        .filter_map(|p| match *p {
-                            GenericParam::Lifetime(ref ld) => Some(ld.clone()),
+                        .filter_map(|p| match p {
+                            GenericParam::Lifetime(ld) => Some(ld),
                             _ => None,
-                        })
-                        .collect::<Vec<_>>(),
+                        }),
                     |this| {
                         impl_items
                             .iter()
