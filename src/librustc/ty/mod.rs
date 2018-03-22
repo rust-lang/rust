@@ -1886,7 +1886,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     ) -> Option<Discr<'tcx>> {
         let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
-        let bit_size = layout::Integer::from_attr(tcx, repr_type).size().bits();
         let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
         let instance = ty::Instance::new(expr_did, substs);
         let cid = GlobalId {
@@ -1896,25 +1895,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match tcx.const_eval(param_env.and(cid)) {
             Ok(&ty::Const {
                 val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                ..
+                ty,
             }) => {
                 trace!("discriminants: {} ({:?})", b, repr_type);
-                let ty = repr_type.to_ty(tcx);
-                if repr_type.is_signed() {
-                    let val = b as i128;
-                    // sign extend to i128
-                    let amt = 128 - bit_size;
-                    let val = (val << amt) >> amt;
-                    Some(Discr {
-                        val: val as u128,
-                        ty,
-                    })
-                } else {
-                    Some(Discr {
-                        val: b,
-                        ty,
-                    })
-                }
+                Some(Discr {
+                    val: b,
+                    ty,
+                })
             },
             Ok(&ty::Const {
                 val: ConstVal::Value(other),
