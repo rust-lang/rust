@@ -321,11 +321,13 @@ impl UseTree {
             }
             UseTreeKind::Simple(ref rename) => {
                 let mut name = (*path_to_imported_ident(&a.prefix).name.as_str()).to_owned();
-                let alias = if &name == &*rename.name.as_str() {
-                    None
-                } else {
-                    Some((&*rename.name.as_str()).to_owned())
-                };
+                let alias = rename.and_then(|ident| {
+                    if ident == path_to_imported_ident(&a.prefix) {
+                        None
+                    } else {
+                        Some(ident.to_string())
+                    }
+                });
 
                 let segment = if &name == "self" {
                     UseSegment::Slf(alias)

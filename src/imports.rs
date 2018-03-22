@@ -29,6 +29,10 @@ pub fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
     path.segments.last().unwrap().identifier
 }
 
+pub fn same_rename(opt_ident: &Option<ast::Ident>, path: &ast::Path) -> bool {
+    opt_ident.map_or(true, |ident| path_to_imported_ident(path) == ident)
+}
+
 fn rewrite_prefix(path: &ast::Path, context: &RewriteContext, shape: Shape) -> Option<String> {
     if path.segments.len() > 1 && path_to_imported_ident(path).to_string() == "self" {
         let path = &ast::Path {
@@ -57,22 +61,16 @@ impl Rewrite for ast::UseTree {
                     Some("*".to_owned())
                 }
             }
-            ast::UseTreeKind::Simple(ident) => {
-                let ident_str = ident.to_string();
-
-                // 4 = " as ".len()
-                let is_same_name_bind = path_to_imported_ident(&self.prefix) == ident;
-                let prefix_shape = if is_same_name_bind {
-                    shape
+            ast::UseTreeKind::Simple(opt_ident) => {
+                if same_rename(&opt_ident, &self.prefix) {
+                    rewrite_prefix(&self.prefix, context, shape)
+                        .or_else(|| Some(context.snippet(self.prefix.span).to_owned()))
                 } else {
-                    shape.sub_width(ident_str.len() + 4)?
-                };
-                let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)
-                    .unwrap_or_else(|| context.snippet(self.prefix.span).to_owned());
-
-                if is_same_name_bind {
-                    Some(path_str)
-                } else {
+                    let ident_str = opt_ident?.to_string();
+                    // 4 = " as ".len()
+                    let prefix_shape = shape.sub_width(ident_str.len() + 4)?;
+                    let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)
+                        .unwrap_or_else(|| context.snippet(self.prefix.span).to_owned());
                     Some(format!("{} as {}", path_str, ident_str))
                 }
             }
@@ -161,8 +159,7 @@ fn rewrite_nested_use_tree_single(
     shape: Shape,
 ) -> Option<String> {
     match tree.kind {
-        ast::UseTreeKind::Simple(rename) => {
-            let ident = path_to_imported_ident(&tree.prefix);
+        ast::UseTreeKind::Simple(opt_rename) => {
             let mut item_str = rewrite_prefix(&tree.prefix, context, shape)?;
             if item_str == "self" {
                 item_str = "".to_owned();
@@ -180,10 +177,10 @@ fn rewrite_nested_use_tree_single(
                 format!("{}::{}", path_str, item_str)
             };
 
-            Some(if ident == rename {
+            Some(if same_rename(&opt_rename, &tree.prefix) {
                 path_item_str
             } else {
-                format!("{} as {}", path_item_str, rename)
+                format!("{} as {}", path_item_str, opt_rename?)
             })
         }
         ast::UseTreeKind::Glob | ast::UseTreeKind::Nested(..) => {
