@@ -4486,6 +4486,11 @@ impl<'a> Parser<'a> {
             // Which is valid in other languages, but not Rust.
             match self.parse_stmt_without_recovery(false) {
                 Ok(Some(stmt)) => {
+                    if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace)) {
+                        // if the next token is an open brace (e.g., `if a b {`), the place-
+                        // inside-a-block suggestion would be more likely wrong than right
+                        return Err(e);
+                    }
                     let mut stmt_span = stmt.span;
                     // expand the span to include the semicolon, if it exists
                     if self.eat(&token::Semi) {
