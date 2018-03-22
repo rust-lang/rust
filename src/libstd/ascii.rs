@@ -52,6 +52,7 @@ pub use core::ascii::{EscapeDefault, escape_default};
 ///
 /// [combining character]: https://en.wikipedia.org/wiki/Combining_character
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
 pub trait AsciiExt {
     /// Container type for copied ASCII characters.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -84,6 +85,7 @@ pub trait AsciiExt {
     /// [`make_ascii_uppercase`]: #tymethod.make_ascii_uppercase
     /// [`str::to_uppercase`]: ../primitive.str.html#method.to_uppercase
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(deprecated)]
     fn to_ascii_uppercase(&self) -> Self::Owned;
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -104,6 +106,7 @@ pub trait AsciiExt {
     /// [`make_ascii_lowercase`]: #tymethod.make_ascii_lowercase
     /// [`str::to_lowercase`]: ../primitive.str.html#method.to_lowercase
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[allow(deprecated)]
     fn to_ascii_lowercase(&self) -> Self::Owned;
 
     /// Checks that two values are an ASCII case-insensitive match.
@@ -162,6 +165,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_alphabetic(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII uppercase character:
@@ -174,6 +178,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_uppercase(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII lowercase character:
@@ -186,6 +191,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_lowercase(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII alphanumeric character:
@@ -199,6 +205,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_alphanumeric(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -211,6 +218,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_digit(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII hexadecimal digit:
@@ -224,6 +232,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_hexdigit(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII punctuation character:
@@ -241,6 +250,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_punctuation(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII graphic character:
@@ -253,6 +263,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_graphic(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII whitespace character:
@@ -282,6 +293,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_whitespace(&self) -> bool { unimplemented!(); }
 
     /// Checks if the value is an ASCII control character:
@@ -294,6 +306,7 @@ pub trait AsciiExt {
     /// This method will be deprecated in favor of the identically-named
     /// inherent methods on `u8`, `char`, `[u8]` and `str`.
     #[unstable(feature = "ascii_ctype", issue = "39658")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use inherent methods instead")]
     fn is_ascii_control(&self) -> bool { unimplemented!(); }
 }
 
@@ -354,6 +367,7 @@ macro_rules! delegating_ascii_ctype_methods {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl AsciiExt for u8 {
     type Owned = u8;
 
@@ -362,6 +376,7 @@ impl AsciiExt for u8 {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl AsciiExt for char {
     type Owned = char;
 
@@ -370,6 +385,7 @@ impl AsciiExt for char {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl AsciiExt for [u8] {
     type Owned = Vec<u8>;
 
@@ -427,6 +443,7 @@ impl AsciiExt for [u8] {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl AsciiExt for str {
     type Owned = String;
 

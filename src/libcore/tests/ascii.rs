@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::char::from_u32;
-use std::ascii::AsciiExt;
 
 #[test]
 fn test_is_ascii() {
@@ -143,8 +142,6 @@ macro_rules! assert_all {
                            stringify!($what), b);
                 }
             }
-            assert!($str.$what());
-            assert!($str.as_bytes().$what());
         )+
     }};
     ($what:ident, $($str:tt),+,) => (assert_all!($what,$($str),+))
