@@ -103,7 +103,7 @@ impl Rewrite for MacroArg {
 
 fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($macro_arg: ident, $parser: ident) => {
+        ($macro_arg:ident, $parser:ident) => {
             let mut cloned_parser = (*parser).clone();
             match cloned_parser.$parser() {
                 Ok(x) => {
