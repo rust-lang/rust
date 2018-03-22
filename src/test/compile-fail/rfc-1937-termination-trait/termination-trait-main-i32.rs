@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn main() -> i32 {
-//~^ ERROR `i32: std::process::Termination` is not satisfied
-//~| NOTE `main` can only return types that implement std::process::Termination, not `i32`
+//~^ ERROR `main` has invalid return type `i32`
+//~| NOTE `main` can only return types that implement std::process::Termination
+//~| HELP consider using `()`, or a `Result`
     0
 }

@@ -585,17 +585,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                          trait_ref.to_predicate(), post_message)
                             }));
 
-                        let explanation = match obligation.cause.code {
-                            ObligationCauseCode::MainFunctionType => {
+                        let explanation =
+                            if obligation.cause.code == ObligationCauseCode::MainFunctionType {
                                 "consider using `()`, or a `Result`".to_owned()
-                            }
-                            _ => {
+                            } else {
                                 format!("{}the trait `{}` is not implemented for `{}`",
-                                         pre_message,
-                                         trait_ref,
-                                         trait_ref.self_ty())
-                            }
-                        };
+                                        pre_message,
+                                        trait_ref,
+                                        trait_ref.self_ty())
+                            };
 
                         if let Some(ref s) = label {
                             // If it has a custom "#[rustc_on_unimplemented]"
