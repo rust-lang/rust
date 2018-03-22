@@ -1544,11 +1544,17 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 let (mut min, mut max) = (i128::max_value(), i128::min_value());
+                let discr_type = def.repr.discr_type();
+                let bits = Integer::from_attr(tcx, discr_type).size().bits();
                 for (i, discr) in def.discriminants(tcx).enumerate() {
                     if variants[i].iter().any(|f| f.abi == Abi::Uninhabited) {
                         continue;
                     }
-                    let x = discr.val as i128;
+                    let mut x = discr.val as i128;
+                    if discr_type.is_signed() {
+                        // sign extend the raw representation to be an i128
+                        x = (x << (128 - bits)) >> (128 - bits);
+                    }
                     if x < min { min = x; }
                     if x > max { max = x; }
                 }
