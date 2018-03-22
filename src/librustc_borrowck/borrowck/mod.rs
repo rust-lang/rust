@@ -120,15 +120,12 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
         used_mut_nodes: RefCell::new(FxHashSet()),
     };
 
-    // Eventually, borrowck will always read the MIR, but at the
-    // moment we do not. So, for now, we always force MIR to be
-    // constructed for a given fn, since this may result in errors
-    // being reported and we want that to happen.
-    //
-    // Note that `mir_validated` is a "stealable" result; the
-    // thief, `optimized_mir()`, forces borrowck, so we know that
-    // is not yet stolen.
-    tcx.mir_validated(owner_def_id).borrow();
+    // Force the MIR-based borrow checker to run; this also forces the
+    // MIR to be built. This may lead to errors being reported,
+    // particularly in NLL mode, where some ordinary region errors are
+    // suppressed. It's important that those errors get reported to
+    // avoid ICEs like #48697.
+    let _ = tcx.mir_borrowck(owner_def_id);
 
     // option dance because you can't capture an uninitialized variable
     // by mut-ref.
