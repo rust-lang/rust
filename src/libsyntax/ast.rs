@@ -72,7 +72,7 @@ pub struct LifetimeDef {
 /// along with a bunch of supporting information.
 ///
 /// E.g. `std::cmp::PartialEq`
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Path {
     pub span: Span,
     /// The segments in the path: the things separated by `::`.
@@ -85,13 +85,6 @@ impl<'a> PartialEq<&'a str> for Path {
         self.segments.len() == 1 && self.segments[0].identifier.name == *string
     }
 }
-
-impl fmt::Debug for Path {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "path({})", pprust::path_to_string(self))
-    }
-}
-
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", pprust::path_to_string(self))
@@ -812,7 +805,7 @@ impl UnOp {
 }
 
 /// A statement
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Stmt {
     pub id: NodeId,
     pub node: StmtKind,
@@ -839,14 +832,7 @@ impl Stmt {
     }
 }
 
-impl fmt::Debug for Stmt {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "stmt({}: {})", self.id.to_string(), pprust::stmt_to_string(self))
-    }
-}
-
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum StmtKind {
     /// A local (let) binding.
     Local(P<Local>),
@@ -929,7 +915,7 @@ pub enum UnsafeSource {
 }
 
 /// An expression
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash,)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Expr {
     pub id: NodeId,
     pub node: ExprKind,
@@ -1042,12 +1028,6 @@ impl Expr {
             ExprKind::Try(..) => ExprPrecedence::Try,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
         }
-    }
-}
-
-impl fmt::Debug for Expr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
     }
 }
 
