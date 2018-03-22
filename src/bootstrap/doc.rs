@@ -690,17 +690,10 @@ impl Step for Rustc {
         builder.ensure(compile::Rustc { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Librustc)
                            .join(target).join("doc");
-
-        // See docs in std above for why we symlink
-        //
-        // This step must happen after other documentation steps. This
-        // invariant ensures that compiler documentation is not included
-        // in the standard documentation tarballs but that all the
-        // documentation from the standard documentation tarballs is included
-        // in the compiler documentation tarball.
-        let my_out = build.crate_doc_out(target);
-        build.clear_if_dirty(&my_out, &rustdoc);
-        t!(symlink_dir_force(&my_out, &out_dir));
+        // We do not symlink to the same shared folder that already contains std library
+        // documentation from previous steps as we do not want to include that.
+        build.clear_if_dirty(&out, &rustdoc);
+        t!(symlink_dir_force(&out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
         compile::rustc_cargo(build, &mut cargo);
@@ -720,7 +713,6 @@ impl Step for Rustc {
         }
 
         build.run(&mut cargo);
-        cp_r(&my_out, &out);
     }
 }
 
