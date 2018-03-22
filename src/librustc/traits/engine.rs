@@ -15,7 +15,7 @@ use hir::def_id::DefId;
 use super::{FulfillmentContext, FulfillmentError};
 use super::{ObligationCause, PendingPredicateObligation, PredicateObligation};
 
-pub trait TraitEngine<'tcx> {
+pub trait TraitEngine<'tcx>: 'tcx {
     fn normalize_projection_type<'a, 'gcx>(
         &mut self,
         infcx: &InferCtxt<'a, 'gcx, 'tcx>,
@@ -52,7 +52,7 @@ pub trait TraitEngine<'tcx> {
     fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>>;
 }
 
-impl<'a, 'gcx, 'tcx> TraitEngine<'tcx> + 'tcx {
+impl<'a, 'gcx, 'tcx> dyn TraitEngine<'tcx> {
     pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
         Box::new(FulfillmentContext::new())
     }
