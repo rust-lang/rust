@@ -372,7 +372,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         };
 
-        let mut fulfill_cx = TraitEngine::new(tcx);
+        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
 
         // Register an obligation for `A: Trait<B>`.
         let cause = traits::ObligationCause::misc(span, impl_node_id);
