@@ -117,10 +117,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
                         unpack!(block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de|(de, source_info)), block, move |this| {
+                            opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
                                 let scope = (init_scope, source_info);
-                                this.in_scope(scope, lint_level, block, move |this| {
-                                    // FIXME #30046                             ^~~~
+                                this.in_scope(scope, lint_level, block, |this| {
                                     this.expr_into_pattern(block, pattern, init)
                                 })
                             }));

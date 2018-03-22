@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+#![feature(rustc_attrs)]
 
-static NAME: &'static str = "hello world";
+#[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
+trait Foo<S, T, U> {
+    fn s(S) -> S;
+    fn t(T) -> T;
+    fn u(U) -> U;
+}
 
 fn main() {
-    match &*NAME.to_ascii_lowercase() {
-        "foo" => {}
-        _ => {}
-    }
+    println!("hello");
 }

@@ -1325,6 +1325,8 @@ impl<'test> TestCx<'test> {
 
         rustdoc
             .arg("-L")
+            .arg(self.config.run_lib_path.to_str().unwrap())
+            .arg("-L")
             .arg(aux_dir)
             .arg("-o")
             .arg(out_dir)
@@ -2358,11 +2360,6 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rmake_test(&self) {
-        // FIXME(#11094): we should fix these tests
-        if self.config.host != self.config.target {
-            return;
-        }
-
         let cwd = env::current_dir().unwrap();
         let src_root = self.config
             .src_base

@@ -10,7 +10,6 @@
 
 // Test that a field can have the same name in different variants
 // of an enum
-// FIXME #27889
 
 pub enum Foo {
     X { foo: u32 },

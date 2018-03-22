@@ -177,7 +177,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 });
             }
             DropStyle::Conditional => {
-                let unwind = self.unwind; // FIXME(#6393)
+                let unwind = self.unwind; // FIXME(#43234)
                 let succ = self.succ;
                 let drop_bb = self.complete_drop(Some(DropFlagMode::Deep), succ, unwind);
                 self.elaborator.patch().patch_terminator(bb, TerminatorKind::Goto {
@@ -268,7 +268,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         // Clear the "master" drop flag at the end. This is needed
         // because the "master" drop protects the ADT's discriminant,
         // which is invalidated after the ADT is dropped.
-        let (succ, unwind) = (self.succ, self.unwind); // FIXME(#6393)
+        let (succ, unwind) = (self.succ, self.unwind); // FIXME(#43234)
         (
             self.drop_flag_reset_block(DropFlagMode::Shallow, succ, unwind),
             unwind.map(|unwind| {
@@ -344,7 +344,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let interior = self.place.clone().deref();
         let interior_path = self.elaborator.deref_subpath(self.path);
 
-        let succ = self.succ; // FIXME(#6393)
+        let succ = self.succ; // FIXME(#43234)
         let unwind = self.unwind;
         let succ = self.box_free_block(ty, succ, unwind);
         let unwind_succ = self.unwind.map(|unwind| {
@@ -717,7 +717,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                            ptr_based)
         });
 
-        let succ = self.succ; // FIXME(#6393)
+        let succ = self.succ; // FIXME(#43234)
         let loop_block = self.drop_loop(
             succ,
             cur,
@@ -798,7 +798,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.open_drop_for_adt(def, substs)
             }
             ty::TyDynamic(..) => {
-                let unwind = self.unwind; // FIXME(#6393)
+                let unwind = self.unwind; // FIXME(#43234)
                 let succ = self.succ;
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
@@ -849,7 +849,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
     fn elaborated_drop_block<'a>(&mut self) -> BasicBlock {
         debug!("elaborated_drop_block({:?})", self);
-        let unwind = self.unwind; // FIXME(#6393)
+        let unwind = self.unwind; // FIXME(#43234)
         let succ = self.succ;
         let blk = self.drop_block(succ, unwind);
         self.elaborate_drop(blk);
@@ -882,7 +882,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             args: vec![Operand::Move(self.place.clone())],
             destination: Some((unit_temp, target)),
             cleanup: None
-        }; // FIXME(#6393)
+        }; // FIXME(#43234)
         let free_block = self.new_block(unwind, call);
 
         let block_start = Location { block: free_block, statement_index: 0 };

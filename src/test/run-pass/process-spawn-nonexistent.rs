@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
+// ignore-cloudabi no processes
+// ignore-emscripten no processes
 
-static NAME: &'static str = "hello world";
+use std::io::ErrorKind;
+use std::process::Command;
 
 fn main() {
-    match &*NAME.to_ascii_lowercase() {
-        "foo" => {}
-        _ => {}
-    }
+    assert_eq!(Command::new("nonexistent")
+                   .spawn()
+                   .unwrap_err()
+                   .kind(),
+               ErrorKind::NotFound);
 }
