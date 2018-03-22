@@ -103,7 +103,7 @@ impl Rewrite for MacroArg {
 
 fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($macro_arg: ident, $parser: ident) => {
+        ($macro_arg:ident, $parser:ident) => {
             let mut cloned_parser = (*parser).clone();
             match cloned_parser.$parser() {
                 Ok(x) => {
@@ -568,7 +568,7 @@ impl MacroArgKind {
 
         match *self {
             MacroArgKind::MetaVariable(ty, ref name) => {
-                Some(format!("${}: {}", name, ty.name.as_str()))
+                Some(format!("${}:{}", name, ty.name.as_str()))
             }
             MacroArgKind::Repeat(ref delim_tok, ref args, ref another, ref tok) => {
                 let (lhs, inner, rhs) = rewrite_delimited_inner(delim_tok, args)?;

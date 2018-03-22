@@ -141,7 +141,7 @@ fn issue_1555() {
 
 fn issue1178() {
     macro_rules! foo {
-        (#[$attr: meta] $name: ident) => {};
+        (#[$attr:meta] $name:ident) => {};
     }
 
     foo!(
@@ -246,7 +246,7 @@ fn __bindgen_test_layout_HandleWithDtor_open0_int_close0_instantiation() {
 
 // #878
 macro_rules! try_opt {
-    ($expr: expr) => {
+    ($expr:expr) => {
         match $expr {
             Some(val) => val,
 
@@ -891,7 +891,7 @@ fn macro_in_pattern_position() {
 
 macro foo() {}
 
-pub macro bar($x: ident + $y: expr;) {
+pub macro bar($x:ident + $y:expr;) {
     fn foo($x: Foo) {
         long_function(
             a_long_argument_to_a_long_function_is_what_this_is(AAAAAAAAAAAAAAAAAAAAAAAAAAAA),
