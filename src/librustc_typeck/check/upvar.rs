@@ -217,7 +217,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .upvar_tys(closure_def_id, self.tcx)
             .zip(final_upvar_tys)
         {
-            self.demand_eqtype(span, final_upvar_ty, upvar_ty);
+            self.demand_suptype(span, upvar_ty, final_upvar_ty);
         }
 
         // If we are also inferred the closure kind here,

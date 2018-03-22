@@ -35,8 +35,9 @@ use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::ty::util::Discr;
+use rustc::util::captures::Captures;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 use syntax::{abi, ast};
 use syntax::ast::MetaItemKind;
@@ -1281,7 +1282,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ast_generics: &'a hir::Generics)
-    -> impl Iterator<Item=&'a hir::LifetimeDef>
+    -> impl Iterator<Item=&'a hir::LifetimeDef> + Captures<'tcx>
 {
     ast_generics
         .lifetimes()

@@ -14,10 +14,10 @@ use infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, PredicateObligation};
-use ty::{self, Ty};
-use ty::fold::{BottomUpFolder, TypeFoldable};
+use ty::{self, Ty, TyCtxt};
+use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use ty::outlives::Component;
-use ty::subst::{Kind, UnpackedKind, Substs};
+use ty::subst::{Kind, Substs, UnpackedKind};
 use util::nodemap::DefIdMap;
 
 pub type AnonTypeMap<'tcx> = DefIdMap<AnonTypeDecl<'tcx>>;
@@ -113,10 +113,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> InferOk<'tcx, (T, AnonTypeMap<'tcx>)> {
         debug!(
             "instantiate_anon_types(value={:?}, parent_def_id={:?}, body_id={:?}, param_env={:?})",
-            value,
-            parent_def_id,
-            body_id,
-            param_env,
+            value, parent_def_id, body_id, param_env,
         );
         let mut instantiator = Instantiator {
             infcx: self,
@@ -458,52 +455,181 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = gcx.fold_regions(&instantiated_ty, &mut false, |r, _| {
-            match *r {
-                // 'static and early-bound regions are valid.
-                ty::ReStatic | ty::ReEmpty => r,
-
-                // All other regions, we map them appropriately to their adjusted
-                // indices, erroring if we find any lifetimes that were not mapped
-                // into the new set.
-                _ => if let Some(UnpackedKind::Lifetime(r1)) = map.get(&r.into())
-                                                                  .map(|k| k.unpack()) {
-                    r1
-                } else {
-                    // No mapping was found. This means that
-                    // it is either a disallowed lifetime,
-                    // which will be caught by regionck, or it
-                    // is a region in a non-upvar closure
-                    // generic, which is explicitly
-                    // allowed. If that surprises you, read
-                    // on.
-                    //
-                    // The case of closure is a somewhat
-                    // subtle (read: hacky) consideration. The
-                    // problem is that our closure types
-                    // currently include all the lifetime
-                    // parameters declared on the enclosing
-                    // function, even if they are unused by
-                    // the closure itself. We can't readily
-                    // filter them out, so here we replace
-                    // those values with `'empty`. This can't
-                    // really make a difference to the rest of
-                    // the compiler; those regions are ignored
-                    // for the outlives relation, and hence
-                    // don't affect trait selection or auto
-                    // traits, and they are erased during
-                    // trans.
-                    gcx.types.re_empty
-                },
-            }
-        });
-
+        let definition_ty =
+            instantiated_ty.fold_with(&mut ReverseMapper::new(
+                self.tcx,
+                self.is_tainted_by_errors(),
+                def_id,
+                map,
+                instantiated_ty,
+            ));
         debug!(
             "infer_anon_definition_from_instantiation: definition_ty={:?}",
             definition_ty
         );
 
+        // We can unwrap here because our reverse mapper always
+        // produces things with 'gcx lifetime, though the type folder
+        // obscures that.
+        let definition_ty = gcx.lift(&definition_ty).unwrap();
+
         definition_ty
+    }
+}
+
+struct ReverseMapper<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+
+    /// If errors have already been reported in this fn, we suppress
+    /// our own errors because they are sometimes derivative.
+    tainted_by_errors: bool,
+
+    anon_type_def_id: DefId,
+    map: FxHashMap<Kind<'tcx>, Kind<'gcx>>,
+    map_missing_regions_to_empty: bool,
+
+    /// initially `Some`, set to `None` once error has been reported
+    hidden_ty: Option<Ty<'tcx>>,
+}
+
+impl<'cx, 'gcx, 'tcx> ReverseMapper<'cx, 'gcx, 'tcx> {
+    fn new(
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+        tainted_by_errors: bool,
+        anon_type_def_id: DefId,
+        map: FxHashMap<Kind<'tcx>, Kind<'gcx>>,
+        hidden_ty: Ty<'tcx>,
+    ) -> Self {
+        Self {
+            tcx,
+            tainted_by_errors,
+            anon_type_def_id,
+            map,
+            map_missing_regions_to_empty: false,
+            hidden_ty: Some(hidden_ty),
+        }
+    }
+
+    fn fold_kind_mapping_missing_regions_to_empty(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+        assert!(!self.map_missing_regions_to_empty);
+        self.map_missing_regions_to_empty = true;
+        let kind = kind.fold_with(self);
+        self.map_missing_regions_to_empty = false;
+        kind
+    }
+
+    fn fold_kind_normally(&mut self, kind: Kind<'tcx>) -> Kind<'tcx> {
+        assert!(!self.map_missing_regions_to_empty);
+        kind.fold_with(self)
+    }
+}
+
+impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+        self.tcx
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match r {
+            // ignore bound regions that appear in the type (e.g., this
+            // would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
+            ty::ReLateBound(..) => return r,
+
+            // ignore `'static`, as that can appear anywhere
+            ty::ReStatic => return r,
+
+            _ => { }
+        }
+
+        match self.map.get(&r.into()).map(|k| k.unpack()) {
+            Some(UnpackedKind::Lifetime(r1)) => r1,
+            Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
+            None => {
+                if !self.map_missing_regions_to_empty && !self.tainted_by_errors {
+                    if let Some(hidden_ty) = self.hidden_ty.take() {
+                        let span = self.tcx.def_span(self.anon_type_def_id);
+                        let mut err = struct_span_err!(
+                            self.tcx.sess,
+                            span,
+                            E0909,
+                            "hidden type for `impl Trait` captures lifetime that \
+                             does not appear in bounds",
+                        );
+
+                        // Assuming regionck succeeded, then we must
+                        // be capturing *some* region from the fn
+                        // header, and hence it must be free, so it's
+                        // ok to invoke this fn (which doesn't accept
+                        // all regions, and would ICE if an
+                        // inappropriate region is given). We check
+                        // `is_tainted_by_errors` by errors above, so
+                        // we don't get in here unless regionck
+                        // succeeded. (Note also that if regionck
+                        // failed, then the regions we are attempting
+                        // to map here may well be giving errors
+                        // *because* the constraints were not
+                        // satisfiable.)
+                        self.tcx.note_and_explain_free_region(
+                            &mut err,
+                            &format!("hidden type `{}` captures ", hidden_ty),
+                            r,
+                            ""
+                        );
+
+                        err.emit();
+                    }
+                }
+                self.tcx.types.re_empty
+            },
+        }
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        match ty.sty {
+            ty::TyClosure(def_id, substs) => {
+                // I am a horrible monster and I pray for death. When
+                // we encounter a closure here, it is always a closure
+                // from within the function that we are currently
+                // type-checking -- one that is now being encapsulated
+                // in an existential abstract type. Ideally, we would
+                // go through the types/lifetimes that it references
+                // and treat them just like we would any other type,
+                // which means we would error out if we find any
+                // reference to a type/region that is not in the
+                // "reverse map".
+                //
+                // **However,** in the case of closures, there is a
+                // somewhat subtle (read: hacky) consideration. The
+                // problem is that our closure types currently include
+                // all the lifetime parameters declared on the
+                // enclosing function, even if they are unused by the
+                // closure itself. We can't readily filter them out,
+                // so here we replace those values with `'empty`. This
+                // can't really make a difference to the rest of the
+                // compiler; those regions are ignored for the
+                // outlives relation, and hence don't affect trait
+                // selection or auto traits, and they are erased
+                // during trans.
+
+                let generics = self.tcx.generics_of(def_id);
+                let parent_len = generics.parent_count();
+                let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
+                    |(index, &kind)| {
+                        if index < parent_len {
+                            // Accommodate missing regions in the parent kinds...
+                            self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        } else {
+                            // ...but not elsewhere.
+                            self.fold_kind_normally(kind)
+                        }
+                    },
+                ));
+
+                self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+            }
+
+            _ => ty.super_fold_with(self),
+        }
     }
 }
 
@@ -565,12 +691,13 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                             return self.fold_anon_ty(ty, def_id, substs);
                         }
 
-                        debug!("instantiate_anon_types_in_map: \
-                                encountered anon with wrong parent \
-                                def_id={:?} \
-                                anon_parent_def_id={:?}",
-                               def_id,
-                               anon_parent_def_id);
+                        debug!(
+                            "instantiate_anon_types_in_map: \
+                             encountered anon with wrong parent \
+                             def_id={:?} \
+                             anon_parent_def_id={:?}",
+                            def_id, anon_parent_def_id
+                        );
                     }
                 }
 
@@ -590,8 +717,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
 
         debug!(
             "instantiate_anon_types: TyAnon(def_id={:?}, substs={:?})",
-            def_id,
-            substs
+            def_id, substs
         );
 
         // Use the same type variable if the exact same TyAnon appears more
@@ -600,8 +726,10 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             return anon_defn.concrete_ty;
         }
         let span = tcx.def_span(def_id);
-        let ty_var = infcx.next_ty_var(ty::UniverseIndex::ROOT,
-                                       TypeVariableOrigin::TypeInference(span));
+        let ty_var = infcx.next_ty_var(
+            ty::UniverseIndex::ROOT,
+            TypeVariableOrigin::TypeInference(span),
+        );
 
         let predicates_of = tcx.predicates_of(def_id);
         let bounds = predicates_of.instantiate(tcx, substs);
