@@ -134,21 +134,21 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                 self.check_item_type(item);
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
-                self.check_type_defn(item, false, |fcx| {
+                self.check_type_defn(item, |fcx| {
                     vec![fcx.non_enum_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemUnion(ref struct_def, ref ast_generics) => {
-                self.check_type_defn(item, true, |fcx| {
+                self.check_type_defn(item, |fcx| {
                     vec![fcx.non_enum_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemEnum(ref enum_def, ref ast_generics) => {
-                self.check_type_defn(item, true, |fcx| {
+                self.check_type_defn(item, |fcx| {
                     fcx.enum_variants(enum_def)
                 });
 
@@ -221,7 +221,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
-    fn check_type_defn<F>(&mut self, item: &hir::Item, all_sized: bool, mut lookup_fields: F)
+    fn check_type_defn<F>(&mut self, item: &hir::Item, mut lookup_fields: F)
         where F: for<'fcx, 'tcx> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx>) -> Vec<AdtVariant<'tcx>>
     {
         self.for_item(item).with_fcx(|fcx, this| {
@@ -242,16 +242,37 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                         ty.needs_drop(this.tcx, this.tcx.param_env(def_id))
                     }
                 };
-                let unsized_len = if
-                    all_sized ||
-                    variant.fields.is_empty() ||
-                    needs_drop_copy()
-                {
-                    0
+
+                let fields_that_must_be_sized = if needs_drop_copy() {
+                    // all fields must be sized
+                    // see definition of needs_drop_copy above^
+                    &variant.fields[..]
                 } else {
-                    1
+                    match item.node {
+                        hir::ItemStruct(..) => {
+                            // last field in a struct may be unsized
+                            &variant.fields[..variant.fields.len().max(1)-1]
+                        }
+                        hir::ItemUnion(..) => {
+                            if variant.fields.len() == 1 {
+                                // if there is only one field, it may be unsized
+                                &[]
+                            } else {
+                                // otherwise all fields must be sized
+                                &variant.fields[..]
+                            }
+                        }
+                        hir::ItemEnum(..) => {
+                            // all fields in an enum variant must be sized
+                            &variant.fields[..]
+                        }
+
+                        _ => span_bug!(item.span,
+                            "unexpected item {:?}", item.node)
+                    }
                 };
-                for field in &variant.fields[..variant.fields.len() - unsized_len] {
+
+                for field in fields_that_must_be_sized {
                     fcx.register_bound(
                         field.ty,
                         fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),

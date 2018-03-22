@@ -11,6 +11,7 @@
 #![feature(untagged_unions)]
 
 union Foo<T: ?Sized> {
+    t: u32,
     value: T, //~ ERROR the trait bound `T: std::marker::Sized` is not satisfied
 }
 

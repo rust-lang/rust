@@ -28,6 +28,16 @@ LL | | }
    |
    = help: add #![feature(untagged_unions)] to the crate attributes to enable
 
-error: aborting due to 3 previous errors
+error[E0658]: unions with non-`Copy` fields are unstable (see issue #32836)
+  --> $DIR/feature-gate-untagged_unions.rs:38:1
+   |
+LL | / union U6<T: ?Sized> { //~ ERROR unions with non-`Copy` fields are unstable
+LL | |     a: T
+LL | | }
+   | |_^
+   |
+   = help: add #![feature(untagged_unions)] to the crate attributes to enable
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

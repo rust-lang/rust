@@ -675,7 +675,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
             }
 
-            // There's no good place to insert stability check for non-Copy unions,
+            // There's no good place to insert stability check for non-Copy or unsized unions,
             // so semi-randomly perform it here in stability.rs
             hir::ItemUnion(..) if !self.tcx.features().untagged_unions => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
@@ -692,6 +692,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         emit_feature_err(&self.tcx.sess.parse_sess,
                                         "untagged_unions", item.span, GateIssue::Language,
                                         "unions with non-`Copy` fields are unstable");
+                    } else if !ty.is_sized(self.tcx, param_env, item.span) {
+                        emit_feature_err(&self.tcx.sess.parse_sess,
+                                         "untagged_unions", item.span, GateIssue::Language,
+                                         "unsized unions are unstable");
                     }
                 }
             }
