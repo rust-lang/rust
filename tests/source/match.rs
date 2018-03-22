@@ -462,3 +462,26 @@ fn match_with_beginning_vert() {
         | Foo::C => println!("C"),
     }
 }
+
+// #2376
+// Preserve block around expressions with condition.
+fn issue_2376() {
+    let mut x = None;
+    match x {
+        Some(0) => {
+            for i in 1..11 {
+                x = Some(i);
+            }
+        }
+        Some(ref mut y) => {
+            while *y < 10 {
+                *y += 1;
+            }
+        }
+        None => {
+            while let None = x {
+                x = Some(10);
+            }
+        }
+    }
+}

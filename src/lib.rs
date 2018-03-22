@@ -72,6 +72,7 @@ mod issues;
 mod items;
 mod lists;
 mod macros;
+mod matches;
 mod missed_spans;
 pub mod modules;
 mod overflow;
