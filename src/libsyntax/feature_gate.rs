@@ -453,7 +453,7 @@ declare_features! (
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
 
-    // Raw identifiers allowing keyword names to be used
+    // Allows keywords to be escaped for use as identifiers
     (active, raw_identifiers, "1.26.0", Some(48589), None),
 );
 
