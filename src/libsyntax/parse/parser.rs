@@ -3208,6 +3208,21 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// If the condition of a `while` or `if` expression was an identifier
+    /// named `not`, that's a clue that the confused user likely meant `!`.
+    fn is_identifier_not(&self, cond: &Expr) -> bool {
+        if let ExprKind::Path(_, ref path) = cond.node {
+            if path.segments.len() == 1 { // just `not`, not `not::etc`
+                if let Some(segment) = path.segments.iter().next() {
+                    if segment.identifier.name.as_str() == "not" {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
     /// Parse an 'if' or 'if let' expression ('if' token already eaten)
     pub fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         if self.check_keyword(keywords::Let) {
@@ -3229,6 +3244,11 @@ impl<'a> Parser<'a> {
         }
         let not_block = self.token != token::OpenDelim(token::Brace);
         let thn = self.parse_block().map_err(|mut err| {
+            if self.is_identifier_not(&cond) {
+                err.span_suggestion(cond.span, // FIXME: replaced span doesn't incl. whitespace
+                                    "try replacing identifier `not` with the negation operator",
+                                    "!".to_owned());
+            }
             if not_block {
                 err.span_label(lo, "this `if` statement has a condition, but no block");
             }
@@ -3339,7 +3359,15 @@ impl<'a> Parser<'a> {
             return self.parse_while_let_expr(opt_label, span_lo, attrs);
         }
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
+        let (iattrs, body) = self.parse_inner_attrs_and_block()
+            .map_err(|mut err| {
+                if self.is_identifier_not(&cond) {
+                    let msg = "try replacing identifier `not` with the negation operator";
+                    // FIXME: replaced span doesn't include trailing whitespace
+                    err.span_suggestion(cond.span, msg, "!".to_owned());
+                }
+                err
+            })?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
         return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs));
