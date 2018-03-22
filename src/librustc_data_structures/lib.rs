@@ -28,7 +28,7 @@
 #![feature(unsize)]
 #![feature(i128_type)]
 #![feature(i128)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(specialization)]
 #![feature(optin_builtin_traits)]
 #![feature(underscore_lifetimes)]

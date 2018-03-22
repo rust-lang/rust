@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait)]
 #![deny(non_camel_case_types)]
 
 #[allow(dead_code)]

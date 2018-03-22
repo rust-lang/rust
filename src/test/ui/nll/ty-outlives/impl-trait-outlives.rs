@@ -11,7 +11,6 @@
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
 
 #![allow(warnings)]
-#![feature(conservative_impl_trait)]
 
 use std::fmt::Debug;
 
