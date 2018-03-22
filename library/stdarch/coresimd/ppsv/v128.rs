@@ -90,7 +90,8 @@ macro_rules! from_bits_x86 {
     };
 }
 
-#[cfg(all(target_arch = "arm", target_feature = "v7"))]
+#[cfg(all(target_arch = "arm", target_feature = "neon",
+          target_feature = "v7"))]
 use coresimd::arch::arm::{// FIXME: float16x8_t,
                           float32x4_t,
                           int16x8_t,
@@ -121,7 +122,9 @@ use coresimd::arch::aarch64::{// FIXME: float16x8_t,
 
 macro_rules! from_bits_arm {
     ($id:ident, $elem_ty:ident, $test_mod_arm:ident, $test_mod_a64:ident) => {
-        #[cfg(any(all(target_arch = "arm", target_feature = "v7"), target_arch = "aarch64"))]
+        #[cfg(any(all(target_arch = "arm",
+                      target_feature = "neon",
+                      target_feature = "v7"), target_arch = "aarch64"))]
         impl_from_bits_!(
             $id:
             int8x16_t,
