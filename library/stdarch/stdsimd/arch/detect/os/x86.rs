@@ -131,6 +131,7 @@ pub fn detect_features() -> cache::Initializer {
         enable(proc_info_edx, 24, Feature::fxsr);
         enable(proc_info_edx, 25, Feature::sse);
         enable(proc_info_edx, 26, Feature::sse2);
+        enable(extended_features_ebx, 29, Feature::sha);
 
         enable(extended_features_ebx, 3, Feature::bmi);
         enable(extended_features_ebx, 8, Feature::bmi2);
@@ -249,6 +250,7 @@ mod tests {
         println!("sse4.1: {:?}", is_x86_feature_detected!("sse4.1"));
         println!("sse4.2: {:?}", is_x86_feature_detected!("sse4.2"));
         println!("sse4a: {:?}", is_x86_feature_detected!("sse4a"));
+        println!("sha: {:?}", is_x86_feature_detected!("sha"));
         println!("avx: {:?}", is_x86_feature_detected!("avx"));
         println!("avx2: {:?}", is_x86_feature_detected!("avx2"));
         println!("avx512f {:?}", is_x86_feature_detected!("avx512f"));
@@ -293,6 +295,7 @@ mod tests {
         assert_eq!(is_x86_feature_detected!("sse4.1"), information.sse4_1());
         assert_eq!(is_x86_feature_detected!("sse4.2"), information.sse4_2());
         assert_eq!(is_x86_feature_detected!("sse4a"), information.sse4a());
+        assert_eq!(is_x86_feature_detected!("sha"), information.sha());
         assert_eq!(is_x86_feature_detected!("avx"), information.avx());
         assert_eq!(is_x86_feature_detected!("avx2"), information.avx2());
         assert_eq!(is_x86_feature_detected!("avx512f"), information.avx512f());

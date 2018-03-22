@@ -71,6 +71,7 @@ fn x86_all() {
         is_x86_feature_detected!("sse4.2")
     );
     println!("sse4a: {:?}", is_x86_feature_detected!("sse4a"));
+    println!("sha: {:?}", is_x86_feature_detected!("sha"));
     println!("avx: {:?}", is_x86_feature_detected!("avx"));
     println!("avx2: {:?}", is_x86_feature_detected!("avx2"));
     println!(

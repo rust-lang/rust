@@ -64,6 +64,10 @@ macro_rules! is_x86_feature_detected {
         cfg!(target_feature = "sse4a") || $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::sse4a)
     };
+    ("sha") => {
+        cfg!(target_feature = "sha") || $crate::arch::detect::check_for(
+            $crate::arch::detect::Feature::sha)
+    };
     ("avx") => {
         cfg!(target_feature = "avx") || $crate::arch::detect::check_for(
             $crate::arch::detect::Feature::avx)
@@ -199,6 +203,8 @@ pub enum Feature {
     sse4_2,
     /// SSE4a (Streaming SIMD Extensions 4a)
     sse4a,
+    /// SHA
+    sha,
     /// AVX (Advanced Vector Extensions)
     avx,
     /// AVX2 (Advanced Vector Extensions 2)
