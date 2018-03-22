@@ -62,7 +62,11 @@ pub fn assert_instr(
             syn::Pat::Ident(ref i) => &i.ident,
             _ => panic!("must have bare arguments"),
         };
-        match invoc.args.iter().find(|a| a.0 == ident.as_ref()) {
+        match invoc
+            .args
+            .iter()
+            .find(|a| a.0 == ident.as_ref())
+        {
             Some(&(_, ref tts)) => {
                 input_vals.push(quote! { #tts });
             }
@@ -116,8 +120,9 @@ pub fn assert_instr(
         }
     }.into();
     // why? necessary now to get tests to work?
-    let tts: TokenStream =
-        tts.to_string().parse().expect("cannot parse tokenstream");
+    let tts: TokenStream = tts.to_string()
+        .parse()
+        .expect("cannot parse tokenstream");
 
     let tts: TokenStream = quote! {
         #item

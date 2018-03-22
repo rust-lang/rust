@@ -768,39 +768,39 @@ pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
     let mask = (mask & 0xFF) as u8;
 
     macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
             simd_shuffle4(a, b, [$x01, $x23, $x45, $x67])
-        }
+        };
     }
     macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr) => {
             match (mask >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 4),
                 0b01 => shuffle_done!($x01, $x23, $x45, 5),
                 0b10 => shuffle_done!($x01, $x23, $x45, 6),
                 _ => shuffle_done!($x01, $x23, $x45, 7),
             }
-        }
+        };
     }
     macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
+        ($x01: expr, $x23: expr) => {
             match (mask >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 4),
                 0b01 => shuffle_x67!($x01, $x23, 5),
                 0b10 => shuffle_x67!($x01, $x23, 6),
                 _ => shuffle_x67!($x01, $x23, 7),
             }
-        }
+        };
     }
     macro_rules! shuffle_x23 {
-        ($x01:expr) => {
+        ($x01: expr) => {
             match (mask >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
                 0b10 => shuffle_x45!($x01, 2),
                 _ => shuffle_x45!($x01, 3),
             }
-        }
+        };
     }
     match mask & 0b11 {
         0b00 => shuffle_x23!(0),
@@ -1524,8 +1524,8 @@ pub const _MM_HINT_NTA: i32 = 0;
 ///
 /// * [`_MM_HINT_T1`](constant._MM_HINT_T1.html): Fetch into L2 and higher.
 ///
-/// * [`_MM_HINT_T2`](constant._MM_HINT_T2.html): Fetch into L3 and higher or an
-///   implementation-specific choice (e.g., L2 if there is no L3).
+/// * [`_MM_HINT_T2`](constant._MM_HINT_T2.html): Fetch into L3 and higher or
+/// an   implementation-specific choice (e.g., L2 if there is no L3).
 ///
 /// * [`_MM_HINT_NTA`](constant._MM_HINT_NTA.html): Fetch data using the
 ///   non-temporal access (NTA) hint. It may be a place closer than main memory
@@ -1535,8 +1535,8 @@ pub const _MM_HINT_NTA: i32 = 0;
 /// The actual implementation depends on the particular CPU. This instruction
 /// is considered a hint, so the CPU is also free to simply ignore the request.
 ///
-/// The amount of prefetched data depends on the cache line size of the specific
-/// CPU, but it will be at least 32 bytes.
+/// The amount of prefetched data depends on the cache line size of the
+/// specific CPU, but it will be at least 32 bytes.
 ///
 /// Common caveats:
 ///
@@ -1564,14 +1564,14 @@ pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
     // We use the `llvm.prefetch` instrinsic with `rw` = 0 (read), and
     // `cache type` = 1 (data cache). `locality` is based on our `strategy`.
     macro_rules! pref {
-        ($imm8:expr) => {
+        ($imm8: expr) => {
             match $imm8 {
                 0 => prefetch(p, 0, 0, 1),
                 1 => prefetch(p, 0, 1, 1),
                 2 => prefetch(p, 0, 2, 1),
                 _ => prefetch(p, 0, 3, 1),
             }
-        }
+        };
     }
     pref!(strategy)
 }
@@ -2010,7 +2010,9 @@ pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
     macro_rules! call {
-        ($imm2:expr) => { pextrw(a, $imm2) as i32 }
+        ($imm2: expr) => {
+            pextrw(a, $imm2) as i32
+        };
     }
     constify_imm2!(imm2, call)
 }
@@ -2023,7 +2025,9 @@ pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
 #[rustc_args_required_const(1)]
 pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
     macro_rules! call {
-        ($imm2:expr) => { pextrw(a, $imm2) as i32 }
+        ($imm2: expr) => {
+            pextrw(a, $imm2) as i32
+        };
     }
     constify_imm2!(imm2, call)
 }
@@ -2037,7 +2041,9 @@ pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
     macro_rules! call {
-        ($imm2:expr) => { pinsrw(a, d, $imm2) }
+        ($imm2: expr) => {
+            pinsrw(a, d, $imm2)
+        };
     }
     constify_imm2!(imm2, call)
 }
@@ -2051,7 +2057,9 @@ pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _m_pinsrw(a: __m64, d: i32, imm2: i32) -> __m64 {
     macro_rules! call {
-        ($imm2:expr) => { pinsrw(a, d, $imm2) }
+        ($imm2: expr) => {
+            pinsrw(a, d, $imm2)
+        };
     }
     constify_imm2!(imm2, call)
 }
@@ -2084,7 +2092,9 @@ pub unsafe fn _m_pmovmskb(a: __m64) -> i32 {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm_shuffle_pi16(a: __m64, imm8: i32) -> __m64 {
     macro_rules! call {
-        ($imm8:expr) => { pshufw(a, $imm8) }
+        ($imm8: expr) => {
+            pshufw(a, $imm8)
+        };
     }
     constify_imm8!(imm8, call)
 }
@@ -2097,7 +2107,9 @@ pub unsafe fn _mm_shuffle_pi16(a: __m64, imm8: i32) -> __m64 {
 #[rustc_args_required_const(1)]
 pub unsafe fn _m_pshufw(a: __m64, imm8: i32) -> __m64 {
     macro_rules! call {
-        ($imm8:expr) => { pshufw(a, $imm8) }
+        ($imm8: expr) => {
+            pshufw(a, $imm8)
+        };
     }
     constify_imm8!(imm8, call)
 }
@@ -2371,8 +2383,12 @@ mod tests {
 
         let b2 = _mm_setr_ps(1.0, 5.0, 6.0, 7.0);
         let r2: u32x4 = transmute(_mm_cmpeq_ss(a, b2));
-        let e2: u32x4 =
-            transmute(_mm_setr_ps(transmute(0xffffffffu32), 2.0, 3.0, 4.0));
+        let e2: u32x4 = transmute(_mm_setr_ps(
+            transmute(0xffffffffu32),
+            2.0,
+            3.0,
+            4.0,
+        ));
         assert_eq!(r2, e2);
     }
 
@@ -3086,9 +3102,22 @@ mod tests {
 
     #[simd_test = "sse"]
     unsafe fn test_mm_cvtss_si32() {
-        let inputs = &[42.0f32, -3.1, 4.0e10, 4.0e-20, NAN, 2147483500.1];
-        let result =
-            &[42i32, -3, i32::min_value(), 0, i32::min_value(), 2147483520];
+        let inputs = &[
+            42.0f32,
+            -3.1,
+            4.0e10,
+            4.0e-20,
+            NAN,
+            2147483500.1,
+        ];
+        let result = &[
+            42i32,
+            -3,
+            i32::min_value(),
+            0,
+            i32::min_value(),
+            2147483520,
+        ];
         for i in 0..inputs.len() {
             let x = _mm_setr_ps(inputs[i], 1.0, 3.0, 4.0);
             let e = result[i];
@@ -3292,8 +3321,10 @@ mod tests {
         }
 
         let r = _mm_load_ps(p);
-        let e =
-            _mm_add_ps(_mm_setr_ps(1.0, 2.0, 3.0, 4.0), _mm_set1_ps(fixup));
+        let e = _mm_add_ps(
+            _mm_setr_ps(1.0, 2.0, 3.0, 4.0),
+            _mm_set1_ps(fixup),
+        );
         assert_eq_m128(r, e);
     }
 
@@ -3323,8 +3354,10 @@ mod tests {
         }
 
         let r = _mm_loadr_ps(p);
-        let e =
-            _mm_add_ps(_mm_setr_ps(4.0, 3.0, 2.0, 1.0), _mm_set1_ps(fixup));
+        let e = _mm_add_ps(
+            _mm_setr_ps(4.0, 3.0, 2.0, 1.0),
+            _mm_set1_ps(fixup),
+        );
         assert_eq_m128(r, e);
     }
 
@@ -3563,7 +3596,9 @@ mod tests {
     #[simd_test = "sse"]
     unsafe fn test_mm_stream_ps() {
         let a = _mm_set1_ps(7.0);
-        let mut mem = Memory { data: [-1.0; 4] };
+        let mut mem = Memory {
+            data: [-1.0; 4],
+        };
 
         _mm_stream_ps(&mut mem.data[0] as *mut f32, a);
         for i in 0..4 {
@@ -3764,8 +3799,12 @@ mod tests {
 
     #[simd_test = "sse,mmx"]
     unsafe fn test_mm_movemask_pi8() {
-        let a =
-            _mm_setr_pi16(0b1000_0000, 0b0100_0000, 0b1000_0000, 0b0100_0000);
+        let a = _mm_setr_pi16(
+            0b1000_0000,
+            0b0100_0000,
+            0b1000_0000,
+            0b0100_0000,
+        );
         let r = _mm_movemask_pi8(a);
         assert_eq!(r, 0b10001);
 

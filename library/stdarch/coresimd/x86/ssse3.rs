@@ -92,18 +92,30 @@ pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
     let b = b.as_i8x16();
 
     macro_rules! shuffle {
-        ($shift:expr) => {
-            simd_shuffle16(b, a, [
-                0 + $shift, 1 + $shift,
-                2 + $shift, 3 + $shift,
-                4 + $shift, 5 + $shift,
-                6 + $shift, 7 + $shift,
-                8 + $shift, 9 + $shift,
-                10 + $shift, 11 + $shift,
-                12 + $shift, 13 + $shift,
-                14 + $shift, 15 + $shift,
-            ])
-        }
+        ($shift: expr) => {
+            simd_shuffle16(
+                b,
+                a,
+                [
+                    0 + $shift,
+                    1 + $shift,
+                    2 + $shift,
+                    3 + $shift,
+                    4 + $shift,
+                    5 + $shift,
+                    6 + $shift,
+                    7 + $shift,
+                    8 + $shift,
+                    9 + $shift,
+                    10 + $shift,
+                    11 + $shift,
+                    12 + $shift,
+                    13 + $shift,
+                    14 + $shift,
+                    15 + $shift,
+                ],
+            )
+        };
     }
     let r: i8x16 = match n {
         0 => shuffle!(0),
@@ -283,9 +295,9 @@ pub unsafe fn _mm_shuffle_pi8(a: __m64, b: __m64) -> __m64 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_alignr_pi8(a: __m64, b: __m64, n: i32) -> __m64 {
     macro_rules! call {
-        ($imm8:expr) => {
+        ($imm8: expr) => {
             palignrb(a, b, $imm8)
-        }
+        };
     }
     constify_imm8!(n, call)
 }
@@ -536,8 +548,24 @@ mod tests {
             12, 5, 5, 10,
             4, 1, 8, 0,
         );
-        let expected =
-            _mm_setr_epi8(5, 0, 5, 4, 9, 13, 7, 4, 13, 6, 6, 11, 5, 2, 9, 1);
+        let expected = _mm_setr_epi8(
+            5,
+            0,
+            5,
+            4,
+            9,
+            13,
+            7,
+            4,
+            13,
+            6,
+            6,
+            11,
+            5,
+            2,
+            9,
+            1,
+        );
         let r = _mm_shuffle_epi8(a, b);
         assert_eq_m128i(r, expected);
     }

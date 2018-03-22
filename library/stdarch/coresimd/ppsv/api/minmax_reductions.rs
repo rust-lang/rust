@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_minmax_reductions {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         impl $id {
             /// Largest vector value.
             ///
@@ -10,10 +10,8 @@ macro_rules! impl_minmax_reductions {
             #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn max(self) -> $elem_ty {
-                use ::coresimd::simd_llvm::simd_reduce_max;
-                unsafe {
-                    simd_reduce_max(self)
-                }
+                use coresimd::simd_llvm::simd_reduce_max;
+                unsafe { simd_reduce_max(self) }
             }
             /// Largest vector value.
             ///
@@ -24,8 +22,8 @@ macro_rules! impl_minmax_reductions {
             pub fn max(self) -> $elem_ty {
                 // FIXME: broken on AArch64
                 // https://bugs.llvm.org/show_bug.cgi?id=36796
-                use ::num::Float;
-                use ::cmp::Ord;
+                use num::Float;
+                use cmp::Ord;
                 let mut x = self.extract(0);
                 for i in 1..$id::lanes() {
                     x = x.max(self.extract(i));
@@ -39,10 +37,8 @@ macro_rules! impl_minmax_reductions {
             #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn min(self) -> $elem_ty {
-                use ::coresimd::simd_llvm::simd_reduce_min;
-                unsafe {
-                    simd_reduce_min(self)
-                }
+                use coresimd::simd_llvm::simd_reduce_min;
+                unsafe { simd_reduce_min(self) }
             }
             /// Smallest vector value.
             ///
@@ -53,8 +49,8 @@ macro_rules! impl_minmax_reductions {
             pub fn min(self) -> $elem_ty {
                 // FIXME: broken on AArch64
                 // https://bugs.llvm.org/show_bug.cgi?id=36796
-                use ::num::Float;
-                use ::cmp::Ord;
+                use num::Float;
+                use cmp::Ord;
                 let mut x = self.extract(0);
                 for i in 1..$id::lanes() {
                     x = x.min(self.extract(i));
@@ -62,15 +58,15 @@ macro_rules! impl_minmax_reductions {
                 x
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_minmax_reductions {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         #[test]
         fn max() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let v = $id::splat(0 as $elem_ty);
             assert_eq!(v.max(), 0 as $elem_ty);
             let v = v.replace(1, 1 as $elem_ty);
@@ -81,7 +77,7 @@ macro_rules! test_minmax_reductions {
 
         #[test]
         fn min() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let v = $id::splat(0 as $elem_ty);
             assert_eq!(v.min(), 0 as $elem_ty);
             let v = v.replace(1, 1 as $elem_ty);
@@ -93,5 +89,5 @@ macro_rules! test_minmax_reductions {
             let v = v.replace(1, 1 as $elem_ty);
             assert_eq!(v.min(), 1 as $elem_ty);
         }
-    }
+    };
 }

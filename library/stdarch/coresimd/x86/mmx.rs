@@ -514,8 +514,12 @@ mod tests {
             -30001,
             i16::max_value() - 1,
         );
-        let e =
-            _mm_setr_pi16(i16::min_value(), 30000, -30000, i16::max_value());
+        let e = _mm_setr_pi16(
+            i16::min_value(),
+            30000,
+            -30000,
+            i16::max_value(),
+        );
         assert_eq_m64(e, _mm_add_pi16(a, b));
         assert_eq_m64(e, _m_paddw(a, b));
     }
@@ -533,8 +537,16 @@ mod tests {
     unsafe fn test_mm_adds_pi8() {
         let a = _mm_setr_pi8(-100, -1, 1, 100, -1, 0, 1, 0);
         let b = _mm_setr_pi8(-100, 1, -1, 100, 0, -1, 0, 1);
-        let e =
-            _mm_setr_pi8(i8::min_value(), 0, 0, i8::max_value(), -1, -1, 1, 1);
+        let e = _mm_setr_pi8(
+            i8::min_value(),
+            0,
+            0,
+            i8::max_value(),
+            -1,
+            -1,
+            1,
+            1,
+        );
         assert_eq_m64(e, _mm_adds_pi8(a, b));
         assert_eq_m64(e, _m_paddsb(a, b));
     }

@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_cmp {
-    ($id:ident, $bool_ty:ident) => {
+    ($id: ident, $bool_ty: ident) => {
         impl $id {
             /// Lane-wise equality comparison.
             #[inline]
@@ -46,11 +46,11 @@ macro_rules! impl_cmp {
                 unsafe { simd_ge(self, other) }
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_bool_cmp {
-    ($id:ident, $bool_ty:ident) => {
+    ($id: ident, $bool_ty: ident) => {
         impl $id {
             /// Lane-wise equality comparison.
             #[inline]
@@ -94,7 +94,7 @@ macro_rules! impl_bool_cmp {
                 unsafe { simd_le(self, other) }
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]

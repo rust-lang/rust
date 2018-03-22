@@ -2,14 +2,12 @@
 #![allow(unused)]
 
 macro_rules! impl_hex_fmt {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         impl ::fmt::LowerHex for $id {
-            fn fmt(&self, f: &mut ::fmt::Formatter)
-                   -> ::fmt::Result {
-                use ::mem;
+            fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
+                use mem;
                 write!(f, "{}(", stringify!($id))?;
-                let n = mem::size_of_val(self)
-                    / mem::size_of::<$elem_ty>();
+                let n = mem::size_of_val(self) / mem::size_of::<$elem_ty>();
                 for i in 0..n {
                     if i > 0 {
                         write!(f, ", ")?;
@@ -20,8 +18,7 @@ macro_rules! impl_hex_fmt {
             }
         }
         impl ::fmt::UpperHex for $id {
-            fn fmt(&self, f: &mut ::fmt::Formatter)
-                   -> ::fmt::Result {
+            fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
                 write!(f, "{}(", stringify!($id))?;
                 for i in 0..$id::lanes() {
                     if i > 0 {
@@ -33,8 +30,7 @@ macro_rules! impl_hex_fmt {
             }
         }
         impl ::fmt::Octal for $id {
-            fn fmt(&self, f: &mut ::fmt::Formatter)
-                   -> ::fmt::Result {
+            fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
                 write!(f, "{}(", stringify!($id))?;
                 for i in 0..$id::lanes() {
                     if i > 0 {
@@ -46,8 +42,7 @@ macro_rules! impl_hex_fmt {
             }
         }
         impl ::fmt::Binary for $id {
-            fn fmt(&self, f: &mut ::fmt::Formatter)
-                   -> ::fmt::Result {
+            fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
                 write!(f, "{}(", stringify!($id))?;
                 for i in 0..$id::lanes() {
                     if i > 0 {
@@ -58,7 +53,7 @@ macro_rules! impl_hex_fmt {
                 write!(f, ")")
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
@@ -145,7 +140,13 @@ macro_rules! test_hex_fmt_impl {
 
 #[cfg(test)]
 macro_rules! test_hex_fmt {
-    ($id:ident, $elem_ty:ident) => {
-        test_hex_fmt_impl!($id, $elem_ty, 0 as $elem_ty, !(0 as $elem_ty), (1 as $elem_ty));
-    }
+    ($id: ident, $elem_ty: ident) => {
+        test_hex_fmt_impl!(
+            $id,
+            $elem_ty,
+            0 as $elem_ty,
+            !(0 as $elem_ty),
+            (1 as $elem_ty)
+        );
+    };
 }

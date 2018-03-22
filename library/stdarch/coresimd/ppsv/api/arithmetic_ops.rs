@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_arithmetic_ops {
-    ($id:ident) => {
+    ($id: ident) => {
         impl ::ops::Add for $id {
             type Output = Self;
             #[inline]
@@ -82,15 +82,15 @@ macro_rules! impl_arithmetic_ops {
                 *self = *self % other;
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_arithmetic_ops {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         #[test]
         fn arithmetic() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let z = $id::splat(0 as $elem_ty);
             let o = $id::splat(1 as $elem_ty);
             let t = $id::splat(2 as $elem_ty);
@@ -126,7 +126,7 @@ macro_rules! test_arithmetic_ops {
             {
                 let mut v = z;
                 assert_eq!(v, z);
-                v += o;  // add_assign
+                v += o; // add_assign
                 assert_eq!(v, o);
                 v -= o; // sub_assign
                 assert_eq!(v, z);

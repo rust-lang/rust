@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_arithmetic_scalar_ops {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         impl ::ops::Add<$elem_ty> for $id {
             type Output = Self;
             #[inline]
@@ -112,15 +112,15 @@ macro_rules! impl_arithmetic_scalar_ops {
                 *self = *self % other;
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_arithmetic_scalar_ops {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         #[test]
         fn arithmetic_scalar() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let zi = 0 as $elem_ty;
             let oi = 1 as $elem_ty;
             let ti = 2 as $elem_ty;
@@ -181,7 +181,7 @@ macro_rules! test_arithmetic_scalar_ops {
             {
                 let mut v = z;
                 assert_eq!(v, z);
-                v += oi;  // add_assign
+                v += oi; // add_assign
                 assert_eq!(v, o);
                 v -= oi; // sub_assign
                 assert_eq!(v, z);

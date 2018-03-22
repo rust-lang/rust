@@ -337,8 +337,20 @@ impl_from!(
     i8x16
 );
 
-impl_from!(i16x32: i16, i16x32_from, test_v512 | u16x32, u8x32, i8x32);
-impl_from!(u16x32: u16, u16x32_from, test_v512 | i16x32, u8x32, i8x32);
+impl_from!(
+    i16x32: i16,
+    i16x32_from,
+    test_v512 | u16x32,
+    u8x32,
+    i8x32
+);
+impl_from!(
+    u16x32: u16,
+    u16x32_from,
+    test_v512 | i16x32,
+    u8x32,
+    i8x32
+);
 
 impl_from!(i8x64: i8, i8x64_from, test_v512 | u8x64);
 impl_from!(u8x64: u8, u8x64_from, test_v512 | i8x64);

@@ -79,7 +79,9 @@ pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm_aeskeygenassist_si128(a: __m128i, imm8: i32) -> __m128i {
     macro_rules! call {
-        ($imm8:expr) => (aeskeygenassist(a, $imm8))
+        ($imm8: expr) => {
+            aeskeygenassist(a, $imm8)
+        };
     }
     constify_imm8!(imm8, call)
 }

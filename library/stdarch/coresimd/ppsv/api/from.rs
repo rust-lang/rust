@@ -3,7 +3,7 @@
 #![allow(unused)]
 
 macro_rules! impl_from_impl {
-    ($from:ident, $to:ident) => {
+    ($from: ident, $to: ident) => {
         impl ::convert::From<::simd::$from> for $to {
             #[inline]
             fn from(f: ::simd::$from) -> $to {
@@ -11,13 +11,13 @@ macro_rules! impl_from_impl {
                 unsafe { simd_cast(f) }
             }
         }
-    }
+    };
 }
 
 macro_rules! impl_from_ {
-    ($to:ident, $from:ident) => {
+    ($to: ident, $from: ident) => {
         vector_impl!([impl_from_impl, $to, $from]);
-    }
+    };
 }
 
 macro_rules! impl_from {

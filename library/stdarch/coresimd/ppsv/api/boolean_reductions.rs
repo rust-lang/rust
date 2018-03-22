@@ -2,16 +2,14 @@
 #![allow(unused)]
 
 macro_rules! impl_bool_reductions {
-    ($id:ident) => {
+    ($id: ident) => {
         impl $id {
             /// Are `all` vector lanes `true`?
             #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn all(self) -> bool {
-                use ::coresimd::simd_llvm::simd_reduce_all;
-                unsafe {
-                    simd_reduce_all(self)
-                }
+                use coresimd::simd_llvm::simd_reduce_all;
+                unsafe { simd_reduce_all(self) }
             }
             /// Are `all` vector lanes `true`?
             #[cfg(target_arch = "aarch64")]
@@ -26,10 +24,8 @@ macro_rules! impl_bool_reductions {
             #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn any(self) -> bool {
-                use ::coresimd::simd_llvm::simd_reduce_any;
-                unsafe {
-                    simd_reduce_any(self)
-                }
+                use coresimd::simd_llvm::simd_reduce_any;
+                unsafe { simd_reduce_any(self) }
             }
             /// Is `any` vector lanes `true`?
             #[cfg(target_arch = "aarch64")]
@@ -46,15 +42,15 @@ macro_rules! impl_bool_reductions {
                 !self.any()
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_bool_reductions {
-    ($id:ident) => {
+    ($id: ident) => {
         #[test]
         fn all() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
 
             let a = $id::splat(true);
             assert!(a.all());
@@ -72,7 +68,7 @@ macro_rules! test_bool_reductions {
         }
         #[test]
         fn any() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
 
             let a = $id::splat(true);
             assert!(a.any());
@@ -90,7 +86,7 @@ macro_rules! test_bool_reductions {
         }
         #[test]
         fn none() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
 
             let a = $id::splat(true);
             assert!(!a.none());
@@ -106,5 +102,5 @@ macro_rules! test_bool_reductions {
                 assert!(!a.none());
             }
         }
-    }
+    };
 }

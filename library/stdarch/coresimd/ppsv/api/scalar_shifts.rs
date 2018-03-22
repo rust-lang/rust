@@ -39,13 +39,22 @@ macro_rules! impl_shifts {
 }
 
 macro_rules! impl_all_scalar_shifts {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         impl_shifts!(
-            $id, $elem_ty,
-            u8, u16, u32, u64, usize,
-            i8, i16, i32, i64, isize);
-
-    }
+            $id,
+            $elem_ty,
+            u8,
+            u16,
+            u32,
+            u64,
+            usize,
+            i8,
+            i16,
+            i32,
+            i64,
+            isize
+        );
+    };
 }
 
 #[cfg(test)]
@@ -114,10 +123,20 @@ macro_rules! test_shift_ops {
 
 #[cfg(test)]
 macro_rules! test_all_scalar_shift_ops {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         test_shift_ops!(
-            $id, $elem_ty,
-            u8, u16, u32, u64, usize,
-            i8, i16, i32, i64, isize);
-    }
+            $id,
+            $elem_ty,
+            u8,
+            u16,
+            u32,
+            u64,
+            usize,
+            i8,
+            i16,
+            i32,
+            i64,
+            isize
+        );
+    };
 }

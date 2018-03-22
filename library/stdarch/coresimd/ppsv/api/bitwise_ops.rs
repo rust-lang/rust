@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_bitwise_ops {
-    ($id:ident, $true_val:expr) => {
+    ($id: ident, $true_val: expr) => {
         impl ::ops::Not for $id {
             type Output = Self;
             #[inline]
@@ -57,10 +57,10 @@ macro_rules! impl_bitwise_ops {
 
 #[cfg(test)]
 macro_rules! test_int_bitwise_ops {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         #[test]
         fn bitwise_ops() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let z = $id::splat(0 as $elem_ty);
             let o = $id::splat(1 as $elem_ty);
             let t = $id::splat(2 as $elem_ty);
@@ -100,31 +100,34 @@ macro_rules! test_int_bitwise_ops {
             assert_eq!(t ^ z, t);
             assert_eq!(z ^ t, t);
 
-            {  // AndAssign:
+            {
+                // AndAssign:
                 let mut v = o;
                 v &= t;
                 assert_eq!(v, z);
             }
-            {  // OrAssign:
+            {
+                // OrAssign:
                 let mut v = z;
                 v |= o;
                 assert_eq!(v, o);
             }
-            {  // XORAssign:
+            {
+                // XORAssign:
                 let mut v = z;
                 v ^= o;
                 assert_eq!(v, o);
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_bool_bitwise_ops {
-    ($id:ident) => {
+    ($id: ident) => {
         #[test]
         fn bool_arithmetic() {
-            use ::coresimd::simd::*;
+            use coresimd::simd::*;
 
             let t = $id::splat(true);
             let f = $id::splat(false);
@@ -153,21 +156,24 @@ macro_rules! test_bool_bitwise_ops {
             assert_eq!(t ^ t, f);
             assert_eq!(f ^ f, f);
 
-            {  // AndAssign:
+            {
+                // AndAssign:
                 let mut v = f;
                 v &= t;
                 assert_eq!(v, f);
             }
-            {  // OrAssign:
+            {
+                // OrAssign:
                 let mut v = f;
                 v |= t;
                 assert_eq!(v, t);
             }
-            {  // XORAssign:
+            {
+                // XORAssign:
                 let mut v = f;
                 v ^= t;
                 assert_eq!(v, t);
             }
         }
-    }
+    };
 }

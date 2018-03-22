@@ -326,18 +326,30 @@ unsafe fn _mm_slli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (_mm_set1_epi8(0).as_i8x16(), imm8 as u32);
     let a = a.as_i8x16();
     macro_rules! shuffle {
-        ($shift:expr) => {
-            simd_shuffle16::<i8x16, i8x16>(zero, a, [
-                16 - $shift, 17 - $shift,
-                18 - $shift, 19 - $shift,
-                20 - $shift, 21 - $shift,
-                22 - $shift, 23 - $shift,
-                24 - $shift, 25 - $shift,
-                26 - $shift, 27 - $shift,
-                28 - $shift, 29 - $shift,
-                30 - $shift, 31 - $shift,
-            ])
-        }
+        ($shift: expr) => {
+            simd_shuffle16::<i8x16, i8x16>(
+                zero,
+                a,
+                [
+                    16 - $shift,
+                    17 - $shift,
+                    18 - $shift,
+                    19 - $shift,
+                    20 - $shift,
+                    21 - $shift,
+                    22 - $shift,
+                    23 - $shift,
+                    24 - $shift,
+                    25 - $shift,
+                    26 - $shift,
+                    27 - $shift,
+                    28 - $shift,
+                    29 - $shift,
+                    30 - $shift,
+                    31 - $shift,
+                ],
+            )
+        };
     }
     let x = match imm8 {
         0 => shuffle!(0),
@@ -488,18 +500,30 @@ unsafe fn _mm_srli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (_mm_set1_epi8(0).as_i8x16(), imm8 as u32);
     let a = a.as_i8x16();
     macro_rules! shuffle {
-        ($shift:expr) => {
-            simd_shuffle16(a, zero, [
-                0 + $shift, 1 + $shift,
-                2 + $shift, 3 + $shift,
-                4 + $shift, 5 + $shift,
-                6 + $shift, 7 + $shift,
-                8 + $shift, 9 + $shift,
-                10 + $shift, 11 + $shift,
-                12 + $shift, 13 + $shift,
-                14 + $shift, 15 + $shift,
-            ])
-        }
+        ($shift: expr) => {
+            simd_shuffle16(
+                a,
+                zero,
+                [
+                    0 + $shift,
+                    1 + $shift,
+                    2 + $shift,
+                    3 + $shift,
+                    4 + $shift,
+                    5 + $shift,
+                    6 + $shift,
+                    7 + $shift,
+                    8 + $shift,
+                    9 + $shift,
+                    10 + $shift,
+                    11 + $shift,
+                    12 + $shift,
+                    13 + $shift,
+                    14 + $shift,
+                    15 + $shift,
+                ],
+            )
+        };
     }
     let x: i8x16 = match imm8 {
         0 => shuffle!(0),
@@ -1023,7 +1047,11 @@ pub unsafe fn _mm_extract_epi16(a: __m128i, imm8: i32) -> i32 {
 #[cfg_attr(test, assert_instr(pinsrw, imm8 = 9))]
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_epi16(a: __m128i, i: i32, imm8: i32) -> __m128i {
-    mem::transmute(simd_insert(a.as_i16x8(), (imm8 & 7) as u32, i as i16))
+    mem::transmute(simd_insert(
+        a.as_i16x8(),
+        (imm8 & 7) as u32,
+        i as i16,
+    ))
 }
 
 /// Return a mask of the most significant bit of each element in `a`.
@@ -1051,39 +1079,39 @@ pub unsafe fn _mm_shuffle_epi32(a: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i32x4();
 
     macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
             simd_shuffle4(a, a, [$x01, $x23, $x45, $x67])
-        }
+        };
     }
     macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
                 0b10 => shuffle_done!($x01, $x23, $x45, 2),
                 _ => shuffle_done!($x01, $x23, $x45, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
+        ($x01: expr, $x23: expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
                 0b10 => shuffle_x67!($x01, $x23, 2),
                 _ => shuffle_x67!($x01, $x23, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle_x23 {
-        ($x01:expr) => {
+        ($x01: expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
                 0b10 => shuffle_x45!($x01, 2),
                 _ => shuffle_x45!($x01, 3),
             }
-        }
+        };
     }
     let x: i32x4 = match imm8 & 0b11 {
         0b00 => shuffle_x23!(0),
@@ -1108,41 +1136,52 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
     let imm8 = (imm8 & 0xFF) as u8;
     let a = a.as_i16x8();
     macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            simd_shuffle8(a, a, [
-                0, 1, 2, 3, $x01 + 4, $x23 + 4, $x45 + 4, $x67 + 4,
-            ])
-        }
+        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+            simd_shuffle8(
+                a,
+                a,
+                [
+                    0,
+                    1,
+                    2,
+                    3,
+                    $x01 + 4,
+                    $x23 + 4,
+                    $x45 + 4,
+                    $x67 + 4,
+                ],
+            )
+        };
     }
     macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
                 0b10 => shuffle_done!($x01, $x23, $x45, 2),
                 _ => shuffle_done!($x01, $x23, $x45, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
+        ($x01: expr, $x23: expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
                 0b10 => shuffle_x67!($x01, $x23, 2),
                 _ => shuffle_x67!($x01, $x23, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle_x23 {
-        ($x01:expr) => {
+        ($x01: expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
                 0b10 => shuffle_x45!($x01, 2),
                 _ => shuffle_x45!($x01, 3),
             }
-        }
+        };
     }
     let x: i16x8 = match imm8 & 0b11 {
         0b00 => shuffle_x23!(0),
@@ -1168,39 +1207,39 @@ pub unsafe fn _mm_shufflelo_epi16(a: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i16x8();
 
     macro_rules! shuffle_done {
-        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
             simd_shuffle8(a, a, [$x01, $x23, $x45, $x67, 4, 5, 6, 7])
-        }
+        };
     }
     macro_rules! shuffle_x67 {
-        ($x01:expr, $x23:expr, $x45:expr) => {
+        ($x01: expr, $x23: expr, $x45: expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
                 0b10 => shuffle_done!($x01, $x23, $x45, 2),
                 _ => shuffle_done!($x01, $x23, $x45, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle_x45 {
-        ($x01:expr, $x23:expr) => {
+        ($x01: expr, $x23: expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
                 0b10 => shuffle_x67!($x01, $x23, 2),
                 _ => shuffle_x67!($x01, $x23, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle_x23 {
-        ($x01:expr) => {
+        ($x01: expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
                 0b10 => shuffle_x45!($x01, 2),
                 _ => shuffle_x45!($x01, 3),
             }
-        }
+        };
     }
     let x: i16x8 = match imm8 & 0b11 {
         0b00 => shuffle_x23!(0),
@@ -1219,7 +1258,9 @@ pub unsafe fn _mm_unpackhi_epi8(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i8x16, _>(simd_shuffle16(
         a.as_i8x16(),
         b.as_i8x16(),
-        [8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31],
+        [
+            8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31
+        ],
     ))
 }
 
@@ -1268,7 +1309,9 @@ pub unsafe fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i8x16, _>(simd_shuffle16(
         a.as_i8x16(),
         b.as_i8x16(),
-        [0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23],
+        [
+            0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23
+        ],
     ))
 }
 
@@ -1277,8 +1320,11 @@ pub unsafe fn _mm_unpacklo_epi8(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(punpcklwd))]
 pub unsafe fn _mm_unpacklo_epi16(a: __m128i, b: __m128i) -> __m128i {
-    let x =
-        simd_shuffle8(a.as_i16x8(), b.as_i16x8(), [0, 8, 1, 9, 2, 10, 3, 11]);
+    let x = simd_shuffle8(
+        a.as_i16x8(),
+        b.as_i16x8(),
+        [0, 8, 1, 9, 2, 10, 3, 11],
+    );
     mem::transmute::<i16x8, _>(x)
 }
 
@@ -1505,7 +1551,11 @@ pub unsafe fn _mm_cmple_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cmpltsd))]
 pub unsafe fn _mm_cmpgt_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(_mm_cmplt_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
+    simd_insert(
+        _mm_cmplt_sd(b, a),
+        1,
+        simd_extract::<_, f64>(a, 1),
+    )
 }
 
 /// Return a new vector with the low element of `a` replaced by the
@@ -1514,7 +1564,11 @@ pub unsafe fn _mm_cmpgt_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cmplesd))]
 pub unsafe fn _mm_cmpge_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(_mm_cmple_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
+    simd_insert(
+        _mm_cmple_sd(b, a),
+        1,
+        simd_extract::<_, f64>(a, 1),
+    )
 }
 
 /// Return a new vector with the low element of `a` replaced by the result
@@ -1571,7 +1625,11 @@ pub unsafe fn _mm_cmpnle_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cmpnltsd))]
 pub unsafe fn _mm_cmpngt_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(_mm_cmpnlt_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
+    simd_insert(
+        _mm_cmpnlt_sd(b, a),
+        1,
+        simd_extract::<_, f64>(a, 1),
+    )
 }
 
 /// Return a new vector with the low element of `a` replaced by the
@@ -1580,7 +1638,11 @@ pub unsafe fn _mm_cmpngt_sd(a: __m128d, b: __m128d) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(cmpnlesd))]
 pub unsafe fn _mm_cmpnge_sd(a: __m128d, b: __m128d) -> __m128d {
-    simd_insert(_mm_cmpnle_sd(b, a), 1, simd_extract::<_, f64>(a, 1))
+    simd_insert(
+        _mm_cmpnle_sd(b, a),
+        1,
+        simd_extract::<_, f64>(a, 1),
+    )
 }
 
 /// Compare corresponding elements in `a` and `b` for equality.
@@ -3213,8 +3275,24 @@ mod tests {
             14,
             15,
         );
-        let b =
-            _mm_setr_epi8(15, 14, 2, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+        let b = _mm_setr_epi8(
+            15,
+            14,
+            2,
+            12,
+            11,
+            10,
+            9,
+            8,
+            7,
+            6,
+            5,
+            4,
+            3,
+            2,
+            1,
+            0,
+        );
         let r = _mm_cmpeq_epi8(a, b);
         #[cfg_attr(rustfmt, rustfmt_skip)]
         assert_eq_m128i(
@@ -4161,7 +4239,9 @@ mod tests {
             pub data: [f64; 2],
         }
         let a = _mm_set1_pd(7.0);
-        let mut mem = Memory { data: [-1.0; 2] };
+        let mut mem = Memory {
+            data: [-1.0; 2],
+        };
 
         _mm_stream_pd(&mut mem.data[0] as *mut f64, a);
         for i in 0..2 {
@@ -4179,7 +4259,9 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_store_pd() {
-        let mut mem = Memory { data: [0.0f64; 4] };
+        let mut mem = Memory {
+            data: [0.0f64; 4],
+        };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4191,7 +4273,9 @@ mod tests {
 
     #[simd_test = "sse"]
     unsafe fn test_mm_storeu_pd() {
-        let mut mem = Memory { data: [0.0f64; 4] };
+        let mut mem = Memory {
+            data: [0.0f64; 4],
+        };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
 
@@ -4215,7 +4299,9 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_store1_pd() {
-        let mut mem = Memory { data: [0.0f64; 4] };
+        let mut mem = Memory {
+            data: [0.0f64; 4],
+        };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4227,7 +4313,9 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_store_pd1() {
-        let mut mem = Memory { data: [0.0f64; 4] };
+        let mut mem = Memory {
+            data: [0.0f64; 4],
+        };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4239,7 +4327,9 @@ mod tests {
 
     #[simd_test = "sse2"]
     unsafe fn test_mm_storer_pd() {
-        let mut mem = Memory { data: [0.0f64; 4] };
+        let mut mem = Memory {
+            data: [0.0f64; 4],
+        };
         let vals = &mut mem.data;
         let a = _mm_setr_pd(1.0, 2.0);
         let d = vals.as_mut_ptr();
@@ -4293,7 +4383,10 @@ mod tests {
         }
 
         let r = _mm_loadu_pd(d);
-        let e = _mm_add_pd(_mm_setr_pd(1.0, 2.0), _mm_set1_pd(offset as f64));
+        let e = _mm_add_pd(
+            _mm_setr_pd(1.0, 2.0),
+            _mm_set1_pd(offset as f64),
+        );
         assert_eq_m128d(r, e);
     }
 
@@ -4368,8 +4461,12 @@ mod tests {
 
         assert_eq_m128(r, _mm_setr_ps(2.0, -2.2, 3.3, 4.4));
 
-        let a =
-            _mm_setr_ps(-1.1, f32::NEG_INFINITY, f32::MAX, f32::NEG_INFINITY);
+        let a = _mm_setr_ps(
+            -1.1,
+            f32::NEG_INFINITY,
+            f32::MAX,
+            f32::NEG_INFINITY,
+        );
         let b = _mm_setr_pd(f64::INFINITY, -5.0);
 
         let r = _mm_cvtsd_ss(a, b);
@@ -4434,8 +4531,12 @@ mod tests {
         let r = _mm_cvttps_epi32(a);
         assert_eq_m128i(r, _mm_setr_epi32(-1, 2, -3, 6));
 
-        let a =
-            _mm_setr_ps(f32::NEG_INFINITY, f32::INFINITY, f32::MIN, f32::MAX);
+        let a = _mm_setr_ps(
+            f32::NEG_INFINITY,
+            f32::INFINITY,
+            f32::MIN,
+            f32::MAX,
+        );
         let r = _mm_cvttps_epi32(a);
         assert_eq_m128i(
             r,

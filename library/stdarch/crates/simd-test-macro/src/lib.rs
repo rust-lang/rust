@@ -23,7 +23,9 @@ fn string(s: &str) -> TokenTree {
 pub fn simd_test(
     attr: proc_macro::TokenStream, item: proc_macro::TokenStream
 ) -> proc_macro::TokenStream {
-    let tokens = TokenStream::from(attr).into_iter().collect::<Vec<_>>();
+    let tokens = TokenStream::from(attr)
+        .into_iter()
+        .collect::<Vec<_>>();
     if tokens.len() != 2 {
         panic!("expected #[simd_test = \"feature\"]");
     }
@@ -53,9 +55,10 @@ pub fn simd_test(
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
 
-    let name: TokenStream = name.as_str()
-        .parse()
-        .expect(&format!("failed to parse name: {}", name.clone().as_str()));
+    let name: TokenStream = name.as_str().parse().expect(&format!(
+        "failed to parse name: {}",
+        name.clone().as_str()
+    ));
 
     let default_target = if cfg!(target_os = "windows") {
         Some("x86_64-pc-windows-msvc")
@@ -71,11 +74,10 @@ pub fn simd_test(
         default_target.expect("TARGET environment variable not set and no default target known for the current target.").to_string()
     });
     let mut force_test = false;
-    let macro_test = match target
-        .split('-')
-        .next()
-        .expect(&format!("target triple contained no \"-\": {}", target))
-    {
+    let macro_test = match target.split('-').next().expect(&format!(
+        "target triple contained no \"-\": {}",
+        target
+    )) {
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
         "arm" | "armv7" => "is_arm_feature_detected",
         "aarch64" => "is_aarch64_feature_detected",

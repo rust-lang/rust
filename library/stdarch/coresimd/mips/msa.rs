@@ -17,7 +17,8 @@ extern "C" {
 
 /// Vector Add Absolute Values.
 ///
-/// Adds the absolute values of the elements in `a` and `b` into the result vector.
+/// Adds the absolute values of the elements in `a` and `b` into the result
+/// vector.
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.b))]

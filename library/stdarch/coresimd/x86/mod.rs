@@ -443,7 +443,16 @@ use coresimd::simd::{b8x16, b8x32, b8x8, f32x2, f32x4, f32x8, f64x2, f64x4,
                      i8x16, i8x32, i8x8, u16x16, u16x4, u16x8, u32x2, u32x4,
                      u32x8, u64x2, u64x4, u8x16, u8x32, u8x8};
 
-impl_from_bits_!(__m64: u32x2, i32x2, f32x2, u16x4, i16x4, u8x8, i8x8, b8x8);
+impl_from_bits_!(
+    __m64: u32x2,
+    i32x2,
+    f32x2,
+    u16x4,
+    i16x4,
+    u8x8,
+    i8x8,
+    b8x8
+);
 impl_from_bits_!(
     __m128: u64x2,
     i64x2,

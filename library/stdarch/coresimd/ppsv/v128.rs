@@ -84,10 +84,10 @@ use coresimd::arch::x86::{__m128, __m128d, __m128i};
 use coresimd::arch::x86_64::{__m128, __m128d, __m128i};
 
 macro_rules! from_bits_x86 {
-    ($id:ident, $elem_ty:ident, $test_mod:ident) => {
+    ($id: ident, $elem_ty: ident, $test_mod: ident) => {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         impl_from_bits_!($id: __m128, __m128i, __m128d);
-    }
+    };
 }
 
 #[cfg(all(target_arch = "arm", target_feature = "v7"))]
@@ -159,7 +159,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(u64x2, u64, u64x2_from_bits_x86);
-from_bits_arm!(u64x2, u64, u64x2_from_bits_arm, u64x2_from_bits_aarch64);
+from_bits_arm!(
+    u64x2,
+    u64,
+    u64x2_from_bits_arm,
+    u64x2_from_bits_aarch64
+);
 
 impl_from_bits!(
     i64x2: i64,
@@ -176,7 +181,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(i64x2, i64, i64x2_from_bits_x86);
-from_bits_arm!(i64x2, i64, i64x2_from_bits_arm, i64x2_from_bits_aarch64);
+from_bits_arm!(
+    i64x2,
+    i64,
+    i64x2_from_bits_arm,
+    i64x2_from_bits_aarch64
+);
 
 impl_from_bits!(
     f64x2: f64,
@@ -193,7 +203,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(f64x2, f64, f64x2_from_bits_x86);
-from_bits_arm!(f64x2, f64, f64x2_from_bits_arm, f64x2_from_bits_aarch64);
+from_bits_arm!(
+    f64x2,
+    f64,
+    f64x2_from_bits_arm,
+    f64x2_from_bits_aarch64
+);
 
 impl_from_bits!(
     u32x4: u32,
@@ -210,7 +225,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(u32x4, u32, u32x4_from_bits_x86);
-from_bits_arm!(u32x4, u32, u32x4_from_bits_arm, u32x4_from_bits_aarch64);
+from_bits_arm!(
+    u32x4,
+    u32,
+    u32x4_from_bits_arm,
+    u32x4_from_bits_aarch64
+);
 
 impl_from_bits!(
     i32x4: i32,
@@ -227,7 +247,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(i32x4, i32, i32x4_from_bits_x86);
-from_bits_arm!(i32x4, i32, i32x4_from_bits_arm, i32x4_from_bits_aarch64);
+from_bits_arm!(
+    i32x4,
+    i32,
+    i32x4_from_bits_arm,
+    i32x4_from_bits_aarch64
+);
 
 impl_from_bits!(
     f32x4: f32,
@@ -244,7 +269,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(f32x4, f32, f32x4_from_bits_x86);
-from_bits_arm!(f32x4, f32, f32x4_from_bits_arm, f32x4_from_bits_aarch64);
+from_bits_arm!(
+    f32x4,
+    f32,
+    f32x4_from_bits_arm,
+    f32x4_from_bits_aarch64
+);
 
 impl_from_bits!(
     u16x8: u16,
@@ -261,7 +291,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(u16x8, u16, u16x8_from_bits_x86);
-from_bits_arm!(u16x8, u16, u16x8_from_bits_arm, u16x8_from_bits_aarch64);
+from_bits_arm!(
+    u16x8,
+    u16,
+    u16x8_from_bits_arm,
+    u16x8_from_bits_aarch64
+);
 
 impl_from_bits!(
     i16x8: i16,
@@ -278,7 +313,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(i16x8, i16, i16x8_from_bits_x86);
-from_bits_arm!(i16x8, i16, i16x8_from_bits_arm, i16x8_from_bits_aarch64);
+from_bits_arm!(
+    i16x8,
+    i16,
+    i16x8_from_bits_arm,
+    i16x8_from_bits_aarch64
+);
 
 impl_from_bits!(
     u8x16: u8,
@@ -295,7 +335,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(u8x16, u8, u8x16_from_bits_x86);
-from_bits_arm!(u8x16, u8, u8x16_from_bits_arm, u8x16_from_bits_aarch64);
+from_bits_arm!(
+    u8x16,
+    u8,
+    u8x16_from_bits_arm,
+    u8x16_from_bits_aarch64
+);
 
 impl_from_bits!(
     i8x16: i8,
@@ -312,7 +357,12 @@ impl_from_bits!(
     b8x16
 );
 from_bits_x86!(i8x16, i8, i8x16_from_bits_x86);
-from_bits_arm!(i8x16, i8, i8x16_from_bits_arm, i8x16_from_bits_aarch64);
+from_bits_arm!(
+    i8x16,
+    i8,
+    i8x16_from_bits_arm,
+    i8x16_from_bits_aarch64
+);
 
 impl_from!(
     f64x2: f64,

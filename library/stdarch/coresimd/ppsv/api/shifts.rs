@@ -2,14 +2,14 @@
 #![allow(unused)]
 
 macro_rules! impl_vector_shifts {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         impl ::ops::Shl<$id> for $id {
             type Output = Self;
             #[inline]
             fn shl(self, other: Self) -> Self {
                 use coresimd::simd_llvm::simd_shl;
                 unsafe { simd_shl(self, other) }
-                }
+            }
         }
         impl ::ops::Shr<$id> for $id {
             type Output = Self;
@@ -31,22 +31,23 @@ macro_rules! impl_vector_shifts {
                 *self = *self >> other;
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_vector_shift_ops {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         #[test]
         fn shift_ops() {
-            use ::coresimd::simd::$id;
-            use ::std::mem;
+            use coresimd::simd::$id;
+            use std::mem;
             let z = $id::splat(0 as $elem_ty);
             let o = $id::splat(1 as $elem_ty);
             let t = $id::splat(2 as $elem_ty);
             let f = $id::splat(4 as $elem_ty);
 
-            let max = $id::splat((mem::size_of::<$elem_ty>() * 8 - 1) as $elem_ty);
+            let max =
+                $id::splat((mem::size_of::<$elem_ty>() * 8 - 1) as $elem_ty);
 
             // shr
             assert_eq!(z >> z, z);
@@ -77,12 +78,14 @@ macro_rules! test_vector_shift_ops {
             assert_eq!(o << t, f);
             assert_eq!(t << o, f);
 
-            {  // shr_assign
+            {
+                // shr_assign
                 let mut v = o;
                 v >>= o;
                 assert_eq!(v, z);
             }
-            {  // shl_assign
+            {
+                // shl_assign
                 let mut v = o;
                 v <<= o;
                 assert_eq!(v, t);

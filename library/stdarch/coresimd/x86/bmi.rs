@@ -18,7 +18,10 @@ use stdsimd_test::assert_instr;
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
 pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
-    _bextr2_u32(a, (start & 0xff_u32) | ((len & 0xff_u32) << 8_u32))
+    _bextr2_u32(
+        a,
+        (start & 0xff_u32) | ((len & 0xff_u32) << 8_u32),
+    )
 }
 
 /// Extracts bits of `a` specified by `control` into

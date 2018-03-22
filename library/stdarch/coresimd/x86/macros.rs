@@ -1,7 +1,7 @@
 //! Utility macros.
 
 macro_rules! constify_imm8 {
-    ($imm8:expr, $expand:ident) => {
+    ($imm8: expr, $expand: ident) => {
         #[allow(overflowing_literals)]
         match ($imm8) & 0b1111_1111 {
             0 => $expand!(0),
@@ -261,11 +261,11 @@ macro_rules! constify_imm8 {
             254 => $expand!(254),
             _ => $expand!(255),
         }
-    }
+    };
 }
 
 macro_rules! constify_imm6 {
-    ($imm8:expr, $expand:ident) => {
+    ($imm8: expr, $expand: ident) => {
         #[allow(overflowing_literals)]
         match ($imm8) & 0b1_1111 {
             0 => $expand!(0),
@@ -301,11 +301,11 @@ macro_rules! constify_imm6 {
             30 => $expand!(30),
             _ => $expand!(31),
         }
-    }
+    };
 }
 
 macro_rules! constify_imm4 {
-    ($imm8:expr, $expand:ident) => {
+    ($imm8: expr, $expand: ident) => {
         #[allow(overflowing_literals)]
         match ($imm8) & 0b1111 {
             0 => $expand!(0),
@@ -325,11 +325,11 @@ macro_rules! constify_imm4 {
             14 => $expand!(14),
             _ => $expand!(15),
         }
-    }
+    };
 }
 
 macro_rules! constify_imm3 {
-    ($imm8:expr, $expand:ident) => {
+    ($imm8: expr, $expand: ident) => {
         #[allow(overflowing_literals)]
         match ($imm8) & 0b111 {
             0 => $expand!(0),
@@ -341,11 +341,11 @@ macro_rules! constify_imm3 {
             6 => $expand!(6),
             _ => $expand!(7),
         }
-    }
+    };
 }
 
 macro_rules! constify_imm2 {
-    ($imm8:expr, $expand:ident) => {
+    ($imm8: expr, $expand: ident) => {
         #[allow(overflowing_literals)]
         match ($imm8) & 0b11 {
             0 => $expand!(0),
@@ -353,7 +353,7 @@ macro_rules! constify_imm2 {
             2 => $expand!(2),
             _ => $expand!(3),
         }
-    }
+    };
 }
 
 #[cfg(test)]

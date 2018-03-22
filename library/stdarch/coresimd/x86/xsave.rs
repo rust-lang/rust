@@ -35,7 +35,11 @@ extern "C" {
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xsave))]
 pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) {
-    xsave(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
+    xsave(
+        mem_addr,
+        (save_mask >> 32) as u32,
+        save_mask as u32,
+    );
 }
 
 /// Perform a full or partial restore of the enabled processor states using
@@ -90,7 +94,11 @@ pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
 #[target_feature(enable = "xsave,xsaveopt")]
 #[cfg_attr(test, assert_instr(xsaveopt))]
 pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) {
-    xsaveopt(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
+    xsaveopt(
+        mem_addr,
+        (save_mask >> 32) as u32,
+        save_mask as u32,
+    );
 }
 
 /// Perform a full or partial save of the enabled processor states to memory
@@ -103,7 +111,11 @@ pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) {
 #[target_feature(enable = "xsave,xsavec")]
 #[cfg_attr(test, assert_instr(xsavec))]
 pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) {
-    xsavec(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
+    xsavec(
+        mem_addr,
+        (save_mask >> 32) as u32,
+        save_mask as u32,
+    );
 }
 
 /// Perform a full or partial save of the enabled processor states to memory at
@@ -117,7 +129,11 @@ pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) {
 #[target_feature(enable = "xsave,xsaves")]
 #[cfg_attr(test, assert_instr(xsaves))]
 pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) {
-    xsaves(mem_addr, (save_mask >> 32) as u32, save_mask as u32);
+    xsaves(
+        mem_addr,
+        (save_mask >> 32) as u32,
+        save_mask as u32,
+    );
 }
 
 /// Perform a full or partial restore of the enabled processor states using the
@@ -155,7 +171,9 @@ mod tests {
 
     impl XsaveArea {
         fn new() -> XsaveArea {
-            XsaveArea { data: [0; 2560] }
+            XsaveArea {
+                data: [0; 2560],
+            }
         }
         fn ptr(&mut self) -> *mut u8 {
             &mut self.data[0] as *mut _ as *mut u8

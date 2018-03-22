@@ -322,8 +322,8 @@
 ///         let res2 = _mm_unpackhi_epi8(masked2, masked1);
 ///
 ///         _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2) as *mut _, res1);
-///         _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _, res2);
-///         src = &src[16..];
+/// _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _,
+/// res2);         src = &src[16..];
 ///         i += 16;
 ///     }
 ///

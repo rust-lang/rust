@@ -100,10 +100,10 @@ use coresimd::arch::x86::{__m256, __m256d, __m256i};
 use coresimd::arch::x86_64::{__m256, __m256d, __m256i};
 
 macro_rules! from_bits_x86 {
-    ($id:ident, $elem_ty:ident, $test_mod:ident) => {
+    ($id: ident, $elem_ty: ident, $test_mod: ident) => {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         impl_from_bits_!($id: __m256, __m256i, __m256d);
-    }
+    };
 }
 
 impl_from_bits!(
@@ -364,5 +364,17 @@ impl_from!(
     u8x16,
     i8x16
 );
-impl_from!(i8x32: i8, i8x32_from, test_v256 | u16x32, i16x32, u8x32);
-impl_from!(u8x32: u8, u8x32_from, test_v256 | u16x32, i16x32, i8x32);
+impl_from!(
+    i8x32: i8,
+    i8x32_from,
+    test_v256 | u16x32,
+    i16x32,
+    u8x32
+);
+impl_from!(
+    u8x32: u8,
+    u8x32_from,
+    test_v256 | u16x32,
+    i16x32,
+    i8x32
+);

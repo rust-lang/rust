@@ -99,33 +99,33 @@ pub unsafe fn _mm256_or_ps(a: __m256, b: __m256) -> __m256 {
 pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        ($a: expr, $b: expr, $c: expr, $d: expr) => {
             simd_shuffle4(a, b, [$a, $b, $c, $d]);
-        }
+        };
     }
     macro_rules! shuffle3 {
-        ($a:expr, $b: expr, $c: expr) => {
+        ($a: expr, $b: expr, $c: expr) => {
             match (imm8 >> 3) & 0x1 {
                 0 => shuffle4!($a, $b, $c, 6),
                 _ => shuffle4!($a, $b, $c, 7),
             }
-        }
+        };
     }
     macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             match (imm8 >> 2) & 0x1 {
                 0 => shuffle3!($a, $b, 2),
                 _ => shuffle3!($a, $b, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle1 {
-        ($a:expr) => {
+        ($a: expr) => {
             match (imm8 >> 1) & 0x1 {
                 0 => shuffle2!($a, 4),
                 _ => shuffle2!($a, 5),
             }
-        }
+        };
     }
     match imm8 & 0x1 {
         0 => shuffle1!(0),
@@ -147,34 +147,34 @@ pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
         }
     }
     macro_rules! shuffle3 {
-        ($a:expr, $b: expr, $c: expr, $e:expr, $f:expr, $g:expr) => {
+        ($a: expr, $b: expr, $c: expr, $e: expr, $f: expr, $g: expr) => {
             match (imm8 >> 6) & 0x3 {
                 0 => shuffle4!($a, $b, $c, 8, $e, $f, $g, 12),
                 1 => shuffle4!($a, $b, $c, 9, $e, $f, $g, 13),
                 2 => shuffle4!($a, $b, $c, 10, $e, $f, $g, 14),
                 _ => shuffle4!($a, $b, $c, 11, $e, $f, $g, 15),
             }
-        }
+        };
     }
     macro_rules! shuffle2 {
-        ($a:expr, $b:expr, $e:expr, $f:expr) => {
+        ($a: expr, $b: expr, $e: expr, $f: expr) => {
             match (imm8 >> 4) & 0x3 {
                 0 => shuffle3!($a, $b, 8, $e, $f, 12),
                 1 => shuffle3!($a, $b, 9, $e, $f, 13),
                 2 => shuffle3!($a, $b, 10, $e, $f, 14),
                 _ => shuffle3!($a, $b, 11, $e, $f, 15),
             }
-        }
+        };
     }
     macro_rules! shuffle1 {
-        ($a:expr, $e:expr) => {
+        ($a: expr, $e: expr) => {
             match (imm8 >> 2) & 0x3 {
                 0 => shuffle2!($a, 0, $e, 4),
                 1 => shuffle2!($a, 1, $e, 5),
                 2 => shuffle2!($a, 2, $e, 6),
                 _ => shuffle2!($a, 3, $e, 7),
             }
-        }
+        };
     }
     match imm8 & 0x3 {
         0 => shuffle1!(0, 4),
@@ -334,7 +334,9 @@ pub unsafe fn _mm256_div_pd(a: __m256d, b: __m256d) -> __m256d {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm256_round_pd(a: __m256d, b: i32) -> __m256d {
     macro_rules! call {
-        ($imm8:expr) => { roundpd256(a, $imm8) }
+        ($imm8: expr) => {
+            roundpd256(a, $imm8)
+        };
     }
     constify_imm8!(b, call)
 }
@@ -374,9 +376,9 @@ pub unsafe fn _mm256_floor_pd(a: __m256d) -> __m256d {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm256_round_ps(a: __m256, b: i32) -> __m256 {
     macro_rules! call {
-        ($imm8:expr) => {
+        ($imm8: expr) => {
             roundps256(a, $imm8)
-        }
+        };
     }
     constify_imm8!(b, call)
 }
@@ -426,33 +428,33 @@ pub unsafe fn _mm256_sqrt_pd(a: __m256d) -> __m256d {
 pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! blend4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        ($a: expr, $b: expr, $c: expr, $d: expr) => {
             simd_shuffle4(a, b, [$a, $b, $c, $d]);
-        }
+        };
     }
     macro_rules! blend3 {
-        ($a:expr, $b: expr, $c: expr) => {
+        ($a: expr, $b: expr, $c: expr) => {
             match imm8 & 0x8 {
                 0 => blend4!($a, $b, $c, 3),
                 _ => blend4!($a, $b, $c, 7),
             }
-        }
+        };
     }
     macro_rules! blend2 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             match imm8 & 0x4 {
                 0 => blend3!($a, $b, 2),
                 _ => blend3!($a, $b, 6),
             }
-        }
+        };
     }
     macro_rules! blend1 {
-        ($a:expr) => {
+        ($a: expr) => {
             match imm8 & 0x2 {
                 0 => blend2!($a, 1),
                 _ => blend2!($a, 5),
             }
-        }
+        };
     }
     match imm8 & 0x1 {
         0 => blend1!(0),
@@ -474,34 +476,34 @@ pub unsafe fn _mm256_blend_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
         }
     }
     macro_rules! blend3 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {
+        ($a: expr, $b: expr, $c: expr, $d: expr, $e: expr, $f: expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => blend4!($a, $b, $c, $d, $e, $f, 6, 7),
                 0b01 => blend4!($a, $b, $c, $d, $e, $f, 14, 7),
                 0b10 => blend4!($a, $b, $c, $d, $e, $f, 6, 15),
                 _ => blend4!($a, $b, $c, $d, $e, $f, 14, 15),
             }
-        }
+        };
     }
     macro_rules! blend2 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        ($a: expr, $b: expr, $c: expr, $d: expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => blend3!($a, $b, $c, $d, 4, 5),
                 0b01 => blend3!($a, $b, $c, $d, 12, 5),
                 0b10 => blend3!($a, $b, $c, $d, 4, 13),
                 _ => blend3!($a, $b, $c, $d, 12, 13),
             }
-        }
+        };
     }
     macro_rules! blend1 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => blend2!($a, $b, 2, 3),
                 0b01 => blend2!($a, $b, 10, 3),
                 0b10 => blend2!($a, $b, 2, 11),
                 _ => blend2!($a, $b, 10, 11),
             }
-        }
+        };
     }
     match imm8 & 0b11 {
         0b00 => blend1!(0, 1),
@@ -539,7 +541,9 @@ pub unsafe fn _mm256_blendv_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_dp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     macro_rules! call {
-        ($imm8:expr) => { vdpps(a, b, $imm8) }
+        ($imm8: expr) => {
+            vdpps(a, b, $imm8)
+        };
     }
     constify_imm8!(imm8, call)
 }
@@ -687,7 +691,9 @@ pub const _CMP_TRUE_US: i32 = 0x1f;
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     macro_rules! call {
-        ($imm8:expr) => { vcmppd(a, b, $imm8) }
+        ($imm8: expr) => {
+            vcmppd(a, b, $imm8)
+        };
     }
     constify_imm6!(imm8, call)
 }
@@ -701,7 +707,9 @@ pub unsafe fn _mm_cmp_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
     macro_rules! call {
-        ($imm8:expr) => { vcmppd256(a, b, $imm8) }
+        ($imm8: expr) => {
+            vcmppd256(a, b, $imm8)
+        };
     }
     constify_imm6!(imm8, call)
 }
@@ -715,7 +723,9 @@ pub unsafe fn _mm256_cmp_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
-        ($imm8:expr) => { vcmpps(a, b, $imm8) }
+        ($imm8: expr) => {
+            vcmpps(a, b, $imm8)
+        };
     }
     constify_imm6!(imm8, call)
 }
@@ -729,7 +739,9 @@ pub unsafe fn _mm_cmp_ps(a: __m128, b: __m128, imm8: i32) -> __m128 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     macro_rules! call {
-        ($imm8:expr) => { vcmpps256(a, b, $imm8) }
+        ($imm8: expr) => {
+            vcmpps256(a, b, $imm8)
+        };
     }
     constify_imm6!(imm8, call)
 }
@@ -745,7 +757,9 @@ pub unsafe fn _mm256_cmp_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     macro_rules! call {
-        ($imm8:expr) => { vcmpsd(a, b, $imm8) }
+        ($imm8: expr) => {
+            vcmpsd(a, b, $imm8)
+        };
     }
     constify_imm6!(imm8, call)
 }
@@ -761,7 +775,9 @@ pub unsafe fn _mm_cmp_sd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_cmp_ss(a: __m128, b: __m128, imm8: i32) -> __m128 {
     macro_rules! call {
-        ($imm8:expr) => { vcmpss(a, b, $imm8) }
+        ($imm8: expr) => {
+            vcmpss(a, b, $imm8)
+        };
     }
     constify_imm6!(imm8, call)
 }
@@ -922,41 +938,43 @@ pub unsafe fn _mm_permutevar_ps(a: __m128, b: __m128i) -> __m128 {
 pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle8(a, _mm256_undefined_ps(), [
-                $a, $b, $c, $d, $a + 4, $b + 4, $c + 4, $d + 4
-            ])
-        }
+        ($a: expr, $b: expr, $c: expr, $d: expr) => {
+            simd_shuffle8(
+                a,
+                _mm256_undefined_ps(),
+                [$a, $b, $c, $d, $a + 4, $b + 4, $c + 4, $d + 4],
+            )
+        };
     }
     macro_rules! shuffle3 {
-        ($a:expr, $b:expr, $c:expr) => {
+        ($a: expr, $b: expr, $c: expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle4!($a, $b, $c, 0),
                 0b01 => shuffle4!($a, $b, $c, 1),
                 0b10 => shuffle4!($a, $b, $c, 2),
                 _ => shuffle4!($a, $b, $c, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle3!($a, $b, 0),
                 0b01 => shuffle3!($a, $b, 1),
                 0b10 => shuffle3!($a, $b, 2),
                 _ => shuffle3!($a, $b, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle1 {
-        ($a:expr) => {
+        ($a: expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle2!($a, 0),
                 0b01 => shuffle2!($a, 1),
                 0b10 => shuffle2!($a, 2),
                 _ => shuffle2!($a, 3),
             }
-        }
+        };
     }
     match imm8 & 0b11 {
         0b00 => shuffle1!(0),
@@ -975,41 +993,39 @@ pub unsafe fn _mm256_permute_ps(a: __m256, imm8: i32) -> __m256 {
 pub unsafe fn _mm_permute_ps(a: __m128, imm8: i32) -> __m128 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
-            simd_shuffle4(a, _mm_undefined_ps(), [
-                $a, $b, $c, $d
-            ])
-        }
+        ($a: expr, $b: expr, $c: expr, $d: expr) => {
+            simd_shuffle4(a, _mm_undefined_ps(), [$a, $b, $c, $d])
+        };
     }
     macro_rules! shuffle3 {
-        ($a:expr, $b:expr, $c:expr) => {
+        ($a: expr, $b: expr, $c: expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle4!($a, $b, $c, 0),
                 0b01 => shuffle4!($a, $b, $c, 1),
                 0b10 => shuffle4!($a, $b, $c, 2),
                 _ => shuffle4!($a, $b, $c, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle3!($a, $b, 0),
                 0b01 => shuffle3!($a, $b, 1),
                 0b10 => shuffle3!($a, $b, 2),
                 _ => shuffle3!($a, $b, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle1 {
-        ($a:expr) => {
+        ($a: expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle2!($a, 0),
                 0b01 => shuffle2!($a, 1),
                 0b10 => shuffle2!($a, 2),
                 _ => shuffle2!($a, 3),
             }
-        }
+        };
     }
     match imm8 & 0b11 {
         0b00 => shuffle1!(0),
@@ -1046,33 +1062,33 @@ pub unsafe fn _mm_permutevar_pd(a: __m128d, b: __m128i) -> __m128d {
 pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr) => {
+        ($a: expr, $b: expr, $c: expr, $d: expr) => {
             simd_shuffle4(a, _mm256_undefined_pd(), [$a, $b, $c, $d]);
-        }
+        };
     }
     macro_rules! shuffle3 {
-        ($a:expr, $b: expr, $c: expr) => {
+        ($a: expr, $b: expr, $c: expr) => {
             match (imm8 >> 3) & 0x1 {
                 0 => shuffle4!($a, $b, $c, 2),
                 _ => shuffle4!($a, $b, $c, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             match (imm8 >> 2) & 0x1 {
                 0 => shuffle3!($a, $b, 2),
                 _ => shuffle3!($a, $b, 3),
             }
-        }
+        };
     }
     macro_rules! shuffle1 {
-        ($a:expr) => {
+        ($a: expr) => {
             match (imm8 >> 1) & 0x1 {
                 0 => shuffle2!($a, 0),
                 _ => shuffle2!($a, 1),
             }
-        }
+        };
     }
     match imm8 & 0x1 {
         0 => shuffle1!(0),
@@ -1089,17 +1105,17 @@ pub unsafe fn _mm256_permute_pd(a: __m256d, imm8: i32) -> __m256d {
 pub unsafe fn _mm_permute_pd(a: __m128d, imm8: i32) -> __m128d {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle2 {
-        ($a:expr, $b:expr) => {
+        ($a: expr, $b: expr) => {
             simd_shuffle2(a, _mm_undefined_pd(), [$a, $b]);
-        }
+        };
     }
     macro_rules! shuffle1 {
-        ($a:expr) => {
+        ($a: expr) => {
             match (imm8 >> 1) & 0x1 {
                 0 => shuffle2!($a, 0),
                 _ => shuffle2!($a, 1),
             }
-        }
+        };
     }
     match imm8 & 0x1 {
         0 => shuffle1!(0),
@@ -1117,7 +1133,9 @@ pub unsafe fn _mm256_permute2f128_ps(
     a: __m256, b: __m256, imm8: i32
 ) -> __m256 {
     macro_rules! call {
-        ($imm8:expr) => { vperm2f128ps256(a, b, $imm8) }
+        ($imm8: expr) => {
+            vperm2f128ps256(a, b, $imm8)
+        };
     }
     constify_imm8!(imm8, call)
 }
@@ -1132,7 +1150,9 @@ pub unsafe fn _mm256_permute2f128_pd(
     a: __m256d, b: __m256d, imm8: i32
 ) -> __m256d {
     macro_rules! call {
-        ($imm8:expr) => { vperm2f128pd256(a, b, $imm8) }
+        ($imm8: expr) => {
+            vperm2f128pd256(a, b, $imm8)
+        };
     }
     constify_imm8!(imm8, call)
 }
@@ -1149,7 +1169,9 @@ pub unsafe fn _mm256_permute2f128_si256(
     let a = a.as_i32x8();
     let b = b.as_i32x8();
     macro_rules! call {
-        ($imm8:expr) => { vperm2f128si256(a, b, $imm8) }
+        ($imm8: expr) => {
+            vperm2f128si256(a, b, $imm8)
+        };
     }
     let r = constify_imm8!(imm8, call);
     mem::transmute(r)
@@ -1255,7 +1277,11 @@ pub unsafe fn _mm256_insertf128_si256(
 // This intrinsic has no corresponding instruction.
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i8x32(), (index as u32) & 31, i))
+    mem::transmute(simd_insert(
+        a.as_i8x32(),
+        (index as u32) & 31,
+        i,
+    ))
 }
 
 /// Copy `a` to result, and insert the 16-bit integer `i` into result
@@ -1265,7 +1291,11 @@ pub unsafe fn _mm256_insert_epi8(a: __m256i, i: i8, index: i32) -> __m256i {
 // This intrinsic has no corresponding instruction.
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm256_insert_epi16(a: __m256i, i: i16, index: i32) -> __m256i {
-    mem::transmute(simd_insert(a.as_i16x16(), (index as u32) & 15, i))
+    mem::transmute(simd_insert(
+        a.as_i16x16(),
+        (index as u32) & 15,
+        i,
+    ))
 }
 
 /// Copy `a` to result, and insert the 32-bit integer `i` into result
@@ -2868,11 +2898,20 @@ mod tests {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
         let r = _mm256_blend_ps(a, b, 0x0);
-        assert_eq_m256(r, _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.));
+        assert_eq_m256(
+            r,
+            _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.),
+        );
         let r = _mm256_blend_ps(a, b, 0x3);
-        assert_eq_m256(r, _mm256_setr_ps(2., 3., 5., 8., 9., 12., 13., 16.));
+        assert_eq_m256(
+            r,
+            _mm256_setr_ps(2., 3., 5., 8., 9., 12., 13., 16.),
+        );
         let r = _mm256_blend_ps(a, b, 0xF);
-        assert_eq_m256(r, _mm256_setr_ps(2., 3., 6., 7., 9., 12., 13., 16.));
+        assert_eq_m256(
+            r,
+            _mm256_setr_ps(2., 3., 6., 7., 9., 12., 13., 16.),
+        );
     }
 
     #[simd_test = "avx"]
@@ -2903,8 +2942,16 @@ mod tests {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_dp_ps(a, b, 0xFF);
-        let e =
-            _mm256_setr_ps(200., 200., 200., 200., 2387., 2387., 2387., 2387.);
+        let e = _mm256_setr_ps(
+            200.,
+            200.,
+            200.,
+            200.,
+            2387.,
+            2387.,
+            2387.,
+            2387.,
+        );
         assert_eq_m256(r, e);
     }
 
@@ -3585,7 +3632,9 @@ mod tests {
             pub data: [f64; 4],
         }
         let a = _mm256_set1_pd(7.0);
-        let mut mem = Memory { data: [-1.0; 4] };
+        let mut mem = Memory {
+            data: [-1.0; 4],
+        };
 
         _mm256_stream_pd(&mut mem.data[0] as *mut f64, a);
         for i in 0..4 {
@@ -3600,7 +3649,9 @@ mod tests {
             pub data: [f32; 8],
         }
         let a = _mm256_set1_ps(7.0);
-        let mut mem = Memory { data: [-1.0; 8] };
+        let mut mem = Memory {
+            data: [-1.0; 8],
+        };
 
         _mm256_stream_ps(&mut mem.data[0] as *mut f32, a);
         for i in 0..8 {
@@ -3881,7 +3932,10 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn test_mm256_set_ps() {
         let r = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
-        assert_eq_m256(r, _mm256_setr_ps(8., 7., 6., 5., 4., 3., 2., 1.));
+        assert_eq_m256(
+            r,
+            _mm256_setr_ps(8., 7., 6., 5., 4., 3., 2., 1.),
+        );
     }
 
     #[simd_test = "avx"]
@@ -3939,7 +3993,10 @@ mod tests {
     #[simd_test = "avx"]
     unsafe fn test_mm256_setr_ps() {
         let r = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
-        assert_eq_m256(r, _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.));
+        assert_eq_m256(
+            r,
+            _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.),
+        );
     }
 
     #[simd_test = "avx"]

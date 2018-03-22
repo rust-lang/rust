@@ -2,5 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_eq {
-    ($id:ident) => { impl ::cmp::Eq for $id {} }
+    ($id: ident) => {
+        impl ::cmp::Eq for $id {}
+    };
 }

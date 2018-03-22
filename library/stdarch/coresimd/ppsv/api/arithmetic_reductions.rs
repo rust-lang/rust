@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_arithmetic_reductions {
-    ($id:ident, $elem_ty:ident) => {
+    ($id: ident, $elem_ty: ident) => {
         impl $id {
             /// Lane-wise addition of the vector elements.
             ///
@@ -12,10 +12,8 @@ macro_rules! impl_arithmetic_reductions {
             #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn sum(self) -> $elem_ty {
-                use ::coresimd::simd_llvm::simd_reduce_add_ordered;
-                unsafe {
-                    simd_reduce_add_ordered(self, 0 as $elem_ty)
-                }
+                use coresimd::simd_llvm::simd_reduce_add_ordered;
+                unsafe { simd_reduce_add_ordered(self, 0 as $elem_ty) }
             }
             /// Lane-wise addition of the vector elements.
             ///
@@ -42,10 +40,8 @@ macro_rules! impl_arithmetic_reductions {
             #[cfg(not(target_arch = "aarch64"))]
             #[inline]
             pub fn product(self) -> $elem_ty {
-                use ::coresimd::simd_llvm::simd_reduce_mul_ordered;
-                unsafe {
-                    simd_reduce_mul_ordered(self, 1 as $elem_ty)
-                }
+                use coresimd::simd_llvm::simd_reduce_mul_ordered;
+                unsafe { simd_reduce_mul_ordered(self, 1 as $elem_ty) }
             }
             /// Lane-wise multiplication of the vector elements.
             ///
@@ -64,15 +60,14 @@ macro_rules! impl_arithmetic_reductions {
                 x
             }
         }
-    }
+    };
 }
 
 #[cfg(test)]
 macro_rules! test_arithmetic_reductions {
-    ($id:ident, $elem_ty:ident) => {
-
+    ($id: ident, $elem_ty: ident) => {
         fn alternating(x: usize) -> ::coresimd::simd::$id {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let mut v = $id::splat(1 as $elem_ty);
             for i in 0..$id::lanes() {
                 if i % x == 0 {
@@ -84,17 +79,20 @@ macro_rules! test_arithmetic_reductions {
 
         #[test]
         fn sum() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let v = $id::splat(0 as $elem_ty);
             assert_eq!(v.sum(), 0 as $elem_ty);
             let v = $id::splat(1 as $elem_ty);
             assert_eq!(v.sum(), $id::lanes() as $elem_ty);
             let v = alternating(2);
-            assert_eq!(v.sum(), ($id::lanes() / 2 + $id::lanes()) as $elem_ty);
+            assert_eq!(
+                v.sum(),
+                ($id::lanes() / 2 + $id::lanes()) as $elem_ty
+            );
         }
         #[test]
         fn product() {
-            use ::coresimd::simd::$id;
+            use coresimd::simd::$id;
             let v = $id::splat(0 as $elem_ty);
             assert_eq!(v.product(), 0 as $elem_ty);
             let v = $id::splat(1 as $elem_ty);
@@ -106,7 +104,10 @@ macro_rules! test_arithmetic_reductions {
                 _ => 2,
             };
             let v = alternating(f);
-            assert_eq!(v.product(), (2_usize.pow(($id::lanes() / f) as u32) as $elem_ty));
+            assert_eq!(
+                v.product(),
+                (2_usize.pow(($id::lanes() / f) as u32) as $elem_ty)
+            );
         }
-    }
+    };
 }
