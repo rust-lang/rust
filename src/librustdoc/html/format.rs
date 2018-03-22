@@ -811,7 +811,7 @@ impl fmt::Display for clean::FunctionRetTy {
         match *self {
             clean::Return(clean::Tuple(ref tys)) if tys.is_empty() => Ok(()),
             clean::Return(ref ty) if f.alternate() => write!(f, " -> {:#}", ty),
-            clean::Return(ref ty) => write!(f, " -&gt; {}", ty),
+            clean::Return(ref ty) => write!(f, " -&gt; {}", render::SpotlightType(ty)),
             clean::DefaultReturn => Ok(()),
         }
     }
