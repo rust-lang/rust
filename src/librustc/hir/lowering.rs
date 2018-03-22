@@ -809,7 +809,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
+    fn lower_attrs(&mut self, attrs: &[Attribute]) -> hir::HirVec<Attribute> {
         attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into()
     }
 
@@ -1019,6 +1019,7 @@ impl<'a> LoweringContext<'a> {
                             span,
                             pure_wrt_drop: false,
                             synthetic: Some(hir::SyntheticTyParamKind::ImplTrait),
+                            attrs: P::new(),
                         });
 
                         hir::TyPath(hir::QPath::Resolved(None, P(hir::Path {
@@ -1585,6 +1586,7 @@ impl<'a> LoweringContext<'a> {
                                .filter(|attr| attr.check_name("rustc_synthetic"))
                                .map(|_| hir::SyntheticTyParamKind::ImplTrait)
                                .nth(0),
+            attrs: self.lower_attrs(&tp.attrs),
         }
     }
 
