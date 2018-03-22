@@ -784,6 +784,8 @@ fn cmp_bounds<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                  id_mapping: &IdMapping,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    debug!("diffing inherent impls");
+
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);
     let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
@@ -855,6 +857,8 @@ fn diff_inherent_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
 fn diff_trait_impls<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                               id_mapping: &IdMapping,
                               tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    debug!("diffing trait impls");
+
     use rustc::hir::def::Def;
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);
     let to_old = TranslationContext::target_old(tcx, id_mapping, false);
@@ -914,6 +918,9 @@ fn match_inherent_impl<'a, 'tcx>(changes: &mut ChangeSet<'tcx>,
                                  orig_item: AssociatedItem,
                                  target_item: AssociatedItem) -> bool {
     use rustc::ty::AssociatedKind;
+
+    debug!("match_inherent_impl: orig_impl/item: {:?}/{:?}, target_impl/item: {:?}/{:?}",
+           orig_impl_def_id, orig_item, target_impl_def_id, target_item);
 
     let orig_item_def_id = orig_item.def_id;
     let target_item_def_id = target_item.def_id;

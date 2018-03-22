@@ -20,6 +20,10 @@ macro_rules! full_test {
 }
 
 {
+    # check the environ for filtering
+    if (ENVIRON["RUST_LOG"] == "debug")
+        doprint = 1;
+
     # skip compilation info
     if (!doprint)
         next;
