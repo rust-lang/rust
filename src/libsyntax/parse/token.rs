@@ -91,7 +91,7 @@ impl Lit {
     }
 }
 
-fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
+pub(crate) fn ident_can_begin_expr(ident: ast::Ident, is_raw: bool) -> bool {
     let ident_token: Token = Ident(ident, is_raw);
 
     !ident_token.is_reserved_ident() ||
@@ -346,6 +346,15 @@ impl Token {
     /// Returns `true` if the token is a lifetime.
     pub fn is_lifetime(&self) -> bool {
         self.lifetime().is_some()
+    }
+
+    /// Returns `true` if the token is a identifier whose name is the given
+    /// string slice.
+    pub fn is_ident_named(&self, name: &str) -> bool {
+        match self.ident() {
+            Some((ident, _)) => ident.name.as_str() == name,
+            None => false
+        }
     }
 
     /// Returns `true` if the token is a documentation comment.

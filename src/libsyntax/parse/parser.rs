@@ -2830,7 +2830,48 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (lo.to(span), ExprKind::Box(e))
             }
-            _ => return self.parse_dot_or_call_expr(Some(attrs))
+            token::Ident(..) if self.token.is_ident_named("not") => {
+                // `not` is just an ordinary identifier in Rust-the-language,
+                // but as `rustc`-the-compiler, we can issue clever diagnostics
+                // for confused users who really want to say `!`
+                let token_cannot_continue_expr = |t: &token::Token| match *t {
+                    // These tokens can start an expression after `!`, but
+                    // can't continue an expression after an ident
+                    token::Ident(ident, is_raw) => token::ident_can_begin_expr(ident, is_raw),
+                    token::Literal(..) | token::Pound => true,
+                    token::Interpolated(ref nt) => match nt.0 {
+                        token::NtIdent(..) | token::NtExpr(..) |
+                        token::NtBlock(..) | token::NtPath(..) => true,
+                        _ => false,
+                    },
+                    _ => false
+                };
+                let cannot_continue_expr = self.look_ahead(1, token_cannot_continue_expr);
+                if cannot_continue_expr {
+                    self.bump();
+                    // Emit the error ...
+                    let mut err = self.diagnostic()
+                        .struct_span_err(self.span,
+                                         &format!("unexpected {} after identifier",
+                                                  self.this_token_descr()));
+                    // span the `not` plus trailing whitespace to avoid
+                    // trailing whitespace after the `!` in our suggestion
+                    let to_replace = self.sess.codemap()
+                        .span_until_non_whitespace(lo.to(self.span));
+                    err.span_suggestion_short(to_replace,
+                                              "use `!` to perform logical negation",
+                                              "!".to_owned());
+                    err.emit();
+                    // —and recover! (just as if we were in the block
+                    // for the `token::Not` arm)
+                    let e = self.parse_prefix_expr(None);
+                    let (span, e) = self.interpolated_or_expr_span(e)?;
+                    (lo.to(span), self.mk_unary(UnOp::Not, e))
+                } else {
+                    return self.parse_dot_or_call_expr(Some(attrs));
+                }
+            }
+            _ => { return self.parse_dot_or_call_expr(Some(attrs)); }
         };
         return Ok(self.mk_expr(lo.to(hi), ex, attrs));
     }
