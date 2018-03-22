@@ -628,8 +628,15 @@ fn path_node(ids: Vec<Ident>) -> ast::Path {
 }
 
 fn path_name_i(idents: &[Ident]) -> String {
-    // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
+    let mut path_name = "".to_string();
+    let mut idents_iter = idents.iter().peekable();
+    while let Some(ident) = idents_iter.next() {
+        path_name.push_str(&ident.name.as_str());
+        if let Some(_) = idents_iter.peek() {
+            path_name.push_str("::")
+        }
+    }
+    path_name
 }
 
 fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
@@ -682,7 +689,6 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // gensym information.
 
     let span = ignored_span(cx, test.span);
-    let path = test.path.clone();
     let ecx = &cx.ext_cx;
     let self_id = ecx.ident_of("self");
     let test_id = ecx.ident_of("test");
@@ -694,10 +700,11 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // creates $name: $expr
     let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
-    debug!("encoding {}", path_name_i(&path[..]));
-
     // path to the #[test] function: "foo::bar::baz"
-    let path_string = path_name_i(&path[..]);
+    let path_string = path_name_i(&test.path[..]);
+
+    debug!("encoding {}", path_string);
+
     let name_expr = ecx.expr_str(span, Symbol::intern(&path_string));
 
     // self::test::StaticTestName($name_expr)
@@ -744,7 +751,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
             diag.bug("expected to find top-level re-export name, but found None");
         }
     };
-    visible_path.extend(path);
+    visible_path.extend_from_slice(&test.path[..]);
 
     // Rather than directly give the test function to the test
     // harness, we create a wrapper like one of the following:

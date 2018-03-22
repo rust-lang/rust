@@ -2884,7 +2884,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let origin = self.misc(call_span);
                 let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
 
-                // FIXME(#15760) can't use try! here, FromError doesn't default
+                // FIXME(#27336) can't use ? here, Try::from_error doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
                     Ok(ok) => {
@@ -2892,19 +2892,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // we can.  We don't care if some things turn
                         // out unconstrained or ambiguous, as we're
                         // just trying to get hints here.
-                        let result = self.save_and_restore_in_snapshot_flag(|_| {
+                        self.save_and_restore_in_snapshot_flag(|_| {
                             let mut fulfill = FulfillmentContext::new();
-                            let ok = ok; // FIXME(#30046)
                             for obligation in ok.obligations {
                                 fulfill.register_predicate_obligation(self, obligation);
                             }
                             fulfill.select_where_possible(self)
-                        });
-
-                        match result {
-                            Ok(()) => { }
-                            Err(_) => return Err(()),
-                        }
+                        }).map_err(|_| ())?;
                     }
                     Err(_) => return Err(()),
                 }
