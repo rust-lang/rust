@@ -222,7 +222,7 @@ fn foo<T, U>(t: T, u: U) where
 
 fn foo(
     t: impl Whatever + SomethingElse,
-    u: impl,
+    u: impl Whatever,
 )
 ```
 
