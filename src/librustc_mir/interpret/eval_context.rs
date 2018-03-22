@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use rustc::hir::def_id::DefId;
+use rustc::hir::def::Def;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::middle::const_val::{ConstVal, ErrKind};
 use rustc::mir;
@@ -387,17 +388,23 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let num_locals = mir.local_decls.len() - 1;
 
         let mut locals = vec![Some(Value::ByVal(PrimVal::Undef)); num_locals];
-        trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
-        for block in mir.basic_blocks() {
-            for stmt in block.statements.iter() {
-                use rustc::mir::StatementKind::{StorageDead, StorageLive};
-                match stmt.kind {
-                    StorageLive(local) | StorageDead(local) => if local.index() > 0 {
-                        locals[local.index() - 1] = None;
-                    },
-                    _ => {}
+        match self.tcx.describe_def(instance.def_id()) {
+            // statics and constants don't have `Storage*` statements, no need to look for them
+            Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
+            _ => {
+                trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
+                for block in mir.basic_blocks() {
+                    for stmt in block.statements.iter() {
+                        use rustc::mir::StatementKind::{StorageDead, StorageLive};
+                        match stmt.kind {
+                            StorageLive(local) | StorageDead(local) => if local.index() > 0 {
+                                locals[local.index() - 1] = None;
+                            },
+                            _ => {}
+                        }
+                    }
                 }
-            }
+            },
         }
 
         self.stack.push(Frame {
