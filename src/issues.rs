@@ -227,13 +227,13 @@ fn find_unnumbered_issue() {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
         assert_eq!(
             Some(failing_pos),
-            text.chars().position(|c| seeker.inspect(c).is_some())
+            text.find(|c| seeker.inspect(c).is_some())
         );
     }
 
     fn check_pass(text: &str) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
-        assert_eq!(None, text.chars().position(|c| seeker.inspect(c).is_some()));
+        assert_eq!(None, text.find(|c| seeker.inspect(c).is_some()));
     }
 
     check_fail("TODO\n", 4);

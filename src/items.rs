@@ -977,7 +977,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             result.push_str(&where_clause_str);
         } else {
             let item_snippet = context.snippet(item.span);
-            if let Some(lo) = item_snippet.chars().position(|c| c == '/') {
+            if let Some(lo) = item_snippet.find('/') {
                 // 1 = `{`
                 let comment_hi = body_lo - BytePos(1);
                 let comment_lo = item.span.lo() + BytePos(lo as u32);

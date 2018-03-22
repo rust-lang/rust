@@ -154,12 +154,14 @@ impl FormattingError {
         match self.kind {
             ErrorKind::LineOverflow(found, max) => (max, found - max),
             ErrorKind::TrailingWhitespace => {
-                let trailing_ws_len = self.line_buffer
-                    .chars()
-                    .rev()
-                    .take_while(|c| c.is_whitespace())
-                    .count();
-                (self.line_buffer.len() - trailing_ws_len, trailing_ws_len)
+                let trailing_ws_start = self.line_buffer
+                    .rfind(|c: char| !c.is_whitespace())
+                    .map(|pos| pos + 1)
+                    .unwrap_or(0);
+                (
+                    trailing_ws_start,
+                    self.line_buffer.len() - trailing_ws_start,
+                )
             }
             _ => unreachable!(),
         }
