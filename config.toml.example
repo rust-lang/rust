@@ -186,6 +186,10 @@
 # essentially skipping stage0 as the local compiler is recompiling itself again.
 #local-rebuild = false
 
+# Print out how long each rustbuild step took (mostly intended for CI and
+# tracking over time)
+#print-step-timings = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
