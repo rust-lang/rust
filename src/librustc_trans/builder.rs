@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmin(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmin");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, true);
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
             }
@@ -1046,7 +1046,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmax(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmax");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, true);
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
             }
@@ -1056,7 +1056,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmin_fast(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmin_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, false);
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
             }
@@ -1067,7 +1067,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmax_fast(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmax_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, false);
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
             }

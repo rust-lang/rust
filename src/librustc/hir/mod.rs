@@ -414,6 +414,7 @@ pub struct TyParam {
     pub span: Span,
     pub pure_wrt_drop: bool,
     pub synthetic: Option<SyntheticTyParamKind>,
+    pub attrs: HirVec<Attribute>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

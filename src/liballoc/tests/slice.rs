@@ -1351,7 +1351,7 @@ fn test_copy_from_slice_dst_shorter() {
 const MAX_LEN: usize = 80;
 
 static DROP_COUNTS: [AtomicUsize; MAX_LEN] = [
-    // FIXME #5244: AtomicUsize is not Copy.
+    // FIXME(RFC 1109): AtomicUsize is not Copy.
     AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
     AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),
     AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0),

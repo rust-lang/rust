@@ -48,25 +48,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
-
-/// A type used as the error type for implementations of fallible conversion
-/// traits in cases where conversions cannot actually fail.
-///
-/// Because `Infallible` has no variants, a value of this type can never exist.
-/// It is used only to satisfy trait signatures that expect an error type, and
-/// signals to both the compiler and the user that the error case is impossible.
-#[unstable(feature = "try_from", issue = "33417")]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum Infallible {}
-
-#[unstable(feature = "try_from", issue = "33417")]
-impl fmt::Display for Infallible {
-    fn fmt(&self, _: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-        }
-    }
-}
 /// A cheap reference-to-reference conversion. Used to convert a value to a
 /// reference value within generic code.
 ///
@@ -382,7 +363,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U>
     }
 }
 
-// FIXME (#23442): replace the above impls for &/&mut with the following more general one:
+// FIXME (#45742): replace the above impls for &/&mut with the following more general one:
 // // As lifts over Deref
 // impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
 //     fn as_ref(&self) -> &U {
@@ -399,7 +380,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U>
     }
 }
 
-// FIXME (#23442): replace the above impl for &mut with the following more general one:
+// FIXME (#45742): replace the above impl for &mut with the following more general one:
 // // AsMut lifts over DerefMut
 // impl<D: ?Sized + Deref, U: ?Sized> AsMut<U> for D where D::Target: AsMut<U> {
 //     fn as_mut(&mut self) -> &mut U {
@@ -438,7 +419,7 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 // with an uninhabited error type.
 #[unstable(feature = "try_from", issue = "33417")]
 impl<T, U> TryFrom<U> for T where T: From<U> {
-    type Error = Infallible;
+    type Error = !;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {
         Ok(T::from(value))

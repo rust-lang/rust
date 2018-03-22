@@ -12,6 +12,7 @@ use rustc::hir::{self, ImplPolarity};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::subst::Substs;
 use rustc::traits::{QuantifierKind, Goal, DomainGoal, Clause, WhereClauseAtom};
 use syntax::ast;
 use rustc_data_structures::sync::Lrc;
@@ -104,11 +105,42 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(node_id);
     match item.node {
+        hir::ItemTrait(..) => program_clauses_for_trait(tcx, def_id),
         hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
 
         // FIXME: other constructions e.g. traits, associated types...
         _ => Lrc::new(vec![]),
     }
+}
+
+fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+    -> Lrc<Vec<Clause<'tcx>>>
+{
+    // Rule Implemented-From-Env (see rustc guide)
+    //
+    // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
+    //
+    // ```
+    // forall<Self, P1..Pn> {
+    //   Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)
+    // }
+    // ```
+
+    // `Self: Trait<P1..Pn>`
+    let trait_pred = ty::TraitPredicate {
+        trait_ref: ty::TraitRef {
+            def_id,
+            substs: Substs::identity_for_item(tcx, def_id)
+        }
+    };
+    // `FromEnv(Self: Trait<P1..Pn>)`
+    let from_env = Goal::DomainGoal(DomainGoal::FromEnv(trait_pred.lower()));
+    // `Implemented(Self: Trait<P1..Pn>)`
+    let impl_trait = DomainGoal::Holds(WhereClauseAtom::Implemented(trait_pred));
+
+    // `Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)`
+    let clause = Clause::Implies(vec![from_env], impl_trait);
+    Lrc::new(vec![clause])
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
@@ -118,15 +150,24 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
         return Lrc::new(vec![]);
     }
 
-    // Rule Implemented-From-Impl
+    // Rule Implemented-From-Impl (see rustc guide)
     //
-    // (see rustc guide)
+    // `impl<P0..Pn> Trait<A1..An> for A0 where WC { .. }`
+    //
+    // ```
+    // forall<P0..Pn> {
+    //   Implemented(A0: Trait<A1..An>) :- WC
+    // }
+    // ```
 
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
-    let trait_ref = ty::TraitPredicate { trait_ref }.lower();
+    // `Implemented(A0: Trait<A1..An>)`
+    let trait_pred = ty::TraitPredicate { trait_ref }.lower();
+     // `WC`
     let where_clauses = tcx.predicates_of(def_id).predicates.lower();
 
-    let clause = Clause::Implies(where_clauses, trait_ref);
+     // `Implemented(A0: Trait<A1..An>) :- WC`
+    let clause = Clause::Implies(where_clauses, trait_pred);
     Lrc::new(vec![clause])
 }
 

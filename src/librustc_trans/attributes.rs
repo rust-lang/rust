@@ -148,9 +148,17 @@ fn cstr(s: &'static str) -> &CStr {
 pub fn provide(providers: &mut Providers) {
     providers.target_features_whitelist = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
-            .iter()
-            .map(|c| c.to_string())
-            .collect())
+        if tcx.sess.opts.actually_rustdoc {
+            // rustdoc needs to be able to document functions that use all the features, so
+            // whitelist them all
+            Lrc::new(llvm_util::all_known_features()
+                .map(|c| c.to_string())
+                .collect())
+        } else {
+            Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
+                .iter()
+                .map(|c| c.to_string())
+                .collect())
+        }
     };
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-static NAME: &'static str = "hello world";
-
 fn main() {
-    match &*NAME.to_ascii_lowercase() {
-        "foo" => {}
-        _ => {}
-    }
+    let v = vec![0];
+    const l: usize = v.count(); //~ ERROR can't capture dynamic environment in a fn item
+    let s: [u32; l] = v.into_iter().collect(); //~ ERROR constant evaluation error
 }

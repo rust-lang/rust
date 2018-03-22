@@ -169,7 +169,6 @@ mod tests {
 
     macro_rules! test_checked_next_power_of_two {
         ($test_name:ident, $T:ident) => (
-            #[cfg_attr(target_os = "emscripten", ignore)] // FIXME(#39119)
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));
