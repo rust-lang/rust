@@ -62,7 +62,7 @@ use {Bar, Baz};
 
 // Root globs
 use ::*;
-use ::*;
+use *;
 
 // spaces used to cause glob imports to disappear (#1356)
 use super::*;
