@@ -299,16 +299,24 @@ impl UseSegment {
             _ => self.clone(),
         }
     }
+
+    fn from_path_segment(path_seg: &ast::PathSegment) -> UseSegment {
+        let name = path_seg.identifier.name.as_str();
+        if name == "self" {
+            UseSegment::Slf(None)
+        } else if name == "super" {
+            UseSegment::Super(None)
+        } else {
+            UseSegment::Ident((*name).to_owned(), None)
+        }
+    }
 }
 
 impl UseTree {
     fn from_ast(a: &ast::UseTree) -> UseTree {
         let mut result = UseTree { path: vec![] };
         for p in &a.prefix.segments {
-            result.path.push(UseSegment::Ident(
-                (*p.identifier.name.as_str()).to_owned(),
-                None,
-            ));
+            result.path.push(UseSegment::from_path_segment(p));
         }
         match a.kind {
             UseTreeKind::Glob => {
@@ -321,11 +329,13 @@ impl UseTree {
             }
             UseTreeKind::Simple(ref rename) => {
                 let mut name = (*path_to_imported_ident(&a.prefix).name.as_str()).to_owned();
-                let alias = if &name == &*rename.name.as_str() {
-                    None
-                } else {
-                    Some((&*rename.name.as_str()).to_owned())
-                };
+                let alias = rename.and_then(|ident| {
+                    if ident == path_to_imported_ident(&a.prefix) {
+                        None
+                    } else {
+                        Some(ident.to_string())
+                    }
+                });
 
                 let segment = if &name == "self" {
                     UseSegment::Slf(alias)
