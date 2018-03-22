@@ -53,8 +53,7 @@ pub trait TraitEngine<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> dyn TraitEngine<'tcx> +'tcx {
-   pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self + 'tcx>
-   {
+   pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
        Box::new(FulfillmentContext::new())
    }
 
