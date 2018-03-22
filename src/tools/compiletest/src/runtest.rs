@@ -1325,6 +1325,8 @@ impl<'test> TestCx<'test> {
 
         rustdoc
             .arg("-L")
+            .arg(self.config.run_lib_path.to_str().unwrap())
+            .arg("-L")
             .arg(aux_dir)
             .arg("-o")
             .arg(out_dir)
