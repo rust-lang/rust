@@ -1682,7 +1682,7 @@ impl<'a> Formatter<'a> {
     ///
     /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
     /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
-    /// 
+    ///
     /// impl<'a, L, R> fmt::Debug for Arm<'a, L, R>
     /// where
     ///     L: 'a + fmt::Debug, R: 'a + fmt::Debug
