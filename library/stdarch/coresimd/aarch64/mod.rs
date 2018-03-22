@@ -13,3 +13,6 @@ pub use self::v8::*;
 
 mod neon;
 pub use self::neon::*;
+
+mod crypto;
+pub use self::crypto::*;
