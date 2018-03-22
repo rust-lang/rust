@@ -920,13 +920,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn minnum(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("minnum");
         unsafe {
-            llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs)
+            let instr = llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs);
+            bug!("LLVMRustBuildMinNum is not available in LLVM version < 6.0");
+            instr
         }
     }
     pub fn maxnum(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("maxnum");
         unsafe {
-            llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs)
+            let instr = llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs);
+            bug!("LLVMRustBuildMaxNum is not available in LLVM version < 6.0");
+            instr
         }
     }
 
