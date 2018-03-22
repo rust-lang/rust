@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-emscripten
+// min-llvm-version 6.0
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 
