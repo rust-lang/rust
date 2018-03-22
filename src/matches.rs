@@ -13,8 +13,8 @@
 use std::iter::repeat;
 
 use config::lists::*;
-use syntax::{ast, ptr};
 use syntax::codemap::{BytePos, Span};
+use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
 use comment::combine_strs_with_missing_comments;
