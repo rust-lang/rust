@@ -261,6 +261,7 @@ pub fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
         '\\' => ('\\', 2),
         '\'' => ('\'', 2),
         '0' => ('\0', 2),
+        'e' => ('\x1b', 2),
         'x' => {
             let v = u32::from_str_radix(&lit[2..4], 16).unwrap();
             let c = char::from_u32(v).unwrap();
@@ -484,6 +485,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
             b'\\' => b'\\',
             b'\'' => b'\'',
             b'0' => b'\0',
+            b'e' => b'\x1b',
             _ => {
                 match u64::from_str_radix(&lit[2..4], 16).ok() {
                     Some(c) =>
