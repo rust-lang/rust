@@ -147,6 +147,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     pub fn user_assert_ty(&mut self, block: BasicBlock, hir_id: hir::HirId,
                           var: NodeId, span: Span) {
+        if self.hir.tcx().sess.opts.debugging_opts.disable_nll_user_type_assert { return; }
+
         let local_id = self.var_indices[&var];
         let source_info = self.source_info(span);
 
