@@ -31,7 +31,7 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![cfg_attr(stage0, feature(slice_patterns))]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(optin_builtin_traits)]
 #![feature(inclusive_range_fields)]
 

@@ -10,8 +10,6 @@
 
 // ignore-tidy-linelength
 
-#![feature(conservative_impl_trait)]
-
 use std::cell::Cell;
 use std::rc::Rc;
 
