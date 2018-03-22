@@ -110,6 +110,7 @@ test!(infer);
 test!(infer_regress);
 test!(inherent_impls);
 test!(issue_34);
+test!(issue_50);
 test!(kind_change);
 test!(macros);
 test!(max_priv);

@@ -92,6 +92,7 @@ macro_rules! full_test {
 
 full_test!(log, "log", "0.3.4", "0.3.8");
 full_test!(libc, "libc", "0.2.28", "0.2.31");
+// full_test!(mozjs, "mozjs", "0.2.0", "0.3.0");
 // full_test!(rand, "rand", "0.3.10", "0.3.16");
 // full_test!(serde_pre, "serde", "0.7.0", "1.0.0");
 // full_test!(serde_post, "serde", "1.0.0", "1.0.8");

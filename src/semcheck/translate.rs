@@ -151,11 +151,21 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         orig.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
             match ty.sty {
                 TyAdt(&AdtDef { ref did, .. }, substs) if self.needs_translation(*did) => {
-                    if let Some((target_def_id, target_substs)) =
+                    /* if let Some((target_def_id, target_substs)) =
                         self.translate_orig_substs(index_map, *did, substs)
                     {
                         let target_adt = self.tcx.adt_def(target_def_id);
                         self.tcx.mk_adt(target_adt, target_substs)
+                    } else {
+                        ty
+                    } */
+
+                    // we fold bottom-up, so the code above is invalid, as it assumes the
+                    // substs (that have been folded already) are yet untranslated
+                    // TODO: fix other places as well?
+                    if let Some(target_def_id) = (self.translate_orig)(self.id_mapping, *did) {
+                        let target_adt = self.tcx.adt_def(target_def_id);
+                        self.tcx.mk_adt(target_adt, substs)
                     } else {
                         ty
                     }
@@ -181,7 +191,6 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     let err_pred = AutoTrait(DefId::local(CRATE_DEF_INDEX));
 
                     let res: Vec<_> = preds.iter().map(|p| {
-                        debug!("pred: {:?}", p);
                         match *p.skip_binder() {
                             Trait(existential_trait_ref) => {
                                 let trait_ref = Binder(existential_trait_ref)
