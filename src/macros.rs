@@ -965,8 +965,7 @@ fn next_space(tok: &Token) -> SpaceState {
         | Token::DotDotDot
         | Token::DotDotEq
         | Token::DotEq
-        | Token::Question
-        | Token::Underscore => SpaceState::Punctuation,
+        | Token::Question => SpaceState::Punctuation,
 
         Token::ModSep
         | Token::Pound
