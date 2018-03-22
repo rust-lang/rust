@@ -921,7 +921,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("minnum");
         unsafe {
             let instr = llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs);
-            bug!("LLVMRustBuildMinNum is not available in LLVM version < 6.0");
+            if instr.is_null() {
+                bug!("LLVMRustBuildMinNum is not available in LLVM version < 6.0");
+            }
             instr
         }
     }
@@ -929,7 +931,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("maxnum");
         unsafe {
             let instr = llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs);
-            bug!("LLVMRustBuildMaxNum is not available in LLVM version < 6.0");
+            if instr.is_null() {
+                bug!("LLVMRustBuildMaxNum is not available in LLVM version < 6.0");
+            }
             instr
         }
     }
