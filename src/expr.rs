@@ -1547,7 +1547,7 @@ pub fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
     for (kind, c) in CharClasses::new(context.snippet(span).chars()) {
         match c {
             _ if kind.is_comment() || c.is_whitespace() => continue,
-            ')' | '}' => result = result && prev_char != c,
+            ')' | '}' => result = result && prev_char != ')' && prev_char != '}',
             ',' => result = true,
             _ => result = false,
         }
