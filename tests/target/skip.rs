@@ -59,7 +59,7 @@ fn skip_on_statements() {
 
     // Item
     #[cfg_attr(rustfmt, rustfmt_skip)]
-    use   foobar  ;
+    use foobar;
 
     // Mac
     #[cfg_attr(rustfmt, rustfmt_skip)]

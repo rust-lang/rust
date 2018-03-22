@@ -23,11 +23,11 @@ use std::iter::{Enumerate, Peekable};
 use std::path::{Path, PathBuf};
 use std::str::Chars;
 
-use rustfmt::*;
-use rustfmt::config::{Color, Config, ReportTactic};
 use rustfmt::config::summary::Summary;
+use rustfmt::config::{Color, Config, ReportTactic};
 use rustfmt::filemap::write_system_newlines;
 use rustfmt::rustfmt_diff::*;
+use rustfmt::*;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";

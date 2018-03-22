@@ -14,7 +14,9 @@ mod a {
     use d;
 }
 
+use z;
+
+use y;
+
 use a;
 use x;
-use y;
-use z;

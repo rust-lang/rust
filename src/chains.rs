@@ -77,8 +77,8 @@ use std::borrow::Cow;
 use std::cmp::min;
 use std::iter;
 
-use syntax::{ast, ptr};
 use syntax::codemap::Span;
+use syntax::{ast, ptr};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
     debug!("rewrite_chain {:?}", shape);

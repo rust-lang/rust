@@ -10,9 +10,9 @@
 
 //! This module contains types and functions to support formatting specific line ranges.
 
-use std::{cmp, iter, str};
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::{cmp, iter, str};
 
 use serde::de::{Deserialize, Deserializer};
 use serde_json as json;

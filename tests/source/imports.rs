@@ -21,6 +21,7 @@ use {/* Pre-comment! */
      Foo, Bar /* comment */};
 use Foo::{Bar, Baz};
 pub use syntax::ast::{Expr_, Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath};
+
 use syntax::some::{};
 
 use self;

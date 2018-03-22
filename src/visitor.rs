@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::{ast, visit};
 use syntax::attr::HasAttrs;
 use syntax::codemap::{self, BytePos, CodeMap, Pos, Span};
 use syntax::parse::ParseSess;
+use syntax::{ast, visit};
 
 use attr::*;
 use codemap::{LineRangeUtils, SpanUtils};

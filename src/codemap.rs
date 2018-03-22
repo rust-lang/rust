@@ -12,8 +12,8 @@
 //! This includes extension traits and methods for looking up spans and line ranges for AST nodes.
 
 use config::file_lines::LineRange;
-use visitor::SnippetProvider;
 use syntax::codemap::{BytePos, CodeMap, Span};
+use visitor::SnippetProvider;
 
 use comment::FindUncommented;
 

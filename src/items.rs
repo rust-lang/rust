@@ -15,9 +15,9 @@ use std::cmp::min;
 
 use config::lists::*;
 use regex::Regex;
-use syntax::{abi, ast, ptr, symbol};
 use syntax::codemap::{self, BytePos, Span};
 use syntax::visit;
+use syntax::{abi, ast, ptr, symbol};
 
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
@@ -26,8 +26,8 @@ use config::{BraceStyle, Config, Density, IndentStyle};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_assign_rhs_with, ExprType, RhsTactics};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
-use rewrite::{Rewrite, RewriteContext};
 use overflow;
+use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::TraitTyParamBounds;

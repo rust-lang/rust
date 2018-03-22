@@ -17,6 +17,7 @@
 // TODO(#2455): Reorder trait items.
 
 use config::{Config, lists::*};
+use syntax::ast::UseTreeKind;
 use syntax::{ast, attr, codemap::Span};
 
 use attr::filter_inline_attrs;
@@ -31,86 +32,12 @@ use spanned::Spanned;
 use utils::mk_sp;
 use visitor::FmtVisitor;
 
-use std::cmp::Ordering;
+use std::cmp::{Ord, Ordering, PartialOrd};
 
-fn compare_path_segments(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    a.identifier.name.as_str().cmp(&b.identifier.name.as_str())
-}
-
-fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
-    for segment in a.segments.iter().zip(b.segments.iter()) {
-        let ord = compare_path_segments(segment.0, segment.1);
-        if ord != Ordering::Equal {
-            return ord;
-        }
-    }
-    a.segments.len().cmp(&b.segments.len())
-}
-
-fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree, nested: bool) -> Ordering {
-    use ast::UseTreeKind::*;
-
-    // `use_nested_groups` is not yet supported, remove the `if !nested` when support will be
-    // fully added
-    if !nested {
-        let paths_cmp = compare_paths(&a.prefix, &b.prefix);
-        if paths_cmp != Ordering::Equal {
-            return paths_cmp;
-        }
-    }
-
-    match (&a.kind, &b.kind) {
-        (&Simple(ident_a), &Simple(ident_b)) => {
-            let name_a = &*path_to_imported_ident(&a.prefix).name.as_str();
-            let name_b = &*path_to_imported_ident(&b.prefix).name.as_str();
-            let name_ordering = if name_a == "self" {
-                if name_b == "self" {
-                    Ordering::Equal
-                } else {
-                    Ordering::Less
-                }
-            } else if name_b == "self" {
-                Ordering::Greater
-            } else {
-                name_a.cmp(name_b)
-            };
-            if name_ordering == Ordering::Equal {
-                if ident_a.name.as_str() != name_a {
-                    if ident_b.name.as_str() != name_b {
-                        ident_a.name.as_str().cmp(&ident_b.name.as_str())
-                    } else {
-                        Ordering::Greater
-                    }
-                } else {
-                    Ordering::Less
-                }
-            } else {
-                name_ordering
-            }
-        }
-        (&Glob, &Glob) => Ordering::Equal,
-        (&Simple(_), _) | (&Glob, &Nested(_)) => Ordering::Less,
-        (&Nested(ref a_items), &Nested(ref b_items)) => {
-            let mut a = a_items
-                .iter()
-                .map(|&(ref tree, _)| tree.clone())
-                .collect::<Vec<_>>();
-            let mut b = b_items
-                .iter()
-                .map(|&(ref tree, _)| tree.clone())
-                .collect::<Vec<_>>();
-            a.sort_by(|a, b| compare_use_trees(a, b, true));
-            b.sort_by(|a, b| compare_use_trees(a, b, true));
-            for comparison_pair in a.iter().zip(b.iter()) {
-                let ord = compare_use_trees(comparison_pair.0, comparison_pair.1, true);
-                if ord != Ordering::Equal {
-                    return ord;
-                }
-            }
-            a.len().cmp(&b.len())
-        }
-        (&Glob, &Simple(_)) | (&Nested(_), _) => Ordering::Greater,
-    }
+fn compare_use_trees(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
+    let aa = UseTree::from_ast(a).normalize();
+    let bb = UseTree::from_ast(b).normalize();
+    aa.cmp(&bb)
 }
 
 /// Choose the ordering between the given two items.
@@ -120,7 +47,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
             a.ident.name.as_str().cmp(&b.ident.name.as_str())
         }
         (&ast::ItemKind::Use(ref a_tree), &ast::ItemKind::Use(ref b_tree)) => {
-            compare_use_trees(a_tree, b_tree, false)
+            compare_use_trees(a_tree, b_tree)
         }
         (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
             // `extern crate foo as bar;`
@@ -149,8 +76,6 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
 
 /// Rewrite a list of items with reordering. Every item in `items` must have
 /// the same `ast::ItemKind`.
-// TODO (some day) remove unused imports, expand globs, compress many single
-// imports into a list import.
 fn rewrite_reorderable_items(
     context: &RewriteContext,
     reorderable_items: &[&ast::Item],
@@ -196,6 +121,7 @@ fn rewrite_reorderable_items(
         span.hi(),
         false,
     );
+
     let mut item_pair_vec: Vec<_> = items.zip(reorderable_items.iter()).collect();
     item_pair_vec.sort_by(|a, b| compare_items(a.1, b.1));
     let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();
@@ -327,5 +253,401 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 items = rest;
             }
         }
+    }
+}
+
+// Ordering of imports
+
+// We order imports by translating to our own representation and then sorting.
+// The Rust AST data structures are really bad for this. Rustfmt applies a bunch
+// of normalisations to imports and since we want to sort based on the result
+// of these (and to maintain idempotence) we must apply the same normalisations
+// to the data structures for sorting.
+//
+// We sort `self` and `super` before other imports, then identifier imports,
+// then glob imports, then lists of imports. We do not take aliases into account
+// when ordering unless the imports are identical except for the alias (rare in
+// practice).
+
+// FIXME(#2531) - we should unify the comparison code here with the formatting
+// code elsewhere since we are essentially string-ifying twice. Furthermore, by
+// parsing to our own format on comparison, we repeat a lot of work when
+// sorting.
+
+// FIXME we do a lot of allocation to make our own representation.
+#[derive(Debug, Clone, Eq, PartialEq)]
+enum UseSegment {
+    Ident(String, Option<String>),
+    Slf(Option<String>),
+    Super(Option<String>),
+    Glob,
+    List(Vec<UseTree>),
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct UseTree {
+    path: Vec<UseSegment>,
+}
+
+impl UseSegment {
+    // Clone a version of self with any top-level alias removed.
+    fn remove_alias(&self) -> UseSegment {
+        match *self {
+            UseSegment::Ident(ref s, _) => UseSegment::Ident(s.clone(), None),
+            UseSegment::Slf(_) => UseSegment::Slf(None),
+            UseSegment::Super(_) => UseSegment::Super(None),
+            _ => self.clone(),
+        }
+    }
+}
+
+impl UseTree {
+    fn from_ast(a: &ast::UseTree) -> UseTree {
+        let mut result = UseTree { path: vec![] };
+        for p in &a.prefix.segments {
+            result.path.push(UseSegment::Ident(
+                (*p.identifier.name.as_str()).to_owned(),
+                None,
+            ));
+        }
+        match a.kind {
+            UseTreeKind::Glob => {
+                result.path.push(UseSegment::Glob);
+            }
+            UseTreeKind::Nested(ref list) => {
+                result.path.push(UseSegment::List(
+                    list.iter().map(|t| Self::from_ast(&t.0)).collect(),
+                ));
+            }
+            UseTreeKind::Simple(ref rename) => {
+                let mut name = (*path_to_imported_ident(&a.prefix).name.as_str()).to_owned();
+                let alias = if &name == &*rename.name.as_str() {
+                    None
+                } else {
+                    Some((&*rename.name.as_str()).to_owned())
+                };
+
+                let segment = if &name == "self" {
+                    UseSegment::Slf(alias)
+                } else if &name == "super" {
+                    UseSegment::Super(alias)
+                } else {
+                    UseSegment::Ident(name, alias)
+                };
+
+                // `name` is already in result.
+                result.path.pop();
+                result.path.push(segment);
+            }
+        }
+        result
+    }
+
+    // Do the adjustments that rustfmt does elsewhere to use paths.
+    fn normalize(mut self) -> UseTree {
+        let mut last = self.path.pop().expect("Empty use tree?");
+        // Hack around borrow checker.
+        let mut normalize_sole_list = false;
+        let mut aliased_self = false;
+
+        // Normalise foo::self -> foo.
+        if let UseSegment::Slf(None) = last {
+            return self;
+        }
+
+        // Normalise foo::self as bar -> foo as bar.
+        if let UseSegment::Slf(_) = last {
+            match self.path.last() {
+                None => {}
+                Some(UseSegment::Ident(_, None)) => {
+                    aliased_self = true;
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        if aliased_self {
+            match self.path.last() {
+                Some(UseSegment::Ident(_, ref mut old_rename)) => {
+                    assert!(old_rename.is_none());
+                    if let UseSegment::Slf(Some(rename)) = last {
+                        *old_rename = Some(rename);
+                        return self;
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // Normalise foo::{bar} -> foo::bar
+        if let UseSegment::List(ref list) = last {
+            if list.len() == 1 && list[0].path.len() == 1 {
+                normalize_sole_list = true;
+            }
+        }
+
+        if normalize_sole_list {
+            match last {
+                UseSegment::List(list) => {
+                    self.path.push(list[0].path[0].clone());
+                    return self.normalize();
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // Recursively normalize elements of a list use (including sorting the list).
+        if let UseSegment::List(list) = last {
+            let mut list: Vec<_> = list.into_iter().map(|ut| ut.normalize()).collect();
+            list.sort();
+            last = UseSegment::List(list);
+        }
+
+        self.path.push(last);
+        self
+    }
+}
+
+impl PartialOrd for UseSegment {
+    fn partial_cmp(&self, other: &UseSegment) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialOrd for UseTree {
+    fn partial_cmp(&self, other: &UseTree) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for UseSegment {
+    fn cmp(&self, other: &UseSegment) -> Ordering {
+        use self::UseSegment::*;
+
+        match (self, other) {
+            (&Slf(ref a), &Slf(ref b)) | (&Super(ref a), &Super(ref b)) => a.cmp(b),
+            (&Glob, &Glob) => Ordering::Equal,
+            (&Ident(ref ia, ref aa), &Ident(ref ib, ref ab)) => {
+                let ident_ord = ia.cmp(ib);
+                if ident_ord != Ordering::Equal {
+                    return ident_ord;
+                }
+                if aa.is_none() && ab.is_some() {
+                    return Ordering::Less;
+                }
+                if aa.is_some() && ab.is_none() {
+                    return Ordering::Greater;
+                }
+                aa.cmp(ab)
+            }
+            (&List(ref a), &List(ref b)) => {
+                for (a, b) in a.iter().zip(b.iter()) {
+                    let ord = a.cmp(b);
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                }
+
+                a.len().cmp(&b.len())
+            }
+            (&Slf(_), _) => Ordering::Less,
+            (_, &Slf(_)) => Ordering::Greater,
+            (&Super(_), _) => Ordering::Less,
+            (_, &Super(_)) => Ordering::Greater,
+            (&Ident(..), _) => Ordering::Less,
+            (_, &Ident(..)) => Ordering::Greater,
+            (&Glob, _) => Ordering::Less,
+            (_, &Glob) => Ordering::Greater,
+        }
+    }
+}
+impl Ord for UseTree {
+    fn cmp(&self, other: &UseTree) -> Ordering {
+        for (a, b) in self.path.iter().zip(other.path.iter()) {
+            let ord = a.cmp(b);
+            // The comparison without aliases is a hack to avoid situations like
+            // comparing `a::b` to `a as c` - where the latter should be ordered
+            // first since it is shorter.
+            if ord != Ordering::Equal && a.remove_alias().cmp(&b.remove_alias()) != Ordering::Equal
+            {
+                return ord;
+            }
+        }
+
+        self.path.len().cmp(&other.path.len())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    // Parse the path part of an import. This parser is not robust and is only
+    // suitable for use in a test harness.
+    fn parse_use_tree(s: &str) -> UseTree {
+        use std::iter::Peekable;
+        use std::mem::swap;
+        use std::str::Chars;
+
+        struct Parser<'a> {
+            input: Peekable<Chars<'a>>,
+        }
+
+        impl<'a> Parser<'a> {
+            fn bump(&mut self) {
+                self.input.next().unwrap();
+            }
+            fn eat(&mut self, c: char) {
+                assert!(self.input.next().unwrap() == c);
+            }
+            fn push_segment(
+                result: &mut Vec<UseSegment>,
+                buf: &mut String,
+                alias_buf: &mut Option<String>,
+            ) {
+                if !buf.is_empty() {
+                    let mut alias = None;
+                    swap(alias_buf, &mut alias);
+                    if buf == "self" {
+                        result.push(UseSegment::Slf(alias));
+                        *buf = String::new();
+                        *alias_buf = None;
+                    } else if buf == "super" {
+                        result.push(UseSegment::Super(alias));
+                        *buf = String::new();
+                        *alias_buf = None;
+                    } else {
+                        let mut name = String::new();
+                        swap(buf, &mut name);
+                        result.push(UseSegment::Ident(name, alias));
+                    }
+                }
+            }
+            fn parse_in_list(&mut self) -> UseTree {
+                let mut result = vec![];
+                let mut buf = String::new();
+                let mut alias_buf = None;
+                while let Some(&c) = self.input.peek() {
+                    match c {
+                        '{' => {
+                            assert!(buf.is_empty());
+                            self.bump();
+                            result.push(UseSegment::List(self.parse_list()));
+                            self.eat('}');
+                        }
+                        '*' => {
+                            assert!(buf.is_empty());
+                            self.bump();
+                            result.push(UseSegment::Glob);
+                        }
+                        ':' => {
+                            self.bump();
+                            self.eat(':');
+                            Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                        }
+                        '}' | ',' => {
+                            Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                            return UseTree { path: result };
+                        }
+                        ' ' => {
+                            self.bump();
+                            self.eat('a');
+                            self.eat('s');
+                            self.eat(' ');
+                            alias_buf = Some(String::new());
+                        }
+                        c => {
+                            self.bump();
+                            if let Some(ref mut buf) = alias_buf {
+                                buf.push(c);
+                            } else {
+                                buf.push(c);
+                            }
+                        }
+                    }
+                }
+                Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                UseTree { path: result }
+            }
+
+            fn parse_list(&mut self) -> Vec<UseTree> {
+                let mut result = vec![];
+                loop {
+                    match self.input.peek().unwrap() {
+                        ',' | ' ' => self.bump(),
+                        '}' => {
+                            return result;
+                        }
+                        _ => result.push(self.parse_in_list()),
+                    }
+                }
+            }
+        }
+
+        let mut parser = Parser {
+            input: s.chars().peekable(),
+        };
+        parser.parse_in_list()
+    }
+
+    #[test]
+    fn test_use_tree_normalize() {
+        assert_eq!(parse_use_tree("a::self").normalize(), parse_use_tree("a"));
+        assert_eq!(
+            parse_use_tree("a::self as foo").normalize(),
+            parse_use_tree("a as foo")
+        );
+        assert_eq!(parse_use_tree("a::{self}").normalize(), parse_use_tree("a"));
+        assert_eq!(parse_use_tree("a::{b}").normalize(), parse_use_tree("a::b"));
+        assert_eq!(
+            parse_use_tree("a::{b, c::self}").normalize(),
+            parse_use_tree("a::{b, c}")
+        );
+        assert_eq!(
+            parse_use_tree("a::{b as bar, c::self}").normalize(),
+            parse_use_tree("a::{b as bar, c}")
+        );
+    }
+
+    #[test]
+    fn test_use_tree_ord() {
+        assert!(parse_use_tree("a").normalize() < parse_use_tree("aa").normalize());
+        assert!(parse_use_tree("a").normalize() < parse_use_tree("a::a").normalize());
+        assert!(parse_use_tree("a").normalize() < parse_use_tree("*").normalize());
+        assert!(parse_use_tree("a").normalize() < parse_use_tree("{a, b}").normalize());
+        assert!(parse_use_tree("*").normalize() < parse_use_tree("{a, b}").normalize());
+
+        assert!(
+            parse_use_tree("aaaaaaaaaaaaaaa::{bb, cc, dddddddd}").normalize()
+                < parse_use_tree("aaaaaaaaaaaaaaa::{bb, cc, ddddddddd}").normalize()
+        );
+        assert!(
+            parse_use_tree("serde::de::{Deserialize}").normalize()
+                < parse_use_tree("serde_json").normalize()
+        );
+        assert!(parse_use_tree("a::b::c").normalize() < parse_use_tree("a::b::*").normalize());
+        assert!(
+            parse_use_tree("foo::{Bar, Baz}").normalize()
+                < parse_use_tree("{Bar, Baz}").normalize()
+        );
+
+        assert!(
+            parse_use_tree("foo::{self as bar}").normalize()
+                < parse_use_tree("foo::{qux as bar}").normalize()
+        );
+        assert!(
+            parse_use_tree("foo::{qux as bar}").normalize()
+                < parse_use_tree("foo::{baz, qux as bar}").normalize()
+        );
+        assert!(
+            parse_use_tree("foo::{self as bar, baz}").normalize()
+                < parse_use_tree("foo::{baz, qux as bar}").normalize()
+        );
+
+        assert!(parse_use_tree("Foo").normalize() < parse_use_tree("foo").normalize());
+        assert!(parse_use_tree("foo").normalize() < parse_use_tree("foo::Bar").normalize());
+
+        assert!(
+            parse_use_tree("std::cmp::{d, c, b, a}").normalize()
+                < parse_use_tree("std::cmp::{b, e, g, f}").normalize()
+        );
     }
 }

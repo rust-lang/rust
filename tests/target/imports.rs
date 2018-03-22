@@ -4,11 +4,11 @@
 // Imports.
 
 // Long import.
-use syntax::ast::{ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
-use exceedingly::looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
-                                                                                                ItemB};
 use exceedingly::loooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
                                                                                              ItemB};
+use exceedingly::looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
+                                                                                                ItemB};
+use syntax::ast::{ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
 
 use list::{// Another item
            AnotherItem, // Another Comment
@@ -19,10 +19,10 @@ use list::{// Another item
 
 use test::{/* A */ self /* B */, Other /* C */};
 
-use syntax;
-use {Bar /* comment */, /* Pre-comment! */ Foo};
 use Foo::{Bar, Baz};
+use syntax;
 pub use syntax::ast::{Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath, Expr_};
+use {Bar /* comment */, /* Pre-comment! */ Foo};
 
 use self;
 use std::io;
@@ -43,21 +43,21 @@ fn test() {
 }
 
 // Simple imports
-use foo::bar::baz;
 use bar::quux as kaas;
 use foo;
+use foo::bar::baz;
 
 // With aliases.
-use foo::{self as bar, baz};
 use foo as bar;
 use foo::qux as bar;
+use foo::{self as bar, baz};
 use foo::{baz, qux as bar};
 
 // With absolute paths
+use Foo;
 use foo;
 use foo::Bar;
 use foo::{Bar, Baz};
-use Foo;
 use {Bar, Baz};
 
 // Root globs
@@ -83,6 +83,6 @@ use fooo::{bar, x, y, z,
            bar::*};
 
 // nested imports with a single sub-tree.
-use a::b::c::*;
 use a::b::c::d;
+use a::b::c::*;
 use a::b::c::{xxx, yyy, zzz};

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{env, fs};
 use std::cell::Cell;
 use std::default::Default;
 use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
+use std::{env, fs};
 
 use regex::Regex;
 
@@ -23,9 +23,9 @@ mod config_type;
 mod options;
 
 pub mod file_lines;
+pub mod license;
 pub mod lists;
 pub mod summary;
-pub mod license;
 
 use config::config_type::ConfigType;
 use config::file_lines::FileLines;
@@ -70,11 +70,11 @@ create_config! {
     // Ordering
     reorder_extern_crates: bool, true, false, "Reorder extern crate statements alphabetically";
     reorder_extern_crates_in_group: bool, true, false, "Reorder extern crate statements in group";
-    reorder_imports: bool, false, false, "Reorder import statements alphabetically";
-    reorder_imports_in_group: bool, false, false, "Reorder import statements in group";
+    reorder_imports: bool, true, false, "Reorder import statements alphabetically";
+    reorder_imports_in_group: bool, true, false, "Reorder import statements in group";
     reorder_imported_names: bool, true, false,
         "Reorder lists of names in import statements alphabetically";
-    reorder_modules: bool, false, false, "Reorder module statemtents alphabetically in group";
+    reorder_modules: bool, true, false, "Reorder module statemtents alphabetically in group";
 
     // Spaces around punctuation
     binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
