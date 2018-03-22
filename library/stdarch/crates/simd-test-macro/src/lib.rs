@@ -60,19 +60,8 @@ pub fn simd_test(
         name.clone().as_str()
     ));
 
-    let default_target = if cfg!(target_os = "windows") {
-        Some("x86_64-pc-windows-msvc")
-    } else if cfg!(target_os = "linux") {
-        Some("x86_64-unknown-linux-gnu")
-    } else if cfg!(target_os = "macos") {
-        Some("x86_64-apple-darwin")
-    } else {
-        None
-    };
-
-    let target = env::var("TARGET").unwrap_or_else(|_| {
-        default_target.expect("TARGET environment variable not set and no default target known for the current target.").to_string()
-    });
+    let target = env::var("TARGET")
+        .expect("TARGET environment variable should be set for rustc");
     let mut force_test = false;
     let macro_test = match target.split('-').next().expect(&format!(
         "target triple contained no \"-\": {}",
