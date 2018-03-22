@@ -636,7 +636,16 @@ macro_rules! define_maps {
                                map: LockGuard<'_, QueryMap<$tcx, Self>>,
                                dep_node: DepNode)
                                -> Result<($V, DepNodeIndex), CycleError<$tcx>> {
-                debug_assert!(!tcx.dep_graph.dep_node_exists(&dep_node));
+                // If the following assertion triggers, it can have two reasons:
+                // 1. Something is wrong with DepNode creation, either here or
+                //    in DepGraph::try_mark_green()
+                // 2. Two distinct query keys get mapped to the same DepNode
+                //    (see for example #48923)
+                assert!(!tcx.dep_graph.dep_node_exists(&dep_node),
+                        "Forcing query with already existing DepNode.\n\
+                          - query-key: {:?}\n\
+                          - dep-node: {:?}",
+                        key, dep_node);
 
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
                 let res = Self::start_job(tcx,
