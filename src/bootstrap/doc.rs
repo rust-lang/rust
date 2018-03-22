@@ -17,12 +17,13 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
 use std::path::{PathBuf, Path};
 
-use Mode;
+use {Build, Mode};
 use build_helper::up_to_date;
 
 use util::{cp_r, symlink_dir};
@@ -704,12 +705,38 @@ impl Step for Rustc {
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
         compile::rustc_cargo(build, &mut cargo);
 
-        // src/rustc/Cargo.toml contains a bin crate called rustc which
-        // would otherwise overwrite the docs for the real rustc lib crate.
-        cargo.arg("-p").arg("rustc_driver");
+        // Only include compiler crates, no dependencies of those, such as `libc`.
+        cargo.arg("--no-deps");
+
+        // Find dependencies for top level crates.
+        let mut compiler_crates = HashSet::new();
+        for root_crate in &["rustc", "rustc_driver"] {
+            let interned_root_crate = INTERNER.intern_str(root_crate);
+            find_compiler_crates(&build, &interned_root_crate, &mut compiler_crates);
+        }
+
+        for krate in &compiler_crates {
+            cargo.arg("-p").arg(krate);
+        }
 
         build.run(&mut cargo);
         cp_r(&my_out, &out);
+    }
+}
+
+fn find_compiler_crates(
+    build: &Build,
+    name: &Interned<String>,
+    crates: &mut HashSet<Interned<String>>
+) {
+    // Add current crate.
+    crates.insert(*name);
+
+    // Look for dependencies.
+    for dep in build.crates.get(name).unwrap().deps.iter() {
+        if build.crates.get(dep).unwrap().is_local(build) {
+            find_compiler_crates(build, dep, crates);
+        }
     }
 }
 
