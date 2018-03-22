@@ -13,7 +13,7 @@ use ty::{self, Ty, TyCtxt};
 use hir::def_id::DefId;
 
 use super::{FulfillmentContext, FulfillmentError};
-use super::{ObligationCause, PredicateObligation, PendingPredicateObligation};
+use super::{ObligationCause, PendingPredicateObligation, PredicateObligation};
 
 pub trait TraitEngine<'tcx> {
     fn normalize_projection_type<'a, 'gcx>(
@@ -52,18 +52,20 @@ pub trait TraitEngine<'tcx> {
     fn pending_obligations(&self) -> Vec<PendingPredicateObligation<'tcx>>;
 }
 
-impl<'a, 'gcx, 'tcx> dyn TraitEngine<'tcx> +'tcx {
-   pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
-       Box::new(FulfillmentContext::new())
-   }
+impl<'a, 'gcx, 'tcx> TraitEngine<'tcx> + 'tcx {
+    pub fn new(_tcx: TyCtxt<'_, '_, 'tcx>) -> Box<Self> {
+        Box::new(FulfillmentContext::new())
+    }
 
-   pub fn register_predicate_obligations<I>(&mut self,
-                                            infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                            obligations: I)
-       where I: IntoIterator<Item = PredicateObligation<'tcx>>
-   {
-       for obligation in obligations {
-           self.register_predicate_obligation(infcx, obligation);
-       }
-   }
+    pub fn register_predicate_obligations<I>(
+        &mut self,
+        infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+        obligations: I,
+    ) where
+        I: IntoIterator<Item = PredicateObligation<'tcx>>,
+    {
+        for obligation in obligations {
+            self.register_predicate_obligation(infcx, obligation);
+        }
+    }
 }
