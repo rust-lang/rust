@@ -942,7 +942,7 @@ fn ambiguity_error(cx: &DocContext, attrs: &Attributes,
                       select the {}",
                       disambig1, kind1, disambig2,
                       kind2))
-             .emit();
+      .emit();
 }
 
 /// Given an enum variant's def, return the def of its enum and the associated fragment
@@ -1087,6 +1087,7 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     }
 }
 
+#[derive(Debug)]
 enum PathKind {
     /// can be either value or type, not a macro
     Unknown,
@@ -1095,7 +1096,7 @@ enum PathKind {
     /// values, functions, consts, statics, everything in the value namespace
     Value,
     /// types, traits, everything in the type namespace
-    Type
+    Type,
 }
 
 impl Clean<Attributes> for [ast::Attribute] {
@@ -1104,12 +1105,13 @@ impl Clean<Attributes> for [ast::Attribute] {
 
         if UnstableFeatures::from_environment().is_nightly_build() {
             let dox = attrs.collapsed_doc_value().unwrap_or_else(String::new);
-            for link in markdown_links(&dox) {
+            for ori_link in markdown_links(&dox) {
                 // bail early for real links
-                if link.contains('/') {
+                if ori_link.contains('/') {
                     continue;
                 }
-                let (def, fragment)  = {
+                let link = ori_link.replace("`", "");
+                let (def, fragment) = {
                     let mut kind = PathKind::Unknown;
                     let path_str = if let Some(prefix) =
                         ["struct@", "enum@", "type@",
@@ -1144,7 +1146,6 @@ impl Clean<Attributes> for [ast::Attribute] {
                                                       ch == ':' || ch == '_')) {
                         continue;
                     }
-
 
                     match kind {
                         PathKind::Value => {
@@ -1219,9 +1220,8 @@ impl Clean<Attributes> for [ast::Attribute] {
                     }
                 };
 
-
                 let id = register_def(cx, def);
-                attrs.links.push((link, id, fragment));
+                attrs.links.push((ori_link, id, fragment));
             }
 
             cx.sess().abort_if_errors();

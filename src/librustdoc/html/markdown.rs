@@ -233,14 +233,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
 /// Make headings links with anchor ids and build up TOC.
 struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    links: &'b [(String, String)]
+    links: &'b [(String, String)],
 }
 
 impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
     fn new(iter: I, links: &'b [(String, String)]) -> Self {
         LinkReplacer {
             inner: iter,
-            links
+            links,
         }
     }
 }
