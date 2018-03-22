@@ -568,7 +568,7 @@ impl MacroArgKind {
 
         match *self {
             MacroArgKind::MetaVariable(ty, ref name) => {
-                Some(format!("${}: {}", name, ty.name.as_str()))
+                Some(format!("${}:{}", name, ty.name.as_str()))
             }
             MacroArgKind::Repeat(ref delim_tok, ref args, ref another, ref tok) => {
                 let (lhs, inner, rhs) = rewrite_delimited_inner(delim_tok, args)?;
