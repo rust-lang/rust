@@ -279,9 +279,6 @@ declare_features! (
     // Allows `impl Trait` in function return types.
     (active, conservative_impl_trait, "1.12.0", Some(34511), None),
 
-    // Allows `impl Trait` in function arguments.
-    (active, universal_impl_trait, "1.23.0", Some(34511), None),
-
     // Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", None, None),
 
@@ -556,6 +553,8 @@ declare_features! (
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
     // allow `..=` in patterns (RFC 1192)
     (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
+    // Allows `impl Trait` in function arguments.
+    (accepted, universal_impl_trait, "1.26.0", Some(34511), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

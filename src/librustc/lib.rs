@@ -70,7 +70,7 @@
 #![feature(specialization)]
 #![feature(unboxed_closures)]
 #![feature(underscore_lifetimes)]
-#![feature(universal_impl_trait)]
+#![cfg_attr(stage0, feature(universal_impl_trait))]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(catch_expr)]
