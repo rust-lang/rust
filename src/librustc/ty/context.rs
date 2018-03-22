@@ -1671,11 +1671,11 @@ pub mod tls {
         })
     }
 
-    pub fn enter<'a, 'gcx: 'tcx, 'tcx, F, R>(gcx: &'a GlobalCtxt<'gcx>,
-                                             interners: &'a CtxtInterners<'tcx>,
-                                             f: F) -> R
-        where F: FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
-    {
+    pub fn enter<'a, 'gcx: 'tcx, 'tcx, R>(
+        gcx: &'a GlobalCtxt<'gcx>,
+        interners: &'a CtxtInterners<'tcx>,
+        f: impl FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R,
+    ) -> R {
         let gcx_ptr = gcx as *const _ as *const ThreadLocalGlobalCtxt;
         let interners_ptr = interners as *const _ as *const ThreadLocalInterners;
         TLS_TCX.with(|tls| {

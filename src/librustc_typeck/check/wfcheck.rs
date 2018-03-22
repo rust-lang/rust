@@ -34,25 +34,28 @@ pub struct CheckTypeWellFormedVisitor<'a, 'tcx:'a> {
 /// Helper type of a temporary returned by .for_item(...).
 /// Necessary because we can't write the following bound:
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>).
-struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
+struct CheckWfFcxBuilder<'a, 'gcx: 'a> {
+    inherited: super::InheritedBuilder<'a, 'gcx>,
     code: ObligationCauseCode<'gcx>,
     id: ast::NodeId,
     span: Span,
-    param_env: ty::ParamEnv<'tcx>,
+    param_env: ty::ParamEnv<'gcx>,
 }
 
-impl<'a, 'gcx, 'tcx> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
-    fn with_fcx<F>(&'tcx mut self, f: F) where
-        F: for<'b> FnOnce(&FnCtxt<'b, 'gcx, 'tcx>,
-                          &mut CheckTypeWellFormedVisitor<'b, 'gcx>) -> Vec<Ty<'tcx>>
-    {
+impl<'a, 'gcx> CheckWfFcxBuilder<'a, 'gcx> {
+    fn with_fcx<'tcx>(
+        &'tcx mut self,
+        f: impl for<'b> FnOnce(
+            &FnCtxt<'b, 'gcx, 'tcx>,
+            &mut CheckTypeWellFormedVisitor<'b, 'gcx>,
+        ) -> Vec<Ty<'tcx>>,
+    ) {
         let code = self.code.clone();
         let id = self.id;
         let span = self.span;
         let param_env = self.param_env;
         self.inherited.enter(|inh| {
-            let fcx = FnCtxt::new(&inh, param_env, id);
+            let fcx = FnCtxt::new(inh, param_env, id);
             let wf_tys = f(&fcx, &mut CheckTypeWellFormedVisitor {
                 tcx: fcx.tcx.global_tcx(),
                 code,
@@ -203,13 +206,11 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
         })
     }
 
-    fn for_item<'tcx>(&self, item: &hir::Item)
-                      -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
+    fn for_item(&self, item: &hir::Item) -> CheckWfFcxBuilder<'a, 'gcx> {
         self.for_id(item.id, item.span)
     }
 
-    fn for_id<'tcx>(&self, id: ast::NodeId, span: Span)
-                    -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
+    fn for_id(&self, id: ast::NodeId, span: Span) -> CheckWfFcxBuilder<'a, 'gcx> {
         let def_id = self.tcx.hir.local_def_id(id);
         CheckWfFcxBuilder {
             inherited: Inherited::build(self.tcx, def_id),

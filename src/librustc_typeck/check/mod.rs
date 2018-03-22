@@ -189,7 +189,7 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
 pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: InferCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 
     tables: MaybeInProgressTables<'a, 'tcx>,
 
@@ -587,14 +587,14 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
 /// Helper type of a temporary returned by Inherited::build(...).
 /// Necessary because we can't write the following bound:
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(Inherited<'b, 'gcx, 'tcx>).
-pub struct InheritedBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    infcx: infer::InferCtxtBuilder<'a, 'gcx, 'tcx>,
+pub struct InheritedBuilder<'a, 'gcx: 'a> {
+    infcx: infer::InferCtxtBuilder<'a, 'gcx>,
     def_id: DefId,
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     pub fn build(tcx: TyCtxt<'a, 'gcx, 'gcx>, def_id: DefId)
-                 -> InheritedBuilder<'a, 'gcx, 'tcx> {
+                 -> InheritedBuilder<'a, 'gcx> {
         let hir_id_root = if def_id.is_local() {
             let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
             let hir_id = tcx.hir.definitions().node_to_hir_id(node_id);
@@ -610,17 +610,18 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
-    fn enter<F, R>(&'tcx mut self, f: F) -> R
-        where F: for<'b> FnOnce(Inherited<'b, 'gcx, 'tcx>) -> R
-    {
+impl<'a, 'gcx> InheritedBuilder<'a, 'gcx> {
+    fn enter<'tcx, R>(
+        &'tcx mut self,
+        f: impl FnOnce(&Inherited<'_, 'gcx, 'tcx>) -> R,
+    ) -> R {
         let def_id = self.def_id;
-        self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
+        self.infcx.enter(|infcx| f(&Inherited::new(infcx, def_id)))
     }
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
-    fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
+    fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> Self {
         let tcx = infcx.tcx;
         let item_id = tcx.hir.as_local_node_id(def_id);
         let body_id = item_id.and_then(|id| tcx.hir.maybe_body_owned_by(id));

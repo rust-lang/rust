@@ -404,43 +404,42 @@ impl fmt::Display for FixupError {
 /// Helper type of a temporary returned by tcx.infer_ctxt().
 /// Necessary because we can't write the following bound:
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
-pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct InferCtxtBuilder<'a, 'gcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: DroplessArena,
-    fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
+    fresh_table_owner: Option<DefId>,
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
-    pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx> TyCtxt<'a, 'gcx, 'gcx> {
+    pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx> {
         InferCtxtBuilder {
             global_tcx: self,
             arena: DroplessArena::new(),
-            fresh_tables: None,
-
+            fresh_table_owner: None,
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx> InferCtxtBuilder<'a, 'gcx> {
     /// Used only by `rustc_typeck` during body type-checking/inference,
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
-        self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(Some(table_owner))));
+        self.fresh_table_owner = Some(table_owner);
         self
     }
 
-    pub fn enter<F, R>(&'tcx mut self, f: F) -> R
-        where F: for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R
-    {
+    pub fn enter<'tcx, R>(&'tcx mut self, f: impl FnOnce(&InferCtxt<'_, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
             ref arena,
-            ref fresh_tables,
+            fresh_table_owner,
         } = *self;
-        let in_progress_tables = fresh_tables.as_ref();
-        global_tcx.enter_local(arena, |tcx| f(InferCtxt {
+        let in_progress_tables = fresh_table_owner.map(|table_owner| {
+            RefCell::new(ty::TypeckTables::empty(Some(table_owner)))
+        });
+        global_tcx.enter_local(arena, |tcx| f(&InferCtxt {
             tcx,
-            in_progress_tables,
+            in_progress_tables: in_progress_tables.as_ref(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
             int_unification_table: RefCell::new(ut::UnificationTable::new()),
