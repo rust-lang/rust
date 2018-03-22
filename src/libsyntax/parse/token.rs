@@ -236,7 +236,7 @@ impl Token {
 
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: ast::Ident) -> Token {
-        Ident(ident, is_reserved_ident(ident))
+        Ident(ident, is_reserved_ident(ident) && !is_path_segment_keyword(ident))
     }
 
     /// Returns `true` if the token starts with '>'.

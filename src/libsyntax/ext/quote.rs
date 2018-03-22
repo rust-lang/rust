@@ -238,8 +238,9 @@ pub mod rt {
                 if i > 0 {
                     inner.push(TokenTree::Token(self.span, token::Colon).into());
                 }
-                inner.push(TokenTree::Token(self.span,
-                                            token::Ident(segment.identifier, false)).into());
+                inner.push(TokenTree::Token(
+                    self.span, token::Token::from_ast_ident(segment.identifier)
+                ).into());
             }
             inner.push(self.tokens.clone());
 
