@@ -62,11 +62,15 @@ pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1rnds4, func = 0))]
 #[rustc_args_required_const(2)]
-pub unsafe fn _mm_sha1rnds4_epu32(a: __m128i, b: __m128i, func: i32) -> __m128i {
+pub unsafe fn _mm_sha1rnds4_epu32(
+    a: __m128i, b: __m128i, func: i32
+) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     macro_rules! call {
-        ($imm2:expr) => { sha1rnds4(a, b, $imm2) }
+        ($imm2: expr) => {
+            sha1rnds4(a, b, $imm2)
+        };
     }
     let ret = constify_imm2!(func, call);
     mem::transmute(ret)
@@ -92,16 +96,22 @@ pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha256msg2(a.as_i32x4(), b.as_i32x4()))
 }
 
-/// Perform 2 rounds of SHA256 operation using an initial SHA256 state (C,D,G,H)
-/// from `a`, an initial SHA256 state (A,B,E,F) from `b`, and a pre-computed sum
-/// of the next 2 round message values (unsigned 32-bit integers) and the
-/// corresponding round constants from `k`, and store the updated SHA256 state
-/// (A,B,E,F) in dst.
+/// Perform 2 rounds of SHA256 operation using an initial SHA256 state
+/// (C,D,G,H) from `a`, an initial SHA256 state (A,B,E,F) from `b`, and a
+/// pre-computed sum of the next 2 round message values (unsigned 32-bit
+/// integers) and the corresponding round constants from `k`, and store the
+/// updated SHA256 state (A,B,E,F) in dst.
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256rnds2))]
-pub unsafe fn _mm_sha256rnds2_epu32 (a: __m128i, b: __m128i, k: __m128i) -> __m128i {
-    mem::transmute(sha256rnds2(a.as_i32x4(), b.as_i32x4(), k.as_i32x4()))
+pub unsafe fn _mm_sha256rnds2_epu32(
+    a: __m128i, b: __m128i, k: __m128i
+) -> __m128i {
+    mem::transmute(sha256rnds2(
+        a.as_i32x4(),
+        b.as_i32x4(),
+        k.as_i32x4(),
+    ))
 }
 
 #[cfg(test)]
