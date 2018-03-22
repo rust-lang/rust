@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fmt::Write;
 
 use rustc::hir::def_id::DefId;
@@ -383,40 +382,23 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
-        /// Return the set of locals that have a storage annotation anywhere
-        fn collect_storage_annotations<'mir, 'tcx>(mir: &'mir mir::Mir<'tcx>) -> HashSet<mir::Local> {
-            use rustc::mir::StatementKind::*;
-
-            let mut set = HashSet::new();
-            for block in mir.basic_blocks() {
-                for stmt in block.statements.iter() {
-                    match stmt.kind {
-                        StorageLive(local) |
-                        StorageDead(local) => {
-                            set.insert(local);
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            set
-        }
-
         // Subtract 1 because `local_decls` includes the ReturnMemoryPointer, but we don't store a local
         // `Value` for that.
         let num_locals = mir.local_decls.len() - 1;
 
-        let locals = {
-            let annotated_locals = collect_storage_annotations(mir);
-            let mut locals = vec![None; num_locals];
-            for i in 0..num_locals {
-                let local = mir::Local::new(i + 1);
-                if !annotated_locals.contains(&local) {
-                    locals[i] = Some(Value::ByVal(PrimVal::Undef));
+        let mut locals = vec![Some(Value::ByVal(PrimVal::Undef)); num_locals];
+        trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
+        for block in mir.basic_blocks() {
+            for stmt in block.statements.iter() {
+                use rustc::mir::StatementKind::{StorageDead, StorageLive};
+                match stmt.kind {
+                    StorageLive(local) | StorageDead(local) => if local.index() > 0 {
+                        locals[local.index() - 1] = None;
+                    },
+                    _ => {}
                 }
             }
-            locals
-        };
+        }
 
         self.stack.push(Frame {
             mir,
