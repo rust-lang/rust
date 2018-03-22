@@ -12,7 +12,6 @@
 //[nll] compile-flags: -Znll -Zborrowck=mir
 
 #![feature(conservative_impl_trait,
-           universal_impl_trait,
            fn_traits,
            step_trait,
            unboxed_closures,

@@ -1143,17 +1143,6 @@ impl<'a> LoweringContext<'a> {
                         )
                     }
                     ImplTraitContext::Universal(def_id) => {
-                        let has_feature = self.sess.features_untracked().universal_impl_trait;
-                        if !t.span.allows_unstable() && !has_feature {
-                            emit_feature_err(
-                                &self.sess.parse_sess,
-                                "universal_impl_trait",
-                                t.span,
-                                GateIssue::Language,
-                                "`impl Trait` in argument position is experimental",
-                            );
-                        }
-
                         let def_node_id = self.next_id().node_id;
 
                         // Add a definition for the in-band TyParam

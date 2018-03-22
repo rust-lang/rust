@@ -34,7 +34,7 @@
 #![feature(underscore_lifetimes)]
 #![feature(macro_vis_matcher)]
 #![feature(allow_internal_unstable)]
-#![feature(universal_impl_trait)]
+#![cfg_attr(stage0, feature(universal_impl_trait))]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
