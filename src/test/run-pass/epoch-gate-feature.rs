@@ -11,7 +11,7 @@
 // Checks if the correct registers are being used to pass arguments
 // when the sysv64 ABI is specified.
 
-// compile-flags: -Zepoch=2018
+// compile-flags: -Zedition=2018
 
 pub trait Foo {}
 

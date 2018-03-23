@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-// compile-flags: -Zepoch=2018 -Zunstable-options
+// ignore-pretty
 
-// tests that epochs work with the tyvar warning-turned-error
+#![feature(raw_identifiers)]
 
-#[deny(warnings)]
-fn main() {
-    let x = 0;
-    let y = &x as *const _;
-    let _ = y.is_null();
-    //~^ error: the type of this value must be known to call a method on a raw pointer on it [E0908]
+use std::mem;
+
+#[r#repr(r#C, r#packed)]
+struct Test {
+    a: bool, b: u64
+}
+
+#[r#derive(r#Debug)]
+struct Test2(u32);
+
+pub fn main() {
+    assert_eq!(mem::size_of::<Test>(), 9);
+    assert_eq!("Test2(123)", format!("{:?}", Test2(123)));
 }

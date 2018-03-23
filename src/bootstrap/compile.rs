@@ -915,7 +915,7 @@ impl Step for Assemble {
             }
         }
 
-        let lld_install = if build.config.lld_enabled && target_compiler.stage > 0 {
+        let lld_install = if build.config.lld_enabled {
             Some(builder.ensure(native::Lld {
                 target: target_compiler.host,
             }))

@@ -48,6 +48,9 @@ pub struct ParseSess {
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
     pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
+    /// Places where raw identifiers were used. This is used for feature gating
+    /// raw identifiers
+    pub raw_identifier_spans: RefCell<Vec<Span>>,
     /// The registered diagnostics codes
     pub registered_diagnostics: Lock<ErrorMap>,
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
@@ -74,6 +77,7 @@ impl ParseSess {
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
             missing_fragment_specifiers: RefCell::new(HashSet::new()),
+            raw_identifier_spans: RefCell::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map,
@@ -739,9 +743,9 @@ mod tests {
             match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
                 (
                     4,
-                    Some(&TokenTree::Token(_, token::Ident(name_macro_rules))),
+                    Some(&TokenTree::Token(_, token::Ident(name_macro_rules, false))),
                     Some(&TokenTree::Token(_, token::Not)),
-                    Some(&TokenTree::Token(_, token::Ident(name_zip))),
+                    Some(&TokenTree::Token(_, token::Ident(name_zip, false))),
                     Some(&TokenTree::Delimited(_, ref macro_delimed)),
                 )
                 if name_macro_rules.name == "macro_rules"
@@ -760,7 +764,7 @@ mod tests {
                                 (
                                     2,
                                     Some(&TokenTree::Token(_, token::Dollar)),
-                                    Some(&TokenTree::Token(_, token::Ident(ident))),
+                                    Some(&TokenTree::Token(_, token::Ident(ident, false))),
                                 )
                                 if first_delimed.delim == token::Paren && ident.name == "a" => {},
                                 _ => panic!("value 3: {:?}", *first_delimed),
@@ -770,7 +774,7 @@ mod tests {
                                 (
                                     2,
                                     Some(&TokenTree::Token(_, token::Dollar)),
-                                    Some(&TokenTree::Token(_, token::Ident(ident))),
+                                    Some(&TokenTree::Token(_, token::Ident(ident, false))),
                                 )
                                 if second_delimed.delim == token::Paren
                                 && ident.name == "a" => {},
@@ -791,17 +795,18 @@ mod tests {
             let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
             let expected = TokenStream::concat(vec![
-                TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"))).into(),
-                TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"))).into(),
+                TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"), false)).into(),
+                TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"), false)).into(),
                 TokenTree::Delimited(
                     sp(5, 14),
                     tokenstream::Delimited {
                         delim: token::DelimToken::Paren,
                         tts: TokenStream::concat(vec![
-                            TokenTree::Token(sp(6, 7), token::Ident(Ident::from_str("b"))).into(),
+                            TokenTree::Token(sp(6, 7),
+                                             token::Ident(Ident::from_str("b"), false)).into(),
                             TokenTree::Token(sp(8, 9), token::Colon).into(),
                             TokenTree::Token(sp(10, 13),
-                                             token::Ident(Ident::from_str("i32"))).into(),
+                                             token::Ident(Ident::from_str("i32"), false)).into(),
                         ]).into(),
                     }).into(),
                 TokenTree::Delimited(
@@ -809,7 +814,8 @@ mod tests {
                     tokenstream::Delimited {
                         delim: token::DelimToken::Brace,
                         tts: TokenStream::concat(vec![
-                            TokenTree::Token(sp(17, 18), token::Ident(Ident::from_str("b"))).into(),
+                            TokenTree::Token(sp(17, 18),
+                                             token::Ident(Ident::from_str("b"), false)).into(),
                             TokenTree::Token(sp(18, 19), token::Semi).into(),
                         ]).into(),
                     }).into()

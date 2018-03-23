@@ -28,7 +28,7 @@ use self::AttributeGate::*;
 use abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
-use epoch::Epoch;
+use edition::Edition;
 use codemap::Spanned;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler, FatalError};
@@ -55,13 +55,13 @@ macro_rules! set {
 }
 
 macro_rules! declare_features {
-    ($((active, $feature: ident, $ver: expr, $issue: expr, $epoch: expr),)+) => {
+    ($((active, $feature: ident, $ver: expr, $issue: expr, $edition: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
         const ACTIVE_FEATURES:
                 &'static [(&'static str, &'static str, Option<u32>,
-                           Option<Epoch>, fn(&mut Features, Span))] =
-            &[$((stringify!($feature), $ver, $issue, $epoch, set!($feature))),+];
+                           Option<Edition>, fn(&mut Features, Span))] =
+            &[$((stringify!($feature), $ver, $issue, $edition, set!($feature))),+];
 
         /// A set of features to be used by later passes.
         #[derive(Clone)]
@@ -402,7 +402,7 @@ declare_features! (
     (active, match_default_bindings, "1.22.0", Some(42640), None),
 
     // Trait object syntax with `dyn` prefix
-    (active, dyn_trait, "1.22.0", Some(44662), Some(Epoch::Epoch2018)),
+    (active, dyn_trait, "1.22.0", Some(44662), Some(Edition::Edition2018)),
 
     // `crate` as visibility modifier, synonymous to `pub(crate)`
     (active, crate_visibility_modifier, "1.23.0", Some(45388), None),
@@ -451,6 +451,15 @@ declare_features! (
 
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
+
+    // The #[wasm_custom_section] attribute
+    (active, wasm_custom_section, "1.26.0", None, None),
+
+    // The #![wasm_import_module] attribute
+    (active, wasm_import_module, "1.26.0", None, None),
+
+    // Allows keywords to be escaped for use as identifiers
+    (active, raw_identifiers, "1.26.0", Some(48589), None),
 );
 
 declare_features! (
@@ -917,6 +926,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
         "the `#[no_debug]` attribute was an experimental feature that has been \
          deprecated due to lack of demand",
         cfg_fn!(no_debug))),
+    ("wasm_import_module", Normal, Gated(Stability::Unstable,
+                                 "wasm_import_module",
+                                 "experimental attribute",
+                                 cfg_fn!(wasm_import_module))),
     ("omit_gdb_pretty_printer_section", Whitelisted, Gated(Stability::Unstable,
                                                        "omit_gdb_pretty_printer_section",
                                                        "the `#[omit_gdb_pretty_printer_section]` \
@@ -1003,6 +1016,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "rustc_attrs",
                                  "never will be stable",
                                  cfg_fn!(rustc_attrs))),
+
+    ("wasm_custom_section", Whitelisted, Gated(Stability::Unstable,
+                                 "wasm_custom_section",
+                                 "attribute is currently unstable",
+                                 cfg_fn!(wasm_custom_section))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
@@ -1800,16 +1818,16 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 }
 
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
-                    epoch: Epoch) -> Features {
+                    edition: Edition) -> Features {
     let mut features = Features::new();
 
     let mut feature_checker = FeatureChecker::default();
 
-    for &(.., f_epoch, set) in ACTIVE_FEATURES.iter() {
-        if let Some(f_epoch) = f_epoch {
-            if epoch >= f_epoch {
+    for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
+        if let Some(f_edition) = f_edition {
+            if edition >= f_edition {
                 // FIXME(Manishearth) there is currently no way to set
-                // lang features by epoch
+                // lang features by edition
                 set(&mut features, DUMMY_SP);
             }
         }
@@ -1926,6 +1944,17 @@ pub fn check_crate(krate: &ast::Crate,
         parse_sess: sess,
         plugin_attributes,
     };
+
+    if !features.raw_identifiers {
+        for &span in sess.raw_identifier_spans.borrow().iter() {
+            if !span.allows_unstable() {
+                gate_feature!(&ctx, raw_identifiers, span,
+                    "raw identifiers are experimental and subject to change"
+                );
+            }
+        }
+    }
+
     let visitor = &mut PostExpansionVisitor { context: &ctx };
     visitor.whole_crate_feature_gates(krate);
     visit::walk_crate(visitor, krate);

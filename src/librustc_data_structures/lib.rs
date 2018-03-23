@@ -76,6 +76,14 @@ pub mod flock;
 pub mod sync;
 pub mod owning_ref;
 
+pub struct OnDrop<F: Fn()>(pub F);
+
+impl<F: Fn()> Drop for OnDrop<F> {
+      fn drop(&mut self) {
+            (self.0)();
+      }
+}
+
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]
 pub fn __noop_fix_for_27438() {}

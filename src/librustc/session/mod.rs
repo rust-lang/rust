@@ -31,7 +31,7 @@ use rustc_data_structures::sync::{Lrc, Lock};
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
-use syntax::epoch::Epoch;
+use syntax::edition::Edition;
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::symbol::Symbol;
@@ -976,13 +976,13 @@ impl Session {
         self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
     }
 
-    /// Are we allowed to use features from the Rust 2018 epoch?
+    /// Are we allowed to use features from the Rust 2018 edition?
     pub fn rust_2018(&self) -> bool {
-        self.opts.debugging_opts.epoch >= Epoch::Epoch2018
+        self.opts.debugging_opts.edition >= Edition::Edition2018
     }
 
-    pub fn epoch(&self) -> Epoch {
-        self.opts.debugging_opts.epoch
+    pub fn edition(&self) -> Edition {
+        self.opts.debugging_opts.edition
     }
 }
 

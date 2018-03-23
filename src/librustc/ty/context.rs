@@ -161,12 +161,12 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                  -> Ty<'tcx> {
         let ty = {
             let mut interner = self.type_.borrow_mut();
-            let global_interner = global_interners.map(|interners| {
-                interners.type_.borrow_mut()
-            });
             if let Some(&Interned(ty)) = interner.get(&st) {
                 return ty;
             }
+            let global_interner = global_interners.map(|interners| {
+                interners.type_.borrow_mut()
+            });
             if let Some(ref interner) = global_interner {
                 if let Some(&Interned(ty)) = interner.get(&st) {
                     return ty;
@@ -1010,17 +1010,16 @@ impl<'tcx> InterpretInterner<'tcx> {
     }
 }
 
-impl<'tcx> GlobalCtxt<'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Get the global TyCtxt.
-    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    #[inline]
+    pub fn global_tcx(self) -> TyCtxt<'a, 'gcx, 'gcx> {
         TyCtxt {
-            gcx: self,
-            interners: &self.global_interners
+            gcx: self.gcx,
+            interners: &self.gcx.global_interners,
         }
     }
-}
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -1081,12 +1080,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         alloc: interpret::Allocation,
     ) -> &'gcx interpret::Allocation {
-        if let Some(alloc) = self.interpret_interner.inner.borrow().allocs.get(&alloc) {
+        let allocs = &mut self.interpret_interner.inner.borrow_mut().allocs;
+        if let Some(alloc) = allocs.get(&alloc) {
             return alloc;
         }
 
         let interned = self.global_arenas.const_allocs.alloc(alloc);
-        if let Some(prev) = self.interpret_interner.inner.borrow_mut().allocs.replace(interned) {
+        if let Some(prev) = allocs.replace(interned) {
             bug!("Tried to overwrite interned Allocation: {:#?}", prev)
         }
         interned
@@ -1113,24 +1113,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
-        if let Some(st) = self.stability_interner.borrow().get(&stab) {
+        let mut stability_interner = self.stability_interner.borrow_mut();
+        if let Some(st) = stability_interner.get(&stab) {
             return st;
         }
 
         let interned = self.global_interners.arena.alloc(stab);
-        if let Some(prev) = self.stability_interner.borrow_mut().replace(interned) {
+        if let Some(prev) = stability_interner.replace(interned) {
             bug!("Tried to overwrite interned Stability: {:?}", prev)
         }
         interned
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
-        if let Some(layout) = self.layout_interner.borrow().get(&layout) {
+        let mut layout_interner = self.layout_interner.borrow_mut();
+        if let Some(layout) = layout_interner.get(&layout) {
             return layout;
         }
 
         let interned = self.global_arenas.layout.alloc(layout);
-        if let Some(prev) = self.layout_interner.borrow_mut().replace(interned) {
+        if let Some(prev) = layout_interner.replace(interned) {
             bug!("Tried to overwrite interned Layout: {:?}", prev)
         }
         interned

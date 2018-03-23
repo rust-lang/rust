@@ -56,6 +56,7 @@ mod isolated_encoder;
 mod schema;
 mod native_libs;
 mod link_args;
+mod foreign_modules;
 
 pub mod creader;
 pub mod cstore;

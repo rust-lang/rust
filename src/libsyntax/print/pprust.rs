@@ -250,7 +250,8 @@ pub fn token_to_string(tok: &Token) -> String {
         }
 
         /* Name components */
-        token::Ident(s)             => s.to_string(),
+        token::Ident(s, false)      => s.to_string(),
+        token::Ident(s, true)       => format!("r#{}", s),
         token::Lifetime(s)          => s.to_string(),
 
         /* Other */
@@ -261,24 +262,25 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
         token::Interpolated(ref nt) => match nt.0 {
-            token::NtExpr(ref e)        => expr_to_string(e),
-            token::NtMeta(ref e)        => meta_item_to_string(e),
-            token::NtTy(ref e)          => ty_to_string(e),
-            token::NtPath(ref e)        => path_to_string(e),
-            token::NtItem(ref e)        => item_to_string(e),
-            token::NtBlock(ref e)       => block_to_string(e),
-            token::NtStmt(ref e)        => stmt_to_string(e),
-            token::NtPat(ref e)         => pat_to_string(e),
-            token::NtIdent(ref e)       => ident_to_string(e.node),
-            token::NtTT(ref tree)       => tt_to_string(tree.clone()),
-            token::NtArm(ref e)         => arm_to_string(e),
-            token::NtImplItem(ref e)    => impl_item_to_string(e),
-            token::NtTraitItem(ref e)   => trait_item_to_string(e),
-            token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
-            token::NtWhereClause(ref e) => where_clause_to_string(e),
-            token::NtArg(ref e)         => arg_to_string(e),
-            token::NtVis(ref e)         => vis_to_string(e),
-            token::NtLifetime(ref e)    => lifetime_to_string(e),
+            token::NtExpr(ref e)         => expr_to_string(e),
+            token::NtMeta(ref e)         => meta_item_to_string(e),
+            token::NtTy(ref e)           => ty_to_string(e),
+            token::NtPath(ref e)         => path_to_string(e),
+            token::NtItem(ref e)         => item_to_string(e),
+            token::NtBlock(ref e)        => block_to_string(e),
+            token::NtStmt(ref e)         => stmt_to_string(e),
+            token::NtPat(ref e)          => pat_to_string(e),
+            token::NtIdent(ref e, false) => ident_to_string(e.node),
+            token::NtIdent(ref e, true)  => format!("r#{}", ident_to_string(e.node)),
+            token::NtTT(ref tree)        => tt_to_string(tree.clone()),
+            token::NtArm(ref e)          => arm_to_string(e),
+            token::NtImplItem(ref e)     => impl_item_to_string(e),
+            token::NtTraitItem(ref e)    => trait_item_to_string(e),
+            token::NtGenerics(ref e)     => generic_params_to_string(&e.params),
+            token::NtWhereClause(ref e)  => where_clause_to_string(e),
+            token::NtArg(ref e)          => arg_to_string(e),
+            token::NtVis(ref e)          => vis_to_string(e),
+            token::NtLifetime(ref e)     => lifetime_to_string(e),
         }
     }
 }

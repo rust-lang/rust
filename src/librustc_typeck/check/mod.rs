@@ -1182,9 +1182,15 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
     let _indenter = indenter();
     match it.node {
       // Consts can play a role in type-checking, so they are included here.
-      hir::ItemStatic(..) |
+      hir::ItemStatic(..) => {
+        tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
+      }
       hir::ItemConst(..) => {
         tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
+        if it.attrs.iter().any(|a| a.check_name("wasm_custom_section")) {
+            let def_id = tcx.hir.local_def_id(it.id);
+            check_const_is_u8_array(tcx, def_id, it.span);
+        }
       }
       hir::ItemEnum(ref enum_definition, _) => {
         check_enum(tcx,
@@ -1254,6 +1260,21 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       }
       _ => {/* nothing to do */ }
     }
+}
+
+fn check_const_is_u8_array<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     def_id: DefId,
+                                     span: Span) {
+    match tcx.type_of(def_id).sty {
+        ty::TyArray(t, _) => {
+            match t.sty {
+                ty::TyUint(ast::UintTy::U8) => return,
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+    tcx.sess.span_err(span, "must be an array of bytes like `[u8; N]`");
 }
 
 fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

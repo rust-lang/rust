@@ -63,6 +63,11 @@ done
 
 shift $((OPTIND - 1))
 
+# use gnu version of tool if available (for bsd)
+if command -v "g${GREPPER}"; then
+    GREPPER="g${GREPPER}"
+fi
+
 LOG=$(mktemp -t cgrep.XXXXXX)
 trap "rm -f $LOG" EXIT
 

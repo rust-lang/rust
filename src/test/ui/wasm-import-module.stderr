@@ -1,0 +1,14 @@
+error: must be of the form #[wasm_import_module = "..."]
+  --> $DIR/wasm-import-module.rs:13:1
+   |
+LL | #[wasm_import_module] //~ ERROR: must be of the form
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: must only be attached to foreign modules
+  --> $DIR/wasm-import-module.rs:16:1
+   |
+LL | #[wasm_import_module = "foo"] //~ ERROR: must only be attached to
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

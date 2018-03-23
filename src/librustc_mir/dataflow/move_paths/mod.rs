@@ -29,17 +29,17 @@ mod abs_domain;
 // (which is likely to yield a subtle off-by-one error).
 pub(crate) mod indexes {
     use std::fmt;
-    use core::nonzero::NonZero;
+    use std::num::NonZeroUsize;
     use rustc_data_structures::indexed_vec::Idx;
 
     macro_rules! new_index {
         ($Index:ident, $debug_name:expr) => {
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-            pub struct $Index(NonZero<usize>);
+            pub struct $Index(NonZeroUsize);
 
             impl Idx for $Index {
                 fn new(idx: usize) -> Self {
-                    $Index(NonZero::new(idx + 1).unwrap())
+                    $Index(NonZeroUsize::new(idx + 1).unwrap())
                 }
                 fn index(self) -> usize {
                     self.0.get() - 1
