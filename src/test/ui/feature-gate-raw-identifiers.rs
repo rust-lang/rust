@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
-
-static s: &'static str =
-    r#~"#"~# //~ ERROR found invalid character; only `#` is allowed in raw string delimitation
-;
+fn main() {
+    let r#foo = 3; //~ ERROR raw identifiers are experimental and subject to change
+    println!("{}", foo);
+}
