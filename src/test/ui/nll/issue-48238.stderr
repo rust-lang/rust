@@ -1,0 +1,8 @@
+error: free region `` does not outlive free region `'_#1r`
+  --> $DIR/issue-48238.rs:21:21
+   |
+LL |     move || use_val(&orig); //~ ERROR free region `` does not outlive free region `'_#1r`
+   |                     ^^^^^
+
+error: aborting due to previous error
+
