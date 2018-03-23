@@ -700,6 +700,114 @@ impl<T: ?Sized> *const T {
         }
     }
 
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// This function is the inverse of [`offset`].
+    ///
+    /// [`offset`]: #method.offset
+    /// [`wrapping_offset_from`]: #method.wrapping_offset_from
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and other pointer must be either in bounds or one
+    ///   byte past the end of the same allocated object.
+    ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The distance between the pointers, in bytes, must be an exact multiple
+    ///   of the size of `T` and `T` must not be a Zero-Sized Type ("ZST").
+    ///
+    /// * The distance being in bounds cannot rely on "wrapping around" the address space.
+    ///
+    /// The compiler and standard library generally try to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using [`wrapping_offset_from`] instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *const i32 = &a[1];
+    /// let ptr2: *const i32 = &a[3];
+    /// unsafe {
+    ///     assert_eq!(ptr2.offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.offset_from(ptr2), -2);
+    ///     assert_eq!(ptr1.offset(2), ptr2);
+    ///     assert_eq!(ptr2.offset(-2), ptr1);
+    /// }
+    /// ```
+    #[unstable(feature = "ptr_offset_from", issue = "41079")]
+    #[inline]
+    pub unsafe fn offset_from(self, other: *const T) -> isize where T: Sized {
+        let pointee_size = mem::size_of::<T>();
+        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
+
+        // FIXME: can this be nuw/nsw?
+        let d = isize::wrapping_sub(self as _, other as _);
+        intrinsics::exact_div(d, pointee_size as _)
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// If the address different between the two pointers is not a multiple of
+    /// `mem::size_of::<T>()` then the result of the division is rounded towards
+    /// zero.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a zero-sized typed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *const i32 = &a[1];
+    /// let ptr2: *const i32 = &a[3];
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
+    /// assert_eq!(ptr1.wrapping_offset(2), ptr2);
+    /// assert_eq!(ptr2.wrapping_offset(-2), ptr1);
+    ///
+    /// let ptr1: *const i32 = 3 as _;
+    /// let ptr2: *const i32 = 13 as _;
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
+    #[inline]
+    pub fn wrapping_offset_from(self, other: *const T) -> isize where T: Sized {
+        let pointee_size = mem::size_of::<T>();
+        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
+
+        let d = isize::wrapping_sub(self as _, other as _);
+        d.wrapping_div(pointee_size as _)
+    }
+
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
     /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
@@ -1345,6 +1453,105 @@ impl<T: ?Sized> *mut T {
             let diff = (other as isize).wrapping_sub(self as isize);
             Some(diff / size as isize)
         }
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// This function is the inverse of [`offset`].
+    ///
+    /// [`offset`]: #method.offset-1
+    /// [`wrapping_offset_from`]: #method.wrapping_offset_from-1
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and other pointer must be either in bounds or one
+    ///   byte past the end of the same allocated object.
+    ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The distance between the pointers, in bytes, must be an exact multiple
+    ///   of the size of `T` and `T` must not be a Zero-Sized Type ("ZST").
+    ///
+    /// * The distance being in bounds cannot rely on "wrapping around" the address space.
+    ///
+    /// The compiler and standard library generally try to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using [`wrapping_offset_from`] instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *mut i32 = &mut a[1];
+    /// let ptr2: *mut i32 = &mut a[3];
+    /// unsafe {
+    ///     assert_eq!(ptr2.offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.offset_from(ptr2), -2);
+    ///     assert_eq!(ptr1.offset(2), ptr2);
+    ///     assert_eq!(ptr2.offset(-2), ptr1);
+    /// }
+    /// ```
+    #[unstable(feature = "ptr_offset_from", issue = "41079")]
+    #[inline]
+    pub unsafe fn offset_from(self, other: *const T) -> isize where T: Sized {
+        (self as *const T).offset_from(other)
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// If the address different between the two pointers is not a multiple of
+    /// `mem::size_of::<T>()` then the result of the division is rounded towards
+    /// zero.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a zero-sized typed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *mut i32 = &mut a[1];
+    /// let ptr2: *mut i32 = &mut a[3];
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
+    /// assert_eq!(ptr1.wrapping_offset(2), ptr2);
+    /// assert_eq!(ptr2.wrapping_offset(-2), ptr1);
+    ///
+    /// let ptr1: *mut i32 = 3 as _;
+    /// let ptr2: *mut i32 = 13 as _;
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
+    #[inline]
+    pub fn wrapping_offset_from(self, other: *const T) -> isize where T: Sized {
+        (self as *const T).wrapping_offset_from(other)
     }
 
     /// Computes the byte offset that needs to be applied in order to

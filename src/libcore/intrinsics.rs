@@ -1314,6 +1314,11 @@ extern "rust-intrinsic" {
     /// [`std::u32::overflowing_mul`](../../std/primitive.u32.html#method.overflowing_mul)
     pub fn mul_with_overflow<T>(x: T, y: T) -> (T, bool);
 
+    /// Performs an exact division, resulting in undefined behavior where
+    /// `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
+    #[cfg(not(stage0))]
+    pub fn exact_div<T>(x: T, y: T) -> T;
+
     /// Performs an unchecked division, resulting in undefined behavior
     /// where y = 0 or x = `T::min_value()` and y = -1
     pub fn unchecked_div<T>(x: T, y: T) -> T;
@@ -1395,4 +1400,9 @@ extern "rust-intrinsic" {
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
+}
+
+#[cfg(stage0)]
+pub unsafe fn exact_div<T>(a: T, b: T) -> T {
+    unchecked_div(a, b)
 }
