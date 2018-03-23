@@ -1764,12 +1764,12 @@ The `main` function was incorrectly declared.
 Erroneous code example:
 
 ```compile_fail,E0580
-fn main() -> i32 { // error: main function has wrong type
-    0
+fn main(x: i32) { // error: main function has wrong type
+    println!("{}", x);
 }
 ```
 
-The `main` function prototype should never take arguments or return type.
+The `main` function prototype should never take arguments.
 Example:
 
 ```
