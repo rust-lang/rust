@@ -1,7 +1,7 @@
-- Feature Name: self_in_typedefs
+- Feature Name: `self_in_typedefs`
 - Start Date: 2018-01-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2300](https://github.com/rust-lang/rfcs/pull/2300)
+- Rust Issue: [rust-lang/rust#49303](https://github.com/rust-lang/rust/issues/49303)
 
 # Summary
 [summary]: #summary
