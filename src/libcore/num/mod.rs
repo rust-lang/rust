@@ -3681,7 +3681,7 @@ macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
-            type Error = !;
+            type Error = TryFromIntError;
 
             #[inline]
             fn try_from(value: $source) -> Result<Self, Self::Error> {
