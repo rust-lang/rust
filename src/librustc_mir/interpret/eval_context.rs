@@ -383,24 +383,30 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
-        let mut locals = IndexVec::from_elem(Some(Value::ByVal(PrimVal::Undef)), &mir.local_decls);
-        match self.tcx.describe_def(instance.def_id()) {
-            // statics and constants don't have `Storage*` statements, no need to look for them
-            Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
-            _ => {
-                trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
-                for block in mir.basic_blocks() {
-                    for stmt in block.statements.iter() {
-                        use rustc::mir::StatementKind::{StorageDead, StorageLive};
-                        match stmt.kind {
-                            StorageLive(local) |
-                            StorageDead(local) => locals[local] = None,
-                            _ => {}
+        let locals = if mir.local_decls.len() > 1 {
+            let mut locals = IndexVec::from_elem(Some(Value::ByVal(PrimVal::Undef)), &mir.local_decls);
+            match self.tcx.describe_def(instance.def_id()) {
+                // statics and constants don't have `Storage*` statements, no need to look for them
+                Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
+                _ => {
+                    trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
+                    for block in mir.basic_blocks() {
+                        for stmt in block.statements.iter() {
+                            use rustc::mir::StatementKind::{StorageDead, StorageLive};
+                            match stmt.kind {
+                                StorageLive(local) |
+                                StorageDead(local) => locals[local] = None,
+                                _ => {}
+                            }
                         }
                     }
-                }
-            },
-        }
+                },
+            }
+            locals
+        } else {
+            // don't allocate at all for trivial constants
+            IndexVec::new()
+        };
 
         self.stack.push(Frame {
             mir,
