@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
-// failure-status: 1
+// Test for #49257:
+// emits good diagnostics for `..` pattern fragments not in the last position.
 
-use std::io::{Error, ErrorKind};
+#![allow(unused)]
 
-fn main() -> Result<(), Box<Error>> {
-    Err(Box::new(Error::new(ErrorKind::Other, "returned Box<Error> from main()")))
+struct Point { x: u8, y: u8 }
+
+fn main() {
+    let p = Point { x: 0, y: 0 };
+    let Point { .., y } = p; //~ ERROR expected `}`, found `,`
+    //~| ERROR pattern does not mention field `x`
+    //~| ERROR pattern does not mention field `y`
 }

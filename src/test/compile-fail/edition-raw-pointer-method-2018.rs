@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags: -Zepoch=2018 -Zunstable-options
+// compile-flags: -Zedition=2018 -Zunstable-options
 
-// tests that epochs work with the tyvar warning-turned-error
+// tests that editions work with the tyvar warning-turned-error
 
 #[deny(warnings)]
 fn main() {

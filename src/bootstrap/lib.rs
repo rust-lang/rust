@@ -511,6 +511,11 @@ impl Build {
         self.out.join(&*target).join("doc")
     }
 
+    /// Output directory for all documentation for a target
+    fn compiler_doc_out(&self, target: Interned<String>) -> PathBuf {
+        self.out.join(&*target).join("compiler-doc")
+    }
+
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: Interned<String>) -> Interned<PathBuf> {
         INTERNER.intern_path(self.out.join(&*target).join("md-doc"))

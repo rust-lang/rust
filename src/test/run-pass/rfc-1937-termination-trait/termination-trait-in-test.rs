@@ -10,7 +10,7 @@
 
 // compile-flags: --test
 
-#![feature(termination_trait)]
+#![feature(termination_trait_test)]
 #![feature(test)]
 
 extern crate test;
