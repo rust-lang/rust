@@ -326,6 +326,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "clippy_lints"
+version = "0.0.189"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "if_chain 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.7.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "matches 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pulldown-cmark 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "quine-mc_cluskey 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex-syntax 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "toml 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unicode-normalization 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "cmake"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1452,7 +1472,7 @@ version = "0.126.0"
 dependencies = [
  "cargo 0.27.0",
  "cargo_metadata 0.5.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "clippy_lints 0.0.188",
+ "clippy_lints 0.0.189 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "json 0.11.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2700,6 +2720,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cfg-if 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d4c819a1287eb618df47cc647173c5c4c66ba19d888a6e50d605672aed3140de"
 "checksum chrono 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7c20ebe0b2b08b0aeddba49c609fe7957ba2e33449882cb186a180bc60682fa9"
 "checksum clap 2.31.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f0f16b89cbb9ee36d87483dc939fe9f1e13c05898d56d7b230a0d4dff033a536"
+"checksum clippy_lints 0.0.189 (registry+https://github.com/rust-lang/crates.io-index)" = "fef652630bbf8c5e89601220abd000f5057e8fa9db608484b5ebaad98e9bce53"
 "checksum cmake 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)" = "56d741ea7a69e577f6d06b36b7dff4738f680593dc27a701ffa8506b73ce28bb"
 "checksum commoncrypto 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d056a8586ba25a1e4d61cb090900e495952c7886786fc55f909ab2f819b69007"
 "checksum commoncrypto-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1fed34f46747aa73dfaa578069fd8279d2818ade2b55f38f22a9401c7f4083e2"
