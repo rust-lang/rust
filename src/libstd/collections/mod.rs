@@ -438,6 +438,7 @@ pub use self::hash_set::HashSet;
 
 #[unstable(feature = "collections_range", issue = "30877")]
 #[rustc_deprecated(reason = "renamed and moved to `std::ops::RangeBounds`", since = "1.26.0")]
+#[doc(hidden)]
 /// Range syntax
 pub mod range {
     pub use ops::RangeBounds as RangeArgument;
