@@ -89,6 +89,12 @@ fn main() {
     let z = x & &y;
 
     check_ignore_macro();
+
+    // named constants
+    const A: u32 = 10;
+    const B: u32 = 10;
+    const C: u32 = A / B; // ok, different named constants
+    const D: u32 = A / A;
 }
 
 macro_rules! check_if_named_foo {
