@@ -14,7 +14,7 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
-                            EncodedMetadata};
+                            EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
@@ -412,6 +412,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ());
         let native_lib_bytes = self.position() - i;
 
+        let foreign_modules = self.tracked(
+            IsolatedEncoder::encode_foreign_modules,
+            ());
+
         // Encode codemap
         i = self.position();
         let codemap = self.encode_codemap();
@@ -434,6 +438,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             IsolatedEncoder::encode_exported_symbols,
             &exported_symbols);
         let exported_symbols_bytes = self.position() - i;
+
+        // encode wasm custom sections
+        let wasm_custom_sections = self.tcx.wasm_custom_sections(LOCAL_CRATE);
+        let wasm_custom_sections = self.tracked(
+            IsolatedEncoder::encode_wasm_custom_sections,
+            &wasm_custom_sections);
 
         // Encode and index the items.
         i = self.position();
@@ -474,10 +484,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items,
             lang_items_missing,
             native_libraries,
+            foreign_modules,
             codemap,
             def_path_table,
             impls,
             exported_symbols,
+            wasm_custom_sections,
             index,
         });
 
@@ -1330,6 +1342,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         self.lazy_seq(used_libraries.iter().cloned())
     }
 
+    fn encode_foreign_modules(&mut self, _: ()) -> LazySeq<ForeignModule> {
+        let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
+        self.lazy_seq(foreign_modules.iter().cloned())
+    }
+
     fn encode_crate_deps(&mut self, _: ()) -> LazySeq<CrateDep> {
         let crates = self.tcx.crates();
 
@@ -1442,6 +1459,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }
             })
             .cloned())
+    }
+
+    fn encode_wasm_custom_sections(&mut self, statics: &[DefId]) -> LazySeq<DefIndex> {
+        info!("encoding custom wasm section constants {:?}", statics);
+        self.lazy_seq(statics.iter().map(|id| id.index))
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {

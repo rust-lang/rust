@@ -12,7 +12,6 @@
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
-use native_libs::relevant_lib;
 use schema::CrateRoot;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
@@ -230,7 +229,7 @@ impl<'a> CrateLoader<'a> {
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
 
-        let mut cmeta = cstore::CrateMetadata {
+        let cmeta = cstore::CrateMetadata {
             name,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
@@ -250,24 +249,7 @@ impl<'a> CrateLoader<'a> {
                 rlib,
                 rmeta,
             },
-            // Initialize this with an empty set. The field is populated below
-            // after we were able to deserialize its contents.
-            dllimport_foreign_items: FxHashSet(),
         };
-
-        let dllimports: FxHashSet<_> = cmeta
-            .root
-            .native_libraries
-            .decode((&cmeta, self.sess))
-            .filter(|lib| relevant_lib(self.sess, lib) &&
-                          lib.kind == cstore::NativeLibraryKind::NativeUnknown)
-            .flat_map(|lib| {
-                assert!(lib.foreign_items.iter().all(|def_id| def_id.krate == cnum));
-                lib.foreign_items.into_iter().map(|def_id| def_id.index)
-            })
-            .collect();
-
-        cmeta.dllimport_foreign_items = dllimports;
 
         let cmeta = Lrc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());

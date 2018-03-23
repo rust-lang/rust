@@ -26,6 +26,7 @@ ENV RUST_CONFIGURE_ARGS \
   --set rust.lld
 
 ENV SCRIPT python2.7 /checkout/x.py test --target $TARGETS \
+  src/test/run-make \
   src/test/ui \
   src/test/run-pass \
   src/test/compile-fail \

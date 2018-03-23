@@ -313,6 +313,7 @@ impl<'a> Builder<'a> {
                 test::RunPassFullDepsPretty, test::RunFailFullDepsPretty,
                 test::Crate, test::CrateLibrustc, test::CrateRustdoc, test::Linkcheck,
                 test::Cargotest, test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
+                test::RunMakeFullDeps,
                 test::Nomicon, test::Reference, test::RustdocBook, test::RustByExample,
                 test::TheBook, test::UnstableBook,
                 test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme,

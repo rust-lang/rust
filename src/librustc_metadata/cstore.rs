@@ -20,7 +20,7 @@ use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc::session::{Session, CrateDisambiguator};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
+use rustc::util::nodemap::{FxHashMap, NodeMap};
 
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 use syntax::{ast, attr};
@@ -30,7 +30,7 @@ use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
 pub use rustc::middle::cstore::NativeLibraryKind::*;
-pub use rustc::middle::cstore::{CrateSource, LibSource};
+pub use rustc::middle::cstore::{CrateSource, LibSource, ForeignModule};
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -84,8 +84,6 @@ pub struct CrateMetadata {
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
-    // Foreign items imported from a dylib (Windows only)
-    pub dllimport_foreign_items: FxHashSet<DefIndex>,
 }
 
 pub struct CStore {

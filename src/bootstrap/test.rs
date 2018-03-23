@@ -759,10 +759,16 @@ test!(RunFailFullDepsPretty {
     host: true
 });
 
-host_test!(RunMake {
+default_test!(RunMake {
     path: "src/test/run-make",
     mode: "run-make",
     suite: "run-make"
+});
+
+host_test!(RunMakeFullDeps {
+    path: "src/test/run-make-fulldeps",
+    mode: "run-make",
+    suite: "run-make-fulldeps"
 });
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -827,8 +833,7 @@ impl Step for Compiletest {
             // FIXME: Does pretty need librustc compiled? Note that there are
             // fulldeps test suites with mode = pretty as well.
             mode == "pretty" ||
-            mode == "rustdoc" ||
-            mode == "run-make" {
+            mode == "rustdoc" {
             builder.ensure(compile::Rustc { compiler, target });
         }
 
@@ -849,7 +854,7 @@ impl Step for Compiletest {
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
         // Avoid depending on rustdoc when we don't need it.
-        if mode == "rustdoc" || mode == "run-make" {
+        if mode == "rustdoc" || (mode == "run-make" && suite.ends_with("fulldeps")) {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
@@ -931,7 +936,7 @@ impl Step for Compiletest {
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if suite == "run-make" {
+            if suite == "run-make-fulldeps" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc").arg(build.cc(target))
@@ -944,12 +949,12 @@ impl Step for Compiletest {
                 }
             }
         }
-        if suite == "run-make" && !build.config.llvm_enabled {
+        if suite == "run-make-fulldeps" && !build.config.llvm_enabled {
             println!("Ignoring run-make test suite as they generally don't work without LLVM");
             return;
         }
 
-        if suite != "run-make" {
+        if suite != "run-make-fulldeps" {
             cmd.arg("--cc").arg("")
                .arg("--cxx").arg("")
                .arg("--cflags").arg("")
