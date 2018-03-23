@@ -286,7 +286,8 @@ pub enum Goal<'tcx> {
     And(&'tcx Goal<'tcx>, &'tcx Goal<'tcx>),
     Not(&'tcx Goal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
-    Quantified(QuantifierKind, ty::Binder<&'tcx Goal<'tcx>>)
+    Quantified(QuantifierKind, ty::Binder<&'tcx Goal<'tcx>>),
+    CannotProve,
 }
 
 impl<'tcx> Goal<'tcx> {
