@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty
+
 #![feature(raw_identifiers)]
 
 fn r#fn(r#match: u32) -> u32 {
