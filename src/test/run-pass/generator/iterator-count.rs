@@ -14,11 +14,13 @@ use std::ops::{GeneratorState, Generator};
 
 struct W<T>(T);
 
+// This impl isn't safe in general, but the generator used in this test is movable
+// so it won't cause problems.
 impl<T: Generator<Return = ()>> Iterator for W<T> {
     type Item = T::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.0.resume() {
+        match unsafe { self.0.resume() } {
             GeneratorState::Complete(..) => None,
             GeneratorState::Yielded(v) => Some(v),
         }
