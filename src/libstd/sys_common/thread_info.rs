@@ -50,3 +50,7 @@ pub fn set(stack_guard: Option<Guard>, thread: Thread) {
         thread,
     }));
 }
+
+pub fn reset_guard(stack_guard: Option<Guard>) {
+    THREAD_INFO.with(move |c| c.borrow_mut().as_mut().unwrap().stack_guard = stack_guard);
+}
