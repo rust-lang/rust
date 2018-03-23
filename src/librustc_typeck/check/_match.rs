@@ -904,6 +904,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         // Keep track of which fields have already appeared in the pattern.
         let mut used_fields = FxHashMap();
 
+        let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
             let field_ty = match used_fields.entry(field.name) {
@@ -927,40 +928,54 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
-                            let mut err = struct_span_err!(
-                                tcx.sess,
-                                span,
-                                E0026,
-                                "{} `{}` does not have a field named `{}`",
-                                kind_name,
-                                tcx.item_path_str(variant.did),
-                                field.name
-                            );
-                            err.span_label(span,
-                                           format!("{} `{}` does not have field `{}`",
-                                                   kind_name,
-                                                   tcx.item_path_str(variant.did),
-                                                   field.name));
-                            if tcx.sess.teach(&err.get_code().unwrap()) {
-                                err.note(
-                                    "This error indicates that a struct pattern attempted to \
-                                     extract a non-existent field from a struct. Struct fields \
-                                     are identified by the name used before the colon : so struct \
-                                     patterns should resemble the declaration of the struct type \
-                                     being matched.\n\n\
-                                     If you are using shorthand field patterns but want to refer \
-                                     to the struct field by a different name, you should rename \
-                                     it explicitly."
-                                );
-                            }
-                            err.emit();
-
+                            inexistent_fields.push((span, field.name));
                             tcx.types.err
                         })
                 }
             };
 
             self.check_pat_walk(&field.pat, field_ty, def_bm, true);
+        }
+
+        if inexistent_fields.len() > 0 {
+            let (field_names, t, plural) = if inexistent_fields.len() == 1 {
+                (format!("a field named `{}`", inexistent_fields[0].1), "this", "")
+            } else {
+                (format!("fields named {}",
+                         inexistent_fields.iter()
+                            .map(|(_, name)| format!("`{}`", name))
+                            .collect::<Vec<String>>()
+                            .join(", ")), "these", "s")
+            };
+            let spans = inexistent_fields.iter().map(|(span, _)| *span).collect::<Vec<_>>();
+            let mut err = struct_span_err!(tcx.sess,
+                                           spans,
+                                           E0026,
+                                           "{} `{}` does not have {}",
+                                           kind_name,
+                                           tcx.item_path_str(variant.did),
+                                           field_names);
+            if let Some((span, _)) = inexistent_fields.last() {
+                err.span_label(*span,
+                               format!("{} `{}` does not have {} field{}",
+                                       kind_name,
+                                       tcx.item_path_str(variant.did),
+                                       t,
+                                       plural));
+            }
+            if tcx.sess.teach(&err.get_code().unwrap()) {
+                err.note(
+                    "This error indicates that a struct pattern attempted to \
+                     extract a non-existent field from a struct. Struct fields \
+                     are identified by the name used before the colon : so struct \
+                     patterns should resemble the declaration of the struct type \
+                     being matched.\n\n\
+                     If you are using shorthand field patterns but want to refer \
+                     to the struct field by a different name, you should rename \
+                     it explicitly."
+                );
+            }
+            err.emit();
         }
 
         // Require `..` if struct has non_exhaustive attribute.
@@ -979,13 +994,25 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 tcx.sess.span_err(span, "`..` cannot be used in union patterns");
             }
         } else if !etc {
-            for field in variant.fields
+            let unmentioned_fields = variant.fields
                 .iter()
-                .filter(|field| !used_fields.contains_key(&field.name)) {
+                .map(|field| field.name)
+                .filter(|field| !used_fields.contains_key(&field))
+                .collect::<Vec<_>>();
+            if unmentioned_fields.len() > 0 {
+                let field_names = if unmentioned_fields.len() == 1 {
+                    format!("field `{}`", unmentioned_fields[0])
+                } else {
+                    format!("fields {}",
+                            unmentioned_fields.iter()
+                                .map(|name| format!("`{}`", name))
+                                .collect::<Vec<String>>()
+                                .join(", "))
+                };
                 let mut diag = struct_span_err!(tcx.sess, span, E0027,
-                                                "pattern does not mention field `{}`",
-                                                field.name);
-                diag.span_label(span, format!("missing field `{}`", field.name));
+                                                "pattern does not mention {}",
+                                                field_names);
+                diag.span_label(span, format!("missing {}", field_names));
                 if variant.ctor_kind == CtorKind::Fn {
                     diag.note("trying to match a tuple variant with a struct variant pattern");
                 }
