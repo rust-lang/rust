@@ -1153,6 +1153,27 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()))
     }
 
+    if name == "simd_select" {
+        let m_elem_ty = in_elem;
+        let m_len = in_len;
+        let v_len = arg_tys[1].simd_size(tcx);
+        require!(m_len == v_len,
+                 "mismatched lengths: mask length `{}` != other vector length `{}`",
+                 m_len, v_len
+        );
+        match m_elem_ty.sty {
+            ty::TyInt(_) => {},
+            _ => {
+                return_error!("mask element type is `{}`, expected `i_`", m_elem_ty);
+            }
+        }
+        // truncate the mask to a vector of i1s
+        let i1 = Type::i1(bx.cx);
+        let i1xn = Type::vector(&i1, m_len as u64);
+        let m_i1s = bx.trunc(args[0].immediate(), i1xn);
+        return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
+    }
+
     macro_rules! arith_red {
         ($name:tt : $integer_reduce:ident, $float_reduce:ident, $ordered:expr) => {
             if name == $name {
