@@ -97,7 +97,7 @@
 #![feature(from_ref)]
 #![feature(fundamental)]
 #![feature(generic_param_attrs)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(iter_rfold)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]

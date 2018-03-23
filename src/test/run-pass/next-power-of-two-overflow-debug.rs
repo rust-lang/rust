@@ -12,8 +12,6 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 // ignore-emscripten dies with an LLVM error
 
-#![feature(i128_type)]
-
 use std::panic;
 
 fn main() {
