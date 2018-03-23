@@ -210,6 +210,8 @@ pub struct MemoryData<'tcx> {
     /// Only mutable (static mut, heap, stack) allocations have an entry in this map.
     /// The entry is created when allocating the memory and deleted after deallocation.
     locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
+
+    mut_statics: HashMap<GlobalId<'tcx>, AllocId>,
 }
 
 impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
@@ -268,69 +270,26 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
-        let tcx = self.tcx.tcx;
-        let mir = None;
-        let param_env = ty::ParamEnv::reveal_all();
-        // we start out with the best span we have
-        // and try improving it down the road when more information is available
-        let res = (|| {
-            let mut mir = match mir {
-                Some(mir) => mir,
-                None => ecx.load_mir(cid.instance.def)?,
-            };
-            if let Some(index) = cid.promoted {
-                mir = &mir.promoted[index];
-            }
-            span = mir.span;
-            let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-            let alloc = tcx.interpret_interner.get_cached(cid.instance.def_id());
-            let is_static = tcx.is_static(cid.instance.def_id()).is_some();
-            let alloc = match alloc {
-                Some(alloc) => {
-                    assert!(cid.promoted.is_none());
-                    assert!(param_env.caller_bounds.is_empty());
-                    alloc
-                },
-                None => {
-                    assert!(!layout.is_unsized());
-                    let ptr = ecx.memory.allocate(
-                        layout.size.bytes(),
-                        layout.align,
-                        None,
-                    )?;
-                    if is_static {
-                        tcx.interpret_interner.cache(cid.instance.def_id(), ptr.alloc_id);
-                    }
-                    let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-                    let mutability = tcx.is_static(cid.instance.def_id());
-                    let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
-                        Mutability::Mutable
-                    } else {
-                        Mutability::Immutable
-                    };
-                    let cleanup = StackPopCleanup::MarkStatic(mutability);
-                    let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-                    let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
-                    trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
-                    assert!(mir.arg_count == 0);
-                    ecx.push_stack_frame(
-                        cid.instance,
-                        mir.span,
-                        mir,
-                        Place::from_ptr(ptr, layout.align),
-                        cleanup,
-                    )?;
-
-                    while ecx.step()? {}
-                    ptr.alloc_id
-                }
-            };
-            let ptr = MemoryPointer::new(alloc, 0).into();
-            // always try to read the value and report errors
-            Ok((ptr, layout.ty))
-        })();
-        let (mem_ptr, _) = res?;
-        Ok(mem_ptr.alloc_id)
+        if let Some(alloc_id) = ecx.memory.data.get(&cid) {
+            return Ok(alloc_id);
+        }
+        let mir = ecx.load_mir(cid.instance.def)?;
+        let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
+        let to_ptr = ecx.memory.allocate(
+            layout.size.bytes(),
+            layout.align,
+            None,
+        )?;
+        ecx.const_eval(cid)?;
+        let ptr = ecx
+            .tcx
+            .interpret_interner
+            .get_cached(cid.instance.def_id())
+            .expect("uncached static");
+        ecx.memory.copy(ptr, layout.align, to_ptr.into(), layout.align, layout.size.bytes(), true)?;
+        ecx.memory.mark_static_initialized(to_ptr.alloc_id, ::syntax::ast::Mutability::Mutable)?;
+        assert!(ecx.memory.data.insert(cid, to_ptr.alloc_id).is_none());
+        Ok(to_ptr.alloc_id)
     }
 
     fn box_alloc<'a>(
