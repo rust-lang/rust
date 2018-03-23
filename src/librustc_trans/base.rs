@@ -1082,7 +1082,10 @@ impl CrateInfo {
             used_crate_source: FxHashMap(),
             wasm_custom_sections: BTreeMap::new(),
             wasm_imports: FxHashMap(),
+            lang_item_to_crate: FxHashMap(),
+            missing_lang_items: FxHashMap(),
         };
+        let lang_items = tcx.lang_items();
 
         let load_wasm_items = tcx.sess.crate_types.borrow()
             .iter()
@@ -1128,6 +1131,13 @@ impl CrateInfo {
                 }
                 info.load_wasm_imports(tcx, cnum);
             }
+            let missing = tcx.missing_lang_items(cnum);
+            for &item in missing.iter() {
+                if let Ok(id) = lang_items.require(item) {
+                    info.lang_item_to_crate.insert(item, id.krate);
+                }
+            }
+            info.missing_lang_items.insert(cnum, missing);
         }
 
         return info
