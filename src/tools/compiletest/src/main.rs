@@ -38,6 +38,7 @@ use getopts::Options;
 use common::{Config, TestPaths};
 use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use common::{expected_output_path, UI_EXTENSIONS};
+use common::CompareMode;
 use test::ColorConfig;
 use util::logv;
 
@@ -227,6 +228,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "path to the remote test client",
             "PATH",
         )
+        .optopt(
+            "",
+            "compare-mode",
+            "mode describing what file the actual ui output will be compared to",
+            "COMPARE MODE"
+        )
         .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -320,6 +327,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         quiet: matches.opt_present("quiet"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
+        compare_mode: matches.opt_str("compare-mode").and_then(|x| if x == "nll" { Some(CompareMode::Nll) } else { panic!("Unknown compare-mode {}", x) }),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -688,12 +696,12 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
     // UI test files.
     for extension in UI_EXTENSIONS {
         for revision in &props.revisions {
-            let path = &expected_output_path(testpaths, Some(revision), extension);
+            let path = &expected_output_path(testpaths, Some(revision), &config.compare_mode, extension);
             inputs.push(mtime(path));
         }
 
         if props.revisions.is_empty() {
-            let path = &expected_output_path(testpaths, None, extension);
+            let path = &expected_output_path(testpaths, None, &config.compare_mode, extension);
             inputs.push(mtime(path));
         }
     }
