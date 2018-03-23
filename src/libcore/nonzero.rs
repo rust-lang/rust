@@ -9,9 +9,10 @@
 // except according to those terms.
 
 //! Exposes the NonZero lang item which provides optimization hints.
-#![unstable(feature = "nonzero",
-            reason = "needs an RFC to flesh out the design",
-            issue = "27730")]
+#![unstable(feature = "nonzero", reason = "deprecated", issue = "49137")]
+#![rustc_deprecated(reason = "use `std::ptr::NonNull` or `std::num::NonZero*` instead",
+                    since = "1.26.0")]
+#![allow(deprecated)]
 
 use ops::CoerceUnsized;
 
@@ -62,14 +63,11 @@ impl_zeroable_for_integer_types! {
 /// NULL or 0 that might allow certain optimizations.
 #[lang = "non_zero"]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash)]
-pub struct NonZero<T: Zeroable>(T);
+pub struct NonZero<T: Zeroable>(pub(crate) T);
 
 impl<T: Zeroable> NonZero<T> {
     /// Creates an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
-    #[unstable(feature = "nonzero",
-               reason = "needs an RFC to flesh out the design",
-               issue = "27730")]
     #[inline]
     pub const unsafe fn new_unchecked(inner: T) -> Self {
         NonZero(inner)

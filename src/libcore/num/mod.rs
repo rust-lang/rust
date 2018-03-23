@@ -15,8 +15,97 @@
 use convert::TryFrom;
 use fmt;
 use intrinsics;
+#[allow(deprecated)] use nonzero::NonZero;
 use ops;
 use str::FromStr;
+
+macro_rules! impl_nonzero_fmt {
+    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
+        $(
+            #[$stability]
+            impl fmt::$Trait for $Ty {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    self.get().fmt(f)
+                }
+            }
+        )+
+    }
+}
+
+macro_rules! nonzero_integers {
+    ( #[$stability: meta] $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            /// An integer that is known not to equal zero.
+            ///
+            /// This may enable some memory layout optimization such as:
+            ///
+            /// ```rust
+            /// # #![feature(nonzero)]
+            /// use std::mem::size_of;
+            /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
+            /// ```
+            #[$stability]
+            #[allow(deprecated)]
+            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            pub struct $Ty(NonZero<$Int>);
+
+            #[allow(deprecated)]
+            impl $Ty {
+                /// Create a non-zero without checking the value.
+                ///
+                /// # Safety
+                ///
+                /// The value must not be zero.
+                #[$stability]
+                #[inline]
+                pub const unsafe fn new_unchecked(n: $Int) -> Self {
+                    $Ty(NonZero(n))
+                }
+
+                /// Create a non-zero if the given value is not zero.
+                #[$stability]
+                #[inline]
+                pub fn new(n: $Int) -> Option<Self> {
+                    if n != 0 {
+                        Some($Ty(NonZero(n)))
+                    } else {
+                        None
+                    }
+                }
+
+                /// Returns the value as a primitive type.
+                #[$stability]
+                #[inline]
+                pub fn get(self) -> $Int {
+                    self.0 .0
+                }
+
+            }
+
+            impl_nonzero_fmt! {
+                #[$stability]
+                (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+            }
+        )+
+    }
+}
+
+nonzero_integers! {
+    #[unstable(feature = "nonzero", issue = "49137")]
+    NonZeroU8(u8); NonZeroI8(i8);
+    NonZeroU16(u16); NonZeroI16(i16);
+    NonZeroU32(u32); NonZeroI32(i32);
+    NonZeroU64(u64); NonZeroI64(i64);
+    NonZeroUsize(usize); NonZeroIsize(isize);
+}
+
+nonzero_integers! {
+    // Change this to `#[unstable(feature = "i128", issue = "35118")]`
+    // if other NonZero* integer types are stabilizied before 128-bit integers
+    #[unstable(feature = "nonzero", issue = "49137")]
+    NonZeroU128(u128); NonZeroI128(i128);
+}
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
