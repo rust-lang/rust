@@ -39,6 +39,7 @@ pub use self::PickKind::*;
 
 /// Boolean flag used to indicate if this search is for a suggestion
 /// or not.  If true, we can allow ambiguity and so forth.
+#[derive(Clone, Copy)]
 pub struct IsSuggestion(pub bool);
 
 struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -66,6 +67,8 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
     unsatisfied_predicates: Vec<TraitRef<'tcx>>,
+
+    is_suggestion: IsSuggestion,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
@@ -277,8 +280,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // this creates one big transaction so that all type variables etc
         // that we create during the probe process are removed later
         self.probe(|_| {
-            let mut probe_cx =
-                ProbeContext::new(self, span, mode, method_name, return_type, Rc::new(steps));
+            let mut probe_cx = ProbeContext::new(
+                self, span, mode, method_name, return_type, Rc::new(steps), is_suggestion,
+            );
 
             probe_cx.assemble_inherent_candidates();
             match scope {
@@ -379,7 +383,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
            mode: Mode,
            method_name: Option<ast::Name>,
            return_type: Option<Ty<'tcx>>,
-           steps: Rc<Vec<CandidateStep<'tcx>>>)
+           steps: Rc<Vec<CandidateStep<'tcx>>>,
+           is_suggestion: IsSuggestion)
            -> ProbeContext<'a, 'gcx, 'tcx> {
         ProbeContext {
             fcx,
@@ -395,6 +400,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             allow_similar_names: false,
             private_candidate: None,
             unsatisfied_predicates: Vec::new(),
+            is_suggestion,
         }
     }
 
@@ -952,14 +958,12 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 Some(&mut unstable_candidates),
             );
             if let Some(pick) = res {
-                if !unstable_candidates.is_empty() && !self_ty.is_ty_var() {
+                if !self.is_suggestion.0 && !unstable_candidates.is_empty() {
                     if let Ok(p) = &pick {
                         // Emit a lint if there are unstable candidates alongside the stable ones.
                         //
-                        // Note, we suppress warning if `self_ty` is TyVar (`_`), since every
-                        // possible candidates of every type will be considered, which leads to
-                        // bogus ambiguity like `str::rsplit` vs `[_]::rsplit`. This condition is
-                        // seen in `src/test/compile-fail/occurs-check-2.rs`.
+                        // We suppress warning if we're picking the method only because it is a
+                        // suggestion.
                         self.emit_unstable_name_collision_hint(p, &unstable_candidates);
                     }
                 }
@@ -1265,7 +1269,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let steps = self.steps.clone();
         self.probe(|_| {
             let mut pcx = ProbeContext::new(self.fcx, self.span, self.mode, self.method_name,
-                                            self.return_type, steps);
+                                            self.return_type, steps, IsSuggestion(true));
             pcx.allow_similar_names = true;
             pcx.assemble_inherent_candidates();
             pcx.assemble_extension_candidates_for_traits_in_scope(ast::DUMMY_NODE_ID)?;
