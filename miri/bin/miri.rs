@@ -1,4 +1,4 @@
-#![feature(rustc_private, i128_type)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate miri;

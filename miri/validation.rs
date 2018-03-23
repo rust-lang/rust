@@ -5,7 +5,7 @@ use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, Ty, TypeFoldable, TyCtxt, Instance};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::subst::{Substs, Subst};
-use rustc::traits;
+use rustc::traits::{self, TraitEngine};
 use rustc::infer::InferCtxt;
 use rustc::middle::region;
 use rustc::middle::const_val::ConstVal;

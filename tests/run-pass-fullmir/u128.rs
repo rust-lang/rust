@@ -10,8 +10,6 @@
 
 //ignore-msvc
 
-#![feature(i128_type)]
-
 fn b<T>(t: T) -> T { t }
 
 fn main() {

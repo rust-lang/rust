@@ -126,6 +126,12 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     _ => panic!("Unexpected return type for {}", item_path)
                 }
             }
+            "std::sys_common::thread_info::set" | "std::sys_common::cleanup" => {
+                // TODO rustc creates invalid mir inside std::cell::BorrowRef::new which is used by this function
+                let (_return_place, return_to_block) = destination.unwrap();
+                self.goto_block(return_to_block);
+                return Ok(true);
+            }
             _ => {}
         }
 
@@ -534,6 +540,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                 // Return success (0)
                 self.write_null(dest, dest_ty)?;
+            }
+            "_tlv_atexit" => {
+                // TODO: handle it
             }
 
             // Stub out all the other pthread calls to just return 0

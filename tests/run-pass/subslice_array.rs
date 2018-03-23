@@ -1,4 +1,3 @@
-#![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
 
 fn bar(a: &'static str, b: &'static str) -> [&'static str; 4] {
