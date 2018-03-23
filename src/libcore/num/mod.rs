@@ -3804,14 +3804,11 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8);
     try_from_unbounded!(isize, i16, i32, i64, i128);
 
-    rev!(try_from_unbounded, usize, u16);
     rev!(try_from_upper_bounded, usize, u32, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16);
     rev!(try_from_both_bounded, usize, i32, i64, i128);
 
-    rev!(try_from_unbounded, isize, u8);
     rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i16);
     rev!(try_from_both_bounded, isize, i32, i64, i128);
 }
 
@@ -3830,14 +3827,14 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8, i16);
     try_from_unbounded!(isize, i32, i64, i128);
 
-    rev!(try_from_unbounded, usize, u16, u32);
+    rev!(try_from_unbounded, usize, u32);
     rev!(try_from_upper_bounded, usize, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32);
     rev!(try_from_both_bounded, usize, i64, i128);
 
-    rev!(try_from_unbounded, isize, u8, u16);
+    rev!(try_from_unbounded, isize, u16);
     rev!(try_from_upper_bounded, isize, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i16, i32);
+    rev!(try_from_unbounded, isize, i32);
     rev!(try_from_both_bounded, isize, i64, i128);
 }
 
@@ -3856,14 +3853,14 @@ mod ptr_try_from_impls {
     try_from_both_bounded!(isize, i8, i16, i32);
     try_from_unbounded!(isize, i64, i128);
 
-    rev!(try_from_unbounded, usize, u16, u32, u64);
+    rev!(try_from_unbounded, usize, u32, u64);
     rev!(try_from_upper_bounded, usize, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
     rev!(try_from_both_bounded, usize, i128);
 
-    rev!(try_from_unbounded, isize, u8, u16, u32);
+    rev!(try_from_unbounded, isize, u16, u32);
     rev!(try_from_upper_bounded, isize, u64, u128);
-    rev!(try_from_unbounded, isize, i16, i32, i64);
+    rev!(try_from_unbounded, isize, i32, i64);
     rev!(try_from_both_bounded, isize, i128);
 }
 
@@ -4073,6 +4070,20 @@ impl_from! { u16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
+
+// The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
+// which imply that pointer-sized integers must be at least 16 bits:
+// https://port70.net/~nsz/c/c99/n1256.html#7.18.2.4
+impl_from! { u16, usize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
+impl_from! { u8, isize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
+impl_from! { i16, isize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
+
+// RISC-V defines the possibility of a 128-bit address space (RV128).
+
+// CHERI proposes 256-bit “capabilities”. Unclear if this would be relevant to usize/isize.
+// https://www.cl.cam.ac.uk/research/security/ctsrd/pdfs/20171017a-cheri-poster.pdf
+// http://www.csl.sri.com/users/neumann/2012resolve-cheri.pdf
+
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
