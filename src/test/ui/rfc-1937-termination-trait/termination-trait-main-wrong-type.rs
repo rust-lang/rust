@@ -8,16 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-// compile-flags: -Zepoch=2015 -Zunstable-options
-
-// tests that epochs work with the tyvar warning-turned-error
-
-#[deny(warnings)]
-fn main() {
-    let x = 0;
-    let y = &x as *const _;
-    let _ = y.is_null();
-    //~^ error: type annotations needed [tyvar_behind_raw_pointer]
-    //~^^ warning: this was previously accepted
+fn main() -> char { //~ ERROR
+    ' '
 }

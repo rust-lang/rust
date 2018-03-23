@@ -28,7 +28,7 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::codemap::{FileName, FilePathMapping};
-use syntax::epoch::Epoch;
+use syntax::edition::Edition;
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -771,7 +771,7 @@ macro_rules! options {
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
-        pub const parse_epoch: Option<&'static str> =
+        pub const parse_edition: Option<&'static str> =
             Some("one of: `2015`, `2018`");
     }
 
@@ -780,7 +780,7 @@ macro_rules! options {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
-        use syntax::epoch::Epoch;
+        use syntax::edition::Edition;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -983,11 +983,11 @@ macro_rules! options {
             true
         }
 
-        fn parse_epoch(slot: &mut Epoch, v: Option<&str>) -> bool {
+        fn parse_edition(slot: &mut Edition, v: Option<&str>) -> bool {
             match v {
                 Some(s) => {
-                    let epoch = s.parse();
-                    if let Ok(parsed) = epoch {
+                    let edition = s.parse();
+                    if let Ok(parsed) = edition {
                         *slot = parsed;
                         true
                     } else {
@@ -1280,10 +1280,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`, or
         `hir,typed` (HIR with types for each node)."),
-    epoch: Epoch = (Epoch::Epoch2015, parse_epoch, [TRACKED],
-        "The epoch to build Rust with. Newer epochs may include features
-         that require breaking changes. The default epoch is 2015 (the first
-         epoch). Crates compiled with different epochs can be linked together."),
+    edition: Edition = (Edition::Edition2015, parse_edition, [TRACKED],
+        "The edition to build Rust with. Newer editions may include features
+         that require breaking changes. The default edition is 2015 (the first
+         edition). Crates compiled with different editions can be linked together."),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
           "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
@@ -2258,7 +2258,7 @@ mod dep_tracking {
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
-    use super::{CrateType, DebugInfoLevel, Epoch, ErrorOutputType, Lto, OptLevel, OutputTypes,
+    use super::{CrateType, DebugInfoLevel, Edition, ErrorOutputType, Lto, OptLevel, OutputTypes,
                 Passes, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
@@ -2320,7 +2320,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
-    impl_dep_tracking_hash_via_hash!(Epoch);
+    impl_dep_tracking_hash_via_hash!(Edition);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);

@@ -24,5 +24,7 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use std::fmt::Debug;
    |
 
-error: cannot continue compilation due to previous error
+error: aborting due to 3 previous errors
 
+Some errors occurred: E0405, E0425.
+For more information about an error, try `rustc --explain E0405`.

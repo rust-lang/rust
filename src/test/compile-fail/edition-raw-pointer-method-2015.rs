@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Don't fail if we encounter a NonNull<T> where T is an unsized type
+// ignore-tidy-linelength
+// compile-flags: -Zedition=2015 -Zunstable-options
 
-use std::ptr::NonNull;
+// tests that editions work with the tyvar warning-turned-error
 
+#[deny(warnings)]
 fn main() {
-    let mut a = [0u8; 5];
-    let b: Option<NonNull<[u8]>> = Some(NonNull::from(&mut a));
-    match b {
-        Some(_) => println!("Got `Some`"),
-        None => panic!("Unexpected `None`"),
-    }
+    let x = 0;
+    let y = &x as *const _;
+    let _ = y.is_null();
+    //~^ error: type annotations needed [tyvar_behind_raw_pointer]
+    //~^^ warning: this was previously accepted
 }

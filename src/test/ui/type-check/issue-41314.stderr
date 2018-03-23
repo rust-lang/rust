@@ -2,7 +2,7 @@ error[E0026]: variant `X::Y` does not have a field named `number`
   --> $DIR/issue-41314.rs:17:16
    |
 LL |         X::Y { number } => {} //~ ERROR does not have a field named `number`
-   |                ^^^^^^ variant `X::Y` does not have field `number`
+   |                ^^^^^^ variant `X::Y` does not have this field
 
 error[E0027]: pattern does not mention field `0`
   --> $DIR/issue-41314.rs:17:9
