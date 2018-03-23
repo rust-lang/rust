@@ -2802,7 +2802,7 @@ impl<'test> TestCx<'test> {
         normalized
     }
 
-    fn expected_output_path(&self, kind: &str) -> Result<PathBuf, String> {
+    fn load_expected_output(&self, kind: &str) -> String {
         let mut path = expected_output_path(&self.testpaths,
                                             self.revision,
                                             &self.config.compare_mode,
@@ -2814,16 +2814,13 @@ impl<'test> TestCx<'test> {
         }
 
         if path.exists() {
-            Ok(path)
+            match self.load_expected_output_from_path(&path) {
+                Ok(x) => x,
+                Err(x) => self.fatal(&x),
+            }
         } else {
-            Err(String::from("no existing output_path found"))
+            String::new()
         }
-    }
-
-    fn load_expected_output(&self, kind: &str) -> String {
-        self.expected_output_path(kind)
-            .and_then(|x| self.load_expected_output_from_path(&x))
-            .unwrap_or_else(|x| self.fatal(&x))
     }
 
     fn load_expected_output_from_path(&self, path: &Path) -> Result<String, String> {
