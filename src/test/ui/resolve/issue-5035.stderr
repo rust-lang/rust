@@ -13,5 +13,7 @@ LL | impl K for isize {} //~ ERROR expected trait, found type alias `K`
    |      did you mean `I`?
    |      type aliases cannot be used for traits
 
-error: cannot continue compilation due to previous error
+error: aborting due to 2 previous errors
 
+Some errors occurred: E0404, E0432.
+For more information about an error, try `rustc --explain E0404`.
