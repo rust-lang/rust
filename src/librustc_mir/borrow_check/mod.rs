@@ -265,6 +265,11 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.visibility_scope_info {
             let local_decl = &mbcx.mir.local_decls[local];
 
+            // Skip implicit `self` argument for closures
+            if local.index() == 1 && tcx.is_closure(mbcx.mir_def_id) {
+                continue;
+            }
+
             // Skip over locals that begin with an underscore
             match local_decl.name {
                 Some(name) if name.as_str().starts_with("_") => continue,
@@ -1890,9 +1895,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
                                     hir::MutImmutable => return Err(place),
-                                    // `*mut` raw pointers are always mutable, regardless of context
-                                    // The users have to check by themselve.
-                                    hir::MutMutable => return Ok((place, is_local_mutation_allowed)),
+                                    // `*mut` raw pointers are always mutable, regardless of
+                                    // context. The users have to check by themselves.
+                                    hir::MutMutable => {
+                                        return Ok((place, is_local_mutation_allowed));
+                                    }
                                 }
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
