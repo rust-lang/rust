@@ -39,7 +39,6 @@
 #![feature(lang_items)]
 #![feature(non_exhaustive)]
 #![feature(staged_api)]
-#![feature(try_from)]
 #![feature(unboxed_closures)]
 
 mod bool_trie;

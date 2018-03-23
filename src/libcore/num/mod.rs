@@ -3647,7 +3647,7 @@ macro_rules! from_str_radix_int_impl {
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 /// The error type returned when a checked integral type conversion fails.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromIntError(());
 
@@ -3662,14 +3662,14 @@ impl TryFromIntError {
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl fmt::Display for TryFromIntError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         self.__description().fmt(fmt)
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl From<!> for TryFromIntError {
     fn from(never: !) -> TryFromIntError {
         never
@@ -3679,7 +3679,7 @@ impl From<!> for TryFromIntError {
 // no possible bounds violation
 macro_rules! try_from_unbounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -3694,7 +3694,7 @@ macro_rules! try_from_unbounded {
 // only negative bounds
 macro_rules! try_from_lower_bounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -3713,7 +3713,7 @@ macro_rules! try_from_lower_bounded {
 // unsigned to signed (only positive bound)
 macro_rules! try_from_upper_bounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -3732,7 +3732,7 @@ macro_rules! try_from_upper_bounded {
 // all other cases
 macro_rules! try_from_both_bounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
