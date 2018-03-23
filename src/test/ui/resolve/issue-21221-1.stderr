@@ -45,5 +45,7 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use std::ops::Div;
    |
 
-error: cannot continue compilation due to previous error
+error: aborting due to 4 previous errors
 
+Some errors occurred: E0405, E0412.
+For more information about an error, try `rustc --explain E0405`.

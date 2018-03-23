@@ -558,21 +558,15 @@ impl Handler {
     pub fn has_errors(&self) -> bool {
         self.err_count() > 0
     }
-    pub fn abort_if_errors(&self) {
-        let s;
-        match self.err_count() {
-            0 => {
-                if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
-                    DiagnosticBuilder::new_diagnostic(self, bug).emit();
-                }
-                return;
-            }
-            1 => s = "aborting due to previous error".to_string(),
-            _ => {
-                s = format!("aborting due to {} previous errors", self.err_count());
-            }
-        }
-        let err = self.fatal(&s);
+
+    pub fn print_error_count(&self) {
+        let s = match self.err_count() {
+            0 => return,
+            1 => "aborting due to previous error".to_string(),
+            _ => format!("aborting due to {} previous errors", self.err_count())
+        };
+
+        let _ = self.fatal(&s);
 
         let can_show_explain = self.emitter.borrow().should_show_explain();
         let are_there_diagnostics = !self.tracked_diagnostic_codes.borrow().is_empty();
@@ -603,8 +597,16 @@ impl Handler {
                 }
             }
         }
+    }
 
-        err.raise();
+    pub fn abort_if_errors(&self) {
+        if self.err_count() == 0 {
+            if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
+                DiagnosticBuilder::new_diagnostic(self, bug).emit();
+            }
+            return;
+        }
+        FatalError.raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {

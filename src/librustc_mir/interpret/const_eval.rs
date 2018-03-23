@@ -14,7 +14,7 @@ use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory};
 
 use std::fmt;
 use std::error::Error;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -485,7 +485,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                kind: Rc::new(CheckMatchError),
+                kind: Lrc::new(CheckMatchError),
                 span,
             });
         }
@@ -497,7 +497,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
             return Err(ConstEvalErr {
-                kind: Rc::new(TypeckError),
+                kind: Lrc::new(TypeckError),
                 span,
             });
         }
