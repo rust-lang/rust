@@ -13,7 +13,7 @@ use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features
 use {fold, attr};
 use ast;
 use codemap::Spanned;
-use epoch::Epoch;
+use edition::Edition;
 use parse::{token, ParseSess};
 
 use ptr::P;
@@ -27,7 +27,7 @@ pub struct StripUnconfigured<'a> {
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, epoch: Epoch)
+pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, edition: Edition)
                 -> (ast::Crate, Features) {
     let features;
     {
@@ -47,7 +47,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, epoc
             return (krate, Features::new());
         }
 
-        features = get_features(&sess.span_diagnostic, &krate.attrs, epoch);
+        features = get_features(&sess.span_diagnostic, &krate.attrs, edition);
 
         // Avoid reconfiguring malformed `cfg_attr`s
         if err_count == sess.span_diagnostic.err_count() {

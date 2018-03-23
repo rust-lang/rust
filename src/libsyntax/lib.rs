@@ -145,7 +145,7 @@ pub mod codemap;
 #[macro_use]
 pub mod config;
 pub mod entry;
-pub mod epoch;
+pub mod edition;
 pub mod feature_gate;
 pub mod fold;
 pub mod parse;
