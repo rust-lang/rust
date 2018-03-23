@@ -1380,7 +1380,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Trait`) are left hidden, so this is suitable for ordinary
     /// type-checking.
     pub fn empty() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::UserFacing, ty::UniverseIndex::ROOT)
+        Self::new(ty::Slice::empty(), Reveal::UserFacing)
     }
 
     /// Construct a trait environment with no where clauses in scope
@@ -1391,15 +1391,14 @@ impl<'tcx> ParamEnv<'tcx> {
     /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
     pub fn reveal_all() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::All, ty::UniverseIndex::ROOT)
+        Self::new(ty::Slice::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
-               reveal: Reveal,
-               universe: ty::UniverseIndex)
+               reveal: Reveal)
                -> Self {
-        ty::ParamEnv { caller_bounds, reveal, universe }
+        ty::ParamEnv { caller_bounds, reveal }
     }
 
     /// Returns a new parameter environment with the same clauses, but
