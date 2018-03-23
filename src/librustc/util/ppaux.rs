@@ -1177,8 +1177,8 @@ define_print! {
                         ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
                             write!(f, "{}", sz)?;
                         }
-                        ConstVal::Unevaluated(_def_id, substs) => {
-                            write!(f, "<unevaluated{:?}>", &substs[..])?;
+                        ConstVal::Unevaluated(_def_id, _substs) => {
+                            write!(f, "_")?;
                         }
                         _ => {
                             write!(f, "{:?}", sz)?;
