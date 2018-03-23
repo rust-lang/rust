@@ -17,6 +17,7 @@ use rustc::mir::interpret::{
     GlobalId, Value, Pointer, PrimVal, PrimValKind,
     EvalError, EvalResult, EvalErrorKind, MemoryPointer,
 };
+use std::mem;
 
 use super::{Place, PlaceExtra, Memory,
             HasMemory, MemoryKind,
@@ -1704,20 +1705,17 @@ impl<'mir, 'tcx> Frame<'mir, 'tcx> {
         }
     }
 
-    pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
+    pub fn storage_live(&mut self, local: mir::Local) -> Option<Value> {
         trace!("{:?} is now live", local);
 
-        let old = self.locals[local];
-        self.locals[local] = Some(Value::ByVal(PrimVal::Undef)); // StorageLive *always* kills the value that's currently stored
-        return Ok(old);
+        // StorageLive *always* kills the value that's currently stored
+        mem::replace(&mut self.locals[local], Some(Value::ByVal(PrimVal::Undef)))
     }
 
     /// Returns the old value of the local
-    pub fn storage_dead(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
+    pub fn storage_dead(&mut self, local: mir::Local) -> Option<Value> {
         trace!("{:?} is now dead", local);
 
-        let old = self.locals[local];
-        self.locals[local] = None;
-        return Ok(old);
+        self.locals[local].take()
     }
 }

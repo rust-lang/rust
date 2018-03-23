@@ -69,13 +69,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
             // Mark locals as alive
             StorageLive(local) => {
-                let old_val = self.frame_mut().storage_live(local)?;
+                let old_val = self.frame_mut().storage_live(local);
                 self.deallocate_local(old_val)?;
             }
 
             // Mark locals as dead
             StorageDead(local) => {
-                let old_val = self.frame_mut().storage_dead(local)?;
+                let old_val = self.frame_mut().storage_dead(local);
                 self.deallocate_local(old_val)?;
             }
 
