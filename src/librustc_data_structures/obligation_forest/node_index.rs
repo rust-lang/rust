@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::nonzero::NonZero;
+use std::num::NonZeroU32;
 use std::u32;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct NodeIndex {
-    index: NonZero<u32>,
+    index: NonZeroU32,
 }
 
 impl NodeIndex {
     pub fn new(value: usize) -> NodeIndex {
         assert!(value < (u32::MAX as usize));
-        NodeIndex { index: NonZero::new((value as u32) + 1).unwrap() }
+        NodeIndex { index: NonZeroU32::new((value as u32) + 1).unwrap() }
     }
 
     pub fn get(self) -> usize {
