@@ -1241,7 +1241,6 @@ impl Step for Rustfmt {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        assert!(build.config.extended);
 
         println!("Dist Rustfmt stage{} ({})", stage, target);
         let src = build.src.join("src/tools/rustfmt");
