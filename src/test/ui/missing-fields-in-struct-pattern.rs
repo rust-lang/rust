@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct a {
-    b: usize,
-    c: usize
-}
+struct S(usize, usize, usize, usize);
 
-impl a {
-    fn foo(&self) {
-        let a { x, y } = self.d; //~ ERROR no field `d` on type `&a`
-        //~^ ERROR struct `a` does not have fields named `x`, `y`
-        //~| ERROR pattern does not mention fields `b`, `c`
+fn main() {
+    if let S { a, b, c, d } = S(1, 2, 3, 4) {
+    //~^ ERROR struct `S` does not have fields named `a`, `b`, `c`, `d` [E0026]
+    //~| ERROR pattern does not mention fields `0`, `1`, `2`, `3` [E0027]
+        println!("hi");
     }
 }
-
-fn main() {}
