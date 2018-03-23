@@ -546,3 +546,35 @@ pub fn getpid() -> u32 {
 pub fn getppid() -> u32 {
     unsafe { libc::getppid() as u32 }
 }
+
+#[cfg(target_env = "gnu")]
+pub fn glibc_version() -> Option<(usize, usize)> {
+    if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
+        parse_glibc_version(version_str)
+    } else {
+        None
+    }
+}
+
+#[cfg(target_env = "gnu")]
+fn glibc_version_cstr() -> Option<&'static CStr> {
+    weak! {
+        fn gnu_get_libc_version() -> *const libc::c_char
+    }
+    if let Some(f) = gnu_get_libc_version.get() {
+        unsafe { Some(CStr::from_ptr(f())) }
+    } else {
+        None
+    }
+}
+
+// Returns Some((major, minor)) if the string is a valid "x.y" version,
+// ignoring any extra dot-separated parts. Otherwise return None.
+#[cfg(target_env = "gnu")]
+fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
+    let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
+    match (parsed_ints.next(), parsed_ints.next()) {
+        (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
+        _ => None
+    }
+}

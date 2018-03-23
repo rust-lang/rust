@@ -383,41 +383,18 @@ impl IntoInner<c_int> for Socket {
 // believe it's thread-safe).
 #[cfg(target_env = "gnu")]
 fn on_resolver_failure() {
+    use sys;
+
     // If the version fails to parse, we treat it the same as "not glibc".
-    if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
-        if let Some(version) = parse_glibc_version(version_str) {
-            if version < (2, 26) {
-                unsafe { libc::res_init() };
-            }
+    if let Some(version) = sys::os::glibc_version() {
+        if version < (2, 26) {
+            unsafe { libc::res_init() };
         }
     }
 }
 
 #[cfg(not(target_env = "gnu"))]
 fn on_resolver_failure() {}
-
-#[cfg(target_env = "gnu")]
-fn glibc_version_cstr() -> Option<&'static CStr> {
-    weak! {
-        fn gnu_get_libc_version() -> *const libc::c_char
-    }
-    if let Some(f) = gnu_get_libc_version.get() {
-        unsafe { Some(CStr::from_ptr(f())) }
-    } else {
-        None
-    }
-}
-
-// Returns Some((major, minor)) if the string is a valid "x.y" version,
-// ignoring any extra dot-separated parts. Otherwise return None.
-#[cfg(target_env = "gnu")]
-fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
-    let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
-    match (parsed_ints.next(), parsed_ints.next()) {
-        (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
-        _ => None
-    }
-}
 
 #[cfg(all(test, taget_env = "gnu"))]
 mod test {
