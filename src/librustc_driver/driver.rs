@@ -648,7 +648,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
 {
     let (mut krate, features) = syntax::config::features(krate, &sess.parse_sess,
                                                          sess.opts.test,
-                                                         sess.opts.debugging_opts.epoch);
+                                                         sess.opts.debugging_opts.edition);
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 

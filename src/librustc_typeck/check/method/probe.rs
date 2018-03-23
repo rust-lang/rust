@@ -326,7 +326,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if reached_raw_pointer
                     && !self.tcx.features().arbitrary_self_types {
                         // this case used to be allowed by the compiler,
-                        // so we do a future-compat lint here for the 2015 epoch
+                        // so we do a future-compat lint here for the 2015 edition
                         // (see https://github.com/rust-lang/rust/issues/46906)
                         if self.tcx.sess.rust_2018() {
                           span_err!(self.tcx.sess, span, E0908,

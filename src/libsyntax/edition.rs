@@ -11,58 +11,58 @@
 use std::fmt;
 use std::str::FromStr;
 
-/// The epoch of the compiler (RFC 2052)
+/// The edition of the compiler (RFC 2052)
 #[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq, Debug)]
 #[non_exhaustive]
-pub enum Epoch {
-    // epochs must be kept in order, newest to oldest
+pub enum Edition {
+    // editions must be kept in order, newest to oldest
 
-    /// The 2015 epoch
-    Epoch2015,
-    /// The 2018 epoch
-    Epoch2018,
+    /// The 2015 edition
+    Edition2015,
+    /// The 2018 edition
+    Edition2018,
 
-    // when adding new epochs, be sure to update:
+    // when adding new editions, be sure to update:
     //
-    // - the list in the `parse_epoch` static in librustc::session::config
+    // - the list in the `parse_edition` static in librustc::session::config
     // - add a `rust_####()` function to the session
     // - update the enum in Cargo's sources as well
     //
-    // When -Zepoch becomes --epoch, there will
-    // also be a check for the epoch being nightly-only
+    // When -Zedition becomes --edition, there will
+    // also be a check for the edition being nightly-only
     // somewhere. That will need to be updated
-    // whenever we're stabilizing/introducing a new epoch
+    // whenever we're stabilizing/introducing a new edition
     // as well as changing the default Cargo template.
 }
 
 // must be in order from oldest to newest
-pub const ALL_EPOCHS: &[Epoch] = &[Epoch::Epoch2015, Epoch::Epoch2018];
+pub const ALL_EDITIONS: &[Edition] = &[Edition::Edition2015, Edition::Edition2018];
 
-impl fmt::Display for Epoch {
+impl fmt::Display for Edition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match *self {
-            Epoch::Epoch2015 => "2015",
-            Epoch::Epoch2018 => "2018",
+            Edition::Edition2015 => "2015",
+            Edition::Edition2018 => "2018",
         };
         write!(f, "{}", s)
     }
 }
 
-impl Epoch {
+impl Edition {
     pub fn lint_name(&self) -> &'static str {
         match *self {
-            Epoch::Epoch2015 => "epoch_2015",
-            Epoch::Epoch2018 => "epoch_2018",
+            Edition::Edition2015 => "edition_2015",
+            Edition::Edition2018 => "edition_2018",
         }
     }
 }
 
-impl FromStr for Epoch {
+impl FromStr for Edition {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, ()> {
         match s {
-            "2015" => Ok(Epoch::Epoch2015),
-            "2018" => Ok(Epoch::Epoch2018),
+            "2015" => Ok(Edition::Edition2015),
+            "2018" => Ok(Edition::Edition2018),
             _ => Err(())
         }
     }
