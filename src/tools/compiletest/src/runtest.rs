@@ -2559,7 +2559,7 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
         }
-        if !explicit {
+        if !explicit && self.config.compare_mode.is_none() {
             if !expected_errors.is_empty() || !proc_res.status.success() {
                 // "// error-pattern" comments
                 self.check_expected_errors(expected_errors, &proc_res);
