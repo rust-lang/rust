@@ -443,10 +443,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         } else {
             4
         };
+
+        let normalize = |candidate| self.tcx.global_tcx().infer_ctxt().enter(|ref infcx| {
+            let normalized = infcx
+                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
+                .normalize(candidate)
+                .ok();
+            match normalized {
+                Some(normalized) => format!("\n  {:?}", normalized.value),
+                None => format!("\n  {:?}", candidate),
+            }
+        });
+
         err.help(&format!("the following implementations were found:{}{}",
-                          &impl_candidates[0..end].iter().map(|candidate| {
-                              format!("\n  {:?}", candidate)
-                          }).collect::<String>(),
+                          &impl_candidates[0..end].iter().map(normalize).collect::<String>(),
                           if impl_candidates.len() > 5 {
                               format!("\nand {} others", impl_candidates.len() - 4)
                           } else {
