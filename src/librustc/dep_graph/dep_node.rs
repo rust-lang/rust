@@ -616,8 +616,6 @@ define_dep_nodes!( <'tcx>
     [input] MissingExternCrateItem(CrateNum),
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
-    [] HasCloneClosures(CrateNum),
-    [] HasCopyClosures(CrateNum),
 
     // This query is not expected to have inputs -- as a result, it's
     // not a good candidate for "replay" because it's essentially a

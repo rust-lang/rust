@@ -256,9 +256,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
-    has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
-
     exported_symbols => {
         let cnum = cdata.cnum;
         assert!(cnum != LOCAL_CRATE);

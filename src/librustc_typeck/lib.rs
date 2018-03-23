@@ -76,7 +76,7 @@ This API is completely unstable and subject to change.
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
-#![feature(copy_closures, clone_closures)]
+#![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(crate_visibility_modifier)]
 #![feature(from_ref)]
 #![feature(match_default_bindings)]

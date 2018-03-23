@@ -382,9 +382,6 @@ define_maps! { <'tcx>
     [] fn output_filenames: output_filenames_node(CrateNum)
         -> Arc<OutputFilenames>,
 
-    [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
-    [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
-
     // Erases regions from `ty` to yield a new type.
     // Normally you would just use `tcx.erase_regions(&value)`,
     // however, which uses this query as a kind of cache.
