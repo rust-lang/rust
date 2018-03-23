@@ -345,7 +345,8 @@ pub struct TypeckTables<'tcx> {
     /// method calls, including those of overloaded operators.
     type_dependent_defs: ItemLocalMap<Def>,
 
-    /// Stores the canonicalized types provided by the user.
+    /// Stores the canonicalized types provided by the user. See also `UserAssertTy` statement in
+    /// MIR.
     user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
 
     /// Stores the types for various nodes in the AST.  Note that this table

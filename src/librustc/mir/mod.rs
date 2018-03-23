@@ -1260,6 +1260,14 @@ pub enum StatementKind<'tcx> {
     ///
     /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
     /// is the right thing.
+    ///
+    /// `CanonicalTy` is used to capture "inference variables" from the user's types. For example:
+    ///
+    ///     let x: Vec<_> = ...;
+    ///     let y: &u32 = ...;
+    ///
+    /// would result in `Vec<?0>` and `&'?0 u32` respectively (where `?0` is a canonicalized
+    /// variable).
     UserAssertTy(CanonicalTy<'tcx>, Local),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
