@@ -1,0 +1,14 @@
+warning: macro expansion includes fragment specifier
+  --> $DIR/fragment_specifier_in_expansion.rs:18:30
+   |
+18 |     ( $thing:tt ) => { $thing:tt }
+   |                              ^^^
+help: to just use the macro argument, remove the fragment specifier
+   |
+18 |     ( $thing:tt ) => { $thing }
+   |                        ^^^^^^
+help: to suppress this warning, add a space after the colon
+   |
+18 |     ( $thing:tt ) => { $thing: tt }
+   |                              ^^^^
+

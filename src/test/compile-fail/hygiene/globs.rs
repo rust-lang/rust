@@ -47,7 +47,7 @@ macro n($i:ident) {
             }
         }
 
-        macro n($j:ident) {
+        macro n($j: ident) {
             mod test {
                 use super::*;
                 fn g() {

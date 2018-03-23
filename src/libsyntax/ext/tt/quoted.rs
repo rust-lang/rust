@@ -196,31 +196,51 @@ pub fn parse(
         // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(tree, &mut trees, expect_matchers, sess, features, attrs);
         match tree {
-            TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
-                let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
-                        Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
-                            Some(kind) => {
-                                let span = end_sp.with_lo(start_sp.lo());
-                                result.push(TokenTree::MetaVarDecl(span, ident, kind));
-                                continue;
-                            }
-                            _ => end_sp,
-                        },
-                        tree => tree.as_ref()
-                            .map(tokenstream::TokenTree::span)
-                            .unwrap_or(span),
-                    },
-                    tree => tree.as_ref()
-                        .map(tokenstream::TokenTree::span)
-                        .unwrap_or(start_sp),
-                };
-                sess.missing_fragment_specifiers.borrow_mut().insert(span);
-                result.push(TokenTree::MetaVarDecl(
-                    span,
-                    ident,
-                    keywords::Invalid.ident(),
-                ));
+            TokenTree::MetaVar(start_sp, ident) => {
+                if expect_matchers {
+                    match parse_matcher(start_sp, ident, &mut trees) {
+                        Ok((meta_var_decl, _, _)) => result.push(meta_var_decl),
+                        Err(span) => {
+                            sess.missing_fragment_specifiers.borrow_mut().insert(span);
+                            result.push(TokenTree::MetaVarDecl(
+                                span,
+                                ident,
+                                keywords::Invalid.ident(),
+                            ));
+                        }
+                    }
+                } else {
+                    const VALID_SPECIFIERS: &[&str] = &[
+                        "ident", "block", "stmt", "expr", "pat", "ty", "path", "meta", "tt",
+                        "item", "vis",
+                    ];
+                    match parse_matcher(start_sp, ident, &mut trees.clone()) {
+                        Ok((TokenTree::MetaVarDecl(full_sp, _, kind), colon_sp, end_sp))
+                            if start_sp.hi() == colon_sp.lo() && colon_sp.hi() == end_sp.lo()
+                                && VALID_SPECIFIERS.contains(&&*kind.name.as_str()) =>
+                        {
+                            let specifier_sp = colon_sp.with_hi(end_sp.hi());
+                            sess.span_diagnostic
+                                .struct_span_warn(
+                                    specifier_sp,
+                                    "macro expansion includes fragment specifier",
+                                )
+                                .span_suggestion(
+                                    full_sp,
+                                    "to just use the macro argument, remove the fragment specifier",
+                                    format!("${}", ident),
+                                )
+                                .span_suggestion(
+                                    specifier_sp,
+                                    "to suppress this warning, add a space after the colon",
+                                    format!(": {}", kind),
+                                )
+                                .emit();
+                        }
+                        _ => {}
+                    }
+                    result.push(tree)
+                }
             }
 
             // Not a metavar or no matchers allowed, so just return the tree
@@ -228,6 +248,48 @@ pub fn parse(
         }
     }
     result
+}
+
+/// Parses a `:<ident>`. Doesn't report error on its own.
+///
+/// # Parameters
+///
+/// - `start_sp` - span of metavariable name preceding the `:`
+/// - `ident` - the name of metavariable
+/// - `trees` - iterator over trees
+///
+/// # Returns
+///
+/// On success, returns a parsed `MetaVarDecl`, span of `:` and span of matcher's type
+/// On error, returns a span for error.
+fn parse_matcher<I>(
+    start_sp: Span,
+    ident: ast::Ident,
+    trees: &mut I,
+) -> Result<(TokenTree, Span, Span), Span>
+where
+    I: Iterator<Item = tokenstream::TokenTree>,
+{
+    match trees.next() {
+        Some(tokenstream::TokenTree::Token(colon_sp, token::Colon)) => match trees.next() {
+            Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
+                Some(kind) => {
+                    let span = end_sp.with_lo(start_sp.lo());
+                    Ok((TokenTree::MetaVarDecl(span, ident, kind), colon_sp, end_sp))
+                }
+                _ => Err(end_sp),
+            },
+            tree => {
+                let span = tree.as_ref()
+                    .map(tokenstream::TokenTree::span)
+                    .unwrap_or(colon_sp);
+                Err(span)
+            }
+        },
+        tree => Err(tree.as_ref()
+            .map(tokenstream::TokenTree::span)
+            .unwrap_or(start_sp)),
+    }
 }
 
 /// Takes a `tokenstream::TokenTree` and returns a `self::TokenTree`. Specifically, this takes a
