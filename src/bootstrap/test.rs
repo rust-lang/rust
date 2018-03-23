@@ -1679,6 +1679,12 @@ impl Step for Bootstrap {
            .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
            .env("RUSTC_BOOTSTRAP", "1")
            .env("RUSTC", &build.initial_rustc);
+        if let Some(flags) = option_env!("RUSTFLAGS") {
+            // Use the same rustc flags for testing as for "normal" compilation,
+            // so that Cargo doesn’t recompile the entire dependency graph every time:
+            // https://github.com/rust-lang/rust/issues/49215
+            cmd.env("RUSTFLAGS", flags);
+        }
         if !build.fail_fast {
             cmd.arg("--no-fail-fast");
         }
