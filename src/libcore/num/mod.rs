@@ -101,8 +101,6 @@ nonzero_integers! {
 }
 
 nonzero_integers! {
-    // Change this to `#[unstable(feature = "i128", issue = "35118")]`
-    // if other NonZero* integer types are stabilizied before 128-bit integers
     #[unstable(feature = "nonzero", issue = "49137")]
     NonZeroU128(u128); NonZeroI128(i128);
 }
