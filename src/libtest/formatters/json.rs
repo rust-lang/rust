@@ -36,17 +36,12 @@ impl<T: Write> JsonFormatter<T> {
         if let Some(extras) = extra {
             self.write_message(&*format!(
                 r#"{{ "type": "{}", "name": "{}", "event": "{}", {} }}"#,
-                ty,
-                name,
-                evt,
-                extras
+                ty, name, evt, extras
             ))
         } else {
             self.write_message(&*format!(
                 r#"{{ "type": "{}", "name": "{}", "event": "{}" }}"#,
-                ty,
-                name,
-                evt
+                ty, name, evt
             ))
         }
     }
@@ -89,14 +84,12 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 self.write_event("test", desc.name.as_slice(), "failed", extra_data)
             }
 
-            TrFailedMsg(ref m) => {
-                self.write_event(
-                    "test",
-                    desc.name.as_slice(),
-                    "failed",
-                    Some(format!(r#""message": "{}""#, EscapedString(m))),
-                )
-            }
+            TrFailedMsg(ref m) => self.write_event(
+                "test",
+                desc.name.as_slice(),
+                "failed",
+                Some(format!(r#""message": "{}""#, EscapedString(m))),
+            ),
 
             TrIgnored => self.write_event("test", desc.name.as_slice(), "ignored", None),
 
@@ -116,13 +109,10 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 
                 let line = format!(
                     "{{ \"type\": \"bench\", \
-                                \"name\": \"{}\", \
-                                \"median\": {}, \
-                                \"deviation\": {}{} }}",
-                    desc.name,
-                    median,
-                    deviation,
-                    mbps
+                     \"name\": \"{}\", \
+                     \"median\": {}, \
+                     \"deviation\": {}{} }}",
+                    desc.name, median, deviation, mbps
                 );
 
                 self.write_message(&*line)
@@ -138,16 +128,15 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
     }
 
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
-
         self.write_message(&*format!(
             "{{ \"type\": \"suite\", \
-            \"event\": \"{}\", \
-            \"passed\": {}, \
-            \"failed\": {}, \
-            \"allowed_fail\": {}, \
-            \"ignored\": {}, \
-            \"measured\": {}, \
-            \"filtered_out\": \"{}\" }}",
+             \"event\": \"{}\", \
+             \"passed\": {}, \
+             \"failed\": {}, \
+             \"allowed_fail\": {}, \
+             \"ignored\": {}, \
+             \"measured\": {}, \
+             \"filtered_out\": \"{}\" }}",
             if state.failed == 0 { "ok" } else { "failed" },
             state.passed,
             state.failed + state.allowed_fail,
