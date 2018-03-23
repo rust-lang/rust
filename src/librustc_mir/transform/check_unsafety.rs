@@ -105,6 +105,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             StatementKind::StorageDead(..) |
             StatementKind::EndRegion(..) |
             StatementKind::Validate(..) |
+            StatementKind::UserAssertTy(..) |
             StatementKind::Nop => {
                 // safe (at least as emitted during MIR construction)
             }

@@ -392,11 +392,13 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // ignored when consuming results (update to
                 // flow_state already handled).
             }
-            StatementKind::Nop | StatementKind::Validate(..) | StatementKind::StorageLive(..) => {
-                // `Nop`, `Validate`, and `StorageLive` are irrelevant
+            StatementKind::Nop |
+            StatementKind::UserAssertTy(..) |
+            StatementKind::Validate(..) |
+            StatementKind::StorageLive(..) => {
+                // `Nop`, `UserAssertTy`, `Validate`, and `StorageLive` are irrelevant
                 // to borrow check.
             }
-
             StatementKind::StorageDead(local) => {
                 self.access_place(
                     ContextKind::StorageDead.new(location),

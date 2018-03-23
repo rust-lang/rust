@@ -960,10 +960,19 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'gcx hir::Local) {
         let o_ty = match local.ty {
-            Some(ref ty) => Some(self.fcx.to_ty(&ty)),
-            None => None
+            Some(ref ty) => {
+                let o_ty = self.fcx.to_ty(&ty);
+
+                let (c_ty, _orig_values) = self.fcx.inh.infcx.canonicalize_response(&o_ty);
+                debug!("visit_local: ty.hir_id={:?} o_ty={:?} c_ty={:?}", ty.hir_id, o_ty, c_ty);
+                self.fcx.tables.borrow_mut().user_provided_tys_mut().insert(ty.hir_id, c_ty);
+
+                Some(o_ty)
+            },
+            None => None,
         };
         self.assign(local.span, local.id, o_ty);
+
         debug!("Local variable {:?} is assigned type {}",
                local.pat,
                self.fcx.ty_to_string(
