@@ -30,10 +30,8 @@
 #![unstable(feature = "test", issue = "27812")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       test(attr(deny(warnings))))]
+       html_root_url = "https://doc.rust-lang.org/nightly/", test(attr(deny(warnings))))]
 #![deny(warnings)]
-
 #![feature(asm)]
 #![feature(fnbox)]
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
@@ -43,10 +41,10 @@
 #![feature(termination_trait_lib)]
 
 extern crate getopts;
-extern crate term;
 #[cfg(any(unix, target_os = "cloudabi"))]
 extern crate libc;
 extern crate panic_unwind;
+extern crate term;
 
 pub use self::TestFn::*;
 pub use self::ColorConfig::*;
@@ -72,7 +70,7 @@ use std::process::Termination;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 use std::borrow::Cow;
 use std::process;
 
@@ -81,16 +79,16 @@ const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in qu
 
 // to be used by rustc to compile tests in libtest
 pub mod test {
-    pub use {Bencher, TestName, TestResult, TestDesc, TestDescAndFn, TestOpts, TrFailed,
-             TrFailedMsg, TrIgnored, TrOk, Metric, MetricMap, StaticTestFn, StaticTestName,
-             DynTestName, DynTestFn, assert_test_result, run_test, test_main, test_main_static,
-             filter_tests, parse_opts, StaticBenchFn, ShouldPanic, Options};
+    pub use {assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
+             Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, ShouldPanic,
+             StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName,
+             TestOpts, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
 }
 
 pub mod stats;
 mod formatters;
 
-use formatters::{OutputFormatter, PrettyFormatter, TerseFormatter, JsonFormatter};
+use formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
@@ -255,7 +253,9 @@ pub struct Options {
 
 impl Options {
     pub fn new() -> Options {
-        Options { display_output: false }
+        Options {
+            display_output: false,
+        }
     }
 
     pub fn display_output(mut self, display_output: bool) -> Options {
@@ -272,7 +272,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
         Some(Err(msg)) => {
             eprintln!("error: {}", msg);
             process::exit(101);
-        },
+        }
         None => return,
     };
 
@@ -289,7 +289,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
             Err(e) => {
                 eprintln!("error: io error when listing tests: {:?}", e);
                 process::exit(101);
-            },
+            }
         }
     }
 }
@@ -306,18 +306,14 @@ pub fn test_main_static(tests: &[TestDescAndFn]) {
     let owned_tests = tests
         .iter()
         .map(|t| match t.testfn {
-            StaticTestFn(f) => {
-                TestDescAndFn {
-                    testfn: StaticTestFn(f),
-                    desc: t.desc.clone(),
-                }
-            }
-            StaticBenchFn(f) => {
-                TestDescAndFn {
-                    testfn: StaticBenchFn(f),
-                    desc: t.desc.clone(),
-                }
-            }
+            StaticTestFn(f) => TestDescAndFn {
+                testfn: StaticTestFn(f),
+                desc: t.desc.clone(),
+            },
+            StaticBenchFn(f) => TestDescAndFn {
+                testfn: StaticBenchFn(f),
+                desc: t.desc.clone(),
+            },
             _ => panic!("non-static tests passed to test::test_main_static"),
         })
         .collect();
@@ -397,34 +393,34 @@ fn optgroups() -> getopts::Options {
             "",
             "logfile",
             "Write logs to the specified file instead \
-                                of stdout",
+             of stdout",
             "PATH",
         )
         .optflag(
             "",
             "nocapture",
             "don't capture stdout/stderr of each \
-                                   task, allow printing directly",
+             task, allow printing directly",
         )
         .optopt(
             "",
             "test-threads",
             "Number of threads used for running tests \
-                                     in parallel",
+             in parallel",
             "n_threads",
         )
         .optmulti(
             "",
             "skip",
             "Skip tests whose names contain FILTER (this flag can \
-                               be used multiple times)",
+             be used multiple times)",
             "FILTER",
         )
         .optflag(
             "q",
             "quiet",
             "Display one character per test instead of one line. \
-                                Alias to --format=terse",
+             Alias to --format=terse",
         )
         .optflag(
             "",
@@ -516,8 +512,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     if let Some(opt) = matches.opt_str("Z") {
         if !is_nightly() {
             return Some(Err(
-                "the option `Z` is only accepted on the nightly compiler"
-                    .into(),
+                "the option `Z` is only accepted on the nightly compiler".into(),
             ));
         }
 
@@ -562,19 +557,17 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     }
 
     let test_threads = match matches.opt_str("test-threads") {
-        Some(n_str) => {
-            match n_str.parse::<usize>() {
-                Ok(0) => return Some(Err(format!("argument for --test-threads must not be 0"))),
-                Ok(n) => Some(n),
-                Err(e) => {
-                    return Some(Err(format!(
-                        "argument for --test-threads must be a number > 0 \
-                                             (error: {})",
-                        e
-                    )))
-                }
+        Some(n_str) => match n_str.parse::<usize>() {
+            Ok(0) => return Some(Err(format!("argument for --test-threads must not be 0"))),
+            Ok(n) => Some(n),
+            Err(e) => {
+                return Some(Err(format!(
+                    "argument for --test-threads must be a number > 0 \
+                     (error: {})",
+                    e
+                )))
             }
-        }
+        },
         None => None,
     };
 
@@ -586,7 +579,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         Some(v) => {
             return Some(Err(format!(
                 "argument for --color must be auto, always, or never (was \
-                                     {})",
+                 {})",
                 v
             )))
         }
@@ -599,8 +592,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         Some("json") => {
             if !allow_unstable {
                 return Some(Err(
-                    "The \"json\" format is only accepted on the nightly compiler"
-                        .into(),
+                    "The \"json\" format is only accepted on the nightly compiler".into(),
                 ));
             }
             OutputFormat::Json
@@ -609,7 +601,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         Some(v) => {
             return Some(Err(format!(
                 "argument for --format must be pretty, terse, or json (was \
-                                     {})",
+                 {})",
                 v
             )))
         }
@@ -811,8 +803,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
                 ntest += 1;
                 "test"
             }
-            StaticBenchFn(..) |
-            DynBenchFn(..) => {
+            StaticBenchFn(..) | DynBenchFn(..) => {
                 nbench += 1;
                 "benchmark"
             }
@@ -834,7 +825,8 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             writeln!(output, "")?;
         }
 
-        writeln!(output,
+        writeln!(
+            output,
             "{}, {}",
             plural(ntest, "test"),
             plural(nbench, "benchmark")
@@ -851,7 +843,6 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
         st: &mut ConsoleTestState,
         out: &mut OutputFormatter,
     ) -> io::Result<()> {
-
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => {
                 st.total = filtered_tests.len();
@@ -989,8 +980,7 @@ fn use_color(opts: &TestOpts) -> bool {
     }
 }
 
-#[cfg(any(target_os = "cloudabi",
-          target_os = "redox",
+#[cfg(any(target_os = "cloudabi", target_os = "redox",
           all(target_arch = "wasm32", not(target_os = "emscripten"))))]
 fn stdout_isatty() -> bool {
     // FIXME: Implement isatty on Redox
@@ -1089,10 +1079,12 @@ where
         let now = Instant::now();
         let timed_out = running_tests
             .iter()
-            .filter_map(|(desc, timeout)| if &now >= timeout {
-                Some(desc.clone())
-            } else {
-                None
+            .filter_map(|(desc, timeout)| {
+                if &now >= timeout {
+                    Some(desc.clone())
+                } else {
+                    None
+                }
             })
             .collect();
         for test in &timed_out {
@@ -1174,12 +1166,10 @@ fn get_concurrency() -> usize {
             let opt_n: Option<usize> = s.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
-                _ => {
-                    panic!(
-                        "RUST_TEST_THREADS is `{}`, should be a positive integer.",
-                        s
-                    )
-                }
+                _ => panic!(
+                    "RUST_TEST_THREADS is `{}`, should be a positive integer.",
+                    s
+                ),
             }
         }
         Err(..) => num_cpus(),
@@ -1223,20 +1213,15 @@ fn get_concurrency() -> usize {
         1
     }
 
-    #[cfg(any(target_os = "android",
-              target_os = "cloudabi",
-              target_os = "emscripten",
-              target_os = "fuchsia",
-              target_os = "ios",
-              target_os = "linux",
-              target_os = "macos",
-              target_os = "solaris"))]
+    #[cfg(any(target_os = "android", target_os = "cloudabi", target_os = "emscripten",
+              target_os = "fuchsia", target_os = "ios", target_os = "linux",
+              target_os = "macos", target_os = "solaris"))]
     fn num_cpus() -> usize {
         unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize }
     }
 
     #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "bitrig",
-                target_os = "netbsd"))]
+              target_os = "netbsd"))]
     fn num_cpus() -> usize {
         use std::ptr;
 
@@ -1308,26 +1293,28 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     // Remove tests that don't match the test filter
     filtered = match opts.filter {
         None => filtered,
-        Some(ref filter) => {
-            filtered
-                .into_iter()
-                .filter(|test| if opts.filter_exact {
+        Some(ref filter) => filtered
+            .into_iter()
+            .filter(|test| {
+                if opts.filter_exact {
                     test.desc.name.as_slice() == &filter[..]
                 } else {
                     test.desc.name.as_slice().contains(&filter[..])
-                })
-                .collect()
-        }
+                }
+            })
+            .collect(),
     };
 
     // Skip tests that match any of the skip filters
     filtered = filtered
         .into_iter()
         .filter(|t| {
-            !opts.skip.iter().any(|sf| if opts.filter_exact {
-                t.desc.name.as_slice() == &sf[..]
-            } else {
-                t.desc.name.as_slice().contains(&sf[..])
+            !opts.skip.iter().any(|sf| {
+                if opts.filter_exact {
+                    t.desc.name.as_slice() == &sf[..]
+                } else {
+                    t.desc.name.as_slice().contains(&sf[..])
+                }
             })
         })
         .collect();
@@ -1354,31 +1341,23 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     };
 
     // Sort the tests alphabetically
-    filtered.sort_by(|t1, t2| {
-        t1.desc.name.as_slice().cmp(t2.desc.name.as_slice())
-    });
+    filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
     filtered
 }
 
 pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     // convert benchmarks to tests, if we're not benchmarking them
-    tests.into_iter().map(|x| {
-        let testfn = match x.testfn {
-            DynBenchFn(bench) => {
-                DynTestFn(Box::new(move || {
-                    bench::run_once(|b| {
-                        __rust_begin_short_backtrace(|| bench.run(b))
-                    })
-                }))
-            }
-            StaticBenchFn(benchfn) => {
-                DynTestFn(Box::new(move || {
-                    bench::run_once(|b| {
-                        __rust_begin_short_backtrace(|| benchfn(b))
-                    })
-                }))
-            }
+    tests
+        .into_iter()
+        .map(|x| {
+            let testfn = match x.testfn {
+                DynBenchFn(bench) => DynTestFn(Box::new(move || {
+                    bench::run_once(|b| __rust_begin_short_backtrace(|| bench.run(b)))
+                })),
+                StaticBenchFn(benchfn) => DynTestFn(Box::new(move || {
+                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
+                })),
                 f => f,
             };
             TestDescAndFn {
@@ -1395,22 +1374,22 @@ pub fn run_test(
     test: TestDescAndFn,
     monitor_ch: Sender<MonitorMsg>,
 ) {
-
     let TestDescAndFn { desc, testfn } = test;
 
-    let ignore_because_panic_abort = cfg!(target_arch = "wasm32") &&
-        !cfg!(target_os = "emscripten") &&
-        desc.should_panic != ShouldPanic::No;
+    let ignore_because_panic_abort = cfg!(target_arch = "wasm32") && !cfg!(target_os = "emscripten")
+        && desc.should_panic != ShouldPanic::No;
 
     if force_ignore || desc.ignore || ignore_because_panic_abort {
         monitor_ch.send((desc, TrIgnored, Vec::new())).unwrap();
         return;
     }
 
-    fn run_test_inner(desc: TestDesc,
-                      monitor_ch: Sender<MonitorMsg>,
-                      nocapture: bool,
-                      testfn: Box<FnBox() + Send>) {
+    fn run_test_inner(
+        desc: TestDesc,
+        monitor_ch: Sender<MonitorMsg>,
+        nocapture: bool,
+        testfn: Box<FnBox() + Send>,
+    ) {
         // Buffer for capturing standard I/O
         let data = Arc::new(Mutex::new(Vec::new()));
         let data2 = data.clone();
@@ -1440,7 +1419,6 @@ pub fn run_test(
                 .unwrap();
         };
 
-
         // If the platform is single-threaded we're just going to run
         // the test synchronously, regardless of the concurrency
         // level.
@@ -1455,27 +1433,25 @@ pub fn run_test(
 
     match testfn {
         DynBenchFn(bencher) => {
-            ::bench::benchmark(desc,
-                                monitor_ch,
-                                opts.nocapture,
-                                |harness| bencher.run(harness));
+            ::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
+                bencher.run(harness)
+            });
         }
         StaticBenchFn(benchfn) => {
-            ::bench::benchmark(desc,
-                                monitor_ch,
-                                opts.nocapture,
-                                |harness| (benchfn.clone())(harness));
+            ::bench::benchmark(desc, monitor_ch, opts.nocapture, |harness| {
+                (benchfn.clone())(harness)
+            });
         }
         DynTestFn(f) => {
-            let cb = move || {
-                __rust_begin_short_backtrace(f)
-            };
+            let cb = move || __rust_begin_short_backtrace(f);
             run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
         }
-        StaticTestFn(f) => {
-            run_test_inner(desc, monitor_ch, opts.nocapture,
-                           Box::new(move || __rust_begin_short_backtrace(f)))
-        }
+        StaticTestFn(f) => run_test_inner(
+            desc,
+            monitor_ch,
+            opts.nocapture,
+            Box::new(move || __rust_begin_short_backtrace(f)),
+        ),
     }
 }
 
@@ -1487,8 +1463,7 @@ fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {
     match (&desc.should_panic, task_result) {
-        (&ShouldPanic::No, Ok(())) |
-        (&ShouldPanic::Yes, Err(_)) => TrOk,
+        (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
             if err.downcast_ref::<String>()
                 .map(|e| &**e)
@@ -1545,7 +1520,6 @@ impl MetricMap {
     }
 }
 
-
 // Benchmarking
 
 /// A function that is opaque to the optimizer, to allow benchmarks to
@@ -1565,7 +1539,6 @@ pub fn black_box<T>(dummy: T) -> T {
 pub fn black_box<T>(dummy: T) -> T {
     dummy
 }
-
 
 impl Bencher {
     /// Callback for benchmark functions to run in their body.
@@ -1604,7 +1577,6 @@ where
     }
     return ns_from_dur(start.elapsed());
 }
-
 
 pub fn iter<T, F>(inner: &mut F) -> stats::Summary
 where
@@ -1649,8 +1621,8 @@ where
 
         // If we've run for 100ms and seem to have converged to a
         // stable median.
-        if loop_run > Duration::from_millis(100) && summ.median_abs_dev_pct < 1.0 &&
-            summ.median - summ5.median < summ5.median_abs_dev
+        if loop_run > Duration::from_millis(100) && summ.median_abs_dev_pct < 1.0
+            && summ.median - summ5.median < summ5.median_abs_dev
         {
             return summ5;
         }
@@ -1680,7 +1652,7 @@ pub mod bench {
     use std::io;
     use std::sync::{Arc, Mutex};
     use stats;
-    use super::{Bencher, BenchSamples, BenchMode, Sink, MonitorMsg, TestDesc, Sender, TestResult};
+    use super::{BenchMode, BenchSamples, Bencher, MonitorMsg, Sender, Sink, TestDesc, TestResult};
 
     pub fn benchmark<F>(desc: TestDesc, monitor_ch: Sender<MonitorMsg>, nocapture: bool, f: F)
     where
@@ -1711,7 +1683,8 @@ pub mod bench {
             io::set_panic(panicio);
         };
 
-        let test_result = match result { //bs.bench(f) {
+        let test_result = match result {
+            //bs.bench(f) {
             Ok(Some(ns_iter_summ)) => {
                 let ns_iter = cmp::max(ns_iter_summ.median as u64, 1);
                 let mb_s = bs.bytes * 1000 / ns_iter;
@@ -1732,9 +1705,7 @@ pub mod bench {
                 };
                 TestResult::TrBench(bs)
             }
-            Err(_) => {
-                TestResult::TrFailed
-            }
+            Err(_) => TestResult::TrFailed,
         };
 
         let stdout = data.lock().unwrap().to_vec();
@@ -1756,9 +1727,9 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use test::{TrFailed, TrFailedMsg, TrIgnored, TrOk, filter_tests, parse_opts, TestDesc,
-               TestDescAndFn, TestOpts, run_test, MetricMap, StaticTestName, DynTestName,
-               DynTestFn, ShouldPanic};
+    use test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, ShouldPanic,
+               StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
+               TrIgnored, TrOk};
     use std::sync::mpsc::channel;
     use bench;
     use Bencher;
@@ -1904,25 +1875,26 @@ mod tests {
         opts.run_tests = true;
         opts.run_ignored = true;
 
-        let tests =
-            vec![TestDescAndFn {
-                             desc: TestDesc {
-                                 name: StaticTestName("1"),
-                                 ignore: true,
-                                 should_panic: ShouldPanic::No,
-                                 allow_fail: false,
-                             },
-                             testfn: DynTestFn(Box::new(move || {})),
-                         },
-                         TestDescAndFn {
-                             desc: TestDesc {
-                                 name: StaticTestName("2"),
-                                 ignore: false,
-                                 should_panic: ShouldPanic::No,
-                                 allow_fail: false,
-                             },
-                             testfn: DynTestFn(Box::new(move || {})),
-                         }];
+        let tests = vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("1"),
+                    ignore: true,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                },
+                testfn: DynTestFn(Box::new(move || {})),
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("2"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                },
+                testfn: DynTestFn(Box::new(move || {})),
+            },
+        ];
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
@@ -1935,17 +1907,16 @@ mod tests {
         fn tests() -> Vec<TestDescAndFn> {
             vec!["base", "base::test", "base::test1", "base::test2"]
                 .into_iter()
-                .map(|name| {
-                    TestDescAndFn {
-                        desc: TestDesc {
-                            name: StaticTestName(name),
-                            ignore: false,
-                            should_panic: ShouldPanic::No,
-                            allow_fail: false,
-                        },
-                        testfn: DynTestFn(Box::new(move || {}))
-                    }
-                }).collect()
+                .map(|name| TestDescAndFn {
+                    desc: TestDesc {
+                        name: StaticTestName(name),
+                        ignore: false,
+                        should_panic: ShouldPanic::No,
+                        allow_fail: false,
+                    },
+                    testfn: DynTestFn(Box::new(move || {})),
+                })
+                .collect()
         }
 
         let substr = filter_tests(
@@ -2127,10 +2098,7 @@ mod tests {
             allow_fail: false,
         };
 
-        ::bench::benchmark(desc,
-                            tx,
-                            true,
-                            f);
+        ::bench::benchmark(desc, tx, true, f);
         rx.recv().unwrap();
     }
 
@@ -2149,10 +2117,7 @@ mod tests {
             allow_fail: false,
         };
 
-        ::bench::benchmark(desc,
-                            tx,
-                            true,
-                            f);
+        ::bench::benchmark(desc, tx, true, f);
         rx.recv().unwrap();
     }
 }
