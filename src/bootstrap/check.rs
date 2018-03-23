@@ -40,17 +40,18 @@ impl Step for Std {
         let target = self.target;
         let compiler = builder.compiler(0, build.build);
 
-        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
-        println!("Checking std artifacts ({} -> {})", &compiler.host, target);
-
         let out_dir = build.stage_out(compiler, Mode::Libstd);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "check");
         std_cargo(builder, &compiler, target, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
+        println!("Checking std artifacts ({} -> {})", &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),
                   true);
+
         let libdir = builder.sysroot_libdir(compiler, target);
         add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
     }
@@ -86,19 +87,20 @@ impl Step for Rustc {
         let compiler = builder.compiler(0, build.build);
         let target = self.target;
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
-        println!("Checking compiler artifacts ({} -> {})", &compiler.host, target);
-
         let stage_out = builder.stage_out(compiler, Mode::Librustc);
         build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
         build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
         rustc_cargo(build, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
+        println!("Checking compiler artifacts ({} -> {})", &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target),
                   true);
+
         let libdir = builder.sysroot_libdir(compiler, target);
         add_to_sysroot(&libdir, &librustc_stamp(build, compiler, target));
     }
@@ -128,16 +130,18 @@ impl Step for Test {
         let target = self.target;
         let compiler = builder.compiler(0, build.build);
 
-        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
-        println!("Checking test artifacts ({} -> {})", &compiler.host, target);
         let out_dir = build.stage_out(compiler, Mode::Libtest);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "check");
         test_cargo(build, &compiler, target, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
+        println!("Checking test artifacts ({} -> {})", &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &libtest_stamp(build, compiler, target),
                   true);
+
         let libdir = builder.sysroot_libdir(compiler, target);
         add_to_sysroot(&libdir, &libtest_stamp(build, compiler, target));
     }
