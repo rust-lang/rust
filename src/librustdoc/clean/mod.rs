@@ -1901,7 +1901,8 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
             vec![].into_iter()
         } else {
             cx.tcx.fn_arg_names(did).into_iter()
-        }.peekable();
+        };
+
         FnDecl {
             output: Return(sig.skip_binder().output().clean(cx)),
             attrs: Attributes::default(),
