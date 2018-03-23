@@ -1492,3 +1492,23 @@ LLVMRustBuildVectorReduceFMax(LLVMBuilderRef, LLVMValueRef, bool) {
   return nullptr;
 }
 #endif
+
+#if LLVM_VERSION_GE(6, 0)
+extern "C" LLVMValueRef
+LLVMRustBuildMinNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
+    return wrap(unwrap(B)->CreateMinNum(unwrap(LHS),unwrap(RHS)));
+}
+extern "C" LLVMValueRef
+LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
+    return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
+}
+#else
+extern "C" LLVMValueRef
+LLVMRustBuildMinNum(LLVMBuilderRef, LLVMValueRef, LLVMValueRef) {
+   return nullptr;
+}
+extern "C" LLVMValueRef
+LLVMRustBuildMaxNum(LLVMBuilderRef, LLVMValueRef, LLVMValueRef) {
+   return nullptr;
+}
+#endif

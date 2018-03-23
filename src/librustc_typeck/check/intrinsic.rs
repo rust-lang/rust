@@ -355,7 +355,8 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
         "simd_div" | "simd_shl" | "simd_shr" |
-        "simd_and" | "simd_or" | "simd_xor" => {
+        "simd_and" | "simd_or" | "simd_xor" |
+        "simd_fmin" | "simd_fmax" => {
             (1, vec![param(0), param(0)], param(0))
         }
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
