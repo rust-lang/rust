@@ -2803,7 +2803,11 @@ impl<'test> TestCx<'test> {
     }
 
     fn expected_output_path(&self, kind: &str) -> Result<PathBuf, String> {
-        let mut path = expected_output_path(&self.testpaths, self.revision, &self.config.compare_mode, kind);
+        let mut path = expected_output_path(&self.testpaths,
+                                            self.revision,
+                                            &self.config.compare_mode,
+                                            kind);
+
         if !path.exists() && self.config.compare_mode.is_some() {
             // fallback!
             path = expected_output_path(&self.testpaths, self.revision, &None, kind);

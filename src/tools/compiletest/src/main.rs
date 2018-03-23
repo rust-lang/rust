@@ -327,7 +327,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         quiet: matches.opt_present("quiet"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
-        compare_mode: matches.opt_str("compare-mode").and_then(|x| if x == "nll" { Some(CompareMode::Nll) } else { panic!("Unknown compare-mode {}", x) }),
+        compare_mode: matches.opt_str("compare-mode").map(CompareMode::parse),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -696,7 +696,10 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
     // UI test files.
     for extension in UI_EXTENSIONS {
         for revision in &props.revisions {
-            let path = &expected_output_path(testpaths, Some(revision), &config.compare_mode, extension);
+            let path = &expected_output_path(testpaths,
+                                             Some(revision),
+                                             &config.compare_mode,
+                                             extension);
             inputs.push(mtime(path));
         }
 

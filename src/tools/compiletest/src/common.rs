@@ -106,6 +106,13 @@ impl CompareMode {
             CompareMode::Nll => "nll"
         }
     }
+
+    pub fn parse(s: String) -> CompareMode {
+        match s.as_str() {
+            "nll" => CompareMode::Nll,
+            x => panic!("unknown --compare-mode option: {}", x),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -246,7 +253,11 @@ pub struct TestPaths {
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
-pub fn expected_output_path(testpaths: &TestPaths, revision: Option<&str>, compare_mode: &Option<CompareMode>, kind: &str) -> PathBuf {
+pub fn expected_output_path(testpaths: &TestPaths,
+                            revision: Option<&str>,
+                            compare_mode: &Option<CompareMode>,
+                            kind: &str) -> PathBuf {
+
     assert!(UI_EXTENSIONS.contains(&kind));
     let mut parts = Vec::new();
 
