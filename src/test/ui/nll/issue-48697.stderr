@@ -1,0 +1,8 @@
+error: internal compiler error: unexpected region for local data ReFree(DefId(0/0:3 ~ issue_48697[317d]::foo[0]), BrAnon(0))
+  --> $DIR/issue-48697.rs:22:16
+   |
+LL |     let k = f(&z);
+   |                ^
+
+error: aborting due to previous error
+

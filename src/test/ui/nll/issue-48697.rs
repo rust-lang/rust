@@ -12,6 +12,8 @@
 // error that would otherwise cause AST borrowck to die.
 //
 // Regression test for #48697.
+//
+// run-pass
 
 #![feature(nll)]
 #![allow(warnings)]
