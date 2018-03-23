@@ -9,7 +9,7 @@ use rustc::ty::layout::{self, Size, Align, HasDataLayout, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::TyCtxtAt;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::middle::const_val::FrameInfo;
 use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
@@ -71,12 +71,12 @@ pub struct Frame<'mir, 'tcx: 'mir> {
     pub return_place: Place,
 
     /// The list of locals for this stack frame, stored in order as
-    /// `[arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
+    /// `[return_ptr, arguments..., variables..., temporaries...]`. The locals are stored as `Option<Value>`s.
     /// `None` represents a local that is currently dead, while a live local
     /// can either directly contain `PrimVal` or refer to some part of an `Allocation`.
     ///
     /// Before being initialized, arguments are `Value::ByVal(PrimVal::Undef)` and other locals are `None`.
-    pub locals: Vec<Option<Value>>,
+    pub locals: IndexVec<mir::Local, Option<Value>>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -383,11 +383,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
-        // Subtract 1 because `local_decls` includes the ReturnMemoryPointer, but we don't store a local
-        // `Value` for that.
-        let num_locals = mir.local_decls.len() - 1;
-
-        let mut locals = vec![Some(Value::ByVal(PrimVal::Undef)); num_locals];
+        let mut locals = IndexVec::from_elem(Some(Value::ByVal(PrimVal::Undef)), &mir.local_decls);
         match self.tcx.describe_def(instance.def_id()) {
             // statics and constants don't have `Storage*` statements, no need to look for them
             Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
@@ -397,9 +393,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     for stmt in block.statements.iter() {
                         use rustc::mir::StatementKind::{StorageDead, StorageLive};
                         match stmt.kind {
-                            StorageLive(local) | StorageDead(local) => if local.index() > 0 {
-                                locals[local.index() - 1] = None;
-                            },
+                            StorageLive(local) |
+                            StorageDead(local) => locals[local] = None,
                             _ => {}
                         }
                     }
@@ -962,8 +957,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn force_allocation(&mut self, place: Place) -> EvalResult<'tcx, Place> {
         let new_place = match place {
             Place::Local { frame, local } => {
-                // -1 since we don't store the return value
-                match self.stack[frame].locals[local.index() - 1] {
+                match self.stack[frame].locals[local] {
                     None => return err!(DeadLocal),
                     Some(Value::ByRef(ptr, align)) => {
                         Place::Ptr {
@@ -977,7 +971,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
                         let layout = self.layout_of(ty)?;
                         let ptr = self.alloc_ptr(ty)?;
-                        self.stack[frame].locals[local.index() - 1] =
+                        self.stack[frame].locals[local] =
                             Some(Value::ByRef(ptr.into(), layout.align)); // it stays live
                         let place = Place::from_ptr(ptr, layout.align);
                         self.write_value(ValTy { value: val, ty }, place)?;
@@ -1691,13 +1685,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
 impl<'mir, 'tcx> Frame<'mir, 'tcx> {
     pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
-        // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
-        self.locals[local.index() - 1].ok_or(EvalErrorKind::DeadLocal.into())
+        self.locals[local].ok_or(EvalErrorKind::DeadLocal.into())
     }
 
     fn set_local(&mut self, local: mir::Local, value: Value) -> EvalResult<'tcx> {
-        // Subtract 1 because we don't store a value for the ReturnPointer, the local with index 0.
-        match self.locals[local.index() - 1] {
+        match self.locals[local] {
             None => err!(DeadLocal),
             Some(ref mut local) => {
                 *local = value;
@@ -1709,8 +1701,8 @@ impl<'mir, 'tcx> Frame<'mir, 'tcx> {
     pub fn storage_live(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
         trace!("{:?} is now live", local);
 
-        let old = self.locals[local.index() - 1];
-        self.locals[local.index() - 1] = Some(Value::ByVal(PrimVal::Undef)); // StorageLive *always* kills the value that's currently stored
+        let old = self.locals[local];
+        self.locals[local] = Some(Value::ByVal(PrimVal::Undef)); // StorageLive *always* kills the value that's currently stored
         return Ok(old);
     }
 
@@ -1718,8 +1710,8 @@ impl<'mir, 'tcx> Frame<'mir, 'tcx> {
     pub fn storage_dead(&mut self, local: mir::Local) -> EvalResult<'tcx, Option<Value>> {
         trace!("{:?} is now dead", local);
 
-        let old = self.locals[local.index() - 1];
-        self.locals[local.index() - 1] = None;
+        let old = self.locals[local];
+        self.locals[local] = None;
         return Ok(old);
     }
 }
