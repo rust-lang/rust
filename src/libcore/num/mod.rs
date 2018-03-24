@@ -97,14 +97,8 @@ nonzero_integers! {
     NonZeroU16(u16); NonZeroI16(i16);
     NonZeroU32(u32); NonZeroI32(i32);
     NonZeroU64(u64); NonZeroI64(i64);
-    NonZeroUsize(usize); NonZeroIsize(isize);
-}
-
-nonzero_integers! {
-    // Change this to `#[unstable(feature = "i128", issue = "35118")]`
-    // if other NonZero* integer types are stabilizied before 128-bit integers
-    #[unstable(feature = "nonzero", issue = "49137")]
     NonZeroU128(u128); NonZeroI128(i128);
+    NonZeroUsize(usize); NonZeroIsize(isize);
 }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
