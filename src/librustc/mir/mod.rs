@@ -27,7 +27,7 @@ use hir::def_id::DefId;
 use mir::visit::MirVisitable;
 use mir::interpret::{Value, PrimVal};
 use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
+use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::TypeAndMut;
 use util::ppaux;
@@ -1253,6 +1253,23 @@ pub enum StatementKind<'tcx> {
     /// (The starting point(s) arise implicitly from borrows.)
     EndRegion(region::Scope),
 
+    /// Encodes a user's type assertion. These need to be preserved intact so that NLL can respect
+    /// them. For example:
+    ///
+    ///     let (a, b): (T, U) = y;
+    ///
+    /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
+    /// is the right thing.
+    ///
+    /// `CanonicalTy` is used to capture "inference variables" from the user's types. For example:
+    ///
+    ///     let x: Vec<_> = ...;
+    ///     let y: &u32 = ...;
+    ///
+    /// would result in `Vec<?0>` and `&'?0 u32` respectively (where `?0` is a canonicalized
+    /// variable).
+    UserAssertTy(CanonicalTy<'tcx>, Local),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -1324,6 +1341,8 @@ impl<'tcx> Debug for Statement<'tcx> {
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
             },
+            UserAssertTy(ref c_ty, ref local) => write!(fmt, "UserAssertTy({:?}, {:?})",
+                                                        c_ty, local),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -2184,6 +2203,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Validate)(a, b),
         (StatementKind::EndRegion)(a),
+        (StatementKind::UserAssertTy)(a, b),
         (StatementKind::Nop),
     }
 }

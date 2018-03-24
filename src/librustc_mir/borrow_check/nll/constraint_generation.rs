@@ -12,10 +12,10 @@ use rustc::hir;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Place, Mir, Rvalue};
 use rustc::mir::visit::Visitor;
 use rustc::mir::Place::Projection;
-use rustc::mir::{PlaceProjection, ProjectionElem};
+use rustc::mir::{Local, PlaceProjection, ProjectionElem};
 use rustc::mir::visit::TyContext;
 use rustc::infer::InferCtxt;
-use rustc::ty::{self, ClosureSubsts};
+use rustc::ty::{self, CanonicalTy, ClosureSubsts};
 use rustc::ty::subst::Substs;
 use rustc::ty::fold::TypeFoldable;
 
@@ -106,6 +106,9 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
 
         self.super_rvalue(rvalue, location);
     }
+
+    fn visit_user_assert_ty(&mut self, _c_ty: &CanonicalTy<'tcx>,
+                            _local: &Local, _location: Location) { }
 }
 
 impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {

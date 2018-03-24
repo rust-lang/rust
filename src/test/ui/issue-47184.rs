@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions:lexical nll
-//[nll]compile-flags: -Z disable-nll-user-type-assert
-#![cfg_attr(nll, feature(nll))]
+#![feature(nll)]
 
-#![feature(generators)]
-
-fn bar<'a>() {
-    let a: &'static str = "hi";
-    let b: &'a str = a;
-
-    || {
-        yield a;
-        yield b;
-    };
+fn main() {
+    let _vec: Vec<&'static String> = vec![&String::new()];
+    //~^ ERROR borrowed value does not live long enough [E0597]
 }
-
-fn main() {}

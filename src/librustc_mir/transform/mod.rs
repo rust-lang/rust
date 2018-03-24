@@ -25,7 +25,7 @@ use syntax_pos::Span;
 
 pub mod add_validation;
 pub mod add_moves_for_packed_drops;
-pub mod clean_end_regions;
+pub mod cleanup_post_borrowck;
 pub mod check_unsafety;
 pub mod simplify_branches;
 pub mod simplify;
@@ -193,7 +193,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     let mut mir = tcx.mir_built(def_id).steal();
     run_passes![tcx, mir, def_id, 0;
         // Remove all `EndRegion` statements that are not involved in borrows.
-        clean_end_regions::CleanEndRegions,
+        cleanup_post_borrowck::CleanEndRegions,
 
         // What we need to do constant evaluation.
         simplify::SimplifyCfg::new("initial"),
@@ -234,6 +234,8 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         simplify_branches::SimplifyBranches::new("initial"),
         remove_noop_landing_pads::RemoveNoopLandingPads,
         simplify::SimplifyCfg::new("early-opt"),
+        // Remove all `UserAssertTy` statements.
+        cleanup_post_borrowck::CleanUserAssertTy,
 
         // These next passes must be executed together
         add_call_guards::CriticalCallEdges,
