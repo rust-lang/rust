@@ -779,7 +779,7 @@ impl<'a, 'tcx> FnType<'tcx> {
 
                     // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
                     // with align attributes, and those calls later block optimizations.
-                    if !is_return {
+                    if !is_return && !cx.tcx.sess.opts.debugging_opts.arg_align_attributes {
                         attrs.pointee_align = None;
                     }
 

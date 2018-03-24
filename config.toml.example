@@ -271,6 +271,9 @@
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
 
+# Build rustc with experimental parallelization
+#experimental-parallel-queries = false
+
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.
 # Note that this is not the linker used to link said compiler.

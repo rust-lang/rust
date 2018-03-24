@@ -63,6 +63,7 @@ use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::OnDrop;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, ErrorOutputType};
@@ -515,30 +516,35 @@ fn run_compiler_impl<'a>(args: &[String],
     target_features::add_configuration(&mut cfg, &sess, &*trans);
     sess.parse_sess.config = cfg;
 
-    let plugins = sess.opts.debugging_opts.extra_plugins.clone();
+    let result = {
+        let plugins = sess.opts.debugging_opts.extra_plugins.clone();
 
-    let cstore = CStore::new(trans.metadata_loader());
+        let cstore = CStore::new(trans.metadata_loader());
 
-    do_or_return!(callbacks.late_callback(&*trans,
-                                          &matches,
-                                          &sess,
-                                          &cstore,
-                                          &input,
-                                          &odir,
-                                          &ofile), Some(sess));
+        do_or_return!(callbacks.late_callback(&*trans,
+                                              &matches,
+                                              &sess,
+                                              &cstore,
+                                              &input,
+                                              &odir,
+                                              &ofile), Some(sess));
 
-    let control = callbacks.build_controller(&sess, &matches);
+        let _sess_abort_error = OnDrop(|| sess.diagnostic().print_error_count());
 
-    (driver::compile_input(trans,
-                           &sess,
-                           &cstore,
-                           &input_file_path,
-                           &input,
-                           &odir,
-                           &ofile,
-                           Some(plugins),
-                           &control),
-     Some(sess))
+        let control = callbacks.build_controller(&sess, &matches);
+
+        driver::compile_input(trans,
+                              &sess,
+                              &cstore,
+                              &input_file_path,
+                              &input,
+                              &odir,
+                              &ofile,
+                              Some(plugins),
+                              &control)
+    };
+
+    (result, Some(sess))
 }
 
 // Extract output directory and file from matches.

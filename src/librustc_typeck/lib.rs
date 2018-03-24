@@ -76,7 +76,7 @@ This API is completely unstable and subject to change.
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(conservative_impl_trait)]
-#![feature(copy_closures, clone_closures)]
+#![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(crate_visibility_modifier)]
 #![feature(from_ref)]
 #![feature(match_default_bindings)]
@@ -208,8 +208,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let actual = tcx.fn_sig(main_def_id);
-            let expected_return_type = if tcx.lang_items().termination().is_some()
-                && tcx.features().termination_trait {
+            let expected_return_type = if tcx.lang_items().termination().is_some() {
                 // we take the return type of the given main function, the real check is done
                 // in `check_fn`
                 actual.output().skip_binder()

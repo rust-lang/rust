@@ -17,5 +17,5 @@ fn main() {
    let mut gen = move || { //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
        yield s[..];
    };
-   gen.resume(); //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
+   unsafe { gen.resume(); } //~ ERROR the trait bound `str: std::marker::Sized` is not satisfied
 }
