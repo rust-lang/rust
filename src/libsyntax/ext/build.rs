@@ -1129,21 +1129,22 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn meta_word(&self, sp: Span, w: ast::Name) -> ast::MetaItem {
-        attr::mk_spanned_word_item(sp, w)
+        attr::mk_word_item(Ident::with_empty_ctxt(w).with_span_pos(sp))
     }
 
     fn meta_list_item_word(&self, sp: Span, w: ast::Name) -> ast::NestedMetaItem {
-        respan(sp, ast::NestedMetaItemKind::MetaItem(attr::mk_spanned_word_item(sp, w)))
+        attr::mk_nested_word_item(Ident::with_empty_ctxt(w).with_span_pos(sp))
     }
 
     fn meta_list(&self, sp: Span, name: ast::Name, mis: Vec<ast::NestedMetaItem>)
                  -> ast::MetaItem {
-        attr::mk_spanned_list_item(sp, name, mis)
+        attr::mk_list_item(sp, Ident::with_empty_ctxt(name).with_span_pos(sp), mis)
     }
 
     fn meta_name_value(&self, sp: Span, name: ast::Name, value: ast::LitKind)
                        -> ast::MetaItem {
-        attr::mk_spanned_name_value_item(sp, name, respan(sp, value))
+        attr::mk_name_value_item(sp, Ident::with_empty_ctxt(name).with_span_pos(sp),
+                                 respan(sp, value))
     }
 
     fn item_use(&self, sp: Span,

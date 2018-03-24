@@ -21,9 +21,9 @@ pub use self::Visibility::*;
 
 use syntax;
 use syntax::abi::Abi;
-use syntax::ast::{self, AttrStyle};
+use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
-use syntax::codemap::Spanned;
+use syntax::codemap::{dummy_spanned, Spanned};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -840,7 +840,8 @@ impl Attributes {
         for attr in attrs.lists("target_feature") {
             if attr.check_name("enable") {
                 if let Some(feat) = attr.value_str() {
-                    let meta = attr::mk_name_value_item_str("target_feature".into(), feat);
+                    let meta = attr::mk_name_value_item_str(Ident::from_str("target_feature"),
+                                                            dummy_spanned(feat));
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
                     }
@@ -1146,7 +1147,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     use syntax::ext::hygiene::Mark;
-    let segment = ast::PathSegment::from_ident(ast::Ident::from_str(path_str));
+    let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     let mut resolver = cx.resolver.borrow_mut();
     let mark = Mark::root();
@@ -1158,7 +1159,7 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
         } else {
             None
         }
-    } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
+    } else if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
         Some(*def)
     } else {
         None

@@ -110,7 +110,7 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
         for list_item in attr.meta_item_list().unwrap_or_default() {
             match list_item.word() {
                 Some(word) if value.is_none() =>
-                    value = Some(word.name().clone()),
+                    value = Some(word.ident.name),
                 _ =>
                     // FIXME better-encapsulate meta_item (don't directly access `node`)
                     span_bug!(list_item.span(), "unexpected meta-item {:?}", list_item.node),

@@ -3503,12 +3503,10 @@ impl<'a> LoweringContext<'a> {
                 let attr = {
                     // allow(unreachable_code)
                     let allow = {
-                        let allow_ident = self.str_to_ident("allow");
-                        let uc_ident = self.str_to_ident("unreachable_code");
-                        let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
-                        let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
-                        let uc_spanned = respan(e.span, uc_nested);
-                        attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
+                        let allow_ident = Ident::from_str("allow").with_span_pos(e.span);
+                        let uc_ident = Ident::from_str("unreachable_code").with_span_pos(e.span);
+                        let uc_nested = attr::mk_nested_word_item(uc_ident);
+                        attr::mk_list_item(e.span, allow_ident, vec![uc_nested])
                     };
                     attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
                 };

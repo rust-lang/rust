@@ -543,7 +543,7 @@ pub fn noop_fold_meta_list_item<T: Folder>(li: NestedMetaItem, fld: &mut T)
 
 pub fn noop_fold_meta_item<T: Folder>(mi: MetaItem, fld: &mut T) -> MetaItem {
     MetaItem {
-        name: mi.name,
+        ident: mi.ident,
         node: match mi.node {
             MetaItemKind::Word => MetaItemKind::Word,
             MetaItemKind::List(mis) => {

@@ -733,7 +733,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    name: keywords::Invalid.name(),
+                    ident: keywords::Invalid.ident(),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
@@ -1279,15 +1279,16 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str("file".into(),
-                                                                     file))),
+                                        attr::mk_name_value_item_str(Ident::from_str("file"),
+                                                                     dummy_spanned(file)))),
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str("contents".into(),
-                                                                     (&*src).into()))),
+                                        attr::mk_name_value_item_str(Ident::from_str("contents"),
+                                                            dummy_spanned(Symbol::intern(&src))))),
                             ];
 
-                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_list_item("include".into(), include_info))));
+                            let include_ident = Ident::from_str("include");
+                            let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
+                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
                         }
                         Err(_) => {
                             self.cx.span_err(at.span,
@@ -1300,7 +1301,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 }
             }
 
-            let meta = attr::mk_list_item("doc".into(), items);
+            let meta = attr::mk_list_item(DUMMY_SP, Ident::from_str("doc"), items);
             match at.style {
                 ast::AttrStyle::Inner =>
                     Some(attr::mk_spanned_attr_inner(at.span, at.id, meta)),

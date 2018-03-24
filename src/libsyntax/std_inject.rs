@@ -57,7 +57,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![attr::mk_attr_outer(DUMMY_SP,
                                         attr::mk_attr_id(),
-                                        attr::mk_word_item(Symbol::intern("macro_use")))],
+                                        attr::mk_word_item(ast::Ident::from_str("macro_use")))],
         vis: dummy_spanned(ast::VisibilityKind::Inherited),
         node: ast::ItemKind::ExternCrate(alt_std_name.map(Symbol::intern)),
         ident: ast::Ident::from_str(name),

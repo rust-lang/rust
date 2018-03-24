@@ -26,7 +26,7 @@ use print::pp::{self, Breaks};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
-use symbol::{Symbol, keywords};
+use symbol::keywords;
 use syntax_pos::{DUMMY_SP, FileName};
 use tokenstream::{self, TokenStream, TokenTree};
 
@@ -101,13 +101,13 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let prelude_import_meta = attr::mk_list_word_item(Symbol::intern("prelude_import"));
-        let list = attr::mk_list_item(Symbol::intern("feature"), vec![prelude_import_meta]);
+        let pi_nested = attr::mk_nested_word_item(ast::Ident::from_str("prelude_import"));
+        let list = attr::mk_list_item(DUMMY_SP, ast::Ident::from_str("feature"), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), list);
         s.print_attribute(&fake_attr)?;
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(Symbol::intern("no_std"));
+        let no_std_meta = attr::mk_word_item(ast::Ident::from_str("no_std"));
         let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), no_std_meta);
         s.print_attribute(&fake_attr)?;
     }
@@ -768,15 +768,15 @@ pub trait PrintState<'a> {
         self.ibox(INDENT_UNIT)?;
         match item.node {
             ast::MetaItemKind::Word => {
-                self.writer().word(&item.name.as_str())?;
+                self.writer().word(&item.ident.name.as_str())?;
             }
             ast::MetaItemKind::NameValue(ref value) => {
-                self.word_space(&item.name.as_str())?;
+                self.word_space(&item.ident.name.as_str())?;
                 self.word_space("=")?;
                 self.print_literal(value)?;
             }
             ast::MetaItemKind::List(ref items) => {
-                self.writer().word(&item.name.as_str())?;
+                self.writer().word(&item.ident.name.as_str())?;
                 self.popen()?;
                 self.commasep(Consistent,
                               &items[..],

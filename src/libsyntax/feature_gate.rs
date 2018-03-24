@@ -1054,7 +1054,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.name().as_str();
+        let name = cfg.ident.name.as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -1811,7 +1811,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 for mi in list {
 
                     let name = if let Some(word) = mi.word() {
-                        word.name()
+                        word.ident.name
                     } else {
                         span_err!(span_handler, mi.span, E0556,
                                   "malformed feature, expected just one word");

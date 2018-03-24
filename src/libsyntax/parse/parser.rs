@@ -1957,7 +1957,7 @@ impl<'a> Parser<'a> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(ast::Ident::with_empty_ctxt(meta.name)),
+                    ast::MetaItemKind::Word => Some(meta.ident),
                     _ => None,
                 },
                 _ => None,
@@ -1966,7 +1966,7 @@ impl<'a> Parser<'a> {
         };
         if let Some(ident) = meta_ident {
             self.bump();
-            return Ok(ast::Path::from_ident(ident.with_span_pos(self.prev_span)));
+            return Ok(ast::Path::from_ident(ident));
         }
         self.parse_path(style)
     }

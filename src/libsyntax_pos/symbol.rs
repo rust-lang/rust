@@ -47,7 +47,7 @@ impl Ident {
     }
 
     pub fn without_first_quote(self) -> Ident {
-        Ident::new(Symbol::from(self.name.as_str().trim_left_matches('\'')), self.span)
+        Ident::new(Symbol::intern(self.name.as_str().trim_left_matches('\'')), self.span)
     }
 
     pub fn modern(self) -> Ident {
@@ -144,12 +144,6 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0
-    }
-}
-
-impl<'a> From<&'a str> for Symbol {
-    fn from(string: &'a str) -> Symbol {
-        Symbol::intern(string)
     }
 }
 
