@@ -8,4 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --test
+
 fn main() {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() -> Result<(), ()> {
+    //~^ ERROR functions used as tests must have signature fn() -> ()
+        Ok(())
+    }
+}
