@@ -272,6 +272,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtPat(ref e)         => pat_to_string(e),
             token::NtIdent(e, false)    => ident_to_string(e),
             token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
+            token::NtLifetime(e)        => ident_to_string(e),
             token::NtTT(ref tree)       => tt_to_string(tree.clone()),
             token::NtArm(ref e)         => arm_to_string(e),
             token::NtImplItem(ref e)    => impl_item_to_string(e),
@@ -280,7 +281,6 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtWhereClause(ref e) => where_clause_to_string(e),
             token::NtArg(ref e)         => arg_to_string(e),
             token::NtVis(ref e)         => vis_to_string(e),
-            token::NtLifetime(ref e)    => lifetime_to_string(e),
             token::NtForeignItem(ref e) => foreign_item_to_string(e),
         }
     }

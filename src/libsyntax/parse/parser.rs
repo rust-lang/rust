@@ -2048,18 +2048,20 @@ impl<'a> Parser<'a> {
 
     /// Parse single lifetime 'a or panic.
     pub fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(lifetime) = self.token.lifetime2(self.span) {
+        if let Some(ident) = self.token.lifetime() {
+            let span = self.span;
             self.bump();
-            lifetime
+            Lifetime { ident: Ident::new(ident.name, span), id: ast::DUMMY_NODE_ID }
         } else {
             self.span_bug(self.span, "not a lifetime")
         }
     }
 
     fn eat_label(&mut self) -> Option<Label> {
-        if let Some(lifetime) = self.token.lifetime2(self.span) {
+        if let Some(ident) = self.token.lifetime() {
+            let span = self.span;
             self.bump();
-            Some(Label { ident: lifetime.ident })
+            Some(Label { ident: Ident::new(ident.name, span) })
         } else {
             None
         }
@@ -2703,7 +2705,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn process_potential_macro_variable(&mut self) {
-        let (ident, is_raw) = match self.token {
+        let (token, span) = match self.token {
             token::Dollar if self.span.ctxt() != syntax_pos::hygiene::SyntaxContext::empty() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
@@ -2718,15 +2720,18 @@ impl<'a> Parser<'a> {
             }
             token::Interpolated(ref nt) => {
                 self.meta_var_span = Some(self.span);
+                // Interpolated identifier and lifetime tokens are replaced with usual identifier
+                // and lifetime tokens, so the former are never encountered during normal parsing.
                 match nt.0 {
-                    token::NtIdent(ident, is_raw) => (ident, is_raw),
+                    token::NtIdent(ident, is_raw) => (token::Ident(ident, is_raw), ident.span),
+                    token::NtLifetime(ident) => (token::Lifetime(ident), ident.span),
                     _ => return,
                 }
             }
             _ => return,
         };
-        self.token = token::Ident(ident, is_raw);
-        self.span = ident.span;
+        self.token = token;
+        self.span = span;
     }
 
     /// parse a single token tree from the input.

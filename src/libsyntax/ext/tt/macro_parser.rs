@@ -365,7 +365,7 @@ pub fn parse_failure_msg(tok: Token) -> String {
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
         id1.name == id2.name && is_raw1 == is_raw2
-    } else if let (&token::Lifetime(id1), &token::Lifetime(id2)) = (t1, t2) {
+    } else if let (Some(id1), Some(id2)) = (t1.lifetime(), t2.lifetime()) {
         id1.name == id2.name
     } else {
         *t1 == *t2
@@ -835,7 +835,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
-        "lifetime" => token::NtLifetime(p.expect_lifetime()),
+        "lifetime" => token::NtLifetime(p.expect_lifetime().ident),
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier"),

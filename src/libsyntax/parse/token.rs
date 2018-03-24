@@ -317,7 +317,8 @@ impl Token {
         }
     }
 
-    pub fn ident(&self) -> Option<(ast::Ident, bool)> {
+    /// Returns an identifier if this token is an identifier.
+    pub fn ident(&self) -> Option<(ast::Ident, /* is_raw */ bool)> {
         match *self {
             Ident(ident, is_raw) => Some((ident, is_raw)),
             Interpolated(ref nt) => match nt.0 {
@@ -327,10 +328,24 @@ impl Token {
             _ => None,
         }
     }
-
+    /// Returns a lifetime identifier if this token is a lifetime.
+    pub fn lifetime(&self) -> Option<ast::Ident> {
+        match *self {
+            Lifetime(ident) => Some(ident),
+            Interpolated(ref nt) => match nt.0 {
+                NtLifetime(ident) => Some(ident),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
     /// Returns `true` if the token is an identifier.
     pub fn is_ident(&self) -> bool {
         self.ident().is_some()
+    }
+    /// Returns `true` if the token is a lifetime.
+    pub fn is_lifetime(&self) -> bool {
+        self.lifetime().is_some()
     }
 
     /// Returns `true` if the token is a documentation comment.
@@ -357,26 +372,6 @@ impl Token {
             }
         }
         false
-    }
-
-    /// Returns a lifetime with the span and a dummy id if it is a lifetime,
-    /// or the original lifetime if it is an interpolated lifetime, ignoring
-    /// the span.
-    pub fn lifetime2(&self, span: Span) -> Option<ast::Lifetime> {
-        match *self {
-            Lifetime(ident) => Some(ast::Lifetime { id: ast::DUMMY_NODE_ID,
-                                                    ident: ast::Ident::new(ident.name, span) }),
-            Interpolated(ref nt) => match nt.0 {
-                NtLifetime(lifetime) => Some(lifetime),
-                _ => None,
-            },
-            _ => None,
-        }
-    }
-
-    /// Returns `true` if the token is a lifetime.
-    pub fn is_lifetime(&self) -> bool {
-        self.lifetime2(syntax_pos::DUMMY_SP).is_some()
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
@@ -427,6 +422,14 @@ impl Token {
     pub fn is_unused_keyword(&self) -> bool {
         match self.ident() {
             Some((id, false)) => is_unused_keyword(id),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the token is either a special identifier or a keyword.
+    pub fn is_reserved_ident(&self) -> bool {
+        match self.ident() {
+            Some((id, false)) => is_reserved_ident(id),
             _ => false,
         }
     }
@@ -497,14 +500,6 @@ impl Token {
         }
     }
 
-    /// Returns `true` if the token is either a special identifier or a keyword.
-    pub fn is_reserved_ident(&self) -> bool {
-        match self.ident() {
-            Some((id, false)) => is_reserved_ident(id),
-            _ => false,
-        }
-    }
-
     pub fn interpolated_to_tokenstream(&self, sess: &ParseSess, span: Span)
         -> TokenStream
     {
@@ -542,9 +537,9 @@ impl Token {
                 let token = Token::Ident(ident, is_raw);
                 tokens = Some(TokenTree::Token(ident.span, token).into());
             }
-            Nonterminal::NtLifetime(lifetime) => {
-                let token = Token::Lifetime(lifetime.ident);
-                tokens = Some(TokenTree::Token(lifetime.ident.span, token).into());
+            Nonterminal::NtLifetime(ident) => {
+                let token = Token::Lifetime(ident);
+                tokens = Some(TokenTree::Token(ident.span, token).into());
             }
             Nonterminal::NtTT(ref tt) => {
                 tokens = Some(tt.clone().into());
@@ -572,6 +567,7 @@ pub enum Nonterminal {
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
     NtIdent(ast::Ident, /* is_raw */ bool),
+    NtLifetime(ast::Ident),
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),
@@ -585,7 +581,6 @@ pub enum Nonterminal {
     NtGenerics(ast::Generics),
     NtWhereClause(ast::WhereClause),
     NtArg(ast::Arg),
-    NtLifetime(ast::Lifetime),
 }
 
 impl fmt::Debug for Nonterminal {
