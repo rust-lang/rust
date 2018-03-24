@@ -1022,11 +1022,12 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                                  .flat_map(|imp| cx.tcx.associated_items(*imp))
                                  .find(|item| item.name == item_name);
                 if let Some(item) = item {
-                    if item.kind == ty::AssociatedKind::Method && is_val {
-                        Ok((ty.def, Some(format!("method.{}", item_name))))
-                    } else {
-                        Err(())
-                    }
+                    let out = match item.kind {
+                        ty::AssociatedKind::Method if is_val => "method",
+                        ty::AssociatedKind::Const if is_val => "associatedconstant",
+                        _ => return Err(())
+                    };
+                    Ok((ty.def, Some(format!("{}.{}", out, item_name))))
                 } else {
                     Err(())
                 }
@@ -1139,9 +1140,6 @@ impl Clean<Attributes> for [ast::Attribute] {
                         &link[..]
                     }.trim();
 
-                    // avoid resolving things (i.e. regular links) which aren't like paths
-                    // FIXME(Manishearth) given that most links have slashes in them might be worth
-                    // doing a check for slashes first
                     if path_str.contains(|ch: char| !(ch.is_alphanumeric() ||
                                                       ch == ':' || ch == '_')) {
                         continue;
