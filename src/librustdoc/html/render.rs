@@ -2274,9 +2274,9 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
 }
 
 fn render_impls(cx: &Context, w: &mut fmt::Formatter,
-                traits: Vec<&&Impl>,
+                traits: &[&&Impl],
                 containing_item: &clean::Item) -> Result<(), fmt::Error> {
-    for i in &traits {
+    for i in traits {
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
         render_impl(w, cx, i, assoc_link,
@@ -3172,14 +3172,22 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             .iter()
             .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
 
-        write!(w, "
-            <h2 id='implementations' class='small-section-header'>
-              Trait Implementations<a href='#implementations' class='anchor'></a>
-            </h2>
-            <div id='implementations-list'>
-        ")?;
-        render_impls(cx, w, concrete, containing_item)?;
-        write!(w, "</div>")?;
+        struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
+
+        impl<'a, 'b, 'c> fmt::Display for RendererStruct<'a, 'b, 'c> {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                render_impls(self.0, fmt, &self.1, self.2)
+            }
+        }
+
+        let impls = format!("{}", RendererStruct(cx, concrete, containing_item));
+        if !impls.is_empty() {
+            write!(w, "
+                <h2 id='implementations' class='small-section-header'>
+                  Trait Implementations<a href='#implementations' class='anchor'></a>
+                </h2>
+                <div id='implementations-list'>{}</div>", impls)?;
+        }
 
         if !synthetic.is_empty() {
             write!(w, "
@@ -3188,7 +3196,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
                 </h2>
                 <div id='synthetic-implementations-list'>
             ")?;
-            render_impls(cx, w, synthetic, containing_item)?;
+            render_impls(cx, w, &synthetic, containing_item)?;
             write!(w, "</div>")?;
         }
     }
