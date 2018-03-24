@@ -204,5 +204,11 @@ error: taken reference of right operand
    |
    = note: `-D op-ref` implied by `-D warnings`
 
-error: aborting due to 33 previous errors
+error: equal expressions as operands to `/`
+  --> $DIR/eq_op.rs:97:20
+   |
+97 |     const D: u32 = A / A;
+   |                    ^^^^^
+
+error: aborting due to 34 previous errors
 
