@@ -209,6 +209,7 @@ pub mod guard {
     pub type Guard = Range<usize>;
     pub unsafe fn current() -> Option<Guard> { None }
     pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn deinit() {}
 }
 
 
