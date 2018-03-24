@@ -1576,7 +1576,6 @@ impl FromUtf8Error {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(from_utf8_error_as_bytes)]
     /// // some invalid bytes, in a vector
     /// let bytes = vec![0, 159];
     ///
@@ -1584,7 +1583,7 @@ impl FromUtf8Error {
     ///
     /// assert_eq!(&[0, 159], value.unwrap_err().as_bytes());
     /// ```
-    #[unstable(feature = "from_utf8_error_as_bytes", reason = "recently added", issue = "40895")]
+    #[stable(feature = "from_utf8_error_as_bytes", since = "1.26.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
