@@ -3675,7 +3675,13 @@ impl<'a> Parser<'a> {
                 if self.token != token::CloseDelim(token::Brace) {
                     let token_str = self.this_token_to_string();
                     let mut err = self.fatal(&format!("expected `{}`, found `{}`", "}", token_str));
-                    err.span_label(self.span, "expected `}`");
+                    if self.token == token::Comma { // Issue #49257
+                        err.span_label(self.span,
+                                       "`..` must be in the last position, \
+                                        and cannot have a trailing comma");
+                    } else {
+                        err.span_label(self.span, "expected `}`");
+                    }
                     return Err(err);
                 }
                 etc = true;
