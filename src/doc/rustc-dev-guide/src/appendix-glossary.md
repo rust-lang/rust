@@ -1,6 +1,8 @@
 # Appendix C: Glossary
 
-The compiler uses a number of...idiosyncratic abbreviations and things. This glossary attempts to list them and give you a few pointers for understanding them better.
+The compiler uses a number of...idiosyncratic abbreviations and things. This
+glossary attempts to list them and give you a few pointers for understanding
+them better.
 
 Term                    | Meaning
 ------------------------|--------
