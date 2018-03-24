@@ -15,7 +15,7 @@
 use std::ops::{GeneratorState, Generator};
 use std::cell::Cell;
 
-fn borrow_local_inline() {
+unsafe fn borrow_local_inline() {
     // Not OK to yield with a borrow of a temporary.
     //
     // (This error occurs because the region shows up in the type of
@@ -30,7 +30,7 @@ fn borrow_local_inline() {
     b.resume();
 }
 
-fn borrow_local_inline_done() {
+unsafe fn borrow_local_inline_done() {
     // No error here -- `a` is not in scope at the point of `yield`.
     let mut b = move || {
         {
@@ -41,7 +41,7 @@ fn borrow_local_inline_done() {
     b.resume();
 }
 
-fn borrow_local() {
+unsafe fn borrow_local() {
     // Not OK to yield with a borrow of a temporary.
     //
     // (This error occurs because the region shows up in the type of

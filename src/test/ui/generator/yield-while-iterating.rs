@@ -43,7 +43,7 @@ fn yield_during_iter_borrowed_slice_2() {
     println!("{:?}", x);
 }
 
-fn yield_during_iter_borrowed_slice_3() {
+unsafe fn yield_during_iter_borrowed_slice_3() {
     // OK to take a mutable ref to `x` and yield
     // up pointers from it:
     let mut x = vec![22_i32];
@@ -55,7 +55,7 @@ fn yield_during_iter_borrowed_slice_3() {
     b.resume();
 }
 
-fn yield_during_iter_borrowed_slice_4() {
+unsafe fn yield_during_iter_borrowed_slice_4() {
     // ...but not OK to do that while reading
     // from `x` too
     let mut x = vec![22_i32];
@@ -68,7 +68,7 @@ fn yield_during_iter_borrowed_slice_4() {
     b.resume();
 }
 
-fn yield_during_range_iter() {
+unsafe fn yield_during_range_iter() {
     // Should be OK.
     let mut b = || {
         let v = vec![1,2,3];

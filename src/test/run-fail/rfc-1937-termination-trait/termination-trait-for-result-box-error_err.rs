@@ -11,8 +11,6 @@
 // must-compile-successfully
 // failure-status: 1
 
-#![feature(termination_trait)]
-
 use std::io::{Error, ErrorKind};
 
 fn main() -> Result<(), Box<Error>> {

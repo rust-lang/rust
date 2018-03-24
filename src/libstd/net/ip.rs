@@ -1346,7 +1346,7 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
     }
 }
 
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 impl From<Ipv6Addr> for u128 {
     fn from(ip: Ipv6Addr) -> u128 {
         let ip = ip.segments();
@@ -1355,7 +1355,7 @@ impl From<Ipv6Addr> for u128 {
             ((ip[6] as u128) << 16) + (ip[7] as u128)
     }
 }
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 impl From<u128> for Ipv6Addr {
     fn from(ip: u128) -> Ipv6Addr {
         Ipv6Addr::new(

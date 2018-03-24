@@ -179,7 +179,7 @@ fn generator(a: &Allocator, run_count: usize) {
          );
     };
     for _ in 0..run_count {
-        gen.resume();
+        unsafe { gen.resume(); }
     }
 }
 

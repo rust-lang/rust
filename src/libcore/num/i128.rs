@@ -12,6 +12,6 @@
 //!
 //! *[See also the `i128` primitive type](../../std/primitive.i128.html).*
 
-#![unstable(feature = "i128", issue="35118")]
+#![stable(feature = "i128", since = "1.26.0")]
 
-int_module! { i128, #[unstable(feature = "i128", issue="35118")] }
+int_module! { i128, #[stable(feature = "i128", since="1.26.0")] }

@@ -78,7 +78,7 @@
 #![feature(doc_spotlight)]
 #![feature(fn_must_use)]
 #![feature(fundamental)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(intrinsics)]
 #![feature(iterator_flatten)]

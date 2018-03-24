@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators)]
-
-fn main() {
-    static || { //~ ERROR: construction of immovable generator requires unsafe
-        yield;
-    };
+fn main() -> i32 {
+//~^ ERROR `main` has invalid return type `i32`
+//~| NOTE `main` can only return types that implement std::process::Termination
+//~| HELP consider using `()`, or a `Result`
+    0
 }

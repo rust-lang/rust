@@ -56,11 +56,11 @@ pub enum GeneratorState<Y, R> {
 ///         return "foo"
 ///     };
 ///
-///     match generator.resume() {
+///     match unsafe { generator.resume() } {
 ///         GeneratorState::Yielded(1) => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
-///     match generator.resume() {
+///     match unsafe { generator.resume() } {
 ///         GeneratorState::Complete("foo") => {}
 ///         _ => panic!("unexpected return from resume"),
 ///     }
@@ -98,6 +98,10 @@ pub trait Generator {
     /// generator will continue executing until it either yields or returns, at
     /// which point this function will return.
     ///
+    /// The function is unsafe because it can be used on an immovable generator.
+    /// After such a call, the immovable generator must not move again, but
+    /// this is not enforced by the compiler.
+    ///
     /// # Return value
     ///
     /// The `GeneratorState` enum returned from this function indicates what
@@ -116,7 +120,7 @@ pub trait Generator {
     /// been returned previously. While generator literals in the language are
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
     /// for all implementations of the `Generator` trait.
-    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return>;
 }
 
 #[unstable(feature = "generator_trait", issue = "43122")]
@@ -125,7 +129,7 @@ impl<'a, T> Generator for &'a mut T
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         (**self).resume()
     }
 }

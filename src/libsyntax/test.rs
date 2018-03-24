@@ -332,7 +332,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
             ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
                 // If the termination trait is active, the compiler will check that the output
                 // type implements the `Termination` trait as `libtest` enforces that.
-                let output_matches = if cx.features.termination_trait {
+                let output_matches = if cx.features.termination_trait_test {
                     true
                 } else {
                     let no_output = match decl.output {
@@ -359,7 +359,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
         match has_test_signature(cx, i) {
             Yes => true,
             No => {
-                if cx.features.termination_trait {
+                if cx.features.termination_trait_test {
                     diag.span_err(i.span, "functions used as tests can not have any arguments");
                 } else {
                     diag.span_err(i.span, "functions used as tests must have signature fn() -> ()");
@@ -388,7 +388,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
                 // If the termination trait is active, the compiler will check that the output
                 // type implements the `Termination` trait as `libtest` enforces that.
-                let output_matches = if cx.features.termination_trait {
+                let output_matches = if cx.features.termination_trait_test {
                     true
                 } else {
                     let no_output = match decl.output {
@@ -416,7 +416,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     if has_bench_attr && !has_bench_signature {
         let diag = cx.span_diagnostic;
 
-        if cx.features.termination_trait {
+        if cx.features.termination_trait_test {
             diag.span_err(i.span, "functions used as benches must have signature \
                                    `fn(&mut Bencher) -> impl Termination`");
         } else {

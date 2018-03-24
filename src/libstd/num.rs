@@ -27,8 +27,6 @@ pub use core::num::{
     NonZeroU64, NonZeroI64, NonZeroUsize, NonZeroIsize,
 };
 
-// Change this to `#[unstable(feature = "i128", issue = "35118")]`
-// if other NonZero* integer types are stabilizied before 128-bit integers
 #[unstable(feature = "nonzero", issue = "49137")]
 pub use core::num::{NonZeroU128, NonZeroI128};
 

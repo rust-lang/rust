@@ -892,7 +892,7 @@ impl<T> Generator for Box<T>
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         (**self).resume()
     }
 }

@@ -86,7 +86,7 @@ This API is completely unstable and subject to change.
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(never_type))]
 
 #[macro_use] extern crate log;
@@ -208,8 +208,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let actual = tcx.fn_sig(main_def_id);
-            let expected_return_type = if tcx.lang_items().termination().is_some()
-                && tcx.features().termination_trait {
+            let expected_return_type = if tcx.lang_items().termination().is_some() {
                 // we take the return type of the given main function, the real check is done
                 // in `check_fn`
                 actual.output().skip_binder()
