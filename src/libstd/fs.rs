@@ -906,7 +906,13 @@ impl Metadata {
         FileType(self.0.file_type())
     }
 
-    /// Returns whether this metadata is for a directory.
+    /// Returns whether this metadata is for a directory. The
+    /// result is mutually exclusive to the result of
+    /// [`is_file`], and will be false for symlink metadata
+    /// obtained from [`symlink_metadata`].
+    ///
+    /// [`is_file`]: struct.Metadata.html#method.is_file
+    /// [`symlink_metadata`]: fn.symlink_metadata.html
     ///
     /// # Examples
     ///
@@ -923,7 +929,13 @@ impl Metadata {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_dir(&self) -> bool { self.file_type().is_dir() }
 
-    /// Returns whether this metadata is for a regular file.
+    /// Returns whether this metadata is for a regular file. The
+    /// result is mutually exclusive to the result of
+    /// [`is_dir`], and will be false for symlink metadata
+    /// obtained from [`symlink_metadata`].
+    ///
+    /// [`is_dir`]: struct.Metadata.html#method.is_dir
+    /// [`symlink_metadata`]: fn.symlink_metadata.html
     ///
     /// # Examples
     ///
@@ -1148,7 +1160,13 @@ impl Permissions {
 }
 
 impl FileType {
-    /// Test whether this file type represents a directory.
+    /// Test whether this file type represents a directory. The
+    /// result is mutually exclusive to the results of
+    /// [`is_file`] and [`is_symlink`]; only zero or one of these
+    /// tests may pass.
+    ///
+    /// [`is_file`]: struct.FileType.html#method.is_file
+    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
     ///
@@ -1167,6 +1185,12 @@ impl FileType {
     pub fn is_dir(&self) -> bool { self.0.is_dir() }
 
     /// Test whether this file type represents a regular file.
+    /// The result is  mutually exclusive to the results of
+    /// [`is_dir`] and [`is_symlink`]; only zero or one of these
+    /// tests may pass.
+    ///
+    /// [`is_dir`]: struct.FileType.html#method.is_dir
+    /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
     ///
@@ -1185,6 +1209,9 @@ impl FileType {
     pub fn is_file(&self) -> bool { self.0.is_file() }
 
     /// Test whether this file type represents a symbolic link.
+    /// The result is mutually exclusive to the results of
+    /// [`is_dir`] and [`is_file`]; only zero or one of these
+    /// tests may pass.
     ///
     /// The underlying [`Metadata`] struct needs to be retrieved
     /// with the [`fs::symlink_metadata`] function and not the
@@ -1195,6 +1222,8 @@ impl FileType {
     /// [`Metadata`]: struct.Metadata.html
     /// [`fs::metadata`]: fn.metadata.html
     /// [`fs::symlink_metadata`]: fn.symlink_metadata.html
+    /// [`is_dir`]: struct.FileType.html#method.is_dir
+    /// [`is_file`]: struct.FileType.html#method.is_file
     /// [`is_symlink`]: struct.FileType.html#method.is_symlink
     ///
     /// # Examples
