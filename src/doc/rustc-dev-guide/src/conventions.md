@@ -111,8 +111,8 @@ inspects the Cargo metadata to ensure this.
 
 # How to structure your PR
 
-How you prepare the commits in your PR can make a big difference for the reviewer.
-Here are some tips.
+How you prepare the commits in your PR can make a big difference for the
+reviewer.  Here are some tips.
 
 **Isolate "pure refactorings" into their own commit.** For example, if
 you rename a method, then put that rename into its own commit, along
