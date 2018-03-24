@@ -47,7 +47,7 @@ use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashSet;
 use std::iter::FromIterator;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct Config {
     pub target: Target,
@@ -1905,7 +1905,13 @@ pub fn build_session_options_and_crate_config(
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
     let target_triple = if let Some(target) = matches.opt_str("target") {
         if target.ends_with(".json") {
-            TargetTriple::TargetPath(PathBuf::from(target))
+            let path = Path::new(&target);
+            match TargetTriple::from_path(&path) {
+                Ok(triple) => triple,
+                Err(_) => {
+                    early_error(error_format, &format!("target file {:?} does not exist", path))
+                }
+            }
         } else {
             TargetTriple::TargetTriple(target)
         }

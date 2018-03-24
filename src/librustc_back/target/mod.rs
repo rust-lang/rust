@@ -47,7 +47,7 @@
 use serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 use std::default::Default;
-use std::fmt;
+use std::{fmt, io};
 use std::path::{Path, PathBuf};
 use syntax::abi::{Abi, lookup as lookup_abi};
 
@@ -1029,9 +1029,15 @@ pub enum TargetTriple {
 }
 
 impl TargetTriple {
-    /// Creates a target target from the passed target triple string.
+    /// Creates a target triple from the passed target triple string.
     pub fn from_triple(triple: &str) -> Self {
         TargetTriple::TargetTriple(triple.to_string())
+    }
+
+    /// Creates a target triple from the passed target path.
+    pub fn from_path(path: &Path) -> Result<Self, io::Error> {
+        let canonicalized_path = path.canonicalize()?;
+        Ok(TargetTriple::TargetPath(canonicalized_path))
     }
 
     /// Returns a string triple for this target.
