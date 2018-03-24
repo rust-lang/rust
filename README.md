@@ -16,6 +16,20 @@ Read ["Installation"] from [The Book].
 ## Building from Source
 [building-from-source]: #building-from-source
 
+### Checking out
+1. Make sure you have installed `git`.
+2. Clone the [source] with `git`:
+
+   ```sh
+   $ git clone https://github.com/rust-lang/rust.git
+   $ cd rust
+   ```
+3. Clone submodules with `git`:
+
+   ```sh
+   $ git submodule init
+   $ git submodule update
+   ```
 ### Building on *nix
 1. Make sure you have installed the dependencies:
 
@@ -24,18 +38,10 @@ Read ["Installation"] from [The Book].
    * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
    * `curl`
-   * `git`
-
-2. Clone the [source] with `git`:
-
-   ```sh
-   $ git clone https://github.com/rust-lang/rust.git
-   $ cd rust
-   ```
 
 [source]: https://github.com/rust-lang/rust
 
-3. Build and install:
+2. Build and install:
 
     ```sh
     $ ./x.py build && sudo ./x.py install
