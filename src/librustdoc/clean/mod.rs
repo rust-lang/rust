@@ -1774,11 +1774,12 @@ pub struct Method {
 
 impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Method {
+        let generics = self.1.clean(cx);
         Method {
-            generics: self.1.clean(cx),
+            decl: enter_impl_trait(cx, &generics.params, || (&*self.0.decl, self.2).clean(cx)),
+            generics,
             unsafety: self.0.unsafety,
             constness: self.0.constness,
-            decl: (&*self.0.decl, self.2).clean(cx),
             abi: self.0.abi
         }
     }
@@ -1803,6 +1804,8 @@ pub struct Function {
 
 impl Clean<Item> for doctree::Function {
     fn clean(&self, cx: &DocContext) -> Item {
+        let generics = self.generics.clean(cx);
+        let decl = enter_impl_trait(cx, &generics.params, || (&self.decl, self.body).clean(cx));
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -1812,8 +1815,8 @@ impl Clean<Item> for doctree::Function {
             deprecation: self.depr.clean(cx),
             def_id: cx.tcx.hir.local_def_id(self.id),
             inner: FunctionItem(Function {
-                decl: (&self.decl, self.body).clean(cx),
-                generics: self.generics.clean(cx),
+                decl,
+                generics,
                 unsafety: self.unsafety,
                 constness: self.constness,
                 abi: self.abi,
@@ -2040,10 +2043,13 @@ impl Clean<Item> for hir::TraitItem {
                 MethodItem((sig, &self.generics, body).clean(cx))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
+                let generics = self.generics.clean(cx);
                 TyMethodItem(TyMethod {
                     unsafety: sig.unsafety.clone(),
-                    decl: (&*sig.decl, &names[..]).clean(cx),
-                    generics: self.generics.clean(cx),
+                    decl: enter_impl_trait(cx, &generics.params, || {
+                        (&*sig.decl, &names[..]).clean(cx)
+                    }),
+                    generics,
                     abi: sig.abi
                 })
             }
@@ -2545,6 +2551,12 @@ impl Clean<Type> for hir::Ty {
             TyPath(hir::QPath::Resolved(None, ref path)) => {
                 if let Some(new_ty) = cx.ty_substs.borrow().get(&path.def).cloned() {
                     return new_ty;
+                }
+
+                if let Def::TyParam(did) = path.def {
+                    if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
+                        return ImplTrait(bounds);
+                    }
                 }
 
                 let mut alias = None;
@@ -3259,10 +3271,13 @@ pub struct BareFunctionDecl {
 
 impl Clean<BareFunctionDecl> for hir::BareFnTy {
     fn clean(&self, cx: &DocContext) -> BareFunctionDecl {
+        let generic_params = self.generic_params.clean(cx);
         BareFunctionDecl {
             unsafety: self.unsafety,
-            generic_params: self.generic_params.clean(cx),
-            decl: (&*self.decl, &self.arg_names[..]).clean(cx),
+            decl: enter_impl_trait(cx, &generic_params, || {
+                (&*self.decl, &self.arg_names[..]).clean(cx)
+            }),
+            generic_params,
             abi: self.abi,
         }
     }
@@ -3563,9 +3578,12 @@ impl Clean<Item> for hir::ForeignItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
             hir::ForeignItemFn(ref decl, ref names, ref generics) => {
+                let generics = generics.clean(cx);
                 ForeignFunctionItem(Function {
-                    decl: (&**decl, &names[..]).clean(cx),
-                    generics: generics.clean(cx),
+                    decl: enter_impl_trait(cx, &generics.params, || {
+                        (&**decl, &names[..]).clean(cx)
+                    }),
+                    generics,
                     unsafety: hir::Unsafety::Unsafe,
                     abi: Abi::Rust,
                     constness: hir::Constness::NotConst,
@@ -3865,6 +3883,29 @@ pub fn def_id_to_path(cx: &DocContext, did: DefId, name: Option<String>) -> Vec<
         }
     });
     once(crate_name).chain(relative).collect()
+}
+
+pub fn enter_impl_trait<F, R>(cx: &DocContext, gps: &[GenericParam], f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let bounds = gps.iter()
+        .filter_map(|p| {
+            if let GenericParam::Type(ref tp) = *p {
+                if tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
+                    return Some((tp.did, tp.bounds.clone()));
+                }
+            }
+
+            None
+        })
+        .collect::<FxHashMap<DefId, Vec<TyParamBound>>>();
+
+    let old_bounds = mem::replace(&mut *cx.impl_trait_bounds.borrow_mut(), bounds);
+    let r = f();
+    assert!(cx.impl_trait_bounds.borrow().is_empty());
+    *cx.impl_trait_bounds.borrow_mut() = old_bounds;
+    r
 }
 
 // Start of code copied from rust-clippy
