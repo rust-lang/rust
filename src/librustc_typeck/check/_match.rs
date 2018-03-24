@@ -861,7 +861,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
                 self.check_pat_walk(&subpat, field_ty, def_bm, true);
 
-                self.tcx.check_stability(variant.fields[i].did, pat.id, subpat.span);
+                self.tcx.check_stability(variant.fields[i].did, Some(pat.id), subpat.span);
             }
         } else {
             let subpats_ending = if subpats.len() == 1 { "" } else { "s" };
@@ -923,7 +923,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                     vacant.insert(span);
                     field_map.get(&field.name)
                         .map(|f| {
-                            self.tcx.check_stability(f.did, pat_id, span);
+                            self.tcx.check_stability(f.did, Some(pat_id), span);
 
                             self.field_ty(span, f, substs)
                         })

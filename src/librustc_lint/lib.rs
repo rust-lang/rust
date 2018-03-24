@@ -273,7 +273,14 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(TYVAR_BEHIND_RAW_POINTER),
             reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
             edition: Some(Edition::Edition2018),
-        }
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(UNSTABLE_NAME_COLLISION),
+            reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
+            edition: None,
+            // Note: this item represents future incompatibility of all unstable functions in the
+            //       standard library, and thus should never be removed or changed to an error.
+        },
         ]);
 
     // Register renamed and removed lints

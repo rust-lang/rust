@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         .unwrap().insert(import_def_id);
         }
 
-        self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
+        self.tcx.check_stability(pick.item.def_id, Some(call_expr.id), span);
 
         let result = self.confirm_method(span,
                                          self_expr,
@@ -371,7 +371,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         let def = pick.item.def();
-        self.tcx.check_stability(def.def_id(), expr_id, span);
+        self.tcx.check_stability(def.def_id(), Some(expr_id), span);
 
         Ok(def)
     }

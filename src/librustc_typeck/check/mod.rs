@@ -3087,7 +3087,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             self.apply_adjustments(base, adjustments);
                             autoderef.finalize();
 
-                            self.tcx.check_stability(field.did, expr.id, expr.span);
+                            self.tcx.check_stability(field.did, Some(expr.id), expr.span);
 
                             return field_ty;
                         }
@@ -3228,7 +3228,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.tcx.check_stability(field.did, expr.id, expr.span);
+                            self.tcx.check_stability(field.did, Some(expr.id), expr.span);
                             Some(field_ty)
                         } else {
                             private_candidate = Some((base_def.did, field_ty));
@@ -3373,7 +3373,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // struct-like enums (yet...), but it's definitely not
                 // a bug to have construct one.
                 if adt_kind != ty::AdtKind::Enum {
-                    tcx.check_stability(v_field.did, expr_id, field.span);
+                    tcx.check_stability(v_field.did, Some(expr_id), field.span);
                 }
 
                 self.field_ty(field.span, v_field, substs)

@@ -530,7 +530,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let msg = format!("associated type `{}` is private", binding.item_name);
             tcx.sess.span_err(binding.span, &msg);
         }
-        tcx.check_stability(assoc_ty.def_id, ref_id, binding.span);
+        tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
@@ -868,7 +868,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let msg = format!("{} `{}` is private", def.kind_name(), assoc_name);
             tcx.sess.span_err(span, &msg);
         }
-        tcx.check_stability(item.def_id, ref_id, span);
+        tcx.check_stability(item.def_id, Some(ref_id), span);
 
         (ty, def)
     }
