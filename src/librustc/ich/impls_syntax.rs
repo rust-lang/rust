@@ -341,7 +341,7 @@ impl_stable_hash_for!(enum ::syntax::ast::NestedMetaItemKind {
 });
 
 impl_stable_hash_for!(struct ::syntax::ast::MetaItem {
-    name,
+    ident,
     node,
     span
 });
