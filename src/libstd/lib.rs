@@ -308,7 +308,6 @@
 #![feature(str_char)]
 #![feature(str_internals)]
 #![feature(str_utf16)]
-#![feature(termination_trait)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
@@ -325,6 +324,7 @@
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
 #![cfg_attr(stage0, feature(never_type))]
+#![cfg_attr(stage0, feature(termination_trait))]
 
 #![default_lib_allocator]
 

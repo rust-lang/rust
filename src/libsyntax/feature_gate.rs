@@ -428,8 +428,8 @@ declare_features! (
     // `foo.rs` as an alternative to `foo/mod.rs`
     (active, non_modrs_mods, "1.24.0", Some(44660), None),
 
-    // Termination trait in main (RFC 1937)
-    (active, termination_trait, "1.24.0", Some(43301), None),
+    // Termination trait in tests (RFC 1937)
+    (active, termination_trait_test, "1.24.0", Some(48854), None),
 
     // Allows use of the :lifetime macro fragment specifier
     (active, macro_lifetime_matcher, "1.24.0", Some(46895), None),
@@ -565,6 +565,8 @@ declare_features! (
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
     // allow `..=` in patterns (RFC 1192)
     (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
+    // Termination trait in main (RFC 1937)
+    (accepted, termination_trait, "1.26.0", Some(43301), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
