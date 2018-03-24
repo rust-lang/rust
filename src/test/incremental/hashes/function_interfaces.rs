@@ -22,7 +22,6 @@
 
 
 #![allow(warnings)]
-#![feature(conservative_impl_trait)]
 #![feature(intrinsics)]
 #![feature(linkage)]
 #![feature(rustc_attrs)]

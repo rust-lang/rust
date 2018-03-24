@@ -4600,7 +4600,6 @@ This error indicates that there is a mismatch between generic parameters and
 impl Trait parameters in a trait declaration versus its impl.
 
 ```compile_fail,E0643
-#![feature(universal_impl_trait)]
 trait Foo {
     fn foo(&self, _: &impl Iterator);
 }

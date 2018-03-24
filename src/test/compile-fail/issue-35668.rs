@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(conservative_impl_trait)]
-
 fn func<'a, T>(a: &'a [T]) -> impl Iterator<Item=&'a T> {
     a.iter().map(|a| a*a)
     //~^ ERROR binary operation `*` cannot be applied to type `&T`
