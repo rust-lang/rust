@@ -23,6 +23,6 @@ fn main() {
         let _d = ref_.take(); //~ ERROR `ref_` does not live long enough
         yield;
     };
-    gen.resume();
+    unsafe { gen.resume(); }
     // drops the RefCell and then the Ref, leading to use-after-free
 }

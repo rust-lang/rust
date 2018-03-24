@@ -2247,7 +2247,7 @@ let mut b = || {
     yield (); // ...is still in scope here, when the yield occurs.
     println!("{}", a);
 };
-b.resume();
+unsafe { b.resume() };
 ```
 
 At present, it is not permitted to have a yield that occurs while a
@@ -2265,7 +2265,7 @@ let mut b = || {
     yield ();
     println!("{}", a);
 };
-b.resume();
+unsafe { b.resume() };
 ```
 
 This is a very simple case, of course. In more complex cases, we may
@@ -2283,7 +2283,7 @@ let mut b = || {
     yield x; // ...when this yield occurs.
   }
 };
-b.resume();
+unsafe { b.resume() };
 ```
 
 Such cases can sometimes be resolved by iterating "by value" (or using
@@ -2298,7 +2298,7 @@ let mut b = || {
     yield x; // <-- Now yield is OK.
   }
 };
-b.resume();
+unsafe { b.resume() };
 ```
 
 If taking ownership is not an option, using indices can work too:
@@ -2314,7 +2314,7 @@ let mut b = || {
     yield x; // <-- Now yield is OK.
   }
 };
-b.resume();
+unsafe { b.resume() };
 
 // (*) -- Unfortunately, these temporaries are currently required.
 // See <https://github.com/rust-lang/rust/issues/43122>.
