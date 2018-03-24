@@ -1237,6 +1237,7 @@ pub struct TyParam {
     pub did: DefId,
     pub bounds: Vec<TyParamBound>,
     pub default: Option<Type>,
+    pub synthetic: Option<hir::SyntheticTyParamKind>,
 }
 
 impl Clean<TyParam> for hir::TyParam {
@@ -1246,6 +1247,7 @@ impl Clean<TyParam> for hir::TyParam {
             did: cx.tcx.hir.local_def_id(self.id),
             bounds: self.bounds.clean(cx),
             default: self.default.clean(cx),
+            synthetic: self.synthetic,
         }
     }
 }
@@ -1261,7 +1263,8 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef {
                 Some(cx.tcx.type_of(self.def_id).clean(cx))
             } else {
                 None
-            }
+            },
+            synthetic: None,
         }
     }
 }
@@ -1627,6 +1630,16 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
 pub enum GenericParam {
     Lifetime(Lifetime),
     Type(TyParam),
+}
+
+impl GenericParam {
+    pub fn is_synthetic_type_param(&self) -> bool {
+        if let GenericParam::Type(ref t) = *self {
+            t.synthetic.is_some()
+        } else {
+            false
+        }
+    }
 }
 
 impl Clean<GenericParam> for hir::GenericParam {

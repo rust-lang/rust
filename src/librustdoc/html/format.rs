@@ -148,11 +148,17 @@ impl fmt::Display for clean::GenericParam {
 
 impl fmt::Display for clean::Generics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.params.is_empty() { return Ok(()) }
+        let real_params = self.params
+            .iter()
+            .filter(|p| !p.is_synthetic_type_param())
+            .collect::<Vec<_>>();
+        if real_params.is_empty() {
+            return Ok(());
+        }
         if f.alternate() {
-            write!(f, "<{:#}>", CommaSep(&self.params))
+            write!(f, "<{:#}>", CommaSep(&real_params))
         } else {
-            write!(f, "&lt;{}&gt;", CommaSep(&self.params))
+            write!(f, "&lt;{}&gt;", CommaSep(&real_params))
         }
     }
 }
