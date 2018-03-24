@@ -391,10 +391,6 @@ declare_features! (
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109), None),
 
-    // Copy/Clone closures (RFC 2132)
-    (active, clone_closures, "1.22.0", Some(44490), None),
-    (active, copy_closures, "1.22.0", Some(44490), None),
-
     // allow `'_` placeholder lifetimes
     (active, underscore_lifetimes, "1.22.0", Some(44524), None),
 
@@ -567,6 +563,9 @@ declare_features! (
     (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
     // Termination trait in main (RFC 1937)
     (accepted, termination_trait, "1.26.0", Some(43301), None),
+    // Copy/Clone closures (RFC 2132)
+    (accepted, clone_closures, "1.26.0", Some(44490), None),
+    (accepted, copy_closures, "1.26.0", Some(44490), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1887,8 +1886,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 struct FeatureChecker {
     proc_macro: Option<Span>,
     custom_attribute: Option<Span>,
-    copy_closures: Option<Span>,
-    clone_closures: Option<Span>,
 }
 
 impl FeatureChecker {
@@ -1904,14 +1901,6 @@ impl FeatureChecker {
         if features.custom_attribute {
             self.custom_attribute = self.custom_attribute.or(Some(span));
         }
-
-        if features.copy_closures {
-            self.copy_closures = self.copy_closures.or(Some(span));
-        }
-
-        if features.clone_closures {
-            self.clone_closures = self.clone_closures.or(Some(span));
-        }
     }
 
     fn check(self, handler: &Handler) {
@@ -1920,15 +1909,6 @@ impl FeatureChecker {
                                               `#![feature(custom_attribute)] at the same time")
                 .span_note(ca_span, "`#![feature(custom_attribute)]` declared here")
                 .emit();
-
-            FatalError.raise();
-        }
-
-        if let (Some(span), None) = (self.copy_closures, self.clone_closures) {
-            handler.struct_span_err(span, "`#![feature(copy_closures)]` can only be used with \
-                                           `#![feature(clone_closures)]`")
-                  .span_note(span, "`#![feature(copy_closures)]` declared here")
-                  .emit();
 
             FatalError.raise();
         }
