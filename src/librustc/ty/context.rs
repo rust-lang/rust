@@ -1489,10 +1489,13 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
-    pub fn enter_local<F, R>(&self,
-                             arena: &'tcx DroplessArena,
-                             f: F) -> R
-        where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+    pub fn enter_local<F, R>(
+        &self,
+        arena: &'tcx DroplessArena,
+        f: F
+    ) -> R
+    where
+        F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
         let interners = CtxtInterners::new(arena);
         let tcx = TyCtxt {
@@ -1665,12 +1668,23 @@ pub mod tls {
     use rustc_data_structures::OnDrop;
     use rustc_data_structures::sync::Lrc;
 
+    /// This is the implicit state of rustc. It contains the current
+    /// TyCtxt and query. It is updated when creating a local interner or
+    /// executing a new query. Whenever there's a TyCtxt value available
+    /// you should also have access to an ImplicitCtxt through the functions
+    /// in this module.
     #[derive(Clone)]
     pub struct ImplicitCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+        /// The current TyCtxt. Initially created by `enter_global` and updated
+        /// by `enter_local` with a new local interner
         pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+
+        /// The current query job, if any. This is updated by start_job in
+        /// ty::maps::plumbing when executing a query
         pub query: Option<Lrc<maps::QueryJob<'gcx>>>,
     }
 
+    // A thread local value which stores a pointer to the current ImplicitCtxt
     thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
@@ -1684,12 +1698,17 @@ pub mod tls {
         TLV.with(|tlv| tlv.get())
     }
 
+    /// This is a callback from libsyntax as it cannot access the implicit state
+    /// in librustc otherwise
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
             write!(f, "{}", tcx.sess.codemap().span_to_string(span))
         })
     }
 
+    /// This is a callback from libsyntax as it cannot access the implicit state
+    /// in librustc otherwise. It is used to when diagnostic messages are
+    /// emitted and stores them in the current query, if there is one.
     fn track_diagnostic(diagnostic: &Diagnostic) {
         with_context(|context| {
             if let Some(ref query) = context.query {
@@ -1698,6 +1717,7 @@ pub mod tls {
         })
     }
 
+    /// Sets up the callbacks from libsyntax on the current thread
     pub fn with_thread_locals<F, R>(f: F) -> R
         where F: FnOnce() -> R
     {
@@ -1722,6 +1742,20 @@ pub mod tls {
         })
     }
 
+    /// Sets `context` as the new current ImplicitCtxt for the duration of the function `f`
+    pub fn enter_context<'a, 'gcx: 'tcx, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'gcx, 'tcx>,
+                                                     f: F) -> R
+        where F: FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        set_tlv(context as *const _ as usize, || {
+            f(&context)
+        })
+    }
+
+    /// Enters GlobalCtxt by setting up libsyntax callbacks and
+    /// creating a initial TyCtxt and ImplicitCtxt.
+    /// This happens once per rustc session and TyCtxts only exists
+    /// inside the `f` function.
     pub fn enter_global<'gcx, F, R>(gcx: &GlobalCtxt<'gcx>, f: F) -> R
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
     {
@@ -1740,15 +1774,7 @@ pub mod tls {
         })
     }
 
-    pub fn enter_context<'a, 'gcx: 'tcx, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'gcx, 'tcx>,
-                                                     f: F) -> R
-        where F: FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
-    {
-        set_tlv(context as *const _ as usize, || {
-            f(&context)
-        })
-    }
-
+    /// Allows access to the current ImplicitCtxt in a closure if one is available
     pub fn with_context_opt<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'gcx, 'tcx>>) -> R
     {
@@ -1760,6 +1786,37 @@ pub mod tls {
         }
     }
 
+    /// Allows access to the current ImplicitCtxt.
+    /// Panics if there is no ImplicitCtxt available
+    pub fn with_context<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
+    }
+
+    /// Allows access to the current ImplicitCtxt whose tcx field has the same global
+    /// interner as the tcx argument passed in. This means the closure is given an ImplicitCtxt
+    /// with the same 'gcx lifetime as the TyCtxt passed in.
+    /// This will panic if you pass it a TyCtxt which has a different global interner from
+    /// the current ImplicitCtxt's tcx field.
+    pub fn with_related_context<'a, 'gcx, 'tcx1, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx1>, f: F) -> R
+        where F: for<'b, 'tcx2> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx2>) -> R
+    {
+        with_context(|context| {
+            unsafe {
+                let gcx = tcx.gcx as *const _ as usize;
+                assert!(context.tcx.gcx as *const _ as usize == gcx);
+                let context: &ImplicitCtxt = mem::transmute(context);
+                f(context)
+            }
+        })
+    }
+
+    /// Allows access to the current ImplicitCtxt whose tcx field has the same global
+    /// interner and local interner as the tcx argument passed in. This means the closure
+    /// is given an ImplicitCtxt with the same 'tcx and 'gcx lifetimes as the TyCtxt passed in.
+    /// This will panic if you pass it a TyCtxt which has a different global interner or
+    /// a different local interner from the current ImplicitCtxt's tcx field.
     pub fn with_fully_related_context<'a, 'gcx, 'tcx, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx>, f: F) -> R
         where F: for<'b> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx>) -> R
     {
@@ -1775,31 +1832,16 @@ pub mod tls {
         })
     }
 
-    pub fn with_related_context<'a, 'gcx, 'tcx1, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx1>, f: F) -> R
-        where F: for<'b, 'tcx2> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx2>) -> R
-    {
-        with_context(|context| {
-            unsafe {
-                let gcx = tcx.gcx as *const _ as usize;
-                assert!(context.tcx.gcx as *const _ as usize == gcx);
-                let context: &ImplicitCtxt = mem::transmute(context);
-                f(context)
-            }
-        })
-    }
-
-    pub fn with_context<F, R>(f: F) -> R
-        where F: for<'a, 'gcx, 'tcx> FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
-    {
-        with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
-    }
-
+    /// Allows access to the TyCtxt in the current ImplicitCtxt.
+    /// Panics if there is no ImplicitCtxt available
     pub fn with<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
         with_context(|context| f(context.tcx))
     }
 
+    /// Allows access to the TyCtxt in the current ImplicitCtxt.
+    /// The closure is passed None if there is no ImplicitCtxt available
     pub fn with_opt<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(Option<TyCtxt<'a, 'gcx, 'tcx>>) -> R
     {

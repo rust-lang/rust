@@ -16,7 +16,7 @@ use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor};
 use errors::DiagnosticBuilder;
 use ty::{TyCtxt};
 use ty::maps::config::QueryDescription;
-use ty::maps::job::{QueryResult, StackEntry};
+use ty::maps::job::{QueryResult, QueryInfo};
 use ty::item_path;
 
 use rustc_data_structures::fx::{FxHashMap};
@@ -62,7 +62,18 @@ pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
 #[derive(Clone)]
 pub(super) struct CycleError<'tcx> {
     pub(super) span: Span,
-    pub(super) cycle: Vec<StackEntry<'tcx>>,
+    pub(super) cycle: Vec<QueryInfo<'tcx>>,
+}
+
+/// The result of `try_get_lock`
+pub(super) enum TryGetLock<'a, 'tcx: 'a, T, D: QueryDescription<'tcx> + 'a> {
+    /// The query is not yet started. Contains a guard to the map eventually used to start it.
+    NotYetStarted(LockGuard<'a, QueryMap<'tcx, D>>),
+
+    /// The query was already completed.
+    /// Returns the result of the query and its dep node index
+    /// if it succeeded or a cycle error if it failed
+    JobCompleted(Result<(T, DepNodeIndex), CycleError<'tcx>>),
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -85,7 +96,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             err.span_note(self.sess.codemap().def_span(stack[0].span),
                           &format!("the cycle begins when {}...", stack[0].query.describe(self)));
 
-            for &StackEntry { span, ref query, .. } in &stack[1..] {
+            for &QueryInfo { span, ref query, .. } in &stack[1..] {
                 err.span_note(self.sess.codemap().def_span(span),
                               &format!("...which then requires {}...", query.describe(self)));
             }
@@ -252,11 +263,14 @@ macro_rules! define_maps {
                 DepNode::new(tcx, $node(*key))
             }
 
-            fn try_get_lock(tcx: TyCtxt<'a, $tcx, 'lcx>,
-                            mut span: Span,
-                            key: &$K)
-                            -> Result<LockGuard<'a, QueryMap<$tcx, Self>>,
-                                      Result<($V, DepNodeIndex), CycleError<$tcx>>>
+            /// Either get the lock of the query map, allowing us to
+            /// start executing the query, or it returns with the result of the query.
+            /// If the query already executed and panicked, this will fatal error / silently panic
+            fn try_get_lock(
+                tcx: TyCtxt<'a, $tcx, 'lcx>,
+                mut span: Span,
+                key: &$K
+            ) -> TryGetLock<'a, $tcx, $V, Self>
             {
                 loop {
                     let lock = tcx.maps.$name.borrow_mut();
@@ -265,7 +279,8 @@ macro_rules! define_maps {
                             QueryResult::Started(ref job) => Some(job.clone()),
                             QueryResult::Complete(ref value) => {
                                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
-                                return Err(Ok(((&value.value).clone(), value.index)));
+                                let result = Ok(((&value.value).clone(), value.index));
+                                return TryGetLock::JobCompleted(result);
                             },
                             QueryResult::Poisoned => FatalError.raise(),
                         }
@@ -275,16 +290,19 @@ macro_rules! define_maps {
                     let job = if let Some(job) = job {
                         job
                     } else {
-                        return Ok(lock);
+                        return TryGetLock::NotYetStarted(lock);
                     };
                     mem::drop(lock);
 
+                    // This just matches the behavior of `try_get_with` so the span when
+                    // we await matches the span we would use when executing.
+                    // See the FIXME there.
                     if span == DUMMY_SP && stringify!($name) != "def_span" {
                         span = key.default_span(tcx);
                     }
 
                     if let Err(cycle) = job.await(tcx, span) {
-                        return Err(Err(cycle));
+                        return TryGetLock::JobCompleted(Err(cycle));
                     }
                 }
             }
@@ -306,21 +324,23 @@ macro_rules! define_maps {
                     )
                 );
 
-                macro_rules! get_lock {
+                /// Get the lock used to start the query or
+                /// return the result of the completed query
+                macro_rules! get_lock_or_return {
                     () => {{
                         match Self::try_get_lock(tcx, span, &key) {
-                            Ok(lock) => lock,
-                            Err(result) => {
+                            TryGetLock::NotYetStarted(lock) => lock,
+                            TryGetLock::JobCompleted(result) => {
                                 return result.map(|(v, index)| {
                                     tcx.dep_graph.read_index(index);
                                     v
-                                });
-                            },
+                                })
+                            }
                         }
                     }}
                 }
 
-                let mut lock = get_lock!();
+                let mut lock = get_lock_or_return!();
 
                 // FIXME(eddyb) Get more valid Span's on queries.
                 // def_span guard is necessary to prevent a recursive loop,
@@ -331,7 +351,7 @@ macro_rules! define_maps {
                     // So we drop the lock here and reacquire it
                     mem::drop(lock);
                     span = key.default_span(tcx);
-                    lock = get_lock!();
+                    lock = get_lock_or_return!();
                 }
 
                 // Fast path for when incr. comp. is off. `to_dep_node` is
@@ -385,7 +405,7 @@ macro_rules! define_maps {
                                                                         dep_node_index,
                                                                         &dep_node)
                     }
-                    lock = get_lock!();
+                    lock = get_lock_or_return!();
                 }
 
                 match Self::force_with_lock(tcx, key, span, lock, dep_node) {
@@ -421,6 +441,9 @@ macro_rules! define_maps {
                 }
             }
 
+            /// Creates a job for the query and updates the query map indicating that it started.
+            /// Then it changes ImplicitCtxt to point to the new query job while it executes.
+            /// If the query panics, this updates the query map to indicate so.
             fn start_job<F, R>(tcx: TyCtxt<'_, $tcx, 'lcx>,
                                span: Span,
                                key: $K,
@@ -431,21 +454,25 @@ macro_rules! define_maps {
             {
                 let query = Query::$name(Clone::clone(&key));
 
-                let entry = StackEntry {
+                let entry = QueryInfo {
                     span,
                     query,
                 };
 
+                // The TyCtxt stored in TLS has the same global interner lifetime
+                // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
+                // when accessing the ImplicitCtxt
                 let (r, job) = ty::tls::with_related_context(tcx, move |icx| {
-                    let job = Lrc::new(QueryJob::new(entry, true, icx.query.clone()));
+                    let job = Lrc::new(QueryJob::new(entry, icx.query.clone()));
 
+                    // Store the job in the query map and drop the lock to allow
+                    // others to wait it
                     map.map.entry(key).or_insert(QueryResult::Started(job.clone()));
-
                     mem::drop(map);
 
                     let r = {
                         let on_drop = OnDrop(|| {
-                            // Poison the query so jobs waiting on it panics
+                            // Poison the query so jobs waiting on it panic
                             tcx.maps
                             .$name
                             .borrow_mut()
@@ -456,11 +483,13 @@ macro_rules! define_maps {
                             job.signal_complete();
                         });
 
+                        // Update the ImplicitCtxt to point to our new query job
                         let icx = ty::tls::ImplicitCtxt {
                             tcx,
                             query: Some(job.clone()),
                         };
 
+                        // Use the ImplicitCtxt while we execute the query
                         let r = ty::tls::enter_context(&icx, |icx| {
                             compute(icx.tcx)
                         });
@@ -473,6 +502,7 @@ macro_rules! define_maps {
                     (r, job)
                 });
 
+                // Extract the diagnostic from the job
                 let diagnostics: Vec<_> = mem::replace(&mut *job.diagnostics.lock(), Vec::new());
 
                 Ok(((r, diagnostics), job))
@@ -590,8 +620,8 @@ macro_rules! define_maps {
                 // We may be concurrently trying both execute and force a query
                 // Ensure that only one of them runs the query
                 let lock = match Self::try_get_lock(tcx, span, &key) {
-                    Ok(lock) => lock,
-                    Err(result) => return result,
+                    TryGetLock::NotYetStarted(lock) => lock,
+                    TryGetLock::JobCompleted(result) => return result,
                 };
                 Self::force_with_lock(tcx,
                                       key,

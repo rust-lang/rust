@@ -8,65 +8,69 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(warnings)]
-
-use std::mem;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
-use rustc_data_structures::sync::{Lock, LockGuard, Lrc};
+use rustc_data_structures::sync::{Lock, Lrc};
 use syntax_pos::Span;
 use ty::tls;
 use ty::maps::Query;
 use ty::maps::plumbing::CycleError;
 use ty::context::TyCtxt;
 use errors::Diagnostic;
-use std::process;
-use std::fmt;
-use std::sync::{Arc, Mutex};
-use std::collections::HashSet;
 
-pub struct PoisonedJob;
+/// Indicates the state of a query for a given key in a query map
+pub(super) enum QueryResult<'tcx, T> {
+    /// An already executing query. The query job can be used to await for its completion
+    Started(Lrc<QueryJob<'tcx>>),
 
+    /// The query is complete and produced `T`
+    Complete(T),
+
+    /// The query panicked. Queries trying to wait on this will raise a fatal error / silently panic
+    Poisoned,
+}
+
+/// A span and a query key
 #[derive(Clone, Debug)]
-pub struct StackEntry<'tcx> {
+pub struct QueryInfo<'tcx> {
     pub span: Span,
     pub query: Query<'tcx>,
 }
 
+/// A object representing an active query job.
 pub struct QueryJob<'tcx> {
-    pub entry: StackEntry<'tcx>,
+    pub info: QueryInfo<'tcx>,
+
+    /// The parent query job which created this job and is implicitly waiting on it.
     pub parent: Option<Lrc<QueryJob<'tcx>>>,
-    pub track_diagnostics: bool,
+
+    /// Diagnostic messages which are emitted while the query executes
     pub diagnostics: Lock<Vec<Diagnostic>>,
 }
 
 impl<'tcx> QueryJob<'tcx> {
-    pub fn new(
-        entry: StackEntry<'tcx>,
-        track_diagnostics: bool,
-        parent: Option<Lrc<QueryJob<'tcx>>>,
-    ) -> Self {
+    /// Creates a new query job
+    pub fn new(info: QueryInfo<'tcx>, parent: Option<Lrc<QueryJob<'tcx>>>) -> Self {
         QueryJob {
-            track_diagnostics,
             diagnostics: Lock::new(Vec::new()),
-            entry,
+            info,
             parent,
         }
     }
 
+    /// Awaits for the query job to complete.
+    ///
+    /// For single threaded rustc there's no concurrent jobs running, so if we are waiting for any
+    /// query that means that there is a query cycle, thus this always running a cycle error.
     pub(super) fn await<'lcx>(
         &self,
         tcx: TyCtxt<'_, 'tcx, 'lcx>,
         span: Span,
     ) -> Result<(), CycleError<'tcx>> {
-        // The query is already executing, so this must be a cycle for single threaded rustc,
-        // so we find the cycle and return it
-
+        // Get the current executing query (waiter) and find the waitee amongst its parents
         let mut current_job = tls::with_related_context(tcx, |icx| icx.query.clone());
         let mut cycle = Vec::new();
 
         while let Some(job) = current_job {
-            cycle.insert(0, job.entry.clone());
+            cycle.insert(0, job.info.clone());
 
             if &*job as *const _ == self as *const _ {
                 break;
@@ -78,14 +82,9 @@ impl<'tcx> QueryJob<'tcx> {
         Err(CycleError { span, cycle })
     }
 
-    pub fn signal_complete(&self) {
-        // Signals to waiters that the query is complete.
-        // This is a no-op for single threaded rustc
-    }
-}
-
-pub(super) enum QueryResult<'tcx, T> {
-    Started(Lrc<QueryJob<'tcx>>),
-    Complete(T),
-    Poisoned,
+    /// Signals to waiters that the query is complete.
+    ///
+    /// This does nothing for single threaded rustc,
+    /// as there are no concurrent jobs which could be waiting on us
+    pub fn signal_complete(&self) {}
 }
