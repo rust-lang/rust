@@ -93,10 +93,6 @@ impl Step for Std {
             return;
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
-        println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target);
-
         if target.contains("musl") {
             let libdir = builder.sysroot_libdir(compiler, target);
             copy_musl_third_party_objects(build, target, &libdir);
@@ -106,6 +102,10 @@ impl Step for Std {
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
+        println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
+                &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),
@@ -360,13 +360,14 @@ impl Step for Test {
             return;
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
-        println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target);
         let out_dir = build.stage_out(compiler, Mode::Libtest);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(build, &compiler, target, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
+        println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
+                &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &libtest_stamp(build, compiler, target),
@@ -482,16 +483,16 @@ impl Step for Rustc {
             target: build.build,
         });
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
-        println!("Building stage{} compiler artifacts ({} -> {})",
-                 compiler.stage, &compiler.host, target);
-
         let stage_out = builder.stage_out(compiler, Mode::Librustc);
         build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
         build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         rustc_cargo(build, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
+        println!("Building stage{} compiler artifacts ({} -> {})",
+                 compiler.stage, &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target),
@@ -634,8 +635,6 @@ impl Step for CodegenBackend {
             .arg(build.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
-
         match &*self.backend {
             "llvm" | "emscripten" => {
                 // Build LLVM for our target. This will implicitly build the
@@ -685,6 +684,8 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = build.cargo_out(compiler, Mode::Librustc, target)
             .join(".tmp.stamp");
+
+        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
         let files = run_cargo(build,
                               cargo.arg("--features").arg(features),
                               &tmp_stamp,
