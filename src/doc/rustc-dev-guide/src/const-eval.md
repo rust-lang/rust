@@ -11,7 +11,8 @@ Prominent examples are
 * Array length
     * needs to be known to reserve stack or heap space
 * Enum variant discriminants
-    * needs to be known to prevent two variants from having the same discriminant
+    * needs to be known to prevent two variants from having the same
+      discriminant
 * Patterns
     * need to be known to check for overlapping patterns
 
