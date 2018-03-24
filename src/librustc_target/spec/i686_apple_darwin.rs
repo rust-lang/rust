@@ -16,6 +16,7 @@ pub fn target() -> TargetResult {
     base.max_atomic_width = Some(64);
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
     base.stack_probes = true;
+    base.eliminate_frame_pointer = false;
 
     Ok(Target {
         llvm_target: "i686-apple-darwin".to_string(),
