@@ -2058,6 +2058,33 @@ where 'x: 'y
 ```
 "##,
 
+E0910: r##"
+This error indicates that a `#[non_exhaustive]` attribute was incorrectly placed
+on something other than a struct or enum.
+
+Examples of erroneous code:
+
+```compile_fail,E0910
+# #![feature(non_exhaustive)]
+
+#[non_exhaustive]
+trait Foo { }
+```
+"##,
+
+E0911: r##"
+This error indicates that a `#[non_exhaustive]` attribute had a value. The
+`#[non_exhaustive]` should be empty.
+
+Examples of erroneous code:
+
+```compile_fail,E0911
+# #![feature(non_exhaustive)]
+
+#[non_exhaustive(anything)]
+struct Foo;
+```
+"##,
 
 }
 
