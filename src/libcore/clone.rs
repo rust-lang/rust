@@ -63,6 +63,11 @@
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
 /// implementation of [`clone`] calls [`clone`] on each field.
 ///
+/// ## Closures
+///
+/// Closure types automatically implement `Clone` if they capture no value from the environment
+/// or if all such captured values implement `Clone` themselves.
+///
 /// ## How can I implement `Clone`?
 ///
 /// Types that are [`Copy`] should have a trivial implementation of `Clone`. More formally:

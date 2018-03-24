@@ -920,8 +920,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
         DepKind::UsedCrateSource => { force!(used_crate_source, krate!()); }
         DepKind::PostorderCnums => { force!(postorder_cnums, LOCAL_CRATE); }
-        DepKind::HasCloneClosures => { force!(has_clone_closures, krate!()); }
-        DepKind::HasCopyClosures => { force!(has_copy_closures, krate!()); }
 
         DepKind::Freevars => { force!(freevars, def_id!()); }
         DepKind::MaybeUnusedTraitImport => {
