@@ -73,8 +73,8 @@ and a bunch of other crates with the 'librustc_' prefix.
 
 Next is translation, this translates the AST (and all those side tables) into
 LLVM IR (intermediate representation). We do this by calling into the LLVM
-libraries, rather than actually writing IR directly to a file. The code for this is in
-[librustc_trans](https://github.com/rust-lang/rust/tree/master/src/librustc_trans).
+libraries, rather than actually writing IR directly to a file. The code for
+this is in [librustc_trans](https://github.com/rust-lang/rust/tree/master/src/librustc_trans).
 
 The next phase is running the LLVM backend. This runs LLVM's optimisation passes
 on the generated IR and then generates machine code. The result is object files.
@@ -117,8 +117,8 @@ I'll summarise the methods here.
 `early_callback` and `late_callback` let you call arbitrary code at different
 points - early is after command line arguments have been parsed, but before
 anything is done with them; late is pretty much the last thing before
-compilation starts, i.e., after all processing of command line arguments, etc. is
-done. Currently, you get to choose whether compilation stops or continues at
+compilation starts, i.e., after all processing of command line arguments, etc.
+is done. Currently, you get to choose whether compilation stops or continues at
 each point, but you don't get to change anything the driver has done. You can
 record some info for later, or perform other actions of your own.
 
