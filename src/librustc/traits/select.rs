@@ -2086,14 +2086,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyClosure(def_id, substs) => {
                 let trait_id = obligation.predicate.def_id();
-                let copy_closures =
-                    Some(trait_id) == self.tcx().lang_items().copy_trait() &&
-                    self.tcx().has_copy_closures(def_id.krate);
-                let clone_closures =
-                    Some(trait_id) == self.tcx().lang_items().clone_trait() &&
-                    self.tcx().has_clone_closures(def_id.krate);
-
-                if copy_closures || clone_closures {
+                let is_copy_trait = Some(trait_id) == self.tcx().lang_items().copy_trait();
+                let is_clone_trait = Some(trait_id) == self.tcx().lang_items().clone_trait();
+                if is_copy_trait || is_clone_trait {
                     Where(ty::Binder(substs.upvar_tys(def_id, self.tcx()).collect()))
                 } else {
                     Never

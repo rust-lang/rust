@@ -126,20 +126,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 &AggregateKind::Array(..) |
                 &AggregateKind::Tuple |
                 &AggregateKind::Adt(..) => {}
-                &AggregateKind::Closure(def_id, _) => {
+                &AggregateKind::Closure(def_id, _) |
+                &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult {
                         violations, unsafe_blocks
                     } = self.tcx.unsafety_check_result(def_id);
                     self.register_violations(&violations, &unsafe_blocks);
-                }
-                &AggregateKind::Generator(def_id, _, interior) => {
-                    let UnsafetyCheckResult {
-                        violations, unsafe_blocks
-                    } = self.tcx.unsafety_check_result(def_id);
-                    self.register_violations(&violations, &unsafe_blocks);
-                    if !interior.movable {
-                        self.require_unsafe("construction of immovable generator")
-                    }
                 }
             }
         }

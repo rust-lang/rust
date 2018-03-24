@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
-fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
-
-fn main() {
-    let f = to_fn_once(move|| ());
-    f();
-    f(); //~ ERROR use of moved value
+fn main() -> i32 {
+//~^ ERROR `main` has invalid return type `i32`
+//~| NOTE `main` can only return types that implement std::process::Termination
+//~| HELP consider using `()`, or a `Result`
+    0
 }

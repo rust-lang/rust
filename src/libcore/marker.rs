@@ -166,6 +166,11 @@ pub trait Unsize<T: ?Sized> {
 /// are allowed to access `x` after the assignment. Under the hood, both a copy and a move
 /// can result in bits being copied in memory, although this is sometimes optimized away.
 ///
+/// ## Closures
+///
+/// Closure types automatically implement `Copy` if they capture no value from the environment
+/// or if all such captured values implement `Copy` themselves.
+///
 /// ## How can I implement `Copy`?
 ///
 /// There are two ways to implement `Copy` on your type. The simplest is to use `derive`:

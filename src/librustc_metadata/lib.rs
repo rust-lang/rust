@@ -14,7 +14,7 @@
 #![deny(warnings)]
 
 #![feature(box_patterns)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(fs_read_write)]
 #![feature(i128_type)]
 #![feature(libc)]

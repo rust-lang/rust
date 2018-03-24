@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> impl Fn() { || {} }
-//~^ ERROR `impl Trait` in return position is experimental
+// Test for #49257:
+// emits good diagnostics for `..` pattern fragments not in the last position.
 
-fn main() {}
+#![allow(unused)]
+
+struct Point { x: u8, y: u8 }
+
+fn main() {
+    let p = Point { x: 0, y: 0 };
+    let Point { .., y } = p; //~ ERROR expected `}`, found `,`
+    //~| ERROR pattern does not mention fields `x`, `y`
+}

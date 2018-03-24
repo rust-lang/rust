@@ -20,7 +20,7 @@ fn main() {
             yield 2;
         };
 
-        match sub_generator.resume() {
+        match unsafe { sub_generator.resume() } {
             GeneratorState::Yielded(x) => {
                 yield x;
             }

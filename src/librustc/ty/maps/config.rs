@@ -610,21 +610,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::output_filenames<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::has_clone_closures<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("seeing if the crate has enabled `Clone` closures")
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::vtable_methods<'tcx> {
     fn describe(tcx: TyCtxt, key: ty::PolyTraitRef<'tcx> ) -> String {
         format!("finding all methods for trait {}", tcx.item_path_str(key.def_id()))
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::has_copy_closures<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("seeing if the crate has enabled `Copy` closures")
     }
 }
 

@@ -10,9 +10,6 @@
 
 // Check that closures do not implement `Copy` if their environment is not `Copy`.
 
-#![feature(copy_closures)]
-#![feature(clone_closures)]
-
 fn main() {
     let mut a = 5;
     let hello = || {

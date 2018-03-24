@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() -> i32 { //~ ERROR main function has wrong type [E0580]
-    0
+// compile-flags: --test
+
+fn main() {}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() -> Result<(), ()> {
+    //~^ ERROR functions used as tests must have signature fn() -> ()
+        Ok(())
+    }
 }

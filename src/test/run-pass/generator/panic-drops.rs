@@ -42,7 +42,7 @@ fn main() {
 
     assert_eq!(A.load(Ordering::SeqCst), 0);
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        foo.resume()
+        unsafe { foo.resume() }
     }));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);
@@ -57,7 +57,7 @@ fn main() {
 
     assert_eq!(A.load(Ordering::SeqCst), 1);
     let res = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-        foo.resume()
+        unsafe { foo.resume() }
     }));
     assert!(res.is_err());
     assert_eq!(A.load(Ordering::SeqCst), 1);

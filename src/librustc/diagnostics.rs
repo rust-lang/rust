@@ -1764,12 +1764,12 @@ The `main` function was incorrectly declared.
 Erroneous code example:
 
 ```compile_fail,E0580
-fn main() -> i32 { // error: main function has wrong type
-    0
+fn main(x: i32) { // error: main function has wrong type
+    println!("{}", x);
 }
 ```
 
-The `main` function prototype should never take arguments or return type.
+The `main` function prototype should never take arguments.
 Example:
 
 ```
@@ -1789,8 +1789,6 @@ allowed as function return types.
 Erroneous code example:
 
 ```compile_fail,E0562
-#![feature(conservative_impl_trait)]
-
 fn main() {
     let count_to_ten: impl Iterator<Item=usize> = 0..10;
     // error: `impl Trait` not allowed outside of function and inherent method
@@ -1804,8 +1802,6 @@ fn main() {
 Make sure `impl Trait` only appears in return-type position.
 
 ```
-#![feature(conservative_impl_trait)]
-
 fn count_to_n(n: usize) -> impl Iterator<Item=usize> {
     0..n
 }
