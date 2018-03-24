@@ -878,8 +878,9 @@ enum RibKind<'a> {
 ///
 /// A rib represents a scope names can live in. Note that these appear in many places, not just
 /// around braces. At any place where the list of accessible names (of the given namespace)
-/// changes, a new rib is put onto a stack. This may be, for example, a `let` statement (because it
-/// introduces variables), a macro, etc.
+/// changes or a new restrictions on the name accessibility are introduced, a new rib is put onto a
+/// stack. This may be, for example, a `let` statement (because it introduces variables), a macro,
+/// etc.
 ///
 /// Different [rib kinds](enum.RibKind) are transparent for different names.
 ///
@@ -935,11 +936,26 @@ enum PathResult<'a> {
 }
 
 enum ModuleKind {
-    /// Inline `mod something { ... }`.
-    Block(NodeId),
-    /// Module from another file.
+    /// An anonymous module, eg. just a block.
     ///
-    /// Also called a normal module in the following code.
+    /// ```
+    /// fn main() {
+    ///     fn f() {} // (1)
+    ///     { // This is an anonymous module
+    ///         f(); // This resolves to (2) as we are inside the block.
+    ///         fn f() {} // (2)
+    ///     }
+    ///     f(); // Resolves to (1)
+    /// }
+    /// ```
+    Block(NodeId),
+    /// Any module with a name.
+    ///
+    /// This could be:
+    ///
+    /// * A normal module ‒ either `mod from_file;` or `mod from_block { }`.
+    /// * A trait or an enum (it implicitly contains associated types, methods and variant
+    ///   constructors).
     Def(Def, Name),
 }
 
@@ -1444,8 +1460,8 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
     }
 }
 
-/// This is the interface through which the rest of the compiler asks about name resolution after
-/// the whole AST has been indexed.
+/// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
+/// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
         self.resolve_hir_path_cb(path, is_value,
