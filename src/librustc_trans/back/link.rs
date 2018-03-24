@@ -712,6 +712,7 @@ fn link_natively(sess: &Session,
         // linking executables as pie. Different versions of gcc seem to use
         // different quotes in the error message so don't check for them.
         if sess.target.target.options.linker_is_gnu &&
+           sess.linker_flavor() != LinkerFlavor::Ld &&
            (out.contains("unrecognized command line option") ||
             out.contains("unknown argument")) &&
            out.contains("-no-pie") &&
@@ -1007,8 +1008,9 @@ fn link_args(cmd: &mut Linker,
         } else {
             // recent versions of gcc can be configured to generate position
             // independent executables by default. We have to pass -no-pie to
-            // explicitly turn that off.
-            if sess.target.target.options.linker_is_gnu {
+            // explicitly turn that off. Not applicable to ld.
+            if sess.target.target.options.linker_is_gnu
+                && sess.linker_flavor() != LinkerFlavor::Ld {
                 cmd.no_position_independent_executable();
             }
         }
