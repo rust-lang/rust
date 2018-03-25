@@ -146,7 +146,7 @@ if let Some(y) = x { println!("{:?}", y) }
 
 ## Configuration
 
-Some lints can be configured in a `clippy.toml` file. It contains basic `variable = value` mapping eg.
+Some lints can be configured in a TOML file named with `clippy.toml` or `.clippy.toml`. It contains basic `variable = value` mapping eg.
 
 ```toml
 blacklisted-names = ["toto", "tata", "titi"]
