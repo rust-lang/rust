@@ -148,7 +148,7 @@ pub fn main() {
 
         for target in package.targets {
             let args = std::env::args()
-                .skip(1)
+                .skip(2)
                 .filter(|a| a != "--all" && !a.starts_with("--manifest-path="));
 
             let args = std::iter::once(format!("--manifest-path={}", manifest_path)).chain(args);
