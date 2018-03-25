@@ -84,7 +84,7 @@ below in a separate section.
 
 The most basic operations you can perform in the type inferencer is
 **equality**, which forces two types `T` and `U` to be the same. The
-recommended way to add an equality constraint is using the `at`
+recommended way to add an equality constraint is to use the `at`
 method, roughly like so:
 
 ```rust

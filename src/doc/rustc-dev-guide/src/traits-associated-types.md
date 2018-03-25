@@ -20,6 +20,8 @@ that syntax is expanded during
 ["type collection"](./type-checking.html) into the explicit form,
 though that is something we may want to change in the future.)
 
+[intoiter-item]: https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html#associatedtype.Item
+
 <a name=normalize>
 
 In some cases, associated type projections can be **normalized** --
@@ -51,8 +53,8 @@ we saw above would be lowered to a program clause like so:
 
     forall<T> {
         Normalize(<Option<T> as IntoIterator>::Item -> T)
-    }    
-    
+    }
+
 (An aside: since we do not permit quantification over traits, this is
 really more like a family of predicates, one for each associated
 type.)
@@ -98,7 +100,7 @@ We now introduce the `ProjectionEq` predicate to bring those two cases
 together. The `ProjectionEq` predicate looks like so:
 
     ProjectionEq(<T as IntoIterator>::Item = U)
-    
+
 and we will see that it can be proven *either* via normalization or
 skolemization. As part of lowering an associated type declaration from
 some trait, we create two program clauses for `ProjectionEq`:
@@ -123,7 +125,7 @@ with unification. As described in the
 basically a procedure with a signature like this:
 
     Unify(A, B) = Result<(Subgoals, RegionConstraints), NoSolution>
-    
+
 In other words, we try to unify two things A and B. That procedure
 might just fail, in which case we get back `Err(NoSolution)`. This
 would happen, for example, if we tried to unify `u32` and `i32`.
