@@ -669,7 +669,7 @@ impl<T: ?Sized> *const T {
     /// `mem::size_of::<T>()` then the result of the division is rounded towards
     /// zero.
     ///
-    /// This function returns `None` if `T` is a zero-sized typed.
+    /// This function returns `None` if `T` is a zero-sized type.
     ///
     /// # Examples
     ///
@@ -719,7 +719,7 @@ impl<T: ?Sized> *const T {
     /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
-    ///   of the size of `T` and `T` must not be a Zero-Sized Type ("ZST").
+    ///   of the size of `T`.
     ///
     /// * The distance being in bounds cannot rely on "wrapping around" the address space.
     ///
@@ -740,6 +740,10 @@ impl<T: ?Sized> *const T {
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
     ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -759,12 +763,14 @@ impl<T: ?Sized> *const T {
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
     #[inline]
-    pub unsafe fn offset_from(self, other: *const T) -> isize where T: Sized {
+    pub unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
 
-        // FIXME: can this be nuw/nsw?
-        let d = isize::wrapping_sub(self as _, other as _);
+        // This is the same sequence that Clang emits for pointer subtraction.
+        // It can be neither `nsw` nor `nuw` because the input is treated as
+        // unsigned but then the output is treated as signed, so neither works.
+        let d = isize::wrapping_sub(self as _, origin as _);
         intrinsics::exact_div(d, pointee_size as _)
     }
 
@@ -775,9 +781,13 @@ impl<T: ?Sized> *const T {
     /// `mem::size_of::<T>()` then the result of the division is rounded towards
     /// zero.
     ///
+    /// Though this method is safe for any two pointers, note that its result
+    /// will be mostly useless if the two pointers aren't into the same allocated
+    /// object, for example if they point to two different local variables.
+    ///
     /// # Panics
     ///
-    /// This function panics if `T` is a zero-sized typed.
+    /// This function panics if `T` is a zero-sized type.
     ///
     /// # Examples
     ///
@@ -800,11 +810,11 @@ impl<T: ?Sized> *const T {
     /// ```
     #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
     #[inline]
-    pub fn wrapping_offset_from(self, other: *const T) -> isize where T: Sized {
+    pub fn wrapping_offset_from(self, origin: *const T) -> isize where T: Sized {
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
 
-        let d = isize::wrapping_sub(self as _, other as _);
+        let d = isize::wrapping_sub(self as _, origin as _);
         d.wrapping_div(pointee_size as _)
     }
 
@@ -1424,7 +1434,7 @@ impl<T: ?Sized> *mut T {
     /// `mem::size_of::<T>()` then the result of the division is rounded towards
     /// zero.
     ///
-    /// This function returns `None` if `T` is a zero-sized typed.
+    /// This function returns `None` if `T` is a zero-sized type.
     ///
     /// # Examples
     ///
@@ -1474,7 +1484,7 @@ impl<T: ?Sized> *mut T {
     /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
     ///
     /// * The distance between the pointers, in bytes, must be an exact multiple
-    ///   of the size of `T` and `T` must not be a Zero-Sized Type ("ZST").
+    ///   of the size of `T`.
     ///
     /// * The distance being in bounds cannot rely on "wrapping around" the address space.
     ///
@@ -1495,6 +1505,10 @@ impl<T: ?Sized> *mut T {
     /// difficult to satisfy. The only advantage of this method is that it
     /// enables more aggressive compiler optimizations.
     ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -1514,8 +1528,8 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
     #[inline]
-    pub unsafe fn offset_from(self, other: *const T) -> isize where T: Sized {
-        (self as *const T).offset_from(other)
+    pub unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
+        (self as *const T).offset_from(origin)
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -1525,9 +1539,13 @@ impl<T: ?Sized> *mut T {
     /// `mem::size_of::<T>()` then the result of the division is rounded towards
     /// zero.
     ///
+    /// Though this method is safe for any two pointers, note that its result
+    /// will be mostly useless if the two pointers aren't into the same allocated
+    /// object, for example if they point to two different local variables.
+    ///
     /// # Panics
     ///
-    /// This function panics if `T` is a zero-sized typed.
+    /// This function panics if `T` is a zero-sized type.
     ///
     /// # Examples
     ///
@@ -1550,8 +1568,8 @@ impl<T: ?Sized> *mut T {
     /// ```
     #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
     #[inline]
-    pub fn wrapping_offset_from(self, other: *const T) -> isize where T: Sized {
-        (self as *const T).wrapping_offset_from(other)
+    pub fn wrapping_offset_from(self, origin: *const T) -> isize where T: Sized {
+        (self as *const T).wrapping_offset_from(origin)
     }
 
     /// Computes the byte offset that needs to be applied in order to
