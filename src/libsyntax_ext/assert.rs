@@ -605,7 +605,7 @@ struct CondExpr {
     node: CondExprKind,
     /// True if `||` or `&&` are contained in this tree.
     contains_lazy: bool,
-    /// True if by-value captures are contained in this tree.
+    /// True if by-ref captures are contained in this tree.
     contains_by_ref: bool,
 }
 
