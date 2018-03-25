@@ -49,7 +49,7 @@ pub use core::time::Duration;
 /// allows measuring the duration between two instants (or comparing two
 /// instants).
 ///
-/// The size of an Instant struct may vary depending on the target operating
+/// The size of an `Instant` struct may vary depending on the target operating
 /// system.
 ///
 /// Example:
@@ -91,7 +91,7 @@ pub struct Instant(time::Instant);
 /// fixed point in time, a `SystemTime` can be converted to a human-readable time,
 /// or perhaps some other string representation.
 ///
-/// The size of a SystemTime struct may vary depending on the target operating
+/// The size of a `SystemTime` struct may vary depending on the target operating
 /// system.
 ///
 /// [`Instant`]: ../../std/time/struct.Instant.html
