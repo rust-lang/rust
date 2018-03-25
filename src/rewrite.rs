@@ -29,12 +29,12 @@ pub struct RewriteContext<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,
     pub config: &'a Config,
-    pub inside_macro: bool,
+    pub inside_macro: RefCell<bool>,
     // Force block indent style even if we are using visual indent style.
     pub use_block: RefCell<bool>,
     // When `format_if_else_cond_comment` is true, unindent the comment on top
     // of the `else` or `else if`.
-    pub is_if_else_block: bool,
+    pub is_if_else_block: RefCell<bool>,
     // When rewriting chain, veto going multi line except the last element
     pub force_one_line_chain: RefCell<bool>,
     pub snippet_provider: &'a SnippetProvider<'a>,
@@ -52,5 +52,13 @@ impl<'a> RewriteContext<'a> {
 
     pub fn budget(&self, used_width: usize) -> usize {
         self.config.max_width().checked_sub(used_width).unwrap_or(0)
+    }
+
+    pub fn inside_macro(&self) -> bool {
+        *self.inside_macro.borrow()
+    }
+
+    pub fn is_if_else_block(&self) -> bool {
+        *self.is_if_else_block.borrow()
     }
 }

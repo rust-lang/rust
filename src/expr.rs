@@ -474,7 +474,7 @@ pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
         separator: ",",
         trailing_separator: if trailing_comma {
             SeparatorTactic::Always
-        } else if context.inside_macro && !exprs.is_empty() {
+        } else if context.inside_macro() && !exprs.is_empty() {
             let ends_with_bracket = context.snippet(span).ends_with(']');
             let bracket_offset = if ends_with_bracket { 1 } else { 0 };
             let snippet = context.snippet(mk_sp(span.lo(), span.hi() - BytePos(bracket_offset)));
@@ -656,7 +656,7 @@ pub fn rewrite_block_with_visitor(
 
     let mut visitor = FmtVisitor::from_context(context);
     visitor.block_indent = shape.indent;
-    visitor.is_if_else_block = context.is_if_else_block;
+    visitor.is_if_else_block = context.is_if_else_block();
     match block.rules {
         ast::BlockCheckMode::Unsafe(..) => {
             let snippet = context.snippet(block.span);
@@ -1142,10 +1142,13 @@ impl<'a> Rewrite for ControlFlow<'a> {
             width: block_width,
             ..shape
         };
-        let mut block_context = context.clone();
-        block_context.is_if_else_block = self.else_block.is_some();
-        let block_str =
-            rewrite_block_with_visitor(&block_context, "", self.block, None, block_shape, true)?;
+        let block_str = {
+            let old_val = context.is_if_else_block.replace(self.else_block.is_some());
+            let result =
+                rewrite_block_with_visitor(context, "", self.block, None, block_shape, true);
+            context.is_if_else_block.replace(old_val);
+            result?
+        };
 
         let mut result = format!("{}{}", cond_str, block_str);
 
@@ -1456,7 +1459,7 @@ pub fn rewrite_call(
         shape,
         span,
         context.config.width_heuristics().fn_call_width,
-        if context.inside_macro {
+        if context.inside_macro() {
             if span_ends_with_comma(context, span) {
                 Some(SeparatorTactic::Always)
             } else {
@@ -1768,7 +1771,7 @@ fn rewrite_struct_lit<'a>(
         let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
 
         let ends_with_comma = span_ends_with_comma(context, span);
-        let force_no_trailing_comma = if context.inside_macro && !ends_with_comma {
+        let force_no_trailing_comma = if context.inside_macro() && !ends_with_comma {
             true
         } else {
             false
@@ -1947,7 +1950,7 @@ where
     debug!("rewrite_tuple {:?}", shape);
     if context.use_block_indent() {
         // We use the same rule as function calls for rewriting tuples.
-        let force_tactic = if context.inside_macro {
+        let force_tactic = if context.inside_macro() {
             if span_ends_with_comma(context, span) {
                 Some(SeparatorTactic::Always)
             } else {

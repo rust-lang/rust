@@ -170,7 +170,7 @@ fn rewrite_closure_expr(
 
     // When rewriting closure's body without block, we require it to fit in a single line
     // unless it is a block-like expression or we are inside macro call.
-    let veto_multiline = (!allow_multi_line(expr) && !context.inside_macro)
+    let veto_multiline = (!allow_multi_line(expr) && !context.inside_macro())
         || context.config.force_multiline_blocks();
     expr.rewrite(context, shape)
         .and_then(|rw| {
@@ -370,7 +370,7 @@ where
 
 fn is_block_closure_forced(context: &RewriteContext, expr: &ast::Expr) -> bool {
     // If we are inside macro, we do not want to add or remove block from closure body.
-    if context.inside_macro {
+    if context.inside_macro() {
         false
     } else {
         is_block_closure_forced_inner(expr)

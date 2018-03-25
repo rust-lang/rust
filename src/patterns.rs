@@ -360,10 +360,6 @@ fn rewrite_tuple_pat(
 
     // add comma if `(x,)`
     let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
-    let mut context = context.clone();
-    if let Some(&TuplePatField::Dotdot(..)) = pat_vec.last() {
-        context.inside_macro = true;
-    }
     let path_str = path_str.unwrap_or_default();
     let mut pat_ref_vec = Vec::with_capacity(pat_vec.len());
     for pat in pat_vec {

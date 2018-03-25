@@ -384,7 +384,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         result.push_str(self.ident);
         result.push_str(self.prefix);
         if !self.context.use_block_indent()
-            || (self.context.inside_macro && !items_str.contains('\n') && fits_one_line)
+            || (self.context.inside_macro() && !items_str.contains('\n') && fits_one_line)
             || (is_extendable && extend_width <= shape.width)
         {
             if self.context.config.spaces_within_parens_and_brackets() && !items_str.is_empty() {

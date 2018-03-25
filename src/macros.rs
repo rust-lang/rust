@@ -152,11 +152,22 @@ pub fn rewrite_macro(
     shape: Shape,
     position: MacroPosition,
 ) -> Option<String> {
-    let context = &mut context.clone();
-    context.inside_macro = true;
+    context.inside_macro.replace(true);
+    let result = rewrite_macro_inner(mac, extra_ident, context, shape, position);
+    context.inside_macro.replace(false);
+    result
+}
+
+pub fn rewrite_macro_inner(
+    mac: &ast::Mac,
+    extra_ident: Option<ast::Ident>,
+    context: &RewriteContext,
+    shape: Shape,
+    position: MacroPosition,
+) -> Option<String> {
     if context.config.use_try_shorthand() {
         if let Some(expr) = convert_try_mac(mac, context) {
-            context.inside_macro = false;
+            context.inside_macro.replace(false);
             return expr.rewrite(context, shape);
         }
     }
@@ -295,7 +306,7 @@ pub fn rewrite_macro(
                 // then we can rewrite this as an usual array literal.
                 // Otherwise, we must preserve the original existence of trailing comma.
                 if FORCED_BRACKET_MACROS.contains(&macro_name.as_str()) {
-                    context.inside_macro = false;
+                    context.inside_macro.replace(false);
                     trailing_comma = false;
                 }
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.

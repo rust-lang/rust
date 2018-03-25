@@ -696,9 +696,9 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             parse_session: self.parse_session,
             codemap: self.codemap,
             config: self.config,
-            inside_macro: false,
+            inside_macro: RefCell::new(false),
             use_block: RefCell::new(false),
-            is_if_else_block: false,
+            is_if_else_block: RefCell::new(false),
             force_one_line_chain: RefCell::new(false),
             snippet_provider: self.snippet_provider,
         }
