@@ -905,12 +905,12 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.0.len();
+        let (lower, upper) = self.0.size_hint();
 
         // A code point is at most 4 bytes long.
-        let min_code_points = len / 4;
+        let min_code_points = lower / 4;
 
-        (min_code_points, Some(len))
+        (min_code_points, upper)
     }
 }
 
