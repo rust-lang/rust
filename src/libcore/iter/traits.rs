@@ -903,7 +903,12 @@ impl<I, T, E> Iterator for ResultShunt<I, E>
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
+        if self.error.is_some() {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper)
+        }
     }
 }
 
