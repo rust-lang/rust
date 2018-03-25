@@ -409,16 +409,8 @@ impl<'cx, 'a: 'cx> Context<'cx, 'a> {
 
         match expr.node {
             CondExprKind::BinOp(op, left, right) => {
-                let left_by_ref = if let CondExprKind::Capture(.., mode) = left.node {
-                    mode.is_by_ref()
-                } else {
-                    false
-                };
-                let right_by_ref = if let CondExprKind::Capture(.., mode) = right.node {
-                    mode.is_by_ref()
-                } else {
-                    false
-                };
+                let left_by_ref = left.is_by_ref_capture();
+                let right_by_ref = right.is_by_ref_capture();
 
                 let with_left = Action::Value(Rc::new(move |left, is_evaluated| {
                     let action = action.clone();
@@ -661,6 +653,13 @@ impl CondExpr {
 
     fn is_capture(&self) -> bool {
         matches!(self.node, CondExprKind::Capture(..))
+    }
+
+    fn is_by_ref_capture(&self) -> bool {
+        matches!(
+            self.node,
+            CondExprKind::Capture(_, _, BindingMode::ByRef(_))
+        )
     }
 
     fn is_lazy_binop(&self) -> bool {
