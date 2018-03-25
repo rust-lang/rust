@@ -21,8 +21,6 @@ use syntax::symbol::{keywords, Symbol};
 use syntax_pos::Span;
 use syntax::tokenstream;
 
-use std::env;
-
 pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
@@ -33,8 +31,10 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
     };
 
     let sp = sp.apply_mark(cx.current_expansion.mark);
-    let e = match env::var(&*var.as_str()) {
-        Err(..) => {
+    let env_sb = cx.parse_sess().env_sandbox();
+
+    let e = match env_sb.env_get(&*var.as_str()) {
+        None => {
             let lt = cx.lifetime(sp, keywords::StaticLifetime.ident());
             cx.expr_path(cx.path_all(sp,
                                      true,
@@ -46,7 +46,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
                                                      ast::Mutability::Immutable)],
                                      Vec::new()))
         }
-        Ok(s) => {
+        Some(s) => {
             cx.expr_call_global(sp,
                                 cx.std_path(&["option", "Option", "Some"]),
                                 vec![cx.expr_str(sp, Symbol::intern(&s))])
@@ -68,6 +68,8 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
         Some(exprs) => exprs.into_iter(),
     };
 
+    let env_sb = cx.parse_sess().env_sandbox();
+
     let var = match expr_to_string(cx, exprs.next().unwrap(), "expected string literal") {
         None => return DummyResult::expr(sp),
         Some((v, _style)) => v,
@@ -87,12 +89,12 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
         return DummyResult::expr(sp);
     }
 
-    let e = match env::var(&*var.as_str()) {
-        Err(_) => {
+    let e = match env_sb.env_get(&*var.as_str()) {
+        None => {
             cx.span_err(sp, &msg.as_str());
             cx.expr_usize(sp, 0)
         }
-        Ok(s) => cx.expr_str(sp, Symbol::intern(&s)),
+        Some(s) => cx.expr_str(sp, Symbol::intern(&s)),
     };
     MacEager::expr(e)
 }
