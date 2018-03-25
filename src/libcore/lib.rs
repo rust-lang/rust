@@ -241,7 +241,10 @@ pub mod assert_helper {
     #[unstable(feature = "generic_assert_internals", issue = "44838")]
     impl<T> Debug for DebugFallback<T> {
         default fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-            f.write_str(self.alt)
+            f.write_str(match self.value {
+                Captured::Value(_) | Captured::NotCopy => self.alt,
+                Captured::Unevaluated => "(unevaluated)",
+            })
         }
     }
 

@@ -65,6 +65,15 @@ fn capture() {
 
 #[cfg(not(stage0))]
 #[test]
+#[should_panic(expected="(Foo) != (Foo) && (unevaluated) == (unevaluated)")]
+fn debug_unevaluated() {
+    #[derive(PartialEq)]
+    struct Foo;
+    assert!(Foo != Foo && Foo == Foo);
+}
+
+#[cfg(not(stage0))]
+#[test]
 #[should_panic(expected=r#"assertion failed: "☃\n" == "☀\n""#)]
 fn escape_expr() {
     assert!("☃\n" == "☀\n");
