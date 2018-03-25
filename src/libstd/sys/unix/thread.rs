@@ -223,8 +223,8 @@ pub mod guard {
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
     use libc;
-    use libc::{mmap, munmap};
-    use libc::{PROT_NONE, MAP_PRIVATE, MAP_ANON, MAP_FAILED, MAP_FIXED};
+    use libc::mmap;
+    use libc::{PROT_NONE, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANON, MAP_FAILED, MAP_FIXED};
     use ops::Range;
     use sys::os;
 
@@ -347,9 +347,19 @@ pub mod guard {
     pub unsafe fn deinit() {
         if !cfg!(target_os = "linux") {
             if let Some(stackaddr) = get_stack_start_aligned() {
-                // Undo the guard page mapping.
-                if munmap(stackaddr, PAGE_SIZE) != 0 {
-                    panic!("unable to deallocate the guard page");
+                // Remove the protection on the guard page.
+                // FIXME: we cannot unmap the page, because when we mmap()
+                // above it may be already mapped by the OS, which we can't
+                // detect from mmap()'s return value. If we unmap this page,
+                // it will lead to failure growing stack size on platforms like
+                // macOS. Instead, just restore the page to a writable state.
+                // This ain't Linux, so we probably don't need to care about
+                // execstack.
+                let result = mmap(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                                  MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+
+                if result != stackaddr || result == MAP_FAILED {
+                    panic!("unable to reset the guard page");
                 }
             }
         }
