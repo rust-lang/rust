@@ -207,7 +207,9 @@ pub enum Ordering {
     Acquire,
     /// Has the effects of both [`Acquire`] and [`Release`] together.
     ///
-    /// If you only are concerned about a load or a store, consider using one of those instead.
+    /// This ordering is only applicable for operations that combine both loads and stores.
+    ///
+    /// For loads it uses [`Acquire`] ordering. For stores it uses the [`Release`] ordering.
     ///
     /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
     /// [`Release`]: http://llvm.org/docs/Atomics.html#release
