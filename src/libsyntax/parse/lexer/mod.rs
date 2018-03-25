@@ -1787,6 +1787,7 @@ mod tests {
     use diagnostics::plugin::ErrorMap;
     use rustc_data_structures::sync::Lock;
     use with_globals;
+    use env_sandbox::EnvSandbox;
     fn mk_sess(cm: Lrc<CodeMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(cm.clone()),
@@ -1802,6 +1803,7 @@ mod tests {
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             non_modrs_mods: Lock::new(vec![]),
+            env_sandbox: Lrc::new(EnvSandbox::default()),
         }
     }
 

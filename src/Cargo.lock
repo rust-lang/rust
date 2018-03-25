@@ -2488,6 +2488,7 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_sandbox 0.0.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
