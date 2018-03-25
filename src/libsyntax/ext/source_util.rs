@@ -21,7 +21,6 @@ use symbol::Symbol;
 use tokenstream;
 use util::small_vector::SmallVector;
 
-use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use rustc_data_structures::sync::Lrc;
@@ -99,7 +98,18 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
         None => return DummyResult::expr(sp),
     };
     // The file will be added to the code map by the parser
-    let path = res_rel_file(cx, sp, file);
+    let path = res_rel_file(cx, sp, file.clone());
+    let env_sb = cx.parse_sess().env_sandbox();
+    let path = match env_sb.path_lookup(&path) {
+        Ok(path) => path,
+        Err(e) => {
+            cx.span_err(sp,
+                &format!("couldn't read {}: {}",
+                        file,
+                        e));
+            return DummyResult::expr(sp);
+        }
+    };
     let directory_ownership = DirectoryOwnership::Owned { relative: None };
     let p = parse::new_sub_parser_from_file(cx.parse_sess(), &path, directory_ownership, None, sp);
 
@@ -136,9 +146,10 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
+    let env_sb = cx.parse_sess().env_sandbox();
     let file = res_rel_file(cx, sp, file);
     let mut bytes = Vec::new();
-    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
+    match env_sb.path_open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
         Ok(..) => {}
         Err(e) => {
             cx.span_err(sp,
@@ -171,9 +182,10 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
+    let env_sb = cx.parse_sess().env_sandbox();
     let file = res_rel_file(cx, sp, file);
     let mut bytes = Vec::new();
-    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
+    match env_sb.path_open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
         Err(e) => {
             cx.span_err(sp,
                         &format!("couldn't read {}: {}", file.display(), e));
