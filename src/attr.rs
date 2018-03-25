@@ -183,6 +183,19 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
     (if mlb { "\n" } else { "" }, if mla { "\n" } else { "" })
 }
 
+fn allow_mixed_tactic_for_nested_metaitem_list(list: &[ast::NestedMetaItem]) -> bool {
+    list.iter().all(|nested_metaitem| {
+        if let ast::NestedMetaItemKind::MetaItem(ref inner_metaitem) = nested_metaitem.node {
+            match inner_metaitem.node {
+                ast::MetaItemKind::List(..) | ast::MetaItemKind::NameValue(..) => false,
+                _ => true,
+            }
+        } else {
+            true
+        }
+    })
+}
+
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
@@ -207,8 +220,18 @@ impl Rewrite for ast::MetaItem {
                     false,
                 );
                 let item_vec = items.collect::<Vec<_>>();
+                let tactic = if allow_mixed_tactic_for_nested_metaitem_list(list) {
+                    DefinitiveListTactic::Mixed
+                } else {
+                    ::lists::definitive_tactic(
+                        &item_vec,
+                        ListTactic::HorizontalVertical,
+                        ::lists::Separator::Comma,
+                        item_shape.width,
+                    )
+                };
                 let fmt = ListFormatting {
-                    tactic: DefinitiveListTactic::Mixed,
+                    tactic,
                     separator: ",",
                     trailing_separator: SeparatorTactic::Never,
                     separator_place: SeparatorPlace::Back,
