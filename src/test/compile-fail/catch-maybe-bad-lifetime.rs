@@ -17,7 +17,7 @@ pub fn main() {
         let mut i = 222;
         let x: Result<&i32, ()> = do catch {
             Err(())?;
-            Ok(&i)
+            &i
         };
         x.ok().cloned();
         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
@@ -29,7 +29,6 @@ pub fn main() {
         let _y: Result<(), ()> = do catch {
             Err(())?;
             ::std::mem::drop(x);
-            Ok(())
         };
         println!("{}", x); //~ ERROR use of moved value: `x`
     }
@@ -42,7 +41,6 @@ pub fn main() {
         let x: Result<(), ()> = do catch {
             Err(())?;
             j = &i;
-            Ok(())
         };
         i = 0; //~ ERROR cannot assign to `i` because it is borrowed
         let _ = i;

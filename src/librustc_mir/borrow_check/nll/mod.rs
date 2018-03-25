@@ -202,11 +202,11 @@ fn dump_mir_results<'a, 'gcx, 'tcx>(
     });
 
     // Also dump the inference graph constraints as a graphviz file.
-    let _: io::Result<()> = do catch {
+    let _: io::Result<()> = do_catch! {{
         let mut file =
             pretty::create_dump_file(infcx.tcx, "regioncx.dot", None, "nll", &0, source)?;
-        regioncx.dump_graphviz(&mut file)
-    };
+        regioncx.dump_graphviz(&mut file)?;
+    }};
 }
 
 fn dump_annotation<'a, 'gcx, 'tcx>(

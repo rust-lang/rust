@@ -19,7 +19,6 @@ pub fn main() {
         cfg_res = 5;
         Ok::<(), ()>(())?;
         use_val(cfg_res);
-        Ok(())
     };
     assert_eq!(cfg_res, 5); //~ ERROR use of possibly uninitialized variable
 }
