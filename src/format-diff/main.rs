@@ -261,7 +261,7 @@ fn scan_simple_git_diff() {
             Range {
                 file: "src/ir/traversal.rs".to_owned(),
                 range: [35, 43],
-            }
+            },
         ]
     );
 }

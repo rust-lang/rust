@@ -173,13 +173,7 @@ pub fn format_expr(
         },
         ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(
-                capture,
-                movability,
-                fn_decl,
-                body,
-                expr.span,
-                context,
-                shape,
+                capture, movability, fn_decl, body, expr.span, context, shape,
             )
         }
         ast::ExprKind::Try(..)

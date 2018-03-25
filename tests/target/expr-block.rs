@@ -114,19 +114,7 @@ fn function_calls() {
 
 fn macros() {
     baz!(
-        do_not,
-        add,
-        trailing,
-        commas,
-        inside,
-        of,
-        function,
-        like,
-        macros,
-        even,
-        if_they,
-        are,
-        long
+        do_not, add, trailing, commas, inside, of, function, like, macros, even, if_they, are, long
     );
 
     baz!(one_item_macro_which_is_also_loooooooooooooooooooooooooooooooooooooooooooooooong);

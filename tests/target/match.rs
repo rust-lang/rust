@@ -218,10 +218,7 @@ fn issue355() {
         xc => vec![1, 2],       // comment
         yc => vec![3; 4],       // comment
         yd => looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(
-            aaaaaaaaaa,
-            bbbbbbbbbb,
-            cccccccccc,
-            dddddddddd,
+            aaaaaaaaaa, bbbbbbbbbb, cccccccccc, dddddddddd,
         ),
     }
 }
