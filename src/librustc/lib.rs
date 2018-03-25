@@ -91,6 +91,7 @@ extern crate rustc_errors as errors;
 extern crate syntax_pos;
 extern crate jobserver;
 extern crate proc_macro;
+extern crate env_sandbox;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
