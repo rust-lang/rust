@@ -15,12 +15,13 @@ use syntax::ext::build::AstBuilder;
 use syntax::ext::quote::rt::ToTokens;
 use syntax::parse::token;
 use syntax::print::pprust;
-use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::ptr::P;
+use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax_pos::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
-use std::rc::Rc;
+
 use std::cell::RefCell;
+use std::rc::Rc;
 
 macro_rules! matches {
     ($expression: expr, $($pattern:pat)|*) => (
@@ -78,7 +79,7 @@ struct Context<'cx, 'a: 'cx> {
     sp: Span,
     expr_str: String,
     paths: Paths,
-    tmp_match_ctr: Rc<RefCell<u32>>,
+    tmp_match_ctr: RefCell<u32>,
 }
 
 struct Paths {
