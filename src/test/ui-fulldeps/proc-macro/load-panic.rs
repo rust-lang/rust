@@ -11,6 +11,10 @@
 // aux-build:derive-panic.rs
 // compile-flags:--error-format human
 
+// FIXME: The proc-macro tests should work for stage1 when #49219 is merged.
+//        See also #49352.
+// ignore-stage1
+
 #[macro_use]
 extern crate derive_panic;
 
