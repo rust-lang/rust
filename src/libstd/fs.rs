@@ -41,11 +41,11 @@ use time::SystemTime;
 /// use std::fs::File;
 /// use std::io::prelude::*;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let mut file = File::create("foo.txt")?;
-/// file.write_all(b"Hello, world!")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let mut file = File::create("foo.txt")?;
+///     file.write_all(b"Hello, world!")?;
+///     Ok(())
+/// }
 /// ```
 ///
 /// Read the contents of a file into a [`String`]:
@@ -54,13 +54,13 @@ use time::SystemTime;
 /// use std::fs::File;
 /// use std::io::prelude::*;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let mut file = File::open("foo.txt")?;
-/// let mut contents = String::new();
-/// file.read_to_string(&mut contents)?;
-/// assert_eq!(contents, "Hello, world!");
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let mut file = File::open("foo.txt")?;
+///     let mut contents = String::new();
+///     file.read_to_string(&mut contents)?;
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
 /// ```
 ///
 /// It can be more efficient to read the contents of a file with a buffered
@@ -71,14 +71,14 @@ use time::SystemTime;
 /// use std::io::BufReader;
 /// use std::io::prelude::*;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let file = File::open("foo.txt")?;
-/// let mut buf_reader = BufReader::new(file);
-/// let mut contents = String::new();
-/// buf_reader.read_to_string(&mut contents)?;
-/// assert_eq!(contents, "Hello, world!");
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let file = File::open("foo.txt")?;
+///     let mut buf_reader = BufReader::new(file);
+///     let mut contents = String::new();
+///     buf_reader.read_to_string(&mut contents)?;
+///     assert_eq!(contents, "Hello, world!");
+///     Ok(())
+/// }
 /// ```
 ///
 /// Note that, although read and write methods require a `&mut File`, because
@@ -256,10 +256,10 @@ fn initial_buffer_size(file: &File) -> usize {
 /// use std::fs;
 /// use std::net::SocketAddr;
 ///
-/// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
-/// let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
-/// # Ok(())
-/// # }
+/// fn main() -> Result<(), Box<std::error::Error + 'static>> {
+///     let foo: SocketAddr = String::from_utf8_lossy(&fs::read("address.txt")?).parse()?;
+///     Ok(())
+/// }
 /// ```
 #[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
@@ -298,10 +298,10 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 /// use std::fs;
 /// use std::net::SocketAddr;
 ///
-/// # fn foo() -> Result<(), Box<std::error::Error + 'static>> {
-/// let foo: SocketAddr = fs::read_string("address.txt")?.parse()?;
-/// # Ok(())
-/// # }
+/// fn main() -> Result<(), Box<std::error::Error + 'static>> {
+///     let foo: SocketAddr = fs::read_string("address.txt")?.parse()?;
+///     Ok(())
+/// }
 /// ```
 #[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
@@ -329,10 +329,10 @@ pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 ///
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::write("foo.txt", b"Lorem ipsum")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::write("foo.txt", b"Lorem ipsum")?;
+///     Ok(())
+/// }
 /// ```
 #[unstable(feature = "fs_read_write", issue = "46588")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
@@ -356,7 +356,7 @@ impl File {
     /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
+    /// fn main() -> std::io::Result<()> {
     /// let mut f = File::open("foo.txt")?;
     /// # Ok(())
     /// # }
@@ -380,10 +380,10 @@ impl File {
     /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
@@ -401,13 +401,13 @@ impl File {
     /// use std::fs::File;
     /// use std::io::prelude::*;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// f.write_all(b"Hello, world!")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(b"Hello, world!")?;
     ///
-    /// f.sync_all()?;
-    /// # Ok(())
-    /// # }
+    ///     f.sync_all()?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_all(&self) -> io::Result<()> {
@@ -432,13 +432,13 @@ impl File {
     /// use std::fs::File;
     /// use std::io::prelude::*;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// f.write_all(b"Hello, world!")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     f.write_all(b"Hello, world!")?;
     ///
-    /// f.sync_data()?;
-    /// # Ok(())
-    /// # }
+    ///     f.sync_data()?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_data(&self) -> io::Result<()> {
@@ -466,11 +466,11 @@ impl File {
     /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// f.set_len(10)?;
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     f.set_len(10)?;
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// Note that this method alters the content of the underlying file, even
@@ -487,11 +487,11 @@ impl File {
     /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::open("foo.txt")?;
-    /// let metadata = f.metadata()?;
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     let metadata = f.metadata()?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
@@ -509,11 +509,11 @@ impl File {
     /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let file_copy = file.try_clone()?;
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut file = File::open("foo.txt")?;
+    ///     let file_copy = file.try_clone()?;
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// Assuming there’s a file named `foo.txt` with contents `abcdef\n`, create
@@ -525,17 +525,17 @@ impl File {
     /// use std::io::SeekFrom;
     /// use std::io::prelude::*;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let mut file_copy = file.try_clone()?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut file = File::open("foo.txt")?;
+    ///     let mut file_copy = file.try_clone()?;
     ///
-    /// file.seek(SeekFrom::Start(3))?;
+    ///     file.seek(SeekFrom::Start(3))?;
     ///
-    /// let mut contents = vec![];
-    /// file_copy.read_to_end(&mut contents)?;
-    /// assert_eq!(contents, b"def\n");
-    /// # Ok(())
-    /// # }
+    ///     let mut contents = vec![];
+    ///     file_copy.read_to_end(&mut contents)?;
+    ///     assert_eq!(contents, b"def\n");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_try_clone", since = "1.9.0")]
     pub fn try_clone(&self) -> io::Result<File> {
@@ -562,16 +562,16 @@ impl File {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
-    /// use std::fs::File;
+    /// ```no_run
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs::File;
     ///
-    /// let file = File::open("foo.txt")?;
-    /// let mut perms = file.metadata()?.permissions();
-    /// perms.set_readonly(true);
-    /// file.set_permissions(perms)?;
-    /// # Ok(())
-    /// # }
+    ///     let file = File::open("foo.txt")?;
+    ///     let mut perms = file.metadata()?.permissions();
+    ///     perms.set_readonly(true);
+    ///     file.set_permissions(perms)?;
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// Note that this method alters the permissions of the underlying file,
@@ -891,15 +891,15 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
-    /// use std::fs;
+    /// ```no_run
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// println!("{:?}", metadata.file_type());
-    /// # Ok(())
-    /// # }
+    ///     println!("{:?}", metadata.file_type());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn file_type(&self) -> FileType {
@@ -910,15 +910,15 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
-    /// use std::fs;
+    /// ```no_run
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// assert!(!metadata.is_dir());
-    /// # Ok(())
-    /// # }
+    ///     assert!(!metadata.is_dir());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_dir(&self) -> bool { self.file_type().is_dir() }
@@ -927,15 +927,15 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// assert!(metadata.is_file());
-    /// # Ok(())
-    /// # }
+    ///     assert!(metadata.is_file());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_file(&self) -> bool { self.file_type().is_file() }
@@ -944,15 +944,15 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// assert_eq!(0, metadata.len());
-    /// # Ok(())
-    /// # }
+    ///     assert_eq!(0, metadata.len());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> u64 { self.0.size() }
@@ -961,15 +961,15 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// assert!(!metadata.permissions().readonly());
-    /// # Ok(())
-    /// # }
+    ///     assert!(!metadata.permissions().readonly());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn permissions(&self) -> Permissions {
@@ -988,19 +988,19 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// if let Ok(time) = metadata.modified() {
-    ///     println!("{:?}", time);
-    /// } else {
-    ///     println!("Not supported on this platform");
+    ///     if let Ok(time) = metadata.modified() {
+    ///         println!("{:?}", time);
+    ///     } else {
+    ///         println!("Not supported on this platform");
+    ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn modified(&self) -> io::Result<SystemTime> {
@@ -1023,19 +1023,19 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// if let Ok(time) = metadata.accessed() {
-    ///     println!("{:?}", time);
-    /// } else {
-    ///     println!("Not supported on this platform");
+    ///     if let Ok(time) = metadata.accessed() {
+    ///         println!("{:?}", time);
+    ///     } else {
+    ///         println!("Not supported on this platform");
+    ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn accessed(&self) -> io::Result<SystemTime> {
@@ -1054,19 +1054,19 @@ impl Metadata {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
     ///
-    /// if let Ok(time) = metadata.created() {
-    ///     println!("{:?}", time);
-    /// } else {
-    ///     println!("Not supported on this platform");
+    ///     if let Ok(time) = metadata.created() {
+    ///         println!("{:?}", time);
+    ///     } else {
+    ///         println!("Not supported on this platform");
+    ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     #[stable(feature = "fs_time", since = "1.10.0")]
     pub fn created(&self) -> io::Result<SystemTime> {
@@ -1098,16 +1098,16 @@ impl Permissions {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create("foo.txt")?;
+    ///     let metadata = f.metadata()?;
     ///
-    /// assert_eq!(false, metadata.permissions().readonly());
-    /// # Ok(())
-    /// # }
+    ///     assert_eq!(false, metadata.permissions().readonly());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn readonly(&self) -> bool { self.0.readonly() }
@@ -1123,23 +1123,23 @@ impl Permissions {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
-    /// let mut permissions = metadata.permissions();
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::create("foo.txt")?;
+    ///     let metadata = f.metadata()?;
+    ///     let mut permissions = metadata.permissions();
     ///
-    /// permissions.set_readonly(true);
+    ///     permissions.set_readonly(true);
     ///
-    /// // filesystem doesn't change
-    /// assert_eq!(false, metadata.permissions().readonly());
+    ///     // filesystem doesn't change
+    ///     assert_eq!(false, metadata.permissions().readonly());
     ///
-    /// // just this particular `permissions`.
-    /// assert_eq!(true, permissions.readonly());
-    /// # Ok(())
-    /// # }
+    ///     // just this particular `permissions`.
+    ///     assert_eq!(true, permissions.readonly());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_readonly(&mut self, readonly: bool) {
@@ -1152,16 +1152,16 @@ impl FileType {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
-    /// use std::fs;
+    /// ```no_run
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let file_type = metadata.file_type();
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let file_type = metadata.file_type();
     ///
-    /// assert_eq!(file_type.is_dir(), false);
-    /// # Ok(())
-    /// # }
+    ///     assert_eq!(file_type.is_dir(), false);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_dir(&self) -> bool { self.0.is_dir() }
@@ -1170,16 +1170,16 @@ impl FileType {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
-    /// use std::fs;
+    /// ```no_run
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs;
     ///
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let file_type = metadata.file_type();
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let file_type = metadata.file_type();
     ///
-    /// assert_eq!(file_type.is_file(), true);
-    /// # Ok(())
-    /// # }
+    ///     assert_eq!(file_type.is_file(), true);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_file(&self) -> bool { self.0.is_file() }
@@ -1199,16 +1199,16 @@ impl FileType {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # fn foo() -> std::io::Result<()> {
+    /// ```no_run
     /// use std::fs;
     ///
-    /// let metadata = fs::symlink_metadata("foo.txt")?;
-    /// let file_type = metadata.file_type();
+    /// fn main() -> std::io::Result<()> {
+    ///     let metadata = fs::symlink_metadata("foo.txt")?;
+    ///     let file_type = metadata.file_type();
     ///
-    /// assert_eq!(file_type.is_symlink(), false);
-    /// # Ok(())
-    /// # }
+    ///     assert_eq!(file_type.is_symlink(), false);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_type", since = "1.1.0")]
     pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
@@ -1245,15 +1245,16 @@ impl DirEntry {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs;
-    /// # fn foo() -> std::io::Result<()> {
-    /// for entry in fs::read_dir(".")? {
-    ///     let dir = entry?;
-    ///     println!("{:?}", dir.path());
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     for entry in fs::read_dir(".")? {
+    ///         let dir = entry?;
+    ///         println!("{:?}", dir.path());
+    ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     ///
     /// This prints output like:
@@ -1398,13 +1399,13 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::remove_file("a.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::remove_file("a.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -1435,14 +1436,14 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```rust
-/// # fn foo() -> std::io::Result<()> {
+/// ```rust,no_run
 /// use std::fs;
 ///
-/// let attr = fs::metadata("/some/file/path.txt")?;
-/// // inspect attr ...
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let attr = fs::metadata("/some/file/path.txt")?;
+///     // inspect attr ...
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
@@ -1469,14 +1470,14 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// # Examples
 ///
-/// ```rust
-/// # fn foo() -> std::io::Result<()> {
+/// ```rust,no_run
 /// use std::fs;
 ///
-/// let attr = fs::symlink_metadata("/some/file/path.txt")?;
-/// // inspect attr ...
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let attr = fs::symlink_metadata("/some/file/path.txt")?;
+///     // inspect attr ...
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "symlink_metadata", since = "1.1.0")]
 pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
@@ -1513,13 +1514,13 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::rename("a.txt", "b.txt")?; // Rename a.txt to b.txt
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::rename("a.txt", "b.txt")?; // Rename a.txt to b.txt
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> {
@@ -1564,9 +1565,10 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::copy("foo.txt", "bar.txt")?;  // Copy foo.txt to bar.txt
-/// # Ok(()) }
+/// fn main() -> std::io::Result<()> {
+///     fs::copy("foo.txt", "bar.txt")?;  // Copy foo.txt to bar.txt
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
@@ -1595,13 +1597,13 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::hard_link("a.txt", "b.txt")?; // Hard link a.txt to b.txt
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::hard_link("a.txt", "b.txt")?; // Hard link a.txt to b.txt
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
@@ -1618,13 +1620,13 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::soft_link("a.txt", "b.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::soft_link("a.txt", "b.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.1.0",
@@ -1655,13 +1657,13 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let path = fs::read_link("a.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let path = fs::read_link("a.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
@@ -1689,13 +1691,13 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let path = fs::canonicalize("../a/../foo.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let path = fs::canonicalize("../a/../foo.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "fs_canonicalize", since = "1.5.0")]
 pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
@@ -1722,13 +1724,13 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::create_dir("/some/dir")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::create_dir("/some/dir")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -1764,13 +1766,13 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::create_dir_all("/some/dir")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::create_dir_all("/some/dir")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -1797,13 +1799,13 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::remove_dir("/some/dir")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::remove_dir("/some/dir")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -1831,13 +1833,13 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::remove_dir_all("/some/dir")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::remove_dir_all("/some/dir")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
@@ -1917,15 +1919,15 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 ///
 /// # Examples
 ///
-/// ```
-/// # fn foo() -> std::io::Result<()> {
+/// ```no_run
 /// use std::fs;
 ///
-/// let mut perms = fs::metadata("foo.txt")?.permissions();
-/// perms.set_readonly(true);
-/// fs::set_permissions("foo.txt", perms)?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     let mut perms = fs::metadata("foo.txt")?.permissions();
+///     perms.set_readonly(true);
+///     fs::set_permissions("foo.txt", perms)?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "set_permissions", since = "1.1.0")]
 pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions)

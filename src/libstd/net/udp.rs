@@ -44,22 +44,22 @@ use time::Duration;
 /// ```no_run
 /// use std::net::UdpSocket;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// {
-///     let mut socket = UdpSocket::bind("127.0.0.1:34254")?;
+/// fn main() -> std::io::Result<()> {
+///     {
+///         let mut socket = UdpSocket::bind("127.0.0.1:34254")?;
 ///
-///     // Receives a single datagram message on the socket. If `buf` is too small to hold
-///     // the message, it will be cut off.
-///     let mut buf = [0; 10];
-///     let (amt, src) = socket.recv_from(&mut buf)?;
+///         // Receives a single datagram message on the socket. If `buf` is too small to hold
+///         // the message, it will be cut off.
+///         let mut buf = [0; 10];
+///         let (amt, src) = socket.recv_from(&mut buf)?;
 ///
-///     // Redeclare `buf` as slice of the received data and send reverse data back to origin.
-///     let buf = &mut buf[..amt];
-///     buf.reverse();
-///     socket.send_to(buf, &src)?;
-///     # Ok(())
-/// } // the socket is closed here
-/// # }
+///         // Redeclare `buf` as slice of the received data and send reverse data back to origin.
+///         let buf = &mut buf[..amt];
+///         buf.reverse();
+///         socket.send_to(buf, &src)?;
+///     } // the socket is closed here
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct UdpSocket(net_imp::UdpSocket);

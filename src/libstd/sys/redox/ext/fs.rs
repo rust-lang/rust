@@ -30,13 +30,14 @@ pub trait PermissionsExt {
     /// use std::fs::File;
     /// use std::os::redox::fs::PermissionsExt;
     ///
-    /// # fn run() -> std::io::Result<()> {
-    /// let f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
-    /// let permissions = metadata.permissions();
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::create("foo.txt")?;
+    ///     let metadata = f.metadata()?;
+    ///     let permissions = metadata.permissions();
     ///
-    /// println!("permissions: {}", permissions.mode());
-    /// # Ok(()) }
+    ///     println!("permissions: {}", permissions.mode());
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
@@ -49,14 +50,15 @@ pub trait PermissionsExt {
     /// use std::fs::File;
     /// use std::os::redox::fs::PermissionsExt;
     ///
-    /// # fn run() -> std::io::Result<()> {
-    /// let f = File::create("foo.txt")?;
-    /// let metadata = f.metadata()?;
-    /// let mut permissions = metadata.permissions();
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::create("foo.txt")?;
+    ///     let metadata = f.metadata()?;
+    ///     let mut permissions = metadata.permissions();
     ///
-    /// permissions.set_mode(0o644); // Read/write for owner and read for others.
-    /// assert_eq!(permissions.mode(), 0o644);
-    /// # Ok(()) }
+    ///     permissions.set_mode(0o644); // Read/write for owner and read for others.
+    ///     assert_eq!(permissions.mode(), 0o644);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);
@@ -291,13 +293,13 @@ impl FileTypeExt for fs::FileType {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::os::redox::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::symlink("a.txt", "b.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::symlink("a.txt", "b.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>

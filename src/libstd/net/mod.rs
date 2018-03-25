@@ -175,12 +175,12 @@ impl fmt::Debug for LookupHost {
 ///
 /// use std::net;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// for host in net::lookup_host("rust-lang.org")? {
-///     println!("found address: {}", host);
+/// fn main() -> std::io::Result<()> {
+///     for host in net::lookup_host("rust-lang.org")? {
+///         println!("found address: {}", host);
+///     }
+///     Ok(())
 /// }
-/// # Ok(())
-/// # }
 /// ```
 #[unstable(feature = "lookup_host", reason = "unsure about the returned \
                                               iterator and returning socket \

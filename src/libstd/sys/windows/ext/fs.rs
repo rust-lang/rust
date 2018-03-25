@@ -45,15 +45,15 @@ pub trait FileExt {
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let mut file = File::open("foo.txt")?;
-    /// let mut buffer = [0; 10];
+    /// fn main() -> io::Result<()> {
+    ///     let mut file = File::open("foo.txt")?;
+    ///     let mut buffer = [0; 10];
     ///
-    /// // Read 10 bytes, starting 72 bytes from the
-    /// // start of the file.
-    /// file.seek_read(&mut buffer[..], 72)?;
-    /// # Ok(())
-    /// # }
+    ///     // Read 10 bytes, starting 72 bytes from the
+    ///     // start of the file.
+    ///     file.seek_read(&mut buffer[..], 72)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_read(&self, buf: &mut [u8], offset: u64) -> io::Result<usize>;
@@ -79,14 +79,14 @@ pub trait FileExt {
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut buffer = File::create("foo.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut buffer = File::create("foo.txt")?;
     ///
-    /// // Write a byte string starting 72 bytes from
-    /// // the start of the file.
-    /// buffer.seek_write(b"some bytes", 72)?;
-    /// # Ok(())
-    /// # }
+    ///     // Write a byte string starting 72 bytes from
+    ///     // the start of the file.
+    ///     buffer.seek_write(b"some bytes", 72)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "file_offset", since = "1.15.0")]
     fn seek_write(&self, buf: &[u8], offset: u64) -> io::Result<usize>;
@@ -305,11 +305,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let attributes = metadata.file_attributes();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let attributes = metadata.file_attributes();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [File Attribute Constants]:
@@ -335,11 +335,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let creation_time = metadata.creation_time();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let creation_time = metadata.creation_time();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
@@ -370,11 +370,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let last_access_time = metadata.last_access_time();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let last_access_time = metadata.last_access_time();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
@@ -403,11 +403,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let last_write_time = metadata.last_write_time();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let last_write_time = metadata.last_write_time();
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// [`FILETIME`]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms724284.aspx
@@ -426,11 +426,11 @@ pub trait MetadataExt {
     /// use std::fs;
     /// use std::os::windows::prelude::*;
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let metadata = fs::metadata("foo.txt")?;
-    /// let file_size = metadata.file_size();
-    /// # Ok(())
-    /// # }
+    /// fn main() -> io::Result<()> {
+    ///     let metadata = fs::metadata("foo.txt")?;
+    ///     let file_size = metadata.file_size();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn file_size(&self) -> u64;
@@ -473,10 +473,10 @@ impl FileTypeExt for fs::FileType {
 /// ```no_run
 /// use std::os::windows::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::symlink_file("a.txt", "b.txt")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::symlink_file("a.txt", "b.txt")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
@@ -494,10 +494,10 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
 /// ```no_run
 /// use std::os::windows::fs;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// fs::symlink_dir("a", "b")?;
-/// # Ok(())
-/// # }
+/// fn main() -> std::io::Result<()> {
+///     fs::symlink_dir("a", "b")?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
