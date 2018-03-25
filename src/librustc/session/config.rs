@@ -1294,6 +1294,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "format compiler diagnostics in a way that's better suitable for UI testing"),
     embed_bitcode: bool = (false, parse_bool, [TRACKED],
           "embed LLVM bitcode in object files"),
+    strip_debuginfo_if_disabled: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "tell the linker to strip debuginfo when building without debuginfo enabled."),
 }
 
 pub fn default_lib_output() -> CrateType {
