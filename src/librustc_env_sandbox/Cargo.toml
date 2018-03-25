@@ -1,0 +1,12 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "env_sandbox"
+version = "0.0.0"
+
+[lib]
+name = "env_sandbox"
+path = "lib.rs"
+crate-type = ["dylib"]
+
+[dev-dependencies]
+tempdir = "0.3"
