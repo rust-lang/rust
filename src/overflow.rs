@@ -183,6 +183,15 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         }
     }
 
+    fn default_tactic(&self, list_items: &[ListItem]) -> DefinitiveListTactic {
+        definitive_tactic(
+            list_items,
+            ListTactic::LimitedHorizontalVertical(self.item_max_width),
+            Separator::Comma,
+            self.one_line_width,
+        )
+    }
+
     fn try_overflow_last_item(&self, list_items: &mut Vec<ListItem>) -> DefinitiveListTactic {
         // 1 = "("
         let combine_arg_with_callee = self.items.len() == 1 && self.items[0].to_expr().is_some()
@@ -258,26 +267,16 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                     .last()
                     .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
 
-                let default_tactic = || {
-                    definitive_tactic(
-                        &*list_items,
-                        ListTactic::LimitedHorizontalVertical(self.item_max_width),
-                        Separator::Comma,
-                        self.one_line_width,
-                    )
-                };
-
                 // Use horizontal layout for a function with a single argument as long as
                 // everything fits in a single line.
-                if self.items.len() == 1
-                && self.one_line_width != 0 // Vertical layout is forced.
-                && !list_items[0].has_comment()
+                // `self.one_line_width == 0` means vertical layout is forced.
+                if self.items.len() == 1 && self.one_line_width != 0 && !list_items[0].has_comment()
                     && !list_items[0].inner_as_ref().contains('\n')
                     && ::lists::total_item_width(&list_items[0]) <= self.one_line_width
                 {
                     tactic = DefinitiveListTactic::Horizontal;
                 } else {
-                    tactic = default_tactic();
+                    tactic = self.default_tactic(list_items);
 
                     if tactic == DefinitiveListTactic::Vertical {
                         if let Some((all_simple, num_args_before)) =
