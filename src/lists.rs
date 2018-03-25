@@ -101,13 +101,17 @@ impl ListItem {
                 .map_or(false, |s| s.contains('\n'))
     }
 
-    pub fn has_comment(&self) -> bool {
+    pub fn has_single_line_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
             .map_or(false, |comment| comment.trim_left().starts_with("//"))
             || self.post_comment
                 .as_ref()
                 .map_or(false, |comment| comment.trim_left().starts_with("//"))
+    }
+
+    pub fn has_comment(&self) -> bool {
+        self.pre_comment.is_some() || self.post_comment.is_some()
     }
 
     pub fn from_str<S: Into<String>>(s: S) -> ListItem {
@@ -164,7 +168,7 @@ where
     let pre_line_comments = items
         .clone()
         .into_iter()
-        .any(|item| item.as_ref().has_comment());
+        .any(|item| item.as_ref().has_single_line_comment());
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,
@@ -266,11 +270,15 @@ where
                     result.push_str(indent_str);
                     line_len = 0;
                     if formatting.ends_with_newline {
-                        if last {
-                            separate = true;
-                        } else {
-                            trailing_separator = true;
-                        }
+                        trailing_separator = true;
+                    }
+                }
+
+                if last && formatting.ends_with_newline {
+                    match formatting.trailing_separator {
+                        SeparatorTactic::Always => separate = true,
+                        SeparatorTactic::Vertical if result.contains('\n') => separate = true,
+                        _ => (),
                     }
                 }
 

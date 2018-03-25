@@ -256,6 +256,7 @@ pub fn rewrite_macro_inner(
         DelimToken::Bracket => {
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
+                let mac_shape = shape.offset_left(macro_name.len())?;
                 let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
                     ("[ ", " ]")
                 } else {
@@ -287,25 +288,35 @@ pub fn rewrite_macro_inner(
                 // If we are rewriting `vec!` macro or other special macros,
                 // then we can rewrite this as an usual array literal.
                 // Otherwise, we must preserve the original existence of trailing comma.
-                if FORCED_BRACKET_MACROS.contains(&macro_name.as_str()) {
+                let macro_name = &macro_name.as_str();
+                let mut force_trailing_comma = if trailing_comma {
+                    Some(SeparatorTactic::Always)
+                } else {
+                    Some(SeparatorTactic::Never)
+                };
+                if FORCED_BRACKET_MACROS.contains(macro_name) {
                     context.inside_macro.replace(false);
-                    trailing_comma = false;
+                    if context.use_block_indent() {
+                        force_trailing_comma = Some(SeparatorTactic::Vertical);
+                    };
                 }
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
-                let sp = mk_sp(
-                    context
-                        .snippet_provider
-                        .span_after(mac.span, original_style.opener()),
-                    mac.span.hi() - BytePos(1),
-                );
                 let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..];
-                let rewrite = rewrite_array(arg_vec, sp, context, mac_shape, trailing_comma)?;
+                let rewrite = rewrite_array(
+                    macro_name,
+                    arg_vec,
+                    mac.span,
+                    context,
+                    shape,
+                    force_trailing_comma,
+                    Some(original_style),
+                )?;
                 let comma = match position {
                     MacroPosition::Item => ";",
                     _ => "",
                 };
 
-                Some(format!("{}{}{}", macro_name, rewrite, comma))
+                Some(format!("{}{}", rewrite, comma))
             }
         }
         DelimToken::Brace => {

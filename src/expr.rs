@@ -13,6 +13,7 @@ use std::cmp::min;
 
 use config::lists::*;
 use syntax::codemap::{BytePos, CodeMap, Span};
+use syntax::parse::token::DelimToken;
 use syntax::{ast, ptr};
 
 use chains::rewrite_chain;
@@ -64,14 +65,13 @@ pub fn format_expr(
 
     let expr_rw = match expr.node {
         ast::ExprKind::Array(ref expr_vec) => rewrite_array(
+            "",
             &ptr_vec_to_ref_vec(expr_vec),
-            mk_sp(
-                context.snippet_provider.span_after(expr.span, "["),
-                expr.span.hi(),
-            ),
+            expr.span,
             context,
             shape,
-            false,
+            None,
+            None,
         ),
         ast::ExprKind::Lit(ref l) => rewrite_literal(context, l, shape),
         ast::ExprKind::Call(ref callee, ref args) => {
@@ -422,147 +422,23 @@ where
 }
 
 pub fn rewrite_array<T: Rewrite + Spanned + ToExpr>(
+    name: &str,
     exprs: &[&T],
     span: Span,
     context: &RewriteContext,
     shape: Shape,
-    trailing_comma: bool,
+    force_separator_tactic: Option<SeparatorTactic>,
+    delim_token: Option<DelimToken>,
 ) -> Option<String> {
-    let bracket_size = if context.config.spaces_within_parens_and_brackets() {
-        2 // "[ "
-    } else {
-        1 // "["
-    };
-
-    let nested_shape = match context.config.indent_style() {
-        IndentStyle::Block => shape
-            .block()
-            .block_indent(context.config.tab_spaces())
-            .with_max_width(context.config)
-            .sub_width(1)?,
-        IndentStyle::Visual => shape
-            .visual_indent(bracket_size)
-            .sub_width(bracket_size * 2)?,
-    };
-
-    let items = itemize_list(
-        context.snippet_provider,
-        exprs.iter(),
-        "]",
-        ",",
-        |item| item.span().lo(),
-        |item| item.span().hi(),
-        |item| item.rewrite(context, nested_shape),
-        span.lo(),
-        span.hi(),
-        false,
-    ).collect::<Vec<_>>();
-
-    if items.is_empty() {
-        if context.config.spaces_within_parens_and_brackets() {
-            return Some("[ ]".to_string());
-        } else {
-            return Some("[]".to_string());
-        }
-    }
-
-    let tactic = array_tactic(context, shape, nested_shape, exprs, &items, bracket_size);
-    let ends_with_newline = tactic.ends_with_newline(context.config.indent_style());
-
-    let fmt = ListFormatting {
-        tactic,
-        separator: ",",
-        trailing_separator: if trailing_comma {
-            SeparatorTactic::Always
-        } else if context.inside_macro() && !exprs.is_empty() {
-            let ends_with_bracket = context.snippet(span).ends_with(']');
-            let bracket_offset = if ends_with_bracket { 1 } else { 0 };
-            let snippet = context.snippet(mk_sp(span.lo(), span.hi() - BytePos(bracket_offset)));
-            let last_char_index = snippet.rfind(|c: char| !c.is_whitespace())?;
-            if &snippet[last_char_index..last_char_index + 1] == "," {
-                SeparatorTactic::Always
-            } else {
-                SeparatorTactic::Never
-            }
-        } else if context.config.indent_style() == IndentStyle::Visual {
-            SeparatorTactic::Never
-        } else {
-            SeparatorTactic::Vertical
-        },
-        separator_place: SeparatorPlace::Back,
-        shape: nested_shape,
-        ends_with_newline,
-        preserve_newline: false,
-        config: context.config,
-    };
-    let list_str = write_list(&items, &fmt)?;
-
-    let result = if context.config.indent_style() == IndentStyle::Visual
-        || tactic == DefinitiveListTactic::Horizontal
-    {
-        if context.config.spaces_within_parens_and_brackets() && !list_str.is_empty() {
-            format!("[ {} ]", list_str)
-        } else {
-            format!("[{}]", list_str)
-        }
-    } else {
-        format!(
-            "[{}{}{}]",
-            nested_shape.indent.to_string_with_newline(context.config),
-            list_str,
-            shape.block().indent.to_string_with_newline(context.config)
-        )
-    };
-
-    Some(result)
-}
-
-fn array_tactic<T: Rewrite + Spanned + ToExpr>(
-    context: &RewriteContext,
-    shape: Shape,
-    nested_shape: Shape,
-    exprs: &[&T],
-    items: &[ListItem],
-    bracket_size: usize,
-) -> DefinitiveListTactic {
-    let has_long_item = items
-        .iter()
-        .any(|li| li.item.as_ref().map(|s| s.len() > 10).unwrap_or(false));
-
-    match context.config.indent_style() {
-        IndentStyle::Block => {
-            let tactic = match shape.width.checked_sub(2 * bracket_size) {
-                Some(width) => {
-                    let tactic = ListTactic::LimitedHorizontalVertical(
-                        context.config.width_heuristics().array_width,
-                    );
-                    definitive_tactic(items, tactic, Separator::Comma, width)
-                }
-                None => DefinitiveListTactic::Vertical,
-            };
-            if tactic == DefinitiveListTactic::Vertical && !has_long_item
-                && is_every_expr_simple(exprs)
-            {
-                DefinitiveListTactic::Mixed
-            } else {
-                tactic
-            }
-        }
-        IndentStyle::Visual => {
-            if has_long_item || items.iter().any(ListItem::is_multiline) {
-                definitive_tactic(
-                    items,
-                    ListTactic::LimitedHorizontalVertical(
-                        context.config.width_heuristics().array_width,
-                    ),
-                    Separator::Comma,
-                    nested_shape.width,
-                )
-            } else {
-                DefinitiveListTactic::Mixed
-            }
-        }
-    }
+    overflow::rewrite_with_square_brackets(
+        context,
+        name,
+        exprs,
+        shape,
+        span,
+        force_separator_tactic,
+        delim_token,
+    )
 }
 
 fn rewrite_empty_block(
@@ -1489,7 +1365,7 @@ fn is_simple_expr(expr: &ast::Expr) -> bool {
     }
 }
 
-fn is_every_expr_simple<T: ToExpr>(lists: &[&T]) -> bool {
+pub fn is_every_expr_simple<T: ToExpr>(lists: &[&T]) -> bool {
     lists
         .iter()
         .all(|arg| arg.to_expr().map_or(false, is_simple_expr))
