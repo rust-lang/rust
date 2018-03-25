@@ -402,6 +402,72 @@ impl<T: ?Sized> Arc<T> {
         }
     }
 
+    /// Constructs an `Arc` from a raw pointer without taking ownership.
+    ///
+    /// The raw pointer must have been previously returned by a call to a
+    /// [`Arc::into_raw`][into_raw].
+    ///
+    /// This function is unsafe because improper use may lead to memory problems.
+    ///
+    /// [into_raw]: struct.Arc.html#method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_clone_raw)]
+    /// use std::sync::Arc;
+    ///
+    /// let x = Arc::new(10);
+    /// let x_ptr = Arc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     // Make a clone of the `Arc` without invalidating the pointer.
+    ///     let y = Arc::clone_raw(x_ptr);
+    ///     assert_eq!(*y, 10);
+    ///
+    ///     // Convert back to an `Arc` to prevent leak.
+    ///     Arc::from_raw(x_ptr);
+    /// }
+    /// ```
+    #[unstable(feature = "rc_clone_raw", issue = "0")]
+    pub unsafe fn clone_raw(ptr: *const T) -> Self {
+        let result = Self::from_raw(ptr);
+        // We rely on `inc_strong()` never panicking for this to be safe
+        result.inc_strong();
+        result
+    }
+
+    #[inline]
+    fn inc_strong(&self) {
+        // Using a relaxed ordering is alright here, as knowledge of the
+        // original reference prevents other threads from erroneously deleting
+        // the object.
+        //
+        // As explained in the [Boost documentation][1], Increasing the
+        // reference counter can always be done with memory_order_relaxed: New
+        // references to an object can only be formed from an existing
+        // reference, and passing an existing reference from one thread to
+        // another must already provide any required synchronization.
+        //
+        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
+        let old_size = self.inner().strong.fetch_add(1, Relaxed);
+
+        // However we need to guard against massive refcounts in case someone
+        // is `mem::forget`ing Arcs. If we don't do this the count can overflow
+        // and users will use-after free. We racily saturate to `isize::MAX` on
+        // the assumption that there aren't ~2 billion threads incrementing
+        // the reference count at once. This branch will never be taken in
+        // any realistic program.
+        //
+        // We abort because such a program is incredibly degenerate, and we
+        // don't care to support it.
+        if old_size > MAX_REFCOUNT {
+            unsafe {
+                abort();
+            }
+        }
+    }
+
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
@@ -699,34 +765,7 @@ impl<T: ?Sized> Clone for Arc<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Arc<T> {
-        // Using a relaxed ordering is alright here, as knowledge of the
-        // original reference prevents other threads from erroneously deleting
-        // the object.
-        //
-        // As explained in the [Boost documentation][1], Increasing the
-        // reference counter can always be done with memory_order_relaxed: New
-        // references to an object can only be formed from an existing
-        // reference, and passing an existing reference from one thread to
-        // another must already provide any required synchronization.
-        //
-        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        let old_size = self.inner().strong.fetch_add(1, Relaxed);
-
-        // However we need to guard against massive refcounts in case someone
-        // is `mem::forget`ing Arcs. If we don't do this the count can overflow
-        // and users will use-after free. We racily saturate to `isize::MAX` on
-        // the assumption that there aren't ~2 billion threads incrementing
-        // the reference count at once. This branch will never be taken in
-        // any realistic program.
-        //
-        // We abort because such a program is incredibly degenerate, and we
-        // don't care to support it.
-        if old_size > MAX_REFCOUNT {
-            unsafe {
-                abort();
-            }
-        }
-
+        self.inc_strong();
         Arc { ptr: self.ptr, phantom: PhantomData }
     }
 }

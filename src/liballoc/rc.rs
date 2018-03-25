@@ -433,6 +433,41 @@ impl<T: ?Sized> Rc<T> {
         }
     }
 
+    /// Constructs an `Rc` from a raw pointer without taking ownership.
+    ///
+    /// The raw pointer must have been previously returned by a call to a
+    /// [`Rc::into_raw`][into_raw].
+    ///
+    /// This function is unsafe because improper use may lead to memory problems.
+    ///
+    /// [into_raw]: struct.Rc.html#method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(rc_clone_raw)]
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(10);
+    /// let x_ptr = Rc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     // Make a clone of the `Rc` without invalidating the pointer.
+    ///     let y = Rc::clone_raw(x_ptr);
+    ///     assert_eq!(*y, 10);
+    ///
+    ///     // Convert back to an `Rc` to prevent leak.
+    ///     Rc::from_raw(x_ptr);
+    /// }
+    /// ```
+    #[unstable(feature = "rc_clone_raw", issue = "0")]
+    pub unsafe fn clone_raw(ptr: *const T) -> Self {
+        let result = Self::from_raw(ptr);
+        // We rely on `inc_strong()` never panicking for this to be safe
+        result.inc_strong();
+        result
+    }
+
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
