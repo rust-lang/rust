@@ -20,7 +20,8 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
+struct A;
+use $crate::A; // FIXME
 #[no_mangle]
 pub fn foo() {
 // CHECK: @foo() unnamed_addr #0

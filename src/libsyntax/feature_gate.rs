@@ -1412,6 +1412,59 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
+    fn check_modular_attr(&mut self, attr: &ast::Attribute) {
+        if !self.context.parse_sess.combine_tests {
+            return;
+        }
+        if let Some(name) = attr.name() {
+            let whitelist = &[
+                "feature",
+                "path",
+                "deny",
+                "allow",
+                "forbid",
+                "doc",
+                "repr",
+                "derive",
+                "automatically_derived",
+                "rustc_copy_clone_marker",
+                "structural_match",
+                "unsafe_destructor_blind_to_params",
+                "cfg",
+                "macro_use",
+                "inline",
+                "used",
+                "thread_local",
+                "macro_export",
+                "may_dangle",
+                "unwind",
+                "link",
+                "link_name",
+                "link_section",
+                "export_name",
+                "no_mangle",
+                "non_exhaustive",
+                "target_feature",
+                "prelude_import"];
+            if !whitelist.iter().any(|a| &*name.as_str() == *a) &&
+            !attr.is_sugared_doc {
+                let mut err = self.context.parse_sess.span_diagnostic.struct_span_err(
+                    attr.span,
+                    &format!("combined test has unknown attribute `{}`", name)
+                );
+                err.help("add `// no-combine` at the top of the test file");
+                err.emit();
+            }
+        } else {
+            let mut err = self.context.parse_sess.span_diagnostic.struct_span_err(
+                attr.span,
+                &format!("combined test has unnamed attribute")
+            );
+            err.help("add `// no-combine` at the top of the test file");
+            err.emit();
+        }
+    }
+
     fn visit_module_item(&mut self, item: &'a ast::Item) {
         let is_module = match item.node {
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => Some(inner),
@@ -1488,6 +1541,8 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        self.check_modular_attr(attr);
+
         if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
