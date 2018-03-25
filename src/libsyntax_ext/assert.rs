@@ -761,7 +761,7 @@ fn escape_format_string(s: &str) -> String {
 
 #[test]
 fn test_escape_format_string() {
-    assert!(escape_format_string("foo{}") == "foo{{}}");
+    assert!(escape_format_string(r"foo{}\") == r"foo{{}}\\");
 }
 
 /// Unescapes the escaped unicodes (`\u{...}`) that are printable.
