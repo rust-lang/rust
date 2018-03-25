@@ -310,7 +310,7 @@ impl<'cx, 'a: 'cx> Context<'cx, 'a> {
                 CondExpr::literal(lit.node.clone()),
                 escape_format_string(&unescape_printable_unicode(&pprust::expr_to_string(&expr))),
             ),
-            // Otherwise capture and stop recursing.
+            // Otherwise capture it and stop recursing.
             _ => self.scan_capture_expr(P(expr), BindingMode::ByValue(Mutability::Immutable)),
         }
     }
@@ -329,8 +329,8 @@ impl<'cx, 'a: 'cx> Context<'cx, 'a> {
             expr_str: pprust::expr_to_string(&expr),
             var: capture,
             decl: if mode.is_by_ref() {
-                // `#[allow(unused)] let __capture{} = Unevaluated;`
-                // Can be unused if the variable cannot be seen from any branch.
+                // Placeholder variable: `#[allow(unused)] let __capture{} = Unevaluated;`
+                // Can be unused if the variable is shadowed in all branches.
                 let allow_unused = {
                     let word = self.ecx
                         .meta_list_item_word(self.sp, Symbol::intern("unused"));
@@ -399,16 +399,23 @@ impl<'cx, 'a: 'cx> Context<'cx, 'a> {
         //
         // ```rust
         // // By-reference capture: eagerly evaluated
-        // match &expr {
-        //     __captureN => if ... { action(__captureN) }
+        // match expr0 { ref __capture0 =>
+        //     match expr1 { ref __capture1 =>
+        //         if __capture0 && __capture1 { .. }
+        //         // Both are evaluated even if `!expr0`
+        //     }
         // }
         //
         // // By-value capture: lazily evaluated
-        // if ... { action({ let tmp = expr; ... }) }
+        // if { let tmp = expr0; ...; tmp }
+        //     && { let tmp = expr1; ...; tmp } { .. }
+        // // `expr1` is evaluated only if `expr0` is true
         // ```
 
         match expr.node {
             CondExprKind::BinOp(op, left, right) => {
+                // Evaluates `left` first and then `right`.
+
                 let left_by_ref = left.is_by_ref_capture();
                 let right_by_ref = right.is_by_ref_capture();
 
@@ -475,6 +482,7 @@ impl<'cx, 'a: 'cx> Context<'cx, 'a> {
             }
             CondExprKind::Capture(expr, idx, mode) => {
                 if mode.is_by_ref() {
+                    // Shadows the placeholder variable.
                     let ident = Ident::from_str(&format!("__capture{}", idx));
                     self.single_match(
                         expr,
@@ -575,6 +583,7 @@ impl<'cx, 'a: 'cx> Context<'cx, 'a> {
         ))
     }
 
+    /// Generates `match expr { __tmpN => f(__tmpN) }`.
     fn tmp_match<F: FnOnce(P<Expr>) -> P<Expr>>(
         &self,
         expr: P<Expr>,
