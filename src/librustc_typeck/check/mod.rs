@@ -2649,7 +2649,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                 let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
+                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty), true);
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -2812,7 +2812,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expr,
             ExpectHasType(expected),
             needs);
-        self.demand_coerce(expr, ty, expected)
+        self.demand_coerce(expr, ty, expected, false)
     }
 
     fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
@@ -4112,7 +4112,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let base_t = self.structurally_resolved_type(expr.span, base_t);
                   match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
                       Some((index_ty, element_ty)) => {
-                          self.demand_coerce(idx, idx_t, index_ty);
+                          // two-phase not needed because index_ty is never mutable
+                          self.demand_coerce(idx, idx_t, index_ty, false);
                           element_ty
                       }
                       None => {

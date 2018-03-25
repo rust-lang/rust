@@ -79,9 +79,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce(&self,
                          expr: &hir::Expr,
                          checked_ty: Ty<'tcx>,
-                         expected: Ty<'tcx>)
+                         expected: Ty<'tcx>,
+                         allow_two_phase: bool)
                          -> Ty<'tcx> {
-        let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected);
+        let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected, allow_two_phase);
         if let Some(mut err) = err {
             err.emit();
         }
@@ -96,11 +97,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce_diag(&self,
                               expr: &hir::Expr,
                               checked_ty: Ty<'tcx>,
-                              expected: Ty<'tcx>)
+                              expected: Ty<'tcx>,
+                              allow_two_phase: bool)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
-        let e = match self.try_coerce(expr, checked_ty, expected) {
+        let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
             Ok(ty) => return (ty, None),
             Err(e) => e
         };
