@@ -1492,3 +1492,11 @@ LLVMRustBuildVectorReduceFMax(LLVMBuilderRef, LLVMValueRef, bool) {
   return nullptr;
 }
 #endif
+
+#if LLVM_VERSION_LT(4, 0)
+extern "C" LLVMValueRef
+LLVMBuildExactUDiv(LLVMBuilderRef B, LLVMValueRef LHS,
+                   LLVMValueRef RHS, const char *Name) {
+  return wrap(unwrap(B)->CreateExactUDiv(unwrap(LHS), unwrap(RHS), Name));
+}
+#endif
