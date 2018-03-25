@@ -1516,7 +1516,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     /// #![feature(ptr_offset_from)]
     ///
-    /// let a = [0; 5];
+    /// let mut a = [0; 5];
     /// let ptr1: *mut i32 = &mut a[1];
     /// let ptr2: *mut i32 = &mut a[3];
     /// unsafe {
@@ -1554,7 +1554,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     /// #![feature(ptr_wrapping_offset_from)]
     ///
-    /// let a = [0; 5];
+    /// let mut a = [0; 5];
     /// let ptr1: *mut i32 = &mut a[1];
     /// let ptr2: *mut i32 = &mut a[3];
     /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
