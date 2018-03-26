@@ -188,8 +188,6 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
     }
 }
 
-mod wrapping;
-
 // All these modules are technically private and only exposed for coretests:
 pub mod flt2dec;
 pub mod dec2flt;
@@ -202,6 +200,8 @@ macro_rules! doc_comment {
         $($tt)*
     };
 }
+
+mod wrapping;
 
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
@@ -3420,6 +3420,29 @@ $EndFeature, "
             #[stable(feature = "rust1", since = "1.0.0")]
             pub fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the smallest power of two greater than or equal to `n`. If
+the next power of two is greater than the type's maximum value,
+the return value is wrapped to `0`.
+
+# Examples
+
+Basic usage:
+
+```
+#![feature(wrapping_int_impl)]
+", $Feature, "
+assert_eq!(2", stringify!($SelfT), ".wrapping_next_power_of_two(), 2);
+assert_eq!(3", stringify!($SelfT), ".wrapping_next_power_of_two(), 4);
+assert_eq!(", stringify!($SelfT), "::max_value().wrapping_next_power_of_two(), 0);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn wrapping_next_power_of_two(self) -> Self {
+                self.one_less_than_next_power_of_two().wrapping_add(1)
             }
         }
 
