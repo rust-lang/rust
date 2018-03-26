@@ -28,6 +28,9 @@ use slice;
 /// as possibly some version-dependent additional information. See [`SocketAddrV4`]'s and
 /// [`SocketAddrV6`]'s respective documentation for more details.
 ///
+/// The size of a `SocketAddr` instance may vary depending on the target operating
+/// system.
+///
 /// [IP address]: ../../std/net/enum.IpAddr.html
 /// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
 /// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
@@ -61,6 +64,9 @@ pub enum SocketAddr {
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
+/// The size of a `SocketAddrV4` struct may vary depending on the target operating
+/// system.
+///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
 /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
@@ -87,6 +93,9 @@ pub struct SocketAddrV4 { inner: c::sockaddr_in }
 /// (see [IETF RFC 2553, Section 3.3] for more details).
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
+///
+/// The size of a `SocketAddrV6` struct may vary depending on the target operating
+/// system.
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
 /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html

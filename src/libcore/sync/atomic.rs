@@ -205,8 +205,11 @@ pub enum Ordering {
     /// [`Release`]: http://llvm.org/docs/Atomics.html#release
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
-    /// When coupled with a load, uses [`Acquire`] ordering, and with a store
-    /// [`Release`] ordering.
+    /// Has the effects of both [`Acquire`] and [`Release`] together.
+    ///
+    /// This ordering is only applicable for operations that combine both loads and stores.
+    ///
+    /// For loads it uses [`Acquire`] ordering. For stores it uses the [`Release`] ordering.
     ///
     /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
     /// [`Release`]: http://llvm.org/docs/Atomics.html#release

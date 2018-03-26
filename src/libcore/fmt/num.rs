@@ -63,7 +63,7 @@ trait GenericRadix {
         // characters for a base 2 number.
         let zero = T::zero();
         let is_nonnegative = x >= zero;
-        let mut buf = [0; 128];
+        let mut buf: [u8; 128] = unsafe { mem::uninitialized() };
         let mut curr = buf.len();
         let base = T::from_u8(Self::BASE);
         if is_nonnegative {

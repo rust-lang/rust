@@ -26,6 +26,9 @@ use sys_common::{AsInner, FromInner};
 /// This enum can contain either an [`Ipv4Addr`] or an [`Ipv6Addr`], see their
 /// respective documentation for more details.
 ///
+/// The size of an `IpAddr` instance may vary depending on the target operating
+/// system.
+///
 /// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
 /// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
 ///
@@ -61,6 +64,9 @@ pub enum IpAddr {
 ///
 /// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
 ///
+/// The size of an `Ipv4Addr` struct may vary depending on the target operating
+/// system.
+///
 /// [IETF RFC 791]: https://tools.ietf.org/html/rfc791
 /// [`IpAddr`]: ../../std/net/enum.IpAddr.html
 ///
@@ -92,6 +98,9 @@ pub struct Ipv4Addr {
 /// They are usually represented as eight 16-bit segments.
 ///
 /// See [`IpAddr`] for a type encompassing both IPv4 and IPv6 addresses.
+///
+/// The size of an `Ipv6Addr` struct may vary depending on the target operating
+/// system.
 ///
 /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
 /// [`IpAddr`]: ../../std/net/enum.IpAddr.html
