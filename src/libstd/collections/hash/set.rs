@@ -337,7 +337,9 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
+    pub fn difference<'a, U: BuildHasher>(&'a self,
+                                          other: &'a HashSet<T, U>)
+                                          -> Difference<'a, T, U> {
         Difference {
             iter: self.iter(),
             other,
@@ -391,7 +393,9 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
+    pub fn intersection<'a, U: BuildHasher>(&'a self,
+                                            other: &'a HashSet<T, U>)
+                                            -> Intersection<'a, T, U> {
         Intersection {
             iter: self.iter(),
             other,
@@ -565,7 +569,7 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_disjoint(&self, other: &HashSet<T, S>) -> bool {
+    pub fn is_disjoint<U: BuildHasher>(&self, other: &HashSet<T, U>) -> bool {
         self.iter().all(|v| !other.contains(v))
     }
 
@@ -587,7 +591,7 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_subset(&self, other: &HashSet<T, S>) -> bool {
+    pub fn is_subset<U: BuildHasher>(&self, other: &HashSet<T, U>) -> bool {
         self.iter().all(|v| other.contains(v))
     }
 
@@ -613,7 +617,7 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_superset(&self, other: &HashSet<T, S>) -> bool {
+    pub fn is_superset<U: BuildHasher>(&self, other: &HashSet<T, U>) -> bool {
         other.is_subset(self)
     }
 
@@ -1375,6 +1379,23 @@ fn assert_covariance() {
 mod test_set {
     use super::HashSet;
     use super::super::map::RandomState;
+    use hash::BuildHasher;
+
+    struct AltRandomState(RandomState);
+
+    impl AltRandomState {
+        fn new() -> AltRandomState {
+            AltRandomState(RandomState::new())
+        }
+    }
+
+    impl BuildHasher for AltRandomState {
+        type Hasher = <RandomState as BuildHasher>::Hasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            self.0.build_hasher()
+        }
+    }
 
     #[test]
     fn test_zero_capacities() {
@@ -1410,8 +1431,8 @@ mod test_set {
 
     #[test]
     fn test_disjoint() {
-        let mut xs = HashSet::new();
-        let mut ys = HashSet::new();
+        let mut xs = HashSet::with_hasher(RandomState::new());
+        let mut ys = HashSet::with_hasher(AltRandomState::new());
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
         assert!(xs.insert(5));
@@ -1432,13 +1453,13 @@ mod test_set {
 
     #[test]
     fn test_subset_and_superset() {
-        let mut a = HashSet::new();
+        let mut a = HashSet::with_hasher(RandomState::new());
         assert!(a.insert(0));
         assert!(a.insert(5));
         assert!(a.insert(11));
         assert!(a.insert(7));
 
-        let mut b = HashSet::new();
+        let mut b = HashSet::with_hasher(AltRandomState::new());
         assert!(b.insert(0));
         assert!(b.insert(7));
         assert!(b.insert(19));
@@ -1474,8 +1495,8 @@ mod test_set {
 
     #[test]
     fn test_intersection() {
-        let mut a = HashSet::new();
-        let mut b = HashSet::new();
+        let mut a = HashSet::with_hasher(RandomState::new());
+        let mut b = HashSet::with_hasher(AltRandomState::new());
 
         assert!(a.insert(11));
         assert!(a.insert(1));
@@ -1504,8 +1525,8 @@ mod test_set {
 
     #[test]
     fn test_difference() {
-        let mut a = HashSet::new();
-        let mut b = HashSet::new();
+        let mut a = HashSet::with_hasher(RandomState::new());
+        let mut b = HashSet::with_hasher(AltRandomState::new());
 
         assert!(a.insert(1));
         assert!(a.insert(3));
