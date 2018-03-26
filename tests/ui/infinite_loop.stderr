@@ -1,22 +1,30 @@
-error: all variables in condition are immutable. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:10:11
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
+  --> $DIR/infinite_loop.rs:10:5
    |
-10 |     while y < 10 {
-   |           ^^^^^^
+10 | /     while y < 10 {
+11 | |         println!("KO - y is immutable");
+12 | |     }
+   | |_____^
    |
    = note: `-D while-immutable-condition` implied by `-D warnings`
 
-error: all variables in condition are immutable. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:15:11
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
+  --> $DIR/infinite_loop.rs:15:5
    |
-15 |     while y < 10 && x < 3 {
-   |           ^^^^^^^^^^^^^^^
+15 | /     while y < 10 && x < 3 {
+16 | |         let mut k = 1;
+17 | |         k += 2;
+18 | |         println!("KO - x and y immutable");
+19 | |     }
+   | |_____^
 
-error: all variables in condition are immutable. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:22:11
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
+  --> $DIR/infinite_loop.rs:22:5
    |
-22 |     while !cond {
-   |           ^^^^^
+22 | /     while !cond {
+23 | |         println!("KO - cond immutable");
+24 | |     }
+   | |_____^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
   --> $DIR/infinite_loop.rs:52:5
@@ -63,5 +71,13 @@ error: Variable in the condition are not mutated in the loop body. This either l
 84 | |     }
    | |_____^
 
-error: aborting due to 8 previous errors
+error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
+   --> $DIR/infinite_loop.rs:144:9
+    |
+144 | /         while self.count < n {
+145 | |             println!("KO - {} is not mutated", self.count);
+146 | |         }
+    | |_________^
+
+error: aborting due to 9 previous errors
 

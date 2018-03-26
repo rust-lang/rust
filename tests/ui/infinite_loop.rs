@@ -124,9 +124,36 @@ fn internally_mutable() {
     }
 }
 
+struct Counter {
+    count: usize,
+}
+
+impl Counter {
+    fn inc(&mut self) {
+        self.count += 1;
+    }
+
+    fn inc_n(&mut self, n: usize) {
+        while self.count < n {
+            self.inc();
+        }
+        println!("OK - self borrowed mutably");
+    }
+
+    fn print_n(&self, n: usize) {
+        while self.count < n {
+            println!("KO - {} is not mutated", self.count);
+        }
+    }
+}
+
 fn main() {
     immutable_condition();
     unused_var();
     used_immutable();
     internally_mutable();
+
+    let mut c = Counter { count: 0 };
+    c.inc_n(5);
+    c.print_n(2);
 }
