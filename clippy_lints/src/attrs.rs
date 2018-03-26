@@ -267,7 +267,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
             return;
         }
         if attr.style == AttrStyle::Outer {
-            if !is_present_in_source(cx, attr.span) {
+            if attr.tokens.is_empty() || !is_present_in_source(cx, attr.span) {
                 return;
             }
 
