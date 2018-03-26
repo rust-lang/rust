@@ -818,11 +818,14 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_tables(ast.tables.decode((self, tcx)))
     }
 
-    pub fn item_body_nested_bodies(&self, id: DefIndex) -> ExternBodyNestedBodies {
+    pub fn item_body_nested_bodies(&self,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   id: DefIndex)
+                                   -> ExternBodyNestedBodies {
         if let Some(ref ast) = self.entry(id).ast {
-            let ast = ast.decode(self);
+            let mut ast = ast.decode(self);
             let nested_bodies: BTreeMap<_, _> = ast.nested_bodies
-                                                   .decode(self)
+                                                   .decode((self, tcx.sess))
                                                    .map(|body| (body.id(), body))
                                                    .collect();
             ExternBodyNestedBodies {
