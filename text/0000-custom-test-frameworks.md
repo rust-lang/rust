@@ -68,9 +68,79 @@ crate developers invoke various test-like steps using the framework.
 
 ## Procedural macro for a new test framework
 
-A test framework is like a whole-crate procedural
-macro that is evaluated after all other macros in the target crate have
-been evaluated. It is passed the `TokenStream` for every element in the
+A test framework is like a procedural macro that is evaluated after all other macros in the target
+crate have been evaluated. The exact mechanism is left up to the experimentation phase, however we
+have some proposals at the end of this RFC.
+
+
+A crate may only define a single framework.
+
+## Cargo integration
+
+Alternative frameworks need to integrate with cargo.
+In particular, when crate `a` uses a crate `b` which provides an
+framework, `a` needs to be able to specify when `b`'s framework
+should be used. Furthermore, cargo needs to understand that when
+`b`'s framework is used, `b`'s dependencies must also be linked.
+
+Crates which define a test framework must have a `[testing.framework]`
+key in their `Cargo.toml`. They cannot be used as regular dependencies.
+This section works like this:
+
+```rust
+[testing.framework]
+kind = "test" # or bench
+```
+
+`lib` specifies if the `--lib` mode exists for this framework by default,
+and `folders` specifies which folders the framework applies to. Both can be overridden
+by consumers.
+
+`single-target` indicates that only a single target can be run with this
+framework at once (some tools, like cargo-fuzz, run forever, and so it
+does not make sense to specify multiple targets).
+
+Crates that wish to *use* a custom test framework, do so by including a framework
+under a new `[[testing.frameworks]]` section in their
+`Cargo.toml`:
+
+```toml
+[[testing.frameworks]]
+provider = { quickcheck = "1.0" }
+```
+
+This pulls in the framework  from the "quickcheck" crate.  By default, the following
+framework is defined:
+
+```toml
+[[testing.frameworks]]
+provider = { test = "1.0" }
+```
+
+(We may define a default framework for bench in the future)
+
+Declaring a test framework will replace the existing default one. You cannot declare
+more than one test or bench framework.
+
+To invoke a particular framework, a user invokes `cargo test` or `cargo bench`. Any additional
+arguments are passed to the testing binary. By convention, the first position argument should allow
+filtering which targets (tests/benchmarks/etc.) are run.
+
+## To be designed
+
+This contains things which we should attempt to solve in the course of this experiment, for which this eRFC
+does not currently provide a concrete proposal.
+
+## Procedural macro design
+
+
+We have a bunch of concrete proposals here, but haven't yet chosen one.
+
+### main() function generation with test collector
+
+One possible design is to have a proc macro that simply generates `main()`
+
+It is passed the `TokenStream` for every element in the
 target crate that has a set of attributes the test framework has
 registered interest in. For example, to declare a test framework
 called `mytest`:
@@ -146,91 +216,7 @@ all their parent modules public). `#[test]` and `#[bench]` items will only exist
 with `--cfg test` (or bench), which is automatically set when running tests.
 
 
-A crate may only define a single framework.
-
-## Cargo integration
-
-Alternative frameworks need to integrate with cargo.
-In particular, when crate `a` uses a crate `b` which provides an
-framework, `a` needs to be able to specify when `b`'s framework
-should be used. Furthermore, cargo needs to understand that when
-`b`'s framework is used, `b`'s dependencies must also be linked.
-
-Crates which define a test framework must have a `[testing.framework]`
-key in their `Cargo.toml`. They cannot be used as regular dependencies.
-This section works like this:
-
-```rust
-[testing.framework]
-kind = "test" # or bench
-```
-
-`lib` specifies if the `--lib` mode exists for this framework by default,
-and `folders` specifies which folders the framework applies to. Both can be overridden
-by consumers.
-
-`single-target` indicates that only a single target can be run with this
-framework at once (some tools, like cargo-fuzz, run forever, and so it
-does not make sense to specify multiple targets).
-
-Crates that wish to *use* a custom test framework, do so by including a framework
-under a new `[[testing.frameworks]]` section in their
-`Cargo.toml`:
-
-```toml
-[[testing.frameworks]]
-provider = { quickcheck = "1.0" }
-```
-
-This pulls in the framework  from the "quickcheck" crate.  By default, the following
-framework is defined:
-
-```toml
-[[testing.frameworks]]
-provider = { test = "1.0" }
-```
-
-(We may define a default framework for bench in the future)
-
-Declaring a test framework will replace the existing default one. You cannot declare
-more than one test or bench framework.
-
-To invoke a particular framework, a user invokes `cargo test` or `cargo bench`. Any additional
-arguments are passed to the testing binary. By convention, the first position argument should allow
-filtering which targets (tests/benchmarks/etc.) are run.
-
-## To be designed
-
-This contains things which we should attempt to solve in the course of this experiment, for which this eRFC
-does not currently provide a concrete proposal.
-
-### Standardizing the output
-
-We should probably provide a crate with useful output formatters and stuff so that if test harnesses desire, they can
-use the same output formatting as a regular test. This also provides a centralized location to standardize things
-like json output and whatnot.
-
-@killercup is working on a proposal for this which I will try to work in.
-
-# Drawbacks
-[drawbacks]: #drawbacks
-
- - This adds more sections to `Cargo.toml`.
- - This complicates the execution path for cargo, in that it now needs
-   to know about testing frameworks.
- - Flags and command-line parameters for test and bench will now vary
-   between testing frameworks, which may confuse users as they move
-   between crates.
-
-# Rationale and alternatives
-[alternatives]: #alternatives
-
-We could stabilize `#[bench]` and extend libtest with setup/teardown and
-other requested features. This would complicate the in-tree libtest,
-introduce a barrier for community contributions, and discourage other
-forms of testing or benchmarking.
-
-## Alternative procedural macro
+### Whole-crate procedural macro
 
 An alternative proposal was to expose an extremely general whole-crate proc macro:
 
@@ -266,7 +252,7 @@ these tools usually operate at a different layer of abstraction so it might not 
 A major drawback of this proposal is that it is very general, and perhaps too powerful. We're currently using the
 more focused API in the eRFC, and may switch to this during experimentation if a pressing need crops up.
 
-## Alternative procedural macro with minimal compiler changes
+### Alternative procedural macro with minimal compiler changes
 
 The above proposal can be made even more general, minimizing the impact on the compiler.
 
@@ -288,6 +274,33 @@ pub fn harness(crate: TokenStream) -> TokenStream {
 
 The cargo functionality will basically compile the file with the right dependencies
 and `--attribute=your_crate::harness`.
+
+
+### Standardizing the output
+
+We should probably provide a crate with useful output formatters and stuff so that if test harnesses desire, they can
+use the same output formatting as a regular test. This also provides a centralized location to standardize things
+like json output and whatnot.
+
+@killercup is working on a proposal for this which I will try to work in.
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+ - This adds more sections to `Cargo.toml`.
+ - This complicates the execution path for cargo, in that it now needs
+   to know about testing frameworks.
+ - Flags and command-line parameters for test and bench will now vary
+   between testing frameworks, which may confuse users as they move
+   between crates.
+
+# Rationale and alternatives
+[alternatives]: #alternatives
+
+We could stabilize `#[bench]` and extend libtest with setup/teardown and
+other requested features. This would complicate the in-tree libtest,
+introduce a barrier for community contributions, and discourage other
+forms of testing or benchmarking.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
