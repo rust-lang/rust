@@ -11,6 +11,10 @@
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 
+// FIXME(mark-i-m) remove after i128 stablization merges
+#![allow(stable_features)]
+#![feature(i128, i128_type)]
+
 #[macro_use]
 extern crate rustc;
 extern crate rustc_typeck;
