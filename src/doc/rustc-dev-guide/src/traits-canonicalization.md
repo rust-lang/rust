@@ -129,8 +129,8 @@ for which we made a substutition S:
 
     S = [?A, '?B, ?C]
     
-We then did some work which unified some of those variables with other things. If we
-"refresh" S with the latest results, we get:
+We then did some work which unified some of those variables with other things.
+If we "refresh" S with the latest results, we get:
 
     S = [Vec<?E>, '?D, ?E]
     

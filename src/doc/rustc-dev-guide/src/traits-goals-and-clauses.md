@@ -81,13 +81,15 @@ Given that, we can define a `DomainGoal` as follows:
   - as we'll see in the section on lowering, `FromEnv(X)` implies
     `Implemented(X)` but not vice versa. This distinction is crucial
     to [implied bounds].
-- `ProjectionEq(Projection = Type)` -- the given associated type `Projection` is equal
-  to `Type`; see [the section on associated types](./traits-associated-types.html)
+- `ProjectionEq(Projection = Type)` -- the given associated type `Projection`
+  is equal to `Type`; see [the section on associated
+  types](./traits-associated-types.html)
   - in general, proving `ProjectionEq(TraitRef::Item = Type)` also
     requires proving `Implemented(TraitRef)`
-- `Normalize(Projection -> Type)` -- the given associated type `Projection` can be [normalized][n]
-  to `Type`
-  - as discussed in [the section on associated types](./traits-associated-types.html),
+- `Normalize(Projection -> Type)` -- the given associated type `Projection` can
+  be [normalized][n] to `Type`
+  - as discussed in [the section on associated
+    types](./traits-associated-types.html),
     `Normalize` implies `ProjectionEq` but not vice versa
 - `WellFormed(..)` -- these goals imply that the given item is
   *well-formed*

@@ -99,7 +99,8 @@ that the query was false and had no answers (e.g., `Box<i32>: Copy`).
 Otherwise, the `QueryResult` gives back information about the possible answer(s)
 we did find. It consists of four parts:
 
-- **Certainty:** tells you how sure we are of this answer. It can have two values:
+- **Certainty:** tells you how sure we are of this answer. It can have two
+  values:
   - `Proven` means that the result is known to be true.
     - This might be the result for trying to prove `Vec<i32>: Clone`,
       say, or `Rc<?T>: Clone`.
@@ -171,7 +172,8 @@ Therefore, the result we get back would be as follows (I'm going to
 ignore region constraints and the "value"):
 
 - Certainty: `Ambiguous` -- we're not sure yet if this holds
-- Var values: `[?T = ?T, ?U = ?U]` -- we learned nothing about the values of the variables
+- Var values: `[?T = ?T, ?U = ?U]` -- we learned nothing about the values of
+  the variables
 
 In short, the query result says that it is too soon to say much about
 whether this trait is proven. During type-checking, this is not an

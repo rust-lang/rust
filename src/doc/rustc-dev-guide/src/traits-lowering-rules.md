@@ -26,7 +26,7 @@ Each of these lowering rules is given a name, documented with a
 comment like so:
 
     // Rule Foo-Bar-Baz
-    
+
 you can also search through the `librustc_traits` crate in rustc
 to find the corresponding rules from the implementation.
 
@@ -36,7 +36,8 @@ When used in a goal position, where clauses can be mapped directly to
 [domain goals][dg], as follows:
 
 - `A0: Foo<A1..An>` maps to `Implemented(A0: Foo<A1..An>)`.
-- `A0: Foo<A1..An, Item = T>` maps to `ProjectionEq(<A0 as Foo<A1..An>>::Item = T)`
+- `A0: Foo<A1..An, Item = T>` maps to
+  `ProjectionEq(<A0 as Foo<A1..An>>::Item = T)`
 - `T: 'r` maps to `Outlives(T, 'r)`
 - `'a: 'b` maps to `Outlives('a, 'b)`
 
@@ -58,7 +59,7 @@ on the lowered where clauses, as defined here:
 - `WellFormed(WC)` -- this indicates that:
   - `Implemented(TraitRef)` becomes `WellFormed(TraitRef)`
   - `ProjectionEq(Projection = Ty)` becomes `WellFormed(Projection = Ty)`
-  
+
 *TODO*: I suspect that we want to alter the outlives relations too,
 but Chalk isn't modeling those right now.
 
@@ -106,7 +107,7 @@ The next few clauses have to do with implied bounds (see also
     forall<Self, P1..Pn> {
       FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
     }
-    
+
 This clause says that if we are assuming that the trait holds, then we can also
 assume that it's where-clauses hold. It's perhaps useful to see an example:
 
@@ -125,12 +126,14 @@ clauses** but also things that follow from them.
 The next rule is related; it defines what it means for a trait reference
 to be **well-formed**:
 
-    // Rule WellFormed-TraitRef
-    //
-    // For each where clause WC:
-    forall<Self, P1..Pn> {
-      WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
-    }
+```txt
+// Rule WellFormed-TraitRef
+//
+// For each where clause WC:
+forall<Self, P1..Pn> {
+  WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
+}
+```
 
 This `WellFormed` rule states that `T: Trait` is well-formed if (a)
 `T: Trait` is implemented and (b) all the where-clauses declared on
@@ -149,9 +152,9 @@ trait A { }
 trait B { }
 ```
 
-Here, the transitive set of implications for `T: Foo` are `T: A`, `T: Bar`, and `T: B`.
-And indeed if we were to try to prove `WellFormed(T: Foo)`, we would have to prove each
-one of those:
+Here, the transitive set of implications for `T: Foo` are `T: A`, `T: Bar`, and
+`T: B`.  And indeed if we were to try to prove `WellFormed(T: Foo)`, we would
+have to prove each one of those:
 
 - `WellFormed(T: Foo)`
   - `Implemented(T: Foo)`
@@ -212,7 +215,7 @@ but reproduced here for reference:
         Implemented(Self: Trait<P1..Pn>)
         && WC1
     }
-    
+
 The next rule covers implied bounds for the projection. In particular,
 the `Bounds` declared on the associated type must be proven to hold to
 show that the impl is well-formed, and hence we can rely on them
@@ -223,8 +226,8 @@ elsewhere.
 
 ### Lowering function and constant declarations
 
-Chalk didn't model functions and constants, but I would eventually
-like to treat them exactly like normalization. See [the section on function/constant
+Chalk didn't model functions and constants, but I would eventually like to
+treat them exactly like normalization. See [the section on function/constant
 values below](#constant-vals) for more details.
 
 ## Lowering impls
@@ -272,7 +275,7 @@ We produce the following rule:
           WC && WC1
       }
     }
-  
+
 Note that `WC` and `WC1` both encode where-clauses that the impl can
 rely on.
 
