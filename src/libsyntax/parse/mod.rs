@@ -40,7 +40,6 @@ pub mod attr;
 
 pub mod common;
 pub mod classify;
-pub mod obsolete;
 
 /// Info about a parsing session.
 pub struct ParseSess {
