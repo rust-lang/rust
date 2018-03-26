@@ -43,7 +43,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(const_fn)]
 #![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(core_intrinsics)]
@@ -70,7 +70,7 @@
 #![feature(specialization)]
 #![feature(unboxed_closures)]
 #![feature(underscore_lifetimes)]
-#![feature(universal_impl_trait)]
+#![cfg_attr(stage0, feature(universal_impl_trait))]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(catch_expr)]

@@ -75,7 +75,7 @@ This API is completely unstable and subject to change.
 #![cfg_attr(stage0, feature(advanced_slice_patterns))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(crate_visibility_modifier)]
 #![feature(from_ref)]

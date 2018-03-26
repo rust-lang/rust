@@ -10,7 +10,6 @@
 
 // aux-build:private-inferred-type.rs
 
-#![feature(conservative_impl_trait)]
 #![allow(warnings)]
 
 extern crate private_inferred_type as ext;

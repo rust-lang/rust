@@ -276,12 +276,6 @@ declare_features! (
     // Allows cfg(target_has_atomic = "...").
     (active, cfg_target_has_atomic, "1.9.0", Some(32976), None),
 
-    // Allows `impl Trait` in function return types.
-    (active, conservative_impl_trait, "1.12.0", Some(34511), None),
-
-    // Allows `impl Trait` in function arguments.
-    (active, universal_impl_trait, "1.23.0", Some(34511), None),
-
     // Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", None, None),
 
@@ -566,6 +560,10 @@ declare_features! (
     // Copy/Clone closures (RFC 2132)
     (accepted, clone_closures, "1.26.0", Some(44490), None),
     (accepted, copy_closures, "1.26.0", Some(44490), None),
+    // Allows `impl Trait` in function arguments.
+    (accepted, universal_impl_trait, "1.26.0", Some(34511), None),
+    // Allows `impl Trait` in function return types.
+    (accepted, conservative_impl_trait, "1.26.0", Some(34511), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

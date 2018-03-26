@@ -18,7 +18,6 @@
 // run-pass
 
 #![allow(dead_code)]
-#![feature(conservative_impl_trait)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 
