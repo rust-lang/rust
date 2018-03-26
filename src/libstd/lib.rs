@@ -299,6 +299,7 @@
 #![feature(raw)]
 #![feature(rustc_attrs)]
 #![feature(stdsimd)]
+#![feature(shrink_to)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
