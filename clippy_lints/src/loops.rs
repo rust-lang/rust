@@ -347,7 +347,9 @@ declare_lint! {
 /// **Why is this bad?** If the condition is unchanged, entering the body of the loop
 /// will lead to an infinite loop.
 ///
-/// **Known problems:** None
+/// **Known problems:** If the `while`-loop is in a closure, the check for mutation of the
+/// condition variables in the body can cause false negatives. For example when only `Upvar` `a` is
+/// in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.
 ///
 /// **Example:**
 /// ```rust
@@ -2150,17 +2152,6 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
         return;
     }
 
-    if mut_var_visitor.ids.is_empty() {
-        span_lint(
-            cx,
-            WHILE_IMMUTABLE_CONDITION,
-            cond.span,
-            "all variables in condition are immutable. This either leads to an infinite or to a never running loop.",
-        );
-        return;
-    }
-
-
     let mut delegate = MutVarsDelegate {
         used_mutably: mut_var_visitor.ids,
         skip: false,
@@ -2169,6 +2160,9 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(expr);
 
+    if delegate.skip {
+        return;
+    }
     if !delegate.used_mutably.iter().any(|(_, v)| *v) {
         span_lint(
             cx,
@@ -2195,9 +2189,13 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             if let ExprPath(ref qpath) = ex.node;
             if let QPath::Resolved(None, _) = *qpath;
             let def = self.cx.tables.qpath_def(qpath, ex.hir_id);
-            if let Def::Local(node_id) = def;
             then {
-                self.ids.insert(node_id, false);
+                match def {
+                    Def::Local(node_id) | Def::Upvar(node_id, ..) => {
+                        self.ids.insert(node_id, false);
+                    },
+                    _ => {},
+                }
             }
         }
     }
@@ -2206,10 +2204,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr) {
         match ex.node {
-            ExprPath(_) => if let Some(node_id) = check_for_mutability(self.cx, ex) {
-                self.ids.insert(node_id, false);
-            },
-
+            ExprPath(_) => self.insert_def_id(ex),
             // If there is any fuction/method call… we just stop analysis
             ExprCall(..) | ExprMethodCall(..) => self.skip = true,
 
@@ -2236,7 +2231,12 @@ impl<'tcx> MutVarsDelegate {
                 if let Some(used) = self.used_mutably.get_mut(&id) {
                     *used = true;
                 },
-            Categorization::Upvar(_) => skip = true,
+            Categorization::Upvar(_) => {
+                //FIXME: This causes false negatives. We can't get the `NodeId` from
+                //`Categorization::Upvar(_)`. So we search for any `Upvar`s in the
+                //`while`-body, not just the ones in the condition.
+                self.skip = true
+            },
             Categorization::Deref(ref cmt, _) => self.update(&cmt.cat, sp),
             _ => {}
         }
