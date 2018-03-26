@@ -634,6 +634,32 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Checked Euclidean division. Computes `self.div_euc(rhs)`, returning `None` if `rhs == 0`
+or the division results in overflow.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!((", stringify!($SelfT),
+"::min_value() + 1).checked_div_euc(-1), Some(", stringify!($Max), "));
+assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euc(-1), None);
+assert_eq!((1", stringify!($SelfT), ").checked_div_euc(0), None);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn checked_div_euc(self, rhs: Self) -> Option<Self> {
+                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                    None
+                } else {
+                    Some(self.div_euc(rhs))
+                }
+            }
+        }
+
+        doc_comment! {
             concat!("Checked integer remainder. Computes `self % rhs`, returning `None` if
 `rhs == 0` or the division results in overflow.
 
@@ -656,6 +682,33 @@ $EndFeature, "
                     None
                 } else {
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked Euclidean modulo. Computes `self.mod_euc(rhs)`, returning `None` if
+`rhs == 0` or the division results in overflow.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(2), Some(1));
+assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(0), None);
+assert_eq!(", stringify!($SelfT), "::MIN.checked_mod_euc(-1), None);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn checked_mod_euc(self, rhs: Self) -> Option<Self> {
+                if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                    None
+                } else {
+                    Some(self.mod_euc(rhs))
                 }
             }
         }
@@ -994,6 +1047,34 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Wrapping Euclidean division. Computes `self.div_euc(rhs)`, wrapping around at the
+boundary of the type.
+
+The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type (where
+`MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
+that is too large to represent in the type. In such a case, this function returns `MIN` itself.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage:
+
+```
+assert_eq!(100", stringify!($SelfT), ".wrapping_div_euc(10), 10);
+assert_eq!((-128i8).wrapping_div_euc(-1), -128);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn wrapping_div_euc(self, rhs: Self) -> Self {
+                self.overflowing_div_euc(rhs).0
+            }
+        }
+
+        doc_comment! {
             concat!("Wrapping (modular) remainder. Computes `self % rhs`, wrapping around at the
 boundary of the type.
 
@@ -1018,6 +1099,34 @@ $EndFeature, "
             #[inline]
             pub fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping Euclidean modulo. Computes `self.mod_euc(rhs)`, wrapping around at the
+boundary of the type.
+
+Such wrap-around never actually occurs mathematically; implementation artifacts make `x % y`
+invalid for `MIN / -1` on a signed type (where `MIN` is the negative minimal value). In such a case,
+this function returns `0`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);
+assert_eq!((-128i8).wrapping_mod_euc(-1), 0);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn wrapping_mod_euc(self, rhs: Self) -> Self {
+                self.overflowing_mod_euc(rhs).0
             }
         }
 
@@ -1287,6 +1396,39 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Calculates the quotient of Euclidean division `self.div_euc(rhs)`.
+
+Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would
+occur. If an overflow would occur then self is returned.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euc(-1), (", stringify!($SelfT),
+"::MIN, true));",
+$EndFeature, "
+```"),
+            #[inline]
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            pub fn overflowing_div_euc(self, rhs: Self) -> (Self, bool) {
+                if self == Self::min_value() && rhs == -1 {
+                    (self, true)
+                } else {
+                    (self.div_euc(rhs), false)
+                }
+            }
+        }
+
+        doc_comment! {
             concat!("Calculates the remainder when `self` is divided by `rhs`.
 
 Returns a tuple of the remainder after dividing along with a boolean indicating whether an
@@ -1317,6 +1459,40 @@ $EndFeature, "
                 }
             }
         }
+
+
+        doc_comment! {
+            concat!("Calculates the modulo of Euclidean divsion `self.mod_euc(rhs)`.
+
+Returns a tuple of the remainder after dividing along with a boolean indicating whether an
+arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "use std::", stringify!($SelfT), ";
+
+assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_mod_euc(-1), (0, true));",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn overflowing_mod_euc(self, rhs: Self) -> (Self, bool) {
+                if self == Self::min_value() && rhs == -1 {
+                    (0, true)
+                } else {
+                    (self.mod_euc(rhs), false)
+                }
+            }
+        }
+
 
         doc_comment! {
             concat!("Negates self, overflowing if this is equal to the minimum value.
@@ -1509,6 +1685,80 @@ $EndFeature, "
                 }
 
                 acc
+            }
+        }
+
+        doc_comment! {
+            concat!("Calculates the quotient of Euclidean division of `self` by `rhs`.
+
+This computes the integer n such that `self = n * rhs + self.mod_euc(rhs)`.
+In other words, the result is `self / rhs` rounded to the integer n
+such that `self >= n * rhs`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let a: ", stringify!($SelfT), " = 7; // or any other integer type
+let b = 4;
+
+assert_eq!(a.div_euc(b), 1); // 7 >= 4 * 1
+assert_eq!(a.div_euc(-b), -1); // 7 >= -4 * -1
+assert_eq!((-a).div_euc(b), -2); // -7 >= 4 * -2
+assert_eq!((-a).div_euc(-b), 2); // -7 >= -4 * 2",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            pub fn div_euc(self, rhs: Self) -> Self {
+                let q = self / rhs;
+                if self % rhs < 0 {
+                    return if rhs > 0 { q - 1 } else { q + 1 }
+                }
+                q
+            }
+        }
+
+
+        doc_comment! {
+            concat!("Calculates the modulo `self mod rhs` by Euclidean division.
+
+In particular, the result `n` satisfies `0 <= n < rhs.abs()`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let a: ", stringify!($SelfT), " = 7; // or any other integer type
+let b = 4;
+
+assert_eq!(a.mod_euc(b), 3);
+assert_eq!((-a).mod_euc(b), 1);
+assert_eq!(a.mod_euc(-b), 3);
+assert_eq!((-a).mod_euc(-b), 1);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            pub fn mod_euc(self, rhs: Self) -> Self {
+                let r = self % rhs;
+                if r < 0 {
+                    r + rhs.abs()
+                } else {
+                    r
+                }
             }
         }
 
@@ -2104,6 +2354,30 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Checked Euclidean division. Computes `self.div_euc(rhs)`, returning `None`
+if `rhs == 0`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
+assert_eq!(1", stringify!($SelfT), ".checked_div_euc(0), None);
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn checked_div_euc(self, rhs: Self) -> Option<Self> {
+                if rhs == 0 {
+                    None
+                } else {
+                    Some(self.div_euc(rhs))
+                }
+            }
+        }
+
+
+        doc_comment! {
             concat!("Checked integer remainder. Computes `self % rhs`, returning `None`
 if `rhs == 0`.
 
@@ -2122,6 +2396,30 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                     None
                 } else {
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
+                }
+            }
+        }
+
+        doc_comment! {
+            concat!("Checked Euclidean modulo. Computes `self.mod_euc(rhs)`, returning `None`
+if `rhs == 0`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(2), Some(1));
+assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(0), None);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn checked_mod_euc(self, rhs: Self) -> Option<Self> {
+                if rhs == 0 {
+                    None
+                } else {
+                    Some(self.mod_euc(rhs))
                 }
             }
         }
@@ -2406,6 +2704,27 @@ Basic usage:
         }
 
         doc_comment! {
+            concat!("Wrapping Euclidean division. Computes `self.div_euc(rhs)`.
+Wrapped division on unsigned types is just normal division.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div_euc(10), 10);", $EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn wrapping_div_euc(self, rhs: Self) -> Self {
+                self.div_euc(rhs)
+            }
+        }
+
+        doc_comment! {
             concat!("Wrapping (modular) remainder. Computes `self % rhs`.
 Wrapped remainder calculation on unsigned types is
 just the regular remainder calculation.
@@ -2423,6 +2742,28 @@ Basic usage:
             #[stable(feature = "num_wrapping", since = "1.2.0")]
             #[inline]
             pub fn wrapping_rem(self, rhs: Self) -> Self {
+                self % rhs
+            }
+        }
+
+        doc_comment! {
+            concat!("Wrapping Euclidean modulo. Computes `self.mod_euc(rhs)`.
+Wrapped modulo calculation on unsigned types is
+just the regular remainder calculation.
+There's no way wrapping could ever happen.
+This function exists, so that all operations
+are accounted for in the wrapping operations.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);", $EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            pub fn wrapping_mod_euc(self, rhs: Self) -> Self {
                 self % rhs
             }
         }
@@ -2661,6 +3002,32 @@ Basic usage
         }
 
         doc_comment! {
+            concat!("Calculates the quotient of Euclidean division `self.div_euc(rhs)`.
+
+Returns a tuple of the divisor along with a boolean indicating
+whether an arithmetic overflow would occur. Note that for unsigned
+integers overflow never occurs, so the second value is always
+`false`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage
+
+```
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));", $EndFeature, "
+```"),
+            #[inline]
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            pub fn overflowing_div_euc(self, rhs: Self) -> (Self, bool) {
+                (self / rhs, false)
+            }
+        }
+
+        doc_comment! {
             concat!("Calculates the remainder when `self` is divided by `rhs`.
 
 Returns a tuple of the remainder after dividing along with a boolean
@@ -2682,6 +3049,32 @@ Basic usage
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
             pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+                (self % rhs, false)
+            }
+        }
+
+        doc_comment! {
+            concat!("Calculates the modulo of Euclidean division of `self.mod_euc(rhs)`.
+
+Returns a tuple of the modulo after dividing along with a boolean
+indicating whether an arithmetic overflow would occur. Note that for
+unsigned integers overflow never occurs, so the second value is
+always `false`.
+
+# Panics
+
+This function will panic if `rhs` is 0.
+
+# Examples
+
+Basic usage
+
+```
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));", $EndFeature, "
+```"),
+            #[inline]
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            pub fn overflowing_mod_euc(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
         }
@@ -2842,6 +3235,49 @@ Basic usage:
             acc
         }
     }
+
+            doc_comment! {
+            concat!("Performs Euclidean division.
+
+For unsigned types, this is just the same as `self / rhs`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq(7", stringify!($SelfT), ".div_euc(4), 1); // or any other integer type",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            pub fn div_euc(self, rhs: Self) -> Self {
+                self / rhs
+            }
+        }
+
+
+        doc_comment! {
+            concat!("Calculates the Euclidean modulo `self mod rhs`.
+
+For unsigned types, this is just the same as `self % rhs`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "assert_eq(7", stringify!($SelfT), ".mod_euc(4), 3); // or any other integer type",
+$EndFeature, "
+```"),
+            #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[inline]
+            #[rustc_inherit_overflow_checks]
+            pub fn mod_euc(self, rhs: Self) -> Self {
+                self % rhs
+            }
+        }
 
         doc_comment! {
             concat!("Returns `true` if and only if `self == 2^k` for some `k`.
