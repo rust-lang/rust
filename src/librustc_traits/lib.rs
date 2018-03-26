@@ -14,7 +14,7 @@
 #![deny(warnings)]
 
 #![feature(crate_visibility_modifier)]
-#![feature(match_default_bindings)]
+#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(underscore_lifetimes)]
 
 #[macro_use]

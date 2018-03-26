@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 // Test that we "reset" the mode as we pass through a `&` pattern.
 //
 // cc #46688

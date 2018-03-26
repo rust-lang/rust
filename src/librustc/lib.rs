@@ -55,7 +55,7 @@
 #![cfg_attr(stage0, feature(i128_type, i128))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![cfg_attr(windows, feature(libc))]
-#![feature(match_default_bindings)]
+#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(macro_lifetime_matcher)]
 #![feature(macro_vis_matcher)]
 #![feature(exhaustive_patterns)]
