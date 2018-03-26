@@ -338,6 +338,10 @@ impl Step for Rustdoc {
         };
 
         builder.ensure(compile::Rustc { compiler: build_compiler, target });
+        builder.ensure(compile::Rustc {
+            compiler: build_compiler,
+            target: builder.build.build,
+        });
 
         let mut cargo = prepare_tool_cargo(builder,
                                            build_compiler,
