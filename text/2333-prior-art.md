@@ -95,7 +95,7 @@ text to the RFC template before the section *Unresolved questions*:
 > A few examples of what this can include are:
 >
 > - For language, library, cargo, tools, and compiler proposals:
->   Does this feature exists in other programming languages and
+>   Does this feature exist in other programming languages and
 >   what experience have their community had?
 > - For community proposals: Is this done by some other community and what
 >   were their experiences with it?
