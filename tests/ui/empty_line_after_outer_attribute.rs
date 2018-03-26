@@ -67,4 +67,16 @@ pub fn function() -> bool {
     true
 }
 
+// This should not produce a warning
+#[derive(Clone, Copy)]
+pub enum FooFighter {
+    Bar1,
+
+    Bar2,
+
+    Bar3,
+
+    Bar4
+}
+
 fn main() { }
