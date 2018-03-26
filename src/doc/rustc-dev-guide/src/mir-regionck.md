@@ -418,16 +418,15 @@ variable `'?3`, but the variable `'?3` is not forced to outlive
 anything else. Therefore, it simply starts and ends as the empty set
 of elements, and hence the type-check succeeds here.
 
-(This should surprise you a little. It surprised me when I first
-realized it. We are saying that if we are a fn that **needs both of
-its arguments to have the same region**, we can accept being called
-with **arguments with two distinct regions**. That seems intuitively
-unsound. But in fact, it's fine, as I
-[tried to explain in this issue on the Rust issue tracker long ago][ohdeargoditsallbroken].
-The reason is that even if we get called with arguments of two
-distinct lifetimes, those two lifetimes have some intersection (the
-call itself), and that intersection can be our value of `'a` that we
-use as the common lifetime of our arguments. -nmatsakis)
+(This should surprise you a little. It surprised me when I first realized it.
+We are saying that if we are a fn that **needs both of its arguments to have
+the same region**, we can accept being called with **arguments with two
+distinct regions**. That seems intuitively unsound. But in fact, it's fine, as
+I tried to explain in [this issue][ohdeargoditsallbroken] on the Rust issue
+tracker long ago.  The reason is that even if we get called with arguments of
+two distinct lifetimes, those two lifetimes have some intersection (the call
+itself), and that intersection can be our value of `'a` that we use as the
+common lifetime of our arguments. -nmatsakis)
 
 [ohdeargoditsallbroken]: https://github.com/rust-lang/rust/issues/32330#issuecomment-202536977
 
@@ -440,10 +439,10 @@ a return type:
         <:
     for<'b, 'c> fn(&'b u32, &'c u32) -> &'b u32
     
-Despite seeming very similar to the previous example, this case is
-going to get an error. That's good: the problem is that we've gone
-from a fn that promises to return one of its two arguments, to a fn
-that is promising to return the first one. That is unsound. Let's see how it plays out.
+Despite seeming very similar to the previous example, this case is going to get
+an error. That's good: the problem is that we've gone from a fn that promises
+to return one of its two arguments, to a fn that is promising to return the
+first one. That is unsound. Let's see how it plays out.
 
 First, we skolemize the supertype:
 
@@ -463,8 +462,8 @@ And now we create the subtyping relationships:
     &'!2 u32 <: &'?3 u32 // arg 2
     &'?3 u32 <: &'!1 u32 // return type
     
-And finally the outlives relationships. Here, let V1, V2, and V3 be the variables
-we assign to `!1`, `!2`, and `?3` respectively:
+And finally the outlives relationships. Here, let V1, V2, and V3 be the
+variables we assign to `!1`, `!2`, and `?3` respectively:
 
     V1: V3
     V2: V3
@@ -476,8 +475,8 @@ Those variables will have these initial values:
     V2 in U2 = {skol(2)}
     V3 in U2 = {}
     
-Now because of the `V3: V1` constraint, we have to add `skol(1)` into `V3` (and indeed
-it is visible from `V3`), so we get:
+Now because of the `V3: V1` constraint, we have to add `skol(1)` into `V3` (and
+indeed it is visible from `V3`), so we get:
 
     V3 in U2 = {skol(1)}
     

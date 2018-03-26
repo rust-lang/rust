@@ -69,11 +69,11 @@ want the `TypeckTables` node for some particular fn, so you might write:
 RUST_DEP_GRAPH_FILTER='-> TypeckTables & bar'
 ```
 
-This will select only the predecessors of `TypeckTables` nodes for functions with
-`bar` in their name.
+This will select only the predecessors of `TypeckTables` nodes for functions
+with `bar` in their name.
 
-Perhaps you are finding that when you change `foo` you need to re-type-check `bar`,
-but you don't think you should have to. In that case, you might do:
+Perhaps you are finding that when you change `foo` you need to re-type-check
+`bar`, but you don't think you should have to. In that case, you might do:
 
 ```
 RUST_DEP_GRAPH_FILTER='Hir & foo -> TypeckTables & bar'

@@ -34,14 +34,17 @@ This section introduces the key concepts of MIR, summarized here:
 
 - **Basic blocks**: units of the control-flow graph, consisting of:
   - **statements:** actions with one successor
-  - **terminators:** actions with potentially multiple successors; always at the end of a block
-  - (if you're not familiar with the term *basic block*, see the [background chapter][cfg])
+  - **terminators:** actions with potentially multiple successors; always at
+    the end of a block
+  - (if you're not familiar with the term *basic block*, see the [background
+    chapter][cfg])
 - **Locals:** Memory locations alloated on the stack (conceptually, at
   least), such as function arguments, local variables, and
   temporaries. These are identified by an index, written with a
   leading underscore, like `_1`. There is also a special "local"
   (`_0`) allocated to store the return value.
-- **Places:** expressions that identify a location in memory, like `_1` or `_1.f`.
+- **Places:** expressions that identify a location in memory, like `_1` or
+  `_1.f`.
 - **Rvalues:** expressions that produce a value. The "R" stands for
   the fact that these are the "right-hand side" of an assignment.
   - **Operands:** the arguments to an rvalue, which can either be a
@@ -100,8 +103,9 @@ you their original name (`// "vec" in scope 1...`). The "scope" blocks
 (e.g., `scope 1 { .. }`) describe the lexical structure of the source
 program (which names were in scope when).
 
-**Basic blocks.** Reading further, we see our first **basic block** (naturally it may look
-slightly different when you view it, and I am ignoring some of the comments):
+**Basic blocks.** Reading further, we see our first **basic block** (naturally
+it may look slightly different when you view it, and I am ignoring some of the
+comments):
 
 ```
 bb0: {                              
@@ -110,8 +114,8 @@ bb0: {
 }
 ```
 
-A basic block is defined by a series of **statements** and a final **terminator**.
-In this case, there is one statement:
+A basic block is defined by a series of **statements** and a final
+**terminator**.  In this case, there is one statement:
 
 ```
 StorageLive(_1);
@@ -146,8 +150,8 @@ bb2: {
 }
 ```
 
-Here there are two statements: another `StorageLive`, introducing the `_3` temporary,
-and then an assignment:
+Here there are two statements: another `StorageLive`, introducing the `_3`
+temporary, and then an assignment:
 
 ```
 _3 = &mut _1;
@@ -189,7 +193,8 @@ TMP1 = a + b
 x = TMP1 + c
 ```
 
-([Try it and see, though you may want to do release mode to skip over the overflow checks.][play-abc])
+([Try it and see][play-abc], though you may want to do release mode to skip
+over the overflow checks.)
 
 [play-abc]: https://play.rust-lang.org/?gist=1751196d63b2a71f8208119e59d8a5b6&version=stable
 

@@ -6,7 +6,8 @@ enforcing a number of properties:
 - That all variables are initialized before they are used.
 - That you can't move the same value twice.
 - That you can't move a value while it is borrowed.
-- That you can't access a place while it is mutably borrowed (except through the reference).
+- That you can't access a place while it is mutably borrowed (except through
+  the reference).
 - That you can't mutate a place while it is shared borrowed.
 - etc
 
@@ -44,10 +45,12 @@ The overall flow of the borrow checker is as follows:
   Among other things, this function will replace all of the regions in
   the MIR with fresh [inference variables](./appendix-glossary.html).
   - (More details can be found in [the regionck section](./mir-regionck.html).)
-- Next, we perform a number of [dataflow analyses](./appendix-background.html#dataflow)
+- Next, we perform a number of [dataflow
+  analyses](./appendix-background.html#dataflow)
   that compute what data is moved and when. The results of these analyses
   are needed to do both borrow checking and region inference.
-- Using the move data, we can then compute the values of all the regions in the MIR.
+- Using the move data, we can then compute the values of all the regions in the
+  MIR.
   - (More details can be found in [the NLL section](./mir-regionck.html).)
 - Finally, the borrow checker itself runs, taking as input (a) the
   results of move analysis and (b) the regions computed by the region

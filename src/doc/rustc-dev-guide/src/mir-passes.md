@@ -15,16 +15,19 @@ transformations. These suites represent useful intermediate points
 where we want to access the MIR for type checking or other purposes:
 
 - `mir_build(D)` – not a query, but this constructs the initial MIR
-- `mir_const(D)` – applies some simple transformations to make MIR ready for constant evaluation;
-- `mir_validated(D)` – applies some more transformations, making MIR ready for borrow checking;
-- `optimized_mir(D)` – the final state, after all optimizations have been performed.
+- `mir_const(D)` – applies some simple transformations to make MIR ready for
+  constant evaluation;
+- `mir_validated(D)` – applies some more transformations, making MIR ready for
+  borrow checking;
+- `optimized_mir(D)` – the final state, after all optimizations have been
+  performed.
 
 ### Seeing how the MIR changes as the compiler executes
 
-`-Zdump-mir=F` is a handy compiler options that will let you view the MIR
-for each function at each stage of compilation. `-Zdump-mir` takes a **filter**
-`F` which allows you to control which functions and which passes you are interesting
-in. For example:
+`-Zdump-mir=F` is a handy compiler options that will let you view the MIR for
+each function at each stage of compilation. `-Zdump-mir` takes a **filter** `F`
+which allows you to control which functions and which passes you are
+interesting in. For example:
 
 ```bash
 > rustc -Zdump-mir=foo ...
@@ -58,8 +61,9 @@ rustc.main.000-000.CleanEndRegions.after.mir
       def-path to the function etc being dumped    
 ```
 
-You can also make more selective filters. For example, `main & CleanEndRegions` will select
-for things that reference *both* `main` and the pass `CleanEndRegions`:
+You can also make more selective filters. For example, `main & CleanEndRegions`
+will select for things that reference *both* `main` and the pass
+`CleanEndRegions`:
 
 ```bash
 > rustc -Zdump-mir='main & CleanEndRegions' foo.rs
