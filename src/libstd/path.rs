@@ -2329,6 +2329,92 @@ impl Path {
         fs::canonicalize(self)
     }
 
+    /// Returns a cleaned representation of the path with all current
+    /// directory (.) and parent directory (..) references resolved.
+    ///
+    /// This is a purely logical calculation; the file system is not accessed. Namely,
+    /// this leaves symbolic links intact and does not validate that the target exists.
+    ///
+    /// This may change the meaning of a path involving symbolic links and parent directory
+    /// references.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::path::{Path, PathBuf};
+    ///
+    /// let path = Path::new("/recipes/./snacks/../desserts/banana_creme_pie.txt");
+    /// assert_eq!(path.clean(), PathBuf::from("/recipes/desserts/banana_creme_pie.txt"));
+    /// let path = Path::new("../.././lots///of////./separators/");
+    /// assert_eq!(path.clean(), PathBuf::from("../../lots/of/separators"));
+    /// let path = Path::new("/../../../cannot_go_above_root");
+    /// assert_eq!(path.clean(), PathBuf::from("/cannot_go_above_root"));
+    /// ```
+    #[unstable(feature = "path_clean", issue = "47402")]
+    pub fn clean(&self) -> PathBuf {
+        let mut stack: Vec<Component> = vec![];
+
+        // We assume .components() removes redundant consecutive path separators.
+        // Note that .components() also does some normalization of '.' on its own anyways.
+        // This '.' normalization happens to be compatible with the approach below.
+        for component in self.components() {
+            match component {
+                // Drop CurDir components, do not even push onto the stack.
+                Component::CurDir => {},
+
+                // For ParentDir components, we need to use the contents of the stack.
+                Component::ParentDir => {
+                    // Look at the top element of stack, if any.
+                    let top = stack.last().cloned();
+
+                    match top {
+                        // A component is on the stack, need more pattern matching.
+                        Some(c) => {
+                            match c {
+                                // Push the ParentDir on the stack.
+                                Component::Prefix(_) => { stack.push(component); },
+
+                                // The parent of a RootDir is itself, so drop the ParentDir (no-op).
+                                Component::RootDir => {},
+
+                                // A CurDir should never be found on the stack,
+                                // since they are dropped when seen.
+                                Component::CurDir => { unreachable!(); },
+
+                                // If a ParentDir is found, it must be due to it
+                                // piling up at the start of a path.
+                                // Push the new ParentDir onto the stack.
+                                Component::ParentDir => { stack.push(component); },
+
+                                // If a Normal is found, pop it off.
+                                Component::Normal(_) => { let _ = stack.pop(); }
+                            }
+                        },
+
+                        // Stack is empty, so path is empty, just push.
+                        None => { stack.push(component); }
+                    }
+                },
+
+                // All others, simply push onto the stack.
+                _ => { stack.push(component); },
+            }
+        }
+
+        // If an empty PathBuf would be returned, instead return CurDir ('.').
+        if stack.is_empty() {
+            return PathBuf::from(Component::CurDir.as_os_str());
+        }
+
+        let mut norm_path = PathBuf::new();
+
+        for item in &stack {
+            norm_path.push(item.as_os_str());
+        }
+
+        norm_path
+    }
+
     /// Reads a symbolic link, returning the file that the link points to.
     ///
     /// This is an alias to [`fs::read_link`].
@@ -4127,6 +4213,165 @@ mod tests {
     fn display_format_flags() {
         assert_eq!(format!("a{:#<5}b", Path::new("").display()), "a#####b");
         assert_eq!(format!("a{:#<5}b", Path::new("a").display()), "aa####b");
+    }
+
+    #[test]
+    pub fn test_clean() {
+        macro_rules! tc(
+            ($path:expr, $expected:expr) => ( {
+                let mut actual = PathBuf::from($path).clean();
+                assert!(actual.to_str() == Some($expected),
+                        "cleaning {:?}: Expected {:?}, got {:?}",
+                        $path, $expected,
+                        actual.to_str().unwrap());
+            });
+        );
+
+        if cfg!(unix) {
+            tc!("", ".");
+            tc!("/", "/");
+            tc!("//", "/");  /* Double-slash root is a separate entity in POSIX,
+                            but in Rust we treat it as a normal root slash. */
+            tc!("foo", "foo");
+            tc!(".", ".");
+            tc!("..", "..");
+            tc!(".foo", ".foo");
+            tc!("..foo", "..foo");
+            tc!("/foo", "/foo");
+            tc!("//foo", "/foo");
+            tc!("./foo/", "foo");
+            tc!("../foo/", "../foo");
+            tc!("/foo/bar", "/foo/bar");
+            tc!("foo/bar", "foo/bar");
+            tc!("foo/.", "foo");
+            tc!("foo//bar", "foo/bar");
+            tc!("./foo//bar//", "foo/bar");
+
+            tc!("foo/bar/baz/..", "foo/bar");
+            tc!("foo/bar/baz/../", "foo/bar");
+            tc!("foo/bar/baz/../..", "foo");
+            tc!("foo/bar/baz/../../..", ".");
+            tc!("foo/bar/baz/../../../..", "..");
+            tc!("foo/bar/baz/../../../../..", "../..");
+            tc!("/foo/bar/baz/../../../../..", "/");
+            tc!("foo/../bar/../baz/../", ".");
+            tc!("/.", "/");
+            tc!("/..", "/");
+            tc!("/../../", "/");
+        } else {
+            // Drive-absolute paths.
+            tc!(r#"X:\ABC\DEF"#, r#"X:\ABC\DEF"#);
+            tc!(r#"X:\"#, r#"X:\"#);
+            tc!(r#"X:\ABC\"#, r#"X:\ABC"#);
+            // tc!(r#"X:\ABC\DEF. ."#, r#"X:\ABC\DEF"#);
+            tc!(r#"X:/ABC/DEF"#, r#"X:\ABC\DEF"#);
+            tc!(r#"X:\ABC\..\XYZ"#, r#"X:\XYZ"#);
+            tc!(r#"X:\ABC\..\..\.."#, r#"X:\"#);
+
+            // Drive-relative paths.
+            tc!(r#"X:DEF\GHI"#, r#"X:DEF\GHI"#);
+            tc!(r#"X:"#, r#"X:"#);
+            // tc!(r#"X:DEF. ."#, r#"X:DEF"#);
+            tc!(r#"Y:"#, r#"Y:"#);
+            tc!(r#"Z:"#, r#"Z:"#);
+            tc!(r#"X:ABC\..\XYZ"#, r#"X:XYZ"#);
+            tc!(r#"X:ABC\..\..\.."#, r#"X:..\.."#);
+
+            // Rooted paths.
+            tc!(r#"\ABC\DEF"#, r#"\ABC\DEF"#);
+            tc!(r#"\"#, r#"\"#);
+            // tc!(r#"\ABC\DEF. ."#, r#"\ABC\DEF"#);
+            tc!(r#"/ABC/DEF"#, r#"\ABC\DEF"#);
+            tc!(r#"\ABC\..\XYZ"#, r#"\XYZ"#);
+            tc!(r#"\ABC\..\..\.."#, r#"\"#);
+
+            // Relative paths.
+            tc!(r#"ABC\DEF"#, r#"ABC\DEF"#);
+            tc!(r#"."#, r#"."#);
+            // tc!(r#"ABC\DEF. ."#, r#"ABC\DEF"#);
+            tc!(r#"ABC/DEF"#, r#"ABC\DEF"#);
+            tc!(r#"..\ABC"#, r#"..\ABC"#);
+            tc!(r#"ABC\..\..\.."#, r#"..\.."#);
+
+            // UNC absolute paths.
+            tc!(r#"\\server\share\ABC\DEF"#, r#"\\server\share\ABC\DEF"#);
+            tc!(r#"\\server"#, r#"\\server\"#);
+            tc!(r#"\\server\share"#, r#"\\server\share\"#);
+            // tc!(r#"\\server\share\ABC. ."#, r#"\\server\share\ABC"#);
+            // tc!(r#"//server/share/ABC/DEF"#, r#"\\server\share\ABC\DEF"#);
+            tc!(r#"\\server\share\ABC\..\XYZ"#, r#"\\server\share\XYZ"#);
+            tc!(r#"\\server\share\ABC\..\..\.."#, r#"\\server\share\"#);
+
+            // Local device paths.
+            tc!(r#"\\.\COM20"#, r#"\\.\COM20\"#);
+            tc!(r#"\\.\pipe\mypipe"#, r#"\\.\pipe\mypipe"#);
+            // tc!(r#"\\.\X:\ABC\DEF. ."#, r#"\\.\X:\ABC\DEF"#);
+            // tc!(r#"\\.\X:/ABC/DEF"#, r#"\\.\X:\ABC\DEF"#);
+            tc!(r#"\\.\X:\ABC\..\XYZ"#, r#"\\.\X:\XYZ"#);
+            // tc!(r#"\\.\X:\ABC\..\..\C:\"#, r#"\\.\C:\"#);
+            tc!(r#"\\.\pipe\mypipe\..\notmine"#, r#"\\.\pipe\notmine"#);
+
+            // More local device paths.
+            // tc!(r#"COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"valid\COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\notvalid\COM1"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1.blah"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1:blah"#, r#"\\.\COM1"#);
+            // tc!(r#"X:\COM1  .blah"#, r#"\\.\COM1"#);
+            // tc!(r#"\\.\X:\COM1"#, r#"\\.\X:\COM1"#);
+            // tc!(r#"\\abc\xyz\COM1"#, r#"\\abc\xyz\COM1"#);
+
+            // Root local device paths.
+            tc!(r#"\\?\X:\ABC\DEF"#, r#"\\?\X:\ABC\DEF"#);
+            tc!(r#"\\?\X:\"#, r#"\\?\X:\"#);
+            tc!(r#"\\?\X:"#, r#"\\?\X:"#);
+            tc!(r#"\\?\X:\COM1"#, r#"\\?\X:\COM1"#);
+            // tc!(r#"\\?\X:\ABC\DEF. ."#, r#"\\?\X:\ABC\DEF"#);
+            // tc!(r#"\\?\X:/ABC/DEF"#, r#"\\?\X:\ABC\DEF"#);
+            tc!(r#"\\?\X:\ABC\..\XYZ"#, r#"\\?\X:\XYZ"#);
+            tc!(r#"\\?\X:\ABC\..\..\.."#, r#"\\?\X:\"#);
+
+            // More root local device paths.
+            // tc!(r#"\??\X:\ABC\DEF"#, r#"X:\??\X:\ABC\DEF"#);
+            // tc!(r#"\??\X:\"#, r#"X:\??\X:\"#);
+            // tc!(r#"\??\X:"#, r#"X:\??\X:"#);
+            // tc!(r#"\??\X:\COM1"#, r#"X:\??\X:\COM1"#);
+            // tc!(r#"\??\X:\ABC\DEF. ."#, r#"X:\??\X:\ABC\DEF"#);
+            // tc!(r#"\??\X:/ABC/DEF"#, r#"X:\??\X:\ABC\DEF"#);
+            // tc!(r#"\??\X:\ABC\..\XYZ"#, r#"X:\??\X:\XYZ"#);
+            // tc!(r#"\??\X:\ABC\..\..\.."#, r#"X:\"#);
+
+            tc!(r#"a\b\c"#, r#"a\b\c"#);
+            tc!(r#"a/b\c"#, r#"a\b\c"#);
+            tc!(r#"a/b\c\"#, r#"a\b\c"#);
+            tc!(r#"a/b\c/"#, r#"a\b\c"#);
+            tc!(r#"\"#, r#"\"#);
+            tc!(r#"\\"#, r#"\"#);
+            tc!(r#"/"#, r#"\"#);
+            tc!(r#"//"#, r#"\"#);
+
+            tc!(r#"C:\a\b"#, r#"C:\a\b"#);
+            tc!(r#"C:\"#, r#"C:\"#);
+            tc!(r#"C:\."#, r#"C:\"#);
+            tc!(r#"C:\.."#, r#"C:\"#);
+            tc!(r#"C:a"#, r#"C:a"#);
+            tc!(r#"C:."#, r#"C:."#);
+            tc!(r#"C:.."#, r#"C:.."#);
+
+            // Should these not have a trailing slash?
+            tc!(r#"\\server\share"#, r#"\\server\share\"#);
+            tc!(r#"\\server\share\a\b"#, r#"\\server\share\a\b"#);
+            tc!(r#"\\server\share\a\.\b"#, r#"\\server\share\a\b"#);
+            tc!(r#"\\server\share\a\..\b"#, r#"\\server\share\b"#);
+            tc!(r#"\\server\share\a\b\"#, r#"\\server\share\a\b"#);
+
+            tc!(r#"\\?\a\b"#, r#"\\?\a\b"#);
+            tc!(r#"\\?\a/\\b\"#, r#"\\?\a/\\b"#);
+            tc!(r#"\\?\a/\\b/"#, r#"\\?\a/\\b/"#);
+            tc!(r#"\\?\a\b"#, r#"\\?\a\b"#);
+        }
     }
 
     #[test]
