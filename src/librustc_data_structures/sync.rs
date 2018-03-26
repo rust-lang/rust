@@ -390,6 +390,18 @@ impl<T> RwLock<T> {
 
     #[cfg(not(parallel_queries))]
     #[inline(always)]
+    pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
+        self.0.try_borrow_mut().map_err(|_| ())
+    }
+
+    #[cfg(parallel_queries)]
+    #[inline(always)]
+    pub fn try_write(&self) -> Result<WriteGuard<T>, ()> {
+        self.0.try_write().ok_or(())
+    }
+
+    #[cfg(not(parallel_queries))]
+    #[inline(always)]
     pub fn write(&self) -> WriteGuard<T> {
         self.0.borrow_mut()
     }
