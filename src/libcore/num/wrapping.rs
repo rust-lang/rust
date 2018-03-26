@@ -630,6 +630,48 @@ macro_rules! wrapping_int_impl {
 
 wrapping_int_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
+macro_rules! wrapping_int_impl_signed {
+    ($($t:ty)*) => ($(
+        impl Wrapping<$t> {
+            /// Computes the absolute value of `self`.
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn abs(self) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_abs())
+            }
+
+            /// Returns a number representing sign of `self`.
+            ///
+            /// - `0` if the number is zero
+            /// - `1` if the number is positive
+            /// - `-1` if the number is negative
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn signum(self) -> Wrapping<$t> {
+                Wrapping(self.0.signum())
+            }
+
+            /// Returns `true` if `self` is positive and `false` if the number is zero or
+            /// negative.
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn is_positive(self) -> bool {
+                self.0.is_positive()
+            }
+
+            /// Returns `true` if `self` is negative and `false` if the number is zero or
+            /// positive.
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn is_negative(self) -> bool {
+                self.0.is_negative()
+            }
+        }
+    )*)
+}
+
+wrapping_int_impl_signed! { isize i8 i16 i32 i64 i128 }
+
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
