@@ -98,7 +98,7 @@ impl Step for Std {
             copy_musl_third_party_objects(build, target, &libdir);
         }
 
-        let out_dir = build.stage_out(compiler, Mode::Libstd);
+        let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
@@ -360,7 +360,7 @@ impl Step for Test {
             return;
         }
 
-        let out_dir = build.stage_out(compiler, Mode::Libtest);
+        let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(build, &compiler, target, &mut cargo);
@@ -482,10 +482,9 @@ impl Step for Rustc {
             compiler: builder.compiler(self.compiler.stage, build.build),
             target: build.build,
         });
-
-        let stage_out = builder.stage_out(compiler, Mode::Librustc);
-        build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
-        build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
+        let cargo_out = builder.cargo_out(compiler, Mode::Librustc, target);
+        build.clear_if_dirty(&cargo_out, &libstd_stamp(build, compiler, target));
+        build.clear_if_dirty(&cargo_out, &libtest_stamp(build, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         rustc_cargo(build, &mut cargo);
