@@ -2373,7 +2373,11 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ident(&mut self, ident: ast::Ident) -> io::Result<()> {
-        self.s.word(&ident.name.as_str())?;
+        if token::is_raw_guess(ident) {
+            self.s.word(&format!("r#{}", ident))?;
+        } else {
+            self.s.word(&ident.name.as_str())?;
+        }
         self.ann.post(self, NodeIdent(&ident))
     }
 
