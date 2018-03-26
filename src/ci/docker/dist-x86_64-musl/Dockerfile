@@ -31,7 +31,8 @@ RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-x86_64=/musl-x86_64 \
-      --enable-extended
+      --enable-extended \
+      --disable-docs
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
 # unknown relocs disabled by the following flag), so we need to go out of our

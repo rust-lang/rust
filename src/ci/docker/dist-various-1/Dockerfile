@@ -95,7 +95,8 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
-      --enable-emscripten
+      --enable-emscripten \
+      --disable-docs
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 
