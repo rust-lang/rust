@@ -10,6 +10,8 @@
 
 #![feature(custom_attribute)]
 #![feature(decl_macro)]
+// FIXME(cramertj) remove after match_default_bindings merges
+#![allow(stable_features)]
 #![feature(match_default_bindings)]
 #![feature(type_ascription)]
 
