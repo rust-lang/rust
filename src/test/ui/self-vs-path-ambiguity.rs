@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test(&'a str) {
-    //~^ ERROR expected pattern, found `'a`
+// Check that `self::foo` is parsed as a general pattern and not a self argument.
+
+struct S;
+
+impl S {
+    fn f(self::S: S) {}
+    fn g(&self::S: &S) {}
+    fn h(&mut self::S: &mut S) {}
+    fn i(&'a self::S: &S) {} //~ ERROR expected pattern, found `'a`
 }
 
-fn main() {
-}
+fn main() {}

@@ -1,0 +1,8 @@
+error: expected pattern, found `'a`
+  --> $DIR/self-vs-path-ambiguity.rs:19:11
+   |
+LL |     fn i(&'a self::S: &S) {} //~ ERROR expected pattern, found `'a`
+   |           ^^ expected pattern
+
+error: aborting due to previous error
+

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that `self::foo` is parsed as a general pattern and not a self argument.
-
 struct S;
 
 impl S {
-    fn f(self::S: S) {}
-    fn g(&self::S: &S) {}
-    fn h(&mut self::S: &mut S) {}
-    fn i(&'a self::S: &S) {} //~ ERROR unexpected lifetime `'a` in pattern
+    fn foo(&self, x: &usize) {}
 }
 
-fn main() {}
+fn foo(x: &usize) {}
+
+fn main() {
+    'l: loop {
+        break 'l;
+    }
+    'y: loop {
+        let x = 3;
+        foo(&'a x);
+        //~^ ERROR found unexpected lifetime
+        break 'y;
+    }
+    let x = 4;
+    let s = S;
+    s.foo(&'a mut x);
+    //~^ ERROR found unexpected lifetime
+}
