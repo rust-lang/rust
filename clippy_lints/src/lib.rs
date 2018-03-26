@@ -2,8 +2,6 @@
 
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
-#![feature(i128_type)]
-#![feature(i128)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
