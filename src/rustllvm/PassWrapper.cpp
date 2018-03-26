@@ -44,6 +44,10 @@
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
+#if LLVM_VERSION_GE(4, 0)
+#define PGO_AVAILABLE
+#endif
+
 using namespace llvm;
 using namespace llvm::legacy;
 
@@ -428,12 +432,27 @@ extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 
 extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
-    bool MergeFunctions, bool SLPVectorize, bool LoopVectorize) {
+    bool MergeFunctions, bool SLPVectorize, bool LoopVectorize,
+    const char* PGOGenPath, const char* PGOUsePath) {
   // Ignore mergefunc for now as enabling it causes crashes.
   // unwrap(PMBR)->MergeFunctions = MergeFunctions;
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
+
+#ifdef PGO_AVAILABLE
+  if (PGOGenPath) {
+    assert(!PGOUsePath);
+    unwrap(PMBR)->EnablePGOInstrGen = true;
+    unwrap(PMBR)->PGOInstrGen = PGOGenPath;
+  }
+  if (PGOUsePath) {
+    assert(!PGOGenPath);
+    unwrap(PMBR)->PGOInstrUse = PGOUsePath;
+  }
+#else
+  assert(!PGOGenPath && !PGOUsePath && "Should've caught earlier");
+#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
@@ -760,6 +779,15 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
 extern "C" bool
 LLVMRustThinLTOAvailable() {
 #if LLVM_VERSION_GE(4, 0)
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C" bool
+LLVMRustPGOAvailable() {
+#ifdef PGO_AVAILABLE
   return true;
 #else
   return false;

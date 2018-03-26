@@ -223,6 +223,20 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
+    if tcx.sess.opts.debugging_opts.pgo_gen.is_some() {
+        // These are weak symbols that point to the profile version and the
+        // profile name, which need to be treated as exported so LTO doesn't nix
+        // them.
+        const PROFILER_WEAK_SYMBOLS: [&'static str; 2] = [
+            "__llvm_profile_raw_version",
+            "__llvm_profile_filename",
+        ];
+        for sym in &PROFILER_WEAK_SYMBOLS {
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            symbols.push((exported_symbol, SymbolExportLevel::C));
+        }
+    }
+
     if tcx.sess.crate_types.borrow().contains(&config::CrateTypeDylib) {
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));

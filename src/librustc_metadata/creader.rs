@@ -784,7 +784,9 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self) {
-        if self.sess.opts.debugging_opts.profile {
+        if self.sess.opts.debugging_opts.profile ||
+            self.sess.opts.debugging_opts.pgo_gen.is_some()
+        {
             info!("loading profiler");
 
             let symbol = Symbol::intern("profiler_builtins");

@@ -117,6 +117,7 @@ pub trait Linker {
     fn partial_relro(&mut self);
     fn no_relro(&mut self);
     fn optimize(&mut self);
+    fn pgo_gen(&mut self);
     fn debuginfo(&mut self);
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
@@ -278,6 +279,24 @@ impl<'a> Linker for GccLinker<'a> {
            self.sess.opts.optimize == config::OptLevel::Aggressive {
             self.linker_arg("-O1");
         }
+    }
+
+    fn pgo_gen(&mut self) {
+        if !self.sess.target.target.options.linker_is_gnu { return }
+
+        // If we're doing PGO generation stuff and on a GNU-like linker, use the
+        // "-u" flag to properly pull in the profiler runtime bits.
+        //
+        // This is because LLVM otherwise won't add the needed initialization
+        // for us on Linux (though the extra flag should be harmless if it
+        // does).
+        //
+        // See https://reviews.llvm.org/D14033 and https://reviews.llvm.org/D14030.
+        //
+        // Though it may be worth to try to revert those changes upstream, since
+        // the overhead of the initialization should be minor.
+        self.cmd.arg("-u");
+        self.cmd.arg("__llvm_profile_runtime");
     }
 
     fn debuginfo(&mut self) {
@@ -520,6 +539,10 @@ impl<'a> Linker for MsvcLinker<'a> {
         // Needs more investigation of `/OPT` arguments
     }
 
+    fn pgo_gen(&mut self) {
+        // Nothing needed here.
+    }
+
     fn debuginfo(&mut self) {
         // This will cause the Microsoft linker to generate a PDB file
         // from the CodeView line tables in the object files.
@@ -723,6 +746,10 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.args(&["--memory-init-file", "0"]);
     }
 
+    fn pgo_gen(&mut self) {
+        // noop, but maybe we need something like the gnu linker?
+    }
+
     fn debuginfo(&mut self) {
         // Preserve names or generate source maps depending on debug info
         self.cmd.arg(match self.sess.opts.debuginfo {
@@ -886,6 +913,9 @@ impl Linker for WasmLd {
     }
 
     fn optimize(&mut self) {
+    }
+
+    fn pgo_gen(&mut self) {
     }
 
     fn debuginfo(&mut self) {

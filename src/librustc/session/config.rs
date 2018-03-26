@@ -1249,6 +1249,14 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "extra arguments to prepend to the linker invocation (space separated)"),
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),
+    pgo_gen: Option<String> = (None, parse_opt_string, [TRACKED],
+        "Generate PGO profile data, to a given file, or to the default \
+         location if it's empty."),
+    pgo_use: String = (String::new(), parse_string, [TRACKED],
+        "Use PGO profile data from the given profile file."),
+    disable_instrumentation_preinliner: bool =
+        (false, parse_bool, [TRACKED], "Disable the instrumentation pre-inliner, \
+        useful for profiling / PGO."),
     relro_level: Option<RelroLevel> = (None, parse_relro_level, [TRACKED],
         "choose which RELRO level to use"),
     nll: bool = (false, parse_bool, [UNTRACKED],
@@ -1770,6 +1778,13 @@ pub fn build_session_options_and_crate_config(
         early_error(
             ErrorOutputType::Json(false),
             "--error-format=pretty-json is unstable",
+        );
+    }
+
+    if debugging_opts.pgo_gen.is_some() && !debugging_opts.pgo_use.is_empty() {
+        early_error(
+            error_format,
+            "options `-Z pgo-gen` and `-Z pgo-use` are exclusive",
         );
     }
 
@@ -2885,6 +2900,14 @@ mod tests {
         opts = reference.clone();
         opts.debugging_opts.tls_model = Some(String::from("tls model"));
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.pgo_gen = Some(String::from("abc"));
+        assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.pgo_use = String::from("abc");
+        assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
         opts.cg.metadata = vec![String::from("A"), String::from("B")];

@@ -240,6 +240,9 @@ pub struct ModuleConfig {
     /// Some(level) to optimize binary size, or None to not affect program size.
     opt_size: Option<llvm::CodeGenOptSize>,
 
+    pgo_gen: Option<String>,
+    pgo_use: String,
+
     // Flags indicating which outputs to produce.
     emit_no_opt_bc: bool,
     emit_bc: bool,
@@ -273,6 +276,9 @@ impl ModuleConfig {
             passes,
             opt_level: None,
             opt_size: None,
+
+            pgo_gen: None,
+            pgo_use: String::new(),
 
             emit_no_opt_bc: false,
             emit_bc: false,
@@ -492,8 +498,13 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
                                                 opt.message));
             }
         }
-
-        _ => (),
+        llvm::diagnostic::PGO(diagnostic_ref) => {
+            let msg = llvm::build_string(|s| {
+                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
+            }).expect("non-UTF8 PGO diagnostic");
+            diag_handler.warn(&msg);
+        }
+        llvm::diagnostic::UnknownDiagnostic(..) => {},
     }
 }
 
@@ -931,6 +942,9 @@ pub fn start_async_translation(tcx: TyCtxt,
     if sess.opts.debugging_opts.profile {
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
+
+    modules_config.pgo_gen = sess.opts.debugging_opts.pgo_gen.clone();
+    modules_config.pgo_use = sess.opts.debugging_opts.pgo_use.clone();
 
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
@@ -2046,6 +2060,8 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
                             config: &ModuleConfig,
                             opt_level: llvm::CodeGenOptLevel,
                             f: &mut FnMut(llvm::PassManagerBuilderRef)) {
+    use std::ptr;
+
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
@@ -2053,11 +2069,27 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
-    llvm::LLVMRustConfigurePassManagerBuilder(builder,
-                                              opt_level,
-                                              config.merge_functions,
-                                              config.vectorize_slp,
-                                              config.vectorize_loop);
+    let pgo_gen_path = config.pgo_gen.as_ref().map(|s| {
+        let s = if s.is_empty() { "default_%m.profraw" } else { s };
+        CString::new(s.as_bytes()).unwrap()
+    });
+
+    let pgo_use_path = if config.pgo_use.is_empty() {
+        None
+    } else {
+        Some(CString::new(config.pgo_use.as_bytes()).unwrap())
+    };
+
+    llvm::LLVMRustConfigurePassManagerBuilder(
+        builder,
+        opt_level,
+        config.merge_functions,
+        config.vectorize_slp,
+        config.vectorize_loop,
+        pgo_gen_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+        pgo_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+    );
+
     llvm::LLVMPassManagerBuilderSetSizeLevel(builder, opt_size as u32);
 
     if opt_size != llvm::CodeGenOptSizeNone {

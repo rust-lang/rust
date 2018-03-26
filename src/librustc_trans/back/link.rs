@@ -1085,6 +1085,10 @@ fn link_args(cmd: &mut Linker,
         cmd.build_static_executable();
     }
 
+    if sess.opts.debugging_opts.pgo_gen.is_some() {
+        cmd.pgo_gen();
+    }
+
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
