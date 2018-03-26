@@ -21,7 +21,7 @@
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![cfg_attr(stage0, feature(conservative_impl_trait))]

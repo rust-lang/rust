@@ -303,9 +303,6 @@ declare_features! (
     // `extern "ptx-*" fn()`
     (active, abi_ptx, "1.15.0", None, None),
 
-    // The `i128` type
-    (active, i128_type, "1.16.0", Some(35118), None),
-
     // The `repr(i128)` annotation for enums
     (active, repr128, "1.16.0", Some(35118), None),
 
@@ -564,6 +561,8 @@ declare_features! (
     (accepted, universal_impl_trait, "1.26.0", Some(34511), None),
     // Allows `impl Trait` in function return types.
     (accepted, conservative_impl_trait, "1.26.0", Some(34511), None),
+    // The `i128` type
+    (accepted, i128_type, "1.26.0", Some(35118), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1640,18 +1639,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, generators,
                                   e.span,
                                   "yield syntax is experimental");
-            }
-            ast::ExprKind::Lit(ref lit) => {
-                if let ast::LitKind::Int(_, ref ty) = lit.node {
-                    match *ty {
-                        ast::LitIntType::Signed(ast::IntTy::I128) |
-                        ast::LitIntType::Unsigned(ast::UintTy::U128) => {
-                            gate_feature_post!(&self, i128_type, e.span,
-                                               "128-bit integers are not stable");
-                        }
-                        _ => {}
-                    }
-                }
             }
             ast::ExprKind::Catch(_) => {
                 gate_feature_post!(&self, catch_expr, e.span, "`catch` expression is experimental");

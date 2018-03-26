@@ -57,7 +57,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParam, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
+use syntax::feature_gate::{feature_err, GateIssue};
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -3172,17 +3172,6 @@ impl<'a> Resolver<'a> {
                        self.primitive_type_table.primitive_types
                            .contains_key(&path[0].node.name) => {
                 let prim = self.primitive_type_table.primitive_types[&path[0].node.name];
-                match prim {
-                    TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
-                        if !self.session.features_untracked().i128_type {
-                            emit_feature_err(&self.session.parse_sess,
-                                                "i128_type", span, GateIssue::Language,
-                                                "128-bit type is unstable");
-
-                        }
-                    }
-                    _ => {}
-                }
                 PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(module) => PathResolution::new(module.def().unwrap()),

@@ -86,7 +86,7 @@ This API is completely unstable and subject to change.
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(never_type))]
 
 #[macro_use] extern crate log;

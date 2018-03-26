@@ -10,8 +10,6 @@
 
 // must-compile-successfully
 
-#![feature(i128_type)]
-
 fn main() {
     let error = 255i8; //~WARNING literal out of range for i8
 

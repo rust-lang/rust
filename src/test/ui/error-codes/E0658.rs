@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let _ = ::std::u128::MAX; //~ ERROR E0658
+#[repr(u128)]
+enum Foo { //~ ERROR E0658
+    Bar(u64),
 }
+
+fn main() {}

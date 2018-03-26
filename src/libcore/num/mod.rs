@@ -97,14 +97,8 @@ nonzero_integers! {
     NonZeroU16(u16); NonZeroI16(i16);
     NonZeroU32(u32); NonZeroI32(i32);
     NonZeroU64(u64); NonZeroI64(i64);
-    NonZeroUsize(usize); NonZeroIsize(isize);
-}
-
-nonzero_integers! {
-    // Change this to `#[unstable(feature = "i128", issue = "35118")]`
-    // if other NonZero* integer types are stabilizied before 128-bit integers
-    #[unstable(feature = "nonzero", issue = "49137")]
     NonZeroU128(u128); NonZeroI128(i128);
+    NonZeroUsize(usize); NonZeroIsize(isize);
 }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
@@ -1635,11 +1629,7 @@ impl i64 {
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727, "#![feature(i128_type)]
-#![feature(i128)]
-# fn main() {
-", "
-# }" }
+        170141183460469231731687303715884105727, "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -3493,12 +3483,7 @@ impl u64 {
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "#![feature(i128_type)]
-#![feature(i128)]
-
-# fn main() {
-", "
-# }" }
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -4055,39 +4040,39 @@ macro_rules! impl_from {
 impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u8, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u16, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u32, u128, #[unstable(feature = "i128", issue = "35118")] }
-impl_from! { u64, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, u128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { u64, u128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Signed -> Signed
 impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i32, i128, #[unstable(feature = "i128", issue = "35118")] }
-impl_from! { i64, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { i64, i128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Unsigned -> Signed
 impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u32, i128, #[unstable(feature = "i128", issue = "35118")] }
-impl_from! { u64, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.

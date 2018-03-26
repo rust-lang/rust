@@ -17,7 +17,7 @@
 
 #![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(fs_read_write)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(specialization)]
 

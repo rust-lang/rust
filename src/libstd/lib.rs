@@ -269,8 +269,7 @@
 #![feature(generic_param_attrs)]
 #![feature(hashmap_internals)]
 #![feature(heap_api)]
-#![feature(i128)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type, i128))]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -435,7 +434,7 @@ pub use core::i16;
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
@@ -465,7 +464,7 @@ pub use alloc::string;
 pub use alloc::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
 
 pub mod f32;
