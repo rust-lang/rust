@@ -21,3 +21,5 @@ warning: removed path (breaking)
 13| pub use self::a::Abc;
   |         ^^^^^^^^^^^^
 
+error: aborting due to previous error
+

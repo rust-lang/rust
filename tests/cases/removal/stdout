@@ -53,3 +53,5 @@ error: breaking changes in `d`
    |
    = warning: item made private (breaking)
 
+error: aborting due to 6 previous errors
+

@@ -56,3 +56,5 @@ error: breaking changes in `G`
   |
   = warning: type parameter removed (breaking)
 
+error: aborting due to 7 previous errors
+

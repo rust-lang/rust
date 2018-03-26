@@ -79,3 +79,5 @@ warning: variant with no public fields changed to a struct variant (breaking)
 28 | | }
    | |_^
 
+error: aborting due to 4 previous errors
+

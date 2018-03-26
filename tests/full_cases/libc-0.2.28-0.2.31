@@ -865,3 +865,5 @@ error: breaking changes in `PTRACE_O_SUSPEND_SECCOMP`
     |
     = warning: type error: expected u32, found i32 (breaking)
 
+error: aborting due to 11 previous errors
+

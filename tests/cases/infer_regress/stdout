@@ -16,3 +16,5 @@ error: breaking changes in `Abc`
   |
   = warning: type error: expected type parameter, found () (breaking)
 
+error: aborting due to 2 previous errors
+

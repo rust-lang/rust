@@ -27,3 +27,5 @@ error: breaking changes in `Def`
   = warning: type error: expected struct `old::Abc`, found () (breaking)
   = warning: type error: expected trait old::Bcd, found () (breaking)
 
+error: aborting due to 3 previous errors
+

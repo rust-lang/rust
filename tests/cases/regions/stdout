@@ -47,3 +47,5 @@ error: breaking changes in `fgh`
    |
    = warning: type error: expected bound lifetime parameterBrAnon(0), found concrete lifetime (breaking)
 
+error: aborting due to 6 previous errors
+

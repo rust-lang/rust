@@ -104,3 +104,5 @@ warning: variant field added to variant with private fields (breaking)
 25 |     Ghi { g: u8 },
    |           ^^^^^
 
+error: aborting due to 5 previous errors
+

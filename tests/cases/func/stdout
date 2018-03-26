@@ -75,3 +75,5 @@ error: breaking changes in `ijk`
    |
    = warning: fn item made non-const (breaking)
 
+error: aborting due to 6 previous errors
+

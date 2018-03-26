@@ -51,3 +51,5 @@ warning: technically breaking changes in `<std::cell::Cell<(bool, T)> as new::Ab
    |
    = note: trait impl generalized or newly added (technically breaking)
 
+error: aborting due to 2 previous errors
+

@@ -9,3 +9,5 @@ error: breaking changes in `Abc`
   |
   = warning: item kind changed (breaking)
 
+error: aborting due to previous error
+
