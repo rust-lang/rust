@@ -1517,10 +1517,21 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             let offset = st[i].fields.offset(field_index) + offset;
                             let size = st[i].size;
 
-                            let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
-                                Abi::Scalar(niche.clone())
-                            } else {
-                                Abi::Aggregate { sized: true }
+                            let abi = match st[i].abi {
+                                Abi::Scalar(_) => Abi::Scalar(niche.clone()),
+                                Abi::ScalarPair(ref first, ref second) => {
+                                    // We need to use scalar_unit to reset the
+                                    // valid range to the maximal one for that
+                                    // primitive, because only the niche is
+                                    // guaranteed to be initialised, not the
+                                    // other primitive.
+                                    if offset.bytes() == 0 {
+                                        Abi::ScalarPair(niche.clone(), scalar_unit(second.value))
+                                    } else {
+                                        Abi::ScalarPair(scalar_unit(first.value), niche.clone())
+                                    }
+                                }
+                                _ => Abi::Aggregate { sized: true },
                             };
 
                             return Ok(tcx.intern_layout(LayoutDetails {
