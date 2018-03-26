@@ -25,9 +25,8 @@ use syntax_pos::{self, Span, FileName};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
-use std::cell::Cell;
 use std::{cmp, fmt};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock};
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -614,15 +613,8 @@ pub fn is_op(tok: &Token) -> bool {
     }
 }
 
-pub struct LazyTokenStream(Cell<Option<TokenStream>>);
-
-impl Clone for LazyTokenStream {
-    fn clone(&self) -> Self {
-        let opt_stream = self.0.take();
-        self.0.set(opt_stream.clone());
-        LazyTokenStream(Cell::new(opt_stream))
-    }
-}
+#[derive(Clone)]
+pub struct LazyTokenStream(Lock<Option<TokenStream>>);
 
 impl cmp::Eq for LazyTokenStream {}
 impl PartialEq for LazyTokenStream {
@@ -639,15 +631,14 @@ impl fmt::Debug for LazyTokenStream {
 
 impl LazyTokenStream {
     pub fn new() -> Self {
-        LazyTokenStream(Cell::new(None))
+        LazyTokenStream(Lock::new(None))
     }
 
     pub fn force<F: FnOnce() -> TokenStream>(&self, f: F) -> TokenStream {
-        let mut opt_stream = self.0.take();
+        let mut opt_stream = self.0.lock();
         if opt_stream.is_none() {
-            opt_stream = Some(f());
+            *opt_stream = Some(f());
         }
-        self.0.set(opt_stream.clone());
         opt_stream.clone().unwrap()
     }
 }
