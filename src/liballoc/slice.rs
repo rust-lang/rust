@@ -1306,10 +1306,6 @@ impl<T> [T] {
     /// This sort is stable (i.e. does not reorder equal elements) and `O(m n log(m n))`
     /// worst-case, where the key function is `O(m)`.
     ///
-    /// For expensive key functions (e.g. functions that are not simple property accesses or
-    /// basic operations), [`sort_by_cached_key`](#method.sort_by_cached_key) is likely to be
-    /// significantly faster, as it does not recompute element keys.
-    ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
     /// See [`sort_unstable_by_key`](#method.sort_unstable_by_key).
@@ -1495,10 +1491,6 @@ impl<T> [T] {
     /// heapsort, while achieving linear time on slices with certain patterns. It uses some
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
-    ///
-    /// Due to its key calling strategy, [`sort_unstable_by_key`](#method.sort_unstable_by_key)
-    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_cached_key) in
-    /// cases where the key function is expensive.
     ///
     /// # Examples
     ///
