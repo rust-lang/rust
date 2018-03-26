@@ -2161,7 +2161,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
         span_lint(
             cx,
             WHILE_IMMUTABLE_CONDITION,
-            expr.span,
+            cond.span,
             "Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.",
         );
     }
