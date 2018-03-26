@@ -1052,10 +1052,29 @@ impl TargetTriple {
             }
         }
     }
+
+    /// Returns an extended string triple for this target.
+    ///
+    /// If this target is a path, a hash of the path is appended to the triple returned
+    /// by `triple()`.
+    pub fn debug_triple(&self) -> String {
+        use std::hash::{Hash, Hasher};
+        use std::collections::hash_map::DefaultHasher;
+
+        let triple = self.triple();
+        if let &TargetTriple::TargetPath(ref path) = self {
+            let mut hasher = DefaultHasher::new();
+            path.hash(&mut hasher);
+            let hash = hasher.finish();
+            format!("{}-{}", triple, hash)
+        } else {
+            triple.to_owned()
+        }
+    }
 }
 
 impl fmt::Display for TargetTriple {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.triple())
+        write!(f, "{}", self.debug_triple())
     }
 }
