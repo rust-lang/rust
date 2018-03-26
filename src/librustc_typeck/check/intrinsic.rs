@@ -283,7 +283,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (1, vec![param(0), param(0)],
                 tcx.intern_tup(&[param(0), tcx.types.bool])),
 
-            "unchecked_div" | "unchecked_rem" =>
+            "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
             "unchecked_shl" | "unchecked_shr" =>
                 (1, vec![param(0), param(0)], param(0)),

@@ -289,7 +289,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
         "bitreverse" | "add_with_overflow" | "sub_with_overflow" |
         "mul_with_overflow" | "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
-        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
+        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "exact_div" => {
             let ty = arg_tys[0];
             match int_type_width_signed(ty, cx) {
                 Some((width, signed)) =>
@@ -343,6 +343,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                         "overflowing_add" => bx.add(args[0].immediate(), args[1].immediate()),
                         "overflowing_sub" => bx.sub(args[0].immediate(), args[1].immediate()),
                         "overflowing_mul" => bx.mul(args[0].immediate(), args[1].immediate()),
+                        "exact_div" =>
+                            if signed {
+                                bx.exactsdiv(args[0].immediate(), args[1].immediate())
+                            } else {
+                                bx.exactudiv(args[0].immediate(), args[1].immediate())
+                            },
                         "unchecked_div" =>
                             if signed {
                                 bx.sdiv(args[0].immediate(), args[1].immediate())

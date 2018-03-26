@@ -344,6 +344,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn exactudiv(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("exactudiv");
+        unsafe {
+            llvm::LLVMBuildExactUDiv(self.llbuilder, lhs, rhs, noname())
+        }
+    }
+
     pub fn sdiv(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("sdiv");
         unsafe {

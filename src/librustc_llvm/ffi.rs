@@ -935,6 +935,11 @@ extern "C" {
                          RHS: ValueRef,
                          Name: *const c_char)
                          -> ValueRef;
+    pub fn LLVMBuildExactUDiv(B: BuilderRef,
+                              LHS: ValueRef,
+                              RHS: ValueRef,
+                              Name: *const c_char)
+                              -> ValueRef;
     pub fn LLVMBuildSDiv(B: BuilderRef,
                          LHS: ValueRef,
                          RHS: ValueRef,
