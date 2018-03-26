@@ -272,7 +272,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.err_handler().span_err(item.span, "inherent impls cannot be negative");
                 }
                 if defaultness == Defaultness::Default {
-                    self.err_handler().span_err(item.span, "inherent impls cannot be default");
+                    self.err_handler()
+                        .struct_span_err(item.span, "inherent impls cannot be default")
+                        .help("maybe a missing `for` keyword?");
                 }
             }
             ItemKind::ForeignMod(..) => {
