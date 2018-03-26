@@ -406,8 +406,6 @@ pub fn make_test(s: &str,
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
 fn partition_source(s: &str) -> (String, String) {
-    use std_unicode::str::UnicodeStr;
-
     let mut after_header = false;
     let mut before = String::new();
     let mut after = String::new();
