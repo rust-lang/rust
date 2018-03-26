@@ -2140,7 +2140,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
         return;
     }
 
-    let mut mut_var_visitor = MutableVarsVisitor {
+    let mut mut_var_visitor = VarCollectorVisitor {
         cx,
         ids: HashMap::new(),
         skip: false,
@@ -2150,49 +2150,51 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
         return;
     }
 
-    if mut_var_visitor.ids.is_empty() {
-        span_lint(
-            cx,
-            WHILE_IMMUTABLE_CONDITION,
-            cond.span,
-            "all variables in condition are immutable. This either leads to an infinite or to a never running loop.",
-        );
-        return;
-    }
-
-
     let mut delegate = MutVarsDelegate {
-        mut_spans: mut_var_visitor.ids,
+        used_mutably: mut_var_visitor.ids,
     };
     let def_id = def_id::DefId::local(block.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(expr);
 
-    if !delegate.mut_spans.iter().any(|(_, v)| v.is_some()) {
+    if !delegate.used_mutably.iter().any(|(_, v)| *v) {
         span_lint(
             cx,
             WHILE_IMMUTABLE_CONDITION,
-            expr.span,
+            cond.span,
             "Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.",
         );
     }
 }
 
-/// Collects the set of mutable variable in an expression
+/// Collects the set of variables in an expression
 /// Stops analysis if a function call is found
-struct MutableVarsVisitor<'a, 'tcx: 'a> {
+/// Note: In some cases such as `self`, there are no mutable annotation,
+/// All variables definition IDs are collected
+struct VarCollectorVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
-    ids: HashMap<NodeId, Option<Span>>,
+    ids: HashMap<NodeId, bool>,
     skip: bool,
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for MutableVarsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
+    fn insert_def_id(&mut self, ex: &'tcx Expr) {
+        if_chain! {
+            if let ExprPath(ref qpath) = ex.node;
+            if let QPath::Resolved(None, _) = *qpath;
+            let def = self.cx.tables.qpath_def(qpath, ex.hir_id);
+            if let Def::Local(node_id) = def;
+            then {
+                self.ids.insert(node_id, false);
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &'tcx Expr) {
         match ex.node {
-            ExprPath(_) => if let Some(node_id) = check_for_mutability(self.cx, ex) {
-                self.ids.insert(node_id, None);
-            },
-
+            ExprPath(_) => self.insert_def_id(ex),
             // If there is any fuction/method call… we just stop analysis
             ExprCall(..) | ExprMethodCall(..) => self.skip = true,
 
@@ -2208,15 +2210,18 @@ impl<'a, 'tcx> Visitor<'tcx> for MutableVarsVisitor<'a, 'tcx> {
 }
 
 struct MutVarsDelegate {
-    mut_spans: HashMap<NodeId, Option<Span>>,
+    used_mutably: HashMap<NodeId, bool>,
 }
 
 impl<'tcx> MutVarsDelegate {
     fn update(&mut self, cat: &'tcx Categorization, sp: Span) {
-        if let Categorization::Local(id) = *cat {
-            if let Some(span) = self.mut_spans.get_mut(&id) {    
-                *span = Some(sp)
-            }
+        match *cat {
+            Categorization::Local(id) =>
+                if let Some(used) = self.used_mutably.get_mut(&id) {
+                    *used = true;
+                },
+            Categorization::Deref(ref cmt, _) => self.update(&cmt.cat, sp),
+            _ => {}
         }
     }
 }
@@ -2236,7 +2241,7 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
     }
 
     fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
-            self.update(&cmt.cat, sp)
+        self.update(&cmt.cat, sp)
     }
 
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
