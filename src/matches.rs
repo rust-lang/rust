@@ -133,13 +133,14 @@ pub fn rewrite_match(
             Some(context.snippet(span).to_owned())
         }
     } else {
+        let span_after_cond = mk_sp(cond.span.hi(), span.hi());
         Some(format!(
             "match {}{}{{\n{}{}{}\n{}}}",
             cond_str,
             block_sep,
             inner_attrs_str,
             nested_indent_str,
-            rewrite_match_arms(context, arms, shape, span, open_brace_pos)?,
+            rewrite_match_arms(context, arms, shape, span_after_cond, open_brace_pos)?,
             shape.indent.to_string(context.config),
         ))
     }
