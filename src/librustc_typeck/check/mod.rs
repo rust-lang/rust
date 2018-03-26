@@ -2531,16 +2531,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut expected_arg_tys = expected_arg_tys;
         let expected_arg_count = fn_inputs.len();
 
-        fn parameter_count_error<'tcx>(sess: &Session,
-                                       sp: Span,
-                                       expr_sp: Span,
-                                       expected_count: usize,
-                                       arg_count: usize,
-                                       error_code: &str,
-                                       variadic: bool,
-                                       def_span: Option<Span>,
-                                       sugg_unit: bool) {
-            let mut err = sess.struct_span_err_with_code(sp,
+        let param_count_error = |expected_count: usize,
+                                arg_count: usize,
+                                error_code: &str,
+                                variadic: bool,
+                                sugg_unit: bool| {
+            let mut err = tcx.sess.struct_span_err_with_code(sp,
                 &format!("this function takes {}{} parameter{} but {} parameter{} supplied",
                     if variadic {"at least "} else {""},
                     expected_count,
@@ -2549,11 +2545,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 DiagnosticId::Error(error_code.to_owned()));
 
-            if let Some(def_s) = def_span.map(|sp| sess.codemap().def_span(sp)) {
+            if let Some(def_s) = def_span.map(|sp| tcx.sess.codemap().def_span(sp)) {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let sugg_span = sess.codemap().end_point(expr_sp);
+                let sugg_span = tcx.sess.codemap().end_point(expr_sp);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
@@ -2567,14 +2563,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             if expected_count == 1 {""} else {"s"}));
             }
             err.emit();
-        }
+        };
 
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
                 ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
-                    parameter_count_error(tcx.sess, sp, expr_sp, arg_types.len(), args.len(),
-                                          "E0057", false, def_span, false);
+                    param_count_error(arg_types.len(), args.len(), "E0057", false, false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
                 }
@@ -2602,8 +2597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
-                parameter_count_error(tcx.sess, sp, expr_sp, expected_arg_count,
-                                      supplied_arg_count, "E0060", true, def_span, false);
+                param_count_error(expected_arg_count, supplied_arg_count, "E0060", true, false);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
             }
@@ -2616,8 +2610,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 false
             };
-            parameter_count_error(tcx.sess, sp, expr_sp, expected_arg_count,
-                                  supplied_arg_count, "E0061", false, def_span, sugg_unit);
+            param_count_error(expected_arg_count, supplied_arg_count, "E0061", false, sugg_unit);
+
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
         };
