@@ -1,4 +1,4 @@
-#![feature(integer_atomics, i128, i128_type)]
+#![feature(integer_atomics)]
 #![allow(blacklisted_name)]
 #![deny(replace_consts)]
 use std::sync::atomic::*;
