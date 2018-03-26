@@ -1,6 +1,11 @@
-#![feature(integer_atomics, i128, i128_type)]
+#![feature(integer_atomics)]
 #![allow(blacklisted_name)]
 #![deny(replace_consts)]
+
+// FIXME(mark-i-m) remove after i128 stablization merges
+#![allow(stable_features)]
+#![feature(i128, i128_type)]
+
 use std::sync::atomic::*;
 use std::sync::{ONCE_INIT, Once};
 
