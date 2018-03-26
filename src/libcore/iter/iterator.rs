@@ -974,13 +974,13 @@ pub trait Iterator {
     ///     // each iteration, we'll multiply the state by the element
     ///     *state = *state * x;
     ///
-    ///     // the value passed on to the next iteration
-    ///     Some(*state)
+    ///     // then, we'll yield the negation of the state
+    ///     Some(-*state)
     /// });
     ///
-    /// assert_eq!(iter.next(), Some(1));
-    /// assert_eq!(iter.next(), Some(2));
-    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), Some(-1));
+    /// assert_eq!(iter.next(), Some(-2));
+    /// assert_eq!(iter.next(), Some(-6));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
