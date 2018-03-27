@@ -21,8 +21,7 @@ fn main() {
 
     #[repr(nothing)]
     let _x = 0;
-    //~^^ ERROR attribute should not be applied to statements
-
+    //~^^ ERROR attribute should not be applied a statement
 
     #[repr(something_not_real)]
     loop {
@@ -32,5 +31,12 @@ fn main() {
 
     #[repr]
     let _y = "123";
-    //~^^ ERROR attribute should not be applied to statements
+    //~^^ ERROR attribute should not be applied a statement
+
+
+    fn foo() {}
+
+    #[inline(ABC)]
+    foo();
+    //~^^ ERROR attribute should be applied to function
 }

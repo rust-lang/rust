@@ -250,7 +250,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
-                        &format!("attribute should not be applied to statements"),
+                        &format!("attribute should not be applied a statement"),
                         &format!("not a struct, enum or union"),
                     );
                 }
@@ -259,16 +259,6 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     }
 
     fn check_expr_attributes(&self, expr: &hir::Expr) {
-        use hir::Expr_::*;
-        match expr.node {
-            // Assignments, Calls and Structs were handled by Items and Statements
-            ExprCall(..) |
-            ExprAssign(..) |
-            ExprMethodCall(..) |
-            ExprStruct(..) => return,
-            _ => (),
-        }
-
         for attr in expr.attrs.iter() {
             if attr.check_name("inline") {
                 self.check_inline(attr, &expr.span, Target::Expression);
@@ -278,7 +268,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     attr.span,
                     expr.span,
                     &format!("attribute should not be applied to an expression"),
-                    &format!("not a struct, enum or union"),
+                    &format!("not defining a struct, enum or union"),
                 );
             }
         }
