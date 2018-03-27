@@ -594,7 +594,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
-[rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
+[rfcbot]: https://github.com/anp/rfcbot-rs/
 
 ## Out-of-tree Contributions
 [out-of-tree-contributions]: #out-of-tree-contributions
