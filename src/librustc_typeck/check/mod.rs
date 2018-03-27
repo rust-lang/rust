@@ -2829,18 +2829,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_coercable_to_type(&self,
                                     expr: &'gcx hir::Expr,
                                     expected: Ty<'tcx>) -> Ty<'tcx> {
-        self.check_expr_coercable_to_type_with_needs(expr, expected, Needs::None)
-    }
-
-    fn check_expr_coercable_to_type_with_needs(&self,
-                                               expr: &'gcx hir::Expr,
-                                               expected: Ty<'tcx>,
-                                               needs: Needs)
-                                               -> Ty<'tcx> {
-        let ty = self.check_expr_with_expectation_and_needs(
-            expr,
-            ExpectHasType(expected),
-            needs);
+        let ty = self.check_expr_with_hint(expr, expected);
         self.demand_coerce(expr, ty, expected)
     }
 
