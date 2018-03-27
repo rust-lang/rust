@@ -29,4 +29,38 @@ trait Iterable {
     //~^ ERROR lifetime parameters are not allowed on this type [E0110]
 }
 
+// Impl for struct type
+impl<T> Iterable for Vec<T> {
+    type Item<'a> = &'a T;
+    type Iter<'a> = std::slice::Iter<'a, T>;
+    type Iter2<'a> = &'a T;
+    // gavento: ^^^ Not 100% sure about the intention here
+    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+        self.iter()
+    }
+}
+
+// Impl for a primitive type
+impl<T> Iterable for [T] {
+    type Item<'a> = &'a T;
+    type Iter<'a> = std::slice::Iter<'a, T>;
+    type Iter2<'a> = &'a T;
+    // gavento: ^^^ Not 100% sure about the intention here
+    fn iter<'a>(&'a self) -> Self::Iter<'a> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+        self.iter()
+    }
+}
+
+fn make_iter<'a, I: Iterable>(it: &'a I) -> I::Iter<'a> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+    it.iter()
+}
+
+fn get_first<'a, I: Iterable>(it: &'a I) -> Option<I::Item<'a>> {
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
+    it.iter().next()
+}
+
 fn main() {}
