@@ -1622,7 +1622,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 // Create the set of structs that represent each variant.
-                let mut variants = variants.into_iter().enumerate().map(|(i, field_layouts)| {
+                let mut layout_variants = variants.iter().enumerate().map(|(i, field_layouts)| {
                     let mut st = univariant_uninterned(&field_layouts,
                         &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
                     st.variants = Variants::Single { index: i };
@@ -1683,7 +1683,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     // Patch up the variants' first few fields.
                     let old_ity_size = min_ity.size();
                     let new_ity_size = ity.size();
-                    for variant in &mut variants {
+                    for variant in &mut layout_variants {
                         if variant.abi == Abi::Uninhabited {
                             continue;
                         }
@@ -1710,15 +1710,80 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     value: Int(ity, signed),
                     valid_range: (min as u128 & tag_mask)..=(max as u128 & tag_mask),
                 };
-                let abi = if tag.value.size(dl) == size {
-                    Abi::Scalar(tag.clone())
-                } else {
-                    Abi::Aggregate { sized: true }
-                };
+                let mut abi = Abi::Aggregate { sized: true };
+                if tag.value.size(dl) == size {
+                    abi = Abi::Scalar(tag.clone());
+                } else if !tag.is_bool() {
+                    // HACK(nox): Blindly using ScalarPair for all tagged enums
+                    // where applicable leads to Option<u8> being handled as {i1, i8},
+                    // which later confuses SROA and some loop optimisations,
+                    // ultimately leading to the repeat-trusted-len test
+                    // failing. We make the trade-off of using ScalarPair only
+                    // for types where the tag isn't a boolean.
+                    let mut common_prim = None;
+                    for (field_layouts, layout_variant) in variants.iter().zip(&layout_variants) {
+                        let offsets = match layout_variant.fields {
+                            FieldPlacement::Arbitrary { ref offsets, .. } => offsets,
+                            _ => bug!(),
+                        };
+                        let mut fields = field_layouts
+                            .iter()
+                            .zip(offsets)
+                            .filter(|p| !p.0.is_zst());
+                        let (field, offset) = match (fields.next(), fields.next()) {
+                            (None, None) => continue,
+                            (Some(pair), None) => pair,
+                            _ => {
+                                common_prim = None;
+                                break;
+                            }
+                        };
+                        let prim = match field.details.abi {
+                            Abi::Scalar(ref scalar) => scalar.value,
+                            _ => {
+                                common_prim = None;
+                                break;
+                            }
+                        };
+                        if let Some(pair) = common_prim {
+                            // This is pretty conservative. We could go fancier
+                            // by conflating things like i32 and u32, or even
+                            // realising that (u8, u8) could just cohabit with
+                            // u16 or even u32.
+                            if pair != (prim, offset) {
+                                common_prim = None;
+                                break;
+                            }
+                        } else {
+                            common_prim = Some((prim, offset));
+                        }
+                    }
+                    if let Some((prim, offset)) = common_prim {
+                        let pair = scalar_pair(tag.clone(), scalar_unit(prim));
+                        let pair_offsets = match pair.fields {
+                            FieldPlacement::Arbitrary {
+                                ref offsets,
+                                ref memory_index
+                            } => {
+                                assert_eq!(memory_index, &[0, 1]);
+                                offsets
+                            }
+                            _ => bug!()
+                        };
+                        if pair_offsets[0] == Size::from_bytes(0) &&
+                            pair_offsets[1] == *offset &&
+                            align == pair.align &&
+                            size == pair.size {
+                            // We can use `ScalarPair` only when it matches our
+                            // already computed layout (including `#[repr(C)]`).
+                            abi = pair.abi;
+                        }
+                    }
+                }
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Tagged {
                         discr: tag,
-                        variants
+                        variants: layout_variants,
                     },
                     fields: FieldPlacement::Arbitrary {
                         offsets: vec![Size::from_bytes(0)],
