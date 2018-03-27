@@ -6,6 +6,8 @@ LL | enum Foo {
 ...
 LL |             Foo::Baz(..) => (),
    |             ^^^^^^^^^^^^ variant not found in `Foo`
+   |
+   = note: did you mean `variant::Bar`?
 
 error: aborting due to previous error
 
