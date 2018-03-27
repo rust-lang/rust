@@ -1,7 +1,10 @@
 use core::intrinsics;
 
 // NOTE This function and the ones below are implemented using assembly because they using a custom
-// calling convention which can't be implemented using a normal Rust function
+// calling convention which can't be implemented using a normal Rust function.
+// NOTE The only difference between the iOS and non-iOS versions of those functions is that the iOS
+// versions use 3 leading underscores in the names of called functions instead of 2.
+#[cfg(not(target_os = "ios"))]
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uidivmod() {
@@ -15,6 +18,21 @@ pub unsafe fn __aeabi_uidivmod() {
     intrinsics::unreachable();
 }
 
+#[cfg(target_os = "ios")]
+#[naked]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+pub unsafe fn __aeabi_uidivmod() {
+    asm!("push {lr}
+          sub sp, sp, #4
+          mov r2, sp
+          bl ___udivmodsi4
+          ldr r1, [sp]
+          add sp, sp, #4
+          pop {pc}" ::: "memory" : "volatile");
+    intrinsics::unreachable();
+}
+
+#[cfg(not(target_os = "ios"))]
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_uldivmod() {
@@ -30,6 +48,23 @@ pub unsafe fn __aeabi_uldivmod() {
     intrinsics::unreachable();
 }
 
+#[cfg(target_os = "ios")]
+#[naked]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+pub unsafe fn __aeabi_uldivmod() {
+    asm!("push {r4, lr}
+          sub sp, sp, #16
+          add r4, sp, #8
+          str r4, [sp]
+          bl ___udivmoddi4
+          ldr r2, [sp, #8]
+          ldr r3, [sp, #12]
+          add sp, sp, #16
+          pop {r4, pc}" ::: "memory" : "volatile");
+    intrinsics::unreachable();
+}
+
+#[cfg(not(target_os = "ios"))]
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_idivmod() {
@@ -42,6 +77,20 @@ pub unsafe fn __aeabi_idivmod() {
     intrinsics::unreachable();
 }
 
+#[cfg(target_os = "ios")]
+#[naked]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+pub unsafe fn __aeabi_idivmod() {
+    asm!("push {r0, r1, r4, lr}
+          bl ___aeabi_idiv
+          pop {r1, r2}
+          muls r2, r2, r0
+          subs r1, r1, r2
+          pop {r4, pc}" ::: "memory" : "volatile");
+    intrinsics::unreachable();
+}
+
+#[cfg(not(target_os = "ios"))]
 #[naked]
 #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
 pub unsafe fn __aeabi_ldivmod() {
@@ -50,6 +99,22 @@ pub unsafe fn __aeabi_ldivmod() {
           add r4, sp, #8
           str r4, [sp]
           bl __divmoddi4
+          ldr r2, [sp, #8]
+          ldr r3, [sp, #12]
+          add sp, sp, #16
+          pop {r4, pc}" ::: "memory" : "volatile");
+    intrinsics::unreachable();
+}
+
+#[cfg(target_os = "ios")]
+#[naked]
+#[cfg_attr(not(feature = "mangled-names"), no_mangle)]
+pub unsafe fn __aeabi_ldivmod() {
+    asm!("push {r4, lr}
+          sub sp, sp, #16
+          add r4, sp, #8
+          str r4, [sp]
+          bl ___divmoddi4
           ldr r2, [sp, #8]
           ldr r3, [sp, #12]
           add sp, sp, #16

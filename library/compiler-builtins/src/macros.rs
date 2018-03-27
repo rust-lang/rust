@@ -210,6 +210,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
         #[cfg(target_arch = "arm")]
+        #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             $($body)*
         }
