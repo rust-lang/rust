@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(try_from)]
-
 use std::marker::PhantomData;
 use std::convert::{TryFrom, AsRef};
 

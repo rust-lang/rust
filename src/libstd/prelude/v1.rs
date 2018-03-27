@@ -35,6 +35,8 @@
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use convert::{AsRef, AsMut, Into, From};
+#[stable(feature = "try_from", since = "1.26.0")]
+#[doc(no_inline)] pub use convert::{TryFrom, TryInto};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use default::Default;
 #[stable(feature = "rust1", since = "1.0.0")]
