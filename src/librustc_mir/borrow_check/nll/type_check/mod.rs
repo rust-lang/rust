@@ -20,7 +20,7 @@ use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, Normalized, FulfillmentContext};
+use rustc::traits::{self, Normalized, TraitEngine};
 use rustc::traits::query::NoSolution;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
@@ -662,7 +662,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         OP: FnOnce(&mut Self) -> InferResult<'tcx, R>,
     {
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
         let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
         fulfill_cx.register_predicate_obligations(self.infcx, obligations);
         if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {

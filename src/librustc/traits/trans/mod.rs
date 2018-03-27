@@ -18,7 +18,8 @@ use std::marker::PhantomData;
 use syntax_pos::DUMMY_SP;
 use infer::InferCtxt;
 use syntax_pos::Span;
-use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext, Vtable};
+use traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext,
+             TraitEngine, Vtable};
 use ty::{self, Ty, TyCtxt};
 use ty::subst::{Subst, Substs};
 use ty::fold::TypeFoldable;

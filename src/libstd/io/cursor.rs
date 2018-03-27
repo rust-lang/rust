@@ -10,7 +10,6 @@
 
 use io::prelude::*;
 
-use core::convert::TryInto;
 use cmp;
 use io::{self, Initializer, SeekFrom, Error, ErrorKind};
 
@@ -260,9 +259,26 @@ fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<us
     Ok(amt)
 }
 
+/// Compensate removal of some impls per
+/// https://github.com/rust-lang/rust/pull/49305#issuecomment-376293243
+#[cfg(any(target_pointer_width = "16",
+          target_pointer_width = "32"))]
+fn try_into(n: u64) -> Result<usize, ()> {
+    if n <= (<usize>::max_value() as u64) {
+        Ok(n as usize)
+    } else {
+        Err(())
+    }
+}
+
+#[cfg(any(target_pointer_width = "64"))]
+fn try_into(n: u64) -> Result<usize, ()> {
+    Ok(n as usize)
+}
+
 // Resizing write implementation
 fn vec_write(pos_mut: &mut u64, vec: &mut Vec<u8>, buf: &[u8]) -> io::Result<usize> {
-    let pos: usize = (*pos_mut).try_into().map_err(|_| {
+    let pos: usize = try_into(*pos_mut).map_err(|_| {
         Error::new(ErrorKind::InvalidInput,
                     "cursor position exceeds maximum possible vector length")
     })?;
