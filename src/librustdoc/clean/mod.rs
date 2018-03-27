@@ -1379,17 +1379,18 @@ fn external_path(cx: &DocContext, name: &str, trait_did: Option<DefId>, has_self
     }
 }
 
-impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
+impl<'a, 'tcx> Clean<TyParamBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>) {
     fn clean(&self, cx: &DocContext) -> TyParamBound {
-        inline::record_extern_fqn(cx, self.def_id, TypeKind::Trait);
-        let path = external_path(cx, &cx.tcx.item_name(self.def_id),
-                                 Some(self.def_id), true, vec![], self.substs);
+        let (trait_ref, ref bounds) = *self;
+        inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
+        let path = external_path(cx, &cx.tcx.item_name(trait_ref.def_id),
+                                 Some(trait_ref.def_id), true, bounds.clone(), trait_ref.substs);
 
-        debug!("ty::TraitRef\n  subst: {:?}\n", self.substs);
+        debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
 
         // collect any late bound regions
         let mut late_bounds = vec![];
-        for ty_s in self.input_types().skip(1) {
+        for ty_s in trait_ref.input_types().skip(1) {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
                     if let ty::TyRef(ref reg, _) = ty_s.sty {
@@ -1409,13 +1410,19 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
                 trait_: ResolvedPath {
                     path,
                     typarams: None,
-                    did: self.def_id,
+                    did: trait_ref.def_id,
                     is_generic: false,
                 },
                 generic_params: late_bounds,
             },
             hir::TraitBoundModifier::None
         )
+    }
+}
+
+impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
+    fn clean(&self, cx: &DocContext) -> TyParamBound {
+        (self, vec![]).clean(cx)
     }
 }
 
@@ -2757,7 +2764,30 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let substs = cx.tcx.lift(&substs).unwrap();
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
                 ImplTrait(bounds.predicates.iter().filter_map(|predicate| {
-                    predicate.to_opt_poly_trait_ref().clean(cx)
+                    let trait_ref = if let Some(tr) = predicate.to_opt_poly_trait_ref() {
+                        tr
+                    } else {
+                        return None;
+                    };
+
+                    let bounds = bounds.predicates.iter().filter_map(|pred|
+                        if let ty::Predicate::Projection(proj) = *pred {
+                            let proj = proj.skip_binder();
+                            if proj.projection_ty.trait_ref(cx.tcx) == *trait_ref.skip_binder() {
+                                Some(TypeBinding {
+                                    name: cx.tcx.associated_item(proj.projection_ty.item_def_id)
+                                                .name.clean(cx),
+                                    ty: proj.ty.clean(cx),
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    ).collect();
+
+                    Some((trait_ref.skip_binder(), bounds).clean(cx))
                 }).collect())
             }
 
