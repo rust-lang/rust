@@ -115,10 +115,10 @@ pub fn main() {
                     })
                     .collect();
 
-                let current_dir = std::env::current_dir()
-                    .expect("could not read current directory")
+                let current_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")
+                    .expect("CARGO_MANIFEST_DIR not set"))
                     .canonicalize()
-                    .expect("current directory cannot be canonicalized");
+                    .expect("manifest directory cannot be canonicalized");
 
                 let mut current_path: &Path = &current_dir;
 

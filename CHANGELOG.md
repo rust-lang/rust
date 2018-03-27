@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.190
+* Fix a bunch of intermittent cargo bugs
+
 ## 0.0.189
 * Rustup to *rustc 1.26.0-nightly (5508b2714 2018-03-18)*
 
