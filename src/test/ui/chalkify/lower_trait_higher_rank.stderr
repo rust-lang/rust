@@ -1,0 +1,26 @@
+error: Implemented(Self: Foo<F>) :- FromEnv(Self: Foo<F>).
+  --> $DIR/lower_trait_higher_rank.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<F>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(F: std::marker::Sized) :- FromEnv(Self: Foo<F>).
+  --> $DIR/lower_trait_higher_rank.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<F>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(F: std::ops::Fn<(&'a (u8, u16),)>) :- FromEnv(Self: Foo<F>).
+  --> $DIR/lower_trait_higher_rank.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<F>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(<F as std::ops::FnOnce<(&'a (u8, u16),)>>::Output == &'a u8) :- FromEnv(Self: Foo<F>).
+  --> $DIR/lower_trait_higher_rank.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<F>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

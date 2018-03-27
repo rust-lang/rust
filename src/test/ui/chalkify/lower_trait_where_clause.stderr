@@ -1,0 +1,44 @@
+error: Implemented(Self: Foo<'a, 'b, S, T, U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(S: std::fmt::Debug) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: RegionOutlives('a : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: TypeOutlives(U : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+  --> $DIR/lower_trait_where_clause.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

@@ -90,6 +90,28 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
     }
 }
 
+/// Transforms an existing goal into a FromEnv goal.
+///
+/// Used for lowered where clauses (see rustc guide).
+trait IntoFromEnvGoal {
+    fn into_from_env_goal(self) -> Self;
+}
+
+impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
+    fn into_from_env_goal(self) -> DomainGoal<'tcx> {
+        use self::DomainGoal::*;
+        match self {
+            Holds(wc_atom) => FromEnv(wc_atom),
+            WellFormed(..) |
+            FromEnv(..) |
+            WellFormedTy(..) |
+            FromEnvTy(..) |
+            RegionOutlives(..) |
+            TypeOutlives(..) => self,
+        }
+    }
+}
+
 crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     -> Lrc<Vec<Clause<'tcx>>>
 {
@@ -107,9 +129,9 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
 fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     -> Lrc<Vec<Clause<'tcx>>>
 {
-    // Rule Implemented-From-Env (see rustc guide)
-    //
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
+
+    // Rule Implemented-From-Env (see rustc guide)
     //
     // ```
     // forall<Self, P1..Pn> {
@@ -130,11 +152,50 @@ fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     let impl_trait = DomainGoal::Holds(WhereClauseAtom::Implemented(trait_pred));
 
     // `Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)`
-    let clause = ProgramClause {
+    let implemented_from_env = ProgramClause {
         goal: impl_trait,
         hypotheses: vec![from_env],
     };
-    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
+    let mut clauses = vec![
+        Clause::ForAll(ty::Binder::dummy(implemented_from_env))
+    ];
+
+    // Rule Implied-Bound-From-Trait
+    //
+    // For each where clause WC:
+    // ```
+    // forall<Self, P1..Pn> {
+    //   FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
+    // }
+    // ```
+
+    // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
+    // FIXME: Remove the [1..] slice; this is a hack because the query
+    // predicates_of currently includes the trait itself (`Self: Trait<P1..Pn>`).
+    let where_clauses = &tcx.predicates_of(def_id).predicates;
+    let implied_bound_clauses =
+        where_clauses[1..].into_iter()
+        .map(|wc| implied_bound_from_trait(trait_pred, wc));
+    clauses.extend(implied_bound_clauses);
+
+    Lrc::new(clauses)
+}
+
+/// For a given `where_clause`, returns a clause `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`.
+fn implied_bound_from_trait<'tcx>(
+    trait_pred: ty::TraitPredicate<'tcx>,
+    where_clause: &ty::Predicate<'tcx>,
+) -> Clause<'tcx> {
+    // `FromEnv(Self: Trait<P1..Pn>)`
+    let impl_trait = DomainGoal::FromEnv(WhereClauseAtom::Implemented(trait_pred));
+
+    // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`
+    Clause::ForAll(
+        where_clause.lower().map_bound(|goal| ProgramClause {
+            goal: goal.into_from_env_goal(),
+            hypotheses: vec![impl_trait.into()],
+        })
+    )
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
