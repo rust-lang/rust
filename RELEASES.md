@@ -98,6 +98,20 @@ Compatibility Notes
 [`ptr::NonNull`]: https://doc.rust-lang.org/std/ptr/struct.NonNull.html
 
 
+Version 1.24.1 (2018-03-01)
+==========================
+
+ - [Do not abort when unwinding through FFI][48251]
+ - [Emit UTF-16 files for linker arguments on Windows][48318]
+ - [Make the error index generator work again][48308]
+ - [Cargo will warn on Windows 7 if an update is needed][cargo/5069].
+
+[48251]: https://github.com/rust-lang/rust/issues/48251
+[48308]: https://github.com/rust-lang/rust/issues/48308
+[48318]: https://github.com/rust-lang/rust/issues/48318
+[cargo/5069]: https://github.com/rust-lang/cargo/pull/5069
+
+
 Version 1.24.0 (2018-02-15)
 ==========================
 
