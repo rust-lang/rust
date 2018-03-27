@@ -114,7 +114,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
-#![feature(core_intrinsics)]
+#![feature(conservative_impl_trait, fs_read_write, core_intrinsics)]
 #![feature(slice_concat_ext)]
 
 #[macro_use]
@@ -143,13 +143,15 @@ extern crate libc;
 use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
 use std::env;
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs::{self, OpenOptions, File};
+use std::io::{self, Seek, SeekFrom, Write, Read};
 use std::path::{PathBuf, Path};
 use std::process::{self, Command};
 use std::slice;
+use std::str;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
+use filetime::FileTime;
 
 use util::{exe, libdir, OutputFolder, CiEnv};
 
@@ -404,13 +406,36 @@ impl Build {
             return clean::clean(self, all);
         }
 
-        let builder = builder::Builder::new(&self);
-        if let Some(path) = builder.paths.get(0) {
-            if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
-                return;
+        {
+            let builder = builder::Builder::new(&self);
+            if let Some(path) = builder.paths.get(0) {
+                if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                    return;
+                }
             }
         }
-        builder.execute_cli();
+
+        if !self.config.dry_run {
+            let dry_graph = {
+                self.config.dry_run = true;
+                let builder = builder::Builder::new(&self);
+                builder.execute_cli()
+            };
+            self.config.dry_run = false;
+            let builder = builder::Builder::new(&self);
+            let act_graph = builder.execute_cli();
+            assert_eq!(dry_graph.raw_nodes().iter().map(|i| &i.weight).collect::<Vec<_>>(),
+                act_graph.raw_nodes().iter().map(|i| &i.weight).collect::<Vec<_>>());
+            assert_eq!(dry_graph.raw_edges()
+                .iter().map(|i| (&dry_graph[i.source()], &dry_graph[i.target()], &i.weight))
+                .collect::<Vec<_>>(),
+                act_graph.raw_edges()
+                .iter().map(|i| (&act_graph[i.source()], &act_graph[i.target()], &i.weight))
+                .collect::<Vec<_>>());
+        } else {
+            let builder = builder::Builder::new(&self);
+            let _ = builder.execute_cli();
+        }
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
@@ -997,7 +1022,167 @@ impl Build {
         }
         ret
     }
+
+    fn read_stamp_file(&self, stamp: &Path) -> Vec<PathBuf> {
+        if self.config.dry_run {
+            return Vec::new();
+        }
+
+        let mut paths = Vec::new();
+        let mut contents = Vec::new();
+        t!(t!(File::open(stamp)).read_to_end(&mut contents));
+        // This is the method we use for extracting paths from the stamp file passed to us. See
+        // run_cargo for more information (in compile.rs).
+        for part in contents.split(|b| *b == 0) {
+            if part.is_empty() {
+                continue
+            }
+            let path = PathBuf::from(t!(str::from_utf8(part)));
+            paths.push(path);
+        }
+        paths
+    }
+
+    /// Copies a file from `src` to `dst`
+    pub fn copy(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run { return; }
+        let _ = fs::remove_file(&dst);
+        // Attempt to "easy copy" by creating a hard link (symlinks don't work on
+        // windows), but if that fails just fall back to a slow `copy` operation.
+        if let Ok(()) = fs::hard_link(src, dst) {
+            return
+        }
+        if let Err(e) = fs::copy(src, dst) {
+            panic!("failed to copy `{}` to `{}`: {}", src.display(),
+                dst.display(), e)
+        }
+        let metadata = t!(src.metadata());
+        t!(fs::set_permissions(dst, metadata.permissions()));
+        let atime = FileTime::from_last_access_time(&metadata);
+        let mtime = FileTime::from_last_modification_time(&metadata);
+        t!(filetime::set_file_times(dst, atime, mtime));
+    }
+
+    /// Search-and-replaces within a file. (Not maximally efficiently: allocates a
+    /// new string for each replacement.)
+    pub fn replace_in_file(&self, path: &Path, replacements: &[(&str, &str)]) {
+        if self.config.dry_run { return; }
+        let mut contents = String::new();
+        let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
+        t!(file.read_to_string(&mut contents));
+        for &(target, replacement) in replacements {
+            contents = contents.replace(target, replacement);
+        }
+        t!(file.seek(SeekFrom::Start(0)));
+        t!(file.set_len(0));
+        t!(file.write_all(contents.as_bytes()));
+    }
+
+    /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+    /// when this function is called.
+    pub fn cp_r(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run { return; }
+        for f in t!(fs::read_dir(src)) {
+            let f = t!(f);
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            if t!(f.file_type()).is_dir() {
+                t!(fs::create_dir_all(&dst));
+                self.cp_r(&path, &dst);
+            } else {
+                let _ = fs::remove_file(&dst);
+                self.copy(&path, &dst);
+            }
+        }
+    }
+
+    /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+    /// when this function is called. Unwanted files or directories can be skipped
+    /// by returning `false` from the filter function.
+    pub fn cp_filtered(&self, src: &Path, dst: &Path, filter: &Fn(&Path) -> bool) {
+        // Immediately recurse with an empty relative path
+        self.recurse_(src, dst, Path::new(""), filter)
+    }
+
+    // Inner function does the actual work
+    fn recurse_(&self, src: &Path, dst: &Path, relative: &Path, filter: &Fn(&Path) -> bool) {
+        for f in self.read_dir(src) {
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            let relative = relative.join(name);
+            // Only copy file or directory if the filter function returns true
+            if filter(&relative) {
+                if t!(f.file_type()).is_dir() {
+                    let _ = fs::remove_dir_all(&dst);
+                    self.create_dir(&dst);
+                    self.recurse_(&path, &dst, &relative, filter);
+                } else {
+                    let _ = fs::remove_file(&dst);
+                    self.copy(&path, &dst);
+                }
+            }
+        }
+    }
+
+    fn copy_to_folder(&self, src: &Path, dest_folder: &Path) {
+        let file_name = src.file_name().unwrap();
+        let dest = dest_folder.join(file_name);
+        self.copy(src, &dest);
+    }
+
+    fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
+        if self.config.dry_run { return; }
+        let dst = dstdir.join(src.file_name().unwrap());
+        t!(fs::create_dir_all(dstdir));
+        drop(fs::remove_file(&dst));
+        {
+            let mut s = t!(fs::File::open(&src));
+            let mut d = t!(fs::File::create(&dst));
+            io::copy(&mut s, &mut d).expect("failed to copy");
+        }
+        chmod(&dst, perms);
+    }
+
+    fn create(&self, path: &Path, s: &str) {
+        if self.config.dry_run { return; }
+        t!(fs::write(path, s));
+    }
+
+    fn read(&self, path: &Path) -> String {
+        if self.config.dry_run { return String::new(); }
+        t!(fs::read_string(path))
+    }
+
+    fn create_dir(&self, dir: &Path) {
+        if self.config.dry_run { return; }
+        t!(fs::create_dir_all(dir))
+    }
+
+    fn remove_dir(&self, dir: &Path) {
+        if self.config.dry_run { return; }
+        t!(fs::remove_dir_all(dir))
+    }
+
+    fn read_dir(&self, dir: &Path) -> impl Iterator<Item=fs::DirEntry> {
+        let iter = match fs::read_dir(dir) {
+            Ok(v) => v,
+            Err(_) if self.config.dry_run => return vec![].into_iter(),
+            Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
+        };
+        iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
+    }
 }
+
+#[cfg(unix)]
+fn chmod(path: &Path, perms: u32) {
+    use std::os::unix::fs::*;
+    t!(fs::set_permissions(path, fs::Permissions::from_mode(perms)));
+}
+#[cfg(windows)]
+fn chmod(_path: &Path, _perms: u32) {}
+
 
 impl<'a> Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {

@@ -30,7 +30,7 @@ use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 use serde_json;
 
-use util::{exe, libdir, is_dylib, copy, read_stamp_file, CiEnv};
+use util::{exe, libdir, is_dylib, CiEnv};
 use {Build, Compiler, Mode};
 use native;
 use tool;
@@ -130,7 +130,7 @@ fn copy_musl_third_party_objects(build: &Build,
                                  target: Interned<String>,
                                  into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
+        build.copy(&build.musl_root(target).unwrap().join("lib").join(obj), &into.join(obj));
     }
 }
 
@@ -220,13 +220,13 @@ impl Step for StdLink {
                 target_compiler.host,
                 target);
         let libdir = builder.sysroot_libdir(target_compiler, target);
-        add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
+        add_to_sysroot(&build, &libdir, &libstd_stamp(build, compiler, target));
 
         if build.config.sanitizers && compiler.stage != 0 && target == "x86_64-apple-darwin" {
             // The sanitizers are only built in stage1 or above, so the dylibs will
             // be missing in stage0 and causes panic. See the `std()` function above
             // for reason why the sanitizers are not built in stage0.
-            copy_apple_sanitizer_dylibs(&build.native_dir(target), "osx", &libdir);
+            copy_apple_sanitizer_dylibs(&build, &build.native_dir(target), "osx", &libdir);
         }
 
         builder.ensure(tool::CleanTools {
@@ -237,7 +237,7 @@ impl Step for StdLink {
     }
 }
 
-fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
+fn copy_apple_sanitizer_dylibs(build: &Build, native_dir: &Path, platform: &str, into: &Path) {
     for &sanitizer in &["asan", "tsan"] {
         let filename = format!("libclang_rt.{}_{}_dynamic.dylib", sanitizer, platform);
         let mut src_path = native_dir.join(sanitizer);
@@ -245,7 +245,7 @@ fn copy_apple_sanitizer_dylibs(native_dir: &Path, platform: &str, into: &Path) {
         src_path.push("lib");
         src_path.push("darwin");
         src_path.push(&filename);
-        copy(&src_path, &into.join(filename));
+        build.copy(&src_path, &into.join(filename));
     }
 }
 
@@ -301,7 +301,7 @@ impl Step for StartupObjects {
                             .arg(src_file));
             }
 
-            copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
+            build.copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
         }
 
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
@@ -309,7 +309,7 @@ impl Step for StartupObjects {
                                     build.cc(target),
                                     target,
                                     obj);
-            copy(&src, &sysroot_dir.join(obj));
+            build.copy(&src, &sysroot_dir.join(obj));
         }
     }
 }
@@ -420,7 +420,7 @@ impl Step for TestLink {
                 &compiler.host,
                 target_compiler.host,
                 target);
-        add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
+        add_to_sysroot(&build, &builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
@@ -575,7 +575,7 @@ impl Step for RustcLink {
                  &compiler.host,
                  target_compiler.host,
                  target);
-        add_to_sysroot(&builder.sysroot_libdir(target_compiler, target),
+        add_to_sysroot(&build, &builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
             compiler: target_compiler,
@@ -690,7 +690,7 @@ impl Step for CodegenBackend {
                               cargo.arg("--features").arg(features),
                               &tmp_stamp,
                               false);
-        if cfg!(test) {
+        if builder.config.dry_run {
             return;
         }
         let mut files = files.into_iter()
@@ -736,6 +736,10 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     let dst = builder.sysroot_codegen_backends(target_compiler);
     t!(fs::create_dir_all(&dst));
 
+    if builder.config.dry_run {
+        return;
+    }
+
     for backend in builder.config.rust_codegen_backends.iter() {
         let stamp = codegen_backend_stamp(build, compiler, target, *backend);
         let mut dylib = String::new();
@@ -751,7 +755,7 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
                     backend,
                     &filename[dot..])
         };
-        copy(&file, &dst.join(target_filename));
+        build.copy(&file, &dst.join(target_filename));
     }
 }
 
@@ -767,7 +771,7 @@ fn copy_lld_to_sysroot(builder: &Builder,
     t!(fs::create_dir_all(&dst));
 
     let exe = exe("lld", &target);
-    copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
+    builder.copy(&lld_install_root.join("bin").join(&exe), &dst.join(&exe));
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
@@ -936,10 +940,10 @@ impl Step for Assemble {
         let sysroot_libdir = sysroot.join(libdir(&*host));
         t!(fs::create_dir_all(&sysroot_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
-        for f in t!(fs::read_dir(&src_libdir)).map(|f| t!(f)) {
+        for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
             if is_dylib(&filename) {
-                copy(&f.path(), &sysroot_libdir.join(&filename));
+                builder.copy(&f.path(), &sysroot_libdir.join(&filename));
             }
         }
 
@@ -957,7 +961,7 @@ impl Step for Assemble {
         t!(fs::create_dir_all(&bindir));
         let compiler = builder.rustc(target_compiler);
         let _ = fs::remove_file(&compiler);
-        copy(&rustc, &compiler);
+        builder.copy(&rustc, &compiler);
 
         target_compiler
     }
@@ -967,10 +971,10 @@ impl Step for Assemble {
 ///
 /// For a particular stage this will link the file listed in `stamp` into the
 /// `sysroot_dst` provided.
-pub fn add_to_sysroot(sysroot_dst: &Path, stamp: &Path) {
+pub fn add_to_sysroot(build: &Build, sysroot_dst: &Path, stamp: &Path) {
     t!(fs::create_dir_all(&sysroot_dst));
-    for path in read_stamp_file(stamp) {
-        copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
+    for path in build.read_stamp_file(stamp) {
+        build.copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
     }
 }
 
@@ -1000,6 +1004,10 @@ fn stderr_isatty() -> bool {
 pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: bool)
     -> Vec<PathBuf>
 {
+    if build.config.dry_run {
+        return Vec::new();
+    }
+
     // `target_root_dir` looks like $dir/$target/release
     let target_root_dir = stamp.parent().unwrap();
     // `target_deps_dir` looks like $dir/$target/release/deps
@@ -1141,6 +1149,9 @@ pub fn stream_cargo(
     cargo: &mut Command,
     cb: &mut FnMut(CargoMessage),
 ) -> bool {
+    if build.config.dry_run {
+        return true;
+    }
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     cargo.arg("--message-format").arg("json")

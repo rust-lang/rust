@@ -13,7 +13,6 @@
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
 
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process;
@@ -42,6 +41,7 @@ pub struct Flags {
     pub incremental: bool,
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
+    pub dry_run: bool,
 }
 
 pub enum Subcommand {
@@ -112,6 +112,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optmulti("", "target", "target targets to build", "TARGET");
         opts.optmulti("", "exclude", "build paths to exclude", "PATH");
         opts.optopt("", "on-fail", "command to run on failure", "CMD");
+        opts.optflag("", "dry-run", "dry run; don't build anything");
         opts.optopt("", "stage", "stage to build", "N");
         opts.optopt("", "keep-stage", "stage to keep without recompiling", "N");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
@@ -365,6 +366,7 @@ Arguments:
         Flags {
             verbose: matches.opt_count("verbose"),
             stage,
+            dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
             keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),

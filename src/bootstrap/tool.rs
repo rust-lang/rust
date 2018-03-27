@@ -17,7 +17,7 @@ use std::slice::SliceConcatExt;
 use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{copy, exe, add_lib_path};
+use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
@@ -207,7 +207,7 @@ impl Step for ToolBuild {
             let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
                 .join(exe(tool, &compiler.host));
             let bin = build.tools_dir(compiler).join(exe(tool, &compiler.host));
-            copy(&cargo_out, &bin);
+            build.copy(&cargo_out, &bin);
             Some(bin)
         }
     }
@@ -443,7 +443,7 @@ impl Step for Rustdoc {
             t!(fs::create_dir_all(&bindir));
             let bin_rustdoc = bindir.join(exe("rustdoc", &*target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
-            copy(&tool_rustdoc, &bin_rustdoc);
+            build.copy(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
         } else {
             tool_rustdoc

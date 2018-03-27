@@ -1042,6 +1042,7 @@ impl Step for DocTest {
         let _time = util::timeit();
         let _folder = build.fold_output(|| format!("test_{}", self.name));
 
+        let mut files = Vec::new();
         while let Some(p) = stack.pop() {
             if p.is_dir() {
                 stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
@@ -1058,7 +1059,13 @@ impl Step for DocTest {
                 continue;
             }
 
-            let test_result = markdown_test(builder, compiler, &p);
+            files.push(p);
+        }
+
+        files.sort();
+
+        for file in files {
+            let test_result = markdown_test(builder, compiler, &file);
             if self.is_ext_doc {
                 let toolstate = if test_result {
                     ToolState::TestPass

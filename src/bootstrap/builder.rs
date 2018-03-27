@@ -413,8 +413,9 @@ impl<'a> Builder<'a> {
         builder
     }
 
-    pub fn execute_cli(&self) {
+    pub fn execute_cli(&self) -> Graph<String, bool> {
         self.run_step_descriptions(&Builder::get_step_descriptions(self.kind), &self.paths);
+        self.graph.borrow().clone()
     }
 
     pub fn default_doc(&self, paths: Option<&[PathBuf]>) {
@@ -910,6 +911,7 @@ impl<'a> Builder<'a> {
 #[cfg(test)]
 mod __test {
     use config::Config;
+    use std::thread;
     use super::*;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
@@ -917,6 +919,12 @@ mod __test {
         // don't save toolstates
         config.save_toolstates = None;
         config.run_host_only = true;
+        config.dry_run = true;
+        // try to avoid spurious failures in dist where we create/delete each others file
+        let dir = config.out.join("tmp-rustbuild-tests")
+            .join(&thread::current().name().unwrap_or("unknown").replace(":", "-"));
+        t!(fs::create_dir_all(&dir));
+        config.out = dir;
         config.build = INTERNER.intern_str("A");
         config.hosts = vec![config.build].clone().into_iter()
             .chain(host.iter().map(|s| INTERNER.intern_str(s))).collect::<Vec<_>>();
