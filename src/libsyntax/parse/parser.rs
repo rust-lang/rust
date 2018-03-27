@@ -48,7 +48,6 @@ use parse::{self, classify, token};
 use parse::common::SeqSep;
 use parse::lexer::TokenAndSpan;
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
-use parse::obsolete::ObsoleteSyntax;
 use parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
 use util::parser::{AssocOp, Fixity};
 use print::pprust;
@@ -59,7 +58,6 @@ use symbol::{Symbol, keywords};
 use util::ThinVec;
 
 use std::cmp;
-use std::collections::HashSet;
 use std::mem;
 use std::path::{self, Path, PathBuf};
 use std::slice;
@@ -229,9 +227,6 @@ pub struct Parser<'a> {
     /// the previous token kind
     prev_token_kind: PrevTokenKind,
     pub restrictions: Restrictions,
-    /// The set of seen errors about obsolete syntax. Used to suppress
-    /// extra detail when the same error is seen twice
-    pub obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     pub directory: Directory,
     /// Whether to parse sub-modules in other files.
@@ -555,7 +550,6 @@ impl<'a> Parser<'a> {
             meta_var_span: None,
             prev_token_kind: PrevTokenKind::Other,
             restrictions: Restrictions::empty(),
-            obsolete_set: HashSet::new(),
             recurse_into_file_modules,
             directory: Directory {
                 path: PathBuf::new(),
