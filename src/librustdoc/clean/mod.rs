@@ -2763,20 +2763,26 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 let predicates_of = cx.tcx.predicates_of(def_id);
                 let substs = cx.tcx.lift(&substs).unwrap();
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
-                ImplTrait(bounds.predicates.iter().filter_map(|predicate| {
+                let mut regions = vec![];
+                let mut has_sized = false;
+                let mut bounds = bounds.predicates.iter().filter_map(|predicate| {
                     let trait_ref = if let Some(tr) = predicate.to_opt_poly_trait_ref() {
                         tr
+                    } else if let ty::Predicate::TypeOutlives(pred) = *predicate {
+                        // these should turn up at the end
+                        pred.skip_binder().1.clean(cx).map(|r| regions.push(RegionBound(r)));
+                        return None;
                     } else {
                         return None;
                     };
 
                     if let Some(sized) = cx.tcx.lang_items().sized_trait() {
                         if trait_ref.def_id() == sized {
+                            has_sized = true;
                             return None;
                         }
                     }
 
-                    // FIXME(Manishearth) handle cases which aren't Sized
 
                     let bounds = bounds.predicates.iter().filter_map(|pred|
                         if let ty::Predicate::Projection(proj) = *pred {
@@ -2796,7 +2802,12 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     ).collect();
 
                     Some((trait_ref.skip_binder(), bounds).clean(cx))
-                }).collect())
+                }).collect::<Vec<_>>();
+                bounds.extend(regions);
+                if !has_sized && !bounds.is_empty() {
+                    bounds.insert(0, TyParamBound::maybe_sized(cx));
+                }
+                ImplTrait(bounds)
             }
 
             ty::TyClosure(..) | ty::TyGenerator(..) => Tuple(vec![]), // FIXME(pcwalton)
