@@ -835,7 +835,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn metadata_output_only(&self) -> bool {
         // MIR optimisation can be skipped when we're just interested in the metadata.
-        self.tcx.sess.opts.output_types.keys().count() == 1 &&
+        self.tcx.sess.opts.output_types.len() == 1 &&
             self.tcx.sess.opts.output_types.contains_key(&OutputType::Metadata)
     }
 

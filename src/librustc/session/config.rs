@@ -246,6 +246,10 @@ impl OutputTypes {
         self.0.values()
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     // True if any of the output types require codegen or linking.
     pub fn should_trans(&self) -> bool {
         self.0.keys().any(|k| match *k {

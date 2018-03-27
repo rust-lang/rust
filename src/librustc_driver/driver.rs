@@ -168,7 +168,7 @@ pub fn compile_input(trans: Box<TransCrate>,
 
         write_out_deps(sess, &outputs, &output_paths);
         if sess.opts.output_types.contains_key(&OutputType::DepInfo) &&
-            sess.opts.output_types.keys().count() == 1 {
+            sess.opts.output_types.len() == 1 {
             return Ok(())
         }
 
