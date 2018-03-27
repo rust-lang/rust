@@ -250,7 +250,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
-                        &format!("attribute should not be applied a statement"),
+                        &format!("attribute should not be applied to a statement"),
                         &format!("not a struct, enum or union"),
                     );
                 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(stmt_expr_attributes)]
+
 fn main() {
 
     #[inline]
@@ -21,7 +23,7 @@ fn main() {
 
     #[repr(nothing)]
     let _x = 0;
-    //~^^ ERROR attribute should not be applied a statement
+    //~^^ ERROR attribute should not be applied to a statement
 
     #[repr(something_not_real)]
     loop {
@@ -31,7 +33,7 @@ fn main() {
 
     #[repr]
     let _y = "123";
-    //~^^ ERROR attribute should not be applied a statement
+    //~^^ ERROR attribute should not be applied to a statement
 
 
     fn foo() {}
@@ -39,4 +41,8 @@ fn main() {
     #[inline(ABC)]
     foo();
     //~^^ ERROR attribute should be applied to function
+
+    let _z = #[repr] 1;
+    //~^ ERROR attribute should not be applied to an expression
+
 }
