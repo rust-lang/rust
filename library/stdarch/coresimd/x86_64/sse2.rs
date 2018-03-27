@@ -1,7 +1,7 @@
 //! `x86_64`'s Streaming SIMD Extensions 2 (SSE2)
 
-use coresimd::x86::*;
 use coresimd::simd_llvm::*;
+use coresimd::x86::*;
 use intrinsics;
 
 #[cfg(test)]

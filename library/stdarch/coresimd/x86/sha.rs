@@ -116,15 +116,15 @@ pub unsafe fn _mm_sha256rnds2_epu32(
 
 #[cfg(test)]
 mod tests {
-    use std::mem::{self, transmute};
-    use std::f64::{self, NAN};
     use std::f32;
+    use std::f64::{self, NAN};
     use std::i32;
+    use std::mem::{self, transmute};
 
+    use coresimd::simd::*;
+    use coresimd::x86::*;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
-    use coresimd::x86::*;
-    use coresimd::simd::*;
 
     #[simd_test = "sha"]
     #[allow(overflowing_literals)]

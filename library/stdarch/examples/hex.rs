@@ -30,8 +30,8 @@ extern crate stdsimd;
 #[macro_use]
 extern crate quickcheck;
 
-use std::str;
 use std::io::{self, Read};
+use std::str;
 
 #[cfg(target_arch = "x86")]
 use stdsimd::arch::x86::*;

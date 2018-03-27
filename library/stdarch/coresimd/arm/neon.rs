@@ -1,9 +1,9 @@
 //! ARMv7 NEON intrinsics
 
+use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
-use coresimd::simd_llvm::*;
-use coresimd::simd::*;
 
 types! {
     /// ARM-specific 64-bit wide vector of eight packed `i8`.
@@ -682,10 +682,10 @@ pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
-    use simd::*;
     use coresimd::arm::*;
+    use simd::*;
     use std::mem;
+    use stdsimd_test::simd_test;
 
     #[simd_test = "neon"]
     unsafe fn test_vadd_s8() {

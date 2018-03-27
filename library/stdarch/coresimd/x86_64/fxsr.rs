@@ -52,8 +52,8 @@ pub unsafe fn _fxrstor64(mem_addr: *const u8) {
 #[cfg(test)]
 mod tests {
     use coresimd::x86::x86_64::fxsr;
-    use stdsimd_test::simd_test;
     use std::fmt;
+    use stdsimd_test::simd_test;
 
     #[repr(align(16))]
     struct FxsaveArea {

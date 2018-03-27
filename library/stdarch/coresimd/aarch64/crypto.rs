@@ -184,10 +184,10 @@ pub unsafe fn vsha256su1q_u32(
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
-    use simd::*;
     use coresimd::aarch64::*;
+    use simd::*;
     use std::mem;
+    use stdsimd_test::simd_test;
 
     #[simd_test = "crypto"]
     unsafe fn test_vaeseq_u8() {

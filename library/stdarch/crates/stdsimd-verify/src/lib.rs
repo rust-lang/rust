@@ -7,9 +7,9 @@ extern crate quote;
 #[macro_use]
 extern crate syn;
 
-use std::path::Path;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 use proc_macro::TokenStream;
 use quote::Tokens;

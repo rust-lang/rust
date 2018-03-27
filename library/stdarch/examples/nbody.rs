@@ -45,10 +45,10 @@ impl Frsqrt for f64x2 {
         }
         #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
         {
-            #[cfg(target_arch = "arm")]
-            use stdsimd::arch::arm::*;
             #[cfg(target_arch = "aarch64")]
             use stdsimd::arch::aarch64::*;
+            #[cfg(target_arch = "arm")]
+            use stdsimd::arch::arm::*;
 
             let t: f32x2 = (*self).into();
             let t: f32x2 = unsafe { vrsqrte_f32(t.into_bits()).into_bits() };

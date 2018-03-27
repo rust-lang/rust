@@ -101,13 +101,17 @@ use coresimd::arch::aarch64::{// FIXME: float16x4_t,
                               uint8x8_t};
 
 macro_rules! from_bits_arm {
-    ($id:ident, $elem_ty:ident, $test_mod_arm:ident, $test_mod_a64:ident) => {
-        #[cfg(any(all(target_arch = "arm",
-                      target_feature = "neon",
-                      target_feature = "v7"), target_arch = "aarch64"))]
+    (
+        $id: ident,
+        $elem_ty: ident,
+        $test_mod_arm: ident,
+        $test_mod_a64: ident
+    ) => {
+        #[cfg(any(all(target_arch = "arm", target_feature = "neon",
+                      target_feature = "v7"),
+                  target_arch = "aarch64"))]
         impl_from_bits_!(
-            $id:
-            int64x1_t,
+            $id: int64x1_t,
             uint64x1_t,
             uint32x2_t,
             int32x2_t,
@@ -121,10 +125,8 @@ macro_rules! from_bits_arm {
             poly8x8_t
         );
         #[cfg(target_arch = "aarch64")]
-        impl_from_bits_!(
-            $id: float64x1_t
-        );
-    }
+        impl_from_bits_!($id: float64x1_t);
+    };
 }
 
 impl_from_bits!(

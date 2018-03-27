@@ -1,7 +1,7 @@
 //! Supplemental Streaming SIMD Extensions 3 (SSSE3)
 
-use coresimd::simd_llvm::simd_shuffle16;
 use coresimd::simd::*;
+use coresimd::simd_llvm::simd_shuffle16;
 use coresimd::x86::*;
 use mem;
 

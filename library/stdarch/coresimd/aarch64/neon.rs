@@ -2,11 +2,11 @@
 
 // FIXME: replace neon with asimd
 
+use coresimd::arm::*;
+use coresimd::simd::*;
+use coresimd::simd_llvm::simd_add;
 #[cfg(test)]
 use stdsimd_test::assert_instr;
-use coresimd::simd_llvm::simd_add;
-use coresimd::simd::*;
-use coresimd::arm::*;
 
 types! {
     /// ARM-specific 64-bit wide vector of one packed `f64`.
@@ -382,10 +382,10 @@ pub unsafe fn vminvq_f64(a: float64x2_t) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
-    use simd::*;
     use coresimd::aarch64::*;
+    use simd::*;
     use std::mem;
+    use stdsimd_test::simd_test;
 
     #[simd_test = "neon"]
     unsafe fn test_vadd_f64() {

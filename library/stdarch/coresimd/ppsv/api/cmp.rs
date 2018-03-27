@@ -99,11 +99,16 @@ macro_rules! impl_bool_cmp {
 
 #[cfg(test)]
 macro_rules! test_cmp {
-    ($id:ident, $elem_ty:ident, $bool_ty:ident,
-     $true:expr, $false:expr) => {
+    (
+        $id: ident,
+        $elem_ty: ident,
+        $bool_ty: ident,
+        $true: expr,
+        $false: expr
+    ) => {
         #[test]
         fn cmp() {
-            use ::coresimd::simd::*;
+            use coresimd::simd::*;
 
             let a = $id::splat($false);
             let b = $id::splat($true);
@@ -139,5 +144,5 @@ macro_rules! test_cmp {
             let r = a.lt(b);
             assert!(r == e);
         }
-    }
+    };
 }

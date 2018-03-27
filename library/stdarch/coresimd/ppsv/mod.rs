@@ -33,19 +33,19 @@
 #[macro_use]
 mod api;
 
-mod v16;
-mod v32;
-mod v64;
 mod v128;
+mod v16;
 mod v256;
+mod v32;
 mod v512;
+mod v64;
 
-pub use self::v16::*;
-pub use self::v32::*;
-pub use self::v64::*;
 pub use self::v128::*;
+pub use self::v16::*;
 pub use self::v256::*;
+pub use self::v32::*;
 pub use self::v512::*;
+pub use self::v64::*;
 
 /// Safe lossless bitwise conversion from `T` to `Self`.
 pub trait FromBits<T>: ::marker::Sized {

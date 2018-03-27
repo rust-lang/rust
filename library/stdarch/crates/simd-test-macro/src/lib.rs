@@ -12,8 +12,8 @@ extern crate quote;
 
 use std::env;
 
-use proc_macro2::{Term, TokenNode, TokenStream, TokenTree};
 use proc_macro2::Literal;
+use proc_macro2::{Term, TokenNode, TokenStream, TokenTree};
 
 fn string(s: &str) -> TokenTree {
     TokenNode::Literal(Literal::string(s)).into()

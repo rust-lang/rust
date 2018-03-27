@@ -77,8 +77,8 @@ pub mod arch {
     #[cfg(any(target_arch = "aarch64", dox))]
     #[doc(cfg(target_arch = "aarch64"))]
     pub mod aarch64 {
-        pub use coresimd::arm::*;
         pub use coresimd::aarch64::*;
+        pub use coresimd::arm::*;
     }
 
     /// Platform-specific intrinsics for the `wasm32` platform.
@@ -115,10 +115,10 @@ mod x86;
 #[cfg(any(target_arch = "x86_64", dox))]
 mod x86_64;
 
-#[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
-mod arm;
 #[cfg(any(target_arch = "aarch64", dox))]
 mod aarch64;
+#[cfg(any(target_arch = "arm", target_arch = "aarch64", dox))]
+mod arm;
 #[cfg(target_arch = "wasm32")]
 mod wasm32;
 

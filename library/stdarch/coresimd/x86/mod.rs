@@ -1,7 +1,7 @@
 //! `x86` and `x86_64` intrinsics.
 
-use prelude::v1::*;
 use mem;
+use prelude::v1::*;
 
 #[macro_use]
 mod macros;

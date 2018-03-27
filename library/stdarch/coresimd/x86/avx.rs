@@ -13,8 +13,8 @@
 //! [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 //! [wiki]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 
-use coresimd::simd_llvm::*;
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 use coresimd::x86::*;
 use intrinsics;
 use mem;
@@ -142,9 +142,18 @@ pub unsafe fn _mm256_shuffle_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 pub unsafe fn _mm256_shuffle_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! shuffle4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g: expr, $h: expr) => {
+        (
+            $a: expr,
+            $b: expr,
+            $c: expr,
+            $d: expr,
+            $e: expr,
+            $f: expr,
+            $g: expr,
+            $h: expr
+        ) => {
             simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
-        }
+        };
     }
     macro_rules! shuffle3 {
         ($a: expr, $b: expr, $c: expr, $e: expr, $f: expr, $g: expr) => {
@@ -471,9 +480,18 @@ pub unsafe fn _mm256_blend_pd(a: __m256d, b: __m256d, imm8: i32) -> __m256d {
 pub unsafe fn _mm256_blend_ps(a: __m256, b: __m256, imm8: i32) -> __m256 {
     let imm8 = (imm8 & 0xFF) as u8;
     macro_rules! blend4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
+        (
+            $a: expr,
+            $b: expr,
+            $c: expr,
+            $d: expr,
+            $e: expr,
+            $f: expr,
+            $g: expr,
+            $h: expr
+        ) => {
             simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
-        }
+        };
     }
     macro_rules! blend3 {
         ($a: expr, $b: expr, $c: expr, $d: expr, $e: expr, $f: expr) => {

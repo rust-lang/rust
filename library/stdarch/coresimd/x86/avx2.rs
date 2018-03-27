@@ -18,8 +18,8 @@
 //! [wiki_avx]: https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
 //! [wiki_fma]: https://en.wikipedia.org/wiki/Fused_multiply-accumulate
 
-use coresimd::simd_llvm::*;
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 use coresimd::x86::*;
 use mem;
 
@@ -365,9 +365,18 @@ pub unsafe fn _mm256_blend_epi32(
     let a = a.as_i32x8();
     let b = b.as_i32x8();
     macro_rules! blend4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr) => {
+        (
+            $a: expr,
+            $b: expr,
+            $c: expr,
+            $d: expr,
+            $e: expr,
+            $f: expr,
+            $g: expr,
+            $h: expr
+        ) => {
             simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
-        }
+        };
     }
     macro_rules! blend3 {
         ($a: expr, $b: expr, $c: expr, $d: expr, $e: expr, $f: expr) => {
@@ -420,31 +429,195 @@ pub unsafe fn _mm256_blend_epi16(
     let a = a.as_i16x16();
     let b = b.as_i16x16();
     macro_rules! blend4 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr, $g:expr, $h:expr,
-            $i:expr, $j:expr, $k:expr, $l:expr, $m:expr, $n:expr, $o:expr, $p:expr) => {
-            simd_shuffle16(a, b, [$a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p])
-        }
+        (
+            $a: expr,
+            $b: expr,
+            $c: expr,
+            $d: expr,
+            $e: expr,
+            $f: expr,
+            $g: expr,
+            $h: expr,
+            $i: expr,
+            $j: expr,
+            $k: expr,
+            $l: expr,
+            $m: expr,
+            $n: expr,
+            $o: expr,
+            $p: expr
+        ) => {
+            simd_shuffle16(
+                a,
+                b,
+                [
+                    $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m,
+                    $n, $o, $p,
+                ],
+            )
+        };
     }
     macro_rules! blend3 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr,
-            $a2:expr, $b2:expr, $c2:expr, $d2:expr, $e2:expr, $f2:expr) => {
+        (
+            $a: expr,
+            $b: expr,
+            $c: expr,
+            $d: expr,
+            $e: expr,
+            $f: expr,
+            $a2: expr,
+            $b2: expr,
+            $c2: expr,
+            $d2: expr,
+            $e2: expr,
+            $f2: expr
+        ) => {
             match (imm8 >> 6) & 0b11 {
-                0b00 => blend4!($a, $b, $c, $d, $e, $f, 6, 7, $a2, $b2, $c2, $d2, $e2, $f2, 14, 15),
-                0b01 => blend4!($a, $b, $c, $d, $e, $f, 22, 7, $a2, $b2, $c2, $d2, $e2, $f2, 30, 15),
-                0b10 => blend4!($a, $b, $c, $d, $e, $f, 6, 23, $a2, $b2, $c2, $d2, $e2, $f2, 14, 31),
-                _ => blend4!($a, $b, $c, $d, $e, $f, 22, 23, $a2, $b2, $c2, $d2, $e2, $f2, 30, 31),
+                0b00 => blend4!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    $e,
+                    $f,
+                    6,
+                    7,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    $e2,
+                    $f2,
+                    14,
+                    15
+                ),
+                0b01 => blend4!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    $e,
+                    $f,
+                    22,
+                    7,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    $e2,
+                    $f2,
+                    30,
+                    15
+                ),
+                0b10 => blend4!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    $e,
+                    $f,
+                    6,
+                    23,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    $e2,
+                    $f2,
+                    14,
+                    31
+                ),
+                _ => blend4!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    $e,
+                    $f,
+                    22,
+                    23,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    $e2,
+                    $f2,
+                    30,
+                    31
+                ),
             }
-        }
+        };
     }
     macro_rules! blend2 {
-        ($a:expr, $b:expr, $c:expr, $d:expr, $a2:expr, $b2:expr, $c2:expr, $d2:expr) => {
+        (
+            $a: expr,
+            $b: expr,
+            $c: expr,
+            $d: expr,
+            $a2: expr,
+            $b2: expr,
+            $c2: expr,
+            $d2: expr
+        ) => {
             match (imm8 >> 4) & 0b11 {
-                0b00 => blend3!($a, $b, $c, $d, 4, 5, $a2, $b2, $c2, $d2, 12, 13),
-                0b01 => blend3!($a, $b, $c, $d, 20, 5, $a2, $b2, $c2, $d2, 28, 13),
-                0b10 => blend3!($a, $b, $c, $d, 4, 21, $a2, $b2, $c2, $d2, 12, 29),
-                _ => blend3!($a, $b, $c, $d, 20, 21, $a2, $b2, $c2, $d2, 28, 29),
+                0b00 => blend3!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    4,
+                    5,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    12,
+                    13
+                ),
+                0b01 => blend3!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    20,
+                    5,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    28,
+                    13
+                ),
+                0b10 => blend3!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    4,
+                    21,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    12,
+                    29
+                ),
+                _ => blend3!(
+                    $a,
+                    $b,
+                    $c,
+                    $d,
+                    20,
+                    21,
+                    $a2,
+                    $b2,
+                    $c2,
+                    $d2,
+                    28,
+                    29
+                ),
             }
-        }
+        };
     }
     macro_rules! blend1 {
         ($a1: expr, $b1: expr, $a2: expr, $b2: expr) => {
@@ -3520,8 +3693,8 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
     use std;
+    use stdsimd_test::simd_test;
 
     use coresimd::x86::*;
 

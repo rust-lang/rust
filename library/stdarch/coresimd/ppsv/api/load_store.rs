@@ -130,8 +130,8 @@ macro_rules! impl_load_store {
             pub unsafe fn load_unaligned_unchecked(
                 slice: &[$elem_ty]
             ) -> Self {
-                use slice::SliceExt;
                 use mem::size_of;
+                use slice::SliceExt;
                 let target_ptr =
                     slice.get_unchecked(0) as *const $elem_ty as *const u8;
                 let mut x = Self::splat(0 as $elem_ty);

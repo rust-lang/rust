@@ -5,8 +5,8 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use coresimd::simd_llvm::*;
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 use coresimd::x86::*;
 
 /// String contains unsigned 8-bit characters *(Default)*
@@ -704,8 +704,8 @@ extern "C" {
 mod tests {
     use stdsimd_test::simd_test;
 
-    use std::ptr;
     use coresimd::x86::*;
+    use std::ptr;
 
     // Currently one cannot `load` a &[u8] that is is less than 16
     // in length. This makes loading strings less than 16 in length

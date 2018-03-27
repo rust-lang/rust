@@ -1,7 +1,7 @@
 //! Streaming SIMD Extensions (SSE)
 
-use coresimd::simd_llvm::*;
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 use coresimd::x86::*;
 use intrinsics;
 use mem;
@@ -2176,8 +2176,8 @@ pub unsafe fn _mm_cvtps_pi8(a: __m128) -> __m64 {
 
 #[cfg(test)]
 mod tests {
-    use std::mem::transmute;
     use std::f32::NAN;
+    use std::mem::transmute;
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 

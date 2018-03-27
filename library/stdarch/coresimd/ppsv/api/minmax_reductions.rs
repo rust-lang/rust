@@ -22,8 +22,8 @@ macro_rules! impl_minmax_reductions {
             pub fn max(self) -> $elem_ty {
                 // FIXME: broken on AArch64
                 // https://bugs.llvm.org/show_bug.cgi?id=36796
-                use num::Float;
                 use cmp::Ord;
+                use num::Float;
                 let mut x = self.extract(0);
                 for i in 1..$id::lanes() {
                     x = x.max(self.extract(i));
@@ -49,8 +49,8 @@ macro_rules! impl_minmax_reductions {
             pub fn min(self) -> $elem_ty {
                 // FIXME: broken on AArch64
                 // https://bugs.llvm.org/show_bug.cgi?id=36796
-                use num::Float;
                 use cmp::Ord;
+                use num::Float;
                 let mut x = self.extract(0);
                 for i in 1..$id::lanes() {
                     x = x.min(self.extract(i));

@@ -74,8 +74,8 @@ pub unsafe fn _mm_stream_ss(p: *mut f32, a: __m128) {
 
 #[cfg(test)]
 mod tests {
-    use stdsimd_test::simd_test;
     use coresimd::x86::*;
+    use stdsimd_test::simd_test;
 
     #[simd_test = "sse4a"]
     unsafe fn test_mm_extract_si64() {

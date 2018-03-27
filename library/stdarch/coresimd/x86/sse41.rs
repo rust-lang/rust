@@ -1,7 +1,7 @@
 //! Streaming SIMD Extensions 4.1 (SSE4.1)
 
-use coresimd::simd_llvm::*;
 use coresimd::simd::*;
+use coresimd::simd_llvm::*;
 use coresimd::x86::*;
 use mem;
 
@@ -1042,9 +1042,9 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use coresimd::x86::*;
     use std::mem;
     use stdsimd_test::simd_test;
-    use coresimd::x86::*;
 
     #[simd_test = "sse4.1"]
     unsafe fn test_mm_blendv_epi8() {
