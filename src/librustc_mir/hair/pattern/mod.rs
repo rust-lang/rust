@@ -878,8 +878,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                             );
                                     })
                             }
-                            ty::layout::Variants::NicheFilling { dataful_variant, .. } =>
-                                dataful_variant,
+                            ty::layout::Variants::NicheFilling { .. } => {
+                                assert_eq!(discr_val as usize as u128, discr_val);
+                                discr_val as usize
+                            },
                         };
                         let subpatterns = adt_subpatterns(
                             adt_def.variants[variant_index].fields.len(),
