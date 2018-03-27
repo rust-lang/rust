@@ -1816,6 +1816,9 @@
 
     var func = function(e) {
         var next = e.nextElementSibling;
+        if (hasClass(e, 'impl') && next && hasClass(next, 'docblock')) {
+            next = next.nextElementSibling;
+        }
         if (!next) {
             return;
         }
