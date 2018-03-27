@@ -296,6 +296,11 @@ nav.sub {
 	overflow: auto;
 }
 
+#results > table {
+	width: 100%;
+	table-layout: fixed;
+}
+
 .content pre.line-numbers {
 	float: left;
 	border: none;
@@ -577,8 +582,16 @@ a {
 	display: block;
 }
 
-.content .search-results td:first-child { padding-right: 0; }
-.content .search-results td:first-child a { padding-right: 10px; }
+.content .search-results td:first-child {
+	padding-right: 0;
+	width: 75%;
+}
+.content .search-results td:first-child a {
+	padding-right: 10px;
+}
+.content .search-results td:first-child a span {
+	float: left;
+}
 
 tr.result span.primitive::after {
 	content: ' (primitive type)';

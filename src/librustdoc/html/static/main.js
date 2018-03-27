@@ -1171,6 +1171,10 @@
             return h1.innerHTML;
         }
 
+        function pathSplitter(path) {
+            return '<span>' + path.replace(/::/g, '::</span><span>');
+        }
+
         function addTab(array, query, display) {
             var extraStyle = '';
             if (display === false) {
@@ -1225,7 +1229,7 @@
 
                     output += '<tr class="' + type + ' result"><td>' +
                               '<a href="' + href + '">' +
-                              displayPath + '<span class="' + type + '">' +
+                              pathSplitter(displayPath) + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
                               '<a href="' + href + '">' +
                               '<span class="desc">' + escape(item.desc) +
