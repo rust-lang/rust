@@ -991,11 +991,13 @@ impl<T> Weak<T> {
     pub fn new() -> Weak<T> {
         unsafe {
             Weak {
-                ptr: Box::into_raw_non_null(box ArcInner {
+                // Note that `box` isn't used specifically due to how it handles
+                // uninhabited types, see #48493 for more info.
+                ptr: Box::into_raw_non_null(Box::new(ArcInner {
                     strong: atomic::AtomicUsize::new(0),
                     weak: atomic::AtomicUsize::new(1),
                     data: uninitialized(),
-                }),
+                })),
             }
         }
     }
@@ -1032,7 +1034,7 @@ impl<T: ?Sized> Weak<T> {
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 it must never be above 0.
-        let inner = self.inner();
+        let inner = self.inner()?;
 
         // Relaxed load because any write of 0 that we can observe
         // leaves the field in a permanently zero state (so a
@@ -1061,9 +1063,36 @@ impl<T: ?Sized> Weak<T> {
     }
 
     #[inline]
-    fn inner(&self) -> &ArcInner<T> {
+    fn inner(&self) -> Option<&ArcInner<T>> {
         // See comments above for why this is "safe"
-        unsafe { self.ptr.as_ref() }
+        //
+        // Note that the `Option` being returned here is pretty tricky, but is
+        // in relation to #48493. You can create an instance of `Weak<!>` which
+        // internally contains `NonNull<ArcInner<!>>`. Now the layout of
+        // `ArcInner<!>` directly embeds `!` so rustc correctly deduces that the
+        // size of `ArcInner<!>` is zero. This means that `Box<ArcInner<!>>`
+        // which we create in `Weak::new()` is actually the pointer 1 (pointers
+        // to ZST types are currently `1 as *mut _`).
+        //
+        // As a result we may not actually have an `&ArcInner<T>` to hand out
+        // here. That type can't actually exist for all `T`, such as `!`, so we
+        // can only hand out a safe reference if we've actually got one to hand
+        // out, aka if the size of the value behind the pointer is nonzero.
+        //
+        // Note that this adds an extra branch on methods like `clone` with
+        // trait objects like `Weak<Any>`, but we should be able to recover the
+        // original performance as soon as we can change `ArcInner` to store a
+        // `MaybeInitialized<!>` internally instead of a `!` directly. That way
+        // our allocation will *always* be allocated and we won't need this
+        // branch.
+        unsafe {
+            let ptr = self.ptr.as_ref();
+            if mem::size_of_val(ptr) == 0 {
+                None
+            } else {
+                Some(ptr)
+            }
+        }
     }
 }
 
@@ -1082,11 +1111,19 @@ impl<T: ?Sized> Clone for Weak<T> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T> {
+        let inner = match self.inner() {
+            Some(i) => i,
+            // If we're something like `Weak<!>` then our destructor doesn't do
+            // anything anyway so return the same pointer without doing any
+            // work.
+            None => return Weak { ptr: self.ptr }
+        };
+
         // See comments in Arc::clone() for why this is relaxed.  This can use a
         // fetch_add (ignoring the lock) because the weak count is only locked
         // where are *no other* weak pointers in existence. (So we can't be
         // running this code in that case).
-        let old_size = self.inner().weak.fetch_add(1, Relaxed);
+        let old_size = inner.weak.fetch_add(1, Relaxed);
 
         // See comments in Arc::clone() for why we do this (for mem::forget).
         if old_size > MAX_REFCOUNT {
@@ -1148,6 +1185,10 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         let ptr = self.ptr.as_ptr();
+        let inner = match self.inner() {
+            Some(inner) => inner,
+            None => return, // nothing to change, skip everything
+        };
 
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
@@ -1157,7 +1198,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         // weak count can only be locked if there was precisely one weak ref,
         // meaning that drop could only subsequently run ON that remaining weak
         // ref, which can only happen after the lock is released.
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
+        if inner.weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
             unsafe {
                 Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
