@@ -131,6 +131,7 @@ extern crate getopts;
 extern crate num_cpus;
 extern crate toml;
 extern crate time;
+extern crate petgraph;
 
 #[cfg(test)]
 #[macro_use]
@@ -600,14 +601,14 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
-        if cfg!(test) { return; }
+        if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
         run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
-        if cfg!(test) { return; }
+        if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
         run_suppressed(cmd)
     }
@@ -616,7 +617,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run(&self, cmd: &mut Command) -> bool {
-        if cfg!(test) { return true; }
+        if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_silent(cmd)
     }
@@ -625,7 +626,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
-        if cfg!(test) { return true; }
+        if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
     }
