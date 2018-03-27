@@ -23,4 +23,10 @@ mod tests {
     use super::*;
 }
 
+#[allow(non_snake_case)]
+mod CamelCaseName {
+}
+
+use CamelCaseName::*;
+
 fn main() {}
