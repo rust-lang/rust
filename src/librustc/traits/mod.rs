@@ -34,7 +34,7 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
-pub use self::fulfill::FulfillmentContext;
+pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};
 pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal, Normalized};
@@ -45,6 +45,7 @@ pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::IntercrateAmbiguityCause;
 pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::{SpecializesCache, find_associated_item};
+pub use self::engine::TraitEngine;
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
@@ -54,6 +55,7 @@ pub use self::util::transitive_bounds;
 
 mod coherence;
 pub mod error_reporting;
+mod engine;
 mod fulfill;
 mod project;
 mod object_safety;

@@ -88,6 +88,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_patterns)]
 #![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(never_type))]
+#![feature(dyn_trait)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -111,7 +112,7 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::traits::{FulfillmentContext, ObligationCause, ObligationCauseCode};
+use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine};
 use session::{CompileIncomplete, config};
 use util::common::time;
 
@@ -160,7 +161,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
         let param_env = ty::ParamEnv::empty();
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
         match infcx.at(&cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
