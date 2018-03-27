@@ -634,8 +634,8 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Checked Euclidean division. Computes `self.div_euc(rhs)`, returning `None` if `rhs == 0`
-or the division results in overflow.
+            concat!("Checked Euclidean division. Computes `self.div_euc(rhs)`,
+returning `None` if `rhs == 0` or the division results in overflow.
 
 # Examples
 
@@ -1047,8 +1047,8 @@ $EndFeature, "
         }
 
         doc_comment! {
-            concat!("Wrapping Euclidean division. Computes `self.div_euc(rhs)`, wrapping around at the
-boundary of the type.
+            concat!("Wrapping Euclidean division. Computes `self.div_euc(rhs)`,
+wrapping around at the boundary of the type.
 
 The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type (where
 `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
@@ -1462,7 +1462,7 @@ $EndFeature, "
 
 
         doc_comment! {
-            concat!("Calculates the modulo of Euclidean divsion `self.mod_euc(rhs)`.
+            concat!("Calculates the remainder `self.mod_euc(rhs)` by Euclidean division.
 
 Returns a tuple of the remainder after dividing along with a boolean indicating whether an
 arithmetic overflow would occur. If an overflow would occur then 0 is returned.
@@ -1691,8 +1691,8 @@ $EndFeature, "
         doc_comment! {
             concat!("Calculates the quotient of Euclidean division of `self` by `rhs`.
 
-This computes the integer n such that `self = n * rhs + self.mod_euc(rhs)`.
-In other words, the result is `self / rhs` rounded to the integer n
+This computes the integer `n` such that `self = n * rhs + self.mod_euc(rhs)`.
+In other words, the result is `self / rhs` rounded to the integer `n`
 such that `self >= n * rhs`.
 
 # Panics
@@ -1727,7 +1727,7 @@ $EndFeature, "
 
 
         doc_comment! {
-            concat!("Calculates the modulo `self mod rhs` by Euclidean division.
+            concat!("Calculates the remainder `self mod rhs` by Euclidean division.
 
 In particular, the result `n` satisfies `0 <= n < rhs.abs()`.
 
@@ -2720,7 +2720,7 @@ Basic usage:
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
             pub fn wrapping_div_euc(self, rhs: Self) -> Self {
-                self.div_euc(rhs)
+                self / rhs
             }
         }
 
@@ -3018,7 +3018,8 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));", $EndFeature, "
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));",
+$EndFeature, "
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -3054,7 +3055,7 @@ Basic usage
         }
 
         doc_comment! {
-            concat!("Calculates the modulo of Euclidean division of `self.mod_euc(rhs)`.
+            concat!("Calculates the remainder `self.mod_euc(rhs)` by Euclidean division.
 
 Returns a tuple of the modulo after dividing along with a boolean
 indicating whether an arithmetic overflow would occur. Note that for
@@ -3070,7 +3071,8 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));", $EndFeature, "
+", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));",
+$EndFeature, "
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -3259,7 +3261,7 @@ $EndFeature, "
 
 
         doc_comment! {
-            concat!("Calculates the Euclidean modulo `self mod rhs`.
+            concat!("Calculates the remainder `self mod rhs` by Euclidean division.
 
 For unsigned types, this is just the same as `self % rhs`.
 

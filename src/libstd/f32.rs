@@ -331,9 +331,9 @@ impl f32 {
 
     /// Calculates Euclidean division, the matching method for `mod_euc`.
     ///
-    /// This computes the integer n such that
+    /// This computes the integer `n` such that
     /// `self = n * rhs + self.mod_euc(rhs)`.
-    /// In other words, the result is `self / rhs` rounded to the integer n
+    /// In other words, the result is `self / rhs` rounded to the integer `n`
     /// such that `self >= n * rhs`.
     ///
     /// ```
