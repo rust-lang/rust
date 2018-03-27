@@ -2110,7 +2110,7 @@ Whether to use colored output or not.
 
 ## `unstable_features`
 
-Enable unstable featuers on stable channel.
+Enable unstable features on stable channel.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
