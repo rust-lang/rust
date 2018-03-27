@@ -1248,6 +1248,9 @@ extern "C" {
                                          IsNaN: bool)
                                          -> ValueRef;
 
+    pub fn LLVMRustBuildMinNum(B: BuilderRef, LHS: ValueRef, LHS: ValueRef) -> ValueRef;
+    pub fn LLVMRustBuildMaxNum(B: BuilderRef, LHS: ValueRef, LHS: ValueRef) -> ValueRef;
+
     pub fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildPtrDiff(B: BuilderRef,
