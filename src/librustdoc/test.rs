@@ -34,6 +34,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::ast;
 use syntax::codemap::CodeMap;
+use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::with_globals;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
@@ -57,7 +58,8 @@ pub fn run(input_path: &Path,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
            display_warnings: bool,
-           linker: Option<PathBuf>)
+           linker: Option<PathBuf>,
+           edition: Edition)
            -> isize {
     let input = config::Input::File(input_path.to_owned());
 
@@ -70,6 +72,10 @@ pub fn run(input_path: &Path,
         unstable_features: UnstableFeatures::from_environment(),
         lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
+        debugging_opts: config::DebuggingOptions {
+            edition,
+            ..config::basic_debugging_options()
+        },
         ..config::basic_options().clone()
     };
 
