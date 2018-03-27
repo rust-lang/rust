@@ -28,7 +28,7 @@ use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
-use rustc::session::config::{self, CrateTypeProcMacro};
+use rustc::session::config::{self, CrateTypeProcMacro, OutputType};
 use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -833,6 +833,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         }
     }
 
+    fn metadata_output_only(&self) -> bool {
+        // MIR optimisation can be skipped when we're just interested in the metadata.
+        self.tcx.sess.opts.output_types.keys().count() == 1 &&
+            self.tcx.sess.opts.output_types.contains_key(&OutputType::Metadata)
+    }
+
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
         debug!("IsolatedEncoder::encode_info_for_impl_item({:?})", def_id);
         let tcx = self.tcx;
@@ -877,7 +883,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         } else if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
             let generics = self.tcx.generics_of(def_id);
             let types = generics.parent_types as usize + generics.types.len();
-            let needs_inline = types > 0 || tcx.trans_fn_attrs(def_id).requests_inline();
+            let needs_inline = (types > 0 || tcx.trans_fn_attrs(def_id).requests_inline()) &&
+                !self.metadata_output_only();
             let is_const_fn = sig.constness == hir::Constness::Const;
             let ast = if is_const_fn { Some(body) } else { None };
             let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
@@ -1168,7 +1175,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ItemConst(..) => self.encode_optimized_mir(def_id),
                 hir::ItemFn(_, _, constness, _, ref generics, _) => {
                     let has_tps = generics.ty_params().next().is_some();
-                    let needs_inline = has_tps || tcx.trans_fn_attrs(def_id).requests_inline();
+                    let needs_inline = (has_tps || tcx.trans_fn_attrs(def_id).requests_inline()) &&
+                        !self.metadata_output_only();
                     let always_encode_mir = self.tcx.sess.opts.debugging_opts.always_encode_mir;
                     if needs_inline || constness == hir::Constness::Const || always_encode_mir {
                         self.encode_optimized_mir(def_id)
