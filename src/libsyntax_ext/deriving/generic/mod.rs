@@ -962,7 +962,7 @@ impl<'a> MethodDef<'a> {
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
         let method_ident = cx.ident_of(self.name);
-        let fn_decl = cx.fn_decl(args, ret_type);
+        let fn_decl = cx.fn_decl(args, ast::FunctionRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
         let unsafety = if self.is_unsafe {
