@@ -26,9 +26,9 @@ use utils::span_lint;
 /// ```rust
 /// let x = 3.14;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub APPROX_CONSTANT,
-    Warn,
+    correctness,
     "the approximate of a known float constant (in `std::fXX::consts`)"
 }
 

@@ -66,6 +66,21 @@ macro_rules! declare_restriction_lint {
     };
 }
 
+macro_rules! declare_clippy_lint {
+    { pub $name:tt, style, $description:tt } => {
+        declare_lint! { pub $name, Warn, $description }
+    };
+    { pub $name:tt, correctness, $description:tt } => {
+        declare_lint! { pub $name, Deny, $description }
+    };
+    { pub $name:tt, complexity, $description:tt } => {
+        declare_lint! { pub $name, Warn, $description }
+    };
+    { pub $name:tt, perf, $description:tt } => {
+        declare_lint! { pub $name, Warn, $description }
+    };
+}
+
 pub mod consts;
 #[macro_use]
 pub mod utils;
@@ -442,7 +457,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     ]);
 
     reg.register_lint_group("clippy", vec![
-        approx_const::APPROX_CONSTANT,
         array_indexing::OUT_OF_BOUNDS_INDEXING,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
@@ -640,6 +654,19 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         unused_label::UNUSED_LABEL,
         vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
+    ]);
+
+    reg.register_lint_group("clippy_style", vec![
+    ]);
+
+    reg.register_lint_group("clippy_complexity", vec![
+    ]);
+
+    reg.register_lint_group("clippy_correctness", vec![
+        approx_const::APPROX_CONSTANT,
+    ]);
+
+    reg.register_lint_group("clippy_perf", vec![
     ]);
 }
 
