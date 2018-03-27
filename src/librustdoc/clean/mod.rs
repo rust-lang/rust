@@ -2770,6 +2770,14 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         return None;
                     };
 
+                    if let Some(sized) = cx.tcx.lang_items().sized_trait() {
+                        if trait_ref.def_id() == sized {
+                            return None;
+                        }
+                    }
+
+                    // FIXME(Manishearth) handle cases which aren't Sized
+
                     let bounds = bounds.predicates.iter().filter_map(|pred|
                         if let ty::Predicate::Projection(proj) = *pred {
                             let proj = proj.skip_binder();
