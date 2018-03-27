@@ -274,7 +274,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if defaultness == Defaultness::Default {
                     self.err_handler()
                         .struct_span_err(item.span, "inherent impls cannot be default")
-                        .help("maybe a missing `for` keyword?");
+                        .help("maybe a missing `for` keyword?").emit();
                 }
             }
             ItemKind::ForeignMod(..) => {
