@@ -347,7 +347,9 @@ declare_lint! {
 /// **Why is this bad?** If the condition is unchanged, entering the body of the loop
 /// will lead to an infinite loop.
 ///
-/// **Known problems:** None
+/// **Known problems:** If the `while`-loop is in a closure, the check for mutation of the
+/// condition variables in the body can cause false negatives. For example when only `Upvar` `a` is
+/// in the condition and only `Upvar` `b` gets mutated in the body, the lint will not trigger.
 ///
 /// **Example:**
 /// ```rust
@@ -2152,11 +2154,15 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, b
 
     let mut delegate = MutVarsDelegate {
         used_mutably: mut_var_visitor.ids,
+        skip: false,
     };
     let def_id = def_id::DefId::local(block.hir_id.owner);
     let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(&mut delegate, cx.tcx, cx.param_env, region_scope_tree, cx.tables, None).walk_expr(expr);
 
+    if delegate.skip {
+        return;
+    }
     if !delegate.used_mutably.iter().any(|(_, v)| *v) {
         span_lint(
             cx,
@@ -2183,9 +2189,13 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             if let ExprPath(ref qpath) = ex.node;
             if let QPath::Resolved(None, _) = *qpath;
             let def = self.cx.tables.qpath_def(qpath, ex.hir_id);
-            if let Def::Local(node_id) = def;
             then {
-                self.ids.insert(node_id, false);
+                match def {
+                    Def::Local(node_id) | Def::Upvar(node_id, ..) => {
+                        self.ids.insert(node_id, false);
+                    },
+                    _ => {},
+                }
             }
         }
     }
@@ -2211,6 +2221,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarCollectorVisitor<'a, 'tcx> {
 
 struct MutVarsDelegate {
     used_mutably: HashMap<NodeId, bool>,
+    skip: bool,
 }
 
 impl<'tcx> MutVarsDelegate {
@@ -2220,6 +2231,12 @@ impl<'tcx> MutVarsDelegate {
                 if let Some(used) = self.used_mutably.get_mut(&id) {
                     *used = true;
                 },
+            Categorization::Upvar(_) => {
+                //FIXME: This causes false negatives. We can't get the `NodeId` from
+                //`Categorization::Upvar(_)`. So we search for any `Upvar`s in the
+                //`while`-body, not just the ones in the condition.
+                self.skip = true
+            },
             Categorization::Deref(ref cmt, _) => self.update(&cmt.cat, sp),
             _ => {}
         }
