@@ -348,6 +348,19 @@ details.
 
 [issue-display-warnings]: https://github.com/rust-lang/rust/issues/41574
 
+### `--edition`: control the edition of docs and doctests
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs -Z unstable-options --edition 2018
+$ rustdoc --test src/lib.rs -Z unstable-options --edition 2018
+```
+
+This flag allows rustdoc to treat your rust code as the given edition. It will compile doctests with
+the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
+(the first edition).
+
 ### `-Z force-unstable-if-unmarked`
 
 Using this flag looks like this:
