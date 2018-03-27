@@ -145,7 +145,7 @@ impl<'a> AllocFnFactory<'a> {
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) =
             self.ret_ty(&method.output, &mut abi_args, mk, result);
-        let kind = ItemKind::Fn(self.cx.fn_decl(abi_args, output_ty),
+        let kind = ItemKind::Fn(self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty)),
                                 Unsafety::Unsafe,
                                 dummy_spanned(Constness::NotConst),
                                 Abi::Rust,
