@@ -13,6 +13,12 @@ a very long time, and anyway bors / travis will do it for you. (Often,
 I will run this command in the background after opening a PR that I
 think is done, but rarely otherwise. -nmatsakis)
 
+The test results are cached and previously successfull tests are
+`ignored` during testing. The stdout/stderr contents as well as a
+timestamp file for every test can be found under `build/ARCH/test/`.
+To force-rerun a test (e.g. in case the test runner fails to notice
+a change) you can simply remove the timestamp file. 
+
 ## Running a subset of the test suites
 
 When working on a specific PR, you will usually want to run a smaller
