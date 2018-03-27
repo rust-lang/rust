@@ -14,8 +14,9 @@
 //FIXME(#44265): "lifetime parameters are not allowed on this type" errors will be addressed in a
 //follow-up PR
 
-// A Collection trait and collection families.
-// Based on http://smallcultfollowing.com/babysteps/blog/2016/11/03/associated-type-constructors-part-2-family-traits/
+// A Collection trait and collection families. Based on
+// http://smallcultfollowing.com/babysteps/blog/2016/11/03/
+// associated-type-constructors-part-2-family-traits/
 
 trait Collection<T> {
     fn empty() -> Self;
@@ -25,7 +26,8 @@ trait Collection<T> {
     type Iter<'iter>: Iterator<Item=&'iter T>;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
-    type Sibling<U>: Collection<U> = <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
+    type Sibling<U>: Collection<U> = <<Self as Collection<T>>::Family as CollectionFamily>::
+        Member<U>;
     //~^ ERROR type parameters are not allowed on this type [E0109]
 }
 
