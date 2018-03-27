@@ -692,7 +692,7 @@ fn link_natively(sess: &Session,
     loop {
         i += 1;
         prog = time(sess, "running linker", || {
-            exec_linker(sess, &mut cmd, tmpdir)
+            exec_linker(sess, &mut cmd, out_filename, tmpdir)
         });
         let output = match prog {
             Ok(ref output) => output,
@@ -819,7 +819,7 @@ fn link_natively(sess: &Session,
     }
 }
 
-fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
+fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &Path)
     -> io::Result<Output>
 {
     // When attempting to spawn the linker we run a risk of blowing out the
@@ -867,7 +867,37 @@ fn exec_linker(sess: &Session, cmd: &mut Command, tmpdir: &Path)
     fs::write(&file, &bytes)?;
     cmd2.arg(format!("@{}", file.display()));
     info!("invoking linker {:?}", cmd2);
-    return cmd2.output();
+    let output = cmd2.output();
+    flush_linked_file(&output, out_filename)?;
+    return output;
+
+    #[cfg(unix)]
+    fn flush_linked_file(_: &io::Result<Output>, _: &Path) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    fn flush_linked_file(command_output: &io::Result<Output>, out_filename: &Path)
+        -> io::Result<()>
+    {
+        // On Windows, under high I/O load, output buffers are sometimes not flushed,
+        // even long after process exit, causing nasty, non-reproducible output bugs.
+        //
+        // File::sync_all() calls FlushFileBuffers() down the line, which solves the problem.
+        //
+        // А full writeup of the original Chrome bug can be found at
+        // randomascii.wordpress.com/2018/02/25/compiler-bug-linker-bug-windows-kernel-bug/amp
+
+        if let &Ok(ref out) = command_output {
+            if out.status.success() {
+                if let Ok(of) = fs::File::open(out_filename) {
+                    of.sync_all()?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 
     #[cfg(unix)]
     fn command_line_too_big(err: &io::Error) -> bool {
