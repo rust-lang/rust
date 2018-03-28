@@ -512,7 +512,7 @@ impl Step for Test {
 
     fn should_run(run: ShouldRun) -> ShouldRun {
         let builder = run.builder;
-        run.krate("test").default_condition(builder.config.compiler_docs)
+        run.krate("test").default_condition(builder.build.config.docs)
     }
 
     fn make_run(run: RunConfig) {
@@ -555,6 +555,9 @@ impl Step for Test {
 
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "doc");
         compile::test_cargo(build, &compiler, target, &mut cargo);
+
+        cargo.arg("--no-deps").arg("-p").arg("test");
+
         build.run(&mut cargo);
         cp_r(&my_out, &out);
     }
