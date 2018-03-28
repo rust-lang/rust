@@ -355,10 +355,9 @@ pub mod guard {
                 // macOS. Instead, just restore the page to a writable state.
                 // This ain't Linux, so we probably don't need to care about
                 // execstack.
-                let result = mmap(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE,
-                                  MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+                let result = mprotect(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE);
 
-                if result != stackaddr || result == MAP_FAILED {
+                if result != 0 {
                     panic!("unable to reset the guard page");
                 }
             }
