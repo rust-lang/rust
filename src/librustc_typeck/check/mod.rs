@@ -2648,8 +2648,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                 let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                // We're processing function arguments so we definitely want to use two-phase borrows.
-                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty), AllowTwoPhase::Yes);
+                // We're processing function arguments so we definitely want to use
+                // two-phase borrows.
+                self.demand_coerce(&arg,
+                                   checked_ty,
+                                   coerce_ty.unwrap_or(formal_ty),
+                                   AllowTwoPhase::Yes);
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
