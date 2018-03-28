@@ -22,6 +22,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
+use rustc_back::target::TargetTriple;
 
 use syntax::ast::NodeId;
 use syntax::codemap;
@@ -118,7 +119,7 @@ pub fn run_core(search_paths: SearchPaths,
                 cfgs: Vec<String>,
                 externs: config::Externs,
                 input: Input,
-                triple: Option<String>,
+                triple: Option<TargetTriple>,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
                 crate_name: Option<String>,
@@ -133,6 +134,7 @@ pub fn run_core(search_paths: SearchPaths,
 
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
+    let host_triple = TargetTriple::from_triple(config::host_triple());
     let sessopts = config::Options {
         maybe_sysroot,
         search_paths,
@@ -140,7 +142,7 @@ pub fn run_core(search_paths: SearchPaths,
         lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
         lint_cap: Some(lint::Allow),
         externs,
-        target_triple: triple.unwrap_or(config::host_triple().to_string()),
+        target_triple: triple.unwrap_or(host_triple),
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,

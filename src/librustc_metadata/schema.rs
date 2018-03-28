@@ -22,6 +22,7 @@ use rustc::mir;
 use rustc::session::CrateDisambiguator;
 use rustc::ty::{self, Ty, ReprOptions};
 use rustc_back::PanicStrategy;
+use rustc_back::target::TargetTriple;
 
 use rustc_serialize as serialize;
 use syntax::{ast, attr};
@@ -186,7 +187,7 @@ pub enum LazyState {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct CrateRoot {
     pub name: Symbol,
-    pub triple: String,
+    pub triple: TargetTriple,
     pub hash: hir::svh::Svh,
     pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,

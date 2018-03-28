@@ -42,7 +42,7 @@ use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_back::{LinkerFlavor, PanicStrategy};
-use rustc_back::target::Target;
+use rustc_back::target::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;
 
@@ -707,7 +707,7 @@ impl Session {
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(
             self.sysroot(),
-            &self.opts.target_triple,
+            self.opts.target_triple.triple(),
             &self.opts.search_paths,
             kind,
         )
@@ -1085,7 +1085,8 @@ pub fn build_session_(
     span_diagnostic: errors::Handler,
     codemap: Lrc<codemap::CodeMap>,
 ) -> Session {
-    let host = match Target::search(config::host_triple()) {
+    let host_triple = TargetTriple::from_triple(config::host_triple());
+    let host = match Target::search(&host_triple) {
         Ok(t) => t,
         Err(e) => {
             span_diagnostic

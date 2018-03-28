@@ -950,7 +950,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             "s390x" => cabi_s390x::compute_abi_info(cx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(cx, self),
             "wasm32" => {
-                if cx.sess().opts.target_triple.contains("emscripten") {
+                if cx.sess().opts.target_triple.triple().contains("emscripten") {
                     cabi_asmjs::compute_abi_info(cx, self)
                 } else {
                     cabi_wasm32::compute_abi_info(cx, self)

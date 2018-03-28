@@ -31,6 +31,7 @@ use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
 use tempdir::TempDir;
 use rustc_back::{PanicStrategy, RelroLevel};
+use rustc_back::target::TargetTriple;
 use context::get_reloc_model;
 use llvm;
 
@@ -81,7 +82,7 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
         }
     };
 
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple, "link.exe");
+    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
 
     let linker_path = sess.opts.cg.linker.as_ref().map(|s| &**s)
         .or(sess.target.target.options.linker.as_ref().map(|s| s.as_ref()))
@@ -812,7 +813,7 @@ fn link_natively(sess: &Session,
         }
     }
 
-    if sess.opts.target_triple == "wasm32-unknown-unknown" {
+    if sess.opts.target_triple == TargetTriple::from_triple("wasm32-unknown-unknown") {
         wasm::rewrite_imports(&out_filename, &trans.crate_info.wasm_imports);
         wasm::add_custom_sections(&out_filename,
                                   &trans.crate_info.wasm_custom_sections);
@@ -1094,7 +1095,7 @@ fn link_args(cmd: &mut Linker,
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
         let sysroot = sess.sysroot();
-        let target_triple = &sess.opts.target_triple;
+        let target_triple = sess.opts.target_triple.triple();
         let mut get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
             let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);

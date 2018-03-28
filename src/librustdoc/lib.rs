@@ -64,6 +64,7 @@ use std::sync::mpsc::channel;
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options, Externs};
+use rustc_back::target::TargetTriple;
 
 #[macro_use]
 pub mod externalfiles;
@@ -542,7 +543,13 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         paths.add_path(s, ErrorOutputType::default());
     }
     let cfgs = matches.opt_strs("cfg");
-    let triple = matches.opt_str("target");
+    let triple = matches.opt_str("target").map(|target| {
+        if target.ends_with(".json") {
+            TargetTriple::TargetPath(PathBuf::from(target))
+        } else {
+            TargetTriple::TargetTriple(target)
+        }
+    });
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let crate_name = matches.opt_str("crate-name");
     let crate_version = matches.opt_str("crate-version");
