@@ -8,19 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct Inner<T> {
-    field: T,
+pub trait Foo {
+    type Associated;
 }
 
-unsafe impl<T> Send for Inner<T>
-where
-    T: Copy + Send,
-{
+pub struct X;
+pub struct Y;
+
+
+impl Foo for X {
+    type Associated = ();
 }
 
-// @has no_redundancy/struct.Outer.html
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//*/code' "impl<T> Send for \
-// Outer<T> where T: Copy + Send"
-pub struct Outer<T> {
-    inner_field: Inner<T>,
+impl Foo for Y {
+    type Associated = ();
+}
+
+impl X {
+    pub fn returns_sized<'a>(&'a self) -> impl Foo<Associated=()> + 'a {
+        X
+    }
+}
+
+impl Y {
+    pub fn returns_unsized<'a>(&'a self) -> Box<impl ?Sized + Foo<Associated=()> + 'a> {
+        Box::new(X)
+    }
 }

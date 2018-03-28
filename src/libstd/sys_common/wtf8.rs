@@ -253,6 +253,11 @@ impl Wtf8Buf {
         self.bytes.shrink_to_fit()
     }
 
+    #[inline]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.bytes.shrink_to(min_capacity)
+    }
+
     /// Returns the number of bytes that this string buffer can hold without reallocating.
     #[inline]
     pub fn capacity(&self) -> usize {

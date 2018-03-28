@@ -66,7 +66,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::Ordering;
+use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
@@ -334,9 +334,10 @@ impl<T> Vec<T> {
     /// The vector will be able to hold exactly `capacity` elements without
     /// reallocating. If `capacity` is 0, the vector will not allocate.
     ///
-    /// It is important to note that this function does not specify the *length*
-    /// of the returned vector, but only the *capacity*. For an explanation of
-    /// the difference between length and capacity, see *[Capacity and reallocation]*.
+    /// It is important to note that although the returned vector has the
+    /// *capacity* specified, the vector will have a zero *length*. For an
+    /// explanation of the difference between length and capacity, see
+    /// *[Capacity and reallocation]*.
     ///
     /// [Capacity and reallocation]: #capacity-and-reallocation
     ///
@@ -584,6 +585,31 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.buf.shrink_to_fit(self.len);
+    }
+
+    /// Shrinks the capacity of the vector with a lower bound.
+    ///
+    /// The capacity will remain at least as large as both the length
+    /// and the supplied value.
+    ///
+    /// Panics if the current capacity is smaller than the supplied
+    /// minimum capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shrink_to)]
+    /// let mut vec = Vec::with_capacity(10);
+    /// vec.extend([1, 2, 3].iter().cloned());
+    /// assert_eq!(vec.capacity(), 10);
+    /// vec.shrink_to(4);
+    /// assert!(vec.capacity() >= 4);
+    /// vec.shrink_to(0);
+    /// assert!(vec.capacity() >= 3);
+    /// ```
+    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.buf.shrink_to_fit(cmp::max(self.len, min_capacity));
     }
 
     /// Converts the vector into [`Box<[T]>`][owned slice].

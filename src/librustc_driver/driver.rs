@@ -901,7 +901,9 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         Some(future) => {
             let prev_graph = time(sess, "blocked while dep-graph loading finishes", || {
                 future.open()
-                      .expect("Could not join with background dep_graph thread")
+                      .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
+                          message: format!("could not decode incremental cache: {:?}", e)
+                      })
                       .open(sess)
             });
             DepGraph::new(prev_graph)

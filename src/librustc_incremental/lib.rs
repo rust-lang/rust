@@ -39,6 +39,7 @@ pub use assert_dep_graph::assert_dep_graph;
 pub use persist::dep_graph_tcx_init;
 pub use persist::load_dep_graph;
 pub use persist::load_query_result_cache;
+pub use persist::LoadResult;
 pub use persist::save_dep_graph;
 pub use persist::save_trans_partition;
 pub use persist::save_work_products;

@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct Inner<T> {
-    field: T,
-}
+// aux-build:extern-impl-trait.rs
 
-unsafe impl<T> Send for Inner<T>
-where
-    T: Copy + Send,
-{
-}
+#![crate_name = "foo"]
 
-// @has no_redundancy/struct.Outer.html
-// @has - '//*[@id="synthetic-implementations-list"]/*[@class="impl"]//*/code' "impl<T> Send for \
-// Outer<T> where T: Copy + Send"
-pub struct Outer<T> {
-    inner_field: Inner<T>,
-}
+extern crate extern_impl_trait;
+
+// @has 'foo/struct.X.html' '//code' "impl Foo<Associated = ()> + 'a"
+pub use extern_impl_trait::X;
+
+// @has 'foo/struct.Y.html' '//code' "impl ?Sized + Foo<Associated = ()> + 'a"
+pub use extern_impl_trait::Y;

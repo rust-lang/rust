@@ -89,7 +89,8 @@ impl LoadResult<PreviousDepGraph> {
     pub fn open(self, sess: &Session) -> PreviousDepGraph {
         match self {
             LoadResult::Error { message } => {
-                sess.fatal(&message) /* never returns */
+                sess.warn(&message);
+                PreviousDepGraph::new(SerializedDepGraph::new())
             },
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {

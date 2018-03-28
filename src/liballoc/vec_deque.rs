@@ -676,9 +676,42 @@ impl<T> VecDeque<T> {
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn shrink_to_fit(&mut self) {
+        self.shrink_to(0);
+    }
+
+    /// Shrinks the capacity of the `VecDeque` with a lower bound.
+    ///
+    /// The capacity will remain at least as large as both the length
+    /// and the supplied value.
+    ///
+    /// Panics if the current capacity is smaller than the supplied
+    /// minimum capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shrink_to)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::with_capacity(15);
+    /// buf.extend(0..4);
+    /// assert_eq!(buf.capacity(), 15);
+    /// buf.shrink_to(6);
+    /// assert!(buf.capacity() >= 6);
+    /// buf.shrink_to(0);
+    /// assert!(buf.capacity() >= 4);
+    /// ```
+    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
+
         // +1 since the ringbuffer always leaves one space empty
         // len + 1 can't overflow for an existing, well-formed ringbuffer.
-        let target_cap = cmp::max(self.len() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
+        let target_cap = cmp::max(
+            cmp::max(min_capacity, self.len()) + 1,
+            MINIMUM_CAPACITY + 1
+        ).next_power_of_two();
+
         if target_cap < self.cap() {
             // There are three cases of interest:
             //   All elements are out of desired bounds
