@@ -42,6 +42,8 @@ pub struct IdMapping {
     non_mapped_items: HashSet<DefId>,
     /// Trait items' old `DefId` mapped to old and new `Def`, and the enclosing trait's `DefId`.
     trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
+    /// The set of private traits in both crates.
+    private_traits: HashSet<DefId>,
     /// Other items' old `DefId` mapped to new `DefId`.
     internal_mapping: HashMap<DefId, DefId>,
     /// Children mapping, allowing us to enumerate descendants in `AdtDef`s.
@@ -63,6 +65,7 @@ impl IdMapping {
             toplevel_mapping: HashMap::new(),
             non_mapped_items: HashSet::new(),
             trait_item_mapping: HashMap::new(),
+            private_traits: HashSet::new(),
             internal_mapping: HashMap::new(),
             child_mapping: HashMap::new(),
             reverse_mapping: HashMap::new(),
@@ -98,6 +101,11 @@ impl IdMapping {
 
         self.trait_item_mapping.insert(old_def_id, (old, new, old_trait));
         self.reverse_mapping.insert(new.def_id(), old_def_id);
+    }
+
+    /// Add a private trait's `DefId`.
+    pub fn add_private_trait(&mut self, trait_def_id: DefId) {
+        self.private_traits.insert(trait_def_id);
     }
 
     /// Add any other item's old and new `DefId`s.
@@ -200,6 +208,11 @@ impl IdMapping {
     /// Return the `DefId` of the trait a given item belongs to.
     pub fn get_trait_def(&self, item_def_id: &DefId) -> Option<DefId> {
         self.trait_item_mapping.get(item_def_id).map(|t| t.2)
+    }
+
+    /// Check whether the given `DefId` is a private trait.
+    pub fn is_private_trait(&self, trait_def_id: &DefId) -> bool {
+        self.private_traits.contains(trait_def_id)
     }
 
     /// Check whether an old `DefId` is present in the mappings.
