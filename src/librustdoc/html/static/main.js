@@ -1713,19 +1713,20 @@
             // we are collapsing the impl block
             function implHider(addOrRemove) {
                 return function(n) {
-                    if (hasClass(n, "method")) {
-                        if (addOrRemove) {
-                            addClass(n, "hidden-by-impl-hider");
-                        } else {
-                            removeClass(n, "hidden-by-impl-hider");
+                    var is_method = hasClass(n, "method");
+                    if (is_method || hasClass(n, "type")) {
+                        if (is_method === true) {
+                            if (addOrRemove) {
+                                addClass(n, "hidden-by-impl-hider");
+                            } else {
+                                removeClass(n, "hidden-by-impl-hider");
+                            }
                         }
                         var ns = n.nextElementSibling;
                         while (true) {
                             if (ns && (
                                     hasClass(ns, "docblock") ||
-                                    hasClass(ns, "stability") ||
-                                    false
-                                    )) {
+                                    hasClass(ns, "stability"))) {
                                 if (addOrRemove) {
                                     addClass(ns, "hidden-by-impl-hider");
                                 } else {
@@ -1741,12 +1742,13 @@
             }
 
             var relatedDoc = toggle.parentNode;
+            var docblock = relatedDoc.nextElementSibling;
 
             while (!hasClass(relatedDoc, "impl-items")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
 
-            if (!relatedDoc) {
+            if (!relatedDoc && !hasClass(docblock, "docblock")) {
                 return;
             }
 
@@ -1754,7 +1756,8 @@
 
             var action = mode;
             if (action === "toggle") {
-                if (hasClass(relatedDoc, "fns-now-collapsed")) {
+                if (hasClass(relatedDoc, "fns-now-collapsed") ||
+                    hasClass(docblock,  "hidden-by-impl-hider")) {
                     action = "show";
                 } else {
                     action = "hide";
@@ -1763,10 +1766,12 @@
 
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
+                removeClass(docblock, "hidden-by-usual-hider");
                 onEach(toggle.childNodes, adjustToggle(false));
                 onEach(relatedDoc.childNodes, implHider(false));
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
+                addClass(docblock, "hidden-by-usual-hider");
                 onEach(toggle.childNodes, adjustToggle(true));
                 onEach(relatedDoc.childNodes, implHider(true));
             }
