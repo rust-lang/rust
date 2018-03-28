@@ -171,29 +171,29 @@ pub struct StdinLock<'a> {
 ///
 /// Using implicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Read};
 ///
-/// # fn foo() -> io::Result<String> {
-/// let mut buffer = String::new();
-/// io::stdin().read_to_string(&mut buffer)?;
-/// # Ok(buffer)
-/// # }
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     io::stdin().read_to_string(&mut buffer)?;
+///     Ok(())
+/// }
 /// ```
 ///
 /// Using explicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Read};
 ///
-/// # fn foo() -> io::Result<String> {
-/// let mut buffer = String::new();
-/// let stdin = io::stdin();
-/// let mut handle = stdin.lock();
+/// fn main() -> io::Result<()> {
+///     let mut buffer = String::new();
+///     let stdin = io::stdin();
+///     let mut handle = stdin.lock();
 ///
-/// handle.read_to_string(&mut buffer)?;
-/// # Ok(buffer)
-/// # }
+///     handle.read_to_string(&mut buffer)?;
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
@@ -225,17 +225,17 @@ impl Stdin {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::{self, Read};
     ///
-    /// # fn foo() -> io::Result<String> {
-    /// let mut buffer = String::new();
-    /// let stdin = io::stdin();
-    /// let mut handle = stdin.lock();
+    /// fn main() -> io::Result<()> {
+    ///     let mut buffer = String::new();
+    ///     let stdin = io::stdin();
+    ///     let mut handle = stdin.lock();
     ///
-    /// handle.read_to_string(&mut buffer)?;
-    /// # Ok(buffer)
-    /// # }
+    ///     handle.read_to_string(&mut buffer)?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
@@ -369,29 +369,29 @@ pub struct StdoutLock<'a> {
 ///
 /// Using implicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// io::stdout().write(b"hello world")?;
+/// fn main() -> io::Result<()> {
+///     io::stdout().write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 ///
 /// Using explicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// let stdout = io::stdout();
-/// let mut handle = stdout.lock();
+/// fn main() -> io::Result<()> {
+///     let stdout = io::stdout();
+///     let mut handle = stdout.lock();
 ///
-/// handle.write(b"hello world")?;
+///     handle.write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
@@ -419,17 +419,17 @@ impl Stdout {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::{self, Write};
     ///
-    /// # fn foo() -> io::Result<()> {
-    /// let stdout = io::stdout();
-    /// let mut handle = stdout.lock();
+    /// fn main() -> io::Result<()> {
+    ///     let stdout = io::stdout();
+    ///     let mut handle = stdout.lock();
     ///
-    /// handle.write(b"hello world")?;
+    ///     handle.write(b"hello world")?;
     ///
-    /// # Ok(())
-    /// # }
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
@@ -505,29 +505,29 @@ pub struct StderrLock<'a> {
 ///
 /// Using implicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// io::stderr().write(b"hello world")?;
+/// fn main() -> io::Result<()> {
+///     io::stderr().write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 ///
 /// Using explicit synchronization:
 ///
-/// ```
+/// ```no_run
 /// use std::io::{self, Write};
 ///
-/// # fn foo() -> io::Result<()> {
-/// let stderr = io::stderr();
-/// let mut handle = stderr.lock();
+/// fn main() -> io::Result<()> {
+///     let stderr = io::stderr();
+///     let mut handle = stderr.lock();
 ///
-/// handle.write(b"hello world")?;
+///     handle.write(b"hello world")?;
 ///
-/// # Ok(())
-/// # }
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
