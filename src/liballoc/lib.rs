@@ -81,6 +81,7 @@
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(rand, test))]
+#![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(ascii_ctype)]
 #![feature(box_into_raw_non_null)]
@@ -145,9 +146,9 @@ extern crate std_unicode;
 #[macro_use]
 mod macros;
 
-// Allocator trait and helper struct definitions
-
-pub mod allocator;
+#[rustc_deprecated(since = "1.27.0", reason = "use the heap module in core, alloc, or std instead")]
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub use core::heap as allocator;
 
 // Heaps provided for low-level allocation strategies
 
