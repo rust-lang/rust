@@ -142,6 +142,13 @@ pub fn is_path_segment_keyword(id: ast::Ident) -> bool {
     id.name == keywords::DollarCrate.name()
 }
 
+// We see this identifier in a normal identifier position, like variable name or a type.
+// How was it written originally? Did it use the raw form? Let's try to guess.
+pub fn is_raw_guess(ident: ast::Ident) -> bool {
+    ident.name != keywords::Invalid.name() &&
+    is_reserved_ident(ident) && !is_path_segment_keyword(ident)
+}
+
 // Returns true for reserved identifiers used internally for elided lifetimes,
 // unnamed method parameters, crate root module, error recovery etc.
 pub fn is_special_ident(id: ast::Ident) -> bool {
@@ -236,7 +243,7 @@ impl Token {
 
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: ast::Ident) -> Token {
-        Ident(ident, is_reserved_ident(ident) && !is_path_segment_keyword(ident))
+        Ident(ident, is_raw_guess(ident))
     }
 
     /// Returns `true` if the token starts with '>'.

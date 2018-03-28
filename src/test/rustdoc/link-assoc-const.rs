@@ -8,24 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(raw_identifiers)]
+#![crate_name = "foo"]
 
-fn r#fn(r#match: u32) -> u32 {
-    r#match
+// @has foo/index.html '//a[@href="../foo/foo/constant.FIRSTCONST.html"]' 'foo::FIRSTCONST'
+// @has foo/index.html '//a[@href="../foo/struct.Bar.html#associatedconstant.CONST"]' 'Bar::CONST'
+
+//! We have here [`foo::FIRSTCONST`] and [`Bar::CONST`].
+
+pub mod foo {
+    pub const FIRSTCONST: u32 = 42;
 }
 
-pub fn main() {
-    let r#struct = 1;
-    assert_eq!(1, r#struct);
+pub struct Bar;
 
-    let foo = 2;
-    assert_eq!(2, r#foo);
-
-    let r#bar = 3;
-    assert_eq!(3, bar);
-
-    assert_eq!(4, r#fn(4));
-
-    let r#true = false;
-    assert_eq!(r#true, false);
+impl Bar {
+    pub const CONST: u32 = 42;
 }

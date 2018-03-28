@@ -2122,6 +2122,48 @@ impl str {
         unsafe { String::from_utf8_unchecked(buf) }
     }
 
+    /// Returns true if this `str` is entirely whitespace, and false otherwise.
+    ///
+    /// 'Whitespace' is defined according to the terms of the Unicode Derived Core
+    /// Property `White_Space`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert!("    \t ".is_whitespace());
+    ///
+    /// // a non-breaking space
+    /// assert!("\u{A0}".is_whitespace());
+    ///
+    /// assert!(!"   越".is_whitespace());
+    /// ```
+    #[stable(feature = "unicode_methods_on_intrinsics", since = "1.27.0")]
+    #[inline]
+    pub fn is_whitespace(&self) -> bool {
+        UnicodeStr::is_whitespace(self)
+    }
+
+    /// Returns true if this `str` is entirely alphanumeric, and false otherwise.
+    ///
+    /// 'Alphanumeric'-ness is defined in terms of the Unicode General Categories
+    /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// assert!("٣7৬Kو藏".is_alphanumeric());
+    /// assert!(!"¾①".is_alphanumeric());
+    /// ```
+    #[stable(feature = "unicode_methods_on_intrinsics", since = "1.27.0")]
+    #[inline]
+    pub fn is_alphanumeric(&self) -> bool {
+        UnicodeStr::is_alphanumeric(self)
+    }
+
     /// Checks if all characters in this string are within the ASCII range.
     ///
     /// # Examples
