@@ -187,7 +187,7 @@ impl Spanned for MacroArg {
             MacroArg::Expr(ref expr) => expr.span(),
             MacroArg::Ty(ref ty) => ty.span(),
             MacroArg::Pat(ref pat) => pat.span(),
-            MacroArg::Item(ref item) => item.as_ref().unwrap().span(),
+            MacroArg::Item(ref item) => item.span(),
         }
     }
 }
