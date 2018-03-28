@@ -642,11 +642,11 @@ returning `None` if `rhs == 0` or the division results in overflow.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!((", stringify!($SelfT),
+#![feature(euclidean_division)]
+assert_eq!((", stringify!($SelfT),
 "::min_value() + 1).checked_div_euc(-1), Some(", stringify!($Max), "));
 assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euc(-1), None);
-assert_eq!((1", stringify!($SelfT), ").checked_div_euc(0), None);",
-$EndFeature, "
+assert_eq!((1", stringify!($SelfT), ").checked_div_euc(0), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -695,12 +695,12 @@ $EndFeature, "
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
+#![feature(euclidean_division)]
+use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(0), None);
-assert_eq!(", stringify!($SelfT), "::MIN.checked_mod_euc(-1), None);",
-$EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MIN.checked_mod_euc(-1), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -1063,9 +1063,9 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
+#![feature(euclidean_division)]
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euc(10), 10);
-assert_eq!((-128i8).wrapping_div_euc(-1), -128);",
-$EndFeature, "
+assert_eq!((-128i8).wrapping_div_euc(-1), -128);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -1119,9 +1119,9 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);
-assert_eq!((-128i8).wrapping_mod_euc(-1), 0);",
-$EndFeature, "
+#![feature(euclidean_division)]
+assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);
+assert_eq!((-128i8).wrapping_mod_euc(-1), 0);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -1410,12 +1410,12 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
+#![feature(euclidean_division)]
+use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euc(-1), (", stringify!($SelfT),
-"::MIN, true));",
-$EndFeature, "
+"::MIN, true));
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -1476,11 +1476,11 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "use std::", stringify!($SelfT), ";
+#![feature(euclidean_division)]
+use std::", stringify!($SelfT), ";
 
 assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));
-assert_eq!(", stringify!($SelfT), "::MIN.overflowing_mod_euc(-1), (0, true));",
-$EndFeature, "
+assert_eq!(", stringify!($SelfT), "::MIN.overflowing_mod_euc(-1), (0, true));
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -1704,14 +1704,14 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "let a: ", stringify!($SelfT), " = 7; // or any other integer type
+#![feature(euclidean_division)]
+let a: ", stringify!($SelfT), " = 7; // or any other integer type
 let b = 4;
 
 assert_eq!(a.div_euc(b), 1); // 7 >= 4 * 1
 assert_eq!(a.div_euc(-b), -1); // 7 >= -4 * -1
 assert_eq!((-a).div_euc(b), -2); // -7 >= 4 * -2
-assert_eq!((-a).div_euc(-b), 2); // -7 >= -4 * 2",
-$EndFeature, "
+assert_eq!((-a).div_euc(-b), 2); // -7 >= -4 * 2
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -1740,14 +1740,14 @@ This function will panic if `rhs` is 0.
 Basic usage:
 
 ```
-", $Feature, "let a: ", stringify!($SelfT), " = 7; // or any other integer type
+#![feature(euclidean_division)]
+let a: ", stringify!($SelfT), " = 7; // or any other integer type
 let b = 4;
 
 assert_eq!(a.mod_euc(b), 3);
 assert_eq!((-a).mod_euc(b), 1);
 assert_eq!(a.mod_euc(-b), 3);
-assert_eq!((-a).mod_euc(-b), 1);",
-$EndFeature, "
+assert_eq!((-a).mod_euc(-b), 1);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -2362,7 +2362,8 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
+#![feature(euclidean_division)]
+assert_eq!(128", stringify!($SelfT), ".checked_div(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euc(0), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -2409,9 +2410,9 @@ if `rhs == 0`.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(2), Some(1));
-assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(0), None);",
-$EndFeature, "
+#![feature(euclidean_division)]
+assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(2), Some(1));
+assert_eq!(5", stringify!($SelfT), ".checked_mod_euc(0), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -2715,7 +2716,8 @@ are accounted for in the wrapping operations.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div_euc(10), 10);", $EndFeature, "
+#![feature(euclidean_division)]
+assert_eq!(100", stringify!($SelfT), ".wrapping_div_euc(10), 10);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -2759,7 +2761,8 @@ are accounted for in the wrapping operations.
 Basic usage:
 
 ```
-", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);", $EndFeature, "
+#![feature(euclidean_division)]
+assert_eq!(100", stringify!($SelfT), ".wrapping_mod_euc(10), 0);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -3018,8 +3021,8 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));",
-$EndFeature, "
+#![feature(euclidean_division)]
+assert_eq!(5", stringify!($SelfT), ".overflowing_div_euc(2), (2, false));
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -3071,8 +3074,8 @@ This function will panic if `rhs` is 0.
 Basic usage
 
 ```
-", $Feature, "assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));",
-$EndFeature, "
+#![feature(euclidean_division)]
+assert_eq!(5", stringify!($SelfT), ".overflowing_mod_euc(2), (1, false));
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
@@ -3248,8 +3251,8 @@ For unsigned types, this is just the same as `self / rhs`.
 Basic usage:
 
 ```
-", $Feature, "assert_eq(7", stringify!($SelfT), ".div_euc(4), 1); // or any other integer type",
-$EndFeature, "
+#![feature(euclidean_division)]
+assert_eq(7", stringify!($SelfT), ".div_euc(4), 1); // or any other integer type
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -3270,8 +3273,8 @@ For unsigned types, this is just the same as `self % rhs`.
 Basic usage:
 
 ```
-", $Feature, "assert_eq(7", stringify!($SelfT), ".mod_euc(4), 3); // or any other integer type",
-$EndFeature, "
+#![feature(euclidean_division)]
+assert_eq(7", stringify!($SelfT), ".mod_euc(4), 3); // or any other integer type
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
