@@ -2341,12 +2341,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mutbl = match mt.mutbl {
                         hir::MutImmutable => AutoBorrowMutability::Immutable,
                         hir::MutMutable => AutoBorrowMutability::Mutable {
-                            // FIXME (#46747): arguably indexing is
-                            // "just another kind of call"; perhaps it
-                            // would be more consistent to allow
-                            // two-phase borrows for .index()
-                            // receivers here.
-                            allow_two_phase_borrow: false,
+                            // Indexing can be desugared to a method call,
+                            // so maybe we could use two-phase here.
+                            // See the documentation of AllowTwoPhase for why that's
+                            // not the case today.
+                            allow_two_phase_borrow: AllowTwoPhase::No,
                         }
                     };
                     adjustments.push(Adjustment {
@@ -3647,7 +3646,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         // (It shouldn't actually matter for unary ops whether
                                         // we enable two-phase borrows or not, since a unary
                                         // op has no additional operands.)
-                                        allow_two_phase_borrow: false,
+                                        allow_two_phase_borrow: AllowTwoPhase::No,
                                     }
                                 };
                                 self.apply_adjustments(oprnd, vec![Adjustment {

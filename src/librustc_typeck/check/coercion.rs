@@ -434,10 +434,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let mutbl = match mt_b.mutbl {
             hir::MutImmutable => AutoBorrowMutability::Immutable,
             hir::MutMutable => AutoBorrowMutability::Mutable {
-                allow_two_phase_borrow: match self.allow_two_phase {
-                    AllowTwoPhase::Yes => true,
-                    AllowTwoPhase::No => false
-                },
+                allow_two_phase_borrow: self.allow_two_phase,
             }
         };
         adjustments.push(Adjustment {
@@ -486,7 +483,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                         // We don't allow two-phase borrows here, at least for initial
                         // implementation. If it happens that this coercion is a function argument,
                         // the reborrow in coerce_borrowed_ptr will pick it up.
-                        allow_two_phase_borrow: false,
+                        allow_two_phase_borrow: AllowTwoPhase::No,
                     }
                 };
                 Some((Adjustment {

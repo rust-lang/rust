@@ -131,6 +131,7 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
 /// new code via two-phase borrows, so we try to limit where we create two-phase
 /// capable mutable borrows.
 /// See #49434 for tracking.
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AllowTwoPhase {
     Yes,
     No
@@ -138,7 +139,7 @@ pub enum AllowTwoPhase {
 
 #[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
 pub enum AutoBorrowMutability {
-    Mutable { allow_two_phase_borrow: bool },
+    Mutable { allow_two_phase_borrow: AllowTwoPhase },
     Immutable,
 }
 
