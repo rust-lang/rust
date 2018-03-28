@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 enum Foo {
     Bar(Option<i8>, (), (), Vec<i32>),
     Baz,

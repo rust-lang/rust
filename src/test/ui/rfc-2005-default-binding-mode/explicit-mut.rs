@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(match_default_bindings)]
-
 // Verify the binding mode shifts - only when no `&` are auto-dereferenced is the
 // final default binding mode mutable.
 

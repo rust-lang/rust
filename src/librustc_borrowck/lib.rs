@@ -16,7 +16,7 @@
 #![allow(non_camel_case_types)]
 
 #![feature(from_ref)]
-#![feature(match_default_bindings)]
+#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(quote)]
 
 #[macro_use] extern crate log;
