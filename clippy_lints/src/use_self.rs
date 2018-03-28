@@ -32,9 +32,9 @@ use syntax_pos::symbol::keywords::SelfType;
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USE_SELF,
-    Allow,
+    pedantic,
     "Unnecessary structure name repetition whereas `Self` is applicable"
 }
 

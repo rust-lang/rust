@@ -25,9 +25,9 @@ use url::Url;
 /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
 /// fn doit(foo_bar) { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DOC_MARKDOWN,
-    Warn,
+    pedantic,
     "presence of `_`, `::` or camel-case outside backticks in documentation"
 }
 

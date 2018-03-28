@@ -19,9 +19,9 @@ use utils::{opt_def_id, paths};
 /// ```rust
 /// println!("");
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINTLN_EMPTY_STRING,
-    Warn,
+    style,
     "using `print!()` with a format string that ends in a newline"
 }
 
@@ -38,9 +38,9 @@ declare_lint! {
 /// ```rust
 /// print!("Hello {}!\n", name);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINT_WITH_NEWLINE,
-    Warn,
+    style,
     "using `print!()` with a format string that ends in a newline"
 }
 
@@ -56,9 +56,9 @@ declare_lint! {
 /// ```rust
 /// println!("Hello world!");
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINT_STDOUT,
-    Allow,
+    restriction,
     "printing on stdout"
 }
 
@@ -72,9 +72,9 @@ declare_lint! {
 /// ```rust
 /// println!("{:?}", foo);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USE_DEBUG,
-    Allow,
+    restriction,
     "use of `Debug`-based formatting"
 }
 

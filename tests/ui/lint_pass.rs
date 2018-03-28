@@ -8,8 +8,8 @@
 
 use rustc::lint::{LintPass, LintArray};
 
-declare_lint! { GOOD_LINT, Warn, "good lint" }
-declare_lint! { MISSING_LINT, Warn, "missing lint" }
+declare_clippy_lint! { GOOD_LINT, style, "good lint" }
+declare_clippy_lint! { MISSING_LINT, style, "missing lint" }
 
 pub struct Pass;
 

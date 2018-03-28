@@ -18,9 +18,9 @@ use utils::{in_external_macro, snippet_opt, span_lint_and_sugg};
 /// ```rust
 /// 61864918973511
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNREADABLE_LITERAL,
-    Warn,
+    style,
     "long integer literal without underscores"
 }
 
@@ -37,9 +37,9 @@ declare_lint! {
 /// ```rust
 /// 618_64_9189_73_511
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INCONSISTENT_DIGIT_GROUPING,
-    Warn,
+    style,
     "integer literals with digits grouped inconsistently"
 }
 
@@ -56,9 +56,9 @@ declare_lint! {
 /// ```rust
 /// 6186491_8973511
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LARGE_DIGIT_GROUPS,
-    Warn,
+    style,
     "grouping digits into groups that are too large"
 }
 
@@ -74,8 +74,9 @@ declare_lint! {
 /// `255` => `0xFF`
 /// `65_535` => `0xFFFF`
 /// `4_042_322_160` => `0xF0F0_F0F0`
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub DECIMAL_LITERAL_REPRESENTATION,
+    restriction,
     "using decimal representation when hexadecimal would be better"
 }
 

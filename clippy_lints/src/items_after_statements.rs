@@ -26,9 +26,9 @@ use utils::{in_macro, span_lint};
 ///     foo(); // prints "foo"
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ITEMS_AFTER_STATEMENTS,
-    Allow,
+    pedantic,
     "blocks where an item comes after a statement"
 }
 

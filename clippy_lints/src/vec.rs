@@ -16,9 +16,9 @@ use consts::constant;
 /// ```rust,ignore
 /// foo(&vec![1, 2])
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USELESS_VEC,
-    Warn,
+    perf,
     "useless `vec!`"
 }
 

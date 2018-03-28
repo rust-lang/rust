@@ -17,9 +17,9 @@ use utils::sugg::Sugg;
 /// b = a;
 /// a = t;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MANUAL_SWAP,
-    Warn,
+    complexity,
     "manual swap of two variables"
 }
 
@@ -34,9 +34,9 @@ declare_lint! {
 /// a = b;
 /// b = a;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ALMOST_SWAPPED,
-    Warn,
+    correctness,
     "`foo = bar; bar = foo` sequence"
 }
 

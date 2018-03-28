@@ -22,9 +22,9 @@ use utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, wal
 /// ```rust
 /// if x.len() == 0 { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LEN_ZERO,
-    Warn,
+    style,
     "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
      could be used instead"
 }
@@ -46,9 +46,9 @@ declare_lint! {
 ///     pub fn len(&self) -> usize { .. }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LEN_WITHOUT_IS_EMPTY,
-    Warn,
+    style,
     "traits or impls with a public `len` method but no corresponding `is_empty` method"
 }
 

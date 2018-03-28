@@ -21,9 +21,9 @@ use rustc::ty::layout::LayoutOf;
 ///    B([i32; 8000]),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LARGE_ENUM_VARIANT,
-    Warn,
+    perf,
     "large size difference between variants on an enum"
 }
 

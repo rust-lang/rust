@@ -20,9 +20,9 @@ use utils::{in_macro, snippet_opt, span_lint_and_then};
 /// ```rust
 /// let x: &i32 = &&&&&&5;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_BORROW,
-    Warn,
+    complexity,
     "taking a reference that is going to be automatically dereferenced"
 }
 

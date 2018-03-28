@@ -29,9 +29,9 @@ use utils::{in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snip
 /// #[inline(always)]
 /// fn not_quite_hot_code(..) { ... }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INLINE_ALWAYS,
-    Warn,
+    pedantic,
     "use of `#[inline(always)]`"
 }
 
@@ -53,9 +53,9 @@ declare_lint! {
 /// #[allow(unused_import)]
 /// use foo::bar;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USELESS_ATTRIBUTE,
-    Warn,
+    correctness,
     "use of lint attributes on `extern crate` items"
 }
 
@@ -72,9 +72,9 @@ declare_lint! {
 /// #[deprecated(since = "forever")]
 /// fn something_else(..) { ... }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DEPRECATED_SEMVER,
-    Warn,
+    correctness,
     "use of `#[deprecated(since = \"x\")]` where x is not semver"
 }
 
@@ -103,9 +103,9 @@ declare_lint! {
 /// #[inline(always)]
 /// fn this_is_fine_too(..) { ... }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    Warn,
+    style,
     "empty line after outer attribute"
 }
 

@@ -15,9 +15,9 @@ use utils::span_lint;
 /// ```rust
 /// Point { x: 1, y: 0, ..zero_point }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_UPDATE,
-    Warn,
+    complexity,
     "using `Foo { ..base }` when there are no missing fields"
 }
 

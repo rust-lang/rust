@@ -20,8 +20,9 @@ use utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
 ///     }
 /// }
 /// ```
-declare_lint! {
-    pub FALLIBLE_IMPL_FROM, Allow,
+declare_clippy_lint! {
+    pub FALLIBLE_IMPL_FROM,
+    nursery,
     "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`"
 }
 

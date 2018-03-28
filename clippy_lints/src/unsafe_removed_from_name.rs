@@ -19,9 +19,9 @@ use utils::span_lint;
 /// extern crate crossbeam;
 /// use crossbeam::{spawn_unsafe as spawn};
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNSAFE_REMOVED_FROM_NAME,
-    Warn,
+    style,
     "`unsafe` removed from API names on import"
 }
 

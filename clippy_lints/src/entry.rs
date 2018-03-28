@@ -24,9 +24,9 @@ use utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_
 /// ```rust
 /// m.entry(k).or_insert(v);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MAP_ENTRY,
-    Warn,
+    perf,
     "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`"
 }
 

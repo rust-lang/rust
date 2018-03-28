@@ -19,9 +19,9 @@ use consts::{constant, Constant};
 /// x[9];
 /// &x[2..9];
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OUT_OF_BOUNDS_INDEXING,
-    Deny,
+    correctness,
     "out of bounds constant indexing"
 }
 
@@ -39,8 +39,9 @@ declare_lint! {
 /// x[2];
 /// &x[0..2];
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub INDEXING_SLICING,
+    restriction,
     "indexing/slicing usage"
 }
 

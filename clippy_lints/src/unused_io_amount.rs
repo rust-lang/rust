@@ -23,9 +23,9 @@ use utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
 ///     Ok(())
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNUSED_IO_AMOUNT,
-    Deny,
+    correctness,
     "unused written/read amount"
 }
 

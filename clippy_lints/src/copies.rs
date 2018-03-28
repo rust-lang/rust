@@ -33,9 +33,9 @@ use utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_an
 ///     …
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IFS_SAME_COND,
-    Warn,
+    correctness,
     "consecutive `ifs` with the same condition"
 }
 
@@ -54,9 +54,9 @@ declare_lint! {
 ///     42
 /// };
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IF_SAME_THEN_ELSE,
-    Warn,
+    correctness,
     "if with the same *then* and *else* blocks"
 }
 
@@ -95,9 +95,9 @@ declare_lint! {
 ///     Quz => quz(),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MATCH_SAME_ARMS,
-    Warn,
+    pedantic,
     "`match` with identical arm bodies"
 }
 

@@ -23,9 +23,9 @@ use utils::{snippet, span_lint_and_sugg, SpanlessEq};
 /// ```rust
 /// x <= y
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DOUBLE_COMPARISONS,
-    Deny,
+    complexity,
     "unnecessary double comparisons that can be simplified"
 }
 

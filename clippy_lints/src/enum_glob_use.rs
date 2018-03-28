@@ -19,9 +19,9 @@ use utils::span_lint;
 /// ```rust
 /// use std::cmp::Ordering::*;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ENUM_GLOB_USE,
-    Allow,
+    pedantic,
     "use items that import all variants of an enum"
 }
 

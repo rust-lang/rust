@@ -16,9 +16,9 @@ use rustc::ty;
 /// ```rust
 /// x / 1 + 0 * 1 - 0 | 0
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IDENTITY_OP,
-    Warn,
+    complexity,
     "using identity operations, e.g. `x + 0` or `y / 1`"
 }
 

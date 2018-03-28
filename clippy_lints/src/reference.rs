@@ -15,9 +15,9 @@ use utils::{snippet, span_lint_and_sugg};
 /// let a = f(*&mut b);
 /// let c = *&d;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DEREF_ADDROF,
-    Warn,
+    complexity,
     "use of `*&` or `*&mut` in an expression"
 }
 

@@ -35,9 +35,9 @@ use utils::in_macro;
 /// This lint fixes that.
 ///
 /// **Known problems:** None.
-declare_lint! {
+declare_clippy_lint! {
     pub MISSING_DOCS_IN_PRIVATE_ITEMS,
-    Allow,
+    restriction,
     "detects missing documentation for public and private members"
 }
 

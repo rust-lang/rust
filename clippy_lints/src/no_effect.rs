@@ -16,9 +16,9 @@ use std::ops::Deref;
 /// ```rust
 /// 0;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NO_EFFECT,
-    Warn,
+    complexity,
     "statements with no effect"
 }
 
@@ -34,9 +34,9 @@ declare_lint! {
 /// ```rust
 /// compute_array()[0];
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNNECESSARY_OPERATION,
-    Warn,
+    complexity,
     "outer expressions with no effect"
 }
 

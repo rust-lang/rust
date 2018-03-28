@@ -22,9 +22,9 @@ use utils::{snippet_opt, span_lint_and_then};
 /// ```rust
 /// x > y
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INT_PLUS_ONE,
-    Allow,
+    complexity,
     "instead of using x >= y + 1, use x > y"
 }
 

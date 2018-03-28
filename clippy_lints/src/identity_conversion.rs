@@ -15,9 +15,9 @@ use utils::{opt_def_id, paths, resolve_node};
 /// // format!() returns a `String`
 /// let s: String = format!("hello").into();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IDENTITY_CONVERSION,
-    Warn,
+    complexity,
     "using always-identical `Into`/`From` conversions"
 }
 

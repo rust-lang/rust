@@ -14,9 +14,9 @@ use utils::{match_def_path, opt_def_id, paths, span_lint};
 /// ```rust
 /// mem::forget(Rc::new(55)))
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MEM_FORGET,
-    Allow,
+    restriction,
     "`mem::forget` usage on `Drop` types, likely to cause memory leaks"
 }
 

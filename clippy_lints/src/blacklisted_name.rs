@@ -14,9 +14,9 @@ use utils::span_lint;
 /// ```rust
 /// let foo = 3.14;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BLACKLISTED_NAME,
-    Warn,
+    style,
     "usage of a blacklisted/placeholder name"
 }
 

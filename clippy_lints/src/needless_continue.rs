@@ -93,9 +93,9 @@ use utils::{in_macro, snippet, snippet_block, span_help_and_lint, trim_multiline
 ///     // Do something useful
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_CONTINUE,
-    Warn,
+    pedantic,
     "`continue` statements that can be replaced by a rearrangement of code"
 }
 

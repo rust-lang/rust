@@ -31,9 +31,9 @@ use utils::{in_external_macro, span_help_and_lint};
 ///     a()
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IF_NOT_ELSE,
-    Allow,
+    pedantic,
     "`if` branches that could be swapped so no negation operation is necessary on the condition"
 }
 

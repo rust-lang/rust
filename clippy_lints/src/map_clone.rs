@@ -18,9 +18,9 @@ use utils::{get_arg_name, is_adjusted, iter_input_pats, match_qpath, match_trait
 /// ```rust
 /// x.map(|e| e.clone());
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MAP_CLONE,
-    Warn,
+    style,
     "using `.map(|x| x.clone())` to clone an iterator or option's contents"
 }
 

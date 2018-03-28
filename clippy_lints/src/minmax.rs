@@ -18,9 +18,9 @@ use utils::{match_def_path, opt_def_id, paths, span_lint};
 /// ```
 /// It will always be equal to `0`. Probably the author meant to clamp the value
 /// between 0 and 100, but has erroneously swapped `min` and `max`.
-declare_lint! {
+declare_clippy_lint! {
     pub MIN_MAX,
-    Warn,
+    correctness,
     "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant"
 }
 

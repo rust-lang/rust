@@ -21,9 +21,9 @@ use utils::{in_macro, span_lint};
 ///         if i > 4 { continue }
 ///     }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNUSED_LABEL,
-    Warn,
+    complexity,
     "unused labels"
 }
 

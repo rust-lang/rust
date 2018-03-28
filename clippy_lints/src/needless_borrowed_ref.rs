@@ -42,9 +42,9 @@ use utils::{in_macro, snippet, span_lint_and_then};
 /// reference and
 /// de-referenced.
 /// As such, it could just be |a| a.is_empty()
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_BORROWED_REFERENCE,
-    Warn,
+    complexity,
     "taking a needless borrowed reference"
 }
 

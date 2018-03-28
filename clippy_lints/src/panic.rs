@@ -17,9 +17,9 @@ use utils::{is_direct_expn_of, match_def_path, opt_def_id, paths, resolve_node, 
 /// ```rust
 /// panic!("This `panic!` is probably missing a parameter there: {}");
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PANIC_PARAMS,
-    Warn,
+    style,
     "missing parameters in `panic!` calls"
 }
 

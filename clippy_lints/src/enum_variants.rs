@@ -22,9 +22,9 @@ use utils::{camel_case_from, camel_case_until, in_macro};
 ///     HummingbirdCake,
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ENUM_VARIANT_NAMES,
-    Warn,
+    style,
     "enums where all variants share a prefix/postfix"
 }
 
@@ -43,9 +43,9 @@ declare_lint! {
 ///     HummingbirdCake,
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PUB_ENUM_VARIANT_NAMES,
-    Allow,
+    pedantic,
     "enums where all variants share a prefix/postfix"
 }
 
@@ -62,9 +62,9 @@ declare_lint! {
 ///     struct BlackForestCake;
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub STUTTER,
-    Allow,
+    pedantic,
     "type names prefixed/postfixed with their containing module's name"
 }
 
@@ -92,9 +92,9 @@ declare_lint! {
 ///     ...
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MODULE_INCEPTION,
-    Warn,
+    style,
     "modules that have the same name as their parent module"
 }
 

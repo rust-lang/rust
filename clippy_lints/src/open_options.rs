@@ -16,9 +16,9 @@ use utils::{match_type, paths, span_lint, walk_ptrs_ty};
 /// ```rust
 /// OpenOptions::new().read(true).truncate(true)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NONSENSICAL_OPEN_OPTIONS,
-    Warn,
+    correctness,
     "nonsensical combination of options for opening a file"
 }
 

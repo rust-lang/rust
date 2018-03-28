@@ -15,8 +15,9 @@ use utils::span_lint;
 /// ```rust
 /// a + 1
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub INTEGER_ARITHMETIC,
+    restriction,
     "any integer arithmetic statement"
 }
 
@@ -31,8 +32,9 @@ declare_restriction_lint! {
 /// ```rust
 /// a + 1.0
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub FLOAT_ARITHMETIC,
+    restriction,
     "any floating-point arithmetic statement"
 }
 

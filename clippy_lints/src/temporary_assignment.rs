@@ -15,9 +15,9 @@ use utils::span_lint;
 /// ```rust
 /// (0, 0).0 = 1
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TEMPORARY_ASSIGNMENT,
-    Warn,
+    complexity,
     "assignments to temporaries"
 }
 

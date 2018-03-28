@@ -38,9 +38,9 @@ use std::collections::HashMap;
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LINT_AUTHOR,
-    Warn,
+    style, // ok, this is not a style lint, but it's also a noop without the appropriate attribute
     "helper for writing lints"
 }
 
