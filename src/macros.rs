@@ -58,8 +58,7 @@ pub enum MacroArg {
     Expr(ptr::P<ast::Expr>),
     Ty(ptr::P<ast::Ty>),
     Pat(ptr::P<ast::Pat>),
-    // `parse_item` returns `Option<ptr::P<ast::Item>>`.
-    Item(Option<ptr::P<ast::Item>>),
+    Item(ptr::P<ast::Item>),
 }
 
 impl Rewrite for ast::Item {
@@ -78,14 +77,14 @@ impl Rewrite for MacroArg {
             MacroArg::Expr(ref expr) => expr.rewrite(context, shape),
             MacroArg::Ty(ref ty) => ty.rewrite(context, shape),
             MacroArg::Pat(ref pat) => pat.rewrite(context, shape),
-            MacroArg::Item(ref item) => item.as_ref().and_then(|item| item.rewrite(context, shape)),
+            MacroArg::Item(ref item) => item.rewrite(context, shape),
         }
     }
 }
 
 fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($macro_arg:ident, $parser:ident) => {
+        ($macro_arg:ident, $parser:ident, $f:expr) => {
             let mut cloned_parser = (*parser).clone();
             match cloned_parser.$parser() {
                 Ok(x) => {
@@ -94,7 +93,7 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
                     } else {
                         // Parsing succeeded.
                         *parser = cloned_parser;
-                        return Some(MacroArg::$macro_arg(x.clone()));
+                        return Some(MacroArg::$macro_arg($f(x)?));
                     }
                 }
                 Err(mut e) => {
@@ -105,10 +104,11 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
         };
     }
 
-    parse_macro_arg!(Expr, parse_expr);
-    parse_macro_arg!(Ty, parse_ty);
-    parse_macro_arg!(Pat, parse_pat);
-    parse_macro_arg!(Item, parse_item);
+    parse_macro_arg!(Expr, parse_expr, |x: ptr::P<ast::Expr>| Some(x));
+    parse_macro_arg!(Ty, parse_ty, |x: ptr::P<ast::Ty>| Some(x));
+    parse_macro_arg!(Pat, parse_pat, |x: ptr::P<ast::Pat>| Some(x));
+    // `parse_item` returns `Option<ptr::P<ast::Item>>`.
+    parse_macro_arg!(Item, parse_item, |x: Option<ptr::P<ast::Item>>| x);
 
     None
 }

@@ -10,6 +10,8 @@ peg_file!   modname  ("mygrammarfile.rustpeg");
 fn main() {
     foo! ( );
 
+    foo!(,);
+
     bar!( a , b , c );
 
     bar!( a , b , c , );
