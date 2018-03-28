@@ -1,7 +1,7 @@
 
 #![feature(const_fn)]
 
-#![warn(clippy, clippy_pedantic)]
+#![warn(clippy, clippy_pedantic, option_unwrap_used)]
 #![allow(blacklisted_name, unused, print_stdout, non_ascii_literal, new_without_default,
     new_without_default_derive, missing_docs_in_private_items, needless_pass_by_value)]
 

@@ -2,7 +2,7 @@
 #![feature(associated_type_defaults)]
 
 
-#![warn(clippy)]
+#![warn(linkedlist)]
 #![allow(dead_code, needless_pass_by_value)]
 
 extern crate alloc;

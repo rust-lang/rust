@@ -26,7 +26,7 @@ nl_escape_re = re.compile(r'\\\n\s*')
 docs_link = 'https://rust-lang-nursery.github.io/rust-clippy/master/index.html'
 
 
-def collect(lints, deprecated_lints, clippy_lints, fn):
+def collect(deprecated_lints, clippy_lints, fn):
     """Collect all lints from a file.
 
     Adds entries to the lints list as `(module, name, level, desc)`.
@@ -88,6 +88,8 @@ def replace_region(fn, region_start, region_end, callback,
     with open(fn) as fp:
         lines = list(fp)
 
+    found = False
+
     # replace old region with new region
     new_lines = []
     in_old_region = False
@@ -102,8 +104,12 @@ def replace_region(fn, region_start, region_end, callback,
                 new_lines.append(line)
             # old region starts here
             in_old_region = True
+            found = True
         else:
             new_lines.append(line)
+
+    if not found:
+        print "regex " + region_start + " not found"
 
     # write back to file
     if write_back:
@@ -115,7 +121,6 @@ def replace_region(fn, region_start, region_end, callback,
 
 
 def main(print_only=False, check=False):
-    lints = []
     deprecated_lints = []
     clippy_lints = {
         "correctness": [],
@@ -135,7 +140,7 @@ def main(print_only=False, check=False):
     # collect all lints from source files
     for fn in os.listdir('clippy_lints/src'):
         if fn.endswith('.rs'):
-            collect(lints, deprecated_lints, clippy_lints,
+            collect(deprecated_lints, clippy_lints,
                     os.path.join('clippy_lints', 'src', fn))
 
     # determine version
@@ -148,7 +153,16 @@ def main(print_only=False, check=False):
             print('Error: version not found in Cargo.toml!')
             return
 
-    all_lints = lints
+    all_lints = []
+    clippy_lint_groups = [
+        "correctness",
+        "style",
+        "complexity",
+        "perf",
+    ]
+    clippy_lint_list = []
+    for x in clippy_lint_groups:
+        clippy_lint_list += clippy_lints[x]
     for _, value in clippy_lints.iteritems():
         all_lints += value
 
@@ -159,8 +173,8 @@ def main(print_only=False, check=False):
     # update the lint counter in README.md
     changed = replace_region(
         'README.md',
-        r'^\[There are \d+ lints included in this crate\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)$', "",
-        lambda: ['[There are %d lints included in this crate](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)\n' %
+        r'^\[There are \d+ lints included in this crate!\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)$', "",
+        lambda: ['[There are %d lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)\n' %
                  (len(all_lints))],
         write_back=not check)
 
@@ -193,10 +207,10 @@ def main(print_only=False, check=False):
         lambda: gen_mods(all_lints),
         replace_start=False, write_back=not check)
 
-    # same for "clippy" lint collection
+    # same for "clippy_*" lint collections
     changed |= replace_region(
         'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
-        lambda: gen_group(lints, levels=('warn', 'deny')),
+        lambda: gen_group(clippy_lint_list),
         replace_start=False, write_back=not check)
 
     for key, value in clippy_lints.iteritems():

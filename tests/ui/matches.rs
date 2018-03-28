@@ -4,7 +4,7 @@
 
 #![warn(clippy)]
 #![allow(unused, if_let_redundant_pattern_matching)]
-#![warn(single_match_else)]
+#![warn(single_match_else, match_same_arms)]
 
 use std::borrow::Cow;
 

@@ -1,9 +1,9 @@
 
 
-
 #![feature(untagged_unions)]
 
 #![allow(dead_code)]
+#![warn(expl_impl_clone_on_copy)]
 
 use std::hash::{Hash, Hasher};
 

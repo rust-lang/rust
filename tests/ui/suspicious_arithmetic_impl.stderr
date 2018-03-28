@@ -12,7 +12,7 @@ error: Suspicious use of binary operator in `AddAssign` impl
 20 |         *self = *self - other;
    |                       ^
    |
-   = note: `-D suspicious-op-assign-impl` implied by `-D warnings`
+   = note: #[deny(suspicious_op_assign_impl)] on by default
 
 error: aborting due to 2 previous errors
 
