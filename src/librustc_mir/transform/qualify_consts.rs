@@ -37,7 +37,6 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
 use rustc_data_structures::sync::Lrc;
-use std::usize;
 
 use transform::{MirPass, MirSource};
 use super::promote_consts::{self, Candidate, TempState};
@@ -53,16 +52,13 @@ bitflags! {
         // Constant containing an ADT that implements Drop.
         const NEEDS_DROP        = 1 << 1;
 
-        // Function argument.
-        const FN_ARGUMENT       = 1 << 2;
-
         // Not constant at all - non-`const fn` calls, asm!,
         // pointer comparisons, ptr-to-int casts, etc.
-        const NOT_CONST         = 1 << 3;
+        const NOT_CONST         = 1 << 2;
 
         // Refers to temporaries which cannot be promoted as
         // promote_consts decided they weren't simple enough.
-        const NOT_PROMOTABLE    = 1 << 4;
+        const NOT_PROMOTABLE    = 1 << 3;
 
         // Const items can only have MUTABLE_INTERIOR
         // and NOT_PROMOTABLE without producing an error.
@@ -116,7 +112,6 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     param_env: ty::ParamEnv<'tcx>,
     local_qualif: IndexVec<Local, Option<Qualif>>,
     qualif: Qualif,
-    const_fn_arg_vars: BitVector,
     temp_promotion_state: IndexVec<Local, TempState>,
     promotion_candidates: Vec<Candidate>
 }
@@ -150,7 +145,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             param_env,
             local_qualif,
             qualif: Qualif::empty(),
-            const_fn_arg_vars: BitVector::new(mir.local_decls.len()),
             temp_promotion_state: temps,
             promotion_candidates: vec![]
         }
@@ -426,10 +420,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::Var |
             LocalKind::Arg |
             LocalKind::Temp => {
-                if let LocalKind::Arg = kind {
-                    self.add(Qualif::FN_ARGUMENT);
-                }
-
                 if !self.temp_promotion_state[local].is_promotable() {
                     self.add(Qualif::NOT_PROMOTABLE);
                 }
@@ -1034,29 +1024,6 @@ This does not pose a problem by itself because they can't be accessed directly."
                         }
                     }
                     _ => {}
-                }
-
-                // Avoid a generic error for other uses of arguments.
-                if self.qualif.contains(Qualif::FN_ARGUMENT) {
-                    let decl = &self.mir.local_decls[index];
-                    let mut err = feature_err(
-                        &self.tcx.sess.parse_sess,
-                        "const_let",
-                        decl.source_info.span,
-                        GateIssue::Language,
-                        "arguments of constant functions can only be immutable by-value bindings"
-                    );
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note("Constant functions are not allowed to mutate anything. Thus, \
-                                  binding to an argument with a mutable pattern is not allowed.");
-                        err.note("Remove any mutable bindings from the argument list to fix this \
-                                  error. In case you need to mutate the argument, try lazily \
-                                  initializing a global variable instead of using a const fn, or \
-                                  refactoring the code to a functional style to avoid mutation if \
-                                  possible.");
-                    }
-                    err.emit();
-                    return;
                 }
             }
         }
