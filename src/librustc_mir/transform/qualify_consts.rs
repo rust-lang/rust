@@ -52,18 +52,9 @@ bitflags! {
         // Constant containing an ADT that implements Drop.
         const NEEDS_DROP        = 1 << 1;
 
-        // Not constant at all - non-`const fn` calls, asm!,
+        // Not constant or not promotable - non-`const fn` calls, asm!,
         // pointer comparisons, ptr-to-int casts, etc.
         const NOT_CONST         = 1 << 2;
-
-        // Refers to temporaries which cannot be promoted as
-        // promote_consts decided they weren't simple enough.
-        const NOT_PROMOTABLE    = 1 << 3;
-
-        // Const items can only have MUTABLE_INTERIOR
-        // and NOT_PROMOTABLE without producing an error.
-        const CONST_ERROR       = !Qualif::MUTABLE_INTERIOR.bits &
-                                  !Qualif::NOT_PROMOTABLE.bits;
     }
 }
 
@@ -366,15 +357,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         self.qualif = self.local_qualif[RETURN_PLACE].unwrap_or(Qualif::NOT_CONST);
 
-        // Account for errors in consts by using the
-        // conservative type qualification instead.
-        if self.qualif.intersects(Qualif::CONST_ERROR) {
-            self.qualif = Qualif::empty();
-            let return_ty = mir.return_ty();
-            self.add_type(return_ty);
-        }
-
-
         // Collect all the temps we need to promote.
         let mut promoted_temps = IdxSetBuf::new_empty(self.temp_promotion_state.len());
 
@@ -421,7 +403,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::Arg |
             LocalKind::Temp => {
                 if !self.temp_promotion_state[local].is_promotable() {
-                    self.add(Qualif::NOT_PROMOTABLE);
+                    self.add(Qualif::NOT_CONST);
                 }
 
                 if let Some(qualif) = self.local_qualif[local] {
@@ -956,7 +938,7 @@ This does not pose a problem by itself because they can't be accessed directly."
 
             if let Some((ref dest, _)) = *destination {
                 // Avoid propagating irrelevant callee/argument qualifications.
-                if self.qualif.intersects(Qualif::CONST_ERROR) {
+                if self.qualif.intersects(Qualif::NOT_CONST) {
                     self.qualif = Qualif::NOT_CONST;
                 } else {
                     // Be conservative about the returned value of a const fn.
