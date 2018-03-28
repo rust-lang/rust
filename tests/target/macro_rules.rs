@@ -220,3 +220,9 @@ macro_rules! binary {
         }
     };
 }
+
+// #2558
+macro_rules! m {
+    ($x:) => {};
+    ($($foo:expr)()?) => {};
+}
