@@ -47,8 +47,6 @@ eg. `static MINUTE: Duration = Duration::from_secs(60);`
 - [`Duration::new`][47300]
 - [`Duration::from_secs`][47300]
 - [`Duration::from_millis`][47300]
-- [`Duration::from_micros`][47300]
-- [`Duration::from_nanos`][47300]
 
 Cargo
 -----
