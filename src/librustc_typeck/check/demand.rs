@@ -21,6 +21,7 @@ use rustc::hir;
 use rustc::hir::print;
 use rustc::hir::def::Def;
 use rustc::ty::{self, Ty, AssociatedItem};
+use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{DiagnosticBuilder, CodeMapper};
 
 use super::method::probe;
@@ -80,7 +81,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          expr: &hir::Expr,
                          checked_ty: Ty<'tcx>,
                          expected: Ty<'tcx>,
-                         allow_two_phase: bool)
+                         allow_two_phase: AllowTwoPhase)
                          -> Ty<'tcx> {
         let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected, allow_two_phase);
         if let Some(mut err) = err {
@@ -98,7 +99,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expr: &hir::Expr,
                               checked_ty: Ty<'tcx>,
                               expected: Ty<'tcx>,
-                              allow_two_phase: bool)
+                              allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
 

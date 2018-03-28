@@ -97,7 +97,7 @@ use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
@@ -2649,7 +2649,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                 let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty), true);
+                // We're processing function arguments so we definitely want to use two-phase borrows.
+                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty), AllowTwoPhase::Yes);
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -2812,7 +2813,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expr,
             ExpectHasType(expected),
             needs);
-        self.demand_coerce(expr, ty, expected, false)
+        // checks don't need two phase
+        self.demand_coerce(expr, ty, expected, AllowTwoPhase::No)
     }
 
     fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
@@ -4113,7 +4115,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
                       Some((index_ty, element_ty)) => {
                           // two-phase not needed because index_ty is never mutable
-                          self.demand_coerce(idx, idx_t, index_ty, false);
+                          self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
                           element_ty
                       }
                       None => {
