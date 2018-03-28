@@ -460,7 +460,7 @@ fn replace_names(input: &str) -> Option<(String, HashMap<String, String>)> {
         } else if c == '(' && cur_name.is_empty() {
             // FIXME: Support macro def with repeat.
             return None;
-        } else if c.is_alphanumeric() {
+        } else if c.is_alphanumeric() || c == '_' {
             cur_name.push(c);
         }
     }
