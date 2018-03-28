@@ -19,6 +19,7 @@ pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::Visibility::*;
 
+use syntax;
 use syntax::abi::Abi;
 use syntax::ast::{self, AttrStyle};
 use syntax::attr;
@@ -64,6 +65,7 @@ use std::u32;
 use core::{self, DocContext};
 use doctree;
 use visit_ast;
+use html::render::{cache, ExternalLocation};
 use html::item_type::ItemType;
 use html::markdown::markdown_links;
 
@@ -346,7 +348,7 @@ impl Item {
     }
 
     pub fn links(&self) -> Vec<(String, String)> {
-        self.attrs.links()
+        self.attrs.links(&self.def_id.krate)
     }
 
     pub fn is_crate(&self) -> bool {
@@ -697,7 +699,7 @@ pub struct Attributes {
     pub cfg: Option<Rc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
-    pub links: Vec<(String, DefId, Option<String>)>,
+    pub links: Vec<(String, Option<DefId>, Option<String>)>,
 }
 
 impl Attributes {
@@ -869,17 +871,41 @@ impl Attributes {
     /// Get links as a vector
     ///
     /// Cache must be populated before call
-    pub fn links(&self) -> Vec<(String, String)> {
+    pub fn links(&self, krate: &CrateNum) -> Vec<(String, String)> {
         use html::format::href;
         self.links.iter().filter_map(|&(ref s, did, ref fragment)| {
-            if let Some((mut href, ..)) = href(did) {
-                if let Some(ref fragment) = *fragment {
-                    href.push_str("#");
-                    href.push_str(fragment);
+            match did {
+                Some(did) => {
+                    if let Some((mut href, ..)) = href(did) {
+                        if let Some(ref fragment) = *fragment {
+                            href.push_str("#");
+                            href.push_str(fragment);
+                        }
+                        Some((s.clone(), href))
+                    } else {
+                        None
+                    }
                 }
-                Some((s.clone(), href))
-            } else {
-                None
+                None => {
+                    if let Some(ref fragment) = *fragment {
+                        let cache = cache();
+                        let url = match cache.extern_locations.get(krate) {
+                            Some(&(_, ref src, ExternalLocation::Local)) =>
+                                src.to_str().expect("invalid file path"),
+                            Some(&(_, _, ExternalLocation::Remote(ref s))) => s,
+                            Some(&(_, _, ExternalLocation::Unknown)) | None =>
+                                "https://doc.rust-lang.org/nightly",
+                        };
+                        // This is a primitive so the url is done "by hand".
+                        Some((s.clone(),
+                              format!("{}{}std/primitive.{}.html",
+                                      url,
+                                      if !url.ends_with('/') { "/" } else { "" },
+                                      fragment)))
+                    } else {
+                        panic!("This isn't a primitive?!");
+                    }
+                }
             }
         }).collect()
     }
@@ -959,6 +985,34 @@ fn handle_variant(cx: &DocContext, def: Def) -> Result<(Def, Option<String>), ()
     Ok((parent_def, Some(format!("{}.v", variant.name))))
 }
 
+const PRIMITIVES: &[(&str, Def)] = &[
+    ("u8",    Def::PrimTy(hir::PrimTy::TyUint(syntax::ast::UintTy::U8))),
+    ("u16",   Def::PrimTy(hir::PrimTy::TyUint(syntax::ast::UintTy::U16))),
+    ("u32",   Def::PrimTy(hir::PrimTy::TyUint(syntax::ast::UintTy::U32))),
+    ("u64",   Def::PrimTy(hir::PrimTy::TyUint(syntax::ast::UintTy::U64))),
+    ("u128",  Def::PrimTy(hir::PrimTy::TyUint(syntax::ast::UintTy::U128))),
+    ("usize", Def::PrimTy(hir::PrimTy::TyUint(syntax::ast::UintTy::Usize))),
+    ("i8",    Def::PrimTy(hir::PrimTy::TyInt(syntax::ast::IntTy::I8))),
+    ("i16",   Def::PrimTy(hir::PrimTy::TyInt(syntax::ast::IntTy::I16))),
+    ("i32",   Def::PrimTy(hir::PrimTy::TyInt(syntax::ast::IntTy::I32))),
+    ("i64",   Def::PrimTy(hir::PrimTy::TyInt(syntax::ast::IntTy::I64))),
+    ("i128",  Def::PrimTy(hir::PrimTy::TyInt(syntax::ast::IntTy::I128))),
+    ("isize", Def::PrimTy(hir::PrimTy::TyInt(syntax::ast::IntTy::Isize))),
+    ("f32",   Def::PrimTy(hir::PrimTy::TyFloat(syntax::ast::FloatTy::F32))),
+    ("f64",   Def::PrimTy(hir::PrimTy::TyFloat(syntax::ast::FloatTy::F64))),
+    ("str",   Def::PrimTy(hir::PrimTy::TyStr)),
+    ("bool",  Def::PrimTy(hir::PrimTy::TyBool)),
+    ("char",  Def::PrimTy(hir::PrimTy::TyChar)),
+];
+
+fn is_primitive(path_str: &str, is_val: bool) -> Option<Def> {
+    if is_val {
+        None
+    } else {
+        PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1)
+    }
+}
+
 /// Resolve a given string as a path, along with whether or not it is
 /// in the value namespace. Also returns an optional URL fragment in the case
 /// of variants and methods
@@ -987,6 +1041,8 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
             if value != is_val {
                 return Err(())
             }
+        } else if let Some(prim) = is_primitive(path_str, is_val) {
+            return Ok((prim, Some(path_str.to_owned())))
         } else {
             // If resolution failed, it may still be a method
             // because methods are not handled by the resolver
@@ -1051,7 +1107,6 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
             }
             _ => Err(())
         }
-
     } else {
         Err(())
     }
@@ -1218,8 +1273,12 @@ impl Clean<Attributes> for [ast::Attribute] {
                     }
                 };
 
-                let id = register_def(cx, def);
-                attrs.links.push((ori_link, id, fragment));
+                if let Def::PrimTy(_) = def {
+                    attrs.links.push((ori_link, None, fragment));
+                } else {
+                    let id = register_def(cx, def);
+                    attrs.links.push((ori_link, Some(id), fragment));
+                }
             }
 
             cx.sess().abort_if_errors();
