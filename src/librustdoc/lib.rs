@@ -266,8 +266,8 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("resource-suffix", |o| {
             o.optopt("",
                      "resource-suffix",
-                     "suffix to add to CSS and JavaScript files, e.g. \"main.css\" will become \
-                      \"main-suffix.css\"",
+                     "suffix to add to CSS and JavaScript files, e.g. \"light.css\" will become \
+                      \"light-suffix.css\"",
                      "PATH")
         }),
     ]
@@ -321,7 +321,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     let to_check = matches.opt_strs("theme-checker");
     if !to_check.is_empty() {
-        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
         let mut errors = 0;
 
         println!("rustdoc: [theme-checker] Starting tests!");
@@ -392,7 +392,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     let mut themes = Vec::new();
     if matches.opt_present("themes") {
-        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
 
         for (theme_file, theme_s) in matches.opt_strs("themes")
                                             .iter()
