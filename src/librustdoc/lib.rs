@@ -446,7 +446,7 @@ pub fn main_args(args: &[String]) -> isize {
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
-                                  display_warnings, linker)
+                                  display_warnings, linker, edition)
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
