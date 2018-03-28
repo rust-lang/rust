@@ -2243,14 +2243,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
                       implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> Result<(), fmt::Error> {
-    write!(w, "<li>")?;
-    if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
-        write!(w, "<div class='out-of-band'>")?;
-        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                    l, "goto source code")?;
-        write!(w, "</div>")?;
-    }
-    write!(w, "<code>")?;
+    write!(w, "<li><table class='table-display'><tbody><tr><td><code>")?;
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
@@ -2269,7 +2262,14 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
             write!(w, ";</span>")?;
         }
     }
-    writeln!(w, "</code></li>")?;
+    write!(w, "</code><td>")?;
+    if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
+        write!(w, "<div class='out-of-band'>")?;
+        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                    l, "goto source code")?;
+        write!(w, "</div>")?;
+    }
+    writeln!(w, "</td></tr></tbody></table></li>")?;
     Ok(())
 }
 
@@ -3314,10 +3314,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
             None => "impl".to_string(),
         });
-        write!(w, "<h3 id='{}' class='impl'><span class='in-band'><code>{}</code>",
+        write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
+                   <tbody><tr><td><code>{}</code>",
                id, i.inner_impl())?;
         write!(w, "<a href='#{}' class='anchor'></a>", id)?;
-        write!(w, "</span><span class='out-of-band'>")?;
+        write!(w, "</span></td><td><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
         if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
             write!(w, "<div class='ghost'></div>")?;
@@ -3327,8 +3328,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         } else {
             render_stability_since_raw(w, since, outer_version)?;
         }
-        write!(w, "</span>")?;
-        write!(w, "</h3>\n")?;
+        write!(w, "</span></td></tr></tbody></table></h3>")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links()))?;
@@ -3357,19 +3357,20 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                     write!(w, "{}", spotlight_decl(decl)?)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
-                    write!(w, "<code>")?;
+                    write!(w, "<table class='table-display'><tbody><tr><td><code>")?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
                     if let Some(l) = (Item { cx, item }).src_href() {
-                        write!(w, "</span><span class='out-of-band'>")?;
+                        write!(w, "</span></td><td><span class='out-of-band'>")?;
                         write!(w, "<div class='ghost'></div>")?;
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                         write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                                l, "goto source code")?;
                     } else {
+                        write!(w, "</td><td>")?;
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     }
-                    write!(w, "</span></h4>\n")?;
+                    write!(w, "</td></tr></tbody></table></span></h4>")?;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
