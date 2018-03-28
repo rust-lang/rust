@@ -227,6 +227,16 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                             // for trait item addition and removal, as well as changes to their
                             // kinds and defaultness
                             (Trait(_), Trait(_)) => {
+                                if o_vis != Public {
+                                    debug!("private trait: {:?}", o_def_id);
+                                    id_mapping.add_private_trait(o_def_id);
+                                }
+
+                                if n_vis != Public {
+                                    debug!("private trait: {:?}", n_def_id);
+                                    id_mapping.add_private_trait(n_def_id);
+                                }
+
                                 diff_generics(changes,
                                               id_mapping,
                                               tcx,
@@ -483,6 +493,8 @@ fn diff_traits(changes: &mut ChangeSet,
                output: bool) {
     use rustc::hir::Unsafety::Unsafe;
 
+    debug!("diff_traits: old: {:?}, new: {:?}, output: {:?}", old, new, output);
+
     let old_unsafety = tcx.trait_def(old).unsafety;
     let new_unsafety = tcx.trait_def(new).unsafety;
 
@@ -554,6 +566,8 @@ fn diff_generics(changes: &mut ChangeSet,
     use rustc::ty::Variance;
     use rustc::ty::Variance::*;
     use std::cmp::max;
+
+    debug!("diff_generics: old: {:?}, new: {:?}", old, new);
 
     fn diff_variance<'tcx>(old_var: Variance, new_var: Variance) -> Option<ChangeType<'tcx>> {
         match (old_var, new_var) {
