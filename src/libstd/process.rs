@@ -1121,7 +1121,8 @@ impl ExitCode {
 }
 
 impl Child {
-    /// Forces the child process to exit.  If the child has already exited, an error is returned.
+    /// Forces the child process to exit.  If the child has already exited, an [`InvalidInput`]
+    /// error might be returned.
     ///
     /// This is equivalent to sending a SIGKILL on Unix platforms.
     ///
@@ -1139,6 +1140,8 @@ impl Child {
     ///     println!("yes command didn't start");
     /// }
     /// ```
+    ///
+    /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
