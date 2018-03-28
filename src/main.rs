@@ -175,23 +175,22 @@ pub fn main() {
     }
 }
 
-fn process<I>(old_args: I) -> Result<(), i32>
+fn process<I>(mut old_args: I) -> Result<(), i32>
 where
     I: Iterator<Item = String>,
 {
-    let mut args = vec!["rustc".to_owned()];
+    let mut args = vec!["check".to_owned()];
 
     let mut found_dashes = false;
-    for arg in old_args {
+    for arg in old_args.by_ref() {
         found_dashes |= arg == "--";
+        if found_dashes {
+            break;
+        }
         args.push(arg);
     }
-    if !found_dashes {
-        args.push("--".to_owned());
-    }
-    args.push("--emit=metadata".to_owned());
-    args.push("--cfg".to_owned());
-    args.push(r#"feature="cargo-clippy""#.to_owned());
+
+    let clippy_args: String = old_args.map(|arg| format!("{}__CLIPPY_HACKERY__", arg)).collect();
 
     let mut path = std::env::current_exe()
         .expect("current executable path invalid")
@@ -202,6 +201,7 @@ where
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC_WRAPPER", path)
+        .env("CLIPPY_ARGS", clippy_args)
         .spawn()
         .expect("could not run cargo")
         .wait()
