@@ -148,11 +148,17 @@ impl fmt::Display for clean::GenericParam {
 
 impl fmt::Display for clean::Generics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.params.is_empty() { return Ok(()) }
+        let real_params = self.params
+            .iter()
+            .filter(|p| !p.is_synthetic_type_param())
+            .collect::<Vec<_>>();
+        if real_params.is_empty() {
+            return Ok(());
+        }
         if f.alternate() {
-            write!(f, "<{:#}>", CommaSep(&self.params))
+            write!(f, "<{:#}>", CommaSep(&real_params))
         } else {
-            write!(f, "&lt;{}&gt;", CommaSep(&self.params))
+            write!(f, "&lt;{}&gt;", CommaSep(&real_params))
         }
     }
 }
@@ -575,7 +581,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 }
                 many => {
                     primitive_link(f, PrimitiveType::Tuple, "(")?;
-                    fmt::Display::fmt(&CommaSep(&many), f)?;
+                    fmt::Display::fmt(&CommaSep(many), f)?;
                     primitive_link(f, PrimitiveType::Tuple, ")")
                 }
             }
@@ -661,18 +667,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
             }
         }
         clean::ImplTrait(ref bounds) => {
-            write!(f, "impl ")?;
-            for (i, bound) in bounds.iter().enumerate() {
-                if i != 0 {
-                    write!(f, " + ")?;
-                }
-                if f.alternate() {
-                    write!(f, "{:#}", *bound)?;
-                } else {
-                    write!(f, "{}", *bound)?;
-                }
-            }
-            Ok(())
+            write!(f, "impl {}", TyParamBounds(bounds))
         }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
             let should_show_cast = match *trait_ {
