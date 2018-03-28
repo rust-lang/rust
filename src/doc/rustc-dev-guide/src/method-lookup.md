@@ -12,7 +12,7 @@ the form:
 receiver.method(...)
 ```
 
-into a more explicit UFCS form:
+into a more explicit [UFCS] form:
 
 ```rust
 Trait::method(ADJ(receiver), ...) // for a trait call
@@ -37,6 +37,7 @@ probe phase produces a "pick" (`probe::Pick`), which is designed to be
 cacheable across method-call sites. Therefore, it does not include
 inference variables or other information.
 
+[UFCS]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
 [probe]: https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/check/method/probe.rs
 [confirm]: https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/check/method/confirm.rs
 

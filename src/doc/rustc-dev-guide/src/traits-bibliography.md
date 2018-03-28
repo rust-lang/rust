@@ -26,3 +26,4 @@ SLG formulation that is the basis for our on-demand solver.
 
 [nftrd]: https://dl.acm.org/citation.cfm?id=651202
 [ts]: http://www3.cs.stonybrook.edu/~tswift/
+[Theresa Swift]: http://www3.cs.stonybrook.edu/~tswift/
