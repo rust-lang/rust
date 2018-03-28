@@ -3252,7 +3252,7 @@ Basic usage:
 
 ```
 #![feature(euclidean_division)]
-assert_eq(7", stringify!($SelfT), ".div_euc(4), 1); // or any other integer type
+assert_eq!(7", stringify!($SelfT), ".div_euc(4), 1); // or any other integer type
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
@@ -3274,7 +3274,7 @@ Basic usage:
 
 ```
 #![feature(euclidean_division)]
-assert_eq(7", stringify!($SelfT), ".mod_euc(4), 3); // or any other integer type
+assert_eq!(7", stringify!($SelfT), ".mod_euc(4), 3); // or any other integer type
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
             #[inline]
