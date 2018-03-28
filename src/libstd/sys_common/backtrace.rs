@@ -76,7 +76,7 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     }
     writeln!(w, "stack backtrace:")?;
 
-    for (index, frame, is_on_filter_edge) in filtered_frames {
+    for (index, frame, _is_on_filter_edge) in filtered_frames {
         resolve_symname(*frame, |symname| {
             output(w, index, *frame, symname, format)
         }, &context)?;
