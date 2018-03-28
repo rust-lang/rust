@@ -45,30 +45,12 @@ use utils::{format_visibility, mk_sp, wrap_str};
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
-// FIXME: use the enum from libsyntax?
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum MacroStyle {
-    Parens,
-    Brackets,
-    Braces,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MacroPosition {
     Item,
     Statement,
     Expression,
     Pat,
-}
-
-impl MacroStyle {
-    fn opener(&self) -> &'static str {
-        match *self {
-            MacroStyle::Parens => "(",
-            MacroStyle::Brackets => "[",
-            MacroStyle::Braces => "{",
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -177,7 +159,7 @@ pub fn rewrite_macro_inner(
     let macro_name = rewrite_macro_name(&mac.node.path, extra_ident);
 
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
-        MacroStyle::Brackets
+        DelimToken::Bracket
     } else {
         original_style
     };
@@ -186,12 +168,13 @@ pub fn rewrite_macro_inner(
     let has_comment = contains_comment(context.snippet(mac.span));
     if ts.is_empty() && !has_comment {
         return match style {
-            MacroStyle::Parens if position == MacroPosition::Item => {
+            DelimToken::Paren if position == MacroPosition::Item => {
                 Some(format!("{}();", macro_name))
             }
-            MacroStyle::Parens => Some(format!("{}()", macro_name)),
-            MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
-            MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
+            DelimToken::Paren => Some(format!("{}()", macro_name)),
+            DelimToken::Bracket => Some(format!("{}[]", macro_name)),
+            DelimToken::Brace => Some(format!("{}{{}}", macro_name)),
+            _ => unreachable!(),
         };
     }
     // Format well-known macros which cannot be parsed as a valid AST.
@@ -207,7 +190,7 @@ pub fn rewrite_macro_inner(
     let mut vec_with_semi = false;
     let mut trailing_comma = false;
 
-    if MacroStyle::Braces != style {
+    if DelimToken::Brace != style {
         loop {
             match parse_macro_arg(&mut parser) {
                 Some(arg) => arg_vec.push(arg),
@@ -250,7 +233,7 @@ pub fn rewrite_macro_inner(
     }
 
     match style {
-        MacroStyle::Parens => {
+        DelimToken::Paren => {
             // Format macro invocation as function call, preserve the trailing
             // comma because not all macros support them.
             overflow::rewrite_with_parens(
@@ -270,10 +253,10 @@ pub fn rewrite_macro_inner(
                 _ => rw,
             })
         }
-        MacroStyle::Brackets => {
-            let mac_shape = shape.offset_left(macro_name.len())?;
+        DelimToken::Bracket => {
             // Handle special case: `vec![expr; expr]`
             if vec_with_semi {
+                let mac_shape = shape.offset_left(macro_name.len())?;
                 let (lbr, rbr) = if context.config.spaces_within_parens_and_brackets() {
                     ("[ ", " ]")
                 } else {
@@ -305,31 +288,42 @@ pub fn rewrite_macro_inner(
                 // If we are rewriting `vec!` macro or other special macros,
                 // then we can rewrite this as an usual array literal.
                 // Otherwise, we must preserve the original existence of trailing comma.
-                if FORCED_BRACKET_MACROS.contains(&macro_name.as_str()) {
+                let macro_name = &macro_name.as_str();
+                let mut force_trailing_comma = if trailing_comma {
+                    Some(SeparatorTactic::Always)
+                } else {
+                    Some(SeparatorTactic::Never)
+                };
+                if FORCED_BRACKET_MACROS.contains(macro_name) {
                     context.inside_macro.replace(false);
-                    trailing_comma = false;
+                    if context.use_block_indent() {
+                        force_trailing_comma = Some(SeparatorTactic::Vertical);
+                    };
                 }
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
-                let sp = mk_sp(
-                    context
-                        .snippet_provider
-                        .span_after(mac.span, original_style.opener()),
-                    mac.span.hi() - BytePos(1),
-                );
                 let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..];
-                let rewrite = rewrite_array(arg_vec, sp, context, mac_shape, trailing_comma)?;
+                let rewrite = rewrite_array(
+                    macro_name,
+                    arg_vec,
+                    mac.span,
+                    context,
+                    shape,
+                    force_trailing_comma,
+                    Some(original_style),
+                )?;
                 let comma = match position {
                     MacroPosition::Item => ";",
                     _ => "",
                 };
 
-                Some(format!("{}{}{}", macro_name, rewrite, comma))
+                Some(format!("{}{}", rewrite, comma))
             }
         }
-        MacroStyle::Braces => {
+        DelimToken::Brace => {
             // Skip macro invocations with braces, for now.
             indent_macro_snippet(context, context.snippet(mac.span), shape.indent)
         }
+        _ => unreachable!(),
     }
 }
 
@@ -1010,18 +1004,18 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
     }
 }
 
-fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
+fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> DelimToken {
     let snippet = context.snippet(mac.span);
     let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
     let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
     let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::max_value());
 
     if paren_pos < bracket_pos && paren_pos < brace_pos {
-        MacroStyle::Parens
+        DelimToken::Paren
     } else if bracket_pos < brace_pos {
-        MacroStyle::Brackets
+        DelimToken::Bracket
     } else {
-        MacroStyle::Braces
+        DelimToken::Brace
     }
 }
 

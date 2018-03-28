@@ -127,13 +127,11 @@ fn rewrite_closure_with_block(
     }
 
     let block = ast::Block {
-        stmts: vec![
-            ast::Stmt {
-                id: ast::NodeId::new(0),
-                node: ast::StmtKind::Expr(ptr::P(body.clone())),
-                span: body.span,
-            },
-        ],
+        stmts: vec![ast::Stmt {
+            id: ast::NodeId::new(0),
+            node: ast::StmtKind::Expr(ptr::P(body.clone())),
+            span: body.span,
+        }],
         id: ast::NodeId::new(0),
         rules: ast::BlockCheckMode::Default,
         span: body.span,
@@ -300,13 +298,7 @@ pub fn rewrite_last_closure(
             _ => body,
         };
         let (prefix, extra_offset) = rewrite_closure_fn_decl(
-            capture,
-            movability,
-            fn_decl,
-            body,
-            expr.span,
-            context,
-            shape,
+            capture, movability, fn_decl, body, expr.span, context, shape,
         )?;
         // If the closure goes multi line before its body, do not overflow the closure.
         if prefix.contains('\n') {

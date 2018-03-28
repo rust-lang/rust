@@ -1688,7 +1688,8 @@ Number of spaces per tab
 fn lorem() {
     let ipsum = dolor();
     let sit = vec![
-        "amet consectetur adipiscing elit amet consectetur adipiscing elit amet consectetur.",
+        "amet consectetur adipiscing elit amet",
+        "consectetur adipiscing elit amet consectetur.",
     ];
 }
 ```
@@ -1699,7 +1700,8 @@ fn lorem() {
 fn lorem() {
   let ipsum = dolor();
   let sit = vec![
-    "amet consectetur adipiscing elit amet consectetur adipiscing elit amet consectetur.",
+    "amet consectetur adipiscing elit amet",
+    "consectetur adipiscing elit amet consectetur.",
   ];
 }
 ```

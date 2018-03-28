@@ -540,19 +540,17 @@ fn rustfmt_diff_make_diff_tests() {
     let diff = make_diff("a\nb\nc\nd", "a\ne\nc\nd", 3);
     assert_eq!(
         diff,
-        vec![
-            Mismatch {
-                line_number: 1,
-                line_number_orig: 1,
-                lines: vec![
-                    DiffLine::Context("a".into()),
-                    DiffLine::Resulting("b".into()),
-                    DiffLine::Expected("e".into()),
-                    DiffLine::Context("c".into()),
-                    DiffLine::Context("d".into()),
-                ],
-            },
-        ]
+        vec![Mismatch {
+            line_number: 1,
+            line_number_orig: 1,
+            lines: vec![
+                DiffLine::Context("a".into()),
+                DiffLine::Resulting("b".into()),
+                DiffLine::Expected("e".into()),
+                DiffLine::Context("c".into()),
+                DiffLine::Context("d".into()),
+            ],
+        }]
     );
 }
 

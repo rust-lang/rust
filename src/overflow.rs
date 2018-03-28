@@ -14,10 +14,11 @@
 use config::lists::*;
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::parse::token::DelimToken;
 
 use closures;
 use codemap::SpanUtils;
-use expr::{is_nested_call, maybe_get_args_offset, ToExpr};
+use expr::{is_every_expr_simple, is_nested_call, maybe_get_args_offset, ToExpr};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
@@ -25,6 +26,8 @@ use spanned::Spanned;
 use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp, paren_overhead};
 
 use std::cmp::min;
+
+const SHORT_ITEM_THRESHOLD: usize = 10;
 
 pub fn rewrite_with_parens<T>(
     context: &RewriteContext,
@@ -48,6 +51,7 @@ where
         ")",
         item_max_width,
         force_separator_tactic,
+        None,
     ).rewrite(shape)
 }
 
@@ -71,6 +75,38 @@ where
         ">",
         context.config.max_width(),
         None,
+        None,
+    ).rewrite(shape)
+}
+
+pub fn rewrite_with_square_brackets<T>(
+    context: &RewriteContext,
+    name: &str,
+    items: &[&T],
+    shape: Shape,
+    span: Span,
+    force_separator_tactic: Option<SeparatorTactic>,
+    delim_token: Option<DelimToken>,
+) -> Option<String>
+where
+    T: Rewrite + ToExpr + Spanned,
+{
+    let (lhs, rhs) = match delim_token {
+        Some(DelimToken::Paren) => ("(", ")"),
+        Some(DelimToken::Brace) => ("{", "}"),
+        _ => ("[", "]"),
+    };
+    Context::new(
+        context,
+        items,
+        name,
+        shape,
+        span,
+        lhs,
+        rhs,
+        context.config.width_heuristics().array_width,
+        force_separator_tactic,
+        Some(("[", "]")),
     ).rewrite(shape)
 }
 
@@ -86,6 +122,7 @@ struct Context<'a, T: 'a> {
     item_max_width: usize,
     one_line_width: usize,
     force_separator_tactic: Option<SeparatorTactic>,
+    custom_delims: Option<(&'a str, &'a str)>,
 }
 
 impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
@@ -99,6 +136,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         suffix: &'static str,
         item_max_width: usize,
         force_separator_tactic: Option<SeparatorTactic>,
+        custom_delims: Option<(&'a str, &'a str)>,
     ) -> Context<'a, T> {
         // 2 = `( `, 1 = `(`
         let paren_overhead = if context.config.spaces_within_parens_and_brackets() {
@@ -135,6 +173,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             item_max_width,
             one_line_width,
             force_separator_tactic,
+            custom_delims,
         }
     }
 
@@ -181,6 +220,15 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         } else {
             None
         }
+    }
+
+    fn default_tactic(&self, list_items: &[ListItem]) -> DefinitiveListTactic {
+        definitive_tactic(
+            list_items,
+            ListTactic::LimitedHorizontalVertical(self.item_max_width),
+            Separator::Comma,
+            self.one_line_width,
+        )
     }
 
     fn try_overflow_last_item(&self, list_items: &mut Vec<ListItem>) -> DefinitiveListTactic {
@@ -258,26 +306,16 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                     .last()
                     .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
 
-                let default_tactic = || {
-                    definitive_tactic(
-                        &*list_items,
-                        ListTactic::LimitedHorizontalVertical(self.item_max_width),
-                        Separator::Comma,
-                        self.one_line_width,
-                    )
-                };
-
                 // Use horizontal layout for a function with a single argument as long as
                 // everything fits in a single line.
-                if self.items.len() == 1
-                && self.one_line_width != 0 // Vertical layout is forced.
-                && !list_items[0].has_comment()
+                // `self.one_line_width == 0` means vertical layout is forced.
+                if self.items.len() == 1 && self.one_line_width != 0 && !list_items[0].has_comment()
                     && !list_items[0].inner_as_ref().contains('\n')
                     && ::lists::total_item_width(&list_items[0]) <= self.one_line_width
                 {
                     tactic = DefinitiveListTactic::Horizontal;
                 } else {
-                    tactic = default_tactic();
+                    tactic = self.default_tactic(list_items);
 
                     if tactic == DefinitiveListTactic::Vertical {
                         if let Some((all_simple, num_args_before)) =
@@ -302,6 +340,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                             if one_line {
                                 tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
                             };
+                        } else if is_every_expr_simple(self.items) && no_long_items(list_items) {
+                            tactic = DefinitiveListTactic::Mixed;
                         }
                     }
                 }
@@ -340,13 +380,20 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 tactic
             } else if !self.context.use_block_indent() {
                 SeparatorTactic::Never
+            } else if tactic == DefinitiveListTactic::Mixed {
+                // We are using mixed layout because everything did not fit within a single line.
+                SeparatorTactic::Always
             } else {
                 self.context.config.trailing_comma()
             },
             separator_place: SeparatorPlace::Back,
             shape: self.nested_shape,
-            ends_with_newline: self.context.use_block_indent()
-                && tactic == DefinitiveListTactic::Vertical,
+            ends_with_newline: match tactic {
+                DefinitiveListTactic::Vertical | DefinitiveListTactic::Mixed => {
+                    self.context.use_block_indent()
+                }
+                _ => false,
+            },
             preserve_newline: false,
             config: self.context.config,
         };
@@ -364,6 +411,10 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             ..shape
         };
 
+        let (prefix, suffix) = match self.custom_delims {
+            Some((lhs, rhs)) => (lhs, rhs),
+            _ => (self.prefix, self.suffix),
+        };
         let paren_overhead = paren_overhead(self.context);
         let fits_one_line = items_str.len() + paren_overhead <= shape.width;
         let extend_width = if items_str.is_empty() {
@@ -382,7 +433,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             self.ident.len() + items_str.len() + 2 + indent_str.len() + nested_indent_str.len(),
         );
         result.push_str(self.ident);
-        result.push_str(self.prefix);
+        result.push_str(prefix);
         if !self.context.use_block_indent()
             || (self.context.inside_macro() && !items_str.contains('\n') && fits_one_line)
             || (is_extendable && extend_width <= shape.width)
@@ -401,7 +452,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
             }
             result.push_str(&indent_str);
         }
-        result.push_str(self.suffix);
+        result.push_str(suffix);
         result
     }
 
@@ -488,4 +539,9 @@ fn shape_from_indent_style(
             Shape { width: 0, ..shape }
         }
     }
+}
+
+fn no_long_items(list: &[ListItem]) -> bool {
+    list.iter()
+        .all(|item| !item.has_comment() && item.inner_as_ref().len() <= SHORT_ITEM_THRESHOLD)
 }

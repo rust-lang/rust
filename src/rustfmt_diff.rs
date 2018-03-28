@@ -221,18 +221,16 @@ mod test {
         let diff = make_diff(src, dest, 1);
         assert_eq!(
             diff,
-            vec![
-                Mismatch {
-                    line_number: 2,
-                    line_number_orig: 2,
-                    lines: vec![
-                        Context("two".to_owned()),
-                        Resulting("three".to_owned()),
-                        Expected("trois".to_owned()),
-                        Context("four".to_owned()),
-                    ],
-                },
-            ]
+            vec![Mismatch {
+                line_number: 2,
+                line_number_orig: 2,
+                lines: vec![
+                    Context("two".to_owned()),
+                    Resulting("three".to_owned()),
+                    Expected("trois".to_owned()),
+                    Context("four".to_owned()),
+                ],
+            }]
         );
     }
 
@@ -274,13 +272,11 @@ mod test {
         let diff = make_diff(src, dest, 0);
         assert_eq!(
             diff,
-            vec![
-                Mismatch {
-                    line_number: 3,
-                    line_number_orig: 3,
-                    lines: vec![Resulting("three".to_owned()), Expected("trois".to_owned())],
-                },
-            ]
+            vec![Mismatch {
+                line_number: 3,
+                line_number_orig: 3,
+                lines: vec![Resulting("three".to_owned()), Expected("trois".to_owned())],
+            }]
         );
     }
 
@@ -291,13 +287,11 @@ mod test {
         let diff = make_diff(src, dest, 1);
         assert_eq!(
             diff,
-            vec![
-                Mismatch {
-                    line_number: 5,
-                    line_number_orig: 5,
-                    lines: vec![Context("five".to_owned()), Expected("".to_owned())],
-                },
-            ]
+            vec![Mismatch {
+                line_number: 5,
+                line_number_orig: 5,
+                lines: vec![Context("five".to_owned()), Expected("".to_owned())],
+            }]
         );
     }
 }

@@ -233,10 +233,7 @@ impl Foo {
                         if let Some(mi) = attr.meta() {
                             if let Some(value) = mi.value_str() {
                                 doc_strings.push(DocFragment::Include(
-                                    line,
-                                    attr.span,
-                                    filename,
-                                    contents,
+                                    line, attr.span, filename, contents,
                                 ));
                             }
                         }
