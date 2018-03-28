@@ -106,8 +106,8 @@ impl Step for Llvm {
 
         let _folder = build.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
-        println!("Building {}LLVM for {}", descriptor, target);
-        let _time = util::timeit();
+        build.info(&format!("Building {}LLVM for {}", descriptor, target));
+        let _time = util::timeit(&build);
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
@@ -359,8 +359,8 @@ impl Step for Lld {
         }
 
         let _folder = build.fold_output(|| "lld");
-        println!("Building LLD for {}", target);
-        let _time = util::timeit();
+        build.info(&format!("Building LLD for {}", target));
+        let _time = util::timeit(&build);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(build.src.join("src/tools/lld"));
@@ -409,7 +409,7 @@ impl Step for TestHelpers {
         }
 
         let _folder = build.fold_output(|| "build_test_helpers");
-        println!("Building test helpers");
+        build.info(&format!("Building test helpers"));
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
 
@@ -605,11 +605,11 @@ impl Step for Openssl {
             configure.arg("no-asm");
         }
         configure.current_dir(&obj);
-        println!("Configuring openssl for {}", target);
+        build.info(&format!("Configuring openssl for {}", target));
         build.run_quiet(&mut configure);
-        println!("Building openssl for {}", target);
+        build.info(&format!("Building openssl for {}", target));
         build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
-        println!("Installing openssl for {}", target);
+        build.info(&format!("Installing openssl for {}", target));
         build.run_quiet(Command::new("make").arg("install").arg("-j1").current_dir(&obj));
 
         let mut f = t!(File::create(&stamp));

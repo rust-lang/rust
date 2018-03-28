@@ -169,7 +169,7 @@ impl Step for CargoBook {
 
         let out = out.join(name);
 
-        println!("Cargo Book ({}) - {}", target, name);
+        build.info(&format!("Cargo Book ({}) - {}", target, name));
 
         let _ = fs::remove_dir_all(&out);
 
@@ -215,7 +215,7 @@ impl Step for RustbookSrc {
         if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return
         }
-        println!("Rustbook ({}) - {}", target, name);
+        build.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
         build.run(rustbook_cmd
                        .arg("build")
@@ -283,11 +283,11 @@ impl Step for TheBook {
 
         // build the index page
         let index = format!("{}/index.md", name);
-        println!("Documenting book index ({})", target);
+        build.info(&format!("Documenting book index ({})", target));
         invoke_rustdoc(builder, compiler, target, &index);
 
         // build the redirect pages
-        println!("Documenting book redirect pages ({})", target);
+        build.info(&format!("Documenting book redirect pages ({})", target));
         for file in t!(fs::read_dir(build.src.join("src/doc/book/redirects"))) {
             let file = t!(file);
             let path = file.path();
@@ -360,7 +360,7 @@ impl Step for Standalone {
         let build = builder.build;
         let target = self.target;
         let compiler = self.compiler;
-        println!("Documenting standalone ({})", target);
+        build.info(&format!("Documenting standalone ({})", target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -451,7 +451,7 @@ impl Step for Std {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} std ({})", stage, target);
+        build.info(&format!("Documenting stage{} std ({})", stage, target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -532,7 +532,7 @@ impl Step for Test {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} test ({})", stage, target);
+        build.info(&format!("Documenting stage{} test ({})", stage, target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -598,7 +598,7 @@ impl Step for WhitelistedRustc {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} whitelisted compiler ({})", stage, target);
+        build.info(&format!("Documenting stage{} whitelisted compiler ({})", stage, target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -670,7 +670,7 @@ impl Step for Rustc {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} compiler ({})", stage, target);
+        build.info(&format!("Documenting stage{} compiler ({})", stage, target));
         let out = build.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -682,7 +682,7 @@ impl Step for Rustc {
         };
 
         if !build.config.compiler_docs {
-            println!("\tskipping - compiler docs disabled");
+            build.info(&format!("\tskipping - compiler docs disabled"));
             return;
         }
 
@@ -761,7 +761,7 @@ impl Step for ErrorIndex {
         let build = builder.build;
         let target = self.target;
 
-        println!("Documenting error index ({})", target);
+        build.info(&format!("Documenting error index ({})", target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let mut index = builder.tool_cmd(Tool::ErrorIndex);
@@ -806,7 +806,7 @@ impl Step for UnstableBookGen {
             target,
         });
 
-        println!("Generating unstable book md files ({})", target);
+        build.info(&format!("Generating unstable book md files ({})", target));
         let out = build.md_doc_out(target).join("unstable-book");
         build.create_dir(&out);
         build.remove_dir(&out);

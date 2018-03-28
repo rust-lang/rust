@@ -109,11 +109,11 @@ impl Step for Linkcheck {
         let build = builder.build;
         let host = self.host;
 
-        println!("Linkcheck ({})", host);
+        build.info(&format!("Linkcheck ({})", host));
 
         builder.default_doc(None);
 
-        let _time = util::timeit();
+        let _time = util::timeit(&build);
         try_run(build, builder.tool_cmd(Tool::Linkchecker)
                               .arg(build.out.join(host).join("doc")));
     }
@@ -164,7 +164,7 @@ impl Step for Cargotest {
         let out_dir = build.out.join("ct");
         t!(fs::create_dir_all(&out_dir));
 
-        let _time = util::timeit();
+        let _time = util::timeit(&build);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
         try_run(build, cmd.arg(&build.initial_cargo)
                           .arg(&out_dir)
@@ -509,7 +509,7 @@ impl Step for RustdocJS {
             });
             builder.run(&mut command);
         } else {
-            println!("No nodejs found, skipping \"src/test/rustdoc-js\" tests");
+            builder.info(&format!("No nodejs found, skipping \"src/test/rustdoc-js\" tests"));
         }
     }
 }
@@ -541,7 +541,7 @@ impl Step for Tidy {
         }
 
         let _folder = build.fold_output(|| "tidy");
-        println!("tidy check");
+        builder.info(&format!("tidy check"));
         try_run(build, &mut cmd);
     }
 
@@ -948,7 +948,8 @@ impl Step for Compiletest {
             }
         }
         if suite == "run-make-fulldeps" && !build.config.llvm_enabled {
-            println!("Ignoring run-make test suite as they generally don't work without LLVM");
+            builder.info(
+                &format!("Ignoring run-make test suite as they generally don't work without LLVM"));
             return;
         }
 
@@ -1002,9 +1003,9 @@ impl Step for Compiletest {
         build.ci_env.force_coloring_in_ci(&mut cmd);
 
         let _folder = build.fold_output(|| format!("test_{}", suite));
-        println!("Check compiletest suite={} mode={} ({} -> {})",
-                 suite, mode, &compiler.host, target);
-        let _time = util::timeit();
+        builder.info(&format!("Check compiletest suite={} mode={} ({} -> {})",
+                 suite, mode, &compiler.host, target));
+        let _time = util::timeit(&build);
         try_run(build, &mut cmd);
     }
 }
@@ -1039,7 +1040,7 @@ impl Step for DocTest {
         // Do a breadth-first traversal of the `src/doc` directory and just run
         // tests for all files that end in `*.md`
         let mut stack = vec![build.src.join(self.path)];
-        let _time = util::timeit();
+        let _time = util::timeit(&build);
         let _folder = build.fold_output(|| format!("test_{}", self.name));
 
         let mut files = Vec::new();
@@ -1167,8 +1168,8 @@ impl Step for ErrorIndex {
 
 
         let _folder = build.fold_output(|| "test_error_index");
-        println!("Testing error-index stage{}", compiler.stage);
-        let _time = util::timeit();
+        build.info(&format!("Testing error-index stage{}", compiler.stage));
+        let _time = util::timeit(&build);
         build.run(&mut tool);
         markdown_test(builder, compiler, &output);
     }
@@ -1183,7 +1184,7 @@ fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool
         return true;
     }
 
-    println!("doc tests for: {}", markdown.display());
+    build.info(&format!("doc tests for: {}", markdown.display()));
     let mut cmd = builder.rustdoc_cmd(compiler.host);
     build.add_rust_test_threads(&mut cmd);
     cmd.arg("--test");
@@ -1453,8 +1454,8 @@ impl Step for Crate {
             // The javascript shim implements the syscall interface so that test
             // output can be correctly reported.
             if !build.config.wasm_syscall {
-                println!("Libstd was built without `wasm_syscall` feature enabled: \
-                          test output may not be visible.");
+                build.info(&format!("Libstd was built without `wasm_syscall` feature enabled: \
+                          test output may not be visible."));
             }
 
             // On the wasm32-unknown-unknown target we're using LTO which is
@@ -1476,9 +1477,9 @@ impl Step for Crate {
         let _folder = build.fold_output(|| {
             format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, krate)
         });
-        println!("{} {} stage{} ({} -> {})", test_kind, krate, compiler.stage,
-                &compiler.host, target);
-        let _time = util::timeit();
+        build.info(&format!("{} {} stage{} ({} -> {})", test_kind, krate, compiler.stage,
+                &compiler.host, target));
+        let _time = util::timeit(&build);
         try_run(build, &mut cargo);
     }
 }
@@ -1543,9 +1544,9 @@ impl Step for CrateRustdoc {
         let _folder = build.fold_output(|| {
             format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage)
         });
-        println!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
-                &compiler.host, target);
-        let _time = util::timeit();
+        build.info(&format!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
+                &compiler.host, target));
+        let _time = util::timeit(&build);
 
         try_run(build, &mut cargo);
     }
@@ -1592,7 +1593,7 @@ impl Step for RemoteCopyLibs {
 
         builder.ensure(compile::Test { compiler, target });
 
-        println!("REMOTE copy libs to emulator ({})", target);
+        build.info(&format!("REMOTE copy libs to emulator ({})", target));
         t!(fs::create_dir_all(build.out.join("tmp")));
 
         let server = builder.ensure(tool::RemoteTestServer { compiler, target });
@@ -1640,7 +1641,7 @@ impl Step for Distcheck {
     fn run(self, builder: &Builder) {
         let build = builder.build;
 
-        println!("Distcheck");
+        build.info(&format!("Distcheck"));
         let dir = build.out.join("tmp").join("distcheck");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
@@ -1664,7 +1665,7 @@ impl Step for Distcheck {
                          .current_dir(&dir));
 
         // Now make sure that rust-src has all of libstd's dependencies
-        println!("Distcheck rust-src");
+        build.info(&format!("Distcheck rust-src"));
         let dir = build.out.join("tmp").join("distcheck-src");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));

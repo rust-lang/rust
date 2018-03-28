@@ -77,7 +77,7 @@ impl Step for Std {
                 compiler: from,
                 target,
             });
-            println!("Uplifting stage1 std ({} -> {})", from.host, target);
+            builder.info(&format!("Uplifting stage1 std ({} -> {})", from.host, target));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the musl startup objects.
@@ -105,8 +105,8 @@ impl Step for Std {
         std_cargo(builder, &compiler, target, &mut cargo);
 
         let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
-        println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target);
+        build.info(&format!("Building stage{} std artifacts ({} -> {})", compiler.stage,
+                &compiler.host, target));
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),
@@ -213,12 +213,12 @@ impl Step for StdLink {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
-        println!("Copying stage{} std from stage{} ({} -> {} / {})",
+        build.info(&format!("Copying stage{} std from stage{} ({} -> {} / {})",
                 target_compiler.stage,
                 compiler.stage,
                 &compiler.host,
                 target_compiler.host,
-                target);
+                target));
         let libdir = builder.sysroot_libdir(target_compiler, target);
         add_to_sysroot(&build, &libdir, &libstd_stamp(build, compiler, target));
 
@@ -352,7 +352,7 @@ impl Step for Test {
                 compiler: builder.compiler(1, build.build),
                 target,
             });
-            println!("Uplifting stage1 test ({} -> {})", &build.build, target);
+            build.info(&format!("Uplifting stage1 test ({} -> {})", &build.build, target));
             builder.ensure(TestLink {
                 compiler: builder.compiler(1, build.build),
                 target_compiler: compiler,
@@ -367,8 +367,8 @@ impl Step for Test {
         test_cargo(build, &compiler, target, &mut cargo);
 
         let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
-        println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target);
+        build.info(&format!("Building stage{} test artifacts ({} -> {})", compiler.stage,
+                &compiler.host, target));
         run_cargo(build,
                   &mut cargo,
                   &libtest_stamp(build, compiler, target),
@@ -414,12 +414,12 @@ impl Step for TestLink {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
-        println!("Copying stage{} test from stage{} ({} -> {} / {})",
+        build.info(&format!("Copying stage{} test from stage{} ({} -> {} / {})",
                 target_compiler.stage,
                 compiler.stage,
                 &compiler.host,
                 target_compiler.host,
-                target);
+                target));
         add_to_sysroot(&build, &builder.sysroot_libdir(target_compiler, target),
                     &libtest_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
@@ -469,7 +469,7 @@ impl Step for Rustc {
                 compiler: builder.compiler(1, build.build),
                 target,
             });
-            println!("Uplifting stage1 rustc ({} -> {})", &build.build, target);
+            build.info(&format!("Uplifting stage1 rustc ({} -> {})", &build.build, target));
             builder.ensure(RustcLink {
                 compiler: builder.compiler(1, build.build),
                 target_compiler: compiler,
@@ -491,8 +491,8 @@ impl Step for Rustc {
         rustc_cargo(build, &mut cargo);
 
         let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
-        println!("Building stage{} compiler artifacts ({} -> {})",
-                 compiler.stage, &compiler.host, target);
+        build.info(&format!("Building stage{} compiler artifacts ({} -> {})",
+                 compiler.stage, &compiler.host, target));
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target),
@@ -569,12 +569,12 @@ impl Step for RustcLink {
         let compiler = self.compiler;
         let target_compiler = self.target_compiler;
         let target = self.target;
-        println!("Copying stage{} rustc from stage{} ({} -> {} / {})",
+        build.info(&format!("Copying stage{} rustc from stage{} ({} -> {} / {})",
                  target_compiler.stage,
                  compiler.stage,
                  &compiler.host,
                  target_compiler.host,
-                 target);
+                 target));
         add_to_sysroot(&build, &builder.sysroot_libdir(target_compiler, target),
                        &librustc_stamp(build, compiler, target));
         builder.ensure(tool::CleanTools {
@@ -648,8 +648,8 @@ impl Step for CodegenBackend {
                     features.push_str(" emscripten");
                 }
 
-                println!("Building stage{} codegen artifacts ({} -> {}, {})",
-                         compiler.stage, &compiler.host, target, self.backend);
+                build.info(&format!("Building stage{} codegen artifacts ({} -> {}, {})",
+                         compiler.stage, &compiler.host, target, self.backend));
 
                 // Pass down configuration from the LLVM build into the build of
                 // librustc_llvm and librustc_trans.
@@ -933,7 +933,7 @@ impl Step for Assemble {
 
         let stage = target_compiler.stage;
         let host = target_compiler.host;
-        println!("Assembling stage{} compiler ({})", stage, host);
+        build.info(&format!("Assembling stage{} compiler ({})", stage, host));
 
         // Link in all dylibs to the libdir
         let sysroot = builder.sysroot(target_compiler);
@@ -1186,7 +1186,7 @@ pub fn stream_cargo(
     // Make sure Cargo actually succeeded after we read all of its stdout.
     let status = t!(child.wait());
     if !status.success() {
-        println!("command did not execute successfully: {:?}\n\
+        eprintln!("command did not execute successfully: {:?}\n\
                   expected success, got: {}",
                  cargo,
                  status);

@@ -116,7 +116,7 @@ impl Step for ToolBuild {
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
-        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
+        build.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(build, &mut cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
@@ -427,7 +427,8 @@ impl Step for Rustdoc {
              .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
 
         let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
-        println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
+        build.info(&format!("Building rustdoc for stage{} ({})",
+            target_compiler.stage, target_compiler.host));
         build.run(&mut cargo);
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in

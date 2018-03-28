@@ -22,6 +22,7 @@ use std::process::Command;
 use std::time::{SystemTime, Instant};
 
 use config::Config;
+use Build;
 
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
@@ -100,19 +101,21 @@ pub fn push_exe_path(mut buf: PathBuf, components: &[&str]) -> PathBuf {
     buf
 }
 
-pub struct TimeIt(Instant);
+pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
-pub fn timeit() -> TimeIt {
-    TimeIt(Instant::now())
+pub fn timeit(build: &Build) -> TimeIt {
+    TimeIt(build.config.dry_run, Instant::now())
 }
 
 impl Drop for TimeIt {
     fn drop(&mut self) {
-        let time = self.0.elapsed();
-        println!("\tfinished in {}.{:03}",
-                 time.as_secs(),
-                 time.subsec_nanos() / 1_000_000);
+        let time = self.1.elapsed();
+        if !self.0 {
+            println!("\tfinished in {}.{:03}",
+                    time.as_secs(),
+                    time.subsec_nanos() / 1_000_000);
+        }
     }
 }
 

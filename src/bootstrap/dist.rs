@@ -89,9 +89,9 @@ impl Step for Docs {
 
         let name = pkgname(build, "rust-docs");
 
-        println!("Dist docs ({})", host);
+        build.info(&format!("Dist docs ({})", host));
         if !build.config.docs {
-            println!("\tskipping - docs disabled");
+            build.info(&format!("\tskipping - docs disabled"));
             return distdir(build).join(format!("{}-{}.tar.gz", name, host));
         }
 
@@ -152,9 +152,9 @@ impl Step for RustcDocs {
 
         let name = pkgname(build, "rustc-docs");
 
-        println!("Dist compiler docs ({})", host);
+        build.info(&format!("Dist compiler docs ({})", host));
         if !build.config.compiler_docs {
-            println!("\tskipping - compiler docs disabled");
+            build.info(&format!("\tskipping - compiler docs disabled"));
             return distdir(build).join(format!("{}-{}.tar.gz", name, host));
         }
 
@@ -343,7 +343,7 @@ impl Step for Mingw {
             return None;
         }
 
-        println!("Dist mingw ({})", host);
+        build.info(&format!("Dist mingw ({})", host));
         let name = pkgname(build, "rust-mingw");
         let image = tmpdir(build).join(format!("{}-{}-image", name, host));
         let _ = fs::remove_dir_all(&image);
@@ -398,7 +398,7 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let host = self.compiler.host;
 
-        println!("Dist rustc stage{} ({})", compiler.stage, compiler.host);
+        build.info(&format!("Dist rustc stage{} ({})", compiler.stage, compiler.host));
         let name = pkgname(build, "rustc");
         let image = tmpdir(build).join(format!("{}-{}-image", name, host));
         let _ = fs::remove_dir_all(&image);
@@ -627,12 +627,12 @@ impl Step for Std {
         let target = self.target;
 
         let name = pkgname(build, "rust-std");
-        println!("Dist std stage{} ({} -> {})", compiler.stage, &compiler.host, target);
+        build.info(&format!("Dist std stage{} ({} -> {})", compiler.stage, &compiler.host, target));
 
         // The only true set of target libraries came from the build triple, so
         // let's reduce redundant work by only producing archives from that host.
         if compiler.host != build.build {
-            println!("\tskipping, not a build host");
+            build.info(&format!("\tskipping, not a build host"));
             return distdir(build).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -704,11 +704,11 @@ impl Step for Analysis {
         let compiler = self.compiler;
         let target = self.target;
         assert!(build.config.extended);
-        println!("Dist analysis");
+        build.info(&format!("Dist analysis"));
         let name = pkgname(build, "rust-analysis");
 
         if &compiler.host != build.build {
-            println!("\tskipping, not a build host");
+            build.info(&format!("\tskipping, not a build host"));
             return distdir(build).join(format!("{}-{}.tar.gz", name, target));
         }
 
@@ -730,7 +730,7 @@ impl Step for Analysis {
         let image_src = src.join("save-analysis");
         let dst = image.join("lib/rustlib").join(target).join("analysis");
         t!(fs::create_dir_all(&dst));
-        println!("image_src: {:?}, dst: {:?}", image_src, dst);
+        build.info(&format!("image_src: {:?}, dst: {:?}", image_src, dst));
         build.cp_r(&image_src, &dst);
 
         let mut cmd = rust_installer(builder);
@@ -813,7 +813,7 @@ impl Step for Src {
     /// Creates the `rust-src` installer component
     fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
-        println!("Dist src");
+        build.info(&format!("Dist src"));
 
         let name = pkgname(build, "rust-src");
         let image = tmpdir(build).join(format!("{}-image", name));
@@ -908,7 +908,7 @@ impl Step for PlainSourceTarball {
     /// Creates the plain source tarball
     fn run(self, builder: &Builder) -> PathBuf {
         let build = builder.build;
-        println!("Create plain source tarball");
+        build.info(&format!("Create plain source tarball"));
 
         // Make sure that the root folder of tarball has the correct name
         let plain_name = format!("{}-src", pkgname(build, "rustc"));
@@ -985,7 +985,7 @@ impl Step for PlainSourceTarball {
         if let Some(dir) = tarball.parent() {
             build.create_dir(&dir);
         }
-        println!("running installer");
+        build.info(&format!("running installer"));
         let mut cmd = rust_installer(builder);
         cmd.arg("tarball")
            .arg("--input").arg(&plain_name)
@@ -1042,7 +1042,7 @@ impl Step for Cargo {
         let stage = self.stage;
         let target = self.target;
 
-        println!("Dist cargo stage{} ({})", stage, target);
+        build.info(&format!("Dist cargo stage{} ({})", stage, target));
         let src = build.src.join("src/tools/cargo");
         let etc = src.join("src/etc");
         let release_num = build.release_num("cargo");
@@ -1130,7 +1130,7 @@ impl Step for Rls {
         let target = self.target;
         assert!(build.config.extended);
 
-        println!("Dist RLS stage{} ({})", stage, target);
+        build.info(&format!("Dist RLS stage{} ({})", stage, target));
         let src = build.src.join("src/tools/rls");
         let release_num = build.release_num("rls");
         let name = pkgname(build, "rls");
@@ -1210,7 +1210,7 @@ impl Step for Rustfmt {
         let stage = self.stage;
         let target = self.target;
 
-        println!("Dist Rustfmt stage{} ({})", stage, target);
+        build.info(&format!("Dist Rustfmt stage{} ({})", stage, target));
         let src = build.src.join("src/tools/rustfmt");
         let release_num = build.release_num("rustfmt");
         let name = pkgname(build, "rustfmt");
@@ -1297,7 +1297,7 @@ impl Step for Extended {
         let stage = self.stage;
         let target = self.target;
 
-        println!("Dist extended stage{} ({})", stage, target);
+        build.info(&format!("Dist extended stage{} ({})", stage, target));
 
         let rustc_installer = builder.ensure(Rustc {
             compiler: builder.compiler(stage, target),

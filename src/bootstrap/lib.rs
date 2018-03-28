@@ -667,6 +667,11 @@ impl Build {
         }
     }
 
+    fn info(&self, msg: &str) {
+        if self.config.dry_run { return; }
+        println!("{}", msg);
+    }
+
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
     fn jobs(&self) -> u32 {
@@ -974,7 +979,7 @@ impl Build {
     pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
         where D: Into<String>, F: FnOnce() -> D
     {
-        if self.ci_env == CiEnv::Travis {
+        if !self.config.dry_run && self.ci_env == CiEnv::Travis {
             Some(OutputFolder::new(name().into()))
         } else {
             None
