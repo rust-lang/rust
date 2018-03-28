@@ -1121,8 +1121,9 @@ impl ExitCode {
 }
 
 impl Child {
-    /// Forces the child to exit. This is equivalent to sending a
-    /// SIGKILL on unix platforms.
+    /// Forces the child process to exit.  If the child has already exited, an error is returned.
+    ///
+    /// This is equivalent to sending a SIGKILL on Unix platforms.
     ///
     /// # Examples
     ///
