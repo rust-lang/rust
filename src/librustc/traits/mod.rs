@@ -272,6 +272,8 @@ pub enum DomainGoal<'tcx> {
     TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
+pub type PolyDomainGoal<'tcx> = ty::Binder<DomainGoal<'tcx>>;
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum QuantifierKind {
     Universal,
@@ -294,9 +296,15 @@ impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
     }
 }
 
-impl<'tcx> From<DomainGoal<'tcx>> for Clause<'tcx> {
-    fn from(domain_goal: DomainGoal<'tcx>) -> Self {
-        Clause::DomainGoal(domain_goal)
+impl<'tcx> From<PolyDomainGoal<'tcx>> for Goal<'tcx> {
+    fn from(domain_goal: PolyDomainGoal<'tcx>) -> Self {
+        match domain_goal.no_late_bound_regions() {
+            Some(p) => p.into(),
+            None => Goal::Quantified(
+                QuantifierKind::Universal,
+                Box::new(domain_goal.map_bound(|p| p.into()))
+            ),
+        }
     }
 }
 
@@ -304,10 +312,23 @@ impl<'tcx> From<DomainGoal<'tcx>> for Clause<'tcx> {
 /// Harrop Formulas".
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Clause<'tcx> {
-    // FIXME: again, use interned refs instead of `Box`
-    Implies(Vec<Goal<'tcx>>, DomainGoal<'tcx>),
-    DomainGoal(DomainGoal<'tcx>),
-    ForAll(Box<ty::Binder<Clause<'tcx>>>),
+    Implies(ProgramClause<'tcx>),
+    ForAll(ty::Binder<ProgramClause<'tcx>>),
+}
+
+/// A "program clause" has the form `D :- G1, ..., Gn`. It is saying
+/// that the domain goal `D` is true if `G1...Gn` are provable. This
+/// is equivalent to the implication `G1..Gn => D`; we usually write
+/// it with the reverse implication operator `:-` to emphasize the way
+/// that programs are actually solved (via backchaining, which starts
+/// with the goal to solve and proceeds from there).
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ProgramClause<'tcx> {
+    /// This goal will be considered true...
+    pub goal: DomainGoal<'tcx>,
+
+    /// ...if we can prove these hypotheses (there may be no hypotheses at all):
+    pub hypotheses: Vec<Goal<'tcx>>,
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;

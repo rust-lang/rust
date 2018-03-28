@@ -493,25 +493,29 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Display for traits::ProgramClause<'tcx> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let traits::ProgramClause { goal, hypotheses } = self;
+        write!(fmt, "{}", goal)?;
+        if !hypotheses.is_empty() {
+            write!(fmt, " :- ")?;
+            for (index, condition) in hypotheses.iter().enumerate() {
+                if index > 0 {
+                    write!(fmt, ", ")?;
+                }
+                write!(fmt, "{}", condition)?;
+            }
+        }
+        write!(fmt, ".")
+    }
+}
+
 impl<'tcx> fmt::Display for traits::Clause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         use traits::Clause::*;
 
         match self {
-            Implies(hypotheses, goal) => {
-                write!(fmt, "{}", goal)?;
-                if !hypotheses.is_empty() {
-                    write!(fmt, " :- ")?;
-                    for (index, condition) in hypotheses.iter().enumerate() {
-                        if index > 0 {
-                            write!(fmt, ", ")?;
-                        }
-                        write!(fmt, "{}", condition)?;
-                    }
-                }
-                write!(fmt, ".")
-            }
-            DomainGoal(domain_goal) => write!(fmt, "{}.", domain_goal),
+            Implies(clause) => write!(fmt, "{}", clause),
             ForAll(clause) => {
                 // FIXME: appropriate binder names
                 write!(fmt, "forall<> {{ {} }}", clause.skip_binder())
@@ -553,10 +557,16 @@ EnumTypeFoldableImpl! {
     }
 }
 
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for traits::ProgramClause<'tcx> {
+        goal,
+        hypotheses
+    }
+}
+
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for traits::Clause<'tcx> {
-        (traits::Clause::Implies)(hypotheses, goal),
-        (traits::Clause::DomainGoal)(domain_goal),
+        (traits::Clause::Implies)(clause),
         (traits::Clause::ForAll)(clause),
     }
 }
