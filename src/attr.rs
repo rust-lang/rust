@@ -10,6 +10,7 @@
 
 //! Format attributes and meta items.
 
+use config::IndentStyle;
 use config::lists::*;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -183,17 +184,35 @@ fn has_newlines_before_after_comment(comment: &str) -> (&str, &str) {
     (if mlb { "\n" } else { "" }, if mla { "\n" } else { "" })
 }
 
+fn allow_mixed_tactic_for_nested_metaitem_list(list: &[ast::NestedMetaItem]) -> bool {
+    list.iter().all(|nested_metaitem| {
+        if let ast::NestedMetaItemKind::MetaItem(ref inner_metaitem) = nested_metaitem.node {
+            match inner_metaitem.node {
+                ast::MetaItemKind::List(..) | ast::MetaItemKind::NameValue(..) => false,
+                _ => true,
+            }
+        } else {
+            true
+        }
+    })
+}
+
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
             ast::MetaItemKind::Word => String::from(&*self.name.as_str()),
             ast::MetaItemKind::List(ref list) => {
                 let name = self.name.as_str();
-                // 1 = `(`, 2 = `]` and `)`
-                let item_shape = shape
-                    .visual_indent(0)
-                    .shrink_left(name.len() + 1)
-                    .and_then(|s| s.sub_width(2))?;
+                let item_shape = match context.config.indent_style() {
+                    IndentStyle::Block => shape
+                        .block_indent(context.config.tab_spaces())
+                        .with_max_width(context.config),
+                    // 1 = `(`, 2 = `]` and `)`
+                    IndentStyle::Visual => shape
+                        .visual_indent(0)
+                        .shrink_left(name.len() + 1)
+                        .and_then(|s| s.sub_width(2))?,
+                };
                 let items = itemize_list(
                     context.snippet_provider,
                     list.iter(),
@@ -207,8 +226,18 @@ impl Rewrite for ast::MetaItem {
                     false,
                 );
                 let item_vec = items.collect::<Vec<_>>();
+                let tactic = if allow_mixed_tactic_for_nested_metaitem_list(list) {
+                    DefinitiveListTactic::Mixed
+                } else {
+                    ::lists::definitive_tactic(
+                        &item_vec,
+                        ListTactic::HorizontalVertical,
+                        ::lists::Separator::Comma,
+                        item_shape.width,
+                    )
+                };
                 let fmt = ListFormatting {
-                    tactic: DefinitiveListTactic::Mixed,
+                    tactic,
                     separator: ",",
                     trailing_separator: SeparatorTactic::Never,
                     separator_place: SeparatorPlace::Back,
@@ -217,7 +246,17 @@ impl Rewrite for ast::MetaItem {
                     preserve_newline: false,
                     config: context.config,
                 };
-                format!("{}({})", name, write_list(&item_vec, &fmt)?)
+                let item_str = write_list(&item_vec, &fmt)?;
+                let one_line_budget = shape.offset_left(name.len())?.sub_width(2)?.width;
+                if context.config.indent_style() == IndentStyle::Visual
+                    || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
+                {
+                    format!("{}({})", name, item_str)
+                } else {
+                    let indent = shape.indent.to_string_with_newline(context.config);
+                    let nested_indent = item_shape.indent.to_string_with_newline(context.config);
+                    format!("{}({}{}{})", name, nested_indent, item_str, indent)
+                }
             }
             ast::MetaItemKind::NameValue(ref literal) => {
                 let name = self.name.as_str();

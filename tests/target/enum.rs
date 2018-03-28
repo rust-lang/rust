@@ -156,8 +156,10 @@ pub enum Bencoding<'i> {
 pub enum CoreResourceMsg {
     SetCookieForUrl(
         ServoUrl,
-        #[serde(deserialize_with = "::hyper_serde::deserialize",
-                serialize_with = "::hyper_serde::serialize")]
+        #[serde(
+            deserialize_with = "::hyper_serde::deserialize",
+            serialize_with = "::hyper_serde::serialize"
+        )]
         Cookie,
         CookieSource,
     ),
@@ -221,7 +223,9 @@ enum State {
 // #2190
 #[derive(Debug, Fail)]
 enum AnError {
-    #[fail(display = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    #[fail(
+        display = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    )]
     UnexpectedSingleToken { token: syn::Token },
 }
 
