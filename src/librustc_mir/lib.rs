@@ -37,7 +37,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(placement_in_syntax)]
 #![feature(collection_placement)]
 #![feature(nonzero)]
-#![feature(underscore_lifetimes)]
+#![cfg_attr(stage0, feature(underscore_lifetimes))]
 #![cfg_attr(stage0, feature(never_type))]
 #![feature(inclusive_range_fields)]
 

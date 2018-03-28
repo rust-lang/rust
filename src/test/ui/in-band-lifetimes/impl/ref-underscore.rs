@@ -15,7 +15,6 @@
 #![allow(warnings)]
 
 #![feature(in_band_lifetimes)]
-#![feature(underscore_lifetimes)]
 
 trait MyTrait { }
 

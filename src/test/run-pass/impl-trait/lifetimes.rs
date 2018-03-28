@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(underscore_lifetimes)]
 #![allow(warnings)]
 
 use std::fmt::Debug;

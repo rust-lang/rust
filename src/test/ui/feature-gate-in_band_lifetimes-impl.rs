@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(underscore_lifetimes)]
 
 trait MyTrait<'a> { }
 

@@ -30,7 +30,7 @@
 #![cfg_attr(stage0, feature(i128_type, i128))]
 #![feature(specialization)]
 #![feature(optin_builtin_traits)]
-#![feature(underscore_lifetimes)]
+#![cfg_attr(stage0, feature(underscore_lifetimes))]
 #![feature(macro_vis_matcher)]
 #![feature(allow_internal_unstable)]
 #![cfg_attr(stage0, feature(universal_impl_trait))]

@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-#![feature(underscore_lifetimes)]
 
 struct Foo<'a: '_>(&'a u8); //~ ERROR invalid lifetime bound name: `'_`
 fn foo<'a: '_>(_: &'a u8) {} //~ ERROR invalid lifetime bound name: `'_`

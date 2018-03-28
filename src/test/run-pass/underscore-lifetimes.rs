@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(underscore_lifetimes)]
-
 struct Foo<'a>(&'a u8);
 
 fn foo(x: &u8) -> Foo<'_> {
