@@ -15,5 +15,6 @@ static mut S: usize = 3;
 const C2: &'static mut usize = unsafe { &mut S };
 //~^ ERROR: references in constants may only refer to immutable values
 //~| ERROR: references in constants may only refer to immutable values
+//~| ERROR: constants cannot refer to statics, use a constant instead
 
 fn main() {}
