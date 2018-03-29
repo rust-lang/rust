@@ -129,8 +129,8 @@ pub struct SharedContext {
     pub sort_modules_alphabetically: bool,
     /// Additional themes to be added to the generated docs.
     pub themes: Vec<PathBuf>,
-    /// Suffix to be added on resource files (if suffix is "-v2" then "main.css" becomes
-    /// "main-v2.css").
+    /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
+    /// "light-v2.css").
     pub resource_suffix: String,
 }
 
@@ -743,7 +743,7 @@ fn write_shared(cx: &Context,
     write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/rustdoc.css"))?;
 
-    // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
+    // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
     let mut themes: HashSet<String> = HashSet::new();
 
@@ -761,9 +761,9 @@ fn write_shared(cx: &Context,
 
     write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/brush.svg"))?;
-    write(cx.dst.join(&format!("main{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/themes/main.css"))?;
-    themes.insert("main".to_owned());
+    write(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
+          include_bytes!("static/themes/light.css"))?;
+    themes.insert("light".to_owned());
     write(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/dark.css"))?;
     themes.insert("dark".to_owned());

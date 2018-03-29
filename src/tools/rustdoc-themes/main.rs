@@ -13,7 +13,7 @@ use std::fs::read_dir;
 use std::path::Path;
 use std::process::{Command, exit};
 
-const FILES_TO_IGNORE: &[&str] = &["main.css"];
+const FILES_TO_IGNORE: &[&str] = &["light.css"];
 
 fn get_folders<P: AsRef<Path>>(folder_path: P) -> Vec<String> {
     let mut ret = Vec::with_capacity(10);
