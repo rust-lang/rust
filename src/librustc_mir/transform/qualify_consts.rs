@@ -45,7 +45,7 @@ bitflags! {
     // Borrows of temporaries can be promoted only if
     // they have none of these qualifications.
     struct Qualif: u8 {
-        // Constant containing interior mutability (UnsafeCell).
+        // Constant containing interior mutability (`UnsafeCell`).
         const MUTABLE_INTERIOR  = 1 << 0;
 
         // Constant containing an ADT that implements Drop.
@@ -62,11 +62,12 @@ impl<'a, 'tcx> Qualif {
     fn restrict(&mut self, ty: Ty<'tcx>,
                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 param_env: ty::ParamEnv<'tcx>) {
+        self.insert(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
         if ty.is_freeze(tcx, param_env, DUMMY_SP) {
-            *self = *self - Qualif::MUTABLE_INTERIOR;
+            self.remove(Qualif::MUTABLE_INTERIOR);
         }
         if !ty.needs_drop(tcx, param_env) {
-            *self = *self - Qualif::NEEDS_DROP;
+            self.remove(Qualif::NEEDS_DROP);
         }
     }
 }
@@ -183,18 +184,17 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    /// Add the given qualification to self.qualif.
+    /// Add the given qualification to `self.qualif`.
     fn add(&mut self, qualif: Qualif) {
         self.qualif = self.qualif | qualif;
     }
 
-    /// Add the given type's qualification to self.qualif.
-    fn add_type(&mut self, ty: Ty<'tcx>) {
-        self.add(Qualif::MUTABLE_INTERIOR | Qualif::NEEDS_DROP);
+    /// Restrict `self.qualif` by the given type's qualification.
+    fn restrict_to_type(&mut self, ty: Ty<'tcx>) {
         self.qualif.restrict(ty, self.tcx, self.param_env);
     }
 
-    /// Within the provided closure, self.qualif will start
+    /// Within the provided closure, `self.qualif` will start
     /// out empty, and its value after the closure returns will
     /// be combined with the value before the call to nest.
     fn nest<F: FnOnce(&mut Self)>(&mut self, f: F) {
@@ -501,7 +501,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             }
 
                             let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            this.qualif.restrict(ty, this.tcx, this.param_env);
+                            this.restrict_to_type(ty);
                         }
 
                         ProjectionElem::ConstantIndex {..} |
@@ -534,7 +534,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } = constant.literal {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_some() {
-                        self.add_type(ty);
+                        self.restrict_to_type(ty);
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
@@ -936,16 +936,9 @@ This does not pose a problem by itself because they can't be accessed directly."
             }
 
             if let Some((ref dest, _)) = *destination {
-                // Avoid propagating irrelevant callee/argument qualifications.
-                if self.qualif.intersects(Qualif::NOT_CONST) {
-                    self.qualif = Qualif::NOT_CONST;
-                } else {
-                    // Be conservative about the returned value of a const fn.
-                    let tcx = self.tcx;
-                    let ty = dest.ty(self.mir, tcx).to_ty(tcx);
-                    self.qualif = Qualif::empty();
-                    self.add_type(ty);
-                }
+                // Be conservative about the returned value of a const fn.
+                let ty = dest.ty(self.mir, self.tcx).to_ty(self.tcx);
+                self.restrict_to_type(ty);
                 self.assign(dest, location);
             }
         } else if let TerminatorKind::Drop { location: ref place, .. } = *kind {
