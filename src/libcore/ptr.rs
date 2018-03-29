@@ -2653,7 +2653,7 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
-/// as a discriminant -- `Option<NonNull<T>>` has the same size as `NonNull<T>`.
+/// as a discriminant -- `Option<NonNull<T>>` has the same size as `*mut T`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
 /// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. If this is incorrect
