@@ -384,9 +384,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
                    local: &mut Local,
                    _: PlaceContext<'tcx>,
                    _: Location) {
-        if self.source.local_kind(*local) == LocalKind::Temp {
-            *local = self.promote_temp(*local);
-        }
+        assert_eq!(self.source.local_kind(*local), LocalKind::Temp);
+        *local = self.promote_temp(*local);
     }
 }
 

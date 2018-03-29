@@ -43,8 +43,7 @@ use super::promote_consts::{self, Candidate, TempState};
 
 bitflags! {
     // Borrows of temporaries can be promoted only if
-    // they have none of these qualifications, with
-    // the exception of `STATIC_REF` (in statics only).
+    // they have none of these qualifications.
     struct Qualif: u8 {
         // Constant containing interior mutability (UnsafeCell).
         const MUTABLE_INTERIOR  = 1 << 0;

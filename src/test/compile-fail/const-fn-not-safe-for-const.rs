@@ -28,12 +28,11 @@ static Y: u32 = 0;
 
 const fn get_Y() -> u32 {
     Y
-        //~^ ERROR E0013
+    //~^ ERROR E0013
 }
 
 const fn get_Y_addr() -> &'static u32 {
     &Y
-        //~^ ERROR E0013
 }
 
 const fn get() -> u32 {
