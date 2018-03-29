@@ -30,6 +30,7 @@ pub fn target() -> Result<Target, String> {
         max_atomic_width: Some(32),
         post_link_args: args,
         target_family: Some("unix".to_string()),
+        i128_lowering: true,
         codegen_backend: "emscripten".to_string(),
         .. Default::default()
     };
