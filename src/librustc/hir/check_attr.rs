@@ -14,6 +14,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
+use syntax_pos::Span;
 use ty::TyCtxt;
 
 use hir;
@@ -27,6 +28,8 @@ enum Target {
     Enum,
     Const,
     ForeignMod,
+    Expression,
+    Statement,
     Other,
 }
 
@@ -62,7 +65,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let mut has_wasm_import_module = false;
         for attr in &item.attrs {
             if attr.check_name("inline") {
-                self.check_inline(attr, item, target)
+                self.check_inline(attr, &item.span, target)
             } else if attr.check_name("wasm_import_module") {
                 has_wasm_import_module = true;
                 if attr.value_str().is_none() {
@@ -99,13 +102,13 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     }
 
     /// Check if an `#[inline]` is applied to a function.
-    fn check_inline(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
+    fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) {
         if target != Target::Fn {
             struct_span_err!(self.tcx.sess,
                              attr.span,
                              E0518,
                              "attribute should be applied to function")
-                .span_label(item.span, "not a function")
+                .span_label(*span, "not a function")
                 .emit();
         }
     }
@@ -196,10 +199,12 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                 }
                 _ => continue,
             };
-            struct_span_err!(self.tcx.sess, hint.span, E0517,
-                             "attribute should be applied to {}", allowed_targets)
-                .span_label(item.span, format!("not {} {}", article, allowed_targets))
-                .emit();
+            self.emit_repr_error(
+                hint.span,
+                item.span,
+                &format!("attribute should be applied to {}", allowed_targets),
+                &format!("not {} {}", article, allowed_targets),
+            )
         }
 
         // Just point at all repr hints if there are any incompatibilities.
@@ -221,17 +226,75 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                        "conflicting representation hints");
         }
     }
+
+    fn emit_repr_error(
+        &self,
+        hint_span: Span,
+        label_span: Span,
+        hint_message: &str,
+        label_message: &str,
+    ) {
+        struct_span_err!(self.tcx.sess, hint_span, E0517, "{}", hint_message)
+            .span_label(label_span, label_message)
+            .emit();
+    }
+
+    fn check_stmt_attributes(&self, stmt: &hir::Stmt) {
+        // When checking statements ignore expressions, they will be checked later
+        if let hir::Stmt_::StmtDecl(_, _) = stmt.node {
+            for attr in stmt.node.attrs() {
+                if attr.check_name("inline") {
+                    self.check_inline(attr, &stmt.span, Target::Statement);
+                }
+                if attr.check_name("repr") {
+                    self.emit_repr_error(
+                        attr.span,
+                        stmt.span,
+                        &format!("attribute should not be applied to a statement"),
+                        &format!("not a struct, enum or union"),
+                    );
+                }
+            }
+        }
+    }
+
+    fn check_expr_attributes(&self, expr: &hir::Expr) {
+        for attr in expr.attrs.iter() {
+            if attr.check_name("inline") {
+                self.check_inline(attr, &expr.span, Target::Expression);
+            }
+            if attr.check_name("repr") {
+                self.emit_repr_error(
+                    attr.span,
+                    expr.span,
+                    &format!("attribute should not be applied to an expression"),
+                    &format!("not defining a struct, enum or union"),
+                );
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckAttrVisitor<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         let target = Target::from_item(item);
         self.check_attributes(item, target);
-        intravisit::walk_item(self, item);
+        intravisit::walk_item(self, item)
+    }
+
+
+    fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt) {
+        self.check_stmt_attributes(stmt);
+        intravisit::walk_stmt(self, stmt)
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+        self.check_expr_attributes(expr);
+        intravisit::walk_expr(self, expr)
     }
 }
 
