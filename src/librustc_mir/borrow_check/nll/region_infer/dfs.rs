@@ -34,6 +34,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// - `Ok(false)` if the walk was completed with no changes;
     /// - `Err(early)` if the walk was existed early by `op`. `earlyelem` is the
     ///   value that `op` returned.
+    #[inline(never)] // ensure dfs is identifiable in profiles
     pub(super) fn dfs<C>(&self, mir: &Mir<'tcx>, mut op: C) -> Result<bool, C::Early>
     where
         C: DfsOp,

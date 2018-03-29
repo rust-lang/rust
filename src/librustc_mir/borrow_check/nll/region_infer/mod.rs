@@ -452,6 +452,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.inferred_values = Some(inferred_values);
     }
 
+    #[inline(never)] // ensure dfs is identifiable in profiles
     fn compute_region_values(&self, mir: &Mir<'tcx>, track_causes: TrackCauses) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
