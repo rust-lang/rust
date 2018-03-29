@@ -460,7 +460,7 @@ impl Error {
                                            ref dir_path } => {
                 let mut err = struct_span_err!(handler, sp, E0583,
                                                "file not found for module `{}`", mod_name);
-                err.help(&format!("name the file either {} or {} inside the directory {:?}",
+                err.help(&format!("name the file either {} or {} inside the directory \"{}\"",
                                   default_path,
                                   secondary_path,
                                   dir_path));
