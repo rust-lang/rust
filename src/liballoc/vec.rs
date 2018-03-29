@@ -1574,8 +1574,8 @@ impl_spec_from_elem!(u64, |x| x == 0);
 impl_spec_from_elem!(u128, |x| x == 0);
 impl_spec_from_elem!(usize, |x| x == 0);
 
-impl_spec_from_elem!(f32, |x: f32| x == 0. && x.is_sign_positive());
-impl_spec_from_elem!(f64, |x: f64| x == 0. && x.is_sign_positive());
+impl_spec_from_elem!(f32, |x: f32| x.to_bits() == 0);
+impl_spec_from_elem!(f64, |x: f64| x.to_bits() == 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
