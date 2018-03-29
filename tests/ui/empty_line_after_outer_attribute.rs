@@ -79,4 +79,11 @@ pub enum FooFighter {
     Bar4
 }
 
+// This should not produce a warning because there is a comment in between
+#[crate_type = "lib"]
+/*
+
+*/
+pub struct S;
+
 fn main() { }
