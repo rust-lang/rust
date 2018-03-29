@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::HashMap;
-
 use super::universal_regions::UniversalRegions;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -23,9 +21,9 @@ use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegi
                  Local, Location, Mir};
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
-use rustc::util::common::ErrorReported;
+use rustc::util::common::{self, ErrorReported};
 use rustc_data_structures::bitvec::BitVector;
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -61,8 +59,15 @@ pub struct RegionInferenceContext<'tcx> {
     /// until `solve` is invoked.
     inferred_values: Option<RegionValues>,
 
+    /// For each variable, stores the index of the first constraint
+    /// where that variable appears on the RHS. This is the start of a
+    /// 'linked list' threaded by the `next` field in `Constraint`.
+    ///
+    /// This map is build when values are inferred.
+    dependency_map: Option<IndexVec<RegionVid, Option<ConstraintIndex>>>,
+
     /// The constraints we have accumulated and used during solving.
-    constraints: Vec<Constraint>,
+    constraints: IndexVec<ConstraintIndex, Constraint>,
 
     /// Type constraints that we check after solving.
     type_tests: Vec<TypeTest<'tcx>>,
@@ -143,9 +148,21 @@ pub struct Constraint {
     /// At this location.
     point: Location,
 
+    /// Later on, we thread the constraints onto a linked list
+    /// sorted by their `sub` field. So if you had:
+    ///
+    /// Index | Constraint | Next Field
+    /// ----- | ---------- | ----------
+    /// 0     | `'a: 'b`   | Some(2)
+    /// 1     | `'b: 'c`   | None
+    /// 2     | `'c: 'b`   | None
+    next: Option<ConstraintIndex>,
+
     /// Where did this constraint arise?
     span: Span,
 }
+
+newtype_index!(ConstraintIndex { DEBUG_FORMAT = "ConstraintIndex({})" });
 
 /// A "type test" corresponds to an outlives constraint between a type
 /// and a lifetime, like `T: 'x` or `<T as Foo>::Bar: 'x`.  They are
@@ -259,7 +276,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             elements: elements.clone(),
             liveness_constraints: RegionValues::new(elements, num_region_variables),
             inferred_values: None,
-            constraints: Vec::new(),
+            dependency_map: None,
+            constraints: IndexVec::new(),
             type_tests: Vec::new(),
             universal_regions,
         };
@@ -387,6 +405,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sup,
             sub,
             point,
+            next: None,
         });
     }
 
@@ -399,6 +418,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// unsatisfiable constraints. If this is a closure, returns the
     /// region requirements to propagate to our creator, if any.
     pub(super) fn solve<'gcx>(
+        &mut self,
+        infcx: &InferCtxt<'_, 'gcx, 'tcx>,
+        mir: &Mir<'tcx>,
+        mir_def_id: DefId,
+    ) -> Option<ClosureRegionRequirements<'gcx>> {
+        common::time(infcx.tcx.sess, &format!("solve({:?})", mir_def_id), || {
+            self.solve_inner(infcx, mir, mir_def_id)
+        })
+    }
+
+    fn solve_inner<'gcx>(
         &mut self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
@@ -448,6 +478,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
     fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
+        self.dependency_map = Some(self.build_dependency_map());
         let inferred_values = self.compute_region_values(mir, TrackCauses(false));
         self.inferred_values = Some(inferred_values);
     }
@@ -465,17 +496,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // constraints we have accumulated.
         let mut inferred_values = self.liveness_constraints.duplicate(track_causes);
 
-        let dependency_map = self.build_dependency_map();
+        let dependency_map = self.dependency_map.as_ref().unwrap();
 
         // Constraints that may need to be repropagated (initially all):
-        let mut dirty_list: Vec<_> = (0..self.constraints.len()).collect();
+        let mut dirty_list: Vec<_> = self.constraints.indices().collect();
 
         // Set to 0 for each constraint that is on the dirty list:
         let mut clean_bit_vec = BitVector::new(dirty_list.len());
 
         debug!("propagate_constraints: --------------------");
         while let Some(constraint_idx) = dirty_list.pop() {
-            clean_bit_vec.insert(constraint_idx);
+            clean_bit_vec.insert(constraint_idx.index());
 
             let constraint = &self.constraints[constraint_idx];
             debug!("propagate_constraints: constraint={:?}", constraint);
@@ -497,10 +528,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 debug!("propagate_constraints:   sub={:?}", constraint.sub);
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
-                for &dep_idx in dependency_map.get(&constraint.sup).unwrap_or(&vec![]) {
-                    if clean_bit_vec.remove(dep_idx) {
+                let mut opt_dep_idx = dependency_map[constraint.sup];
+                while let Some(dep_idx) = opt_dep_idx {
+                    if clean_bit_vec.remove(dep_idx.index()) {
                         dirty_list.push(dep_idx);
                     }
+                    opt_dep_idx = self.constraints[dep_idx].next;
                 }
             }
 
@@ -514,11 +547,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// indices of constraints that need to be re-evaluated when X changes.
     /// These are constraints like Y: X @ P -- so if X changed, we may
     /// need to grow Y.
-    fn build_dependency_map(&self) -> HashMap<RegionVid, Vec<usize>> {
-        let mut map = HashMap::new();
+    #[inline(never)]
+    fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
+        let mut map = IndexVec::from_elem(None, &self.definitions);
 
-        for (idx, constraint) in self.constraints.iter().enumerate() {
-            map.entry(constraint.sub).or_insert(Vec::new()).push(idx);
+        for (idx, constraint) in self.constraints.iter_enumerated_mut().rev() {
+            let mut head = &mut map[constraint.sub];
+            debug_assert!(constraint.next.is_none());
+            constraint.next = *head;
+            *head = Some(idx);
         }
 
         map
