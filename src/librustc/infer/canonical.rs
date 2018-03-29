@@ -254,8 +254,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 let ty = match ty_kind {
                     CanonicalTyVarKind::General => {
                         self.next_ty_var(
-                            // FIXME(#48696) this handling of universes is not right.
-                            ty::UniverseIndex::ROOT,
                             TypeVariableOrigin::MiscVariable(span),
                         )
                     }

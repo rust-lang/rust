@@ -362,8 +362,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     /// hard constraint exists, creates a fresh type variable.
     fn coercion_target_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
         self.only_has_type(fcx)
-            .unwrap_or_else(|| fcx.next_ty_var(ty::UniverseIndex::ROOT,
-                                               TypeVariableOrigin::MiscVariable(span)))
+            .unwrap_or_else(|| fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span)))
     }
 }
 
@@ -938,8 +937,7 @@ impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
         match ty_opt {
             None => {
                 // infer the variable's type
-                let var_ty = self.fcx.next_ty_var(ty::UniverseIndex::ROOT,
-                                                  TypeVariableOrigin::TypeInference(span));
+                let var_ty = self.fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
                 self.fcx.locals.borrow_mut().insert(nid, var_ty);
                 var_ty
             }
@@ -1052,8 +1050,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let span = body.value.span;
 
     if body.is_generator && can_be_generator.is_some() {
-        let yield_ty = fcx.next_ty_var(ty::UniverseIndex::ROOT,
-                                       TypeVariableOrigin::TypeInference(span));
+        let yield_ty = fcx.next_ty_var(TypeVariableOrigin::TypeInference(span));
         fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
         fcx.yield_ty = Some(yield_ty);
     }
@@ -1086,8 +1083,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator.is_some() && body.is_generator {
-        let witness = fcx.next_ty_var(ty::UniverseIndex::ROOT,
-                                      TypeVariableOrigin::MiscVariable(span));
+        let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         let interior = ty::GeneratorInterior {
             witness,
             movable: can_be_generator.unwrap() == hir::GeneratorMovability::Movable,
@@ -1125,7 +1121,6 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let mut actual_return_ty = coercion.complete(&fcx);
     if actual_return_ty.is_never() {
         actual_return_ty = fcx.next_diverging_ty_var(
-            ty::UniverseIndex::ROOT,
             TypeVariableOrigin::DivergingFn(span));
     }
     fcx.demand_suptype(span, ret_ty, actual_return_ty);
@@ -1738,14 +1733,13 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
-        self.next_ty_var(ty::UniverseIndex::ROOT,
-                         TypeVariableOrigin::TypeInference(span))
+        self.next_ty_var(TypeVariableOrigin::TypeInference(span))
     }
 
     fn ty_infer_for_def(&self,
                         ty_param_def: &ty::TypeParameterDef,
                         span: Span) -> Ty<'tcx> {
-        self.type_var_for_def(ty::UniverseIndex::ROOT, span, ty_param_def)
+        self.type_var_for_def(span, ty_param_def)
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -2370,8 +2364,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // If some lookup succeeds, write callee into table and extract index/element
             // type from the method signature.
             // If some lookup succeeded, install method in table
-            let input_ty = self.next_ty_var(ty::UniverseIndex::ROOT,
-                                            TypeVariableOrigin::AutoDeref(base_expr.span));
+            let input_ty = self.next_ty_var(TypeVariableOrigin::AutoDeref(base_expr.span));
             let method = self.try_overloaded_place_op(
                 expr.span, self_ty, &[input_ty], needs, PlaceOp::Index);
 
@@ -2810,7 +2803,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             assert!(!self.tables.borrow().adjustments().contains_key(expr.hir_id),
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
-                ty::UniverseIndex::ROOT,
                 TypeVariableOrigin::AdjustmentType(expr.span));
             self.apply_adjustments(expr, vec![Adjustment {
                 kind: Adjust::NeverToAny,
@@ -2888,7 +2880,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let ity = self.tcx.type_of(did);
         debug!("impl_self_ty: ity={:?}", ity);
 
-        let substs = self.fresh_substs_for_item(ty::UniverseIndex::ROOT, span, did);
+        let substs = self.fresh_substs_for_item(span, did);
         let substd_ty = self.instantiate_type_scheme(span, &substs, &ity);
 
         TypeAndSubsts { substs: substs, ty: substd_ty }
@@ -4021,8 +4013,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
               let element_ty = if !args.is_empty() {
                   let coerce_to = uty.unwrap_or_else(
-                      || self.next_ty_var(ty::UniverseIndex::ROOT,
-                                          TypeVariableOrigin::TypeInference(expr.span)));
+                      || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
                   let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
                   assert_eq!(self.diverges.get(), Diverges::Maybe);
                   for e in args {
@@ -4032,8 +4023,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   }
                   coerce.complete(self)
               } else {
-                  self.next_ty_var(ty::UniverseIndex::ROOT,
-                                   TypeVariableOrigin::TypeInference(expr.span))
+                  self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
               };
               tcx.mk_array(element_ty, args.len() as u64)
           }
@@ -4073,8 +4063,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     (uty, uty)
                 }
                 None => {
-                    let t: Ty = self.next_ty_var(ty::UniverseIndex::ROOT,
-                                                 TypeVariableOrigin::MiscVariable(element.span));
+                    let t: Ty = self.next_ty_var(TypeVariableOrigin::MiscVariable(element.span));
                     let element_ty = self.check_expr_has_type_or_error(&element, t);
                     (element_ty, t)
                 }
@@ -4853,7 +4842,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Handle Self first, so we can adjust the index to match the AST.
                 if has_self && i == 0 {
                     return opt_self_ty.unwrap_or_else(|| {
-                        self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
+                        self.type_var_for_def(span, def)
                     });
                 }
                 i -= has_self as usize;
@@ -4886,7 +4875,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This can also be reached in some error cases:
                 // We prefer to use inference variables instead of
                 // TyError to let type inference recover somewhat.
-                self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
+                self.type_var_for_def(span, def)
             }
         });
 
