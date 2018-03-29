@@ -77,3 +77,7 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 }
 
 pub const STDIN_BUF_SIZE: usize = ::sys_common::io::DEFAULT_BUF_SIZE;
+
+pub fn stderr_prints_nothing() -> bool {
+    false
+}

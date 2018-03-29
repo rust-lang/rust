@@ -10,10 +10,13 @@
 
 use fmt;
 use io::prelude::*;
-use sys::stdio::Stderr;
+use sys::stdio::{Stderr, stderr_prints_nothing};
 use thread;
 
 pub fn dumb_print(args: fmt::Arguments) {
+    if stderr_prints_nothing() {
+        return
+    }
     let _ = Stderr::new().map(|mut stderr| stderr.write_fmt(args));
 }
 
