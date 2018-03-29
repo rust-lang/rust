@@ -78,6 +78,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::CrateNum;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
+use rustc::middle::lang_items::LangItem;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc::ty::{self, TyCtxt};
@@ -405,6 +406,8 @@ struct CrateInfo {
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
     wasm_custom_sections: BTreeMap<String, Vec<u8>>,
     wasm_imports: FxHashMap<String, String>,
+    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
+    missing_lang_items: FxHashMap<CrateNum, Lrc<Vec<LangItem>>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

@@ -125,6 +125,8 @@ pub trait Linker {
     fn args(&mut self, args: &[String]);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
     fn subsystem(&mut self, subsystem: &str);
+    fn group_start(&mut self);
+    fn group_end(&mut self);
     // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
     fn finalize(&mut self) -> Command;
 }
@@ -420,6 +422,18 @@ impl<'a> Linker for GccLinker<'a> {
         ::std::mem::swap(&mut cmd, &mut self.cmd);
         cmd
     }
+
+    fn group_start(&mut self) {
+        if !self.sess.target.target.options.is_like_osx {
+            self.linker_arg("--start-group");
+        }
+    }
+
+    fn group_end(&mut self) {
+        if !self.sess.target.target.options.is_like_osx {
+            self.linker_arg("--end-group");
+        }
+    }
 }
 
 pub struct MsvcLinker<'a> {
@@ -648,6 +662,10 @@ impl<'a> Linker for MsvcLinker<'a> {
         ::std::mem::swap(&mut cmd, &mut self.cmd);
         cmd
     }
+
+    // MSVC doesn't need group indicators
+    fn group_start(&mut self) {}
+    fn group_end(&mut self) {}
 }
 
 pub struct EmLinker<'a> {
@@ -810,6 +828,10 @@ impl<'a> Linker for EmLinker<'a> {
         ::std::mem::swap(&mut cmd, &mut self.cmd);
         cmd
     }
+
+    // Appears not necessary on Emscripten
+    fn group_start(&mut self) {}
+    fn group_end(&mut self) {}
 }
 
 fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
@@ -953,4 +975,8 @@ impl Linker for WasmLd {
         ::std::mem::swap(&mut cmd, &mut self.cmd);
         cmd
     }
+
+    // Not needed for now with LLD
+    fn group_start(&mut self) {}
+    fn group_end(&mut self) {}
 }
