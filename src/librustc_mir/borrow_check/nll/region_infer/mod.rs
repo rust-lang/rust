@@ -149,7 +149,7 @@ pub struct Constraint {
     point: Location,
 
     /// Later on, we thread the constraints onto a linked list
-    /// sorted by their `sub` field. So if you had:
+    /// grouped by their `sub` field. So if you had:
     ///
     /// Index | Constraint | Next Field
     /// ----- | ---------- | ----------
@@ -423,9 +423,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         mir_def_id: DefId,
     ) -> Option<ClosureRegionRequirements<'gcx>> {
-        common::time(infcx.tcx.sess, &format!("solve({:?})", mir_def_id), || {
-            self.solve_inner(infcx, mir, mir_def_id)
-        })
+        common::time(
+            infcx.tcx.sess,
+            &format!("solve_nll_region_constraints({:?})", mir_def_id),
+            || self.solve_inner(infcx, mir, mir_def_id),
+        )
     }
 
     fn solve_inner<'gcx>(
@@ -451,7 +453,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             None
         };
 
-        self.check_type_tests(infcx, mir, dfs_storage, mir_def_id, outlives_requirements.as_mut());
+        self.check_type_tests(
+            infcx,
+            mir,
+            dfs_storage,
+            mir_def_id,
+            outlives_requirements.as_mut(),
+        );
 
         self.check_universal_regions(infcx, mir_def_id, outlives_requirements.as_mut());
 
@@ -587,7 +595,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(mir, dfs_storage, type_test.point, type_test.lower_bound, &type_test.test) {
+            if self.eval_region_test(
+                mir,
+                dfs_storage,
+                type_test.point,
+                type_test.lower_bound,
+                &type_test.test,
+            ) {
                 continue;
             }
 
