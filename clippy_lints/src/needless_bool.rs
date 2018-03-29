@@ -44,7 +44,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub BOOL_COMPARISON,
-    style,
+    complexity,
     "comparing a variable to a boolean, e.g. `if x == true`"
 }
 

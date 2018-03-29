@@ -44,7 +44,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub MUTEX_INTEGER,
-    pedantic,
+    nursery,
     "using a mutex for an integer type"
 }
 

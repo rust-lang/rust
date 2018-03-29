@@ -63,7 +63,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub POSSIBLE_MISSING_COMMA,
-    style,
+    correctness,
     "possible missing comma in array"
 }
 

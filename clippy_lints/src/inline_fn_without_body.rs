@@ -22,7 +22,7 @@ use utils::sugg::DiagnosticBuilderExt;
 /// ```
 declare_clippy_lint! {
     pub INLINE_FN_WITHOUT_BODY,
-    complexity,
+    correctness,
     "use of `#[inline]` on trait methods without bodies"
 }
 

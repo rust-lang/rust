@@ -46,7 +46,7 @@ pub struct TypePass;
 /// ```
 declare_clippy_lint! {
     pub BOX_VEC,
-    complexity,
+    perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 

@@ -160,7 +160,7 @@ declare_clippy_lint! {
 /// **Why is this bad?** Readability, this can be written more concisely as
 /// `_.map_or(_, _)`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The order of the arguments is not in execution order
 ///
 /// **Example:**
 /// ```rust
@@ -178,7 +178,7 @@ declare_clippy_lint! {
 /// **Why is this bad?** Readability, this can be written more concisely as
 /// `_.map_or_else(_, _)`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The order of the arguments is not in execution order.
 ///
 /// **Example:**
 /// ```rust
@@ -214,7 +214,7 @@ declare_clippy_lint! {
 /// **Why is this bad?** Readability, this can be written more concisely as
 /// `_.and_then(_)`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The order of the arguments is not in execution order.
 ///
 /// **Example:**
 /// ```rust
@@ -240,7 +240,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub FILTER_NEXT,
-    style,
+    complexity,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
@@ -278,7 +278,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub SEARCH_IS_SOME,
-    style,
+    complexity,
     "using an iterator search followed by `is_some()`, which is more succinctly \
      expressed as a call to `any()`"
 }
@@ -297,7 +297,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub CHARS_NEXT_CMP,
-    style,
+    complexity,
     "using `.chars().next()` to check if a string starts with a char"
 }
 
@@ -325,7 +325,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub OR_FUN_CALL,
-    style,
+    perf,
     "using any `*or` method with a function call, which suggests `*or_else`"
 }
 
@@ -347,8 +347,8 @@ declare_clippy_lint! {
 }
 
 /// **What it does:** Checks for usage of `.clone()` on a ref-counted pointer,
-/// (Rc, Arc, rc::Weak, or sync::Weak), and suggests calling Clone on
-/// the corresponding trait instead.
+/// (`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified
+/// function syntax instead (e.g. `Rc::clone(foo)`).
 ///
 /// **Why is this bad?**: Calling '.clone()' on an Rc, Arc, or Weak
 /// can obscure the fact that only the pointer is being cloned, not the underlying

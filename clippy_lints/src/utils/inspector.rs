@@ -26,7 +26,7 @@ use syntax::attr;
 /// ```
 declare_clippy_lint! {
     pub DEEP_CODE_INSPECTION,
-    style, // not a style lint, but essentially a noop without the appropriate attribute
+    internal_warn,
     "helper to dump info about code"
 }
 

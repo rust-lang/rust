@@ -54,7 +54,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub REDUNDANT_CLOSURE_CALL,
-    style,
+    complexity,
     "throwaway closures called in the expression they are defined"
 }
 

@@ -40,7 +40,7 @@ use utils::paths;
 /// ```
 declare_clippy_lint! {
     pub MANUAL_MEMCPY,
-    style,
+    perf,
     "manually copying items between slices"
 }
 
@@ -119,7 +119,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub ITER_NEXT_LOOP,
-    complexity,
+    correctness,
     "for-looping over `_.next()` which is probably not intended"
 }
 
@@ -141,7 +141,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub FOR_LOOP_OVER_OPTION,
-    complexity,
+    correctness,
     "for-looping over an `Option`, which is more clearly expressed as an `if let`"
 }
 
@@ -163,7 +163,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub FOR_LOOP_OVER_RESULT,
-    complexity,
+    correctness,
     "for-looping over a `Result`, which is more clearly expressed as an `if let`"
 }
 
@@ -191,7 +191,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub WHILE_LET_LOOP,
-    style,
+    complexity,
     "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
 }
 
@@ -209,7 +209,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub UNUSED_COLLECT,
-    style,
+    perf,
     "`collect()`ing an iterator without using the result; this is usually better \
      written as a for loop"
 }
@@ -252,7 +252,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub EXPLICIT_COUNTER_LOOP,
-    style,
+    complexity,
     "for-looping with an explicit counter when `_.enumerate()` would do"
 }
 
@@ -329,7 +329,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub NEVER_LOOP,
-    style,
+    correctness,
     "any loop that will always `break` or `return`"
 }
 

@@ -40,7 +40,7 @@ use std::collections::HashMap;
 /// ```
 declare_clippy_lint! {
     pub LINT_AUTHOR,
-    style, // ok, this is not a style lint, but it's also a noop without the appropriate attribute
+    internal_warn,
     "helper for writing lints"
 }
 

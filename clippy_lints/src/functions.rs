@@ -24,7 +24,7 @@ use utils::{iter_input_pats, span_lint, type_is_unsafe_function};
 /// ```
 declare_clippy_lint! {
     pub TOO_MANY_ARGUMENTS,
-    style,
+    complexity,
     "functions with too many arguments"
 }
 

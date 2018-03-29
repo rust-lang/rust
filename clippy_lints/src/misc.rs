@@ -72,7 +72,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub FLOAT_CMP,
-    complexity,
+    correctness,
     "using `==` or `!=` on float values instead of comparing difference with an epsilon"
 }
 
