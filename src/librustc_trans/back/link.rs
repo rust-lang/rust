@@ -833,7 +833,11 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
     // there instead of looking at the command line.
     if !cmd.very_likely_to_exceed_some_spawn_limit() {
         match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
-            Ok(child) => return child.wait_with_output(),
+            Ok(child) => {
+                let output = child.wait_with_output();
+                flush_linked_file(&output, out_filename)?;
+                return output;
+            }
             Err(ref e) if command_line_too_big(e) => {
                 info!("command line to linker was too big: {}", e);
             }
