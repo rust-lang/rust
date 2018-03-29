@@ -55,7 +55,7 @@ fn main() {
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _3 = discriminant(_2);
 //      _6 = discriminant(_2);
-//      switchInt(move _6) -> [0isize: bb6, 1isize: bb4, otherwise: bb8];
+//      switchInt(move _6) -> [0isize: bb4, 1isize: bb6, otherwise: bb8];
 //  }
 //  bb1: {
 //      resume;
@@ -119,7 +119,7 @@ fn main() {
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      _3 = discriminant(_2);
 //      _6 = discriminant(_2);
-//      switchInt(move _6) -> [0isize: bb5, 1isize: bb4, otherwise: bb8];
+//      switchInt(move _6) -> [0isize: bb4, 1isize: bb5, otherwise: bb8];
 //  }
 //  bb1: {
 //      resume;
@@ -183,7 +183,7 @@ fn main() {
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
 //     _3 = discriminant(_2);
 //     _8 = discriminant(_2);
-//     switchInt(move _8) -> [1isize: bb4, otherwise: bb5];
+//     switchInt(move _8) -> [0isize: bb4, otherwise: bb5];
 // }
 // bb1: {
 //     resume;

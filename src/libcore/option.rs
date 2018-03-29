@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use {mem, ops};
+use {cmp, intrinsics, mem, ops};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -154,15 +154,15 @@ use {mem, ops};
 // which basically means it must be `Option`.
 
 /// The `Option` type. See [the module level documentation](index.html) for more.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)] // PartialOrd and Ord by hand below.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
-    /// No value
-    #[stable(feature = "rust1", since = "1.0.0")]
-    None,
     /// Some value `T`
     #[stable(feature = "rust1", since = "1.0.0")]
     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+    /// No value
+    #[stable(feature = "rust1", since = "1.0.0")]
+    None,
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -978,6 +978,107 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 impl<T> From<T> for Option<T> {
     fn from(val: T) -> Option<T> {
         Some(val)
+    }
+}
+
+// The Option<T> type used to be defined as { None, Some(T) }, but for codegen
+// reasons we reversed it in #49499 to reduce the amount of work that needs
+// to be done for Result<T, ()> <-> Option<T> conversions. Keeping the derived
+// Ord and PartialOrd implementations would make that swap a breaking change.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Ord for Option<T>
+where
+    T: Ord,
+{
+    #[inline]
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        let self_discr = unsafe { intrinsics::discriminant_value(self) } as isize;
+        let other_discr = unsafe { intrinsics::discriminant_value(other) } as isize;
+        if self_discr == other_discr {
+            match (self, other) {
+                (&Some(ref this), &Some(ref other)) => this.cmp(other),
+                _ => cmp::Ordering::Equal,
+            }
+        } else {
+            other_discr.cmp(&self_discr)
+        }
+    }
+}
+
+// See comment on the Ord impl above.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> PartialOrd for Option<T>
+where
+    T: PartialOrd,
+{
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        let self_discr = unsafe { intrinsics::discriminant_value(self) } as isize;
+        let other_discr = unsafe { intrinsics::discriminant_value(other) } as isize;
+        if self_discr == other_discr {
+            match (self, other) {
+                (&Some(ref this), &Some(ref other)) => this.partial_cmp(other),
+                _ => Some(cmp::Ordering::Equal),
+            }
+        } else {
+            other_discr.partial_cmp(&self_discr)
+        }
+    }
+
+    #[inline]
+    fn lt(&self, other: &Self) -> bool {
+        let self_discr = unsafe { intrinsics::discriminant_value(self) } as isize;
+        let other_discr = unsafe { intrinsics::discriminant_value(other) } as isize;
+        if self_discr == other_discr {
+            match (self, other) {
+                (&Some(ref this), &Some(ref other)) => this < other,
+                _ => false,
+            }
+        } else {
+            other_discr < self_discr
+        }
+    }
+
+    #[inline]
+    fn le(&self, other: &Self) -> bool {
+        let self_discr = unsafe { intrinsics::discriminant_value(self) } as isize;
+        let other_discr = unsafe { intrinsics::discriminant_value(other) } as isize;
+        if self_discr == other_discr {
+            match (self, other) {
+                (&Some(ref this), &Some(ref other)) => this <= other,
+                _ => true,
+            }
+        } else {
+            other_discr <= self_discr
+        }
+    }
+
+    #[inline]
+    fn gt(&self, other: &Self) -> bool {
+        let self_discr = unsafe { intrinsics::discriminant_value(self) } as isize;
+        let other_discr = unsafe { intrinsics::discriminant_value(other) } as isize;
+        if self_discr == other_discr {
+            match (self, other) {
+                (&Some(ref this), &Some(ref other)) => this > other,
+                _ => false,
+            }
+        } else {
+            other_discr > self_discr
+        }
+    }
+
+    #[inline]
+    fn ge(&self, other: &Self) -> bool {
+        let self_discr = unsafe { intrinsics::discriminant_value(self) } as isize;
+        let other_discr = unsafe { intrinsics::discriminant_value(other) } as isize;
+        if self_discr == other_discr {
+            match (self, other) {
+                (&Some(ref this), &Some(ref other)) => this >= other,
+                _ => true,
+            }
+        } else {
+            other_discr >= self_discr
+        }
     }
 }
 
