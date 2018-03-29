@@ -535,8 +535,14 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(cratefile: PathBuf, externs: Externs, edition: Edition, matches: &getopts::Matches, f: F) -> R
-where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
+fn rust_input<R, F>(cratefile: PathBuf,
+                    externs: Externs,
+                    edition: Edition,
+                    matches: &getopts::Matches,
+                    f: F) -> R
+where R: 'static + Send,
+      F: 'static + Send + FnOnce(Output) -> R
+{
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
