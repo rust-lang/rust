@@ -14,7 +14,6 @@
 // cc #48468
 
 #![feature(dyn_trait)]
-#![feature(underscore_lifetimes)]
 
 use std::fmt::Debug;
 

@@ -15,7 +15,6 @@
 
 #![feature(dyn_trait)]
 #![feature(in_band_lifetimes)]
-#![feature(underscore_lifetimes)]
 
 use std::fmt::Debug;
 

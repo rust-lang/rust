@@ -68,7 +68,7 @@
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
-#![feature(underscore_lifetimes)]
+#![cfg_attr(stage0, feature(underscore_lifetimes))]
 #![cfg_attr(stage0, feature(universal_impl_trait))]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
