@@ -18,9 +18,26 @@ use borrow_check::nll::region_infer::values::{RegionElementIndex, RegionValueEle
 use syntax::codemap::Span;
 use rustc::mir::{Location, Mir};
 use rustc::ty::RegionVid;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::bitvec::BitVector;
+use rustc_data_structures::indexed_vec::Idx;
+
+pub(super) struct DfsStorage {
+    stack: Vec<Location>,
+    visited: BitVector,
+}
 
 impl<'tcx> RegionInferenceContext<'tcx> {
+    /// Creates dfs storage for use by dfs; this should be shared
+    /// across as many calls to dfs as possible to amortize allocation
+    /// costs.
+    pub(super) fn new_dfs_storage(&self) -> DfsStorage {
+        let num_elements = self.elements.num_elements();
+        DfsStorage {
+            stack: vec![],
+            visited: BitVector::new(num_elements),
+        }
+    }
+
     /// Function used to satisfy or test a `R1: R2 @ P`
     /// constraint. The core idea is that it performs a DFS starting
     /// from `P`. The precise actions *during* that DFS depend on the
@@ -35,17 +52,20 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// - `Err(early)` if the walk was existed early by `op`. `earlyelem` is the
     ///   value that `op` returned.
     #[inline(never)] // ensure dfs is identifiable in profiles
-    pub(super) fn dfs<C>(&self, mir: &Mir<'tcx>, mut op: C) -> Result<bool, C::Early>
+    pub(super) fn dfs<C>(
+        &self,
+        mir: &Mir<'tcx>,
+        dfs: &mut DfsStorage,
+        mut op: C,
+    ) -> Result<bool, C::Early>
     where
         C: DfsOp,
     {
         let mut changed = false;
 
-        let mut stack = vec![];
-        let mut visited = FxHashSet();
-
-        stack.push(op.start_point());
-        while let Some(p) = stack.pop() {
+        dfs.visited.clear();
+        dfs.stack.push(op.start_point());
+        while let Some(p) = dfs.stack.pop() {
             let point_index = self.elements.index(p);
 
             if !op.source_region_contains(point_index) {
@@ -53,7 +73,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 continue;
             }
 
-            if !visited.insert(p) {
+            if !dfs.visited.insert(point_index.index()) {
                 debug!("            already visited");
                 continue;
             }
@@ -63,25 +83,27 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             let block_data = &mir[p.block];
 
-            let start_stack_len = stack.len();
+            let start_stack_len = dfs.stack.len();
 
             if p.statement_index < block_data.statements.len() {
-                stack.push(Location {
+                dfs.stack.push(Location {
                     statement_index: p.statement_index + 1,
                     ..p
                 });
             } else {
-                stack.extend(block_data.terminator().successors().iter().map(
-                    |&basic_block| {
-                        Location {
+                dfs.stack.extend(
+                    block_data
+                        .terminator()
+                        .successors()
+                        .iter()
+                        .map(|&basic_block| Location {
                             statement_index: 0,
                             block: basic_block,
-                        }
-                    },
-                ));
+                        }),
+                );
             }
 
-            if stack.len() == start_stack_len {
+            if dfs.stack.len() == start_stack_len {
                 // If we reach the END point in the graph, then copy
                 // over any skolemized end points in the `from_region`
                 // and make sure they are included in the `to_region`.
@@ -230,9 +252,8 @@ impl<'v, 'tcx> DfsOp for TestTargetOutlivesSource<'v, 'tcx> {
             // `X: ur_in_source`, OK.
             if self.inferred_values
                 .universal_regions_outlived_by(self.target_region)
-                .any(|ur_in_target| {
-                    self.universal_regions.outlives(ur_in_target, ur_in_source)
-                }) {
+                .any(|ur_in_target| self.universal_regions.outlives(ur_in_target, ur_in_source))
+            {
                 continue;
             }
 
