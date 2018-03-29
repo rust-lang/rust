@@ -1122,7 +1122,10 @@ impl ExitCode {
 
 impl Child {
     /// Forces the child process to exit.  If the child has already exited, an [`InvalidInput`]
-    /// error might be returned.
+    /// error is returned.
+    ///
+    /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function,
+    /// especially the [`Other`] kind might change to more specific kinds in the future.
     ///
     /// This is equivalent to sending a SIGKILL on Unix platforms.
     ///
@@ -1141,7 +1144,9 @@ impl Child {
     /// }
     /// ```
     ///
+    /// [`ErrorKind`]: ../io/enum.ErrorKind.html
     /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
+    /// [`Other]: ../io/enum.ErrorKind.html#variant.Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
