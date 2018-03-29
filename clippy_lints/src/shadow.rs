@@ -20,9 +20,9 @@ use utils::{contains_name, higher, in_external_macro, iter_input_pats, snippet, 
 /// ```rust
 /// let x = &x;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SHADOW_SAME,
-    Allow,
+    restriction,
     "rebinding a name to itself, e.g. `let mut x = &mut x`"
 }
 
@@ -41,9 +41,9 @@ declare_lint! {
 /// ```rust
 /// let x = x + 1;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SHADOW_REUSE,
-    Allow,
+    restriction,
     "rebinding a name to an expression that re-uses the original value, e.g. \
      `let x = x + 1`"
 }
@@ -64,9 +64,9 @@ declare_lint! {
 /// ```rust
 /// let x = y; let x = z; // shadows the earlier binding
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SHADOW_UNRELATED,
-    Allow,
+    restriction,
     "rebinding a name without even using the original value"
 }
 

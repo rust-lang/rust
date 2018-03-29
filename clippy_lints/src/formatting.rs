@@ -15,9 +15,9 @@ use syntax::ptr::P;
 /// ```rust,ignore
 /// a =- 42; // confusing, should it be `a -= 42` or `a = -42`?
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SUSPICIOUS_ASSIGNMENT_FORMATTING,
-    Warn,
+    style,
     "suspicious formatting of `*=`, `-=` or `!=`"
 }
 
@@ -41,9 +41,9 @@ declare_lint! {
 /// if bar { // this is the `else` block of the previous `if`, but should it be?
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SUSPICIOUS_ELSE_FORMATTING,
-    Warn,
+    style,
     "suspicious formatting of `else if`"
 }
 
@@ -61,9 +61,9 @@ declare_lint! {
 ///     -4, -5, -6
 /// ];
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub POSSIBLE_MISSING_COMMA,
-    Warn,
+    correctness,
     "possible missing comma in array"
 }
 

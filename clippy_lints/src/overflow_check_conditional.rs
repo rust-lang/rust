@@ -13,9 +13,9 @@ use utils::span_lint;
 /// ```rust
 /// a + b < a
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OVERFLOW_CHECK_CONDITIONAL,
-    Warn,
+    complexity,
     "overflow checks inspired by C which are likely to panic"
 }
 

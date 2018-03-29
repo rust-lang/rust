@@ -16,9 +16,9 @@ use utils::{in_macro, span_lint};
 /// ```rust
 /// 0 / x; 0 * x; x & 0
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ERASING_OP,
-    Warn,
+    correctness,
     "using erasing operations, e.g. `x * 0` or `y & 0`"
 }
 

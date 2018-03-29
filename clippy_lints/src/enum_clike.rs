@@ -27,9 +27,9 @@ use rustc::mir::interpret::GlobalId;
 ///     Y = 0
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ENUM_CLIKE_UNPORTABLE_VARIANT,
-    Warn,
+    correctness,
     "C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"
 }
 

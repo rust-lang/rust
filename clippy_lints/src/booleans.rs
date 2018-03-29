@@ -20,9 +20,9 @@ use utils::{in_macro, snippet_opt, span_lint_and_then, SpanlessEq};
 /// if a && true  // should be: if a
 /// if !(a == b)  // should be: if a != b
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NONMINIMAL_BOOL,
-    Allow,
+    complexity,
     "boolean expressions that can be written more concisely"
 }
 
@@ -38,9 +38,9 @@ declare_lint! {
 /// if a && b || a { ... }
 /// ```
 /// The `b` is unnecessary, the expression is equivalent to `if a`.
-declare_lint! {
+declare_clippy_lint! {
     pub LOGIC_BUG,
-    Warn,
+    correctness,
     "boolean expressions that contain terminals which can be eliminated"
 }
 

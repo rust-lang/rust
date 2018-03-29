@@ -32,9 +32,9 @@ pub struct Pass {
 ///     println!("{}", *x);
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BOXED_LOCAL,
-    Warn,
+    perf,
     "using `Box<T>` where unnecessary"
 }
 

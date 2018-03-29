@@ -24,9 +24,9 @@ use utils::sugg::Sugg;
 /// ```rust
 /// if x { false } else { true }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_BOOL,
-    Warn,
+    complexity,
     "if-statements with plain booleans in the then- and else-clause, e.g. \
      `if p { true } else { false }`"
 }
@@ -42,9 +42,9 @@ declare_lint! {
 /// ```rust
 /// if x == true { }  // could be `if x { }`
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BOOL_COMPARISON,
-    Warn,
+    complexity,
     "comparing a variable to a boolean, e.g. `if x == true`"
 }
 

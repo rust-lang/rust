@@ -22,9 +22,9 @@ use utils::{match_type, paths, span_lint};
 /// ```rust
 /// let x = Mutex::new(&y);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MUTEX_ATOMIC,
-    Warn,
+    perf,
     "using a mutex where an atomic value could be used instead"
 }
 
@@ -42,9 +42,9 @@ declare_lint! {
 /// ```rust
 /// let x = Mutex::new(0usize);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MUTEX_INTEGER,
-    Allow,
+    nursery,
     "using a mutex for an integer type"
 }
 

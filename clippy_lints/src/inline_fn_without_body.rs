@@ -20,9 +20,9 @@ use utils::sugg::DiagnosticBuilderExt;
 ///     fn name(&self) -> &'static str;
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INLINE_FN_WITHOUT_BODY,
-    Warn,
+    correctness,
     "use of `#[inline]` on trait methods without bodies"
 }
 

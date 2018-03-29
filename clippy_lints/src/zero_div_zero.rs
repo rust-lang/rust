@@ -14,9 +14,9 @@ use utils::span_help_and_lint;
 /// ```rust
 /// 0.0f32 / 0.0
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ZERO_DIVIDED_BY_ZERO,
-    Warn,
+    complexity,
     "usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN"
 }
 

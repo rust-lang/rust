@@ -42,9 +42,9 @@ use utils::sugg::DiagnosticBuilderExt;
 /// ```
 ///
 /// You can also have `new()` call `Default::default()`.
-declare_lint! {
+declare_clippy_lint! {
     pub NEW_WITHOUT_DEFAULT,
-    Warn,
+    style,
     "`fn new() -> Self` method without `Default` implementation"
 }
 
@@ -72,9 +72,9 @@ declare_lint! {
 /// ```
 ///
 /// Just prepend `#[derive(Default)]` before the `struct` definition.
-declare_lint! {
+declare_clippy_lint! {
     pub NEW_WITHOUT_DEFAULT_DERIVE,
-    Warn,
+    style,
     "`fn new() -> Self` without `#[derive]`able `Default` implementation"
 }
 

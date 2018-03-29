@@ -56,6 +56,14 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 78 | |     };
    | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
 
+error: this boolean expression can be simplified
+   --> $DIR/matches.rs:117:11
+    |
+117 |     match test && test {
+    |           ^^^^^^^^^^^^ help: try: `test`
+    |
+    = note: `-D nonminimal-bool` implied by `-D warnings`
+
 error: you seem to be trying to match on a boolean expression
   --> $DIR/matches.rs:96:5
    |
@@ -461,5 +469,5 @@ error: use as_mut() instead
 329 | |     };
     | |_____^ help: try this: `mut_owned.as_mut()`
 
-error: aborting due to 37 previous errors
+error: aborting due to 38 previous errors
 

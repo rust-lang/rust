@@ -4,7 +4,7 @@ error: equal expressions as operands to `/`
 7 |     let nan = 0.0 / 0.0;
   |               ^^^^^^^^^
   |
-  = note: `-D eq-op` implied by `-D warnings`
+  = note: #[deny(eq_op)] on by default
 
 error: constant division of 0.0 with 0.0 will always result in NaN
  --> $DIR/zero_div_zero.rs:7:15

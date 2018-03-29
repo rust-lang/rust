@@ -17,9 +17,9 @@ use utils::{in_macro, implements_trait, is_copy, multispan_sugg, snippet, span_l
 /// ```rust
 /// x + 1 == x + 1
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EQ_OP,
-    Warn,
+    correctness,
     "equal operands on both sides of a comparison or bitwise combination (e.g. `x == x`)"
 }
 
@@ -35,9 +35,9 @@ declare_lint! {
 /// ```rust
 /// &x == y
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OP_REF,
-    Warn,
+    style,
     "taking a reference to satisfy the type constraints on `==`"
 }
 

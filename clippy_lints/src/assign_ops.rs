@@ -18,8 +18,9 @@ use utils::{higher, sugg};
 /// ```rust
 /// a += 1;
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub ASSIGN_OPS,
+    restriction,
     "any compound assignment operation"
 }
 
@@ -37,9 +38,9 @@ declare_restriction_lint! {
 /// ...
 /// a = a + b;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ASSIGN_OP_PATTERN,
-    Warn,
+    style,
     "assigning the result of an operation on a variable to that same variable"
 }
 
@@ -57,9 +58,9 @@ declare_lint! {
 /// ...
 /// a += a + b;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MISREFACTORED_ASSIGN_OP,
-    Warn,
+    complexity,
     "having a variable on both sides of an assign op"
 }
 

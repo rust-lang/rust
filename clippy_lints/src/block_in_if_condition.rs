@@ -15,9 +15,9 @@ use utils::*;
 /// ```rust
 /// if { true } ..
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BLOCK_IN_IF_CONDITION_EXPR,
-    Warn,
+    style,
     "braces that can be eliminated in conditions, e.g. `if { true } ...`"
 }
 
@@ -34,9 +34,9 @@ declare_lint! {
 /// // or
 /// if somefunc(|x| { x == 47 }) ..
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BLOCK_IN_IF_CONDITION_STMT,
-    Warn,
+    style,
     "complex blocks in conditions, e.g. `if { let x = true; x } ...`"
 }
 

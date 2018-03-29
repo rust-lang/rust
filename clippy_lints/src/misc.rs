@@ -31,9 +31,9 @@ use consts::{constant, Constant};
 /// ```rust
 /// fn foo(ref x: u8) -> bool { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TOPLEVEL_REF_ARG,
-    Warn,
+    style,
     "an entire binding declared as `ref`, in a function argument or a `let` statement"
 }
 
@@ -48,9 +48,9 @@ declare_lint! {
 /// ```rust
 /// x == NAN
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CMP_NAN,
-    Deny,
+    correctness,
     "comparisons to NAN, which will always return false, probably not intended"
 }
 
@@ -70,9 +70,9 @@ declare_lint! {
 /// y == 1.23f64
 /// y != x  // where both are floats
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FLOAT_CMP,
-    Warn,
+    correctness,
     "using `==` or `!=` on float values instead of comparing difference with an epsilon"
 }
 
@@ -89,9 +89,9 @@ declare_lint! {
 /// ```rust
 /// x.to_owned() == y
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CMP_OWNED,
-    Warn,
+    perf,
     "creating owned instances for comparing with others, e.g. `x == \"foo\".to_string()`"
 }
 
@@ -108,9 +108,9 @@ declare_lint! {
 /// ```rust
 /// x % 1
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MODULO_ONE,
-    Warn,
+    correctness,
     "taking a number modulo 1, which always returns 0"
 }
 
@@ -128,9 +128,9 @@ declare_lint! {
 ///     y @ _   => (), // easier written as `y`,
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub REDUNDANT_PATTERN,
-    Warn,
+    style,
     "using `name @ _` in a pattern"
 }
 
@@ -150,9 +150,9 @@ declare_lint! {
 /// let y = _x + 1; // Here we are using `_x`, even though it has a leading
 ///                 // underscore. We should rename `_x` to `x`
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USED_UNDERSCORE_BINDING,
-    Allow,
+    pedantic,
     "using a binding which is prefixed with an underscore"
 }
 
@@ -170,9 +170,9 @@ declare_lint! {
 /// ```rust
 /// f() && g();  // We should write `if f() { g(); }`.
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SHORT_CIRCUIT_STATEMENT,
-    Warn,
+    complexity,
     "using a short circuit boolean condition as a statement"
 }
 
@@ -188,9 +188,9 @@ declare_lint! {
 /// ```rust
 /// 0 as *const u32
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ZERO_PTR,
-    Warn,
+    style,
     "using 0 as *{const, mut} T"
 }
 
@@ -210,8 +210,9 @@ declare_lint! {
 /// const ONE == 1.00f64
 /// x == ONE  // where both are floats
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub FLOAT_CMP_CONST,
+    restriction,
     "using `==` or `!=` on float constants instead of comparing difference with an epsilon"
 }
 

@@ -44,9 +44,9 @@ pub struct TypePass;
 ///     values: Vec<Foo>,
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BOX_VEC,
-    Warn,
+    perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
 }
 
@@ -64,9 +64,9 @@ declare_lint! {
 /// fn x() -> Option<Option<u32>> {
 ///     None
 /// }
-declare_lint! {
+declare_clippy_lint! {
     pub OPTION_OPTION,
-    Warn,
+    complexity,
     "usage of `Option<Option<T>>`"
 }
 
@@ -99,9 +99,9 @@ declare_lint! {
 /// ```rust
 /// let x = LinkedList::new();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LINKEDLIST,
-    Warn,
+    pedantic,
     "usage of LinkedList, usually a vector is faster, or a more specialized data \
      structure like a VecDeque"
 }
@@ -123,9 +123,9 @@ declare_lint! {
 /// ```rust
 /// fn foo(bar: &T) { ... }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BORROWED_BOX,
-    Warn,
+    complexity,
     "a borrow of a boxed type"
 }
 
@@ -353,9 +353,9 @@ pub struct LetPass;
 /// ```rust
 /// let x = { 1; };
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LET_UNIT_VALUE,
-    Warn,
+    style,
     "creating a let binding to a value of unit type, which usually can't be used afterwards"
 }
 
@@ -409,9 +409,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetPass {
 /// ```rust
 /// { foo(); bar(); baz(); }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNIT_CMP,
-    Warn,
+    correctness,
     "comparing unit values"
 }
 
@@ -464,9 +464,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
 ///   baz(a);
 /// })
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNIT_ARG,
-    Warn,
+    complexity,
     "passing unit to a function"
 }
 
@@ -563,9 +563,9 @@ pub struct CastPass;
 /// ```rust
 /// let x = u64::MAX; x as f64
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CAST_PRECISION_LOSS,
-    Allow,
+    pedantic,
     "casts that cause loss of precision, e.g. `x as f32` where `x: u64`"
 }
 
@@ -584,9 +584,9 @@ declare_lint! {
 /// let y: i8 = -1;
 /// y as u128  // will return 18446744073709551615
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CAST_SIGN_LOSS,
-    Allow,
+    pedantic,
     "casts from signed types to unsigned types, e.g. `x as u32` where `x: i32`"
 }
 
@@ -604,9 +604,9 @@ declare_lint! {
 /// ```rust
 /// fn as_u8(x: u64) -> u8 { x as u8 }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CAST_POSSIBLE_TRUNCATION,
-    Allow,
+    pedantic,
     "casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, \
      or `x as i32` where `x: f32`"
 }
@@ -628,9 +628,9 @@ declare_lint! {
 /// ```rust
 /// u32::MAX as i32  // will yield a value of `-1`
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CAST_POSSIBLE_WRAP,
-    Allow,
+    pedantic,
     "casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` \
      and `x > i32::MAX`"
 }
@@ -657,9 +657,9 @@ declare_lint! {
 /// ```rust
 /// fn as_u64(x: u8) -> u64 { u64::from(x) }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CAST_LOSSLESS,
-    Warn,
+    complexity,
     "casts using `as` that are known to be lossless, e.g. `x as u64` where `x: u8`"
 }
 
@@ -673,9 +673,9 @@ declare_lint! {
 /// ```rust
 /// let _ = 2i32 as i32
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNNECESSARY_CAST,
-    Warn,
+    complexity,
     "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
@@ -971,9 +971,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
 /// ```rust
 /// struct Foo { inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>> }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TYPE_COMPLEXITY,
-    Warn,
+    complexity,
     "usage of very complex types that might be better factored into `type` definitions"
 }
 
@@ -1143,9 +1143,9 @@ impl<'tcx> Visitor<'tcx> for TypeComplexityVisitor {
 /// ```rust
 /// b'x'
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CHAR_LIT_AS_U8,
-    Warn,
+    complexity,
     "casting a character literal to u8"
 }
 
@@ -1198,9 +1198,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
 /// vec.len() <= 0
 /// 100 > std::i32::MAX
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ABSURD_EXTREME_COMPARISONS,
-    Warn,
+    correctness,
     "a comparison with a maximum or minimum value that is always true or false"
 }
 
@@ -1374,9 +1374,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 /// ```rust
 /// let x : u8 = ...; (x as u32) > 300
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INVALID_UPCAST_COMPARISONS,
-    Allow,
+    pedantic,
     "a comparison involving an upcast which is always true or false"
 }
 
@@ -1599,9 +1599,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidUpcastComparisons {
 ///
 /// pub foo(map: &mut HashMap<i32, i32>) { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IMPLICIT_HASHER,
-    Warn,
+    style,
     "missing generalization over different hashers"
 }
 

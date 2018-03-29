@@ -31,9 +31,9 @@ pub struct Pass;
 /// ```rust
 /// x.unwrap()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OPTION_UNWRAP_USED,
-    Allow,
+    restriction,
     "using `Option.unwrap()`, which should at least get a better message using `expect()`"
 }
 
@@ -53,9 +53,9 @@ declare_lint! {
 /// ```rust
 /// x.unwrap()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub RESULT_UNWRAP_USED,
-    Allow,
+    restriction,
     "using `Result.unwrap()`, which might be better handled"
 }
 
@@ -79,9 +79,9 @@ declare_lint! {
 ///    fn add(&self, other: &X) -> X { .. }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SHOULD_IMPLEMENT_TRAIT,
-    Warn,
+    style,
     "defining a method that should be implementing a std trait"
 }
 
@@ -108,9 +108,9 @@ declare_lint! {
 ///     fn as_str(self) -> &str { .. }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub WRONG_SELF_CONVENTION,
-    Warn,
+    style,
     "defining a method named with an established prefix (like \"into_\") that takes \
      `self` with the wrong convention"
 }
@@ -130,9 +130,9 @@ declare_lint! {
 ///     pub fn as_str(self) -> &str { .. }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub WRONG_PUB_SELF_CONVENTION,
-    Allow,
+    restriction,
     "defining a public method named with an established prefix (like \"into_\") that takes \
      `self` with the wrong convention"
 }
@@ -142,15 +142,15 @@ declare_lint! {
 /// **Why is this bad?** Because you usually call `expect()` on the `Result`
 /// directly to get a better error message.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The error type needs to implement `Debug`
 ///
 /// **Example:**
 /// ```rust
 /// x.ok().expect("why did I do this again?")
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OK_EXPECT,
-    Warn,
+    style,
     "using `ok().expect()`, which gives worse error messages than \
      calling `expect` directly on the Result"
 }
@@ -160,15 +160,15 @@ declare_lint! {
 /// **Why is this bad?** Readability, this can be written more concisely as
 /// `_.map_or(_, _)`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The order of the arguments is not in execution order
 ///
 /// **Example:**
 /// ```rust
 /// x.map(|a| a + 1).unwrap_or(0)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OPTION_MAP_UNWRAP_OR,
-    Allow,
+    pedantic,
     "using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as \
      `map_or(a, f)`"
 }
@@ -178,15 +178,15 @@ declare_lint! {
 /// **Why is this bad?** Readability, this can be written more concisely as
 /// `_.map_or_else(_, _)`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The order of the arguments is not in execution order.
 ///
 /// **Example:**
 /// ```rust
 /// x.map(|a| a + 1).unwrap_or_else(some_function)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OPTION_MAP_UNWRAP_OR_ELSE,
-    Allow,
+    pedantic,
     "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
      `map_or_else(g, f)`"
 }
@@ -202,9 +202,9 @@ declare_lint! {
 /// ```rust
 /// x.map(|a| a + 1).unwrap_or_else(some_function)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub RESULT_MAP_UNWRAP_OR_ELSE,
-    Allow,
+    pedantic,
     "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
      `.ok().map_or_else(g, f)`"
 }
@@ -214,15 +214,15 @@ declare_lint! {
 /// **Why is this bad?** Readability, this can be written more concisely as
 /// `_.and_then(_)`.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The order of the arguments is not in execution order.
 ///
 /// **Example:**
 /// ```rust
 /// opt.map_or(None, |a| a + 1)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OPTION_MAP_OR_NONE,
-    Warn,
+    style,
     "using `Option.map_or(None, f)`, which is more succinctly expressed as \
      `and_then(f)`"
 }
@@ -238,9 +238,9 @@ declare_lint! {
 /// ```rust
 /// iter.filter(|x| x == 0).next()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FILTER_NEXT,
-    Warn,
+    complexity,
     "using `filter(p).next()`, which is more succinctly expressed as `.find(p)`"
 }
 
@@ -257,9 +257,9 @@ declare_lint! {
 /// ```rust
 /// iter.filter(|x| x == 0).map(|x| x * 2)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FILTER_MAP,
-    Allow,
+    pedantic,
     "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can \
      usually be written as a single method call"
 }
@@ -276,9 +276,9 @@ declare_lint! {
 /// ```rust
 /// iter.find(|x| x == 0).is_some()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SEARCH_IS_SOME,
-    Warn,
+    complexity,
     "using an iterator search followed by `is_some()`, which is more succinctly \
      expressed as a call to `any()`"
 }
@@ -295,9 +295,9 @@ declare_lint! {
 /// ```rust
 /// name.chars().next() == Some('_')
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CHARS_NEXT_CMP,
-    Warn,
+    complexity,
     "using `.chars().next()` to check if a string starts with a char"
 }
 
@@ -323,9 +323,9 @@ declare_lint! {
 /// ```rust
 /// foo.unwrap_or_default()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OR_FUN_CALL,
-    Warn,
+    perf,
     "using any `*or` method with a function call, which suggests `*or_else`"
 }
 
@@ -340,15 +340,15 @@ declare_lint! {
 /// ```rust
 /// 42u64.clone()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CLONE_ON_COPY,
-    Warn,
+    complexity,
     "using `clone` on a `Copy` type"
 }
 
 /// **What it does:** Checks for usage of `.clone()` on a ref-counted pointer,
-/// (Rc, Arc, rc::Weak, or sync::Weak), and suggests calling Clone on
-/// the corresponding trait instead.
+/// (`Rc`, `Arc`, `rc::Weak`, or `sync::Weak`), and suggests calling Clone via unified
+/// function syntax instead (e.g. `Rc::clone(foo)`).
 ///
 /// **Why is this bad?**: Calling '.clone()' on an Rc, Arc, or Weak
 /// can obscure the fact that only the pointer is being cloned, not the underlying
@@ -358,8 +358,9 @@ declare_lint! {
 /// ```rust
 /// x.clone()
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub CLONE_ON_REF_PTR,
+    restriction,
     "using 'clone' on a ref-counted pointer"
 }
 
@@ -379,9 +380,9 @@ declare_restriction_lint! {
 ///    println!("{:p} {:p}",*y, z); // prints out the same pointer
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CLONE_DOUBLE_REF,
-    Warn,
+    correctness,
     "using `clone` on `&&T`"
 }
 
@@ -399,9 +400,9 @@ declare_lint! {
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEW_RET_NO_SELF,
-    Warn,
+    style,
     "not returning `Self` in a `new` method"
 }
 
@@ -415,9 +416,9 @@ declare_lint! {
 ///
 /// **Example:**
 /// `_.split("x")` could be `_.split('x')
-declare_lint! {
+declare_clippy_lint! {
     pub SINGLE_CHAR_PATTERN,
-    Warn,
+    perf,
     "using a single-character str where a char could be used, e.g. \
      `_.split(\"x\")`"
 }
@@ -444,9 +445,9 @@ declare_lint! {
 ///     call_some_ffi_func(c_str.as_ptr());
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TEMPORARY_CSTRING_AS_PTR,
-    Warn,
+    correctness,
     "getting the inner pointer of a temporary `CString`"
 }
 
@@ -470,9 +471,9 @@ declare_lint! {
 /// let bad_vec = some_vec.get(3);
 /// let bad_slice = &some_vec[..].get(3);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ITER_NTH,
-    Warn,
+    perf,
     "using `.iter().nth()` on a standard library type with O(1) element access"
 }
 
@@ -494,9 +495,9 @@ declare_lint! {
 /// let bad_vec = some_vec.iter().nth(3);
 /// let bad_slice = &some_vec[..].iter().nth(3);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ITER_SKIP_NEXT,
-    Warn,
+    style,
     "using `.skip(x).next()` on an iterator"
 }
 
@@ -520,9 +521,9 @@ declare_lint! {
 /// let last = some_vec[3];
 /// some_vec[0] = 1;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub GET_UNWRAP,
-    Warn,
+    style,
     "using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead"
 }
 
@@ -549,9 +550,9 @@ declare_lint! {
 /// s.push_str(abc);
 /// s.push_str(&def));
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub STRING_EXTEND_CHARS,
-    Warn,
+    style,
     "using `x.extend(s.chars())` where s is a `&str` or `String`"
 }
 
@@ -572,9 +573,9 @@ declare_lint! {
 /// let s = [1,2,3,4,5];
 /// let s2 : Vec<isize> = s.to_vec();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ITER_CLONED_COLLECT,
-    Warn,
+    style,
     "using `.cloned().collect()` on slice to create a `Vec`"
 }
 
@@ -590,9 +591,9 @@ declare_lint! {
 /// ```rust
 /// name.chars().last() == Some('_') || name.chars().next_back() == Some('-')
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CHARS_LAST_CMP,
-    Warn,
+    style,
     "using `.chars().last()` or `.chars().next_back()` to check if a string ends with a char"
 }
 
@@ -613,9 +614,9 @@ declare_lint! {
 /// let x: &[i32] = &[1,2,3,4,5];
 /// do_stuff(x);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USELESS_ASREF,
-    Warn,
+    complexity,
     "using `as_ref` where the types before and after the call are the same"
 }
 
@@ -636,9 +637,9 @@ declare_lint! {
 /// ```rust
 /// let _ = (0..3).any(|x| x > 2);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNNECESSARY_FOLD,
-    Warn,
+    style,
     "using `fold` when a more succinct alternative exists"
 }
 

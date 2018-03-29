@@ -13,9 +13,9 @@ use utils::{get_trait_def_id, higher, implements_trait, match_qpath, paths, span
 /// ```rust
 /// repeat(1_u8).iter().collect::<Vec<_>>()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INFINITE_ITER,
-    Warn,
+    correctness,
     "infinite iteration"
 }
 
@@ -31,9 +31,9 @@ declare_lint! {
 /// ```rust
 /// [0..].iter().zip(infinite_iter.take_while(|x| x > 5))
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MAYBE_INFINITE_ITER,
-    Allow,
+    pedantic,
     "possible infinite iteration"
 }
 

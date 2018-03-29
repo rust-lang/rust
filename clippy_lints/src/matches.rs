@@ -25,9 +25,9 @@ use consts::{constant, Constant};
 ///     _ => ()
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SINGLE_MATCH,
-    Warn,
+    style,
     "a match statement with a single nontrivial arm (i.e. where the other arm \
      is `_ => {}`) instead of `if let`"
 }
@@ -46,9 +46,9 @@ declare_lint! {
 ///     _ => bar(other_ref),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SINGLE_MATCH_ELSE,
-    Allow,
+    pedantic,
     "a match statement with a two arms where the second arm's pattern is a wildcard \
      instead of `if let`"
 }
@@ -70,9 +70,9 @@ declare_lint! {
 ///     _ => frob(&x),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MATCH_REF_PATS,
-    Warn,
+    style,
     "a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression"
 }
 
@@ -91,9 +91,9 @@ declare_lint! {
 ///     false => bar(),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MATCH_BOOL,
-    Warn,
+    style,
     "a match on a boolean expression instead of an `if..else` block"
 }
 
@@ -113,9 +113,9 @@ declare_lint! {
 ///     _ => (),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MATCH_OVERLAPPING_ARM,
-    Warn,
+    style,
     "a match with overlapping arms"
 }
 
@@ -135,9 +135,9 @@ declare_lint! {
 ///     Err(_) => panic!("err"),
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MATCH_WILD_ERR_ARM,
-    Warn,
+    style,
     "a match with `Err(_)` arm and take drastic actions"
 }
 
@@ -156,9 +156,9 @@ declare_lint! {
 ///   Some(ref v) => Some(v),
 /// };
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MATCH_AS_REF,
-    Warn,
+    complexity,
     "a match on an Option value instead of using `as_ref()` or `as_mut`"
 }
 

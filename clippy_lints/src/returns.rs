@@ -17,9 +17,9 @@ use utils::{in_external_macro, in_macro, match_path_ast, snippet_opt, span_lint_
 /// ```rust
 /// fn foo(x: usize) { return x; }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_RETURN,
-    Warn,
+    style,
     "using a return statement like `return expr;` where an expression would suffice"
 }
 
@@ -35,9 +35,9 @@ declare_lint! {
 /// ```rust
 /// { let x = ..; x }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LET_AND_RETURN,
-    Warn,
+    style,
     "creating a let-binding and then immediately returning it like `let x = expr; x` at \
      the end of a block"
 }

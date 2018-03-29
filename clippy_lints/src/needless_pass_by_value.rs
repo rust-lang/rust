@@ -39,9 +39,9 @@ use std::borrow::Cow;
 ///     assert_eq!(v.len(), 42);
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_PASS_BY_VALUE,
-    Warn,
+    style,
     "functions taking arguments by value, but not consuming them in its body"
 }
 

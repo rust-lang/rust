@@ -42,9 +42,9 @@ use utils::ptr::get_spans;
 /// ```rust
 /// fn foo(&Vec<u32>) { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PTR_ARG,
-    Warn,
+    style,
     "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
      instead, respectively"
 }
@@ -61,9 +61,9 @@ declare_lint! {
 /// ```rust
 /// if x == ptr::null { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CMP_NULL,
-    Warn,
+    style,
     "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
 }
 
@@ -86,9 +86,9 @@ declare_lint! {
 /// ```rust
 /// fn foo(&Foo) -> &mut Bar { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MUT_FROM_REF,
-    Warn,
+    correctness,
     "fns that create mutable refs from immutable ref args"
 }
 

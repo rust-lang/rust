@@ -7,7 +7,16 @@
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are 208 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+[There are 248 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+
+We have a bunch of lint categories to allow you to choose how much clippy is supposed to ~~annoy~~ help you:
+
+* `clippy` (everything that has no false positives)
+* `clippy_pedantic` (everything)
+* `clippy_style` (code that should be written in a more idiomatic way)
+* `complexity` (code that does something simple but in a complex way)
+* `perf` (code that can be written in a faster way)
+* **`correctness`** (code that is just outright wrong or very very useless)
 
 More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
 

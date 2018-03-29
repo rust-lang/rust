@@ -38,9 +38,9 @@ use std::collections::HashMap;
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub LINT_AUTHOR,
-    Warn,
+    internal_warn,
     "helper for writing lints"
 }
 

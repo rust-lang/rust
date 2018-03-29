@@ -44,9 +44,9 @@ use utils::{snippet, span_lint_and_then};
 ///     None
 /// };
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USELESS_LET_IF_SEQ,
-    Warn,
+    style,
     "unidiomatic `let mut` declaration followed by initialization in `if`"
 }
 

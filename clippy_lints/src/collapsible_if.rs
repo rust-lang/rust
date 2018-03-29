@@ -62,9 +62,9 @@ use utils::sugg::Sugg;
 ///     …
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub COLLAPSIBLE_IF,
-    Warn,
+    style,
     "`if`s that can be collapsed (e.g. `if x { if y { ... } }` and `else { if x { ... } }`)"
 }
 

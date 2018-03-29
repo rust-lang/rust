@@ -20,9 +20,9 @@ use utils::{match_def_path, span_lint_and_sugg};
 /// ```rust
 /// static FOO: AtomicIsize = AtomicIsize::new(0);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub REPLACE_CONSTS,
-    Allow,
+    pedantic,
     "Lint usages of standard library `const`s that could be replaced by `const fn`s"
 }
 

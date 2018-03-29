@@ -141,7 +141,7 @@ error: <-comparison of unit values detected. This will always be false
 31 |     () < {};
    |     ^^^^^^^
    |
-   = note: `-D unit-cmp` implied by `-D warnings`
+   = note: #[deny(unit_cmp)] on by default
 
 error: aborting due to 18 previous errors
 

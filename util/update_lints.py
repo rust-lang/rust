@@ -8,22 +8,16 @@ import os
 import re
 import sys
 
-declare_lint_re = re.compile(r'''
-    declare_lint! \s* [{(] \s*
-    pub \s+ (?P<name>[A-Z_][A-Z_0-9]*) \s*,\s*
-    (?P<level>Forbid|Deny|Warn|Allow) \s*,\s*
-    " (?P<desc>(?:[^"\\]+|\\.)*) " \s* [})]
-''', re.VERBOSE | re.DOTALL)
-
 declare_deprecated_lint_re = re.compile(r'''
     declare_deprecated_lint! \s* [{(] \s*
     pub \s+ (?P<name>[A-Z_][A-Z_0-9]*) \s*,\s*
     " (?P<desc>(?:[^"\\]+|\\.)*) " \s* [})]
 ''', re.VERBOSE | re.DOTALL)
 
-declare_restriction_lint_re = re.compile(r'''
-    declare_restriction_lint! \s* [{(] \s*
+declare_clippy_lint_re = re.compile(r'''
+    declare_clippy_lint! \s* [{(] \s*
     pub \s+ (?P<name>[A-Z_][A-Z_0-9]*) \s*,\s*
+    (?P<cat>[a-z_]+) \s*,\s*
     " (?P<desc>(?:[^"\\]+|\\.)*) " \s* [})]
 ''', re.VERBOSE | re.DOTALL)
 
@@ -32,20 +26,13 @@ nl_escape_re = re.compile(r'\\\n\s*')
 docs_link = 'https://rust-lang-nursery.github.io/rust-clippy/master/index.html'
 
 
-def collect(lints, deprecated_lints, restriction_lints, fn):
+def collect(deprecated_lints, clippy_lints, fn):
     """Collect all lints from a file.
 
     Adds entries to the lints list as `(module, name, level, desc)`.
     """
     with open(fn) as fp:
         code = fp.read()
-    for match in declare_lint_re.finditer(code):
-        # remove \-newline escapes from description string
-        desc = nl_escape_re.sub('', match.group('desc'))
-        lints.append((os.path.splitext(os.path.basename(fn))[0],
-                      match.group('name').lower(),
-                      match.group('level').lower(),
-                      desc.replace('\\"', '"')))
 
     for match in declare_deprecated_lint_re.finditer(code):
         # remove \-newline escapes from description string
@@ -53,11 +40,12 @@ def collect(lints, deprecated_lints, restriction_lints, fn):
         deprecated_lints.append((os.path.splitext(os.path.basename(fn))[0],
                                 match.group('name').lower(),
                                 desc.replace('\\"', '"')))
-
-    for match in declare_restriction_lint_re.finditer(code):
+    
+    for match in declare_clippy_lint_re.finditer(code):
         # remove \-newline escapes from description string
         desc = nl_escape_re.sub('', match.group('desc'))
-        restriction_lints.append((os.path.splitext(os.path.basename(fn))[0],
+        cat = match.group('cat')
+        clippy_lints[cat].append((os.path.splitext(os.path.basename(fn))[0],
                                   match.group('name').lower(),
                                   "allow",
                                   desc.replace('\\"', '"')))
@@ -100,6 +88,8 @@ def replace_region(fn, region_start, region_end, callback,
     with open(fn) as fp:
         lines = list(fp)
 
+    found = False
+
     # replace old region with new region
     new_lines = []
     in_old_region = False
@@ -114,8 +104,12 @@ def replace_region(fn, region_start, region_end, callback,
                 new_lines.append(line)
             # old region starts here
             in_old_region = True
+            found = True
         else:
             new_lines.append(line)
+
+    if not found:
+        print "regex " + region_start + " not found"
 
     # write back to file
     if write_back:
@@ -127,9 +121,16 @@ def replace_region(fn, region_start, region_end, callback,
 
 
 def main(print_only=False, check=False):
-    lints = []
     deprecated_lints = []
-    restriction_lints = []
+    clippy_lints = {
+        "correctness": [],
+        "style": [],
+        "complexity": [],
+        "perf": [],
+        "restriction": [],
+        "pedantic": [],
+        "nursery": [],
+    }
 
     # check directory
     if not os.path.isfile('clippy_lints/src/lib.rs'):
@@ -139,7 +140,7 @@ def main(print_only=False, check=False):
     # collect all lints from source files
     for fn in os.listdir('clippy_lints/src'):
         if fn.endswith('.rs'):
-            collect(lints, deprecated_lints, restriction_lints,
+            collect(deprecated_lints, clippy_lints,
                     os.path.join('clippy_lints', 'src', fn))
 
     # determine version
@@ -152,16 +153,29 @@ def main(print_only=False, check=False):
             print('Error: version not found in Cargo.toml!')
             return
 
+    all_lints = []
+    clippy_lint_groups = [
+        "correctness",
+        "style",
+        "complexity",
+        "perf",
+    ]
+    clippy_lint_list = []
+    for x in clippy_lint_groups:
+        clippy_lint_list += clippy_lints[x]
+    for _, value in clippy_lints.iteritems():
+        all_lints += value
+
     if print_only:
-        sys.stdout.writelines(gen_table(lints + restriction_lints))
+        sys.stdout.writelines(gen_table(all_lints))
         return
 
     # update the lint counter in README.md
     changed = replace_region(
         'README.md',
-        r'^\[There are \d+ lints included in this crate\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)$', "",
-        lambda: ['[There are %d lints included in this crate](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)\n' %
-                 (len(lints) + len(restriction_lints))],
+        r'^\[There are \d+ lints included in this crate!\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)$', "",
+        lambda: ['[There are %d lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)\n' %
+                 (len(all_lints))],
         write_back=not check)
 
     # update the links in the CHANGELOG
@@ -170,7 +184,7 @@ def main(print_only=False, check=False):
         "<!-- begin autogenerated links to wiki -->",
         "<!-- end autogenerated links to wiki -->",
         lambda: ["[`{0}`]: {1}#{0}\n".format(l[1], docs_link) for l in
-                 sorted(lints + restriction_lints + deprecated_lints,
+                 sorted(all_lints + deprecated_lints,
                         key=lambda l: l[1])],
         replace_start=False, write_back=not check)
 
@@ -190,14 +204,21 @@ def main(print_only=False, check=False):
     # update the `pub mod` list
     changed |= replace_region(
         'clippy_lints/src/lib.rs', r'begin lints modules', r'end lints modules',
-        lambda: gen_mods(lints + restriction_lints),
+        lambda: gen_mods(all_lints),
         replace_start=False, write_back=not check)
 
-    # same for "clippy" lint collection
+    # same for "clippy_*" lint collections
     changed |= replace_region(
         'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
-        lambda: gen_group(lints, levels=('warn', 'deny')),
+        lambda: gen_group(clippy_lint_list),
         replace_start=False, write_back=not check)
+
+    for key, value in clippy_lints.iteritems():
+        # same for "clippy_*" lint collections
+        changed |= replace_region(
+            'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy_' + key + r'"', r'\]\);',
+            lambda: gen_group(value),
+            replace_start=False, write_back=not check)
 
     # same for "deprecated" lint collection
     changed |= replace_region(
@@ -205,18 +226,6 @@ def main(print_only=False, check=False):
         lambda: gen_deprecated(deprecated_lints),
         replace_start=False,
         write_back=not check)
-
-    # same for "clippy_pedantic" lint collection
-    changed |= replace_region(
-        'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy_pedantic"', r'\]\);',
-        lambda: gen_group(lints, levels=('allow',)),
-        replace_start=False, write_back=not check)
-
-    # same for "clippy_restrictions" lint collection
-    changed |= replace_region(
-        'clippy_lints/src/lib.rs', r'reg.register_lint_group\("clippy_restrictions"',
-        r'\]\);', lambda: gen_group(restriction_lints),
-        replace_start=False, write_back=not check)
 
     if check and changed:
         print('Please run util/update_lints.py to regenerate lints lists.')

@@ -8,7 +8,8 @@ use utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint
 /// `let`!).
 ///
 /// **Why is this bad?** It's not really bad, but some people think that the
-/// `.push_str(_)` method is more readable.
+/// `.push_str(_)` method is more readable. Also creates a new heap allocation and throws
+/// away the old one.
 ///
 /// **Known problems:** None.
 ///
@@ -18,9 +19,9 @@ use utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint
 /// let mut x = "Hello".to_owned();
 /// x = x + ", World";
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub STRING_ADD_ASSIGN,
-    Allow,
+    pedantic,
     "using `x = x + ..` where x is a `String` instead of `push_str()`"
 }
 
@@ -46,9 +47,9 @@ declare_lint! {
 /// let x = "Hello".to_owned();
 /// x + ", World"
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub STRING_ADD,
-    Allow,
+    restriction,
     "using `x + ..` where x is a `String` instead of `push_str()`"
 }
 
@@ -64,9 +65,9 @@ declare_lint! {
 /// ```rust
 /// let bs = "a byte string".as_bytes();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub STRING_LIT_AS_BYTES,
-    Warn,
+    style,
     "calling `as_bytes` on a string literal instead of using a byte string literal"
 }
 

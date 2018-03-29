@@ -26,9 +26,9 @@ use utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub IF_LET_SOME_RESULT,
-    Warn,
+    style,
     "usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead"
 }
 

@@ -16,9 +16,9 @@ use utils::span_lint_and_then;
 /// ```rust
 /// enum Test {}
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EMPTY_ENUM,
-    Allow,
+    pedantic,
     "enum with no variants"
 }
 

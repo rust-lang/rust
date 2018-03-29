@@ -15,9 +15,9 @@ use utils::span_lint;
 /// ```rust
 /// x * -1
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEG_MULTIPLY,
-    Warn,
+    style,
     "multiplying integers with -1"
 }
 

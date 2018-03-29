@@ -20,9 +20,9 @@ use utils::{in_macro, is_range_expression, match_var, span_lint_and_sugg};
 /// 
 /// let foo = Foo{ bar: bar }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub REDUNDANT_FIELD_NAMES,
-    Warn,
+    style,
     "checks for fields in struct literals where shorthands could be used"
 }
 

@@ -17,9 +17,9 @@ use utils::{constants, in_external_macro, snippet, snippet_opt, span_help_and_li
 /// ```rust
 /// let { a: _, b: ref b, c: _ } = ..
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNNEEDED_FIELD_PATTERN,
-    Warn,
+    style,
     "struct fields bound to a wildcard instead of using `..`"
 }
 
@@ -34,9 +34,9 @@ declare_lint! {
 /// ```rust
 /// fn foo(a: i32, _a: i32) {}
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DUPLICATE_UNDERSCORE_ARGUMENT,
-    Warn,
+    style,
     "function arguments having names which only differ by an underscore"
 }
 
@@ -52,9 +52,9 @@ declare_lint! {
 /// ```rust
 /// (|| 42)()
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub REDUNDANT_CLOSURE_CALL,
-    Warn,
+    complexity,
     "throwaway closures called in the expression they are defined"
 }
 
@@ -69,9 +69,9 @@ declare_lint! {
 /// ```rust
 /// --x;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DOUBLE_NEG,
-    Warn,
+    style,
     "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
 }
 
@@ -86,9 +86,9 @@ declare_lint! {
 /// ```rust
 /// let y = 0x1a9BAcD;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MIXED_CASE_HEX_LITERALS,
-    Warn,
+    style,
     "hex literals whose letter digits are not consistently upper- or lowercased"
 }
 
@@ -103,9 +103,9 @@ declare_lint! {
 /// ```rust
 /// let y = 123832i32;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNSEPARATED_LITERAL_SUFFIX,
-    Allow,
+    pedantic,
     "literals whose suffix is not separated by an underscore"
 }
 
@@ -141,9 +141,9 @@ declare_lint! {
 /// ```
 ///
 /// prints `83` (as `83 == 0o123` while `123 == 0o173`).
-declare_lint! {
+declare_clippy_lint! {
     pub ZERO_PREFIXED_LITERAL,
-    Warn,
+    complexity,
     "integer literals starting with `0`"
 }
 
@@ -162,9 +162,9 @@ declare_lint! {
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub BUILTIN_TYPE_SHADOW,
-    Warn,
+    style,
     "shadowing a builtin type"
 }
 

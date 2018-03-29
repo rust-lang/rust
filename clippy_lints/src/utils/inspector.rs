@@ -24,9 +24,9 @@ use syntax::attr;
 /// visibility inherited from outer item
 /// extern crate dylib source: "/path/to/foo.so"
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DEEP_CODE_INSPECTION,
-    Warn,
+    internal_warn,
     "helper to dump info about code"
 }
 

@@ -14,8 +14,9 @@ use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass}
 /// foo((0))
 /// ((1, 2))
 /// ```
-declare_lint! {
-    pub DOUBLE_PARENS, Warn,
+declare_clippy_lint! {
+    pub DOUBLE_PARENS,
+    complexity,
     "Warn on unnecessary double parentheses"
 }
 

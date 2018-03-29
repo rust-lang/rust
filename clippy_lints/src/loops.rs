@@ -38,9 +38,9 @@ use utils::paths;
 ///     dst[i + 64] = src[i];
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MANUAL_MEMCPY,
-    Warn,
+    perf,
     "manually copying items between slices"
 }
 
@@ -58,9 +58,9 @@ declare_lint! {
 ///     println!("{}", vec[i]);
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_RANGE_LOOP,
-    Warn,
+    style,
     "for-looping over a range of indices where an iterator over items would do"
 }
 
@@ -77,9 +77,9 @@ declare_lint! {
 /// // with `y` a `Vec` or slice:
 /// for x in y.iter() { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EXPLICIT_ITER_LOOP,
-    Warn,
+    style,
     "for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do"
 }
 
@@ -95,9 +95,9 @@ declare_lint! {
 /// // with `y` a `Vec` or slice:
 /// for x in y.into_iter() { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EXPLICIT_INTO_ITER_LOOP,
-    Warn,
+    style,
     "for-looping over `_.into_iter()` when `_` would do"
 }
 
@@ -117,9 +117,9 @@ declare_lint! {
 /// ```rust
 /// for x in y.next() { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub ITER_NEXT_LOOP,
-    Warn,
+    correctness,
     "for-looping over `_.next()` which is probably not intended"
 }
 
@@ -139,9 +139,9 @@ declare_lint! {
 /// ```rust
 /// if let Some(x) = option { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FOR_LOOP_OVER_OPTION,
-    Warn,
+    correctness,
     "for-looping over an `Option`, which is more clearly expressed as an `if let`"
 }
 
@@ -161,9 +161,9 @@ declare_lint! {
 /// ```rust
 /// if let Ok(x) = result { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FOR_LOOP_OVER_RESULT,
-    Warn,
+    correctness,
     "for-looping over a `Result`, which is more clearly expressed as an `if let`"
 }
 
@@ -189,9 +189,9 @@ declare_lint! {
 ///     // .. do something with x
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub WHILE_LET_LOOP,
-    Warn,
+    complexity,
     "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
 }
 
@@ -207,9 +207,9 @@ declare_lint! {
 /// ```rust
 /// vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNUSED_COLLECT,
-    Warn,
+    perf,
     "`collect()`ing an iterator without using the result; this is usually better \
      written as a for loop"
 }
@@ -230,9 +230,9 @@ declare_lint! {
 /// ```rust
 /// for x in 5..10-5 { .. } // oops, stray `-`
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub REVERSE_RANGE_LOOP,
-    Warn,
+    correctness,
     "iteration over an empty range, such as `10..0` or `5..5`"
 }
 
@@ -250,9 +250,9 @@ declare_lint! {
 /// for i in 0..v.len() { foo(v[i]);
 /// for i in 0..v.len() { bar(i, v[i]); }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EXPLICIT_COUNTER_LOOP,
-    Warn,
+    complexity,
     "for-looping with an explicit counter when `_.enumerate()` would do"
 }
 
@@ -268,9 +268,9 @@ declare_lint! {
 /// ```rust
 /// loop {}
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EMPTY_LOOP,
-    Warn,
+    style,
     "empty `loop {}`, which should block or sleep"
 }
 
@@ -285,9 +285,9 @@ declare_lint! {
 /// ```rust
 /// while let Some(val) = iter() { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub WHILE_LET_ON_ITERATOR,
-    Warn,
+    style,
     "using a while-let loop instead of a for loop on an iterator"
 }
 
@@ -309,9 +309,9 @@ declare_lint! {
 /// ```rust
 /// for k in map.keys() { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FOR_KV_MAP,
-    Warn,
+    style,
     "looping on a map using `iter` when `keys` or `values` would do"
 }
 
@@ -327,17 +327,29 @@ declare_lint! {
 /// ```rust
 /// loop { ..; break; }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEVER_LOOP,
-    Warn,
+    correctness,
     "any loop that will always `break` or `return`"
 }
 
-/// TODO: add documentation
-
-declare_lint! {
+/// **What it does:** Checks for loops which have a range bound that is a mutable variable
+///
+/// **Why is this bad?** One might think that modifying the mutable variable changes the loop bounds
+///
+/// **Known problems:** None
+///
+/// **Example:**
+/// ```rust
+/// let mut foo = 42;
+/// for i in 0..foo {
+///     foo -= 1;
+///     println!("{}", i); // prints numbers from 0 to 42, not 0 to 21
+/// }
+/// ```
+declare_clippy_lint! {
     pub MUT_RANGE_BOUND,
-    Warn,
+    complexity,
     "for loop over a range where one of the bounds is a mutable variable"
 }
 
@@ -358,9 +370,9 @@ declare_lint! {
 ///    println!("let me loop forever!");
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub WHILE_IMMUTABLE_CONDITION,
-    Warn,
+    correctness,
     "variables used within while expression are not mutated in the body"
 }
 

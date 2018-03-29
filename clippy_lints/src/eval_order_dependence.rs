@@ -21,9 +21,9 @@ use utils::{get_parent_expr, span_lint, span_note_and_lint};
 /// let a = {x = 1; 1} + x;
 /// // Unclear whether a is 1 or 2.
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub EVAL_ORDER_DEPENDENCE,
-    Warn,
+    complexity,
     "whether a variable read occurs before a write depends on sub-expression evaluation order"
 }
 
@@ -43,9 +43,9 @@ declare_lint! {
 /// let x = (a, b, c, panic!());
 /// // can simply be replaced by `panic!()`
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DIVERGING_SUB_EXPRESSION,
-    Warn,
+    complexity,
     "whether an expression contains a diverging sub expression"
 }
 

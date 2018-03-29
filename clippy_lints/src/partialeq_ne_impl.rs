@@ -20,9 +20,9 @@ use utils::{is_automatically_derived, span_lint};
 ///    fn ne(&self, other: &Foo) -> bool { !(self == other) }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PARTIALEQ_NE_IMPL,
-    Warn,
+    complexity,
     "re-implementing `PartialEq::ne`"
 }
 

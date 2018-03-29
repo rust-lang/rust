@@ -18,9 +18,9 @@ use utils::{in_macro, snippet, span_lint_and_then};
 /// ```rust
 ///  const FOO: &[(&str, &str, fn(&Bar) -> bool)] = &[...]
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CONST_STATIC_LIFETIME,
-    Warn,
+    style,
     "Using explicit `'static` lifetime for constants when elision rules would allow omitting them."
 }
 

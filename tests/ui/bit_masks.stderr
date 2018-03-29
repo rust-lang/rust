@@ -12,7 +12,7 @@ error: this operation will always return zero. This is likely not the intended o
 12 |     x & 0 == 0;
    |     ^^^^^
    |
-   = note: `-D erasing-op` implied by `-D warnings`
+   = note: #[deny(erasing_op)] on by default
 
 error: incompatible bit mask: `_ & 2` can never be equal to `1`
   --> $DIR/bit_masks.rs:15:5

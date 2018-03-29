@@ -25,9 +25,9 @@ use utils::paths::*;
 /// ```rust
 /// option?;
 /// ```
-declare_lint!{
+declare_clippy_lint!{
     pub QUESTION_MARK,
-    Warn,
+    style,
     "checks for expressions that could be replaced by the question mark operator"
 }
 

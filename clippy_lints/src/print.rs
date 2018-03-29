@@ -8,7 +8,7 @@ use syntax_pos::Span;
 use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
 use utils::{opt_def_id, paths};
 
-/// **What it does:** This lint warns when you using `println!("")` to
+/// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
 ///
 /// **Why is this bad?** You should use `println!()`, which is simpler.
@@ -19,13 +19,13 @@ use utils::{opt_def_id, paths};
 /// ```rust
 /// println!("");
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINTLN_EMPTY_STRING,
-    Warn,
-    "using `print!()` with a format string that ends in a newline"
+    style,
+    "using `println!(\"\")` with an empty string"
 }
 
-/// **What it does:** This lint warns when you using `print!()` with a format
+/// **What it does:** This lint warns when you use `print!()` with a format
 /// string that
 /// ends in a newline.
 ///
@@ -38,9 +38,9 @@ declare_lint! {
 /// ```rust
 /// print!("Hello {}!\n", name);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINT_WITH_NEWLINE,
-    Warn,
+    style,
     "using `print!()` with a format string that ends in a newline"
 }
 
@@ -56,9 +56,9 @@ declare_lint! {
 /// ```rust
 /// println!("Hello world!");
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINT_STDOUT,
-    Allow,
+    restriction,
     "printing on stdout"
 }
 
@@ -72,9 +72,9 @@ declare_lint! {
 /// ```rust
 /// println!("{:?}", foo);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USE_DEBUG,
-    Allow,
+    restriction,
     "use of `Debug`-based formatting"
 }
 

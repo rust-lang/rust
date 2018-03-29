@@ -28,9 +28,9 @@ use utils::{match_qpath, paths, snippet, span_lint_and_then};
 /// if Some(42).is_some() {}
 /// ```
 ///
-declare_lint! {
+declare_clippy_lint! {
     pub IF_LET_REDUNDANT_PATTERN_MATCHING,
-    Warn,
+    style,
     "use the proper utility function avoiding an `if let`"
 }
 

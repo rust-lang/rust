@@ -22,9 +22,9 @@ pub struct EtaPass;
 /// ```
 /// where `foo(_)` is a plain function that takes the exact argument type of
 /// `x`.
-declare_lint! {
+declare_clippy_lint! {
     pub REDUNDANT_CLOSURE,
-    Warn,
+    style,
     "redundant closures, i.e. `|a| foo(a)` (which can be written as just `foo`)"
 }
 

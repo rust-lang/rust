@@ -32,8 +32,9 @@ use utils::{in_external_macro, span_lint_and_sugg};
 ///     // we don't care about zero
 /// }
 /// ```
-declare_restriction_lint! {
+declare_clippy_lint! {
     pub ELSE_IF_WITHOUT_ELSE,
+    restriction,
     "if expression with an `else if`, but without a final `else` branch"
 }
 

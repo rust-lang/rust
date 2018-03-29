@@ -62,7 +62,7 @@ error: using `clone` on a double-reference; this will copy the reference instead
 55 |     let z: &Vec<_> = y.clone();
    |                      ^^^^^^^^^
    |
-   = note: `-D clone-double-ref` implied by `-D warnings`
+   = note: #[deny(clone_double_ref)] on by default
 help: try dereferencing it
    |
 55 |     let z: &Vec<_> = &(*y).clone();

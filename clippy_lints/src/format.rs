@@ -21,9 +21,9 @@ use utils::{is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, sn
 /// format!("foo")
 /// format!("{}", foo)
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USELESS_FORMAT,
-    Warn,
+    complexity,
     "useless use of `format!`"
 }
 

@@ -22,9 +22,9 @@ use syntax::symbol::keywords;
 /// ```rust
 /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 { x }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NEEDLESS_LIFETIMES,
-    Warn,
+    complexity,
     "using explicit lifetimes for references in function arguments when elision rules \
      would allow omitting them"
 }
@@ -42,9 +42,9 @@ declare_lint! {
 /// ```rust
 /// fn unused_lifetime<'a>(x: u8) { .. }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub UNUSED_LIFETIMES,
-    Warn,
+    complexity,
     "unused lifetimes in function definitions"
 }
 

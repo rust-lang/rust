@@ -20,9 +20,9 @@ use utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};
 /// still locked
 /// operation_that_requires_mutex_to_be_unlocked();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DROP_REF,
-    Warn,
+    correctness,
     "calls to `std::mem::drop` with a reference instead of an owned value"
 }
 
@@ -41,9 +41,9 @@ declare_lint! {
 /// let x = Box::new(1);
 /// std::mem::forget(&x) // Should have been forget(x), x will still be dropped
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FORGET_REF,
-    Warn,
+    correctness,
     "calls to `std::mem::forget` with a reference instead of an owned value"
 }
 
@@ -62,9 +62,9 @@ declare_lint! {
 /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
 /// original unaffected
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub DROP_COPY,
-    Warn,
+    correctness,
     "calls to `std::mem::drop` with a value that implements Copy"
 }
 
@@ -89,9 +89,9 @@ declare_lint! {
 /// std::mem::forget(x) // A copy of x is passed to the function, leaving the
 /// original unaffected
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub FORGET_COPY,
-    Warn,
+    correctness,
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 

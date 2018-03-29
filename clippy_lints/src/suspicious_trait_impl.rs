@@ -21,9 +21,9 @@ use utils::{get_trait_def_id, span_lint};
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SUSPICIOUS_ARITHMETIC_IMPL,
-    Warn,
+    correctness,
     "suspicious use of operators in impl of arithmetic trait"
 }
 
@@ -42,9 +42,9 @@ declare_lint! {
 ///     }
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SUSPICIOUS_OP_ASSIGN_IMPL,
-    Warn,
+    correctness,
     "suspicious use of operators in impl of OpAssign trait"
 }
 

@@ -1,7 +1,7 @@
 
 
 
-#![warn(clippy, clippy_pedantic)]
+#![warn(clippy, clippy_pedantic, shadow_same, shadow_reuse, shadow_unrelated)]
 #![allow(unused_parens, unused_variables, missing_docs_in_private_items)]
 
 fn id<T>(x: T) -> T { x }

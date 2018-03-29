@@ -16,9 +16,9 @@ use utils::{higher, in_external_macro, span_lint};
 /// ```rust
 /// let x = &mut &mut y;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MUT_MUT,
-    Allow,
+    pedantic,
     "usage of double-mut refs, e.g. `&mut &mut ...`"
 }
 

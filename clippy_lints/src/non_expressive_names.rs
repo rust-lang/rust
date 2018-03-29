@@ -18,9 +18,9 @@ use utils::{in_macro, span_lint, span_lint_and_then};
 /// let checked_exp = something;
 /// let checked_expr = something_else;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub SIMILAR_NAMES,
-    Allow,
+    pedantic,
     "similarly named items and bindings"
 }
 
@@ -36,9 +36,9 @@ declare_lint! {
 /// ```rust
 /// let (a, b, c, d, e, f, g) = (...);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MANY_SINGLE_CHAR_NAMES,
-    Warn,
+    style,
     "too many single character bindings"
 }
 
@@ -56,9 +56,9 @@ declare_lint! {
 /// let ___1 = 1;
 /// let __1___2 = 11;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub JUST_UNDERSCORES_AND_DIGITS,
-    Warn,
+    style,
     "unclear name"
 }
 

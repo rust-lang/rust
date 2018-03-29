@@ -19,9 +19,9 @@ use utils::{opt_def_id, sugg};
 /// ```rust
 /// let ptr: *const T = core::intrinsics::transmute('x')`
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub WRONG_TRANSMUTE,
-    Warn,
+    correctness,
     "transmutes that are confusing at best, undefined behaviour at worst and always useless"
 }
 
@@ -37,9 +37,9 @@ declare_lint! {
 /// ```rust
 /// core::intrinsics::transmute(t) // where the result type is the same as `t`'s
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub USELESS_TRANSMUTE,
-    Warn,
+    complexity,
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
@@ -55,9 +55,9 @@ declare_lint! {
 /// core::intrinsics::transmute(t)` // where the result type is the same as
 /// `*t` or `&t`'s
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub CROSSPOINTER_TRANSMUTE,
-    Warn,
+    complexity,
     "transmutes that have to or from types that are a pointer to the other"
 }
 
@@ -73,9 +73,9 @@ declare_lint! {
 /// // can be written:
 /// let _: &T = &*p;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TRANSMUTE_PTR_TO_REF,
-    Warn,
+    complexity,
     "transmutes from a pointer to a reference type"
 }
 
@@ -100,9 +100,9 @@ declare_lint! {
 /// // should be:
 /// let _ = std::char::from_u32(x).unwrap();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TRANSMUTE_INT_TO_CHAR,
-    Warn,
+    complexity,
     "transmutes from an integer to a `char`"
 }
 
@@ -127,9 +127,9 @@ declare_lint! {
 /// // should be:
 /// let _ = std::str::from_utf8(b).unwrap();
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TRANSMUTE_BYTES_TO_STR,
-    Warn,
+    complexity,
     "transmutes from a `&[u8]` to a `&str`"
 }
 
@@ -145,9 +145,9 @@ declare_lint! {
 /// // should be:
 /// let _: bool = x != 0;
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TRANSMUTE_INT_TO_BOOL,
-    Warn,
+    complexity,
     "transmutes from an integer to a `bool`"
 }
 
@@ -163,9 +163,9 @@ declare_lint! {
 /// // should be:
 /// let _: f32 = f32::from_bits(x);
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TRANSMUTE_INT_TO_FLOAT,
-    Warn,
+    complexity,
     "transmutes from an integer to a float"
 }
 
@@ -180,9 +180,9 @@ declare_lint! {
 /// // u32 is 32-bit aligned; u8 is 8-bit aligned
 /// let _: u32 = unsafe { std::mem::transmute([0u8; 4]) };
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub MISALIGNED_TRANSMUTE,
-    Warn,
+    complexity,
     "transmutes to a potentially less-aligned type"
 }
 

@@ -20,9 +20,9 @@ use utils::{contains_name, get_pat_name, match_type, paths, single_segment_path,
 /// ```rust
 /// &my_data.filter(|&x| x == 0u8).count() // use bytecount::count instead
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub NAIVE_BYTECOUNT,
-    Warn,
+    perf,
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
 }
 

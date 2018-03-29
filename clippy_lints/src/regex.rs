@@ -19,9 +19,9 @@ use consts::{constant, Constant};
 /// ```rust
 /// Regex::new("|")
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub INVALID_REGEX,
-    Deny,
+    correctness,
     "invalid regular expressions"
 }
 
@@ -38,9 +38,9 @@ declare_lint! {
 /// ```rust
 /// Regex::new("^foobar")
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub TRIVIAL_REGEX,
-    Warn,
+    style,
     "trivial regular expressions"
 }
 
@@ -57,9 +57,9 @@ declare_lint! {
 /// ```rust
 /// regex!("foo|bar")
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub REGEX_MACRO,
-    Warn,
+    style,
     "use of `regex!(_)` instead of `Regex::new(_)`"
 }
 
