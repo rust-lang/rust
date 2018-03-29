@@ -681,7 +681,7 @@ impl MacroArgParser {
         self.buf.clear();
     }
 
-    fn add_meta_variable(&mut self, iter: &mut Cursor) {
+    fn add_meta_variable(&mut self, iter: &mut Cursor) -> Option<()> {
         match iter.next() {
             Some(TokenTree::Token(sp, Token::Ident(ref ident))) => {
                 self.result.push(ParsedMacroArg {
@@ -691,8 +691,9 @@ impl MacroArgParser {
 
                 self.buf.clear();
                 self.is_meta_var = false;
+                Some(())
             }
-            _ => unreachable!(),
+            _ => None,
         }
     }
 
@@ -710,7 +711,7 @@ impl MacroArgParser {
         delim: DelimToken,
         iter: &mut Cursor,
         span: Span,
-    ) {
+    ) -> Option<()> {
         let mut buffer = String::new();
         let mut first = false;
         let mut lo = span.lo();
@@ -734,7 +735,7 @@ impl MacroArgParser {
                     buffer.push_str(&pprust::token_to_string(t));
                     hi = sp.hi();
                 }
-                _ => unreachable!(),
+                _ => return None,
             }
         }
 
@@ -752,6 +753,7 @@ impl MacroArgParser {
             kind: MacroArgKind::Repeat(delim, inner, another, self.last_tok.clone()),
             span: mk_sp(self.lo, self.hi),
         });
+        Some(())
     }
 
     fn update_buffer(&mut self, lo: BytePos, t: &Token) {
@@ -796,7 +798,7 @@ impl MacroArgParser {
     }
 
     /// Returns a collection of parsed macro def's arguments.
-    pub fn parse(mut self, tokens: ThinTokenStream) -> Vec<ParsedMacroArg> {
+    pub fn parse(mut self, tokens: ThinTokenStream) -> Option<Vec<ParsedMacroArg>> {
         let mut iter = (tokens.into(): TokenStream).trees();
 
         while let Some(ref tok) = iter.next() {
@@ -813,7 +815,7 @@ impl MacroArgParser {
                     self.start_tok = Token::Dollar;
                 }
                 TokenTree::Token(_, Token::Colon) if self.is_meta_var => {
-                    self.add_meta_variable(&mut iter);
+                    self.add_meta_variable(&mut iter)?;
                 }
                 TokenTree::Token(sp, ref t) => self.update_buffer(sp.lo(), t),
                 TokenTree::Delimited(sp, delimited) => {
@@ -828,10 +830,10 @@ impl MacroArgParser {
                     // Parse the stuff inside delimiters.
                     let mut parser = MacroArgParser::new();
                     parser.lo = sp.lo();
-                    let delimited_arg = parser.parse(delimited.tts.clone());
+                    let delimited_arg = parser.parse(delimited.tts.clone())?;
 
                     if self.is_meta_var {
-                        self.add_repeat(delimited_arg, delimited.delim, &mut iter, *sp);
+                        self.add_repeat(delimited_arg, delimited.delim, &mut iter, *sp)?;
                     } else {
                         self.add_delimited(delimited_arg, delimited.delim, *sp);
                     }
@@ -847,7 +849,7 @@ impl MacroArgParser {
             self.add_other();
         }
 
-        self.result
+        Some(self.result)
     }
 }
 
@@ -909,7 +911,7 @@ fn format_macro_args(
     toks: ThinTokenStream,
     shape: Shape,
 ) -> Option<String> {
-    let parsed_args = MacroArgParser::new().parse(toks);
+    let parsed_args = MacroArgParser::new().parse(toks)?;
     wrap_macro_args(context, &parsed_args, shape)
 }
 
