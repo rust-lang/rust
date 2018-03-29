@@ -251,3 +251,13 @@ impl<'a> fmt::Display for Location<'a> {
         write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
     }
 }
+
+/// An internal trait used by libstd to pass data from libstd to `panic_unwind`
+/// and other panic runtimes. Not intended to be stabilized any time soon, do
+/// not use.
+#[unstable(feature = "std_internals", issue = "0")]
+#[doc(hidden)]
+pub unsafe trait BoxMeUp {
+    fn box_me_up(&mut self) -> *mut (Any + Send);
+    fn get(&self) -> &(Any + Send);
+}

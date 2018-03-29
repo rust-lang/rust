@@ -17,6 +17,8 @@
 //! * Executing a panic up to doing the actual implementation
 //! * Shims around "try"
 
+use core::panic::BoxMeUp;
+
 use io::prelude::*;
 
 use any::Any;
@@ -27,7 +29,7 @@ use intrinsics;
 use mem;
 use ptr;
 use raw;
-use sys::stdio::Stderr;
+use sys::stdio::{Stderr, stderr_prints_nothing};
 use sys_common::rwlock::RWLock;
 use sys_common::thread_info;
 use sys_common::util;
@@ -56,7 +58,7 @@ extern {
                                 data_ptr: *mut usize,
                                 vtable_ptr: *mut usize) -> u32;
     #[unwind(allowed)]
-    fn __rust_start_panic(data: usize, vtable: usize) -> u32;
+    fn __rust_start_panic(payload: usize) -> u32;
 }
 
 #[derive(Copy, Clone)]
@@ -163,6 +165,12 @@ fn default_hook(info: &PanicInfo) {
     #[cfg(feature = "backtrace")]
     use sys_common::backtrace;
 
+    // Some platforms know that printing to stderr won't ever actually print
+    // anything, and if that's the case we can skip everything below.
+    if stderr_prints_nothing() {
+        return
+    }
+
     // If this is a double panic, make sure that we print a backtrace
     // for this panic. Otherwise only print it if logging is enabled.
     #[cfg(feature = "backtrace")]
@@ -212,15 +220,15 @@ fn default_hook(info: &PanicInfo) {
 
     let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
     match (prev, err.as_mut()) {
-        (Some(mut stderr), _) => {
-            write(&mut *stderr);
-            let mut s = Some(stderr);
-            LOCAL_STDERR.with(|slot| {
-                *slot.borrow_mut() = s.take();
-            });
-        }
-        (None, Some(ref mut err)) => { write(err) }
-        _ => {}
+       (Some(mut stderr), _) => {
+           write(&mut *stderr);
+           let mut s = Some(stderr);
+           LOCAL_STDERR.with(|slot| {
+               *slot.borrow_mut() = s.take();
+           });
+       }
+       (None, Some(ref mut err)) => { write(err) }
+       _ => {}
     }
 }
 
@@ -344,7 +352,7 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments,
 
     let mut s = String::new();
     let _ = s.write_fmt(*msg);
-    rust_panic_with_hook(Box::new(s), Some(msg), file_line_col)
+    rust_panic_with_hook(&mut PanicPayload::new(s), Some(msg), file_line_col)
 }
 
 /// This is the entry point of panicking for panic!() and assert!().
@@ -360,7 +368,34 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
     // be performed in the parent of this thread instead of the thread that's
     // panicking.
 
-    rust_panic_with_hook(Box::new(msg), None, file_line_col)
+    rust_panic_with_hook(&mut PanicPayload::new(msg), None, file_line_col)
+}
+
+struct PanicPayload<A> {
+    inner: Option<A>,
+}
+
+impl<A: Send + 'static> PanicPayload<A> {
+    fn new(inner: A) -> PanicPayload<A> {
+        PanicPayload { inner: Some(inner) }
+    }
+}
+
+unsafe impl<A: Send + 'static> BoxMeUp for PanicPayload<A> {
+    fn box_me_up(&mut self) -> *mut (Any + Send) {
+        let data = match self.inner.take() {
+            Some(a) => Box::new(a) as Box<Any + Send>,
+            None => Box::new(()),
+        };
+        Box::into_raw(data)
+    }
+
+    fn get(&self) -> &(Any + Send) {
+        match self.inner {
+            Some(ref a) => a,
+            None => &(),
+        }
+    }
 }
 
 /// Executes the primary logic for a panic, including checking for recursive
@@ -369,9 +404,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
 /// This is the entry point or panics from libcore, formatted panics, and
 /// `Box<Any>` panics. Here we'll verify that we're not panicking recursively,
 /// run panic hooks, and then delegate to the actual implementation of panics.
-#[inline(never)]
-#[cold]
-fn rust_panic_with_hook(payload: Box<Any + Send>,
+fn rust_panic_with_hook(payload: &mut BoxMeUp,
                         message: Option<&fmt::Arguments>,
                         file_line_col: &(&'static str, u32, u32)) -> ! {
     let (file, line, col) = *file_line_col;
@@ -391,7 +424,7 @@ fn rust_panic_with_hook(payload: Box<Any + Send>,
 
     unsafe {
         let info = PanicInfo::internal_constructor(
-            &*payload,
+            payload.get(),
             message,
             Location::internal_constructor(file, line, col),
         );
@@ -419,16 +452,29 @@ fn rust_panic_with_hook(payload: Box<Any + Send>,
 /// Shim around rust_panic. Called by resume_unwind.
 pub fn update_count_then_panic(msg: Box<Any + Send>) -> ! {
     update_panic_count(1);
-    rust_panic(msg)
+
+    struct RewrapBox(Box<Any + Send>);
+
+    unsafe impl BoxMeUp for RewrapBox {
+        fn box_me_up(&mut self) -> *mut (Any + Send) {
+            Box::into_raw(mem::replace(&mut self.0, Box::new(())))
+        }
+
+        fn get(&self) -> &(Any + Send) {
+            &*self.0
+        }
+    }
+
+    rust_panic(&mut RewrapBox(msg))
 }
 
 /// A private no-mangle function on which to slap yer breakpoints.
 #[no_mangle]
 #[allow(private_no_mangle_fns)] // yes we get it, but we like breakpoints
-pub fn rust_panic(msg: Box<Any + Send>) -> ! {
+pub fn rust_panic(mut msg: &mut BoxMeUp) -> ! {
     let code = unsafe {
-        let obj = mem::transmute::<_, raw::TraitObject>(msg);
-        __rust_start_panic(obj.data as usize, obj.vtable as usize)
+        let obj = &mut msg as *mut &mut BoxMeUp;
+        __rust_start_panic(obj as usize)
     };
     rtabort!("failed to initiate panic, error {}", code)
 }

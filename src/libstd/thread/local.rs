@@ -172,12 +172,16 @@ macro_rules! __thread_local_inner {
                 &'static $crate::cell::UnsafeCell<
                     $crate::option::Option<$t>>>
             {
+                #[cfg(target_arch = "wasm32")]
+                static __KEY: $crate::thread::__StaticLocalKeyInner<$t> =
+                    $crate::thread::__StaticLocalKeyInner::new();
+
                 #[thread_local]
-                #[cfg(target_thread_local)]
+                #[cfg(all(target_thread_local, not(target_arch = "wasm32")))]
                 static __KEY: $crate::thread::__FastLocalKeyInner<$t> =
                     $crate::thread::__FastLocalKeyInner::new();
 
-                #[cfg(not(target_thread_local))]
+                #[cfg(all(not(target_thread_local), not(target_arch = "wasm32")))]
                 static __KEY: $crate::thread::__OsLocalKeyInner<$t> =
                     $crate::thread::__OsLocalKeyInner::new();
 
@@ -291,6 +295,39 @@ impl<T: 'static> LocalKey<T> {
                 Some(ref inner) => inner,
                 None => self.init(slot),
             }))
+        }
+    }
+}
+
+/// On some platforms like wasm32 there's no threads, so no need to generate
+/// thread locals and we can instead just use plain statics!
+#[doc(hidden)]
+#[cfg(target_arch = "wasm32")]
+pub mod statik {
+    use cell::UnsafeCell;
+    use fmt;
+
+    pub struct Key<T> {
+        inner: UnsafeCell<Option<T>>,
+    }
+
+    unsafe impl<T> ::marker::Sync for Key<T> { }
+
+    impl<T> fmt::Debug for Key<T> {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.pad("Key { .. }")
+        }
+    }
+
+    impl<T> Key<T> {
+        pub const fn new() -> Key<T> {
+            Key {
+                inner: UnsafeCell::new(None),
+            }
+        }
+
+        pub unsafe fn get(&self) -> Option<&'static UnsafeCell<Option<T>>> {
+            Some(&*(&self.inner as *const _))
         }
     }
 }

@@ -29,6 +29,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 
+#![feature(allocator_api)]
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
@@ -36,6 +37,7 @@
 #![feature(panic_unwind)]
 #![feature(raw)]
 #![feature(staged_api)]
+#![feature(std_internals)]
 #![feature(unwind_attributes)]
 #![cfg_attr(target_env = "msvc", feature(raw))]
 
@@ -47,9 +49,11 @@ extern crate libc;
 #[cfg(not(any(target_env = "msvc", all(windows, target_arch = "x86_64", target_env = "gnu"))))]
 extern crate unwind;
 
+use alloc::boxed::Box;
 use core::intrinsics;
 use core::mem;
 use core::raw;
+use core::panic::BoxMeUp;
 
 // Rust runtime's startup objects depend on these symbols, so make them public.
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
@@ -112,9 +116,7 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // implementation.
 #[no_mangle]
 #[unwind(allowed)]
-pub unsafe extern "C" fn __rust_start_panic(data: usize, vtable: usize) -> u32 {
-    imp::panic(mem::transmute(raw::TraitObject {
-        data: data as *mut (),
-        vtable: vtable as *mut (),
-    }))
+pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
+    let payload = payload as *mut &mut BoxMeUp;
+    imp::panic(Box::from_raw((*payload).box_me_up()))
 }
