@@ -1549,6 +1549,36 @@ impl<'a> Formatter<'a> {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
 
+    /// Calls the `Debug` implementation of `D` on this `Formatter`.
+    /// This is equivalent to `{ <D as Debug>::fmt(&d, fmt); drop(d); }`
+    /// but reads better when you are calling other methods on the `Formatter`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(formatter_debug)]
+    /// use std::fmt;
+    ///
+    /// struct Arm<L, R>(L, R);
+    ///
+    /// impl<L: fmt::Debug, R: fmt::Debug> fmt::Debug for Arm<L, R> {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         write!(fmt, "{:?} => ", self.0)?;
+    ///         fmt.debug(&self.1)
+    ///     }
+    /// }
+    ///
+    /// // `fmt.debug(..)` respects formatting on the RHS of the arrow:
+    /// assert_eq!(format!("{:?}", Arm(0, vec![2, 3])),
+    ///     "0 => [2, 3]");
+    /// assert_eq!(format!("{:#?}", Arm(0, vec![2, 3])),
+    ///     "0 => [\n    2,\n    3\n]");
+    /// ```
+    #[unstable(feature = "formatter_debug", issue = "0")]
+    pub fn debug<D: Debug>(&mut self, d: D) -> Result {
+        <D as Debug>::fmt(&d, self)
+    }
+
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
     fn debug_lower_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0 }
