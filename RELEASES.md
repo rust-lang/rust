@@ -34,7 +34,7 @@ Libraries
 - [Implement libstd for CloudABI.][47268]
 - [`Float::{from_bits, to_bits}` is now available in libcore.][46931]
 - [Implement `AsRef<Path>` for Component][46985]
-- [Implemented `Write` for `Cursor<&mut Vec<T>>`][46830]
+- [Implemented `Write` for `Cursor<&mut Vec<u8>>`][46830]
 - [Moved `Duration` to libcore.][46666]
 
 Stabilized APIs
