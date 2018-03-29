@@ -62,7 +62,7 @@ use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
 use core::fmt;
-use core::hash::{self, Hash, Hasher};
+use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::{self, Unpin, Unsize};
 use core::mem::{self, Pin};
@@ -508,7 +508,7 @@ impl<T: ?Sized + Eq> Eq for Box<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Box<T> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }
