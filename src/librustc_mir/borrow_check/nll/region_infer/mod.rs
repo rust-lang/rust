@@ -556,7 +556,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// indices of constraints that need to be re-evaluated when X changes.
     /// These are constraints like Y: X @ P -- so if X changed, we may
     /// need to grow Y.
-    #[inline(never)]
+    #[inline(never)] // ensure dfs is identifiable in profiles
     fn build_dependency_map(&mut self) -> IndexVec<RegionVid, Option<ConstraintIndex>> {
         let mut map = IndexVec::from_elem(None, &self.definitions);
 
