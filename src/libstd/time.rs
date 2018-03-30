@@ -259,6 +259,28 @@ impl fmt::Debug for Instant {
 }
 
 impl SystemTime {
+    /// An anchor in time which can be used to create new `SystemTime` instances or
+    /// learn about where in time a `SystemTime` lies.
+    ///
+    /// This constant is defined to be "1970-01-01 00:00:00 UTC" on all systems with
+    /// respect to the system clock. Using `duration_since` on an existing
+    /// `SystemTime` instance can tell how far away from this point in time a
+    /// measurement lies, and using `UNIX_EPOCH + duration` can be used to create a
+    /// `SystemTime` instance to represent another fixed point in time.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::SystemTime;
+    ///
+    /// match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
+    ///     Ok(n) => println!("1970-01-01 00:00:00 UTC was {} seconds ago!", n.as_secs()),
+    ///     Err(_) => panic!("SystemTime before UNIX EPOCH!"),
+    /// }
+    /// ```
+    #[unstable(feature = "assoc_unix_epoch", issue = "49502")]
+    pub const UNIX_EPOCH: SystemTime = UNIX_EPOCH;
+
     /// Returns the system time corresponding to "now".
     ///
     /// # Examples
