@@ -20,9 +20,27 @@ use cargo::util::important_paths::find_root_manifest_for_wd;
 use getopts::{Matches, Options};
 
 use std::env;
+use std::error;
+use std::fmt;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Stdio, Command};
+
+/// Very simple error representation.
+#[derive(Debug)]
+struct Error(String);
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl error::Error for Error {
+    fn description(&self) -> &str {
+        &self.0
+    }
+}
 
 /// Given a crate name, try to locate the corresponding crate on `crates.io`.
 ///
@@ -33,12 +51,14 @@ fn exact_search(query: &str) -> CargoResult<Crate> {
     registry
         .search(query, 1)
         .map_err(|e|
-                 format!("failed to retrieve search results from the registry: {}", e).into())
+                 Error(format!("failed to retrieve search results from the registry: {}", e))
+                     .into())
         .and_then(|(mut crates, _)| {
             crates
                 .drain(..)
                 .find(|krate| krate.name == query)
-                .ok_or_else(|| format!("failed to find a matching crate `{}`", query).into())
+                .ok_or_else(|| Error(format!("failed to find a matching crate `{}`", query))
+                                .into())
         })
 }
 
@@ -133,7 +153,7 @@ impl<'a> WorkInfo<'a> {
         let rlib = compilation.libraries[self.package.package_id()]
             .iter()
             .find(|t| t.0.name() == name)
-            .ok_or_else(|| "lost a build artifact")?;
+            .ok_or_else(|| Error("lost a build artifact".to_owned()))?;
 
         Ok((rlib.1.clone(), compilation.deps_output))
     }
@@ -152,16 +172,16 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         let name = if let Some(n) = split.next() {
             n
         } else {
-            return Err("spec has to be of form `name:version`".into());
+            return Err(Error("spec has to be of form `name:version`".to_owned()).into());
         };
         let version = if let Some(v) = split.next() {
             v
         } else {
-            return Err("spec has to be of form `name:version`".into());
+            return Err(Error("spec has to be of form `name:version`".to_owned()).into());
         };
 
         if split.next().is_some() {
-            return Err("spec has to be of form `name:version`".into());
+            return Err(Error("spec has to be of form `name:version`".to_owned()).into());
         }
 
         Ok(NameAndVersion { name: name, version: version })
@@ -220,7 +240,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         .stdin(Stdio::piped())
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
         .spawn()
-        .map_err(|e| format!("could not spawn rustc: {}", e))?;
+        .map_err(|e| Error(format!("could not spawn rustc: {}", e)))?;
 
     if let Some(ref mut stdin) = child.stdin {
         stdin.write_fmt(format_args!("#[allow(unused_extern_crates)] \
@@ -228,12 +248,12 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
                                      #[allow(unused_extern_crates)] \
                                      extern crate old;"))?;
     } else {
-        return Err("could not pipe to rustc (wtf?)".into());
+        return Err(Error("could not pipe to rustc (wtf?)".to_owned()).into());
     }
 
     child
         .wait()
-        .map_err(|e| format!("failed to wait for rustc: {}", e))?;
+        .map_err(|e| Error(format!("failed to wait for rustc: {}", e)))?;
 
     Ok(())
 }
@@ -282,7 +302,7 @@ fn main() {
 
     let matches = match opts.parse(&args) {
         Ok(m) => m,
-        Err(f) => err(&config, f.to_string().into()),
+        Err(f) => err(&config, f.to_owned().into()),
     };
 
     if matches.opt_present("h") {
@@ -299,14 +319,14 @@ fn main() {
         matches.opt_count("s") > 1 || matches.opt_count("S") > 1
     {
         let msg = "at most one of `-s,--stable-path` and `-S,--stable-pkg` allowed";
-        err(&config, msg.into());
+        err(&config, Error(msg.to_owned()).into());
     }
 
     if (matches.opt_present("c") && matches.opt_present("C")) ||
         matches.opt_count("c") > 1 || matches.opt_count("C") > 1
     {
         let msg = "at most one of `-c,--current-path` and `-C,--current-pkg` allowed";
-        err(&config, msg.into());
+        err(&config, Error(msg.to_owned()).into());
     }
 
     if let Err(e) = do_main(&config, &matches) {
