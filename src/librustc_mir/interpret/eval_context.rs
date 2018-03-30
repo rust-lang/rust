@@ -669,6 +669,23 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
+                            let src_layout = self.layout_of(src.ty)?;
+                            match src_layout.variants {
+                                layout::Variants::Single { index } => {
+                                    if let Some(def) = src.ty.ty_adt_def() {
+                                        let discr_val = def
+                                            .discriminant_for_variant(*self.tcx, index)
+                                            .val;
+                                        return self.write_primval(
+                                            dest,
+                                            PrimVal::Bytes(discr_val),
+                                            dest_ty);
+                                    }
+                                }
+                                layout::Variants::Tagged { .. } |
+                                layout::Variants::NicheFilling { .. } => {},
+                            }
+
                             let src_val = self.value_to_primval(src)?;
                             let dest_val = self.cast_primval(src_val, src.ty, dest_ty)?;
                             let valty = ValTy {
@@ -856,7 +873,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
         match layout.variants {
             layout::Variants::Single { index } => {
-                return Ok(index as u128);
+                let discr_val = ty.ty_adt_def().map_or(
+                    index as u128,
+                    |def| def.discriminant_for_variant(*self.tcx, index).val);
+                return Ok(discr_val);
             }
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},

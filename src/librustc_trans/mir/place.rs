@@ -269,7 +269,10 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         }
         match self.layout.variants {
             layout::Variants::Single { index } => {
-                return C_uint(cast_to, index as u64);
+                let discr_val = self.layout.ty.ty_adt_def().map_or(
+                    index as u128,
+                    |def| def.discriminant_for_variant(bx.cx.tcx, index).val);
+                return C_uint_big(cast_to, discr_val);
             }
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},

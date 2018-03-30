@@ -278,6 +278,22 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                             .expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
                         let ll_t_in = operand.layout.immediate_llvm_type(bx.cx);
+                        match operand.layout.variants {
+                            layout::Variants::Single { index } => {
+                                if let Some(def) = operand.layout.ty.ty_adt_def() {
+                                    let discr_val = def
+                                        .discriminant_for_variant(bx.cx.tcx, index)
+                                        .val;
+                                    let discr = C_uint_big(ll_t_out, discr_val);
+                                    return (bx, OperandRef {
+                                        val: OperandValue::Immediate(discr),
+                                        layout: cast,
+                                    });
+                                }
+                            }
+                            layout::Variants::Tagged { .. } |
+                            layout::Variants::NicheFilling { .. } => {},
+                        }
                         let llval = operand.immediate();
 
                         let mut signed = false;
