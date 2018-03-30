@@ -12,8 +12,7 @@ struct Foo {
     a: u32
 }
 
-static S : Foo = Foo { a : 0 };
-static A : &'static u32 = &S.a;
+static S: Foo = Foo { a : 0 };
+static A: &'static u32 = &S.a;
 
-fn main() {
-}
+fn main() {}
