@@ -1101,19 +1101,18 @@ pub fn clip(tcx: TyCtxt, u: u128, ity: ast::UintTy) -> u128 {
 pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
     let mut without = vec![];
 
-    // naive approach for block comments
-    let mut inside_comment = false;
+    let mut nest_level = 0;
 
     for line in lines.into_iter() {
         if line.contains("/*") {
-            inside_comment = true;
+            nest_level += 1;
             continue;
         } else if line.contains("*/") {
-            inside_comment = false;
+            nest_level -= 1;
             continue;
         }
 
-        if !inside_comment {
+        if nest_level == 0 {
             without.push(line);
         }
     }
