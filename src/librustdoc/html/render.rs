@@ -1087,7 +1087,8 @@ impl<'a> SourceCollector<'a> {
             href.push_str(component);
             href.push('/');
         });
-        let mut fname = p.file_name().expect("source has no filename")
+        let mut fname = p.file_name()
+                         .expect("source has no filename")
                          .to_os_string();
         fname.push(".html");
         cur.push(&fname);
@@ -1373,6 +1374,135 @@ impl<'a> Cache {
     }
 }
 
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct ItemEntry {
+    url: String,
+    name: String,
+}
+
+impl ItemEntry {
+    fn new(mut url: String, name: String) -> ItemEntry {
+        while url.starts_with('/') {
+            url.remove(0);
+        }
+        ItemEntry {
+            url,
+            name,
+        }
+    }
+}
+
+impl fmt::Display for ItemEntry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "<a href='{}'>{}</a>", self.url, Escape(&self.name))
+    }
+}
+
+impl PartialOrd for ItemEntry {
+    fn partial_cmp(&self, other: &ItemEntry) -> Option<::std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ItemEntry {
+    fn cmp(&self, other: &ItemEntry) -> ::std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+#[derive(Debug)]
+struct AllTypes {
+    structs: HashSet<ItemEntry>,
+    enums: HashSet<ItemEntry>,
+    unions: HashSet<ItemEntry>,
+    primitives: HashSet<ItemEntry>,
+    traits: HashSet<ItemEntry>,
+    macros: HashSet<ItemEntry>,
+    functions: HashSet<ItemEntry>,
+    typedefs: HashSet<ItemEntry>,
+    statics: HashSet<ItemEntry>,
+    constants: HashSet<ItemEntry>,
+}
+
+impl AllTypes {
+    fn new() -> AllTypes {
+        AllTypes {
+            structs: HashSet::with_capacity(100),
+            enums: HashSet::with_capacity(100),
+            unions: HashSet::with_capacity(100),
+            primitives: HashSet::with_capacity(26),
+            traits: HashSet::with_capacity(100),
+            macros: HashSet::with_capacity(100),
+            functions: HashSet::with_capacity(100),
+            typedefs: HashSet::with_capacity(100),
+            statics: HashSet::with_capacity(100),
+            constants: HashSet::with_capacity(100),
+        }
+    }
+
+    fn append(&mut self, item_name: String, item_type: &str) {
+        let mut url: Vec<_> = item_name.split("::").skip(1).collect();
+        if let Some(name) = url.pop() {
+            let new_url = format!("{}/{}.{}.html", url.join("/"), item_type, name);
+            url.push(name);
+            let name = url.join("::");
+            match item_type {
+                "struct" => self.structs.insert(ItemEntry::new(new_url, name)),
+                "enum" => self.enums.insert(ItemEntry::new(new_url, name)),
+                "union" => self.unions.insert(ItemEntry::new(new_url, name)),
+                "primitive" => self.primitives.insert(ItemEntry::new(new_url, name)),
+                "trait" => self.traits.insert(ItemEntry::new(new_url, name)),
+                "macro" => self.macros.insert(ItemEntry::new(new_url, name)),
+                "fn" => self.functions.insert(ItemEntry::new(new_url, name)),
+                "typedef" => self.typedefs.insert(ItemEntry::new(new_url, name)),
+                "static" => self.statics.insert(ItemEntry::new(new_url, name)),
+                "constant" => self.constants.insert(ItemEntry::new(new_url, name)),
+                _ => true,
+            };
+        }
+    }
+}
+
+fn print_entries(f: &mut fmt::Formatter, e: &HashSet<ItemEntry>, title: &str,
+                 class: &str) -> fmt::Result {
+    if !e.is_empty() {
+        let mut e: Vec<&ItemEntry> = e.iter().collect();
+        e.sort();
+        write!(f, "<h3 id='{}'>{}</h3><ul class='{} docblock'>{}</ul>",
+               title,
+               Escape(title),
+               class,
+               e.iter().map(|s| format!("<li>{}</li>", s)).collect::<String>())?;
+    }
+    Ok(())
+}
+
+impl fmt::Display for AllTypes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+"<h1 class='fqn'>\
+     <span class='in-band'>List of all items</span>\
+     <span class='out-of-band'>\
+         <span id='render-detail'>\
+             <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" title=\"collapse all docs\">\
+                 [<span class='inner'>&#x2212;</span>]\
+             </a>\
+         </span>
+     </span>
+</h1>")?;
+        print_entries(f, &self.structs, "Structs", "structs")?;
+        print_entries(f, &self.enums, "Enums", "enums")?;
+        print_entries(f, &self.unions, "Unions", "unions")?;
+        print_entries(f, &self.primitives, "Primitives", "primitives")?;
+        print_entries(f, &self.traits, "Traits", "traits")?;
+        print_entries(f, &self.macros, "Macros", "macros")?;
+        print_entries(f, &self.functions, "Functions", "functions")?;
+        print_entries(f, &self.typedefs, "Typedefs", "typedefs")?;
+        print_entries(f, &self.statics, "Statics", "statics")?;
+        print_entries(f, &self.constants, "Constants", "constants")
+    }
+}
+
 impl Context {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
@@ -1414,16 +1544,52 @@ impl Context {
             Some(i) => i,
             None => return Ok(()),
         };
+        let final_file = self.dst.join(&krate.name)
+                                 .join("all.html");
+        let crate_name = krate.name.clone();
         item.name = Some(krate.name);
 
-        // Render the crate documentation
-        let mut work = vec![(self, item)];
+        let mut all = AllTypes::new();
 
-        while let Some((mut cx, item)) = work.pop() {
-            cx.item(item, |cx, item| {
-                work.push((cx.clone(), item))
-            })?
+        {
+            // Render the crate documentation
+            let mut work = vec![(self.clone(), item)];
+
+            while let Some((mut cx, item)) = work.pop() {
+                cx.item(item, &mut all, |cx, item| {
+                    work.push((cx.clone(), item))
+                })?
+            }
         }
+
+        let mut w = BufWriter::new(File::create(&final_file)
+                                        .expect("failed to create all.html"));
+        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
+        if !root_path.ends_with('/') {
+            root_path.push('/');
+        }
+        let page = layout::Page {
+            title: "List of all items in this crate",
+            css_class: "mod",
+            root_path: "../",
+            description: "List of all items in this crate",
+            keywords: BASIC_KEYWORDS,
+            resource_suffix: &self.shared.resource_suffix,
+        };
+        let sidebar = if let Some(ref version) = cache().crate_version {
+            format!("<p class='location'>Crate {}</p>\
+                     <div class='block version'>\
+                         <p>Version {}</p>\
+                     </div>\
+                     <a id='all-types' href='index.html'><p>Back to index</p></a>",
+                    crate_name, version)
+        } else {
+            String::new()
+        };
+        layout::render(&mut w, &self.shared.layout,
+                       &page, &sidebar, &all,
+                       self.shared.css_file_extension.is_some(),
+                       &self.shared.themes).expect("layout rendering failed");
         Ok(())
     }
 
@@ -1496,8 +1662,8 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, mut f: F) -> Result<(), Error> where
-        F: FnMut(&mut Context, clean::Item),
+    fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F) -> Result<(), Error>
+        where F: FnMut(&mut Context, clean::Item),
     {
         // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
         // if they contain impls for public types. These modules can also
@@ -1544,7 +1710,7 @@ impl Context {
                 }
 
                 for item in m.items {
-                    f(this,item);
+                    f(this, item);
                 }
 
                 Ok(())
@@ -1562,13 +1728,14 @@ impl Context {
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
 
+                all.append(full_path(self, &item), item_type.css_class());
                 // Redirect from a sane URL using the namespace to Rustdoc's
                 // URL for the page.
                 let redir_name = format!("{}.{}.html", name, item_type.name_space());
                 let redir_dst = self.dst.join(redir_name);
                 if let Ok(redirect_out) = OpenOptions::new().create_new(true)
-                                                                .write(true)
-                                                                .open(&redir_dst) {
+                                                            .write(true)
+                                                            .open(&redir_dst) {
                     let mut redirect_out = BufWriter::new(redirect_out);
                     try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
                 }
@@ -1730,11 +1897,12 @@ impl<'a> fmt::Display for Item<'a> {
                    version)?;
         }
         write!(fmt,
-               r##"<span id='render-detail'>
-                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
-                       [<span class='inner'>&#x2212;</span>]
-                   </a>
-               </span>"##)?;
+               "<span id='render-detail'>\
+                   <a id=\"toggle-all-docs\" href=\"javascript:void(0)\" \
+                      title=\"collapse all docs\">\
+                       [<span class='inner'>&#x2212;</span>]\
+                   </a>\
+               </span>")?;
 
         // Write `src` tag
         //
@@ -3540,24 +3708,23 @@ impl<'a> fmt::Display for Sidebar<'a> {
 
         if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
             || it.is_enum() || it.is_mod() || it.is_typedef() {
-            write!(fmt, "<p class='location'>")?;
-            match it.inner {
-                clean::StructItem(..) => write!(fmt, "Struct ")?,
-                clean::TraitItem(..) => write!(fmt, "Trait ")?,
-                clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
-                clean::UnionItem(..) => write!(fmt, "Union ")?,
-                clean::EnumItem(..) => write!(fmt, "Enum ")?,
-                clean::TypedefItem(..) => write!(fmt, "Type Definition ")?,
-                clean::ForeignTypeItem => write!(fmt, "Foreign Type ")?,
-                clean::ModuleItem(..) => if it.is_crate() {
-                    write!(fmt, "Crate ")?;
-                } else {
-                    write!(fmt, "Module ")?;
+            write!(fmt, "<p class='location'>{}{}</p>",
+                match it.inner {
+                    clean::StructItem(..) => "Struct ",
+                    clean::TraitItem(..) => "Trait ",
+                    clean::PrimitiveItem(..) => "Primitive Type ",
+                    clean::UnionItem(..) => "Union ",
+                    clean::EnumItem(..) => "Enum ",
+                    clean::TypedefItem(..) => "Type Definition ",
+                    clean::ForeignTypeItem => "Foreign Type ",
+                    clean::ModuleItem(..) => if it.is_crate() {
+                        "Crate "
+                    } else {
+                        "Module "
+                    },
+                    _ => "",
                 },
-                _ => (),
-            }
-            write!(fmt, "{}", it.name.as_ref().unwrap())?;
-            write!(fmt, "</p>")?;
+                it.name.as_ref().unwrap())?;
         }
 
         if it.is_crate() {
@@ -3565,8 +3732,11 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 write!(fmt,
                        "<div class='block version'>\
                         <p>Version {}</p>\
-                        </div>",
-                       version)?;
+                        </div>
+                        <a id='all-types' href='all{}.html'><p>See all {}'s items</p></a>",
+                       version,
+                       cx.shared.resource_suffix,
+                       it.name.as_ref().unwrap())?;
             }
         }
 
