@@ -478,6 +478,9 @@ pub struct TargetOptions {
 
     /// Whether or not bitcode is embedded in object files
     pub embed_bitcode: bool,
+
+    /// This target requires everything to be compiled with pic reloc model.
+    pub force_pic_relocation_model: bool,
 }
 
 impl Default for TargetOptions {
@@ -550,6 +553,7 @@ impl Default for TargetOptions {
             codegen_backend: "llvm".to_string(),
             default_hidden_visibility: false,
             embed_bitcode: false,
+            force_pic_relocation_model: false,
         }
     }
 }
@@ -799,6 +803,7 @@ impl Target {
         key!(codegen_backend);
         key!(default_hidden_visibility, bool);
         key!(embed_bitcode, bool);
+        key!(force_pic_relocation_model, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1002,6 +1007,7 @@ impl ToJson for Target {
         target_option_val!(codegen_backend);
         target_option_val!(default_hidden_visibility);
         target_option_val!(embed_bitcode);
+        target_option_val!(force_pic_relocation_model);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

@@ -115,7 +115,7 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
         None => &sess.target.target.options.relocation_model[..],
     };
 
-    match ::back::write::RELOC_MODEL_ARGS.iter().find(
+    let reloc_model = match ::back::write::RELOC_MODEL_ARGS.iter().find(
         |&&arg| arg.0 == reloc_model_arg) {
         Some(x) => x.1,
         _ => {
@@ -124,6 +124,12 @@ pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
             sess.abort_if_errors();
             bug!();
         }
+    };
+
+    if sess.target.target.options.force_pic_relocation_model {
+        llvm::RelocMode::PIC
+    } else {
+        reloc_model
     }
 }
 
