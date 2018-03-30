@@ -33,6 +33,11 @@ fn bar() {}
 //~^ ERROR: should be applied to a function
 mod another {}
 
+#[inline(always)]
+//~^ ERROR: cannot use #[inline(always)]
+#[target_feature(enable = "sse2")]
+unsafe fn test() {}
+
 fn main() {
     unsafe {
         foo();
