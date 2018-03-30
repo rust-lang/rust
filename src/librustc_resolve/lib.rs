@@ -1151,13 +1151,9 @@ impl<'a> ModuleData<'a> {
 
     fn for_each_child_stable<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
         let resolutions = self.resolutions.borrow();
-        let mut resolutions = resolutions.iter().map(|(&(ident, ns), &resolution)| {
-                                                    // Pre-compute keys for sorting
-                                                    (ident.name.as_str(), ns, ident, resolution)
-                                                })
-                                                .collect::<Vec<_>>();
-        resolutions.sort_unstable_by_key(|&(str, ns, ..)| (str, ns));
-        for &(_, ns, ident, resolution) in resolutions.iter() {
+        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
+        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.name.as_str(), ns));
+        for &(&(ident, ns), &resolution) in resolutions.iter() {
             resolution.borrow().binding.map(|binding| f(ident, ns, binding));
         }
     }

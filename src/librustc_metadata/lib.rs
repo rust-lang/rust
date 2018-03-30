@@ -21,6 +21,7 @@
 #![feature(macro_lifetime_matcher)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(rustc_private)]
 
