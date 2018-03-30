@@ -407,8 +407,8 @@ pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
 // equivalent to SearchPtrs in "Pattern API 1.5"
 // and PatternHaystack in "Pattern API 2.0"
 pub trait Haystack: Sized {
-    type StartCursor: Copy;
-    type EndCursor: Copy;
+    type StartCursor: Copy + PartialOrd<Self::EndCursor>;
+    type EndCursor: Copy + PartialOrd<Self::StartCursor>;
 
     // The following 5 methods are same as those in "Pattern API 1.5"
     // except the cursor type is split into two.
@@ -417,9 +417,6 @@ pub trait Haystack: Sized {
     unsafe fn start_cursor_to_offset(hs: &Self, cur: Self::StartCursor) -> usize;
     unsafe fn end_cursor_to_offset(hs: &Self, cur: Self::EndCursor) -> usize;
     unsafe fn range_to_self(hs: Self, start: Self::StartCursor, end: Self::EndCursor) -> Self;
-
-    // Since a StartCursor and EndCursor may not be comparable, we also need this method
-    fn is_range_empty(start: Self::StartCursor, end: Self::EndCursor) -> bool;
 
     // And then we want to swap between the two cursor types
     unsafe fn start_to_end_cursor(hs: &Self, cur: Self::StartCursor) -> Self::EndCursor;
