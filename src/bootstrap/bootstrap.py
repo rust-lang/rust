@@ -647,7 +647,7 @@ class RustBuild(object):
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
             return
-        slow_submodules = self.get_toml('fast-submodule') == "false"
+        slow_submodules = self.get_toml('fast-submodules') == "false"
         start_time = time()
         if slow_submodules:
             print('Unconditionally updating all submodules')
