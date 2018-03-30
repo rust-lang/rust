@@ -244,7 +244,8 @@ fn get_resident() -> Option<usize> {
     use std::fs;
 
     let field = 1;
-    let contents = fs::read_string("/proc/self/statm").ok()?;
+    let contents = fs::read("/proc/self/statm").ok()?;
+    let contents = String::from_utf8(contents).ok()?;
     let s = contents.split_whitespace().nth(field)?;
     let npages = s.parse::<usize>().ok()?;
     Some(npages * 4096)
