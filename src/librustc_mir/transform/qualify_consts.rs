@@ -110,9 +110,9 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     rpo: ReversePostorder<'a, 'tcx>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    local_mut_interior: IndexVec<Local, bool>,
-    local_needs_drop: IndexVec<Local, bool>,
-    local_not_const: IndexVec<Local, bool>,
+    local_mut_interior: IdxSetBuf<Local>,
+    local_needs_drop: IdxSetBuf<Local>,
+    local_not_const: IdxSetBuf<Local>,
     qualif: Qualif,
     const_fn_arg_vars: BitVector,
     temp_promotion_state: IndexVec<Local, TempState>,
@@ -131,11 +131,13 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
         let param_env = tcx.param_env(def_id);
 
-        let mut local_needs_drop = IndexVec::from_elem(false, &mir.local_decls);
-        let mut local_not_const = IndexVec::from_elem(true, &mir.local_decls);
+        let mut local_needs_drop = IdxSetBuf::new_empty(mir.local_decls.len());
+        let mut local_not_const = IdxSetBuf::new_filled(mir.local_decls.len());
         for arg in mir.args_iter() {
-            local_needs_drop[arg] = mir.local_decls[arg].ty.needs_drop(tcx, param_env);
-            local_not_const[arg] = false;
+            if mir.local_decls[arg].ty.needs_drop(tcx, param_env) {
+                local_needs_drop.add(&arg);
+            }
+            local_not_const.remove(&arg);
         }
 
         Qualifier {
@@ -146,7 +148,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             rpo,
             tcx,
             param_env,
-            local_mut_interior: IndexVec::from_elem(false, &mir.local_decls),
+            local_mut_interior: IdxSetBuf::new_empty(mir.local_decls.len()),
             local_needs_drop,
             local_not_const,
             qualif: Qualif::default(),
@@ -206,8 +208,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         self.qualif.not_const |= qualif.not_const;
     }
 
-    /// Restrict `self.qualif` by the given type's qualification.
-    fn restrict_to_type(&mut self, ty: Ty<'tcx>) {
+    /// Add the given type's qualification to `self.qualif`.
+    fn add_type(&mut self, ty: Ty<'tcx>) {
         self.qualif.mut_interior = !ty.is_freeze(self.tcx, self.param_env, DUMMY_SP);
         self.qualif.needs_drop = ty.needs_drop(self.tcx, self.param_env);
     }
@@ -226,9 +228,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn assign(&mut self, dest: &Place<'tcx>, location: Location) {
         trace!("assign: {:?}", dest);
         let store = |this: &mut Self, index| {
-            this.local_mut_interior[index] = this.qualif.mut_interior;
-            this.local_needs_drop[index] = this.qualif.needs_drop;
-            this.local_not_const[index] = this.qualif.not_const;
+            this.local_mut_interior.set_member(&index, this.qualif.mut_interior);
+            this.local_needs_drop.set_member(&index, this.qualif.needs_drop);
+            this.local_not_const.set_member(&index, this.qualif.not_const);
         };
 
         // Only handle promotable temps in non-const functions.
@@ -261,7 +263,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 elem: ProjectionElem::Deref
             }) if self.mir.local_kind(index) == LocalKind::Temp
                && self.mir.local_decls[index].ty.is_box()
-               && self.local_not_const[index] => {
+               && self.local_not_const.contains(&index) => {
                 // Part of `box expr`, we should've errored
                 // already for the Box allocation Rvalue.
             }
@@ -316,9 +318,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
-                            if !self.local_mut_interior[temp] &&
-                               !self.local_needs_drop[temp] &&
-                               !self.local_not_const[temp] {
+                            if !self.local_mut_interior.contains(&temp) &&
+                               !self.local_needs_drop.contains(&temp) &&
+                               !self.local_not_const.contains(&temp) {
                                 continue;
                             }
 
@@ -371,9 +373,9 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        self.qualif.mut_interior = self.local_mut_interior[RETURN_PLACE];
-        self.qualif.needs_drop = self.local_needs_drop[RETURN_PLACE];
-        self.qualif.not_const = self.local_not_const[RETURN_PLACE];
+        self.qualif.mut_interior = self.local_mut_interior.contains(&RETURN_PLACE);
+        self.qualif.needs_drop = self.local_needs_drop.contains(&RETURN_PLACE);
+        self.qualif.not_const = self.local_not_const.contains(&RETURN_PLACE);
 
         // Collect all the temps we need to promote.
         let mut promoted_temps = IdxSetBuf::new_empty(self.temp_promotion_state.len());
@@ -396,7 +398,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 }
 
-/// Accumulates an Rvalue or Call's effects in self.qualif.
+/// Accumulates an Rvalue or Call's effects in `self.qualif`.
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
 impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
@@ -425,9 +427,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 let mut qualif = Qualif::default();
-                qualif.mut_interior = self.local_mut_interior[local];
-                qualif.needs_drop = self.local_needs_drop[local];
-                qualif.not_const = self.local_not_const[local];
+                qualif.mut_interior = self.local_mut_interior.contains(&local);
+                qualif.needs_drop = self.local_needs_drop.contains(&local);
+                qualif.not_const = self.local_not_const.contains(&local);
                 self.add(qualif);
             }
         }
@@ -520,7 +522,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             }
 
                             let ty = place.ty(this.mir, this.tcx).to_ty(this.tcx);
-                            this.restrict_to_type(ty);
+                            this.add_type(ty);
                         }
 
                         ProjectionElem::ConstantIndex {..} |
@@ -542,7 +544,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Operand::Move(_) => {
                 // Mark the consumed locals to indicate later drops are noops.
                 if let Operand::Move(Place::Local(local)) = *operand {
-                    self.local_needs_drop[local] = false;
+                    self.local_needs_drop.remove(&local);
                 }
             }
             Operand::Constant(ref constant) => {
@@ -551,7 +553,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 } = constant.literal {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_some() {
-                        self.restrict_to_type(ty);
+                        self.add_type(ty);
                     } else {
                         let (bits, _) = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
@@ -561,7 +563,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         // Just in case the type is more specific than
                         // the definition, e.g. impl associated const
                         // with type parameters, take it into account.
-                        self.restrict_to_type(ty);
+                        self.add_type(ty);
                     }
                 }
             }
@@ -694,8 +696,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             // This allows borrowing fields which don't have
                             // `MUTABLE_INTERIOR`, from a type that does, e.g.:
                             // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            if !self.local_not_const[local] &&
-                               !self.local_needs_drop[local] {
+                            if !self.local_not_const.contains(&local) &&
+                               !self.local_needs_drop.contains(&local) {
                                 self.promotion_candidates.push(candidate);
                             }
                         }
@@ -801,7 +803,7 @@ This does not pose a problem by itself because they can't be accessed directly."
 
                     if Some(def.did) == self.tcx.lang_items().unsafe_cell_type() {
                         let ty = rvalue.ty(self.mir, self.tcx);
-                        self.restrict_to_type(ty);
+                        self.add_type(ty);
                         assert!(self.qualif.mut_interior);
                     }
                 }
@@ -956,7 +958,7 @@ This does not pose a problem by itself because they can't be accessed directly."
             if let Some((ref dest, _)) = *destination {
                 // Be conservative about the returned value of a const fn.
                 let ty = dest.ty(self.mir, self.tcx).to_ty(self.tcx);
-                self.restrict_to_type(ty);
+                self.add_type(ty);
                 self.assign(dest, location);
             }
         } else if let TerminatorKind::Drop { location: ref place, .. } = *kind {
@@ -967,7 +969,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 // HACK(eddyb) Emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
-                    if self.local_needs_drop[local] {
+                    if self.local_needs_drop.contains(&local) {
                         Some(self.mir.local_decls[local].source_info.span)
                     } else {
                         None
