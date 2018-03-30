@@ -529,6 +529,17 @@ pub fn const_eval_provider<'a, 'tcx>(
     })
 }
 
+// This function creates dep graph edges from statics to all referred to statics.
+// This is necessary, because the `const_eval` query cannot directly call itself
+// for other statics, because we cannot prevent recursion in queries.
+//
+// see test/incremental/static_refering_to_other_static2/issue.rs for an example
+// where not creating those edges would cause static A, which refers to static B
+// to point to the old allocation of static B, even though B has changed.
+//
+// In the future we will want to remove this funcion in favour of a system that
+// makes sure that statics don't need to have edges to other statics as long as
+// they are only referring by reference and not inspecting the other static's body.
 fn create_depgraph_edges<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     alloc_id: AllocId,
