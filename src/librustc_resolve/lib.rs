@@ -14,6 +14,7 @@
 #![deny(warnings)]
 
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_sort_by_cached_key)]
 
 #[macro_use]
 extern crate log;
@@ -3341,7 +3342,9 @@ impl<'a> Resolver<'a> {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
                             self.lookup_import_candidates(name, TypeNS, is_mod);
-                        candidates.sort_by_key(|c| (c.path.segments.len(), c.path.to_string()));
+                        candidates.sort_by_cached_key(|c| {
+                            (c.path.segments.len(), c.path.to_string())
+                        });
                         if let Some(candidate) = candidates.get(0) {
                             format!("Did you mean `{}`?", candidate.path)
                         } else {
@@ -3579,7 +3582,7 @@ impl<'a> Resolver<'a> {
 
         let name = path[path.len() - 1].name;
         // Make sure error reporting is deterministic.
-        names.sort_by_key(|name| name.as_str());
+        names.sort_by_cached_key(|name| name.as_str());
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
             Some(found) if found != name => Some(found),
             _ => None,

@@ -830,7 +830,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // a bit more efficiently.
     let codegen_units = {
         let mut codegen_units = codegen_units;
-        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
+        codegen_units.sort_by_cached_key(|cgu| usize::MAX - cgu.size_estimate());
         codegen_units
     };
 
