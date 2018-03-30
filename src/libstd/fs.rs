@@ -251,8 +251,6 @@ fn initial_buffer_size(file: &File) -> usize {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_read_write)]
-///
 /// use std::fs;
 /// use std::net::SocketAddr;
 ///
@@ -261,7 +259,7 @@ fn initial_buffer_size(file: &File) -> usize {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "fs_read_write", issue = "46588")]
+#[stable(feature = "fs_read_write_bytes", since = "1.27.0")]
 pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
     let mut file = File::open(path)?;
     let mut bytes = Vec::with_capacity(initial_buffer_size(&file));
@@ -325,8 +323,6 @@ pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(fs_read_write)]
-///
 /// use std::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -334,7 +330,7 @@ pub fn read_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 ///     Ok(())
 /// }
 /// ```
-#[unstable(feature = "fs_read_write", issue = "46588")]
+#[stable(feature = "fs_read_write_bytes", since = "1.27.0")]
 pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result<()> {
     File::create(path)?.write_all(contents.as_ref())
 }
