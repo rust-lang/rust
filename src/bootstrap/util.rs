@@ -288,6 +288,7 @@ pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
                                nOutBufferSize: DWORD,
                                lpBytesReturned: LPDWORD,
                                lpOverlapped: LPOVERLAPPED) -> BOOL;
+            fn CloseHandle(hObject: HANDLE) -> BOOL;
         }
 
         fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
@@ -341,11 +342,13 @@ pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
                                       &mut ret,
                                       ptr::null_mut());
 
-            if res == 0 {
+            let out = if res == 0 {
                 Err(io::Error::last_os_error())
             } else {
                 Ok(())
-            }
+            };
+            CloseHandle(h);
+            out
         }
     }
 }

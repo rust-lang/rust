@@ -34,7 +34,7 @@ Libraries
 - [Implement libstd for CloudABI.][47268]
 - [`Float::{from_bits, to_bits}` is now available in libcore.][46931]
 - [Implement `AsRef<Path>` for Component][46985]
-- [Implemented `Write` for `Cursor<&mut Vec<T>>`][46830]
+- [Implemented `Write` for `Cursor<&mut Vec<u8>>`][46830]
 - [Moved `Duration` to libcore.][46666]
 
 Stabilized APIs
@@ -47,8 +47,6 @@ eg. `static MINUTE: Duration = Duration::from_secs(60);`
 - [`Duration::new`][47300]
 - [`Duration::from_secs`][47300]
 - [`Duration::from_millis`][47300]
-- [`Duration::from_micros`][47300]
-- [`Duration::from_nanos`][47300]
 
 Cargo
 -----

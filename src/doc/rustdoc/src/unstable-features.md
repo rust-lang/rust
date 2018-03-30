@@ -305,7 +305,7 @@ $ rustdoc src/lib.rs -Z unstable-options --themes theme.css
 
 Giving this flag to `rustdoc` will make it copy your theme into the generated crate docs and enable
 it in the theme selector. Note that `rustdoc` will reject your theme file if it doesn't style
-everything the "main" theme does. See `--theme-checker` below for details.
+everything the "light" theme does. See `--theme-checker` below for details.
 
 ### `--theme-checker`: verify theme CSS for validity
 
@@ -316,7 +316,7 @@ $ rustdoc -Z unstable-options --theme-checker theme.css
 ```
 
 Before including your theme in crate docs, `rustdoc` will compare all the CSS rules it contains
-against the "main" theme included by default. Using this flag will allow you to see which rules are
+against the "light" theme included by default. Using this flag will allow you to see which rules are
 missing if `rustdoc` rejects your theme.
 
 ### `--resource-suffix`: modifying the name of CSS/JavaScript in crate docs
@@ -330,7 +330,7 @@ $ rustdoc src/lib.rs -Z unstable-options --resource-suffix suf
 When rendering docs, `rustdoc` creates several CSS and JavaScript files as part of the output. Since
 all these files are linked from every page, changing where they are can be cumbersome if you need to
 specially cache them. This flag will rename all these files in the output to include the suffix in
-the filename. For example, `main.css` would become `main-suf.css` with the above command.
+the filename. For example, `light.css` would become `light-suf.css` with the above command.
 
 ### `--display-warnings`: display warnings when documenting or running documentation tests
 
