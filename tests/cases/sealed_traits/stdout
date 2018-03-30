@@ -1,0 +1,15 @@
+version bump: 1.0.0 -> (technically breaking) -> 1.1.0
+warning: technically breaking changes in `PublicTrait`
+ --> $REPO_PATH/tests/cases/sealed_traits/new.rs:1:1
+  |
+1 | / pub trait PublicTrait : private::PrivateTrait {
+2 | |     fn abc(&self) -> bool;
+3 | | }
+  | |_^
+  |
+note: added item to sealed trait (technically breaking)
+ --> $REPO_PATH/tests/cases/sealed_traits/new.rs:2:5
+  |
+2 |     fn abc(&self) -> bool;
+  |     ^^^^^^^^^^^^^^^^^^^^^^
+

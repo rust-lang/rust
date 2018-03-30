@@ -88,6 +88,7 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
     let mut visited = HashSet::new();
     let mut children = NameMapping::default();
     let mut mod_queue = VecDeque::new();
+    let mut traits = Vec::new();
     // Additions and removals are processed with a delay to avoid creating multiple path change
     // entries. This is necessary, since the order in which added or removed paths are found wrt
     // each other and their item's definition can't be relied upon.
@@ -243,12 +244,13 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
                                               false,
                                               o_def_id,
                                               n_def_id);
-                                diff_traits(changes,
+                                traits.push((o_def_id, n_def_id, output));
+                                /* diff_traits(changes,
                                             id_mapping,
                                             tcx,
                                             o_def_id,
                                             n_def_id,
-                                            output);
+                                            output); */
                             },
                             // a non-matching item pair - register the change and abort further
                             // analysis of it
@@ -313,6 +315,10 @@ fn diff_structure<'a, 'tcx>(changes: &mut ChangeSet,
             changes.new_path_change(o_def_id, o.ident.name, tcx.def_span(o_def_id));
             changes.add_path_removal(o_def_id, o.span);
         }
+    }
+
+    for (o_def_id, n_def_id, output) in traits {
+        diff_traits(changes, id_mapping, tcx, o_def_id, n_def_id, output);
     }
 }
 
@@ -492,6 +498,8 @@ fn diff_traits(changes: &mut ChangeSet,
                new: DefId,
                output: bool) {
     use rustc::hir::Unsafety::Unsafe;
+    use rustc::ty::subst::UnpackedKind::Type;
+    use rustc::ty::{ParamTy, Predicate, TyS, TypeVariants::*};
 
     debug!("diff_traits: old: {:?}, new: {:?}, output: {:?}", old, new, output);
 
@@ -504,6 +512,28 @@ fn diff_traits(changes: &mut ChangeSet,
         };
 
         changes.add_change(change_type, old, None);
+    }
+
+    let mut old_sealed = false;
+    let old_param_env = tcx.param_env(old);
+
+    for bound in old_param_env.caller_bounds {
+        match *bound {
+            Predicate::Trait(pred) => {
+                let trait_ref = pred.skip_binder().trait_ref;
+
+                debug!("trait_ref substs (old): {:?}", trait_ref.substs);
+
+                if id_mapping.is_private_trait(&trait_ref.def_id) &&
+                        trait_ref.substs.len() == 1 {
+                    if let Type(&TyS { sty: TyParam(ParamTy { idx: 0, ..}), ..}) =
+                            trait_ref.substs[0].unpack() {
+                        old_sealed = true;
+                    }
+                }
+            },
+            _ => (),
+        }
     }
 
     let mut items = BTreeMap::new();
@@ -547,6 +577,7 @@ fn diff_traits(changes: &mut ChangeSet,
             (None, Some((_, new_item))) => {
                 let change_type = TraitItemAdded {
                     defaulted: new_item.defaultness.has_value(),
+                    sealed_trait: old_sealed,
                 };
                 changes.add_change(change_type, old, Some(tcx.def_span(new_item.def_id)));
                 id_mapping.add_non_mapped(new_item.def_id);

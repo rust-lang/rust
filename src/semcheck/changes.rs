@@ -243,7 +243,7 @@ pub enum ChangeType<'tcx> {
     /// A method either gained or lost a `self` parameter.
     MethodSelfChanged { now_self: bool },
     /// A trait's definition added a possibly defaulted item.
-    TraitItemAdded { defaulted: bool },
+    TraitItemAdded { defaulted: bool, sealed_trait: bool },
     /// A trait's definition removed a possibly defaulted item.
     TraitItemRemoved { defaulted: bool },
     /// A trait's definition changed it's unsafety.
@@ -294,7 +294,7 @@ impl<'tcx> ChangeType<'tcx> {
             TypeChanged { .. } |
             FnConstChanged { now_const: false } |
             MethodSelfChanged { now_self: false } |
-            TraitItemAdded { defaulted: false } |
+            TraitItemAdded { defaulted: false, sealed_trait: false } |
             TraitItemRemoved { .. } |
             TraitUnsafetyChanged { .. } |
             BoundsTightened { .. } |
@@ -303,7 +303,7 @@ impl<'tcx> ChangeType<'tcx> {
             AssociatedItemRemoved |
             Unknown => Breaking,
             MethodSelfChanged { now_self: true } |
-            TraitItemAdded { defaulted: true } |
+            TraitItemAdded { .. } | // either defaulted or sealed
             BoundsLoosened { trait_def: false, .. } |
             TraitImplLoosened |
             AssociatedItemAdded |
@@ -388,12 +388,16 @@ case, this change is classified as \"technically breaking\".",
             MethodSelfChanged { now_self: false } =>
 "Removing a self parameter from a method is a breaking change, because
 all method invocations using the method syntax become invalid.",
-            TraitItemAdded { defaulted: true } =>
+            TraitItemAdded { defaulted: true, .. } =>
 "Adding a new defaulted trait item is a breaking change in some specific
 situations: The new trait item could cause a name clash with traits
 defined in user code. Because this is a rather special case, this change
 is classified as \"technically breaking\".",
-            TraitItemAdded { defaulted: false } =>
+            TraitItemAdded { sealed_trait: true, .. } =>
+"Adding a new trait item is a non-breaking change, when user code can't
+provide implementations of the trait, i.e. if the trait is sealed by
+inheriting from an unnamable (crate-local) item.",
+            TraitItemAdded { .. } => // neither defaulted or sealed
 "Adding a new non-defaulted trait item is a breaking change, because all
 implementations of the trait in user code become invalid.",
             TraitItemRemoved { .. } =>
@@ -488,8 +492,11 @@ impl<'a> fmt::Display for ChangeType<'a> {
             FnConstChanged { now_const: false } => "fn item made non-const",
             MethodSelfChanged { now_self: true } => "added self-argument to method",
             MethodSelfChanged { now_self: false } => "removed self-argument from method",
-            TraitItemAdded { defaulted: true } => "added defaulted item to trait",
-            TraitItemAdded { defaulted: false } => "added item to trait",
+            TraitItemAdded { defaulted: true, .. } =>
+                "added defaulted item to trait",
+            TraitItemAdded { defaulted: false, sealed_trait: true } =>
+                "added item to sealed trait",
+            TraitItemAdded { .. } => "added item to trait",
             TraitItemRemoved { defaulted: true } => "removed defaulted item from trait",
             TraitItemRemoved { defaulted: false } => "removed item from trait",
             TraitUnsafetyChanged { now_unsafe: true } => "trait made unsafe",
@@ -888,7 +895,7 @@ pub mod tests {
         VariantStyleChanged { now_struct: bool, total_private: bool },
         FnConstChanged { now_const: bool },
         MethodSelfChanged { now_self: bool },
-        TraitItemAdded { defaulted: bool },
+        TraitItemAdded { defaulted: bool, sealed_trait: bool },
         TraitItemRemoved { defaulted: bool },
         TraitUnsafetyChanged { now_unsafe: bool },
         Unknown,
@@ -918,8 +925,8 @@ pub mod tests {
                     FnConstChanged { now_const },
                 ChangeType_::MethodSelfChanged { now_self } =>
                     MethodSelfChanged { now_self },
-                ChangeType_::TraitItemAdded { defaulted } =>
-                    TraitItemAdded { defaulted },
+                ChangeType_::TraitItemAdded { defaulted, sealed_trait } =>
+                    TraitItemAdded { defaulted, sealed_trait },
                 ChangeType_::TraitItemRemoved { defaulted } =>
                     TraitItemRemoved { defaulted },
                 ChangeType_::TraitUnsafetyChanged { now_unsafe } =>
@@ -950,7 +957,7 @@ pub mod tests {
                        VariantStyleChanged { now_struct: b1, total_private: b2 },
                        FnConstChanged { now_const: b1 },
                        MethodSelfChanged { now_self: b1 },
-                       TraitItemAdded { defaulted: b1 },
+                       TraitItemAdded { defaulted: b1, sealed_trait: b2 },
                        TraitItemRemoved { defaulted: b1 },
                        TraitUnsafetyChanged { now_unsafe: b1 },
                        Unknown]).unwrap().clone()

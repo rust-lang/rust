@@ -121,6 +121,7 @@ test!(regions);
 test!(removal);
 test!(removal_path);
 test!(removal_use);
+test!(sealed_traits);
 test!(structs);
 test!(swap);
 test!(traits);
