@@ -22,6 +22,7 @@
 
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(non_exhaustive)]
 #![feature(const_atomic_usize_new)]
 #![feature(rustc_attrs)]
