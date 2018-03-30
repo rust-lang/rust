@@ -212,6 +212,9 @@ impl DefKey {
         ::std::mem::discriminant(data).hash(&mut hasher);
         match *data {
             DefPathData::TypeNs(name) |
+            DefPathData::Trait(name) |
+            DefPathData::AssocTypeInTrait(name) |
+            DefPathData::AssocTypeInImpl(name) |
             DefPathData::ValueNs(name) |
             DefPathData::Module(name) |
             DefPathData::MacroDef(name) |
@@ -358,6 +361,12 @@ pub enum DefPathData {
     // Different kinds of items and item-like things:
     /// An impl
     Impl,
+    /// A trait
+    Trait(InternedString),
+    /// An associated type **declaration** (i.e., in a trait)
+    AssocTypeInTrait(InternedString),
+    /// An associated type **value** (i.e., in an impl)
+    AssocTypeInImpl(InternedString),
     /// Something in the type NS
     TypeNs(InternedString),
     /// Something in the value NS
@@ -639,6 +648,9 @@ impl DefPathData {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) |
+            Trait(name) |
+            AssocTypeInTrait(name) |
+            AssocTypeInImpl(name) |
             ValueNs(name) |
             Module(name) |
             MacroDef(name) |
@@ -663,6 +675,9 @@ impl DefPathData {
         use self::DefPathData::*;
         let s = match *self {
             TypeNs(name) |
+            Trait(name) |
+            AssocTypeInTrait(name) |
+            AssocTypeInImpl(name) |
             ValueNs(name) |
             Module(name) |
             MacroDef(name) |

@@ -107,8 +107,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // information we encapsulate into
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
+            ItemKind::Trait(..) => DefPathData::Trait(i.ident.name.as_str()),
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
-            ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
+            ItemKind::TraitAlias(..) |
             ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
                 DefPathData::TypeNs(i.ident.name.as_str()),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
@@ -222,7 +223,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_data = match ti.node {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name.as_str()),
-            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name.as_str()),
+            TraitItemKind::Type(..) => DefPathData::AssocTypeInTrait(ti.ident.name.as_str()),
             TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id, false),
         };
 
@@ -240,7 +241,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_data = match ii.node {
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.name.as_str()),
-            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name.as_str()),
+            ImplItemKind::Type(..) => DefPathData::AssocTypeInImpl(ii.ident.name.as_str()),
             ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id, false),
         };
 
