@@ -5,6 +5,7 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::ty::subst::Subst;
+use rustc::util::nodemap::FxHashSet;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -504,7 +505,13 @@ pub fn const_eval_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.map(|(miri_value, _, miri_ty)| {
+    res.map(|(miri_value, ptr, miri_ty)| {
+        if tcx.is_static(def_id).is_some() {
+            if let Ok(ptr) = ptr.primval.to_ptr() {
+                let mut seen = FxHashSet::default();
+                create_depgraph_edges(tcx, ptr.alloc_id, &mut seen);
+            }
+        }
         tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
             ty: miri_ty,
@@ -520,4 +527,25 @@ pub fn const_eval_provider<'a, 'tcx>(
             span,
         }
     })
+}
+
+fn create_depgraph_edges<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    alloc_id: AllocId,
+    seen: &mut FxHashSet<AllocId>,
+) {
+    trace!("create_depgraph_edges: {:?}, {:?}", alloc_id, seen);
+    if seen.insert(alloc_id) {
+        trace!("seen: {:?}, {:?}", alloc_id, seen);
+        if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
+            trace!("get_alloc: {:?}, {:?}, {:?}", alloc_id, seen, alloc);
+            for (_, &reloc) in &alloc.relocations {
+                if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(reloc) {
+                    trace!("get_corresponding: {:?}, {:?}, {:?}, {:?}, {:?}", alloc_id, seen, alloc, did, reloc);
+                    let _ = tcx.maybe_optimized_mir(did);
+                }
+                create_depgraph_edges(tcx, reloc, seen);
+            }
+        }
+    }
 }
