@@ -2,8 +2,8 @@ version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: breaking changes in `D`
  --> $REPO_PATH/tests/cases/regions/new.rs:7:1
   |
-7 | pub type D<T: IntoIterator> = T::IntoIter;
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+7 | pub type D<T: IntoIterator> = <T as IntoIterator>::IntoIter;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = warning: type error: expected std::iter::IntoIterator::Item, found std::iter::IntoIterator::IntoIter (breaking)
 

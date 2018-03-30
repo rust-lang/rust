@@ -2,7 +2,7 @@
 //! comparison and inference.
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt, UniverseIndex};
+use rustc::ty::{ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::Substs;
@@ -441,7 +441,6 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
             .map(|target_preds| ParamEnv {
                 caller_bounds: self.tcx.intern_predicates(&target_preds),
                 reveal: param_env.reveal,
-                universe: UniverseIndex::ROOT,
             })
     }
 

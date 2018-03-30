@@ -4,7 +4,7 @@ pub type B = for<'a> fn(&'a bool);
 
 pub type C<'a, 'b> = (&'b u8, &'a u16);
 
-pub type D<T: IntoIterator> = T::IntoIter;
+pub type D<T: IntoIterator> = <T as IntoIterator>::IntoIter;
 
 pub type E<T: IntoIterator> = T;
 
