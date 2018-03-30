@@ -1845,11 +1845,16 @@
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
 
-    function createToggle() {
+    function createToggle(otherMessage) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
         span.style.display = 'none';
-        span.innerHTML = '&nbsp;Expand&nbsp;description';
+        if (!otherMessage) {
+            span.innerHTML = '&nbsp;Expand&nbsp;description';
+        } else {
+            span.innerHTML = otherMessage;
+            span.style.fontSize = '20px';
+        }
 
         var mainToggle = toggle.cloneNode(true);
         mainToggle.appendChild(span);
@@ -1862,7 +1867,14 @@
 
     onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
         if (e.parentNode.id === "main") {
-            e.parentNode.insertBefore(createToggle(), e);
+            var otherMessage;
+            if (hasClass(e, "type-decl")) {
+                otherMessage = '&nbsp;Show&nbsp;type&nbsp;declaration';
+            }
+            e.parentNode.insertBefore(createToggle(otherMessage), e);
+            if (otherMessage) {
+                collapseDocs(e.previousSibling.childNodes[0], "toggle");
+            }
         }
     });
 
