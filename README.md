@@ -143,6 +143,7 @@ correctly:
 * changes to a function or method's constness
 * additions and removals of a self-parameter on methods
 * additions and removals of (posslibly defaulted) trait items
+* correct handling of "sealed" traits
 * changes to the unsafety of a trait
 * type changes of all toplevel items, as well as associated items in inherent impls and
   trait definitions
