@@ -7,7 +7,7 @@ use rustc::ty::{self, TyCtxt};
 use semver::Version;
 use syntax::ast::{Attribute, AttrStyle, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use syntax::codemap::Span;
-use utils::{in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then};
+use utils::{in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then, without_block_comments};
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -85,7 +85,11 @@ declare_clippy_lint! {
 /// If it was meant to be an outer attribute, then the following item
 /// should not be separated by empty lines.
 ///
-/// **Known problems:** None
+/// **Known problems:** Can cause false positives.
+///
+/// From the clippy side it's difficult to detect empty lines between an attributes and the
+/// following item because empty lines and comments are not part of the AST. The parsing
+/// currently works for basic cases but is not perfect.
 ///
 /// **Example:**
 /// ```rust
@@ -105,7 +109,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    style,
+    nursery,
     "empty line after outer attribute"
 }
 
@@ -276,6 +280,8 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
 
             if let Some(snippet) = snippet_opt(cx, end_of_attr_to_item) {
                 let lines = snippet.split('\n').collect::<Vec<_>>();
+                let lines = without_block_comments(lines);
+
                 if lines.iter().filter(|l| l.trim().is_empty()).count() > 2 {
                     span_lint(
                         cx,
