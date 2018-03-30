@@ -40,7 +40,6 @@
 #![feature(lang_items)]
 #![feature(optin_builtin_traits)]
 
-#[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors;
@@ -156,7 +155,7 @@ impl IntoIterator for TokenStream {
     type IntoIter = TokenTreeIter;
 
     fn into_iter(self) -> TokenTreeIter {
-        TokenTreeIter { cursor: self.0.trees(), next: None }
+        TokenTreeIter { cursor: self.0.trees(), stack: Vec::new() }
     }
 }
 
@@ -554,7 +553,7 @@ impl Literal {
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct TokenTreeIter {
     cursor: tokenstream::Cursor,
-    next: Option<tokenstream::TokenStream>,
+    stack: Vec<TokenTree>,
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
@@ -563,9 +562,10 @@ impl Iterator for TokenTreeIter {
 
     fn next(&mut self) -> Option<TokenTree> {
         loop {
-            let next =
-                unwrap_or!(self.next.take().or_else(|| self.cursor.next_as_stream()), return None);
-            let tree = TokenTree::from_internal(next, &mut self.next);
+            let tree = self.stack.pop().or_else(|| {
+                let next = self.cursor.next_as_stream()?;
+                Some(TokenTree::from_internal(next, &mut self.stack))
+            })?;
             if tree.span.0 == DUMMY_SP {
                 if let TokenNode::Group(Delimiter::None, stream) = tree.kind {
                     self.cursor.insert(stream.0);
@@ -598,12 +598,12 @@ impl Delimiter {
 }
 
 impl TokenTree {
-    fn from_internal(stream: tokenstream::TokenStream, next: &mut Option<tokenstream::TokenStream>)
+    fn from_internal(stream: tokenstream::TokenStream, stack: &mut Vec<TokenTree>)
                 -> TokenTree {
         use syntax::parse::token::*;
 
         let (tree, is_joint) = stream.as_tree();
-        let (mut span, token) = match tree {
+        let (span, token) = match tree {
             tokenstream::TokenTree::Token(span, token) => (span, token),
             tokenstream::TokenTree::Delimited(span, delimed) => {
                 let delimiter = Delimiter::from_internal(delimed.delim);
@@ -615,34 +615,32 @@ impl TokenTree {
         };
 
         let op_kind = if is_joint { Spacing::Joint } else { Spacing::Alone };
+        macro_rules! tt {
+            ($e:expr) => (TokenTree { span: Span(span), kind: $e })
+        }
         macro_rules! op {
-            ($op:expr) => { TokenNode::Op($op, op_kind) }
-        }
-
-        macro_rules! joint {
-            ($first:expr, $rest:expr) => { joint($first, $rest, is_joint, &mut span, next) }
-        }
-
-        fn joint(first: char, rest: Token, is_joint: bool, span: &mut syntax_pos::Span,
-                 next: &mut Option<tokenstream::TokenStream>)
-                 -> TokenNode {
-            let (first_span, rest_span) = (*span, *span);
-            *span = first_span;
-            let tree = tokenstream::TokenTree::Token(rest_span, rest);
-            *next = Some(if is_joint { tree.joint() } else { tree.into() });
-            TokenNode::Op(first, Spacing::Joint)
+            ($a:expr) => (TokenNode::Op($a, op_kind));
+            ($a:expr, $b:expr) => ({
+                stack.push(tt!(TokenNode::Op($b, op_kind).into()));
+                TokenNode::Op($a, Spacing::Joint)
+            });
+            ($a:expr, $b:expr, $c:expr) => ({
+                stack.push(tt!(TokenNode::Op($c, op_kind)));
+                stack.push(tt!(TokenNode::Op($b, Spacing::Joint)));
+                TokenNode::Op($a, Spacing::Joint)
+            })
         }
 
         let kind = match token {
             Eq => op!('='),
             Lt => op!('<'),
-            Le => joint!('<', Eq),
-            EqEq => joint!('=', Eq),
-            Ne => joint!('!', Eq),
-            Ge => joint!('>', Eq),
+            Le => op!('<', '='),
+            EqEq => op!('=', '='),
+            Ne => op!('!', '='),
+            Ge => op!('>', '='),
             Gt => op!('>'),
-            AndAnd => joint!('&', BinOp(And)),
-            OrOr => joint!('|', BinOp(Or)),
+            AndAnd => op!('&', '&'),
+            OrOr => op!('|', '|'),
             Not => op!('!'),
             Tilde => op!('~'),
             BinOp(Plus) => op!('+'),
@@ -653,37 +651,46 @@ impl TokenTree {
             BinOp(Caret) => op!('^'),
             BinOp(And) => op!('&'),
             BinOp(Or) => op!('|'),
-            BinOp(Shl) => joint!('<', Lt),
-            BinOp(Shr) => joint!('>', Gt),
-            BinOpEq(Plus) => joint!('+', Eq),
-            BinOpEq(Minus) => joint!('-', Eq),
-            BinOpEq(Star) => joint!('*', Eq),
-            BinOpEq(Slash) => joint!('/', Eq),
-            BinOpEq(Percent) => joint!('%', Eq),
-            BinOpEq(Caret) => joint!('^', Eq),
-            BinOpEq(And) => joint!('&', Eq),
-            BinOpEq(Or) => joint!('|', Eq),
-            BinOpEq(Shl) => joint!('<', Le),
-            BinOpEq(Shr) => joint!('>', Ge),
+            BinOp(Shl) => op!('<', '<'),
+            BinOp(Shr) => op!('>', '>'),
+            BinOpEq(Plus) => op!('+', '='),
+            BinOpEq(Minus) => op!('-', '='),
+            BinOpEq(Star) => op!('*', '='),
+            BinOpEq(Slash) => op!('/', '='),
+            BinOpEq(Percent) => op!('%', '='),
+            BinOpEq(Caret) => op!('^', '='),
+            BinOpEq(And) => op!('&', '='),
+            BinOpEq(Or) => op!('|', '='),
+            BinOpEq(Shl) => op!('<', '<', '='),
+            BinOpEq(Shr) => op!('>', '>', '='),
             At => op!('@'),
             Dot => op!('.'),
-            DotDot => joint!('.', Dot),
-            DotDotDot => joint!('.', DotDot),
-            DotDotEq => joint!('.', DotEq),
+            DotDot => op!('.', '.'),
+            DotDotDot => op!('.', '.', '.'),
+            DotDotEq => op!('.', '.', '='),
             Comma => op!(','),
             Semi => op!(';'),
             Colon => op!(':'),
-            ModSep => joint!(':', Colon),
-            RArrow => joint!('-', Gt),
-            LArrow => joint!('<', BinOp(Minus)),
-            FatArrow => joint!('=', Gt),
+            ModSep => op!(':', ':'),
+            RArrow => op!('-', '>'),
+            LArrow => op!('<', '-'),
+            FatArrow => op!('=', '>'),
             Pound => op!('#'),
             Dollar => op!('$'),
             Question => op!('?'),
 
             Ident(ident, false) | Lifetime(ident) => TokenNode::Term(Term(ident.name)),
             Ident(ident, true) => TokenNode::Term(Term(Symbol::intern(&format!("r#{}", ident)))),
-            Literal(..) | DocComment(..) => TokenNode::Literal(self::Literal(token)),
+            Literal(..) => TokenNode::Literal(self::Literal(token)),
+            DocComment(c) => {
+                let stream = vec![
+                    tt!(TokenNode::Term(Term::intern("doc"))),
+                    tt!(op!('=')),
+                    tt!(TokenNode::Literal(self::Literal(Literal(Lit::Str_(c), None)))),
+                ].into_iter().collect();
+                stack.push(tt!(TokenNode::Group(Delimiter::Bracket, stream)));
+                op!('#')
+            }
 
             Interpolated(_) => {
                 __internal::with_sess(|(sess, _)| {
@@ -692,7 +699,7 @@ impl TokenTree {
                 })
             }
 
-            DotEq => joint!('.', Eq),
+            DotEq => op!('.', '='),
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
         };
@@ -724,7 +731,29 @@ impl TokenTree {
                     } else { Ident(ident, false) };
                 return TokenTree::Token(self.span.0, token).into();
             }
-            TokenNode::Literal(token) => return TokenTree::Token(self.span.0, token.0).into(),
+            TokenNode::Literal(self::Literal(Literal(Lit::Integer(ref a), b)))
+                if a.as_str().starts_with("-") =>
+            {
+                let minus = BinOp(BinOpToken::Minus);
+                let integer = Symbol::intern(&a.as_str()[1..]);
+                let integer = Literal(Lit::Integer(integer), b);
+                let a = TokenTree::Token(self.span.0, minus);
+                let b = TokenTree::Token(self.span.0, integer);
+                return vec![a, b].into_iter().collect()
+            }
+            TokenNode::Literal(self::Literal(Literal(Lit::Float(ref a), b)))
+                if a.as_str().starts_with("-") =>
+            {
+                let minus = BinOp(BinOpToken::Minus);
+                let float = Symbol::intern(&a.as_str()[1..]);
+                let float = Literal(Lit::Float(float), b);
+                let a = TokenTree::Token(self.span.0, minus);
+                let b = TokenTree::Token(self.span.0, float);
+                return vec![a, b].into_iter().collect()
+            }
+            TokenNode::Literal(token) => {
+                return TokenTree::Token(self.span.0, token.0).into()
+            }
         };
 
         let token = match op {
