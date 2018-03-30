@@ -271,6 +271,7 @@ impl SystemTime {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(assoc_unix_epoch)]
     /// use std::time::SystemTime;
     ///
     /// match SystemTime::now().duration_since(SystemTime::UNIX_EPOCH) {
