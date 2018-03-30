@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.191
+* Rustup to *rustc 1.26.0-nightly (ae544ee1c 2018-03-29)*
+* Lint audit; categorize lints as style, correctness, complexity, pedantic, nursery, restriction.
+
 ## 0.0.190
 * Fix a bunch of intermittent cargo bugs
 
