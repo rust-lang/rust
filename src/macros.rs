@@ -683,7 +683,7 @@ impl MacroArgParser {
 
     fn add_meta_variable(&mut self, iter: &mut Cursor) -> Option<()> {
         match iter.next() {
-            Some(TokenTree::Token(sp, Token::Ident(ref ident))) => {
+            Some(TokenTree::Token(sp, Token::Ident(ref ident, _))) => {
                 self.result.push(ParsedMacroArg {
                     kind: MacroArgKind::MetaVariable(ident.clone(), self.buf.clone()),
                     span: mk_sp(self.lo, sp.hi()),
@@ -953,7 +953,7 @@ fn force_space_before(tok: &Token) -> bool {
 
 fn ident_like(tok: &Token) -> bool {
     match *tok {
-        Token::Ident(_) | Token::Literal(..) | Token::Lifetime(_) => true,
+        Token::Ident(..) | Token::Literal(..) | Token::Lifetime(_) => true,
         _ => false,
     }
 }
@@ -981,7 +981,7 @@ fn next_space(tok: &Token) -> SpaceState {
         | Token::CloseDelim(_)
         | Token::Whitespace => SpaceState::Never,
 
-        Token::Literal(..) | Token::Ident(_) | Token::Lifetime(_) => SpaceState::Ident,
+        Token::Literal(..) | Token::Ident(..) | Token::Lifetime(_) => SpaceState::Ident,
 
         _ => SpaceState::Always,
     }
