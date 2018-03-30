@@ -85,7 +85,11 @@ declare_clippy_lint! {
 /// If it was meant to be an outer attribute, then the following item
 /// should not be separated by empty lines.
 ///
-/// **Known problems:** None
+/// **Known problems:** Can cause false positives.
+///
+/// From the clippy side it's difficult to detect empty lines between an attributes and the
+/// following item because empty lines and comments are not part of the AST. The parsing
+/// currently works for basic cases but is not perfect.
 ///
 /// **Example:**
 /// ```rust
@@ -105,7 +109,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    style,
+    nursery,
     "empty line after outer attribute"
 }
 
