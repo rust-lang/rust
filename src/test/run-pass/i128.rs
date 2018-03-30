@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten i128 doesn't work
-
 // compile-flags: -Z borrowck=compare
 
 #![feature(test)]

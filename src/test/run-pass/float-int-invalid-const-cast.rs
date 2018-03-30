@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-emscripten no i128 support
-
 #![deny(const_err)]
 
 use std::{f32, f64};
