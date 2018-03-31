@@ -433,6 +433,55 @@ impl<T: ?Sized> Rc<T> {
         }
     }
 
+    /// Constructs an `Rc` from a raw pointer, cloning it and leaving the original.
+    ///
+    /// This function is unsafe because the raw pointer must have been previously
+    /// returned by a call to a [`Rc::into_raw`][into_raw].
+    ///
+    /// This function is equivalent to calling [`Rc::from_raw`][from_raw] followed
+    /// by `std::mem::forget(rc.clone())`.
+    ///
+    /// [into_raw]: struct.Rc.html#method.into_raw
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::rc::Rc;
+    ///
+    /// let x = Rc::new(10);
+    /// let x_ptr = Rc::into_raw(x);
+    ///
+    /// unsafe {
+    ///     // Convert back to an `Rc`, cloning the original.
+    ///     let x = Rc::clone_from_raw(x_ptr);
+    ///     assert_eq!(*x, 10);
+    ///
+    ///     // We can do so multiple times, each time makes a new clone.
+    ///     let y = Rc::clone_from_raw(x_ptr);
+    ///     assert_eq!(*y, 10);
+    /// }
+    ///
+    /// // `x_ptr` is still valid.
+    /// unsafe {
+    ///     // Convert back to an `Rc` to prevent leak.
+    ///     let x = Rc::from_raw(x_ptr);
+    ///     assert_eq!(*x, 10);
+    ///
+    ///     // Further calls to `Rc::from_raw(x_ptr)` would be memory unsafe.
+    ///     // But we can still use `Rc::clone_from_raw(x_ptr)`, as long as we don't drop `x`.
+    ///     let y = Rc::clone_from_raw(x_ptr);
+    ///     assert_eq!(*y, 10);
+    /// }
+    ///
+    /// // The memory was freed when `x` and `y` went out of scope above, so `x_ptr` is now dangling!
+    /// ```
+    #[unstable(feature = "rc_clone_from_raw", issue = "0")]
+    pub unsafe fn clone_from_raw(ptr: *const T) -> Self {
+        let rc = Self::from_raw(ptr);
+        mem::forget(rc.clone());
+        rc
+    }
+
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
     /// [weak]: struct.Weak.html
