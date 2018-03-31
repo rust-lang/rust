@@ -894,7 +894,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
 
         if let &Ok(ref out) = command_output {
             if out.status.success() {
-                if let Ok(of) = fs::File::open(out_filename) {
+                if let Ok(of) = fs::OpenOptions::new().write(true).open(out_filename) {
                     of.sync_all()?;
                 }
             }
