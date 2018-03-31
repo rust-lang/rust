@@ -40,16 +40,6 @@ use string;
 /// a description, but they may optionally provide additional detail (via
 /// [`Display`]) and cause chain information:
 ///
-/// ```
-/// use std::fmt::Display;
-///
-/// trait Error: Display {
-///     fn description(&self) -> &str;
-///
-///     fn cause(&self) -> Option<&Error> { None }
-/// }
-/// ```
-///
 /// The [`cause`] method is generally used when errors cross "abstraction
 /// boundaries", i.e.  when a one module must report an error that is "caused"
 /// by an error from a lower-level module. This setup makes it possible for the
