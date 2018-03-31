@@ -56,7 +56,7 @@ impl AsRef<ListItem> for ListItem {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum ListItemCommentStyle {
     // Try to keep the comment on the same line with the item.
     SameLine,
@@ -66,7 +66,7 @@ pub enum ListItemCommentStyle {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ListItem {
     // None for comments mean that they are not present.
     pub pre_comment: Option<String>,

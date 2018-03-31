@@ -11,7 +11,7 @@
 use std::cmp::Ordering;
 
 use config::lists::*;
-use syntax::ast;
+use syntax::ast::{self, UseTreeKind};
 use syntax::codemap::{BytePos, Span};
 
 use codemap::SpanUtils;
@@ -19,9 +19,11 @@ use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use types::{rewrite_path, PathContext};
-use utils::{format_visibility, mk_sp};
+use spanned::Spanned;
+use utils::mk_sp;
 use visitor::FmtVisitor;
+
+use std::borrow::Cow;
 
 /// Returns a name imported by a `use` declaration. e.g. returns `Ordering`
 /// for `std::cmp::Ordering` and `self` for `std::cmp::self`.
@@ -29,102 +31,18 @@ pub fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
     path.segments.last().unwrap().identifier
 }
 
-pub fn same_rename(opt_ident: &Option<ast::Ident>, path: &ast::Path) -> bool {
-    opt_ident.map_or(true, |ident| path_to_imported_ident(path) == ident)
-}
-
-fn rewrite_prefix(path: &ast::Path, context: &RewriteContext, shape: Shape) -> Option<String> {
-    if path.segments.len() > 1 && path_to_imported_ident(path).to_string() == "self" {
-        let path = &ast::Path {
-            span: path.span,
-            segments: path.segments[..path.segments.len() - 1].to_owned(),
-        };
-        rewrite_path(context, PathContext::Import, None, path, shape)
-    } else {
-        rewrite_path(context, PathContext::Import, None, path, shape)
-    }
-}
-
-impl Rewrite for ast::UseTree {
-    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        match self.kind {
-            ast::UseTreeKind::Nested(ref items) => {
-                rewrite_nested_use_tree(shape, &self.prefix, items, self.span, context)
-            }
-            ast::UseTreeKind::Glob => {
-                let prefix_shape = shape.sub_width(3)?;
-
-                if !self.prefix.segments.is_empty() {
-                    let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)?;
-                    Some(format!("{}::*", path_str))
-                } else {
-                    Some("*".to_owned())
-                }
-            }
-            ast::UseTreeKind::Simple(opt_ident) => {
-                if same_rename(&opt_ident, &self.prefix) {
-                    rewrite_prefix(&self.prefix, context, shape)
-                        .or_else(|| Some(context.snippet(self.prefix.span).to_owned()))
-                } else {
-                    let ident_str = opt_ident?.to_string();
-                    // 4 = " as ".len()
-                    let prefix_shape = shape.sub_width(ident_str.len() + 4)?;
-                    let path_str = rewrite_prefix(&self.prefix, context, prefix_shape)
-                        .unwrap_or_else(|| context.snippet(self.prefix.span).to_owned());
-                    Some(format!("{} as {}", path_str, ident_str))
-                }
-            }
-        }
-    }
-}
-
-fn is_unused_import(tree: &ast::UseTree, attrs: &[ast::Attribute]) -> bool {
-    attrs.is_empty() && is_unused_import_inner(tree)
-}
-
-fn is_unused_import_inner(tree: &ast::UseTree) -> bool {
-    match tree.kind {
-        ast::UseTreeKind::Nested(ref items) => match items.len() {
-            0 => true,
-            1 => is_unused_import_inner(&items[0].0),
-            _ => false,
-        },
-        _ => false,
-    }
-}
-
-// Rewrite `use foo;` WITHOUT attributes.
-pub fn rewrite_import(
-    context: &RewriteContext,
-    vis: &ast::Visibility,
-    tree: &ast::UseTree,
-    attrs: &[ast::Attribute],
-    shape: Shape,
-) -> Option<String> {
-    let vis = format_visibility(vis);
-    // 4 = `use `, 1 = `;`
-    let rw = shape
-        .offset_left(vis.len() + 4)
-        .and_then(|shape| shape.sub_width(1))
-        .and_then(|shape| {
-            // If we have an empty nested group with no attributes, we erase it
-            if is_unused_import(tree, attrs) {
-                Some("".to_owned())
-            } else {
-                tree.rewrite(context, shape)
-            }
-        });
-    match rw {
-        Some(ref s) if !s.is_empty() => Some(format!("{}use {};", vis, s)),
-        _ => rw,
-    }
-}
-
 impl<'a> FmtVisitor<'a> {
     pub fn format_import(&mut self, item: &ast::Item, tree: &ast::UseTree) {
         let span = item.span;
         let shape = self.shape();
-        let rw = rewrite_import(&self.get_context(), &item.vis, tree, &item.attrs, shape);
+        let rw = UseTree::from_ast(
+            &self.get_context(),
+            tree,
+            None,
+            Some(item.vis.clone()),
+            Some(item.span.lo()),
+            Some(item.attrs.clone()),
+        ).rewrite_top_level(&self.get_context(), shape);
         match rw {
             Some(ref s) if s.is_empty() => {
                 // Format up to last newline
@@ -152,204 +70,416 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn rewrite_nested_use_tree_single(
-    context: &RewriteContext,
-    path_str: &str,
-    tree: &ast::UseTree,
-    shape: Shape,
-) -> Option<String> {
-    match tree.kind {
-        ast::UseTreeKind::Simple(opt_rename) => {
-            let mut item_str = rewrite_prefix(&tree.prefix, context, shape)?;
-            if item_str == "self" {
-                item_str = "".to_owned();
-            }
+// Ordering of imports
 
-            let path_item_str = if path_str.is_empty() {
-                if item_str.is_empty() {
-                    "self".to_owned()
-                } else {
-                    item_str
-                }
-            } else if item_str.is_empty() {
-                path_str.to_owned()
-            } else {
-                format!("{}::{}", path_str, item_str)
-            };
+// We order imports by translating to our own representation and then sorting.
+// The Rust AST data structures are really bad for this. Rustfmt applies a bunch
+// of normalisations to imports and since we want to sort based on the result
+// of these (and to maintain idempotence) we must apply the same normalisations
+// to the data structures for sorting.
+//
+// We sort `self` and `super` before other imports, then identifier imports,
+// then glob imports, then lists of imports. We do not take aliases into account
+// when ordering unless the imports are identical except for the alias (rare in
+// practice).
 
-            Some(if same_rename(&opt_rename, &tree.prefix) {
-                path_item_str
-            } else {
-                format!("{} as {}", path_item_str, opt_rename?)
-            })
-        }
-        ast::UseTreeKind::Glob | ast::UseTreeKind::Nested(..) => {
-            // 2 = "::"
-            let nested_shape = shape.offset_left(path_str.len() + 2)?;
-            tree.rewrite(context, nested_shape)
-                .map(|item| format!("{}::{}", path_str, item))
-        }
+// FIXME(#2531) - we should unify the comparison code here with the formatting
+// code elsewhere since we are essentially string-ifying twice. Furthermore, by
+// parsing to our own format on comparison, we repeat a lot of work when
+// sorting.
+
+// FIXME we do a lot of allocation to make our own representation.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum UseSegment {
+    Ident(String, Option<String>),
+    Slf(Option<String>),
+    Super(Option<String>),
+    Glob,
+    List(Vec<UseTree>),
+}
+
+#[derive(Debug, Clone)]
+pub struct UseTree {
+    pub path: Vec<UseSegment>,
+    pub span: Span,
+    // Comment information within nested use tree.
+    list_item: Option<ListItem>,
+    // Additional fields for top level use items.
+    // Should we have another struct for top-level use items rather than reusing this?
+    visibility: Option<ast::Visibility>,
+    attrs: Option<Vec<ast::Attribute>>,
+}
+
+impl PartialEq for UseTree {
+    fn eq(&self, other: &UseTree) -> bool {
+        self.path == other.path
     }
 }
+impl Eq for UseTree {}
 
-#[derive(Eq, PartialEq)]
-enum ImportItem<'a> {
-    // `self` or `self as a`
-    SelfImport(&'a str),
-    // name_one, name_two, ...
-    SnakeCase(&'a str),
-    // NameOne, NameTwo, ...
-    CamelCase(&'a str),
-    // NAME_ONE, NAME_TWO, ...
-    AllCaps(&'a str),
-    // Failed to format the import item
-    Invalid,
-}
+impl UseSegment {
+    // Clone a version of self with any top-level alias removed.
+    fn remove_alias(&self) -> UseSegment {
+        match *self {
+            UseSegment::Ident(ref s, _) => UseSegment::Ident(s.clone(), None),
+            UseSegment::Slf(_) => UseSegment::Slf(None),
+            UseSegment::Super(_) => UseSegment::Super(None),
+            _ => self.clone(),
+        }
+    }
 
-impl<'a> ImportItem<'a> {
-    fn from_str(s: &str) -> ImportItem {
-        if s == "self" || s.starts_with("self as") {
-            ImportItem::SelfImport(s)
-        } else if s.chars().all(|c| c.is_lowercase() || c == '_' || c == ' ') {
-            ImportItem::SnakeCase(s)
-        } else if s.chars().all(|c| c.is_uppercase() || c == '_' || c == ' ') {
-            ImportItem::AllCaps(s)
+    fn from_path_segment(path_seg: &ast::PathSegment) -> Option<UseSegment> {
+        let name = path_seg.identifier.name.as_str();
+        if name == "{{root}}" {
+            return None;
+        }
+        Some(if name == "self" {
+            UseSegment::Slf(None)
+        } else if name == "super" {
+            UseSegment::Super(None)
         } else {
-            ImportItem::CamelCase(s)
-        }
-    }
-
-    fn from_opt_str(s: Option<&String>) -> ImportItem {
-        s.map_or(ImportItem::Invalid, |s| ImportItem::from_str(s))
-    }
-
-    fn to_str(&self) -> Option<&str> {
-        match *self {
-            ImportItem::SelfImport(s)
-            | ImportItem::SnakeCase(s)
-            | ImportItem::CamelCase(s)
-            | ImportItem::AllCaps(s) => Some(s),
-            ImportItem::Invalid => None,
-        }
-    }
-
-    fn to_u32(&self) -> u32 {
-        match *self {
-            ImportItem::SelfImport(..) => 0,
-            ImportItem::SnakeCase(..) => 1,
-            ImportItem::CamelCase(..) => 2,
-            ImportItem::AllCaps(..) => 3,
-            ImportItem::Invalid => 4,
-        }
-    }
-}
-
-impl<'a> PartialOrd for ImportItem<'a> {
-    fn partial_cmp(&self, other: &ImportItem<'a>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<'a> Ord for ImportItem<'a> {
-    fn cmp(&self, other: &ImportItem<'a>) -> Ordering {
-        let res = self.to_u32().cmp(&other.to_u32());
-        if res != Ordering::Equal {
-            return res;
-        }
-        self.to_str().map_or(Ordering::Greater, |self_str| {
-            other
-                .to_str()
-                .map_or(Ordering::Less, |other_str| self_str.cmp(other_str))
+            UseSegment::Ident((*name).to_owned(), None)
         })
     }
 }
 
-// Pretty prints a multi-item import.
-// If the path list is empty, it leaves the braces empty.
+impl UseTree {
+    // Rewrite use tree with `use ` and a trailing `;`.
+    pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        let mut result = String::with_capacity(256);
+        if let Some(ref attrs) = self.attrs {
+            result.push_str(&attrs.rewrite(context, shape)?);
+            if !result.is_empty() {
+                result.push_str(&shape.indent.to_string_with_newline(context.config));
+            }
+        }
+
+        let vis = self.visibility
+            .as_ref()
+            .map_or(Cow::from(""), |vis| ::utils::format_visibility(&vis));
+        result.push_str(&self.rewrite(context, shape.offset_left(vis.len())?)
+            .map(|s| {
+                if s.is_empty() {
+                    s.to_owned()
+                } else {
+                    format!("{}use {};", vis, s)
+                }
+            })?);
+        Some(result)
+    }
+
+    pub fn from_ast_with_normalization(
+        context: &RewriteContext,
+        item: &ast::Item,
+    ) -> Option<UseTree> {
+        match item.node {
+            ast::ItemKind::Use(ref use_tree) => Some(
+                UseTree::from_ast(
+                    context,
+                    use_tree,
+                    None,
+                    Some(item.vis.clone()),
+                    Some(item.span().lo()),
+                    if item.attrs.is_empty() {
+                        None
+                    } else {
+                        Some(item.attrs.clone())
+                    },
+                ).normalize(context.config.reorder_imported_names()),
+            ),
+            _ => None,
+        }
+    }
+
+    fn from_ast(
+        context: &RewriteContext,
+        a: &ast::UseTree,
+        list_item: Option<ListItem>,
+        visibility: Option<ast::Visibility>,
+        opt_lo: Option<BytePos>,
+        attrs: Option<Vec<ast::Attribute>>,
+    ) -> UseTree {
+        let span = if let Some(lo) = opt_lo {
+            mk_sp(lo, a.span.hi())
+        } else {
+            a.span
+        };
+        let mut result = UseTree {
+            path: vec![],
+            span,
+            list_item,
+            visibility,
+            attrs,
+        };
+        for p in &a.prefix.segments {
+            if let Some(use_segment) = UseSegment::from_path_segment(p) {
+                result.path.push(use_segment);
+            }
+        }
+        match a.kind {
+            UseTreeKind::Glob => {
+                result.path.push(UseSegment::Glob);
+            }
+            UseTreeKind::Nested(ref list) => {
+                // Extract comments between nested use items.
+                // This needs to be done before sorting use items.
+                let items: Vec<_> = itemize_list(
+                    context.snippet_provider,
+                    list.iter().map(|(tree, _)| tree),
+                    "}",
+                    ",",
+                    |tree| tree.span.lo(),
+                    |tree| tree.span.hi(),
+                    |_| Some("".to_owned()), // We only need comments for now.
+                    context.snippet_provider.span_after(a.span, "{"),
+                    a.span.hi(),
+                    false,
+                ).collect();
+                result.path.push(UseSegment::List(
+                    list.iter()
+                        .zip(items.into_iter())
+                        .map(|(t, list_item)| {
+                            Self::from_ast(context, &t.0, Some(list_item), None, None, None)
+                        })
+                        .collect(),
+                ));
+            }
+            UseTreeKind::Simple(ref rename) => {
+                let mut name = (*path_to_imported_ident(&a.prefix).name.as_str()).to_owned();
+                let alias = rename.and_then(|ident| {
+                    if ident == path_to_imported_ident(&a.prefix) {
+                        None
+                    } else {
+                        Some(ident.to_string())
+                    }
+                });
+
+                let segment = if &name == "self" {
+                    UseSegment::Slf(alias)
+                } else if &name == "super" {
+                    UseSegment::Super(alias)
+                } else {
+                    UseSegment::Ident(name, alias)
+                };
+
+                // `name` is already in result.
+                result.path.pop();
+                result.path.push(segment);
+            }
+        }
+        result
+    }
+
+    // Do the adjustments that rustfmt does elsewhere to use paths.
+    pub fn normalize(mut self, do_sort: bool) -> UseTree {
+        let mut last = self.path.pop().expect("Empty use tree?");
+        // Hack around borrow checker.
+        let mut normalize_sole_list = false;
+        let mut aliased_self = false;
+
+        // Remove foo::{} or self without attributes.
+        match last {
+            _ if self.attrs.is_some() => (),
+            UseSegment::List(ref list) if list.is_empty() => {
+                self.path = vec![];
+                return self;
+            }
+            UseSegment::Slf(None) if self.path.is_empty() && self.visibility.is_some() => {
+                self.path = vec![];
+                return self;
+            }
+            _ => (),
+        }
+
+        // Normalise foo::self -> foo.
+        if let UseSegment::Slf(None) = last {
+            if self.path.len() > 0 {
+                return self;
+            }
+        }
+
+        // Normalise foo::self as bar -> foo as bar.
+        if let UseSegment::Slf(_) = last {
+            match self.path.last() {
+                None => {}
+                Some(UseSegment::Ident(_, None)) => {
+                    aliased_self = true;
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        if aliased_self {
+            match self.path.last() {
+                Some(UseSegment::Ident(_, ref mut old_rename)) => {
+                    assert!(old_rename.is_none());
+                    if let UseSegment::Slf(Some(rename)) = last {
+                        *old_rename = Some(rename);
+                        return self;
+                    }
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // Normalise foo::{bar} -> foo::bar
+        if let UseSegment::List(ref list) = last {
+            if list.len() == 1 {
+                normalize_sole_list = true;
+            }
+        }
+
+        if normalize_sole_list {
+            match last {
+                UseSegment::List(list) => {
+                    for seg in &list[0].path {
+                        self.path.push(seg.clone());
+                    }
+                    return self.normalize(do_sort);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        // Recursively normalize elements of a list use (including sorting the list).
+        if let UseSegment::List(list) = last {
+            let mut list = list.into_iter()
+                .map(|ut| ut.normalize(do_sort))
+                .collect::<Vec<_>>();
+            if do_sort {
+                list.sort();
+            }
+            last = UseSegment::List(list);
+        }
+
+        self.path.push(last);
+        self
+    }
+}
+
+impl PartialOrd for UseSegment {
+    fn partial_cmp(&self, other: &UseSegment) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl PartialOrd for UseTree {
+    fn partial_cmp(&self, other: &UseTree) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for UseSegment {
+    fn cmp(&self, other: &UseSegment) -> Ordering {
+        use self::UseSegment::*;
+
+        fn is_upper_snake_case(s: &str) -> bool {
+            s.chars().all(|c| c.is_uppercase() || c == '_')
+        }
+
+        match (self, other) {
+            (&Slf(ref a), &Slf(ref b)) | (&Super(ref a), &Super(ref b)) => a.cmp(b),
+            (&Glob, &Glob) => Ordering::Equal,
+            (&Ident(ref ia, ref aa), &Ident(ref ib, ref ab)) => {
+                // snake_case < CamelCase < UPPER_SNAKE_CASE
+                if ia.starts_with(char::is_uppercase) && ib.starts_with(char::is_lowercase) {
+                    return Ordering::Greater;
+                }
+                if ia.starts_with(char::is_lowercase) && ib.starts_with(char::is_uppercase) {
+                    return Ordering::Less;
+                }
+                if is_upper_snake_case(ia) && !is_upper_snake_case(ib) {
+                    return Ordering::Greater;
+                }
+                if !is_upper_snake_case(ia) && is_upper_snake_case(ib) {
+                    return Ordering::Less;
+                }
+                let ident_ord = ia.cmp(ib);
+                if ident_ord != Ordering::Equal {
+                    return ident_ord;
+                }
+                if aa.is_none() && ab.is_some() {
+                    return Ordering::Less;
+                }
+                if aa.is_some() && ab.is_none() {
+                    return Ordering::Greater;
+                }
+                aa.cmp(ab)
+            }
+            (&List(ref a), &List(ref b)) => {
+                for (a, b) in a.iter().zip(b.iter()) {
+                    let ord = a.cmp(b);
+                    if ord != Ordering::Equal {
+                        return ord;
+                    }
+                }
+
+                a.len().cmp(&b.len())
+            }
+            (&Slf(_), _) => Ordering::Less,
+            (_, &Slf(_)) => Ordering::Greater,
+            (&Super(_), _) => Ordering::Less,
+            (_, &Super(_)) => Ordering::Greater,
+            (&Ident(..), _) => Ordering::Less,
+            (_, &Ident(..)) => Ordering::Greater,
+            (&Glob, _) => Ordering::Less,
+            (_, &Glob) => Ordering::Greater,
+        }
+    }
+}
+impl Ord for UseTree {
+    fn cmp(&self, other: &UseTree) -> Ordering {
+        for (a, b) in self.path.iter().zip(other.path.iter()) {
+            let ord = a.cmp(b);
+            // The comparison without aliases is a hack to avoid situations like
+            // comparing `a::b` to `a as c` - where the latter should be ordered
+            // first since it is shorter.
+            if ord != Ordering::Equal && a.remove_alias().cmp(&b.remove_alias()) != Ordering::Equal
+            {
+                return ord;
+            }
+        }
+
+        self.path.len().cmp(&other.path.len())
+    }
+}
+
 fn rewrite_nested_use_tree(
-    shape: Shape,
-    path: &ast::Path,
-    trees: &[(ast::UseTree, ast::NodeId)],
-    span: Span,
     context: &RewriteContext,
+    use_tree_list: &[UseTree],
+    shape: Shape,
 ) -> Option<String> {
-    // Returns a different option to distinguish `::foo` and `foo`
-    let path_str = rewrite_path(context, PathContext::Import, None, path, shape)?;
-
-    match trees.len() {
-        0 => {
-            let shape = shape.offset_left(path_str.len() + 3)?;
-            return rewrite_path(context, PathContext::Import, None, path, shape)
-                .map(|path_str| format!("{}::{{}}", path_str));
-        }
-        1 => {
-            return rewrite_nested_use_tree_single(context, &path_str, &trees[0].0, shape);
-        }
-        _ => (),
-    }
-
-    let path_str = if path_str.is_empty() {
-        path_str
-    } else {
-        format!("{}::", path_str)
-    };
-
-    // 2 = "{}"
-    let remaining_width = shape.width.checked_sub(path_str.len() + 2).unwrap_or(0);
-    let nested_indent = match context.config.imports_indent() {
-        IndentStyle::Block => shape.indent.block_indent(context.config),
-        // 1 = `{`
-        IndentStyle::Visual => shape.visual_indent(path_str.len() + 1).indent,
-    };
-
+    let mut list_items = Vec::with_capacity(use_tree_list.len());
     let nested_shape = match context.config.imports_indent() {
-        IndentStyle::Block => Shape::indented(nested_indent, context.config).sub_width(1)?,
-        IndentStyle::Visual => Shape::legacy(remaining_width, nested_indent),
+        IndentStyle::Block => shape
+            .block_indent(context.config.tab_spaces())
+            .with_max_width(context.config)
+            .sub_width(1)?,
+        IndentStyle::Visual => shape.visual_indent(0),
     };
-
-    let mut items = {
-        // Dummy value, see explanation below.
-        let mut items = vec![ListItem::from_str("")];
-        let iter = itemize_list(
-            context.snippet_provider,
-            trees.iter().map(|tree| &tree.0),
-            "}",
-            ",",
-            |tree| tree.span.lo(),
-            |tree| tree.span.hi(),
-            |tree| tree.rewrite(context, nested_shape),
-            context.snippet_provider.span_after(span, "{"),
-            span.hi(),
-            false,
-        );
-        items.extend(iter);
-        items
-    };
-
-    // We prefixed the item list with a dummy value so that we can
-    // potentially move "self" to the front of the vector without touching
-    // the rest of the items.
-    let has_self = move_self_to_front(&mut items);
-    let first_index = if has_self { 0 } else { 1 };
-
-    if context.config.reorder_imported_names() {
-        items[1..].sort_by(|a, b| {
-            let a = ImportItem::from_opt_str(a.item.as_ref());
-            let b = ImportItem::from_opt_str(b.item.as_ref());
-            a.cmp(&b)
-        });
+    for use_tree in use_tree_list {
+        let mut list_item = use_tree.list_item.clone()?;
+        list_item.item = use_tree.rewrite(context, nested_shape);
+        list_items.push(list_item);
     }
-
-    let tactic = definitive_tactic(
-        &items[first_index..],
-        context.config.imports_layout(),
-        Separator::Comma,
-        remaining_width,
-    );
-
+    let tactic = if use_tree_list.iter().any(|use_segment| {
+        use_segment
+            .path
+            .last()
+            .map_or(false, |last_segment| match last_segment {
+                UseSegment::List(..) => true,
+                _ => false,
+            })
+    }) {
+        DefinitiveListTactic::Vertical
+    } else {
+        definitive_tactic(
+            &list_items,
+            context.config.imports_layout(),
+            Separator::Comma,
+            shape.width.checked_sub(2).unwrap_or(0),
+        )
+    };
     let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
         && tactic != DefinitiveListTactic::Horizontal;
-
     let fmt = ListFormatting {
         tactic,
         separator: ",",
@@ -364,33 +494,258 @@ fn rewrite_nested_use_tree(
         preserve_newline: true,
         config: context.config,
     };
-    let list_str = write_list(&items[first_index..], &fmt)?;
+
+    let list_str = write_list(&list_items, &fmt)?;
 
     let result = if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block
     {
         format!(
-            "{}{{\n{}{}\n{}}}",
-            path_str,
+            "{{\n{}{}\n{}}}",
             nested_shape.indent.to_string(context.config),
             list_str,
             shape.indent.to_string(context.config)
         )
     } else {
-        format!("{}{{{}}}", path_str, list_str)
+        format!("{{{}}}", list_str)
     };
+
     Some(result)
 }
 
-// Returns true when self item was found.
-fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
-    match items
-        .iter()
-        .position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self"))
-    {
-        Some(pos) => {
-            items[0] = items.remove(pos);
-            true
+impl Rewrite for UseSegment {
+    fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
+        Some(match *self {
+            UseSegment::Ident(ref ident, Some(ref rename)) => format!("{} as {}", ident, rename),
+            UseSegment::Ident(ref ident, None) => ident.clone(),
+            UseSegment::Slf(Some(ref rename)) => format!("self as {}", rename),
+            UseSegment::Slf(None) => "self".to_owned(),
+            UseSegment::Super(Some(ref rename)) => format!("super as {}", rename),
+            UseSegment::Super(None) => "super".to_owned(),
+            UseSegment::Glob => "*".to_owned(),
+            UseSegment::List(ref use_tree_list) => rewrite_nested_use_tree(
+                context,
+                use_tree_list,
+                // 1 = "{" and "}"
+                shape.offset_left(1)?.sub_width(1)?,
+            )?,
+        })
+    }
+}
+
+impl Rewrite for UseTree {
+    // This does NOT format attributes and visibility or add a trailing `;`.
+    fn rewrite(&self, context: &RewriteContext, mut shape: Shape) -> Option<String> {
+        let mut result = String::with_capacity(256);
+        let mut iter = self.path.iter().peekable();
+        while let Some(ref segment) = iter.next() {
+            let segment_str = segment.rewrite(context, shape)?;
+            result.push_str(&segment_str);
+            if iter.peek().is_some() {
+                result.push_str("::");
+                // 2 = "::"
+                shape = shape.offset_left(2 + segment_str.len())?;
+            }
         }
-        None => false,
+        Some(result)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use syntax::codemap::DUMMY_SP;
+
+    // Parse the path part of an import. This parser is not robust and is only
+    // suitable for use in a test harness.
+    fn parse_use_tree(s: &str) -> UseTree {
+        use std::iter::Peekable;
+        use std::mem::swap;
+        use std::str::Chars;
+
+        struct Parser<'a> {
+            input: Peekable<Chars<'a>>,
+        }
+
+        impl<'a> Parser<'a> {
+            fn bump(&mut self) {
+                self.input.next().unwrap();
+            }
+            fn eat(&mut self, c: char) {
+                assert!(self.input.next().unwrap() == c);
+            }
+            fn push_segment(
+                result: &mut Vec<UseSegment>,
+                buf: &mut String,
+                alias_buf: &mut Option<String>,
+            ) {
+                if !buf.is_empty() {
+                    let mut alias = None;
+                    swap(alias_buf, &mut alias);
+                    if buf == "self" {
+                        result.push(UseSegment::Slf(alias));
+                        *buf = String::new();
+                        *alias_buf = None;
+                    } else if buf == "super" {
+                        result.push(UseSegment::Super(alias));
+                        *buf = String::new();
+                        *alias_buf = None;
+                    } else {
+                        let mut name = String::new();
+                        swap(buf, &mut name);
+                        result.push(UseSegment::Ident(name, alias));
+                    }
+                }
+            }
+            fn parse_in_list(&mut self) -> UseTree {
+                let mut result = vec![];
+                let mut buf = String::new();
+                let mut alias_buf = None;
+                while let Some(&c) = self.input.peek() {
+                    match c {
+                        '{' => {
+                            assert!(buf.is_empty());
+                            self.bump();
+                            result.push(UseSegment::List(self.parse_list()));
+                            self.eat('}');
+                        }
+                        '*' => {
+                            assert!(buf.is_empty());
+                            self.bump();
+                            result.push(UseSegment::Glob);
+                        }
+                        ':' => {
+                            self.bump();
+                            self.eat(':');
+                            Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                        }
+                        '}' | ',' => {
+                            Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                            return UseTree {
+                                path: result,
+                                span: DUMMY_SP,
+                                list_item: None,
+                                visibility: None,
+                                attrs: None,
+                            };
+                        }
+                        ' ' => {
+                            self.bump();
+                            self.eat('a');
+                            self.eat('s');
+                            self.eat(' ');
+                            alias_buf = Some(String::new());
+                        }
+                        c => {
+                            self.bump();
+                            if let Some(ref mut buf) = alias_buf {
+                                buf.push(c);
+                            } else {
+                                buf.push(c);
+                            }
+                        }
+                    }
+                }
+                Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                UseTree {
+                    path: result,
+                    span: DUMMY_SP,
+                    list_item: None,
+                    visibility: None,
+                    attrs: None,
+                }
+            }
+
+            fn parse_list(&mut self) -> Vec<UseTree> {
+                let mut result = vec![];
+                loop {
+                    match self.input.peek().unwrap() {
+                        ',' | ' ' => self.bump(),
+                        '}' => {
+                            return result;
+                        }
+                        _ => result.push(self.parse_in_list()),
+                    }
+                }
+            }
+        }
+
+        let mut parser = Parser {
+            input: s.chars().peekable(),
+        };
+        parser.parse_in_list()
+    }
+
+    #[test]
+    fn test_use_tree_normalize() {
+        assert_eq!(
+            parse_use_tree("a::self").normalize(true),
+            parse_use_tree("a")
+        );
+        assert_eq!(
+            parse_use_tree("a::self as foo").normalize(true),
+            parse_use_tree("a as foo")
+        );
+        assert_eq!(
+            parse_use_tree("a::{self}").normalize(true),
+            parse_use_tree("a")
+        );
+        assert_eq!(
+            parse_use_tree("a::{b}").normalize(true),
+            parse_use_tree("a::b")
+        );
+        assert_eq!(
+            parse_use_tree("a::{b, c::self}").normalize(true),
+            parse_use_tree("a::{b, c}")
+        );
+        assert_eq!(
+            parse_use_tree("a::{b as bar, c::self}").normalize(true),
+            parse_use_tree("a::{b as bar, c}")
+        );
+    }
+
+    #[test]
+    fn test_use_tree_ord() {
+        assert!(parse_use_tree("a").normalize(true) < parse_use_tree("aa").normalize(true));
+        assert!(parse_use_tree("a").normalize(true) < parse_use_tree("a::a").normalize(true));
+        assert!(parse_use_tree("a").normalize(true) < parse_use_tree("*").normalize(true));
+        assert!(parse_use_tree("a").normalize(true) < parse_use_tree("{a, b}").normalize(true));
+        assert!(parse_use_tree("*").normalize(true) < parse_use_tree("{a, b}").normalize(true));
+
+        assert!(
+            parse_use_tree("aaaaaaaaaaaaaaa::{bb, cc, dddddddd}").normalize(true)
+                < parse_use_tree("aaaaaaaaaaaaaaa::{bb, cc, ddddddddd}").normalize(true)
+        );
+        assert!(
+            parse_use_tree("serde::de::{Deserialize}").normalize(true)
+                < parse_use_tree("serde_json").normalize(true)
+        );
+        assert!(
+            parse_use_tree("a::b::c").normalize(true) < parse_use_tree("a::b::*").normalize(true)
+        );
+        assert!(
+            parse_use_tree("foo::{Bar, Baz}").normalize(true)
+                < parse_use_tree("{Bar, Baz}").normalize(true)
+        );
+
+        assert!(
+            parse_use_tree("foo::{self as bar}").normalize(true)
+                < parse_use_tree("foo::{qux as bar}").normalize(true)
+        );
+        assert!(
+            parse_use_tree("foo::{qux as bar}").normalize(true)
+                < parse_use_tree("foo::{baz, qux as bar}").normalize(true)
+        );
+        assert!(
+            parse_use_tree("foo::{self as bar, baz}").normalize(true)
+                < parse_use_tree("foo::{baz, qux as bar}").normalize(true)
+        );
+
+        assert!(parse_use_tree("foo").normalize(true) < parse_use_tree("Foo").normalize(true));
+        assert!(parse_use_tree("foo").normalize(true) < parse_use_tree("foo::Bar").normalize(true));
+
+        assert!(
+            parse_use_tree("std::cmp::{d, c, b, a}").normalize(true)
+                < parse_use_tree("std::cmp::{b, e, g, f}").normalize(true)
+        );
     }
 }
