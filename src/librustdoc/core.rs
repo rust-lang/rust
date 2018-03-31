@@ -18,6 +18,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
+use rustc::session::config::ErrorOutputType;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
@@ -28,8 +29,9 @@ use syntax::ast::NodeId;
 use syntax::codemap;
 use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::json::JsonEmitter;
 use errors;
-use errors::emitter::ColorConfig;
+use errors::emitter::{Emitter, EmitterWriter};
 
 use std::cell::{RefCell, Cell};
 use std::mem;
@@ -115,7 +117,6 @@ impl DocAccessLevels for AccessLevels<DefId> {
     }
 }
 
-
 pub fn run_core(search_paths: SearchPaths,
                 cfgs: Vec<String>,
                 externs: config::Externs,
@@ -126,7 +127,8 @@ pub fn run_core(search_paths: SearchPaths,
                 crate_name: Option<String>,
                 force_unstable_if_unmarked: bool,
                 edition: Edition,
-                cg: CodegenOptions) -> (clean::Crate, RenderInfo)
+                cg: CodegenOptions,
+                error_format: ErrorOutputType) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -138,6 +140,7 @@ pub fn run_core(search_paths: SearchPaths,
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
+    // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
         search_paths,
@@ -155,14 +158,42 @@ pub fn run_core(search_paths: SearchPaths,
             edition,
             ..config::basic_debugging_options()
         },
+        error_format,
         ..config::basic_options().clone()
     };
 
     let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
-    let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                                               true,
-                                                               false,
-                                                               Some(codemap.clone()));
+    let emitter: Box<dyn Emitter> = match error_format {
+        ErrorOutputType::HumanReadable(color_config) => Box::new(
+            EmitterWriter::stderr(
+                color_config,
+                Some(codemap.clone()),
+                false,
+                sessopts.debugging_opts.teach,
+            ).ui_testing(sessopts.debugging_opts.ui_testing)
+        ),
+        ErrorOutputType::Json(pretty) => Box::new(
+            JsonEmitter::stderr(
+                None,
+                codemap.clone(),
+                pretty,
+                sessopts.debugging_opts.approximate_suggestions,
+            ).ui_testing(sessopts.debugging_opts.ui_testing)
+        ),
+        ErrorOutputType::Short(color_config) => Box::new(
+            EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false)
+        ),
+    };
+
+    let diagnostic_handler = errors::Handler::with_emitter_and_flags(
+        emitter,
+        errors::HandlerFlags {
+            can_emit_warnings: true,
+            treat_err_as_bug: false,
+            external_macro_backtrace: false,
+            ..Default::default()
+        },
+    );
 
     let mut sess = session::build_session_(
         sessopts, cpath, diagnostic_handler, codemap,

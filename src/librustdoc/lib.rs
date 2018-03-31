@@ -23,6 +23,7 @@
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(entry_and_modify)]
+#![feature(dyn_trait)]
 
 extern crate arena;
 extern crate getopts;
@@ -47,6 +48,8 @@ extern crate pulldown_cmark;
 extern crate tempdir;
 
 extern crate serialize as rustc_serialize; // used by deriving
+
+use errors::ColorConfig;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::default::Default;
@@ -278,6 +281,21 @@ pub fn opts() -> Vec<RustcOptGroup> {
                      "edition to use when compiling rust code (default: 2015)",
                      "EDITION")
         }),
+        unstable("color", |o| {
+            o.optopt("",
+                     "color",
+                     "Configure coloring of output:
+                                          auto   = colorize, if output goes to a tty (default);
+                                          always = always colorize output;
+                                          never  = never colorize output",
+                     "auto|always|never")
+        }),
+        unstable("error-format", |o| {
+            o.optopt("",
+                     "error-format",
+                     "How errors and other messages are produced",
+                     "human|json|short")
+        }),
     ]
 }
 
@@ -362,9 +380,33 @@ pub fn main_args(args: &[String]) -> isize {
     }
     let input = &matches.free[0];
 
+    let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+        Some("auto") => ColorConfig::Auto,
+        Some("always") => ColorConfig::Always,
+        Some("never") => ColorConfig::Never,
+        None => ColorConfig::Auto,
+        Some(arg) => {
+            print_error(&format!("argument for --color must be `auto`, `always` or `never` \
+                                  (instead was `{}`)", arg));
+            return 1;
+        }
+    };
+    let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        Some("human") => ErrorOutputType::HumanReadable(color),
+        Some("json") => ErrorOutputType::Json(false),
+        Some("pretty-json") => ErrorOutputType::Json(true),
+        Some("short") => ErrorOutputType::Short(color),
+        None => ErrorOutputType::HumanReadable(color),
+        Some(arg) => {
+            print_error(&format!("argument for --error-format must be `human`, `json` or \
+                                  `short` (instead was `{}`)", arg));
+            return 1;
+        }
+    };
+
     let mut libs = SearchPaths::new();
     for s in &matches.opt_strs("L") {
-        libs.add_path(s, ErrorOutputType::default());
+        libs.add_path(s, error_format);
     }
     let externs = match parse_externs(&matches) {
         Ok(ex) => ex,
@@ -464,7 +506,9 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let output_format = matches.opt_str("w");
-    let res = acquire_input(PathBuf::from(input), externs, edition, cg, &matches, move |out| {
+
+    let res = acquire_input(PathBuf::from(input), externs, edition, cg, &matches, error_format,
+                            move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
@@ -508,13 +552,14 @@ fn acquire_input<R, F>(input: PathBuf,
                        edition: Edition,
                        cg: CodegenOptions,
                        matches: &getopts::Matches,
+                       error_format: ErrorOutputType,
                        f: F)
                        -> Result<R, String>
 where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
-        Some("rust") => Ok(rust_input(input, externs, edition, cg, matches, f)),
+        Some("rust") => Ok(rust_input(input, externs, edition, cg, matches, error_format, f)),
         Some(s) => Err(format!("unknown input format: {}", s)),
-        None => Ok(rust_input(input, externs, edition, cg, matches, f))
+        None => Ok(rust_input(input, externs, edition, cg, matches, error_format, f))
     }
 }
 
@@ -545,6 +590,7 @@ fn rust_input<R, F>(cratefile: PathBuf,
                     edition: Edition,
                     cg: CodegenOptions,
                     matches: &getopts::Matches,
+                    error_format: ErrorOutputType,
                     f: F) -> R
 where R: 'static + Send,
       F: 'static + Send + FnOnce(Output) -> R
@@ -597,7 +643,7 @@ where R: 'static + Send,
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
                            display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked, edition, cg);
+                           force_unstable_if_unmarked, edition, cg, error_format);
 
         info!("finished with rustc");
 
