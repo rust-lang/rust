@@ -1587,6 +1587,7 @@ impl String {
     /// let b = s.into_boxed_str();
     /// ```
     #[stable(feature = "box_str", since = "1.4.0")]
+    #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
