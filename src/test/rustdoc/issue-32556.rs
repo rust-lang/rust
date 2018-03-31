@@ -13,5 +13,3 @@
 /// bad_assert!();
 /// ```
 pub fn foo() {}
-
-
