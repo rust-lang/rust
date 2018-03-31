@@ -1191,7 +1191,12 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                self.iter.size_hint()
+                if self.found_none {
+                    (0, Some(0))
+                } else {
+                    let (_, upper) = self.iter.size_hint();
+                    (0, upper)
+                }
             }
         }
 
