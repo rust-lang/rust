@@ -12,8 +12,9 @@
 
 #![unstable(issue = "32838", feature = "allocator_api")]
 
-pub use alloc::heap::{Heap, Alloc, Layout, Excess, CannotReallocInPlace, AllocErr};
+pub use alloc::heap::Heap;
 pub use alloc_system::System;
+pub use core::heap::*;
 
 #[cfg(not(test))]
 #[doc(hidden)]

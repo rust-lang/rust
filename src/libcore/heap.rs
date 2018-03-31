@@ -15,11 +15,11 @@
                       tracing garbage collector",
             issue = "32838")]
 
-use core::cmp;
-use core::fmt;
-use core::mem;
-use core::usize;
-use core::ptr::{self, NonNull};
+use cmp;
+use fmt;
+use mem;
+use usize;
+use ptr::{self, NonNull};
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
@@ -568,7 +568,7 @@ pub unsafe trait Alloc {
     /// invoked method, and let the client decide whether to invoke
     /// this `oom` method in response.
     fn oom(&mut self, _: AllocErr) -> ! {
-        unsafe { ::core::intrinsics::abort() }
+        unsafe { ::intrinsics::abort() }
     }
 
     // == ALLOCATOR-SPECIFIC QUANTITIES AND LIMITS ==
