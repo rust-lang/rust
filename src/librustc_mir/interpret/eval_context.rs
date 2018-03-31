@@ -1319,6 +1319,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
 
+        let layout = self.layout_of(ty)?;
+        // do the strongest layout check of the two
+        let align = layout.align.max(ptr_align);
+        self.memory.check_align(ptr, align)?;
+
+        if layout.size.bytes() == 0 {
+            return Ok(Some(Value::ByVal(PrimVal::Undef)));
+        }
+
         let ptr = ptr.to_ptr()?;
         let val = match ty.sty {
             ty::TyBool => {
