@@ -2113,7 +2113,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                         since,
                         MarkdownHtml(&deprecated_reason))
             } else {
-                format!("This will be deprecated in {}{}",
+                format!("Deprecating in {}{}",
                         Escape(&stab.deprecated_since),
                         MarkdownHtml(&deprecated_reason))
             };
@@ -2171,7 +2171,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                     since,
                     MarkdownHtml(&note))
         } else {
-            format!("This will be deprecated in {}{}",
+            format!("Deprecating in {}{}",
                     Escape(&depr.since),
                     MarkdownHtml(&note))
         };
