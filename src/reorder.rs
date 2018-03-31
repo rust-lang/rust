@@ -103,14 +103,7 @@ fn rewrite_reorderable_item(
         _ => return None,
     };
 
-    combine_strs_with_missing_comments(
-        context,
-        &attrs_str,
-        &item_str,
-        missed_span,
-        shape,
-        false,
-    )
+    combine_strs_with_missing_comments(context, &attrs_str, &item_str, missed_span, shape, false)
 }
 
 /// Rewrite a list of items with reordering. Every item in `items` must have
