@@ -19,12 +19,11 @@ use list::{// Another item
 
 use test::{/* A */ self /* B */, Other /* C */};
 
-use Foo::{Bar, Baz};
 use syntax;
 pub use syntax::ast::{Expr, ExprAssign, ExprCall, ExprMethodCall, ExprPath, Expr_};
+use Foo::{Bar, Baz};
 use {Bar /* comment */, /* Pre-comment! */ Foo};
 
-use self;
 use std::io;
 use std::io;
 
@@ -54,14 +53,14 @@ use foo::{self as bar, baz};
 use foo::{baz, qux as bar};
 
 // With absolute paths
-use Foo;
 use foo;
 use foo::Bar;
 use foo::{Bar, Baz};
+use Foo;
 use {Bar, Baz};
 
 // Root globs
-use ::*;
+use *;
 use *;
 
 // spaces used to cause glob imports to disappear (#1356)
@@ -73,14 +72,24 @@ use foo::issue_1356::*;
 use self::unix::{};
 
 // nested imports
-use foo::{a, b, boo, c,
-          bar::{baz, qux, xxxxxxxxxxx, yyyyyyyyyyyyy, zzzzzzzzzzzzzzzz,
-                foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz}}};
+use foo::{a,
+          b,
+          bar::{baz,
+                foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz},
+                qux,
+                xxxxxxxxxxx,
+                yyyyyyyyyyyyy,
+                zzzzzzzzzzzzzzzz},
+          boo,
+          c};
 
-use fooo::{bar, x, y, z,
-           baar::foobar::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+use fooo::{baar::foobar::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
                           zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz},
-           bar::*};
+           bar,
+           bar::*,
+           x,
+           y,
+           z};
 
 // nested imports with a single sub-tree.
 use a::b::c::d;

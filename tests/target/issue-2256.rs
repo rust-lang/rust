@@ -1,8 +1,7 @@
 // こんにちは
 use std::borrow::Cow;
 
-/* comment */
+/* comment 1 */
+/* comment 2 */
 
-/* comment */
-
-/* comment */
+/* comment 3 */
