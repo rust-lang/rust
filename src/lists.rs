@@ -257,7 +257,9 @@ where
                     result.push(' ');
                 }
             }
-            DefinitiveListTactic::Vertical if !first => {
+            DefinitiveListTactic::Vertical
+                if !first && !inner_item.is_empty() && !result.is_empty() =>
+            {
                 result.push('\n');
                 result.push_str(indent_str);
             }
