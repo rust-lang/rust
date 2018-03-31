@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /// Blah blah blah
-/// ```ignore
+/// ```ignore (testing rustdoc's handling of ignore)
 /// bad_assert!();
 /// ```
 pub fn foo() {}
