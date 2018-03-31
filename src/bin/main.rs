@@ -57,19 +57,18 @@ enum Operation {
 /// Parsed command line options.
 #[derive(Clone, Debug, Default)]
 struct CliOptions {
-    skip_children: bool,
+    skip_children: Option<bool>,
     verbose: bool,
     write_mode: Option<WriteMode>,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
-    error_on_unformatted: bool,
+    error_on_unformatted: Option<bool>,
 }
 
 impl CliOptions {
     fn from_matches(matches: &Matches) -> FmtResult<CliOptions> {
         let mut options = CliOptions::default();
-        options.skip_children = matches.opt_present("skip-children");
         options.verbose = matches.opt_present("verbose");
         let unstable_features = matches.opt_present("unstable-features");
         let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
@@ -105,19 +104,26 @@ impl CliOptions {
             options.file_lines = file_lines.parse()?;
         }
 
+        if matches.opt_present("skip-children") {
+            options.skip_children = Some(true);
+        }
         if matches.opt_present("error-on-unformatted") {
-            options.error_on_unformatted = true;
+            options.error_on_unformatted = Some(true);
         }
 
         Ok(options)
     }
 
     fn apply_to(self, config: &mut Config) {
-        config.set().skip_children(self.skip_children);
         config.set().verbose(self.verbose);
         config.set().file_lines(self.file_lines);
         config.set().unstable_features(self.unstable_features);
-        config.set().error_on_unformatted(self.error_on_unformatted);
+        if let Some(skip_children) = self.skip_children {
+            config.set().skip_children(skip_children);
+        }
+        if let Some(error_on_unformatted) = self.error_on_unformatted {
+            config.set().error_on_unformatted(error_on_unformatted);
+        }
         if let Some(write_mode) = self.write_mode {
             config.set().write_mode(write_mode);
         }
