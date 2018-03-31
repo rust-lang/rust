@@ -10,8 +10,8 @@
 
 //! Format attributes and meta items.
 
-use config::IndentStyle;
 use config::lists::*;
+use config::IndentStyle;
 use syntax::ast;
 use syntax::codemap::Span;
 

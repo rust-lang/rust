@@ -10,7 +10,7 @@
 
 // Formatting and tools for comments.
 
-use std::{self, iter, borrow::Cow};
+use std::{self, borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
 use syntax::codemap::Span;
