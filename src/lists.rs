@@ -619,6 +619,8 @@ where
 
             let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
                 post_snippet[1..].trim_matches(white_space)
+            } else if post_snippet.starts_with(self.separator) {
+                post_snippet[self.separator.len()..].trim_matches(white_space)
             } else if post_snippet.ends_with(',') {
                 post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
             } else {
