@@ -743,20 +743,29 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             Discriminant(ref place) => {
                 let ty = self.place_ty(place);
+                let layout = self.layout_of(ty)?;
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, ty)?;
-                if let ty::TyAdt(adt_def, _) = ty.sty {
-                    trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(*self.tcx).collect::<Vec<_>>());
-                    if adt_def.discriminants(*self.tcx).all(|v| {
-                        discr_val != v.val
-                    })
-                    {
-                        return err!(InvalidDiscriminant);
+                match layout.variants {
+                    layout::Variants::Single { index } => {
+                        assert_eq!(discr_val, index as u128);
                     }
-                    self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
-                } else {
-                    bug!("rustc only generates Rvalue::Discriminant for enums");
+                    layout::Variants::Tagged { .. } |
+                    layout::Variants::NicheFilling { .. } => {
+                        if let ty::TyAdt(adt_def, _) = ty.sty {
+                            trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(*self.tcx).collect::<Vec<_>>());
+                            if adt_def.discriminants(*self.tcx).all(|v| {
+                                discr_val != v.val
+                            })
+                            {
+                                return err!(InvalidDiscriminant);
+                            }
+                        } else {
+                            bug!("rustc only generates Rvalue::Discriminant for enums");
+                        }
+                    }
                 }
+                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
             }
         }
 
