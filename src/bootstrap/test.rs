@@ -514,6 +514,41 @@ impl Step for RustdocJS {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocUi {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocUi {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/test/rustdoc-ui")
+    }
+
+    fn make_run(run: RunConfig) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+        run.builder.ensure(RustdocUi {
+            host: run.host,
+            target: run.target,
+            compiler,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "ui",
+            suite: "rustdoc-ui",
+        })
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
