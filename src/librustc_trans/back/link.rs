@@ -146,7 +146,10 @@ pub(crate) fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
-        if sess.opts.debugging_opts.no_trans && crate_type == config::CrateTypeExecutable {
+        let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
+        let ignore_executable = sess.opts.debugging_opts.no_trans ||
+            !(sess.opts.output_types.should_trans() || output_metadata);
+        if crate_type == config::CrateTypeExecutable && ignore_executable {
             continue;
         }
 
