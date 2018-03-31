@@ -910,6 +910,11 @@ macro foo() {
     }
 }
 
+// #2574
+macro_rules! test {
+    () => {{}};
+}
+
 macro lex_err($kind: ident $(, $body: expr)*) {
     Err(QlError::LexError(LexError::$kind($($body,)*)))
 }
