@@ -555,7 +555,9 @@ impl<'a> Builder<'a> {
         let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
         if stage != 0 {
             let s = env::var("RUSTFLAGS_STAGE_NOT_0").unwrap_or_default();
-            extra_args.push_str(" ");
+            if !extra_args.is_empty() {
+                extra_args.push_str(" ");
+            }
             extra_args.push_str(&s);
         }
 
