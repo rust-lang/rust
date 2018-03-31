@@ -52,30 +52,29 @@ use string;
 /// [`cause`]: trait.Error.html#method.cause
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Error: Debug + Display {
-    /// A short description of the error.
+    /// **This method is soft-deprecated.**
     ///
-    /// The description should only be used for a simple message.
-    /// It should not contain newlines or sentence-ending punctuation,
-    /// to facilitate embedding in larger user-facing strings.
-    /// For showing formatted error messages with more information see
-    /// [`Display`].
+    /// Although using it won’t cause compilation warning,
+    /// new code should use [`Display`] instead
+    /// and new `impl`s can omit it.
     ///
     /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::error::Error;
-    ///
     /// match "xc".parse::<u32>() {
     ///     Err(e) => {
-    ///         println!("Error: {}", e.description());
+    ///         // Print `e` itself, not `e.description()`.
+    ///         println!("Error: {}", e);
     ///     }
     ///     _ => println!("No error"),
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn description(&self) -> &str;
+    fn description(&self) -> &str {
+        ""
+    }
 
     /// The lower-level cause of this error, if any.
     ///
