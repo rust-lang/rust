@@ -12,6 +12,10 @@
 
 // ignore-cross-compile
 
+// FIXME: The proc-macro tests should work for stage1 when #49219 is merged.
+//        See also #49352.
+// ignore-stage1
+
 #![feature(rustc_private, path)]
 #![feature(core)]
 

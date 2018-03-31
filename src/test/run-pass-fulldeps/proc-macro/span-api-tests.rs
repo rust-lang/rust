@@ -13,6 +13,10 @@
 
 // ignore-pretty
 
+// FIXME: The proc-macro tests should work for stage1 when #49219 is merged.
+//        See also #49352.
+// ignore-stage1
+
 #![feature(proc_macro)]
 
 #[macro_use]
