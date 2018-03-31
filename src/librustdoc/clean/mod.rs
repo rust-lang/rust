@@ -604,6 +604,11 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 
         None
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let lower = self.current_list.len();
+        (lower, None)
+    }
 }
 
 pub trait AttributesExt {

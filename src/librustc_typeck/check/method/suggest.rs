@@ -730,7 +730,14 @@ impl<'a> Iterator for AllTraits<'a> {
             TraitInfo::new(*info)
         })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.borrow.as_ref().unwrap().len() - self.idx;
+        (len, Some(len))
+    }
 }
+
+impl<'a> ExactSizeIterator for AllTraits<'a> {}
 
 
 struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
