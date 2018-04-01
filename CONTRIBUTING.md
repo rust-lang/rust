@@ -15,41 +15,41 @@ High level approach:
 
 All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth, @llogiq, @mcarton or @oli-obk.
 
-Some issues are easier than others. The [good first issue](https://github.com/rust-lang-nursery/rust-clippy/labels/good%20first%20issue)
+Some issues are easier than others. The [`good first issue`](https://github.com/rust-lang-nursery/rust-clippy/labels/good%20first%20issue)
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
 so that we can assign it to you!
 
-Issues marked [T-AST](https://github.com/rust-lang-nursery/rust-clippy/labels/T-AST) involve simple
+Issues marked [`T-AST`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-AST) involve simple
 matching of the syntax tree structure, and are generally easier than
-[T-middle](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues, which involve types
+[`T-middle`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues, which involve types
 and resolved paths.
 
-Issues marked [E-medium](https://github.com/rust-lang-nursery/rust-clippy/labels/E-medium) are generally
-pretty easy too, though it's recommended you work on an E-easy issue first. They are mostly classified
-as `E-medium`, since they might be somewhat involved code wise, but not difficult per-se.
-
-[Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
-to lint-writing, though it does get into advanced stuff. Most lints consist of an implementation of
-`LintPass` with one or more of its default methods overridden. See the existing lints for examples
-of this.
-
-T-AST issues will generally need you to match against a predefined syntax structure. To figure out
+[`T-AST`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-AST) issues will generally need you to match against a predefined syntax structure. To figure out
 how this syntax structure is encoded in the AST, it is recommended to run `rustc -Z ast-json` on an
 example of the structure and compare with the
 [nodes in the AST docs](http://manishearth.github.io/rust-internals-docs/syntax/ast/). Usually
 the lint will end up to be a nested series of matches and ifs,
 [like so](https://github.com/rust-lang-nursery/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
 
-T-middle issues can be more involved and require verifying types. The
+[`E-medium`](https://github.com/rust-lang-nursery/rust-clippy/labels/E-medium) issues are generally
+pretty easy too, though it's recommended you work on an E-easy issue first. They are mostly classified
+as `E-medium`, since they might be somewhat involved code wise, but not difficult per-se.
+
+[`T-middle`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues can
+be more involved and require verifying types. The
 [`ty`](http://manishearth.github.io/rust-internals-docs/rustc/ty) module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
 ### Writing code
 
-Compiling clippy can take almost a minute or more depending on your machine.
-You can set the environment flag `CARGO_INCREMENTAL=1` to cut down that time to
-almost a third on average, depending on the influence your change has.
+Compiling clippy from scratch can take almost a minute or more depending on your machine.
+However, since Rust 1.24.0 incremental compilation is enabled by default and compile times for small changes should be quick.
+
+[Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
+to lint-writing, though it does get into advanced stuff. Most lints consist of an implementation of
+`LintPass` with one or more of its default methods overridden. See the existing lints for examples
+of this.
 
 Please document your lint with a doc comment akin to the following:
 
@@ -61,8 +61,13 @@ Please document your lint with a doc comment akin to the following:
 /// **Known problems:** None. (Or describe where it could go wrong.)
 ///
 /// **Example:**
+///
 /// ```rust
-/// Insert a short example if you have one.
+/// // Bad
+/// Insert a short example of code that triggers the lint
+///
+/// // Good
+/// Insert a short example of improved code that doesn't trigger the lint
 /// ```
 ```
 
@@ -78,12 +83,6 @@ If you don't want to wait for all tests to finish, you can also execute a single
 
 ```bash
 TESTNAME=ui/empty_line_after_outer_attr cargo test --test compile-test
-```
-
-And you can also combine this with `CARGO_INCREMENTAL`:
-
-```bash
-CARGO_INCREMENTAL=1 TESTNAME=ui/doc cargo test --test compile-test
 ```
 
 ### Testing manually
