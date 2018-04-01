@@ -26,7 +26,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{Lrc, Lock, OneThread, Once};
+use rustc_data_structures::sync::{Lrc, Lock, LockCell, OneThread, Once};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -146,15 +146,15 @@ pub struct Session {
     /// If -zfuel=crate=n is specified, Some(crate).
     optimization_fuel_crate: Option<String>,
     /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
-    optimization_fuel_limit: Cell<u64>,
+    optimization_fuel_limit: LockCell<u64>,
     /// We're rejecting all further optimizations.
-    out_of_fuel: Cell<bool>,
+    out_of_fuel: LockCell<bool>,
 
     // The next two are public because the driver needs to read them.
     /// If -zprint-fuel=crate, Some(crate).
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: Cell<u64>,
+    pub print_fuel: LockCell<u64>,
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
@@ -846,6 +846,7 @@ impl Session {
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
+        assert!(self.query_threads() == 1);
         let mut ret = true;
         match self.optimization_fuel_crate {
             Some(ref c) if c == crate_name => {
@@ -1075,9 +1076,9 @@ pub fn build_session_(
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
     let optimization_fuel_limit =
-        Cell::new(sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0));
+        LockCell::new(sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0));
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
-    let print_fuel = Cell::new(0);
+    let print_fuel = LockCell::new(0);
 
     let working_dir = match env::current_dir() {
         Ok(dir) => dir,
@@ -1132,7 +1133,7 @@ pub fn build_session_(
         optimization_fuel_limit,
         print_fuel_crate,
         print_fuel,
-        out_of_fuel: Cell::new(false),
+        out_of_fuel: LockCell::new(false),
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near
         // the beginning of the process though to ensure we don't get false

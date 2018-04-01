@@ -1859,6 +1859,13 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
+    if debugging_opts.query_threads.unwrap_or(1) > 1 && debugging_opts.fuel.is_some() {
+        early_error(
+            error_format,
+            "Optimization fuel is incompatible with multiple query threads",
+        );
+    }
+
     if codegen_units == Some(0) {
         early_error(
             error_format,
