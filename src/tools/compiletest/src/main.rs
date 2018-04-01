@@ -283,6 +283,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         ),
     };
 
+    let src_base = opt_path(matches, "src-base");
+    let run_ignored = matches.opt_present("ignored");
     Config {
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
@@ -293,7 +295,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
-        src_base: opt_path(matches, "src-base"),
+        src_base,
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: matches
@@ -301,7 +303,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .unwrap()
             .parse()
             .expect("invalid mode"),
-        run_ignored: matches.opt_present("ignored"),
+        run_ignored,
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),

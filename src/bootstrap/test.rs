@@ -886,8 +886,12 @@ impl Step for Compiletest {
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
+        let is_rustdoc_ui = suite.ends_with("rustdoc-ui");
+
         // Avoid depending on rustdoc when we don't need it.
-        if mode == "rustdoc" || (mode == "run-make" && suite.ends_with("fulldeps")) {
+        if mode == "rustdoc" ||
+           (mode == "run-make" && suite.ends_with("fulldeps")) ||
+           (mode == "ui" && is_rustdoc_ui) {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
@@ -903,14 +907,24 @@ impl Step for Compiletest {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
-        let mut flags = vec!["-Crpath".to_string()];
-        if build.config.rust_optimize_tests {
-            flags.push("-O".to_string());
+        let mut flags = if is_rustdoc_ui {
+            Vec::new()
+        } else {
+            vec!["-Crpath".to_string()]
+        };
+        if !is_rustdoc_ui {
+            if build.config.rust_optimize_tests {
+                flags.push("-O".to_string());
+            }
+            if build.config.rust_debuginfo_tests {
+                flags.push("-g".to_string());
+            }
         }
-        if build.config.rust_debuginfo_tests {
-            flags.push("-g".to_string());
+        if !is_rustdoc_ui {
+            flags.push("-Zmiri -Zunstable-options".to_string());
+        } else {
+            flags.push("-Zunstable-options".to_string());
         }
-        flags.push("-Zunstable-options".to_string());
         flags.push(build.config.cmd.rustc_args().join(" "));
 
         if let Some(linker) = build.linker(target) {

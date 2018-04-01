@@ -326,7 +326,7 @@ impl<'a> Builder<'a> {
                 test::TheBook, test::UnstableBook,
                 test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme,
                 // Run run-make last, since these won't pass without make on Windows
-                test::RunMake),
+                test::RunMake, test::RustdocUi),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::WhitelistedRustc, doc::Rustc,

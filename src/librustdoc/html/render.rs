@@ -107,7 +107,7 @@ pub struct SharedContext {
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon and added html).
     pub layout: layout::Layout,
-    /// This flag indicates whether [src] links should be generated or not. If
+    /// This flag indicates whether `[src]` links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub include_sources: bool,

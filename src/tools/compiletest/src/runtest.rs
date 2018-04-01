@@ -1288,7 +1288,9 @@ impl<'test> TestCx<'test> {
                 // want to actually assert warnings about all this code. Instead
                 // let's just ignore unused code warnings by defaults and tests
                 // can turn it back on if needed.
-                rustc.args(&["-A", "unused"]);
+                if !self.config.src_base.ends_with("rustdoc-ui") {
+                    rustc.args(&["-A", "unused"]);
+                }
             }
             _ => {}
         }
@@ -1582,7 +1584,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_compile_args(&self, input_file: &Path, output_file: TargetLocation) -> Command {
-        let mut rustc = Command::new(&self.config.rustc_path);
+        let is_rustdoc = self.config.src_base.ends_with("rustdoc-ui");
+        let mut rustc = if !is_rustdoc {
+            Command::new(&self.config.rustc_path)
+        } else {
+            Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
+        };
         rustc.arg(input_file).arg("-L").arg(&self.config.build_base);
 
         // Optionally prevent default --target if specified in test compile-flags.
@@ -1605,17 +1612,19 @@ impl<'test> TestCx<'test> {
             rustc.args(&["--cfg", revision]);
         }
 
-        if let Some(ref incremental_dir) = self.props.incremental_dir {
-            rustc.args(&[
-                "-C",
-                &format!("incremental={}", incremental_dir.display()),
-            ]);
-            rustc.args(&["-Z", "incremental-verify-ich"]);
-            rustc.args(&["-Z", "incremental-queries"]);
-        }
+        if !is_rustdoc {
+            if let Some(ref incremental_dir) = self.props.incremental_dir {
+                rustc.args(&[
+                    "-C",
+                    &format!("incremental={}", incremental_dir.display()),
+                ]);
+                rustc.args(&["-Z", "incremental-verify-ich"]);
+                rustc.args(&["-Z", "incremental-queries"]);
+            }
 
-        if self.config.mode == CodegenUnits {
-            rustc.args(&["-Z", "human_readable_cgu_names"]);
+            if self.config.mode == CodegenUnits {
+                rustc.args(&["-Z", "human_readable_cgu_names"]);
+            }
         }
 
         match self.config.mode {
@@ -1668,11 +1677,12 @@ impl<'test> TestCx<'test> {
             }
         }
 
-
-        if self.config.target == "wasm32-unknown-unknown" {
-            // rustc.arg("-g"); // get any backtrace at all on errors
-        } else if !self.props.no_prefer_dynamic {
-            rustc.args(&["-C", "prefer-dynamic"]);
+        if !is_rustdoc {
+            if self.config.target == "wasm32-unknown-unknown" {
+                // rustc.arg("-g"); // get any backtrace at all on errors
+            } else if !self.props.no_prefer_dynamic {
+                rustc.args(&["-C", "prefer-dynamic"]);
+            }
         }
 
         match output_file {
@@ -1696,8 +1706,10 @@ impl<'test> TestCx<'test> {
         } else {
             rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
         }
-        if let Some(ref linker) = self.config.linker {
-            rustc.arg(format!("-Clinker={}", linker));
+        if !is_rustdoc {
+            if let Some(ref linker) = self.config.linker {
+                rustc.arg(format!("-Clinker={}", linker));
+            }
         }
 
         rustc.args(&self.props.compile_flags);
@@ -2509,7 +2521,6 @@ impl<'test> TestCx<'test> {
             .compile_flags
             .iter()
             .any(|s| s.contains("--error-format"));
-
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
