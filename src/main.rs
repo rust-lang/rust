@@ -77,10 +77,27 @@ where
     if cfg!(windows) {
         path.set_extension("exe");
     }
+
+    let mut extra_envs = vec![];
+    if let Ok(_) = std::env::var("CLIPPY_DOGFOOD") {
+        let target_dir = std::env::var("CARGO_MANIFEST_DIR")
+            .map(|m| {
+                std::path::PathBuf::from(m)
+                    .join("target")
+                    .join("dogfood")
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .unwrap_or("clippy_dogfood".to_string());
+
+        extra_envs.push(("CARGO_TARGET_DIR", target_dir));
+    };
+
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC_WRAPPER", path)
         .env("CLIPPY_ARGS", clippy_args)
+        .envs(extra_envs)
         .spawn()
         .expect("could not run cargo")
         .wait()
