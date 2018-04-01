@@ -26,6 +26,7 @@ use rustc_back::target::TargetTriple;
 
 use syntax::ast::NodeId;
 use syntax::codemap;
+use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use errors;
 use errors::emitter::ColorConfig;
@@ -123,7 +124,8 @@ pub fn run_core(search_paths: SearchPaths,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
                 crate_name: Option<String>,
-                force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
+                force_unstable_if_unmarked: bool,
+                edition: Edition) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -148,6 +150,7 @@ pub fn run_core(search_paths: SearchPaths,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
             force_unstable_if_unmarked,
+            edition,
             ..config::basic_debugging_options()
         },
         ..config::basic_options().clone()

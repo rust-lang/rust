@@ -34,6 +34,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use syntax::ast;
 use syntax::codemap::CodeMap;
+use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::with_globals;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
@@ -57,7 +58,8 @@ pub fn run(input_path: &Path,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
            display_warnings: bool,
-           linker: Option<PathBuf>)
+           linker: Option<PathBuf>,
+           edition: Edition)
            -> isize {
     let input = config::Input::File(input_path.to_owned());
 
@@ -70,6 +72,10 @@ pub fn run(input_path: &Path,
         unstable_features: UnstableFeatures::from_environment(),
         lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
+        debugging_opts: config::DebuggingOptions {
+            edition,
+            ..config::basic_debugging_options()
+        },
         ..config::basic_options().clone()
     };
 
@@ -117,7 +123,8 @@ pub fn run(input_path: &Path,
                                        maybe_sysroot,
                                        Some(codemap),
                                        None,
-                                       linker);
+                                       linker,
+                                       edition);
 
     {
         let map = hir::map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
@@ -177,8 +184,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
-            maybe_sysroot: Option<PathBuf>,
-            linker: Option<PathBuf>) {
+            maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
@@ -204,6 +210,10 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         },
         test: as_test_harness,
         unstable_features: UnstableFeatures::from_environment(),
+        debugging_opts: config::DebuggingOptions {
+            edition,
+            ..config::basic_debugging_options()
+        },
         ..config::basic_options().clone()
     };
 
@@ -465,13 +475,14 @@ pub struct Collector {
     codemap: Option<Lrc<CodeMap>>,
     filename: Option<PathBuf>,
     linker: Option<PathBuf>,
+    edition: Edition,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
                codemap: Option<Lrc<CodeMap>>, filename: Option<PathBuf>,
-               linker: Option<PathBuf>) -> Collector {
+               linker: Option<PathBuf>, edition: Edition) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -486,6 +497,7 @@ impl Collector {
             codemap,
             filename,
             linker,
+            edition,
         }
     }
 
@@ -505,6 +517,7 @@ impl Collector {
         let opts = self.opts.clone();
         let maybe_sysroot = self.maybe_sysroot.clone();
         let linker = self.linker.clone();
+        let edition = self.edition;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -535,7 +548,8 @@ impl Collector {
                                  error_codes,
                                  &opts,
                                  maybe_sysroot,
-                                 linker)
+                                 linker,
+                                 edition)
                     }))
                 } {
                     Ok(()) => (),
