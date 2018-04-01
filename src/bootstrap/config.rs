@@ -45,6 +45,7 @@ pub struct Config {
     pub ninja: bool,
     pub verbose: usize,
     pub submodules: bool,
+    pub fast_submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
     pub locked_deps: bool,
@@ -191,6 +192,7 @@ struct Build {
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
+    fast_submodules: Option<bool>,
     gdb: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
@@ -328,6 +330,7 @@ impl Config {
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
         config.submodules = true;
+        config.fast_submodules = true;
         config.docs = true;
         config.rust_rpath = true;
         config.channel = "dev".to_string();
@@ -404,6 +407,7 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
+        set(&mut config.fast_submodules, build.fast_submodules);
         set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
