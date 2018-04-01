@@ -79,7 +79,7 @@ where
     }
 
     let mut extra_envs = vec![];
-    if let Ok(_) = std::env::var("CLIPPY_DOGFOOD") {
+    if std::env::var("CLIPPY_DOGFOOD").is_ok() {
         let target_dir = std::env::var("CARGO_MANIFEST_DIR")
             .map(|m| {
                 std::path::PathBuf::from(m)
@@ -88,7 +88,7 @@ where
                     .to_string_lossy()
                     .into_owned()
             })
-            .unwrap_or("clippy_dogfood".to_string());
+            .unwrap_or_else(|_| "clippy_dogfood".to_string());
 
         extra_envs.push(("CARGO_TARGET_DIR", target_dir));
     };
