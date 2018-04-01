@@ -244,11 +244,11 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     let node_id = tcx.hir.as_local_node_id(def_id);
 
     if let Some(id) = node_id {
-        if tcx.sess.plugin_registrar_fn.get() == Some(id) {
+        if *tcx.sess.plugin_registrar_fn.get() == Some(id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_plugin_registrar_symbol(disambiguator);
         }
-        if tcx.sess.derive_registrar_fn.get() == Some(id) {
+        if *tcx.sess.derive_registrar_fn.get() == Some(id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
             return tcx.sess.generate_derive_registrar_symbol(disambiguator);
         }

@@ -71,8 +71,8 @@ pub struct Session {
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
     pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
-    pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
-    pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
+    pub plugin_registrar_fn: Once<Option<ast::NodeId>>,
+    pub derive_registrar_fn: Once<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
@@ -1094,8 +1094,8 @@ pub fn build_session_(
         parse_sess: p_s,
         // For a library crate, this is always none
         entry_fn: Once::new(),
-        plugin_registrar_fn: Cell::new(None),
-        derive_registrar_fn: Cell::new(None),
+        plugin_registrar_fn: Once::new(),
+        derive_registrar_fn: Once::new(),
         default_sysroot,
         local_crate_source_file,
         working_dir,
