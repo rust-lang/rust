@@ -167,6 +167,16 @@ impl Iterator for ReadDir {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // There's at most one entry for every newline; and there are at most
+        // two skipped entries.
+        let upper = self.data[(i + 1)..].iter()
+            .filter(|byte| byte == b'\n')
+            .count();
+        let lower = upper.saturating_sub(2);
+        (lower, Some(upper))
+    }
 }
 
 impl DirEntry {

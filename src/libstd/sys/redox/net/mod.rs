@@ -36,6 +36,10 @@ impl Iterator for LookupHost {
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
 }
 
 pub fn lookup_host(host: &str) -> Result<LookupHost> {

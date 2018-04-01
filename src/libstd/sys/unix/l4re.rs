@@ -429,6 +429,10 @@ pub mod net {
         fn next(&mut self) -> Option<SocketAddr> {
             None
         }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (0, Some(0))
+        }
     }
 
     unsafe impl Sync for LookupHost {}

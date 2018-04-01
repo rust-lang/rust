@@ -1260,6 +1260,10 @@ impl Iterator for ReadDir {
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         self.0.next().map(|entry| entry.map(DirEntry))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
 }
 
 impl DirEntry {
