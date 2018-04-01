@@ -407,7 +407,6 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
         hir::ExprBlock(_) |
         hir::ExprIndex(..) |
         hir::ExprField(..) |
-        hir::ExprTupField(..) |
         hir::ExprArray(_) |
         hir::ExprType(..) |
         hir::ExprTup(..) => {}

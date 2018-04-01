@@ -563,6 +563,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             ref_id: id_from_def_id(f.did),
                         }));
                     }
+                    ty::TyTuple(..) => None,
                     _ => {
                         debug!("Expected struct or union type, found {:?}", ty);
                         None

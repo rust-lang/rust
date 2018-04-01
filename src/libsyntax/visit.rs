@@ -749,9 +749,6 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ident(ident);
         }
-        ExprKind::TupField(ref subexpression, _) => {
-            visitor.visit_expr(subexpression);
-        }
         ExprKind::Index(ref main_expression, ref index_expression) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)

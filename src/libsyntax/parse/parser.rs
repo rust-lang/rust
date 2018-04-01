@@ -2144,10 +2144,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<usize>) -> ast::ExprKind {
-        ExprKind::TupField(expr, idx)
-    }
-
     pub fn mk_assign_op(&mut self, binop: ast::BinOp,
                         lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprKind {
         ExprKind::AssignOp(binop, lhs, rhs)
@@ -2605,35 +2601,12 @@ impl<'a> Parser<'a> {
                   token::Ident(..) => {
                     e = self.parse_dot_suffix(e, lo)?;
                   }
-                  token::Literal(token::Integer(index_ident), suf) => {
-                    let sp = self.span;
-
-                    // A tuple index may not have a suffix
-                    self.expect_no_suffix(sp, "tuple index", suf);
-
-                    let idx_span = self.span;
+                  token::Literal(token::Integer(name), _) => {
+                    let span = self.span;
                     self.bump();
-
-                    let invalid_msg = "invalid tuple or struct index";
-
-                    let index = index_ident.as_str().parse::<usize>().ok();
-                    match index {
-                        Some(n) => {
-                            if n.to_string() != index_ident.as_str() {
-                                let mut err = self.struct_span_err(self.prev_span, invalid_msg);
-                                err.span_suggestion(self.prev_span,
-                                                    "try simplifying the index",
-                                                    n.to_string());
-                                err.emit();
-                            }
-                            let field = self.mk_tup_field(e, respan(idx_span, n));
-                            e = self.mk_expr(lo.to(idx_span), field, ThinVec::new());
-                        }
-                        None => {
-                            let prev_span = self.prev_span;
-                            self.span_err(prev_span, invalid_msg);
-                        }
-                    }
+                    let ident = Ident { name, ctxt: span.ctxt() };
+                    let field = ExprKind::Field(e, respan(span, ident));
+                    e = self.mk_expr(lo.to(span), field, ThinVec::new());
                   }
                   token::Literal(token::Float(n), _suf) => {
                     self.bump();

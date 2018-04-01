@@ -62,7 +62,6 @@
 
 pub use self::PointerKind::*;
 pub use self::InteriorKind::*;
-pub use self::FieldName::*;
 pub use self::MutabilityCategory::*;
 pub use self::AliasableReason::*;
 pub use self::Note::*;
@@ -81,7 +80,7 @@ use ty::fold::TypeFoldable;
 use hir::{MutImmutable, MutMutable, PatKind};
 use hir::pat_util::EnumerateAndAdjustIterator;
 use hir;
-use syntax::ast;
+use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
 use std::fmt;
@@ -129,15 +128,13 @@ pub enum PointerKind<'tcx> {
 // base without a pointer dereference", e.g. a field
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
-    InteriorField(FieldName),
+    InteriorField(FieldIndex),
     InteriorElement(InteriorOffsetKind),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub enum FieldName {
-    NamedField(ast::Name),
-    PositionalField(usize)
-}
+// FIXME: Use actual index instead of `ast::Name` with questionable hygiene
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FieldIndex(pub ast::Name);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InteriorOffsetKind {
@@ -198,7 +195,7 @@ pub enum ImmutabilityBlame<'tcx> {
 }
 
 impl<'tcx> cmt_<'tcx> {
-    fn resolve_field(&self, field_name: FieldName) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
+    fn resolve_field(&self, field_name: Name) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
     {
         let adt_def = match self.ty.sty {
             ty::TyAdt(def, _) => def,
@@ -215,11 +212,7 @@ impl<'tcx> cmt_<'tcx> {
                 &adt_def.variants[0]
             }
         };
-        let field_def = match field_name {
-            NamedField(name) => variant_def.field_named(name),
-            PositionalField(idx) => &variant_def.fields[idx]
-        };
-        Some((adt_def, field_def))
+        Some((adt_def, variant_def.field_named(field_name)))
     }
 
     pub fn immutability_blame(&self) -> Option<ImmutabilityBlame<'tcx>> {
@@ -230,8 +223,8 @@ impl<'tcx> cmt_<'tcx> {
                 match base_cmt.cat {
                     Categorization::Local(node_id) =>
                         Some(ImmutabilityBlame::LocalDeref(node_id)),
-                    Categorization::Interior(ref base_cmt, InteriorField(field_name)) => {
-                        base_cmt.resolve_field(field_name).map(|(adt_def, field_def)| {
+                    Categorization::Interior(ref base_cmt, InteriorField(field_index)) => {
+                        base_cmt.resolve_field(field_index.0).map(|(adt_def, field_def)| {
                             ImmutabilityBlame::AdtFieldDeref(adt_def, field_def)
                         })
                     }
@@ -649,11 +642,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
           }
 
-          hir::ExprTupField(ref base, idx) => {
-            let base_cmt = self.cat_expr(&base)?;
-            Ok(self.cat_tup_field(expr, base_cmt, idx.node, expr_ty))
-          }
-
           hir::ExprIndex(ref base, _) => {
             if self.tables.is_method_call(expr) {
                 // If this is an index implemented by a method call, then it
@@ -979,36 +967,18 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn cat_field<N:ast_node>(&self,
                                  node: &N,
                                  base_cmt: cmt<'tcx>,
-                                 f_name: ast::Name,
+                                 f_name: Name,
                                  f_ty: Ty<'tcx>)
                                  -> cmt<'tcx> {
         let ret = Rc::new(cmt_ {
             id: node.id(),
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
-            cat: Categorization::Interior(base_cmt, InteriorField(NamedField(f_name))),
+            cat: Categorization::Interior(base_cmt, InteriorField(FieldIndex(f_name))),
             ty: f_ty,
             note: NoteNone
         });
         debug!("cat_field ret {:?}", ret);
-        ret
-    }
-
-    pub fn cat_tup_field<N:ast_node>(&self,
-                                     node: &N,
-                                     base_cmt: cmt<'tcx>,
-                                     f_idx: usize,
-                                     f_ty: Ty<'tcx>)
-                                     -> cmt<'tcx> {
-        let ret = Rc::new(cmt_ {
-            id: node.id(),
-            span: node.span(),
-            mutbl: base_cmt.mutbl.inherit(),
-            cat: Categorization::Interior(base_cmt, InteriorField(PositionalField(f_idx))),
-            ty: f_ty,
-            note: NoteNone
-        });
-        debug!("cat_tup_field ret {:?}", ret);
         ret
     }
 
@@ -1292,8 +1262,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                 let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-                let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty,
-                                                   InteriorField(PositionalField(i)));
+                let interior = InteriorField(FieldIndex(Name::intern(&i.to_string())));
+                let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior);
                 self.cat_pattern_(subcmt, &subpat, op)?;
             }
           }
@@ -1332,8 +1302,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                 let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-                let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty,
-                                                   InteriorField(PositionalField(i)));
+                let interior = InteriorField(FieldIndex(Name::intern(&i.to_string())));
+                let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior);
                 self.cat_pattern_(subcmt, &subpat, op)?;
             }
           }
@@ -1516,11 +1486,8 @@ impl<'tcx> cmt_<'tcx> {
                     }
                 }
             }
-            Categorization::Interior(_, InteriorField(NamedField(_))) => {
+            Categorization::Interior(_, InteriorField(..)) => {
                 "field".to_string()
-            }
-            Categorization::Interior(_, InteriorField(PositionalField(_))) => {
-                "anonymous field".to_string()
             }
             Categorization::Interior(_, InteriorElement(InteriorOffsetKind::Index)) => {
                 "indexed content".to_string()
@@ -1554,8 +1521,7 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
 impl fmt::Debug for InteriorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InteriorField(NamedField(fld)) => write!(f, "{}", fld),
-            InteriorField(PositionalField(i)) => write!(f, "#{}", i),
+            InteriorField(FieldIndex(name)) => write!(f, "{}", name),
             InteriorElement(..) => write!(f, "[]"),
         }
     }

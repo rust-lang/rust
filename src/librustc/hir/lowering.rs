@@ -3095,7 +3095,6 @@ impl<'a> LoweringContext<'a> {
                 P(self.lower_expr(el)),
                 respan(ident.span, self.lower_ident(ident)),
             ),
-            ExprKind::TupField(ref el, ident) => hir::ExprTupField(P(self.lower_expr(el)), ident),
             ExprKind::Index(ref el, ref er) => {
                 hir::ExprIndex(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }

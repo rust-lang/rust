@@ -1267,11 +1267,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
             ExprKind::Field(el, ident) => {
                 ExprKind::Field(folder.fold_expr(el), folder.fold_ident(ident))
             }
-            ExprKind::TupField(el, index) => {
-                ExprKind::TupField(folder.fold_expr(el),
-                             respan(folder.new_span(index.span),
-                                    folder.fold_usize(index.node)))
-            }
             ExprKind::Index(el, er) => {
                 ExprKind::Index(folder.fold_expr(el), folder.fold_expr(er))
             }

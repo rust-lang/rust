@@ -1307,7 +1307,6 @@ fn resolve_local<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                 hir::ExprAddrOf(_, ref subexpr) |
                 hir::ExprUnary(hir::UnDeref, ref subexpr) |
                 hir::ExprField(ref subexpr, _) |
-                hir::ExprTupField(ref subexpr, _) |
                 hir::ExprIndex(ref subexpr, _) => {
                     expr = &subexpr;
                 }

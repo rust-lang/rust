@@ -1966,8 +1966,7 @@ impl<'a> State<'a> {
                        args: &[P<ast::Expr>]) -> io::Result<()> {
         let prec =
             match func.node {
-                ast::ExprKind::Field(..) |
-                ast::ExprKind::TupField(..) => parser::PREC_FORCE_PAREN,
+                ast::ExprKind::Field(..) => parser::PREC_FORCE_PAREN,
                 _ => parser::PREC_POSTFIX,
             };
 
@@ -2202,11 +2201,6 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
                 self.print_ident(ident)?;
-            }
-            ast::ExprKind::TupField(ref expr, id) => {
-                self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
-                self.s.word(".")?;
-                self.print_usize(id.node)?;
             }
             ast::ExprKind::Index(ref expr, ref index) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;

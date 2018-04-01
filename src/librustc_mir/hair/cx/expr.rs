@@ -584,6 +584,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprField(ref source, name) => {
             let index = match cx.tables().expr_ty_adjusted(source).sty {
                 ty::TyAdt(adt_def, _) => adt_def.variants[0].index_of_field_named(name.node),
+                ty::TyTuple(..) => name.node.as_str().parse::<usize>().ok(),
                 ref ty => span_bug!(expr.span, "field of non-ADT: {:?}", ty),
             };
             let index =
@@ -593,12 +594,6 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Field {
                 lhs: source.to_ref(),
                 name: Field::new(index),
-            }
-        }
-        hir::ExprTupField(ref source, index) => {
-            ExprKind::Field {
-                lhs: source.to_ref(),
-                name: Field::new(index.node as usize),
             }
         }
         hir::ExprCast(ref source, _) => {

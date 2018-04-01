@@ -4138,86 +4138,6 @@ https://doc.rust-lang.org/book/first-edition/primitive-types.html
 https://doc.rust-lang.org/book/first-edition/structs.html
 "##,
 
-E0611: r##"
-Attempted to access a private field on a tuple-struct.
-
-Erroneous code example:
-
-```compile_fail,E0611
-mod some_module {
-    pub struct Foo(u32);
-
-    impl Foo {
-        pub fn new() -> Foo { Foo(0) }
-    }
-}
-
-let y = some_module::Foo::new();
-println!("{}", y.0); // error: field `0` of tuple-struct `some_module::Foo`
-                     //        is private
-```
-
-Since the field is private, you have two solutions:
-
-1) Make the field public:
-
-```
-mod some_module {
-    pub struct Foo(pub u32); // The field is now public.
-
-    impl Foo {
-        pub fn new() -> Foo { Foo(0) }
-    }
-}
-
-let y = some_module::Foo::new();
-println!("{}", y.0); // So we can access it directly.
-```
-
-2) Add a getter function to keep the field private but allow for accessing its
-value:
-
-```
-mod some_module {
-    pub struct Foo(u32);
-
-    impl Foo {
-        pub fn new() -> Foo { Foo(0) }
-
-        // We add the getter function.
-        pub fn get(&self) -> &u32 { &self.0 }
-    }
-}
-
-let y = some_module::Foo::new();
-println!("{}", y.get()); // So we can get the value through the function.
-```
-"##,
-
-E0612: r##"
-Attempted out-of-bounds tuple index.
-
-Erroneous code example:
-
-```compile_fail,E0612
-struct Foo(u32);
-
-let y = Foo(0);
-println!("{}", y.1); // error: attempted out-of-bounds tuple index `1`
-                     //        on type `Foo`
-```
-
-If a tuple/tuple-struct type has n fields, you can only try to access these n
-fields from 0 to (n - 1). So in this case, you can only index `0`. Example:
-
-```
-struct Foo(u32);
-
-let y = Foo(0);
-println!("{}", y.0); // ok!
-```
-"##,
-
 E0614: r##"
 Attempted to dereference a variable which cannot be dereferenced.
 
@@ -4839,6 +4759,8 @@ register_diagnostics! {
     E0587, // type has conflicting packed and align representation hints
     E0588, // packed type cannot transitively contain a `[repr(align)]` type
     E0592, // duplicate definitions with name `{}`
+//  E0611, // merged into E0616
+//  E0612, // merged into E0609
 //  E0613, // Removed (merged with E0609)
     E0640, // infer outlives
     E0627, // yield statement outside of generator literal

@@ -104,17 +104,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             ty::TyAdt(def, _) => {
                 self.insert_def_id(def.non_enum_variant().field_named(name).did);
             }
-            _ => span_bug!(lhs.span, "named field access on non-ADT"),
-        }
-    }
-
-    fn handle_tup_field_access(&mut self, lhs: &hir::Expr, idx: usize) {
-        match self.tables.expr_ty_adjusted(lhs).sty {
-            ty::TyAdt(def, _) => {
-                self.insert_def_id(def.non_enum_variant().fields[idx].did);
-            }
             ty::TyTuple(..) => {}
-            _ => span_bug!(lhs.span, "numeric field access on non-ADT"),
+            _ => span_bug!(lhs.span, "named field access on non-ADT"),
         }
     }
 
@@ -244,9 +235,6 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             }
             hir::ExprField(ref lhs, ref name) => {
                 self.handle_field_access(&lhs, name.node);
-            }
-            hir::ExprTupField(ref lhs, idx) => {
-                self.handle_tup_field_access(&lhs, idx.node);
             }
             hir::ExprStruct(_, ref fields, _) => {
                 if let ty::TypeVariants::TyAdt(ref def, _) = self.tables.expr_ty(expr).sty {

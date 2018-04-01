@@ -569,7 +569,6 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprAssign(lhs, rhs),
     ExprAssignOp(op, lhs, rhs),
     ExprField(owner, field_name),
-    ExprTupField(owner, idx),
     ExprIndex(lhs, rhs),
     ExprPath(path),
     ExprAddrOf(mutability, sub),

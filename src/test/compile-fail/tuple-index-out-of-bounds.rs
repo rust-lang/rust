@@ -15,10 +15,10 @@ fn main() {
     origin.0;
     origin.1;
     origin.2;
-    //~^ ERROR attempted out-of-bounds tuple index `2` on type `Point`
+    //~^ ERROR no field `2` on type `Point`
     let tuple = (0, 0);
     tuple.0;
     tuple.1;
     tuple.2;
-    //~^ ERROR attempted out-of-bounds tuple index `2` on type `({integer}, {integer})`
+    //~^ ERROR no field `2` on type `({integer}, {integer})`
 }

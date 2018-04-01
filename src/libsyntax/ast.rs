@@ -1018,7 +1018,6 @@ impl Expr {
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
             ExprKind::Field(..) => ExprPrecedence::Field,
-            ExprKind::TupField(..) => ExprPrecedence::TupField,
             ExprKind::Index(..) => ExprPrecedence::Index,
             ExprKind::Range(..) => ExprPrecedence::Range,
             ExprKind::Path(..) => ExprPrecedence::Path,
@@ -1133,12 +1132,8 @@ pub enum ExprKind {
     ///
     /// For example, `a += 1`.
     AssignOp(BinOp, P<Expr>, P<Expr>),
-    /// Access of a named struct field (`obj.foo`)
+    /// Access of a named (`obj.foo`) or unnamed (`obj.0`) struct field
     Field(P<Expr>, Ident),
-    /// Access of an unnamed field of a struct or tuple-struct
-    ///
-    /// For example, `foo.0`.
-    TupField(P<Expr>, Spanned<usize>),
     /// An indexing operation (`foo[2]`)
     Index(P<Expr>, P<Expr>),
     /// A range (`1..2`, `1..`, `..2`, `1...2`, `1...`, `...2`)

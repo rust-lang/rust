@@ -404,10 +404,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.select_from_expr(&base);
             }
 
-            hir::ExprTupField(ref base, _) => {         // base.<n>
-                self.select_from_expr(&base);
-            }
-
             hir::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
                 self.select_from_expr(&lhs);
                 self.consume_expr(&rhs);
