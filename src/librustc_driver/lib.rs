@@ -98,7 +98,6 @@ use std::error::Error;
 use std::ffi::OsString;
 use std::fmt::{self, Display};
 use std::io::{self, Read, Write};
-use std::iter::repeat;
 use std::mem;
 use std::panic;
 use std::path::{PathBuf, Path};
@@ -1253,9 +1252,7 @@ Available lint options:
                              .max()
                              .unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = repeat(" ")
-                        .take(max_name_len - x.chars().count())
-                        .collect::<String>();
+        let mut s = " ".repeat(max_name_len - x.chars().count());
         s.push_str(x);
         s
     };
@@ -1287,9 +1284,7 @@ Available lint options:
                                         .unwrap_or(0));
 
     let padded = |x: &str| {
-        let mut s = repeat(" ")
-                        .take(max_name_len - x.chars().count())
-                        .collect::<String>();
+        let mut s = " ".repeat(max_name_len - x.chars().count());
         s.push_str(x);
         s
     };

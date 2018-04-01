@@ -16,7 +16,6 @@
 //! them in the future to instead emit any format desired.
 
 use std::fmt;
-use std::iter::repeat;
 
 use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi::Abi;
@@ -235,10 +234,9 @@ impl<'a> fmt::Display for WhereClause<'a> {
 
         if !f.alternate() {
             clause.push_str("</span>");
-            let padding = repeat("&nbsp;").take(indent + 4).collect::<String>();
+            let padding = "&nbsp;".repeat(indent + 4);
             clause = clause.replace("<br>", &format!("<br>{}", padding));
-            clause.insert_str(0, &repeat("&nbsp;").take(indent.saturating_sub(1))
-                                                  .collect::<String>());
+            clause.insert_str(0, &"&nbsp;".repeat(indent.saturating_sub(1)));
             if !end_newline {
                 clause.insert_str(0, "<br>");
             }
@@ -409,13 +407,13 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
     let (fqp, shortty, mut url) = match cache.paths.get(&did) {
         Some(&(ref fqp, shortty)) => {
-            (fqp, shortty, repeat("../").take(loc.len()).collect())
+            (fqp, shortty, "../".repeat(loc.len()))
         }
         None => {
             let &(ref fqp, shortty) = cache.external_paths.get(&did)?;
             (fqp, shortty, match cache.extern_locations[&did.krate] {
                 (.., render::Remote(ref s)) => s.to_string(),
-                (.., render::Local) => repeat("../").take(loc.len()).collect(),
+                (.., render::Local) => "../".repeat(loc.len()),
                 (.., render::Unknown) => return None,
             })
         }
@@ -481,7 +479,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                 let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
                 let len = if len == 0 {0} else {len - 1};
                 write!(f, "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
-                       repeat("../").take(len).collect::<String>(),
+                       "../".repeat(len),
                        prim.to_url_str())?;
                 needs_termination = true;
             }
@@ -492,7 +490,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                     }
                     (ref cname, _, render::Local) => {
                         let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
-                        Some((cname, repeat("../").take(len).collect::<String>()))
+                        Some((cname, "../".repeat(len)))
                     }
                     (.., render::Unknown) => None,
                 };
@@ -903,15 +901,15 @@ impl<'a> fmt::Display for Method<'a> {
             format!("{}", decl.output)
         };
 
-        let pad = repeat(" ").take(name_len).collect::<String>();
+        let pad = " ".repeat(name_len);
         let plain = format!("{pad}({args}){arrow}",
                         pad = pad,
                         args = args_plain,
                         arrow = arrow_plain);
 
         let output = if plain.len() > 80 {
-            let full_pad = format!("<br>{}", repeat("&nbsp;").take(indent + 4).collect::<String>());
-            let close_pad = format!("<br>{}", repeat("&nbsp;").take(indent).collect::<String>());
+            let full_pad = format!("<br>{}", "&nbsp;".repeat(indent + 4));
+            let close_pad = format!("<br>{}", "&nbsp;".repeat(indent));
             format!("({args}{close}){arrow}",
                     args = args.replace("<br>", &full_pad),
                     close = close_pad,

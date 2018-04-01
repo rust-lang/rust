@@ -901,9 +901,7 @@ impl EmitterWriter {
         //    |  |   length of label
         //    |  magic `3`
         //    `max_line_num_len`
-        let padding = (0..padding + label.len() + 5)
-            .map(|_| " ")
-            .collect::<String>();
+        let padding = " ".repeat(padding + label.len() + 5);
 
         /// Return whether `style`, or the override if present and the style is `NoStyle`.
         fn style_or_override(style: Style, override_style: Option<Style>) -> Style {

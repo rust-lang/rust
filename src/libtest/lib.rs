@@ -66,7 +66,6 @@ use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io;
-use std::iter::repeat;
 use std::path::PathBuf;
 use std::process::Termination;
 use std::sync::mpsc::{channel, Sender};
@@ -145,7 +144,7 @@ impl TestDesc {
     fn padded_name(&self, column_count: usize, align: NamePadding) -> String {
         let mut name = String::from(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
-        let pad = repeat(" ").take(fill).collect::<String>();
+        let pad = " ".repeat(fill);
         match align {
             PadNone => name,
             PadOnRight => {
