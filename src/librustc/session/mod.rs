@@ -125,7 +125,7 @@ pub struct Session {
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
     /// macro name and definition span in the source crate.
-    pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
+    pub imported_macro_spans: OneThread<RefCell<HashMap<Span, (String, Span)>>>,
 
     incr_comp_session: OneThread<RefCell<IncrCompSession>>,
 
@@ -1108,7 +1108,7 @@ pub fn build_session_(
         injected_allocator: Cell::new(None),
         allocator_kind: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
-        imported_macro_spans: RefCell::new(HashMap::new()),
+        imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         ignored_attr_names: ich::compute_ignored_attr_names(),
         profile_channel: Lock::new(None),
