@@ -15,6 +15,9 @@ use std::path::PathBuf;
 use std::process::Command;
 
 fn main() {
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-env-changed=CFG_RELEASE_CHANNEL");
+
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
 
     File::create(out_dir.join("commit-info.txt"))
