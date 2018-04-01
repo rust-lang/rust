@@ -1306,7 +1306,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn check_if_path_is_moved(
+    fn check_if_full_path_is_moved(
         &mut self,
         context: Context,
         desired_action: InitializationRequiringAction,
@@ -1355,7 +1355,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //
         // This code covers scenarios 1, 2, and 3.
 
-        debug!("check_if_path_is_moved place: {:?}", place);
+        debug!("check_if_full_path_is_moved place: {:?}", place);
         match self.move_path_closest_to(place) {
             Ok(mpi) => {
                 if maybe_uninits.contains(&mpi) {
@@ -1399,7 +1399,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // 1. Move of `a.b.c`, use of `a` or `a.b`
         //    partial initialization support, one might have `a.x`
         //    initialized but not `a.b`.
-        // 2. All bad scenarios from `check_if_path_is_moved`
+        // 2. All bad scenarios from `check_if_full_path_is_moved`
         //
         // OK scenarios:
         //
@@ -1409,7 +1409,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         //    must have been initialized for the use to be sound.
         // 6. Move of `a.b.c` then reinit of `a.b.c.d`, use of `a.b.c.d`
 
-        self.check_if_path_is_moved(context, desired_action, place_span, flow_state);
+        self.check_if_full_path_is_moved(context, desired_action, place_span, flow_state);
 
         // A move of any shallow suffix of `place` also interferes
         // with an attempt to use `place`. This is scenario 3 above.
@@ -1494,17 +1494,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     match *elem {
                         ProjectionElem::Index(_/*operand*/) |
                         ProjectionElem::ConstantIndex { .. } |
-                        // assigning to P[i] requires `P` initialized.
+                        // assigning to P[i] requires P to be valid.
                         ProjectionElem::Downcast(_/*adt_def*/, _/*variant_idx*/) =>
                         // assigning to (P->variant) is okay if assigning to `P` is okay
                         //
                         // FIXME: is this true even if P is a adt with a dtor?
                         { }
 
+                        // assigning to (*P) requires P to be initialized
                         ProjectionElem::Deref => {
-                            self.check_if_path_is_moved(
+                            self.check_if_full_path_is_moved(
                                 context, InitializationRequiringAction::Use,
                                 (base, span), flow_state);
+                            // (base initialized; no need to
+                            // recur further)
+                            break;
                         }
 
                         ProjectionElem::Subslice { .. } => {
