@@ -29,6 +29,8 @@
 //! `rustc_erase_owner!` erases a OwningRef owner into Erased or Erased + Send + Sync
 //! depending on the value of cfg!(parallel_queries).
 
+use std::collections::HashMap;
+use std::hash::{Hash, BuildHasher};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::fmt::Formatter;
@@ -226,6 +228,18 @@ cfg_if! {
 pub fn assert_sync<T: ?Sized + Sync>() {}
 pub fn assert_send_val<T: ?Sized + Send>(_t: &T) {}
 pub fn assert_send_sync_val<T: ?Sized + Sync + Send>(_t: &T) {}
+
+pub trait HashMapExt<K, V> {
+    /// Same as HashMap::insert, but it may panic if there's already an
+    /// entry for `key` with a value not equal to `value`
+    fn insert_same(&mut self, key: K, value: V);
+}
+
+impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> {
+    fn insert_same(&mut self, key: K, value: V) {
+        self.entry(key).and_modify(|old| assert!(*old == value)).or_insert(value);
+    }
+}
 
 impl<T: Copy + Debug> Debug for LockCell<T> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
