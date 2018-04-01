@@ -141,7 +141,7 @@ pub struct Session {
     /// Data about code being compiled, gathered during compilation.
     pub code_stats: Lock<CodeStats>,
 
-    next_node_id: Cell<ast::NodeId>,
+    next_node_id: OneThread<Cell<ast::NodeId>>,
 
     /// If -zfuel=crate=n is specified, Some(crate).
     optimization_fuel_crate: Option<String>,
@@ -1107,7 +1107,7 @@ pub fn build_session_(
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
         const_eval_step_limit: 1_000_000,
-        next_node_id: Cell::new(NodeId::new(1)),
+        next_node_id: OneThread::new(Cell::new(NodeId::new(1))),
         injected_allocator: Cell::new(None),
         allocator_kind: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
