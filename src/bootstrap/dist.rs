@@ -649,7 +649,12 @@ impl Step for Std {
         if build.hosts.iter().any(|t| t == target) {
             builder.ensure(compile::Rustc { compiler, target });
         } else {
-            builder.ensure(compile::Test { compiler, target });
+            if build.no_std(target) == Some(true) {
+                // the `test` doesn't compile for no-std targets
+                builder.ensure(compile::Std { compiler, target });
+            } else {
+                builder.ensure(compile::Test { compiler, target });
+            }
         }
 
         let image = tmpdir(build).join(format!("{}-{}-image", name, target));

@@ -140,48 +140,55 @@ pub fn std_cargo(build: &Builder,
                  compiler: &Compiler,
                  target: Interned<String>,
                  cargo: &mut Command) {
-    let mut features = build.std_features();
-
     if let Some(target) = env::var_os("MACOSX_STD_DEPLOYMENT_TARGET") {
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
-    // When doing a local rebuild we tell cargo that we're stage1 rather than
-    // stage0. This works fine if the local rust and being-built rust have the
-    // same view of what the default allocator is, but fails otherwise. Since
-    // we don't have a way to express an allocator preference yet, work
-    // around the issue in the case of a local rebuild with jemalloc disabled.
-    if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
-        features.push_str(" force_alloc_system");
-    }
+    if build.no_std(target) == Some(true) {
+        // for no-std targets we only compile core and compiler-builtins
+        cargo.arg("--features").arg("c mem")
+            .arg("--manifest-path")
+            .arg(build.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
+    } else {
+        let mut features = build.std_features();
 
-    if compiler.stage != 0 && build.config.sanitizers {
-        // This variable is used by the sanitizer runtime crates, e.g.
-        // rustc_lsan, to build the sanitizer runtime from C code
-        // When this variable is missing, those crates won't compile the C code,
-        // so we don't set this variable during stage0 where llvm-config is
-        // missing
-        // We also only build the runtimes when --enable-sanitizers (or its
-        // config.toml equivalent) is used
-        let llvm_config = build.ensure(native::Llvm {
-            target: build.config.build,
-            emscripten: false,
-        });
-        cargo.env("LLVM_CONFIG", llvm_config);
-    }
-
-    cargo.arg("--features").arg(features)
-        .arg("--manifest-path")
-        .arg(build.src.join("src/libstd/Cargo.toml"));
-
-    if let Some(target) = build.config.target_config.get(&target) {
-        if let Some(ref jemalloc) = target.jemalloc {
-            cargo.env("JEMALLOC_OVERRIDE", jemalloc);
+        // When doing a local rebuild we tell cargo that we're stage1 rather than
+        // stage0. This works fine if the local rust and being-built rust have the
+        // same view of what the default allocator is, but fails otherwise. Since
+        // we don't have a way to express an allocator preference yet, work
+        // around the issue in the case of a local rebuild with jemalloc disabled.
+        if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
+            features.push_str(" force_alloc_system");
         }
-    }
-    if target.contains("musl") {
-        if let Some(p) = build.musl_root(target) {
-            cargo.env("MUSL_ROOT", p);
+
+        if compiler.stage != 0 && build.config.sanitizers {
+            // This variable is used by the sanitizer runtime crates, e.g.
+            // rustc_lsan, to build the sanitizer runtime from C code
+            // When this variable is missing, those crates won't compile the C code,
+            // so we don't set this variable during stage0 where llvm-config is
+            // missing
+            // We also only build the runtimes when --enable-sanitizers (or its
+            // config.toml equivalent) is used
+            let llvm_config = build.ensure(native::Llvm {
+                target: build.config.build,
+                emscripten: false,
+            });
+            cargo.env("LLVM_CONFIG", llvm_config);
+        }
+
+        cargo.arg("--features").arg(features)
+            .arg("--manifest-path")
+            .arg(build.src.join("src/libstd/Cargo.toml"));
+
+        if let Some(target) = build.config.target_config.get(&target) {
+            if let Some(ref jemalloc) = target.jemalloc {
+                cargo.env("JEMALLOC_OVERRIDE", jemalloc);
+            }
+        }
+        if target.contains("musl") {
+            if let Some(p) = build.musl_root(target) {
+                cargo.env("MUSL_ROOT", p);
+            }
         }
     }
 }
