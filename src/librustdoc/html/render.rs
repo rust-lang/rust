@@ -1067,7 +1067,7 @@ impl<'a> SourceCollector<'a> {
             return Ok(());
         }
 
-        let contents = fs::read_string(&p)?;
+        let contents = fs::read_to_string(&p)?;
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\u{feff}") {
