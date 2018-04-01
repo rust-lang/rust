@@ -2338,9 +2338,10 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = match self.ptr.offset_to(self.end) {
-            Some(x) => x as usize,
-            None => (self.end as usize).wrapping_sub(self.ptr as usize),
+        let exact = if mem::size_of::<T>() == 0 {
+            (self.end as usize).wrapping_sub(self.ptr as usize)
+        } else {
+            unsafe { self.end.offset_from(self.ptr) as usize }
         };
         (exact, Some(exact))
     }
