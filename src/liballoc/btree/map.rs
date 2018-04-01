@@ -1480,6 +1480,16 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
             unsafe { Some(self.next_unchecked()) }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.front == self.back {
+            (0, Some(0))
+        } else {
+            // There doesn't seem to be any way to get the size of the whole tree
+            // from a NodeRef.
+            (1, None)
+        }
+    }
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
@@ -1610,6 +1620,16 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
             None
         } else {
             unsafe { Some(self.next_unchecked()) }
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.front == self.back {
+            (0, Some(0))
+        } else {
+            // We can get the root node by using into_root_mut; but there doesn't
+            // seem to be any way to get the size of the tree from the root node.
+            (1, None)
         }
     }
 }
@@ -2548,5 +2568,20 @@ impl<K: Ord, V, I: Iterator<Item = (K, V)>> Iterator for MergeIter<K, V, I> {
                 self.right.next()
             }
         }
+    }
+
+    // Currently unused. However, BTreeMap::from_sorted_iter may some day be
+    // rewritten to pre-allocate the correct amount of nodes, in which case
+    // having this will be helpful.
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (left_lower, left_upper) = self.left.size_hint();
+        let (right_lower, right_upper) = self.right.size_hint();
+        let lower = left_lower + right_lower;
+        let upper = match (left_upper, right_upper) {
+            (Some(left), Some(right)) => left.checked_add(right),
+            (left, None) => left,
+            (None, right) => right
+        };
+        (lower, upper)
     }
 }
