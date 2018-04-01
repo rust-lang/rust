@@ -698,6 +698,11 @@ impl<'a> Builder<'a> {
 
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
+        // in std, we want to avoid denying warnings for stage 0 as that makes cfg's painful.
+        if self.config.deny_warnings && !(mode == Mode::Libstd && stage == 0) {
+            cargo.env("RUSTC_DENY_WARNINGS", "1");
+        }
+
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
         // obtained previously to those build scripts.

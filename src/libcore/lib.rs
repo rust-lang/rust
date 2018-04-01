@@ -63,7 +63,6 @@
 #![no_core]
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
-#![deny(warnings)]
 
 #![feature(allow_internal_unstable)]
 #![feature(asm)]

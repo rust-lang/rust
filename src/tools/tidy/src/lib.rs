@@ -13,8 +13,6 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-#![deny(warnings)]
-
 extern crate serde;
 extern crate serde_json;
 #[macro_use]

@@ -71,6 +71,8 @@ pub struct Config {
     pub incremental: bool,
     pub dry_run: bool,
 
+    pub deny_warnings: bool,
+
     // llvm codegen options
     pub llvm_enabled: bool,
     pub llvm_assertions: bool,
@@ -301,6 +303,7 @@ struct Rust {
     codegen_backends_dir: Option<String>,
     wasm_syscall: Option<bool>,
     lld: Option<bool>,
+    deny_warnings: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -340,6 +343,7 @@ impl Config {
         config.test_miri = false;
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.rust_codegen_backends_dir = "codegen-backends".to_owned();
+        config.deny_warnings = true;
 
         // set by bootstrap.py
         config.src = env::var_os("SRC").map(PathBuf::from).expect("'SRC' to be set");
@@ -366,6 +370,9 @@ impl Config {
         config.incremental = flags.incremental;
         config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
+        if let Some(value) = flags.warnings {
+            config.deny_warnings = value;
+        }
 
         if config.dry_run {
             let dir = config.out.join("tmp-dry-run");
@@ -511,6 +518,7 @@ impl Config {
             config.rustc_default_linker = rust.default_linker.clone();
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
+            set(&mut config.deny_warnings, rust.deny_warnings.or(flags.warnings));
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends = backends.iter()

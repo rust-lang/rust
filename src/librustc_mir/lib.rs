@@ -14,8 +14,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 
 */
 
-#![deny(warnings)]
-
 #![feature(slice_patterns)]
 #![feature(from_ref)]
 #![feature(box_patterns)]

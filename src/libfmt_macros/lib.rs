@@ -19,7 +19,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
-#![deny(warnings)]
 
 pub use self::Piece::*;
 pub use self::Position::*;
