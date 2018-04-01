@@ -34,7 +34,6 @@ extern crate unicode_segmentation;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, stdout, BufRead, Write};
-use std::iter::repeat;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -200,7 +199,7 @@ impl FormatReport {
         for (file, errors) in &self.file_error_map {
             for error in errors {
                 let prefix_space_len = error.line.to_string().len();
-                let prefix_spaces: String = repeat(" ").take(1 + prefix_space_len).collect();
+                let prefix_spaces = " ".repeat(1 + prefix_space_len);
 
                 // First line: the overview of error
                 t.fg(term::color::RED)?;
@@ -259,8 +258,8 @@ impl FormatReport {
 }
 
 fn target_str(space_len: usize, target_len: usize) -> String {
-    let empty_line: String = repeat(" ").take(space_len).collect();
-    let overflowed: String = repeat("^").take(target_len).collect();
+    let empty_line = " ".repeat(space_len);
+    let overflowed = "^".repeat(target_len);
     empty_line + &overflowed
 }
 
@@ -270,7 +269,7 @@ impl fmt::Display for FormatReport {
         for (file, errors) in &self.file_error_map {
             for error in errors {
                 let prefix_space_len = error.line.to_string().len();
-                let prefix_spaces: String = repeat(" ").take(1 + prefix_space_len).collect();
+                let prefix_spaces = " ".repeat(1 + prefix_space_len);
 
                 let error_line_buffer = if error.line_buffer.is_empty() {
                     String::from(" ")

@@ -32,16 +32,7 @@ fn prune_files(files: Vec<&str>) -> Vec<&str> {
 
     let mut pruned_prefixes = vec![];
     for p1 in prefixes {
-        let mut include = true;
-        if !p1.starts_with("src/bin/") {
-            for p2 in &pruned_prefixes {
-                if p1.starts_with(p2) {
-                    include = false;
-                    break;
-                }
-            }
-        }
-        if include {
+        if p1.starts_with("src/bin/") || pruned_prefixes.iter().all(|p2| !p1.starts_with(p2)) {
             pruned_prefixes.push(p1);
         }
     }
@@ -50,17 +41,10 @@ fn prune_files(files: Vec<&str>) -> Vec<&str> {
     files
         .into_iter()
         .filter(|f| {
-            let mut include = true;
             if f.ends_with("mod.rs") || f.ends_with("lib.rs") || f.starts_with("src/bin/") {
                 return true;
             }
-            for pp in &pruned_prefixes {
-                if f.starts_with(pp) {
-                    include = false;
-                    break;
-                }
-            }
-            include
+            pruned_prefixes.iter().all(|pp| !f.starts_with(pp))
         })
         .collect()
 }

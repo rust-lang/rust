@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::borrow::Cow;
-use std::iter::repeat;
 
 use syntax::codemap::{BytePos, FileName, Pos, Span};
 
@@ -128,7 +127,7 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        let blank_lines: String = repeat('\n').take(newline_count).collect();
+        let blank_lines = "\n".repeat(newline_count);
         self.push_str(&blank_lines);
     }
 
@@ -182,7 +181,7 @@ impl<'a> FmtVisitor<'a> {
         let mut status = SnippetStatus::new(char_pos.line);
 
         let snippet = &*match self.config.write_mode() {
-            WriteMode::Coverage => replace_chars(old_snippet),
+            WriteMode::Coverage => Cow::from(replace_chars(old_snippet)),
             _ => Cow::from(old_snippet),
         };
 
@@ -327,11 +326,9 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn replace_chars(string: &str) -> Cow<str> {
-    Cow::from(
-        string
-            .chars()
-            .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
-            .collect::<String>(),
-    )
+fn replace_chars(string: &str) -> String {
+    string
+        .chars()
+        .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
+        .collect()
 }

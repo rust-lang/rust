@@ -335,7 +335,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 let snippet = self.snippet(item.span);
                 let where_span_end = snippet
                     .find_uncommented("{")
-                    .map(|x| (BytePos(x as u32)) + source!(self, item.span).lo());
+                    .map(|x| BytePos(x as u32) + source!(self, item.span).lo());
                 let rw = format_impl(&self.get_context(), item, self.block_indent, where_span_end);
                 self.push_rewrite(item.span, rw);
             }

@@ -271,13 +271,7 @@ impl IgnoreList {
     }
 
     fn skip_file_inner(&self, file: &Path) -> bool {
-        for path in &self.0 {
-            if file.starts_with(path) {
-                return true;
-            }
-        }
-
-        false
+        self.0.iter().any(|path| file.starts_with(path))
     }
 
     pub fn skip_file(&self, file: &FileName) -> bool {

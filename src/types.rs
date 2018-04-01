@@ -247,7 +247,7 @@ fn rewrite_segment(
                 let generics_str = overflow::rewrite_with_angle_brackets(
                     context,
                     "",
-                    &param_list.iter().map(|e| &*e).collect::<Vec<_>>()[..],
+                    &param_list.iter().map(|e| &*e).collect::<Vec<_>>(),
                     shape,
                     mk_sp(*span_lo, span_hi),
                 )?;
