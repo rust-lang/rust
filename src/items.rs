@@ -204,7 +204,7 @@ impl<'a> FnSig<'a> {
         fn_kind: &'a visit::FnKind,
         generics: &'a ast::Generics,
         decl: &'a ast::FnDecl,
-        defualtness: ast::Defaultness,
+        defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
             visit::FnKind::ItemFn(_, unsafety, constness, abi, visibility, _) => FnSig {
@@ -212,13 +212,13 @@ impl<'a> FnSig<'a> {
                 generics,
                 abi,
                 constness: constness.node,
-                defaultness: defualtness,
+                defaultness,
                 unsafety,
                 visibility: visibility.clone(),
             },
             visit::FnKind::Method(_, method_sig, vis, _) => {
                 let mut fn_sig = FnSig::from_method_sig(method_sig, generics);
-                fn_sig.defaultness = defualtness;
+                fn_sig.defaultness = defaultness;
                 if let Some(vis) = vis {
                     fn_sig.visibility = vis.clone();
                 }
