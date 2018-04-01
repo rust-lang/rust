@@ -89,7 +89,7 @@ pub struct Session {
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
-    pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
+    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
     pub crate_types: Once<Vec<config::CrateType>>,
@@ -1091,7 +1091,7 @@ pub fn build_session_(
         working_dir,
         lint_store: RwLock::new(lint::LintStore::new()),
         buffered_lints: Lock::new(Some(lint::LintBuffer::new())),
-        one_time_diagnostics: RefCell::new(FxHashSet()),
+        one_time_diagnostics: Lock::new(FxHashSet()),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
         crate_types: Once::new(),
