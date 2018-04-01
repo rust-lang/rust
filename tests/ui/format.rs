@@ -1,5 +1,5 @@
 
-
+#![allow(print_literal)]
 #![warn(useless_format)]
 
 fn main() {

@@ -1,7 +1,7 @@
 error: using `print!()` with a format string that ends in a newline, consider using `println!()` instead
- --> $DIR/print_with_newline.rs:6:5
+ --> $DIR/print_with_newline.rs:7:5
   |
-6 |     print!("Hello/n");
+7 |     print!("Hello/n");
   |     ^^^^^^^^^^^^^^^^^^
   |
   = note: `-D print-with-newline` implied by `-D warnings`
