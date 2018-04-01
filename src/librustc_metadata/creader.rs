@@ -812,9 +812,7 @@ impl<'a> CrateLoader<'a> {
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
         let has_global_allocator = has_global_allocator(krate);
-        if has_global_allocator {
-            self.sess.has_global_allocator.set(true);
-        }
+        self.sess.has_global_allocator.set(has_global_allocator);
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically

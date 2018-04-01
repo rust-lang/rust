@@ -161,7 +161,7 @@ pub struct Session {
     pub jobserver_from_env: Option<Client>,
 
     /// Metadata about the allocators for the current crate being compiled
-    pub has_global_allocator: Cell<bool>,
+    pub has_global_allocator: Once<bool>,
 }
 
 pub struct PerfStats {
@@ -1142,7 +1142,7 @@ pub fn build_session_(
             });
             (*GLOBAL_JOBSERVER).clone()
         },
-        has_global_allocator: Cell::new(false),
+        has_global_allocator: Once::new(),
     };
 
     sess
