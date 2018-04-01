@@ -1120,7 +1120,7 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
     let max = max.unwrap();
     let max_path = max_path.unwrap();
     if stamp_contents == new_contents && max <= stamp_mtime {
-        build.verbose(&format!("not updating {:?}; contents equal and {} <= {}",
+        build.verbose(&format!("not updating {:?}; contents equal and {:?} <= {:?}",
                 stamp, max, stamp_mtime));
         return deps
     }
