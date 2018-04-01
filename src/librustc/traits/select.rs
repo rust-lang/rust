@@ -997,7 +997,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         // Watch out for overflow. This intentionally bypasses (and does
         // not update) the cache.
-        let recursion_limit = self.infcx.tcx.sess.recursion_limit.get();
+        let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
         if stack.obligation.recursion_depth >= recursion_limit {
             self.infcx().report_overflow_error(&stack.obligation, true);
         }

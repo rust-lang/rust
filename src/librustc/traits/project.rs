@@ -345,7 +345,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                     Reveal::UserFacing => ty,
 
                     Reveal::All => {
-                        let recursion_limit = self.tcx().sess.recursion_limit.get();
+                        let recursion_limit = *self.tcx().sess.recursion_limit.get();
                         if self.depth >= recursion_limit {
                             let obligation = Obligation::with_depth(
                                 self.cause.clone(),
@@ -566,7 +566,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                     found cache entry: in-progress");
 
             // But for now, let's classify this as an overflow:
-            let recursion_limit = selcx.tcx().sess.recursion_limit.get();
+            let recursion_limit = *selcx.tcx().sess.recursion_limit.get();
             let obligation = Obligation::with_depth(cause.clone(),
                                                     recursion_limit,
                                                     param_env,
@@ -848,7 +848,7 @@ fn project_type<'cx, 'gcx, 'tcx>(
     debug!("project(obligation={:?})",
            obligation);
 
-    let recursion_limit = selcx.tcx().sess.recursion_limit.get();
+    let recursion_limit = *selcx.tcx().sess.recursion_limit.get();
     if obligation.recursion_depth >= recursion_limit {
         debug!("project: overflow!");
         selcx.infcx().report_overflow_error(&obligation, true);

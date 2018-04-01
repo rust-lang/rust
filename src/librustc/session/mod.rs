@@ -26,7 +26,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{Lrc, Lock, OneThread};
+use rustc_data_structures::sync::{Lrc, Lock, OneThread, Once};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -46,13 +46,13 @@ use rustc_back::target::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;
 
+use std;
 use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 use std::sync::mpsc;
 
@@ -105,10 +105,10 @@ pub struct Session {
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
-    pub recursion_limit: Cell<usize>,
+    pub recursion_limit: Once<usize>,
 
     /// The maximum length of types during monomorphization.
-    pub type_length_limit: Cell<usize>,
+    pub type_length_limit: Once<usize>,
 
     /// The maximum number of stackframes allowed in const eval
     pub const_eval_stack_frame_limit: Cell<usize>,
@@ -1147,8 +1147,8 @@ pub fn build_session_(
         dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: RefCell::new(None),
         features: RefCell::new(None),
-        recursion_limit: Cell::new(64),
-        type_length_limit: Cell::new(1048576),
+        recursion_limit: Once::new(),
+        type_length_limit: Once::new(),
         const_eval_stack_frame_limit: Cell::new(100),
         const_eval_step_limit: Cell::new(1_000_000),
         next_node_id: Cell::new(NodeId::new(1)),
@@ -1188,7 +1188,7 @@ pub fn build_session_(
         // per-process.
         jobserver_from_env: unsafe {
             static mut GLOBAL_JOBSERVER: *mut Option<Client> = 0 as *mut _;
-            static INIT: Once = ONCE_INIT;
+            static INIT: std::sync::Once = std::sync::ONCE_INIT;
             INIT.call_once(|| {
                 GLOBAL_JOBSERVER = Box::into_raw(Box::new(Client::from_env()));
             });

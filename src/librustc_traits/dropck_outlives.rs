@@ -153,7 +153,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
         span, for_ty, depth, ty
     );
 
-    if depth >= tcx.sess.recursion_limit.get() {
+    if depth >= *tcx.sess.recursion_limit.get() {
         return Ok(DtorckConstraint {
             outlives: vec![],
             dtorck_types: vec![],
