@@ -152,9 +152,6 @@ dependencies = [
 [[package]]
 name = "build_helper"
 version = "0.1.0"
-dependencies = [
- "filetime 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "byteorder"
