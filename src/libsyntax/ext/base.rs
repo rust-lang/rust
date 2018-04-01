@@ -10,7 +10,7 @@
 
 pub use self::SyntaxExtension::*;
 
-use ast::{self, Attribute, Name, PatKind, MetaItem};
+use ast::{self, Attribute, Name, PatKind, MetaItem, Path};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, Spanned, respan};
 use syntax_pos::{Span, MultiSpan, DUMMY_SP};
@@ -618,7 +618,7 @@ pub trait Resolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
+    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[(Mark, Path)]);
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
@@ -645,7 +645,9 @@ impl Resolver for DummyResolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
-    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
+    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion,
+                       _derives: &[(Mark, Path)]) {}
+
     fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}

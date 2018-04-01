@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,20 +9,14 @@
 // except according to those terms.
 
 // no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
-#![feature(proc_macro, proc_macro_lib)]
+// compile-flags:--crate-type proc-macro
 
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-#[proc_macro_derive(Foo)]
-pub fn derive_foo(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(ParsingDerive)]
+pub fn parsing_derive(input: TokenStream) -> TokenStream {
+    let _ = input.to_string().parse::<TokenStream>().unwrap();
     "".parse().unwrap()
-}
-
-#[proc_macro_derive(Bar)]
-pub fn derive_bar(input: TokenStream) -> TokenStream {
-    panic!("lolnope");
 }

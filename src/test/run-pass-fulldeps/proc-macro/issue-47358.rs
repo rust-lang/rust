@@ -8,11 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(concat_idents)]
+// aux-build:derive-parse-input.rs
+// ignore-stage1
 
-#[derive(Debug)]
-struct Baz<T>(
-    concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
-);
+#[macro_use]
+extern crate derive_parse_input;
+
+macro_rules! attach_doc {
+    ($doc:expr, $it:item) => {
+        #[doc=$doc] $it
+    }
+}
+
+macro_rules! gen_hello_user {
+    ($user:expr) => {
+        attach_doc!(
+            concat!("Hello ", $user, "!"),
+            #[derive(ParsingDerive)]
+            struct Example;
+        );
+    }
+}
+
+gen_hello_user!("world");
 
 fn main() {}
