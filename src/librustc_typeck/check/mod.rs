@@ -1128,10 +1128,10 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = fcx.tcx.lang_items().termination() {
-        if let Some((id, _)) = *fcx.tcx.sess.entry_fn.borrow() {
+        if let Some((id, _, entry_type)) = *fcx.tcx.sess.entry_fn.borrow() {
             if id == fn_id {
-                match fcx.sess().entry_type.get() {
-                    Some(config::EntryMain) => {
+                match entry_type {
+                    config::EntryMain => {
                         let substs = fcx.tcx.mk_substs(iter::once(Kind::from(ret_ty)));
                         let trait_ref = ty::TraitRef::new(term_id, substs);
                         let return_ty_span = decl.output.span();
@@ -1142,7 +1142,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                             traits::Obligation::new(
                                 cause, param_env, trait_ref.to_predicate()));
                     },
-                    _ => {},
+                    config::EntryStart => {},
                 }
             }
         }

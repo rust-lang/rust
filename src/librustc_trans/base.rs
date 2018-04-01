@@ -517,7 +517,7 @@ pub fn set_link_section(cx: &CodegenCx,
 /// users main function.
 fn maybe_create_entry_wrapper(cx: &CodegenCx) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
-        Some((id, span)) => {
+        Some((id, span, _)) => {
             (cx.tcx.hir.local_def_id(id), span)
         }
         None => return,
@@ -533,11 +533,11 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 
     let main_llfn = callee::get_fn(cx, instance);
 
-    let et = cx.sess().entry_type.get().unwrap();
+    let et = cx.sess().entry_fn.get().map(|e| e.2);
     match et {
-        config::EntryMain => create_entry_fn(cx, span, main_llfn, main_def_id, true),
-        config::EntryStart => create_entry_fn(cx, span, main_llfn, main_def_id, false),
-        config::EntryNone => {}    // Do nothing.
+        Some(config::EntryMain) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
+        Some(config::EntryStart) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
+        None => {}    // Do nothing.
     }
 
     fn create_entry_fn<'cx>(cx: &'cx CodegenCx,

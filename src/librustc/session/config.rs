@@ -614,13 +614,11 @@ impl Options {
 
 // The type of entry function, so
 // users can have their own entry
-// functions that don't start a
-// scheduler
+// functions
 #[derive(Copy, Clone, PartialEq)]
 pub enum EntryFnType {
     EntryMain,
     EntryStart,
-    EntryNone,
 }
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]

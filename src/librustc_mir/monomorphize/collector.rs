@@ -325,7 +325,7 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut roots = Vec::new();
 
     {
-        let entry_fn = tcx.sess.entry_fn.borrow().map(|(node_id, _)| {
+        let entry_fn = tcx.sess.entry_fn.borrow().map(|(node_id, _, _)| {
             tcx.hir.local_def_id(node_id)
         });
 
@@ -1038,7 +1038,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
     fn push_extra_entry_roots(&mut self) {
-        if self.tcx.sess.entry_type.get() != Some(config::EntryMain) {
+        if self.tcx.sess.entry_fn.get().map(|e| e.2) != Some(config::EntryMain) {
             return
         }
 

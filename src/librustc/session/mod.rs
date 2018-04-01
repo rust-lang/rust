@@ -70,8 +70,7 @@ pub struct Session {
     pub opts: config::Options,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
-    pub entry_fn: RefCell<Option<(NodeId, Span)>>,
-    pub entry_type: Cell<Option<config::EntryFnType>>,
+    pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
     pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
     pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
@@ -1094,8 +1093,7 @@ pub fn build_session_(
         opts: sopts,
         parse_sess: p_s,
         // For a library crate, this is always none
-        entry_fn: RefCell::new(None),
-        entry_type: Cell::new(None),
+        entry_fn: Once::new(),
         plugin_registrar_fn: Cell::new(None),
         derive_registrar_fn: Cell::new(None),
         default_sysroot,
