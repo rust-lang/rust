@@ -316,8 +316,6 @@ fn chain_only_try(exprs: &[ast::Expr]) -> bool {
     })
 }
 
-// Try to rewrite and replace the last non-try child. Return `true` if
-// replacing succeeds.
 fn rewrite_try(
     expr: &ast::Expr,
     try_count: usize,
