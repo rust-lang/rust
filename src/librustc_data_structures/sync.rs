@@ -33,6 +33,8 @@ use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt;
+use std;
+use std::ops::{Deref, DerefMut};
 use owning_ref::{Erased, OwningRef};
 
 cfg_if! {
@@ -160,6 +162,8 @@ cfg_if! {
 
         use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
+
+        use std::thread;
 
         pub type MetadataRef = OwningRef<Box<Erased + Send + Sync>, [u8]>;
 
@@ -437,5 +441,56 @@ impl<T: Clone> Clone for RwLock<T> {
     #[inline]
     fn clone(&self) -> Self {
         RwLock::new(self.borrow().clone())
+    }
+}
+
+/// A type which only allows its inner value to be used in one thread.
+/// It will panic if it is used on multiple threads.
+#[derive(Copy, Clone, Hash, Debug, Eq, PartialEq)]
+pub struct OneThread<T> {
+    #[cfg(parallel_queries)]
+    thread: thread::ThreadId,
+    inner: T,
+}
+
+unsafe impl<T> std::marker::Sync for OneThread<T> {}
+unsafe impl<T> std::marker::Send for OneThread<T> {}
+
+impl<T> OneThread<T> {
+    #[inline(always)]
+    fn check(&self) {
+        #[cfg(parallel_queries)]
+        assert_eq!(thread::current().id(), self.thread);
+    }
+
+    #[inline(always)]
+    pub fn new(inner: T) -> Self {
+        OneThread {
+            #[cfg(parallel_queries)]
+            thread: thread::current().id(),
+            inner,
+        }
+    }
+
+    #[inline(always)]
+    pub fn into_inner(value: Self) -> T {
+        value.check();
+        value.inner
+    }
+}
+
+impl<T> Deref for OneThread<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.check();
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for OneThread<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        self.check();
+        &mut self.inner
     }
 }
