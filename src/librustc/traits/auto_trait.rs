@@ -25,18 +25,18 @@ use ty::fold::TypeFolder;
 
 // TODO(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
-enum RegionTarget<'tcx> {
+pub enum RegionTarget<'tcx> {
     Region(Region<'tcx>),
     RegionVid(RegionVid)
 }
 
 #[derive(Default, Debug, Clone)]
-struct RegionDeps<'tcx> {
+pub struct RegionDeps<'tcx> {
     larger: FxHashSet<RegionTarget<'tcx>>,
     smaller: FxHashSet<RegionTarget<'tcx>>
 }
 
-enum AutoTraitResult {
+pub enum AutoTraitResult {
     ExplicitImpl,
     PositiveImpl, /*(ty::Generics), TODO(twk)*/
     NegativeImpl,
@@ -56,7 +56,7 @@ pub struct AutoTraitFinder<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    fn find_auto_trait_generics(
+    pub fn find_auto_trait_generics(
         &self,
         did: DefId,
         trait_did: DefId,
@@ -277,9 +277,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate
     // 'user_env', which only holds the predicates that will actually be displayed to the user.
-    fn evaluate_predicates<'b, 'gcx, 'c>(
+    pub fn evaluate_predicates<'b, 'gcx, 'c>(
         &self,
-        infcx: &mut InferCtxt<'b, 'tcx, 'c>,
+        infcx: & InferCtxt<'b, 'tcx, 'c>,
         ty_did: DefId,
         trait_did: DefId,
         ty: ty::Ty<'c>,
@@ -387,7 +387,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // starting conditions (e.g. user-provided code). For this reason, it's easier
     // to perform the calculations we need on our own, rather than trying to make
     // existing inference/solver code do what we want.
-    fn handle_lifetimes<'cx>(
+    pub fn handle_lifetimes<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
         names_map: &FxHashMap<String, String>, // TODO(twk): lifetime branding
@@ -533,7 +533,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         lifetime_predicates
     }
 
-    fn region_name(&self, region: Region) -> Option<String> {
+    pub fn region_name(&self, region: Region) -> Option<String> {
         match region {
             &ty::ReEarlyBound(r) => Some(r.name.as_str().to_string()),
             _ => None,
@@ -541,7 +541,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     }
 
     // TODO(twk): lifetime branding
-    fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, String>) -> String {
+    pub fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, String>) -> String {
         self.region_name(region)
             .map(|name| {
                 names_map.get(&name).unwrap_or_else(|| {
@@ -555,7 +555,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     // This is very similar to handle_lifetimes. However, instead of matching ty::Region's
     // to each other, we match ty::RegionVid's to ty::Region's
-    fn map_vid_to_region<'cx>(
+    pub fn map_vid_to_region<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
     ) -> FxHashMap<ty::RegionVid, ty::Region<'cx>> {
@@ -655,7 +655,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
-    fn is_of_param(&self, substs: &Substs) -> bool {
+    pub fn is_of_param(&self, substs: &Substs) -> bool {
         if substs.is_noop() {
             return false;
         }
@@ -667,7 +667,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         };
     }
 
-    fn evaluate_nested_obligations<'b, 'c, 'd, 'cx,
+    pub fn evaluate_nested_obligations<'b, 'c, 'd, 'cx,
                                     T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>>(
         &self,
         ty: ty::Ty,
@@ -775,7 +775,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         return true;
     }
 
-    fn clean_pred<'c, 'd, 'cx>(
+    pub fn clean_pred<'c, 'd, 'cx>(
         &self,
         infcx: &InferCtxt<'c, 'd, 'cx>,
         p: ty::Predicate<'cx>,
@@ -785,7 +785,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 }
 
 // Replaces all ReVars in a type with ty::Region's, using the provided map
-struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+pub struct RegionReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     vid_to_region: &'a FxHashMap<ty::RegionVid, ty::Region<'tcx>>,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
 }
