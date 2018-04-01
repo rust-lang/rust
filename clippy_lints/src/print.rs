@@ -88,9 +88,9 @@ declare_clippy_lint! {
 /// ```rust
 /// println!("{}", "foo");
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub PRINT_LITERAL,
-    Allow,
+    style,
     "printing a literal with a format string"
 }
 
