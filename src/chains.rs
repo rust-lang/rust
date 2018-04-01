@@ -336,7 +336,7 @@ fn join_rewrites(rewrites: &[String], connector: &str) -> String {
         if rewrite != "?" {
             result.push_str(connector);
         }
-        result.push_str(&rewrite[..]);
+        result.push_str(&rewrite);
     }
 
     result

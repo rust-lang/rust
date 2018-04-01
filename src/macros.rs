@@ -239,7 +239,7 @@ pub fn rewrite_macro_inner(
             overflow::rewrite_with_parens(
                 context,
                 &macro_name,
-                &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..],
+                &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>(),
                 shape,
                 mac.span,
                 context.config.width_heuristics().fn_call_width,
@@ -301,7 +301,7 @@ pub fn rewrite_macro_inner(
                     };
                 }
                 // Convert `MacroArg` into `ast::Expr`, as `rewrite_array` only accepts the latter.
-                let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>()[..];
+                let arg_vec = &arg_vec.iter().map(|e| &*e).collect::<Vec<_>>();
                 let rewrite = rewrite_array(
                     macro_name,
                     arg_vec,
@@ -991,7 +991,7 @@ fn next_space(tok: &Token) -> SpaceState {
 /// when the macro is not an instance of try! (or parsing the inner expression
 /// failed).
 pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::Expr> {
-    if &format!("{}", mac.node.path)[..] == "try" {
+    if &format!("{}", mac.node.path) == "try" {
         let ts: TokenStream = mac.node.tts.clone().into();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 

@@ -369,7 +369,7 @@ fn rewrite_tuple_pat(
     overflow::rewrite_with_parens(
         &context,
         &path_str,
-        &pat_ref_vec[..],
+        &pat_ref_vec,
         shape,
         span,
         context.config.max_width(),
