@@ -416,22 +416,14 @@ impl Build {
         }
 
         if !self.config.dry_run {
-            let dry_graph = {
+            {
                 self.config.dry_run = true;
                 let builder = builder::Builder::new(&self);
-                builder.execute_cli()
-            };
+                builder.execute_cli();
+            }
             self.config.dry_run = false;
             let builder = builder::Builder::new(&self);
-            let act_graph = builder.execute_cli();
-            assert_eq!(dry_graph.raw_nodes().iter().map(|i| &i.weight).collect::<Vec<_>>(),
-                act_graph.raw_nodes().iter().map(|i| &i.weight).collect::<Vec<_>>());
-            assert_eq!(dry_graph.raw_edges()
-                .iter().map(|i| (&dry_graph[i.source()], &dry_graph[i.target()], &i.weight))
-                .collect::<Vec<_>>(),
-                act_graph.raw_edges()
-                .iter().map(|i| (&act_graph[i.source()], &act_graph[i.target()], &i.weight))
-                .collect::<Vec<_>>());
+            builder.execute_cli();
         } else {
             let builder = builder::Builder::new(&self);
             let _ = builder.execute_cli();
