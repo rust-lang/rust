@@ -120,7 +120,7 @@ pub struct Session {
     /// injected.
     pub injected_allocator: Once<Option<CrateNum>>,
     pub allocator_kind: Once<Option<AllocatorKind>>,
-    pub injected_panic_runtime: Cell<Option<CrateNum>>,
+    pub injected_panic_runtime: Once<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -1107,7 +1107,7 @@ pub fn build_session_(
         next_node_id: OneThread::new(Cell::new(NodeId::new(1))),
         injected_allocator: Once::new(),
         allocator_kind: Once::new(),
-        injected_panic_runtime: Cell::new(None),
+        injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         ignored_attr_names: ich::compute_ignored_attr_names(),
