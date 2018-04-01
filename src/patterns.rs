@@ -405,7 +405,7 @@ fn count_wildcard_suffix_len(
     }) {
         suffix_len += 1;
 
-        if item.pre_comment.is_some() || item.post_comment.is_some() {
+        if item.has_comment() {
             break;
         }
     }
