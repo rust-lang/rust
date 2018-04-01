@@ -101,7 +101,7 @@ pub struct Session {
     /// trans::back::symbol_names module for more information.
     pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
 
-    features: RefCell<Option<feature_gate::Features>>,
+    features: Once<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -532,18 +532,12 @@ impl Session {
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
     /// dependency tracking. Use tcx.features() instead.
     #[inline]
-    pub fn features_untracked(&self) -> cell::Ref<feature_gate::Features> {
-        let features = self.features.borrow();
-
-        if features.is_none() {
-            bug!("Access to Session::features before it is initialized");
-        }
-
-        cell::Ref::map(features, |r| r.as_ref().unwrap())
+    pub fn features_untracked(&self) -> &feature_gate::Features {
+        self.features.get()
     }
 
     pub fn init_features(&self, features: feature_gate::Features) {
-        *(self.features.borrow_mut()) = Some(features);
+        self.features.set(features);
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -1108,7 +1102,7 @@ pub fn build_session_(
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: RefCell::new(None),
-        features: RefCell::new(None),
+        features: Once::new(),
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
