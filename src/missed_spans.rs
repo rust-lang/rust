@@ -175,7 +175,7 @@ impl<'a> FmtVisitor<'a> {
         let mut status = SnippetStatus::new(char_pos.line);
 
         let snippet = &*match self.config.write_mode() {
-            WriteMode::Coverage => replace_chars(old_snippet),
+            WriteMode::Coverage => Cow::from(replace_chars(old_snippet)),
             _ => Cow::from(old_snippet),
         };
 
@@ -320,11 +320,9 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-fn replace_chars(string: &str) -> Cow<str> {
-    Cow::from(
-        string
-            .chars()
-            .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
-            .collect::<String>(),
-    )
+fn replace_chars(string: &str) -> String {
+    string
+        .chars()
+        .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
+        .collect()
 }
