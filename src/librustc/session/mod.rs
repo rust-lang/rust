@@ -118,8 +118,8 @@ pub struct Session {
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
-    pub injected_allocator: Cell<Option<CrateNum>>,
-    pub allocator_kind: Cell<Option<AllocatorKind>>,
+    pub injected_allocator: Once<Option<CrateNum>>,
+    pub allocator_kind: Once<Option<AllocatorKind>>,
     pub injected_panic_runtime: Cell<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
@@ -1105,8 +1105,8 @@ pub fn build_session_(
         const_eval_stack_frame_limit: 100,
         const_eval_step_limit: 1_000_000,
         next_node_id: OneThread::new(Cell::new(NodeId::new(1))),
-        injected_allocator: Cell::new(None),
-        allocator_kind: Cell::new(None),
+        injected_allocator: Once::new(),
+        allocator_kind: Once::new(),
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),

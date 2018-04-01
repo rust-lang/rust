@@ -823,6 +823,8 @@ impl<'a> CrateLoader<'a> {
             needs_allocator = needs_allocator || data.needs_allocator(self.sess);
         });
         if !needs_allocator {
+            self.sess.injected_allocator.set(None);
+            self.sess.allocator_kind.set(None);
             return
         }
 
@@ -842,6 +844,8 @@ impl<'a> CrateLoader<'a> {
             }
         }
         if !need_lib_alloc && !need_exe_alloc {
+            self.sess.injected_allocator.set(None);
+            self.sess.allocator_kind.set(None);
             return
         }
 
@@ -879,6 +883,7 @@ impl<'a> CrateLoader<'a> {
         });
         if global_allocator.is_some() {
             self.sess.allocator_kind.set(Some(AllocatorKind::Global));
+            self.sess.injected_allocator.set(None);
             return
         }
 
@@ -922,6 +927,9 @@ impl<'a> CrateLoader<'a> {
             };
 
         let allocation_crate_data = exe_allocation_crate_data.or_else(|| {
+            // No allocator was injected
+            self.sess.injected_allocator.set(None);
+
             if attr::contains_name(&krate.attrs, "default_lib_allocator") {
                 // Prefer self as the allocator if there's a collision
                 return None;

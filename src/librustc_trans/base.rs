@@ -795,7 +795,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         codegen_units.len());
 
     // Translate an allocator shim, if any
-    let allocator_module = if let Some(kind) = tcx.sess.allocator_kind.get() {
+    let allocator_module = if let Some(kind) = *tcx.sess.allocator_kind.get() {
         unsafe {
             let llmod_id = "allocator";
             let (llcx, llmod) =
