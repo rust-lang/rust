@@ -162,7 +162,7 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 
     // Ensure the data-layout values hardcoded remain the defaults.
     if sess.target.target.options.is_builtin {
-        let tm = ::back::write::create_target_machine(sess);
+        let tm = ::back::write::create_target_machine(sess, false);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
 

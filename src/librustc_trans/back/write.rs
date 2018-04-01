@@ -154,13 +154,16 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
     }
 }
 
-pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
-    target_machine_factory(sess)().unwrap_or_else(|err| {
+pub fn create_target_machine(sess: &Session, find_features: bool) -> TargetMachineRef {
+    target_machine_factory(sess, find_features)().unwrap_or_else(|err| {
         llvm_err(sess.diagnostic(), err).raise()
     })
 }
 
-pub fn target_machine_factory(sess: &Session)
+// If find_features is true this won't access `sess.crate_types` by assuming
+// that `is_pie_binary` is false. When we discover LLVM target features
+// `sess.crate_types` is uninitialized so we cannot access it.
+pub fn target_machine_factory(sess: &Session, find_features: bool)
     -> Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>
 {
     let reloc_model = get_reloc_model(sess);
@@ -201,7 +204,7 @@ pub fn target_machine_factory(sess: &Session)
     };
     let cpu = CString::new(cpu.as_bytes()).unwrap();
     let features = CString::new(target_feature(sess).as_bytes()).unwrap();
-    let is_pie_binary = is_pie_binary(sess);
+    let is_pie_binary = !find_features && is_pie_binary(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
 
     Arc::new(move || {
@@ -1510,7 +1513,7 @@ fn start_executing_work(tcx: TyCtxt,
         regular_module_config: modules_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
-        tm_factory: target_machine_factory(tcx.sess),
+        tm_factory: target_machine_factory(tcx.sess, false),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),

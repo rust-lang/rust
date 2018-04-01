@@ -92,7 +92,7 @@ pub struct Session {
     pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
-    pub crate_types: RefCell<Vec<config::CrateType>>,
+    pub crate_types: Once<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
     /// The crate_disambiguator is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
@@ -1096,7 +1096,7 @@ pub fn build_session_(
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
-        crate_types: RefCell::new(Vec::new()),
+        crate_types: Once::new(),
         dependency_formats: RefCell::new(FxHashMap()),
         crate_disambiguator: Once::new(),
         features: Once::new(),

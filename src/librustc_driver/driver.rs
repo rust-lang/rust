@@ -652,7 +652,8 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
-    *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
+    let crate_types = collect_crate_types(sess, &krate.attrs);
+    sess.crate_types.set(crate_types);
 
     let disambiguator = compute_crate_disambiguator(sess);
     sess.crate_disambiguator.set(disambiguator);

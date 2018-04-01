@@ -737,7 +737,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: ModuleSource::Translated(ModuleLlvm {
             llcx: metadata_llcx,
             llmod: metadata_llmod,
-            tm: create_target_machine(tcx.sess),
+            tm: create_target_machine(tcx.sess, false),
         }),
         kind: ModuleKind::Metadata,
     };
@@ -803,7 +803,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let modules = ModuleLlvm {
                 llmod,
                 llcx,
-                tm: create_target_machine(tcx.sess),
+                tm: create_target_machine(tcx.sess, false),
             };
             time(tcx.sess, "write allocator module", || {
                 allocator::trans(tcx, &modules, kind)
@@ -1260,7 +1260,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let llvm_module = ModuleLlvm {
                 llcx: cx.llcx,
                 llmod: cx.llmod,
-                tm: create_target_machine(cx.sess()),
+                tm: create_target_machine(cx.sess(), false),
             };
 
             ModuleTranslation {
