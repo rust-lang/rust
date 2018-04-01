@@ -161,11 +161,13 @@ fn make_opts() -> Options {
          found reverts to the input file path",
         "[Path for the configuration file]",
     );
-    opts.optopt(
+    opts.opt(
         "",
         "dump-default-config",
         "Dumps default configuration to PATH. PATH defaults to stdout, if omitted.",
         "PATH",
+        getopts::HasArg::Maybe,
+        getopts::Occur::Optional,
     );
     opts.optopt(
         "",
