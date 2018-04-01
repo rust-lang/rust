@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+use rustc_data_structures::sync::Lock;
+
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -236,13 +238,14 @@ pub fn to_readable_str(mut val: usize) -> String {
     groups.join("_")
 }
 
-pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
+pub fn record_time<T, F>(accu: &Lock<Duration>, f: F) -> T where
     F: FnOnce() -> T,
 {
     let start = Instant::now();
     let rv = f();
     let duration = start.elapsed();
-    accu.set(duration + accu.get());
+    let mut accu = accu.lock();
+    *accu = *accu + duration;
     rv
 }
 
@@ -381,14 +384,4 @@ fn test_to_readable_str() {
     assert_eq!("999_999", to_readable_str(999_999));
     assert_eq!("1_000_000", to_readable_str(1_000_000));
     assert_eq!("1_234_567", to_readable_str(1_234_567));
-}
-
-pub trait CellUsizeExt {
-    fn increment(&self);
-}
-
-impl CellUsizeExt for Cell<usize> {
-    fn increment(&self) {
-        self.set(self.get() + 1);
-    }
 }

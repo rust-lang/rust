@@ -55,6 +55,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::sync::mpsc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod code_stats;
 pub mod config;
@@ -165,27 +166,16 @@ pub struct Session {
 }
 
 pub struct PerfStats {
-    /// The accumulated time needed for computing the SVH of the crate
-    pub svh_time: Cell<Duration>,
-    /// The accumulated time spent on computing incr. comp. hashes
-    pub incr_comp_hashes_time: Cell<Duration>,
-    /// The number of incr. comp. hash computations performed
-    pub incr_comp_hashes_count: Cell<u64>,
-    /// The number of bytes hashed when computing ICH values
-    pub incr_comp_bytes_hashed: Cell<u64>,
     /// The accumulated time spent on computing symbol hashes
-    pub symbol_hash_time: Cell<Duration>,
+    pub symbol_hash_time: Lock<Duration>,
     /// The accumulated time spent decoding def path tables from metadata
-    pub decode_def_path_tables_time: Cell<Duration>,
+    pub decode_def_path_tables_time: Lock<Duration>,
     /// Total number of values canonicalized queries constructed.
-    pub queries_canonicalized: Cell<usize>,
-    /// Number of times we canonicalized a value and found that the
-    /// result had already been canonicalized.
-    pub canonicalized_values_allocated: Cell<usize>,
+    pub queries_canonicalized: AtomicUsize,
     /// Number of times this query is invoked.
-    pub normalize_ty_after_erasing_regions: Cell<usize>,
+    pub normalize_ty_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
-    pub normalize_projection_ty: Cell<usize>,
+    pub normalize_projection_ty: AtomicUsize,
 }
 
 /// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
@@ -839,46 +829,19 @@ impl Session {
 
     pub fn print_perf_stats(&self) {
         println!(
-            "Total time spent computing SVHs:               {}",
-            duration_to_secs_str(self.perf_stats.svh_time.get())
-        );
-        println!(
-            "Total time spent computing incr. comp. hashes: {}",
-            duration_to_secs_str(self.perf_stats.incr_comp_hashes_time.get())
-        );
-        println!(
-            "Total number of incr. comp. hashes computed:   {}",
-            self.perf_stats.incr_comp_hashes_count.get()
-        );
-        println!(
-            "Total number of bytes hashed for incr. comp.:  {}",
-            self.perf_stats.incr_comp_bytes_hashed.get()
-        );
-        if self.perf_stats.incr_comp_hashes_count.get() != 0 {
-            println!(
-                "Average bytes hashed per incr. comp. HIR node: {}",
-                self.perf_stats.incr_comp_bytes_hashed.get()
-                    / self.perf_stats.incr_comp_hashes_count.get()
-            );
-        } else {
-            println!("Average bytes hashed per incr. comp. HIR node: N/A");
-        }
-        println!(
             "Total time spent computing symbol hashes:      {}",
-            duration_to_secs_str(self.perf_stats.symbol_hash_time.get())
+            duration_to_secs_str(*self.perf_stats.symbol_hash_time.lock())
         );
         println!(
             "Total time spent decoding DefPath tables:      {}",
-            duration_to_secs_str(self.perf_stats.decode_def_path_tables_time.get())
+            duration_to_secs_str(*self.perf_stats.decode_def_path_tables_time.lock())
         );
         println!("Total queries canonicalized:                   {}",
-                 self.perf_stats.queries_canonicalized.get());
-        println!("Total canonical values interned:               {}",
-                 self.perf_stats.canonicalized_values_allocated.get());
+                 self.perf_stats.queries_canonicalized.load(Ordering::Relaxed));
         println!("normalize_ty_after_erasing_regions:            {}",
-                 self.perf_stats.normalize_ty_after_erasing_regions.get());
+                 self.perf_stats.normalize_ty_after_erasing_regions.load(Ordering::Relaxed));
         println!("normalize_projection_ty:                       {}",
-                 self.perf_stats.normalize_projection_ty.get());
+                 self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed));
     }
 
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
@@ -1160,16 +1123,11 @@ pub fn build_session_(
         ignored_attr_names: ich::compute_ignored_attr_names(),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
-            svh_time: Cell::new(Duration::from_secs(0)),
-            incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
-            incr_comp_hashes_count: Cell::new(0),
-            incr_comp_bytes_hashed: Cell::new(0),
-            symbol_hash_time: Cell::new(Duration::from_secs(0)),
-            decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
-            queries_canonicalized: Cell::new(0),
-            canonicalized_values_allocated: Cell::new(0),
-            normalize_ty_after_erasing_regions: Cell::new(0),
-            normalize_projection_ty: Cell::new(0),
+            symbol_hash_time: Lock::new(Duration::from_secs(0)),
+            decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),
+            queries_canonicalized: AtomicUsize::new(0),
+            normalize_ty_after_erasing_regions: AtomicUsize::new(0),
+            normalize_projection_ty: AtomicUsize::new(0),
         },
         code_stats: RefCell::new(CodeStats::new()),
         optimization_fuel_crate,
