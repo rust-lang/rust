@@ -13,6 +13,7 @@
 
 use check::FnCtxt;
 use rustc::hir::map as hir_map;
+use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
@@ -26,12 +27,12 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::hir;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::ty::TyAdt;
 
-use std::cell;
 use std::cmp::Ordering;
 
 use super::{MethodError, NoMatchData, CandidateSource};
@@ -208,6 +209,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // be used exists at all, and the type is an ambiuous numeric type
                     // ({integer}/{float}).
                     let mut candidates = all_traits(self.tcx)
+                        .into_iter()
                         .filter(|info| {
                             self.associated_item(info.def_id, item_name, Namespace::Value).is_some()
                         });
@@ -519,6 +521,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // implement, by finding ones that have the item name, and are
         // legal to implement.
         let mut candidates = all_traits(self.tcx)
+            .into_iter()
             .filter(|info| {
                 // we approximate the coherence rules to only suggest
                 // traits that are legal to implement by requiring that
@@ -603,18 +606,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub type AllTraitsVec = Vec<DefId>;
-
 #[derive(Copy, Clone)]
 pub struct TraitInfo {
     pub def_id: DefId,
 }
 
-impl TraitInfo {
-    fn new(def_id: DefId) -> TraitInfo {
-        TraitInfo { def_id: def_id }
-    }
-}
 impl PartialEq for TraitInfo {
     fn eq(&self, other: &TraitInfo) -> bool {
         self.cmp(other) == Ordering::Equal
@@ -638,8 +634,12 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieve all traits in this crate and any dependent crates.
-pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> {
-    if tcx.all_traits.borrow().is_none() {
+pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
+    tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
+}
+
+/// Compute all traits in this crate and any dependent crates.
+fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId> {
         use rustc::hir::itemlikevisit;
 
         let mut traits = vec![];
@@ -649,7 +649,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
         // meh.
         struct Visitor<'a, 'tcx: 'a> {
             map: &'a hir_map::Map<'tcx>,
-            traits: &'a mut AllTraitsVec,
+            traits: &'a mut Vec<DefId>,
         }
         impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'v hir::Item) {
@@ -676,7 +676,7 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
         // Cross-crate:
         let mut external_mods = FxHashSet();
         fn handle_external_def(tcx: TyCtxt,
-                               traits: &mut AllTraitsVec,
+                               traits: &mut Vec<DefId>,
                                external_mods: &mut FxHashSet<DefId>,
                                def: Def) {
             let def_id = def.def_id();
@@ -703,42 +703,15 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> 
             handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
         }
 
-        *tcx.all_traits.borrow_mut() = Some(traits);
-    }
-
-    let borrow = tcx.all_traits.borrow();
-    assert!(borrow.is_some());
-    AllTraits {
-        borrow,
-        idx: 0,
-    }
+    traits
 }
 
-pub struct AllTraits<'a> {
-    borrow: cell::Ref<'a, Option<AllTraitsVec>>,
-    idx: usize,
-}
-
-impl<'a> Iterator for AllTraits<'a> {
-    type Item = TraitInfo;
-
-    fn next(&mut self) -> Option<TraitInfo> {
-        let AllTraits { ref borrow, ref mut idx } = *self;
-        // ugh.
-        borrow.as_ref().unwrap().get(*idx).map(|info| {
-            *idx += 1;
-            TraitInfo::new(*info)
-        })
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = self.borrow.as_ref().unwrap().len() - self.idx;
-        (len, Some(len))
+pub fn provide(providers: &mut ty::maps::Providers) {
+    providers.all_traits = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Lrc::new(compute_all_traits(tcx))
     }
 }
-
-impl<'a> ExactSizeIterator for AllTraits<'a> {}
-
 
 struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {
     target_module: ast::NodeId,

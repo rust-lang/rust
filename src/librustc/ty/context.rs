@@ -898,12 +898,6 @@ pub struct GlobalCtxt<'tcx> {
 
     layout_interner: Lock<FxHashSet<&'tcx LayoutDetails>>,
 
-    /// A vector of every trait accessible in the whole crate
-    /// (i.e. including those from subcrates). This is used only for
-    /// error reporting, and so is lazily initialized and generally
-    /// shouldn't taint the common path (hence the RefCell).
-    pub all_traits: RefCell<Option<Vec<DefId>>>,
-
     /// A general purpose channel to throw data out the back towards LLVM worker
     /// threads.
     ///
@@ -1283,7 +1277,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             derive_macros: RefCell::new(NodeMap()),
             stability_interner: Lock::new(FxHashSet()),
             interpret_interner: Default::default(),
-            all_traits: RefCell::new(None),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
         };

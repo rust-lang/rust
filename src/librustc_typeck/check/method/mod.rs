@@ -31,12 +31,17 @@ use rustc_data_structures::sync::Lrc;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
+pub use self::suggest::TraitInfo;
 
 mod confirm;
 pub mod probe;
 mod suggest;
 
 use self::probe::{IsSuggestion, ProbeScope};
+
+pub fn provide(providers: &mut ty::maps::Providers) {
+    suggest::provide(providers);
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct MethodCallee<'tcx> {

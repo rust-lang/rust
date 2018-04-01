@@ -586,6 +586,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::stability_index<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::all_traits<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("fetching all foreign and local traits")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::all_crate_nums<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("fetching all foreign CrateNum instances")

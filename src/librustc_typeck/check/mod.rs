@@ -730,6 +730,7 @@ fn check_impl_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: De
 }
 
 pub fn provide(providers: &mut Providers) {
+    method::provide(providers);
     *providers = Providers {
         typeck_item_bodies,
         typeck_tables_of,

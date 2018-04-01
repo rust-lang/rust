@@ -632,6 +632,7 @@ define_dep_nodes!( <'tcx>
     [input] MaybeUnusedTraitImport(DefId),
     [input] MaybeUnusedExternCrates,
     [eval_always] StabilityIndex,
+    [eval_always] AllTraits,
     [input] AllCrateNums,
     [] ExportedSymbols(CrateNum),
     [eval_always] CollectAndPartitionTranslationItems,
