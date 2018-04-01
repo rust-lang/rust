@@ -139,7 +139,7 @@ pub struct Session {
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: RefCell<CodeStats>,
+    pub code_stats: Lock<CodeStats>,
 
     next_node_id: Cell<ast::NodeId>,
 
@@ -1122,7 +1122,7 @@ pub fn build_session_(
             normalize_ty_after_erasing_regions: AtomicUsize::new(0),
             normalize_projection_ty: AtomicUsize::new(0),
         },
-        code_stats: RefCell::new(CodeStats::new()),
+        code_stats: Lock::new(CodeStats::new()),
         optimization_fuel_crate,
         optimization_fuel_limit,
         print_fuel_crate,
