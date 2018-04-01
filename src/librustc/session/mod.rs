@@ -26,7 +26,7 @@ use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, Lock, OneThread};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -80,8 +80,12 @@ pub struct Session {
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
-    pub lint_store: RefCell<lint::LintStore>,
-    pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
+
+    // FIXME: lint_store and buffered_lints are not thread-safe,
+    // but are only used in a single thread
+    pub lint_store: OneThread<RefCell<lint::LintStore>>,
+    pub buffered_lints: OneThread<RefCell<Option<lint::LintBuffer>>>,
+
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
@@ -1134,8 +1138,8 @@ pub fn build_session_(
         default_sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: RefCell::new(lint::LintStore::new()),
-        buffered_lints: RefCell::new(Some(lint::LintBuffer::new())),
+        lint_store: OneThread::new(RefCell::new(lint::LintStore::new())),
+        buffered_lints: OneThread::new(RefCell::new(Some(lint::LintBuffer::new()))),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: RefCell::new(Vec::new()),
         plugin_attributes: RefCell::new(Vec::new()),
