@@ -22,7 +22,7 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::{DebugInfoLevel, OutputType};
 use ty::tls;
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
@@ -93,7 +93,7 @@ pub struct Session {
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
     pub crate_types: Once<Vec<config::CrateType>>,
-    pub dependency_formats: RefCell<dependency_format::Dependencies>,
+    pub dependency_formats: Once<dependency_format::Dependencies>,
     /// The crate_disambiguator is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
@@ -1097,7 +1097,7 @@ pub fn build_session_(
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
         crate_types: Once::new(),
-        dependency_formats: RefCell::new(FxHashMap()),
+        dependency_formats: Once::new(),
         crate_disambiguator: Once::new(),
         features: Once::new(),
         recursion_limit: Once::new(),

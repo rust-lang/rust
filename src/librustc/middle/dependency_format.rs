@@ -94,13 +94,14 @@ pub enum Linkage {
 
 pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let sess = &tcx.sess;
-    let mut fmts = sess.dependency_formats.borrow_mut();
+    let mut fmts = FxHashMap();
     for &ty in sess.crate_types.borrow().iter() {
         let linkage = calculate_type(tcx, ty);
         verify_ok(tcx, &linkage);
         fmts.insert(ty, linkage);
     }
     sess.abort_if_errors();
+    sess.dependency_formats.set(fmts);
 }
 
 fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
