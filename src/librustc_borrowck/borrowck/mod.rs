@@ -1191,15 +1191,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 if let ty::BindByValue(bind_value_mut) = self.local_binding_mode(node_id) {
                     let (local_node_ty, is_implicit_self) = self.local_ty(node_id);
                     if let Some(local_node_ty) = local_node_ty {
-                        if let hir::Ty_::TyPtr(ref ty_ptr_mutability) = local_node_ty.node {
-                            if ty_ptr_mutability.mutbl == bind_value_mut {
-                                if let Ok(snippet) =self.tcx.sess.codemap().span_to_snippet(let_span)   {
+                        match (local_node_ty.node, self.tcx.sess.codemap().span_to_snippet(let_span)) {
+                            (hir::Ty_::TyPtr(ref ty_ptr_mutability), Ok(snippet)) if ty_ptr_mutability.mutbl == bind_value_mut => {
                                     db.span_suggestion(
                                         error_span,
                                         "consider removing the `&mut`, as it is an immutable binding to a mutable reference",
                                         snippet);
-                                }
-                            }
+                            },
+                            _ => {}
                         }
                     } else if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
                         if is_implicit_self && snippet != "self" {
