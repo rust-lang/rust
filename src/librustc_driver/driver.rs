@@ -655,7 +655,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
 
     let disambiguator = compute_crate_disambiguator(sess);
-    *sess.crate_disambiguator.borrow_mut() = Some(disambiguator);
+    sess.crate_disambiguator.set(disambiguator);
     rustc_incremental::prepare_session_directory(
         sess,
         &crate_name,

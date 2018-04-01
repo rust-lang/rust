@@ -99,7 +99,7 @@ pub struct Session {
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
     /// trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
+    pub crate_disambiguator: Once<CrateDisambiguator>,
 
     features: Once<feature_gate::Features>,
 
@@ -202,10 +202,7 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
 
 impl Session {
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
-        match *self.crate_disambiguator.borrow() {
-            Some(value) => value,
-            None => bug!("accessing disambiguator before initialization"),
-        }
+        *self.crate_disambiguator.get()
     }
 
     pub fn struct_span_warn<'a, S: Into<MultiSpan>>(
@@ -1101,7 +1098,7 @@ pub fn build_session_(
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
-        crate_disambiguator: RefCell::new(None),
+        crate_disambiguator: Once::new(),
         features: Once::new(),
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
