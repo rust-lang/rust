@@ -235,6 +235,10 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
         return
     }
 
+    if build.config.dry_run {
+        return;
+    }
+
     let mut cmd = Command::new(llvm_config);
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2)

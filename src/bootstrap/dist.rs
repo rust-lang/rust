@@ -1480,7 +1480,7 @@ impl Step for Extended {
                 build.cp_r(&work.join(&format!("{}-{}", pkgname(build, name), target))
                             .join(dir),
                         &exe.join(name));
-                t!(fs::remove_file(exe.join(name).join("manifest.in")));
+                build.remove(&exe.join(name).join("manifest.in"));
             };
             prepare("rustc");
             prepare("cargo");
@@ -1498,7 +1498,7 @@ impl Step for Extended {
             build.install(&etc.join("exe/modpath.iss"), &exe, 0o644);
             build.install(&etc.join("exe/upgrade.iss"), &exe, 0o644);
             build.install(&etc.join("gfx/rust-logo.ico"), &exe, 0o644);
-            t!(t!(File::create(exe.join("LICENSE.txt"))).write_all(license.as_bytes()));
+            build.create(&exe.join("LICENSE.txt"), &license);
 
             // Generate exe installer
             let mut cmd = Command::new("iscc");
@@ -1633,7 +1633,7 @@ impl Step for Extended {
                 candle("GccGroup.wxs".as_ref());
             }
 
-            t!(t!(File::create(exe.join("LICENSE.rtf"))).write_all(rtf.as_bytes()));
+            build.create(&exe.join("LICENSE.rtf"), &rtf);
             build.install(&etc.join("gfx/banner.bmp"), &exe, 0o644);
             build.install(&etc.join("gfx/dialogbg.bmp"), &exe, 0o644);
 
@@ -1665,7 +1665,9 @@ impl Step for Extended {
 
             build.run(&mut cmd);
 
-            t!(fs::rename(exe.join(&filename), distdir(build).join(&filename)));
+            if !build.config.dry_run {
+                t!(fs::rename(exe.join(&filename), distdir(build).join(&filename)));
+            }
         }
     }
 }
@@ -1717,6 +1719,9 @@ impl Step for HashSign {
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let mut cmd = builder.tool_cmd(Tool::BuildManifest);
+        if build.config.dry_run {
+            return;
+        }
         let sign = build.config.dist_sign_folder.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.sign-folder` in `config.toml`\n\n")
         });

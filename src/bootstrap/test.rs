@@ -926,15 +926,17 @@ impl Step for Compiletest {
                 target: build.config.build,
                 emscripten: false,
             });
-            let llvm_version = output(Command::new(&llvm_config).arg("--version"));
-            cmd.arg("--llvm-version").arg(llvm_version);
+            if !build.config.dry_run {
+                let llvm_version = output(Command::new(&llvm_config).arg("--version"));
+                cmd.arg("--llvm-version").arg(llvm_version);
+            }
             if !build.is_rust_llvm(target) {
                 cmd.arg("--system-llvm");
             }
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if suite == "run-make-fulldeps" {
+            if !build.config.dry_run && suite == "run-make-fulldeps" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc").arg(build.cc(target))
@@ -1177,11 +1179,15 @@ impl Step for ErrorIndex {
 
 fn markdown_test(builder: &Builder, compiler: Compiler, markdown: &Path) -> bool {
     let build = builder.build;
-    let mut file = t!(File::open(markdown));
-    let mut contents = String::new();
-    t!(file.read_to_string(&mut contents));
-    if !contents.contains("```") {
-        return true;
+    match File::open(markdown) {
+        Ok(mut file) => {
+            let mut contents = String::new();
+            t!(file.read_to_string(&mut contents));
+            if !contents.contains("```") {
+                return true;
+            }
+        }
+        Err(_) => {},
     }
 
     build.info(&format!("doc tests for: {}", markdown.display()));

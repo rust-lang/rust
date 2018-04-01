@@ -1178,6 +1178,11 @@ impl Build {
         };
         iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
     }
+
+    fn remove(&self, f: &Path) {
+        if self.config.dry_run { return; }
+        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+    }
 }
 
 #[cfg(unix)]
