@@ -189,11 +189,9 @@ pub trait CodegenUnitExt<'tcx> {
             }, item.symbol_name(tcx))
         }
 
-        let items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
-        let mut items : Vec<_> = items.iter()
-            .map(|il| (il, item_sort_key(tcx, il.0))).collect();
-        items.sort_by(|&(_, ref key1), &(_, ref key2)| key1.cmp(key2));
-        items.into_iter().map(|(&item_linkage, _)| item_linkage).collect()
+        let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
+        items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
+        items
     }
 }
 
