@@ -127,7 +127,7 @@ pub struct Session {
     /// macro name and definition span in the source crate.
     pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
 
-    incr_comp_session: RefCell<IncrCompSession>,
+    incr_comp_session: OneThread<RefCell<IncrCompSession>>,
 
     /// A cache of attributes ignored by StableHashingContext
     pub ignored_attr_names: FxHashSet<Symbol>,
@@ -1117,7 +1117,7 @@ pub fn build_session_(
         allocator_kind: Cell::new(None),
         injected_panic_runtime: Cell::new(None),
         imported_macro_spans: RefCell::new(HashMap::new()),
-        incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
+        incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         ignored_attr_names: ich::compute_ignored_attr_names(),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
