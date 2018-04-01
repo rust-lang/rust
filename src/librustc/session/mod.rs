@@ -90,7 +90,7 @@ pub struct Session {
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
-    pub plugin_llvm_passes: RefCell<Vec<String>>,
+    pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
     pub crate_types: RefCell<Vec<config::CrateType>>,
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
@@ -1094,7 +1094,7 @@ pub fn build_session_(
         lint_store: OneThread::new(RefCell::new(lint::LintStore::new())),
         buffered_lints: OneThread::new(RefCell::new(Some(lint::LintBuffer::new()))),
         one_time_diagnostics: RefCell::new(FxHashSet()),
-        plugin_llvm_passes: RefCell::new(Vec::new()),
+        plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FxHashMap()),
