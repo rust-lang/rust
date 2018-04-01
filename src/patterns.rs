@@ -361,10 +361,7 @@ fn rewrite_tuple_pat(
     // add comma if `(x,)`
     let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
     let path_str = path_str.unwrap_or_default();
-    let mut pat_ref_vec = Vec::with_capacity(pat_vec.len());
-    for pat in pat_vec {
-        pat_ref_vec.push(pat);
-    }
+    let pat_ref_vec = pat_vec.iter().collect::<Vec<_>>();
 
     overflow::rewrite_with_parens(
         &context,
