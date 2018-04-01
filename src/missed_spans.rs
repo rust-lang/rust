@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::borrow::Cow;
-use std::iter::repeat;
 
 use syntax::codemap::{BytePos, FileName, Pos, Span};
 
@@ -122,7 +121,7 @@ impl<'a> FmtVisitor<'a> {
             }
         }
 
-        let blank_lines: String = repeat('\n').take(newline_count).collect();
+        let blank_lines = "\n".repeat(newline_count);
         self.push_str(&blank_lines);
     }
 
