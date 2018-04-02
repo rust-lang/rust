@@ -45,7 +45,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 .contains(&root_place.clone())
             {
                 debug!(
-                    "report_use_of_moved_or_uninitialized place: {:?} errors was suppressed",
+                    "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
                     root_place
                 );
                 return;
