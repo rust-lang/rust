@@ -14,6 +14,7 @@ use std::collections::HashMap;
 ///
 /// **Example:**
 /// ```rust
+/// // ./tests/ui/my_lint.rs
 /// fn foo() {
 ///     // detect the following pattern
 ///     #[clippy(author)]
@@ -24,9 +25,11 @@ use std::collections::HashMap;
 /// }
 /// ```
 ///
-/// prints
+/// Running `TESTNAME=ui/my_lint cargo test --test compile-test` will produce
+/// a `./tests/ui/new_lint.stdout` file with the generated code:
 ///
-/// ```
+/// ```rust
+/// // ./tests/ui/new_lint.stdout
 /// if_chain!{
 ///     if let Expr_::ExprIf(ref cond, ref then, None) = item.node,
 ///     if let Expr_::ExprBinary(BinOp::Eq, ref left, ref right) = cond.node,
