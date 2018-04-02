@@ -887,6 +887,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
     }
 
     /// Check for `*or(foo())`.
+    #[allow(too_many_arguments)]
     fn check_general_case(
         cx: &LateContext,
         name: &str,
