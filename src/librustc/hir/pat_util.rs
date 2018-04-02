@@ -47,7 +47,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
         let actual_len = self.len();
         EnumerateAndAdjust {
             enumerate: self.enumerate(),
-            gap_pos: if let Some(gap_pos) = gap_pos { gap_pos } else { expected_len },
+            gap_pos: gap_pos.unwrap_or(expected_len),
             gap_len: expected_len - actual_len,
         }
     }
