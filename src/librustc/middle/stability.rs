@@ -587,7 +587,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // version, then we should display no warning message.
                 let deprecated_in_future_version = if let Some(sym) = depr_entry.attr.since {
                     let since = sym.as_str();
-                    !deprecation_in_effect(since.as_ref())
+                    !deprecation_in_effect(&since)
                 } else {
                     false
                 };
