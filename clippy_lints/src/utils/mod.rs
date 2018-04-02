@@ -1103,7 +1103,7 @@ pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
 
     let mut nest_level = 0;
 
-    for line in lines.into_iter() {
+    for line in lines {
         if line.contains("/*") {
             nest_level += 1;
             continue;
