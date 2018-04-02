@@ -78,26 +78,29 @@ where
         path.set_extension("exe");
     }
 
-    let mut extra_envs = vec![];
-    if std::env::var("CLIPPY_DOGFOOD").is_ok() {
-        let target_dir = std::env::var("CARGO_MANIFEST_DIR")
-            .map(|m| {
-                std::path::PathBuf::from(m)
-                    .join("target")
-                    .join("dogfood")
-                    .to_string_lossy()
-                    .into_owned()
-            })
-            .unwrap_or_else(|_| "clippy_dogfood".to_string());
-
-        extra_envs.push(("CARGO_TARGET_DIR", target_dir));
-    };
+    let target_dir = std::env::var_os("CLIPPY_DOGFOOD")
+        .map(|_| {
+            std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
+                || {
+                    let mut fallback = std::ffi::OsString::new();
+                    fallback.push("clippy_dogfood");
+                    fallback
+                },
+                |d| {
+                    std::path::PathBuf::from(d)
+                        .join("target")
+                        .join("dogfood")
+                        .into_os_string()
+                },
+            )
+        })
+        .map(|p| ("CARGO_TARGET_DIR", p));
 
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC_WRAPPER", path)
         .env("CLIPPY_ARGS", clippy_args)
-        .envs(extra_envs)
+        .envs(target_dir)
         .spawn()
         .expect("could not run cargo")
         .wait()
