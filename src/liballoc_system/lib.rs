@@ -131,6 +131,14 @@ mod platform {
             let ptr = if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
                 libc::malloc(layout.size()) as *mut u8
             } else {
+                #[cfg(target_os = "macos")]
+                {
+                    if layout.align() > (1 << 31) {
+                        return Err(AllocErr::Unsupported {
+                            details: "requested alignment too large"
+                        })
+                    }
+                }
                 aligned_malloc(&layout)
             };
             if !ptr.is_null() {
