@@ -78,12 +78,31 @@ declare_clippy_lint! {
     "use of `Debug`-based formatting"
 }
 
+/// **What it does:** This lint warns about the use of literals as `print!`/`println!` args.
+///
+/// **Why is this bad?** Using literals as `println!` args is inefficient
+/// (c.f., https://github.com/matthiaskrgr/rust-str-bench) and unnecessary
+/// (i.e., just put the literal in the format string)
+///
+/// **Known problems:** Will also warn with macro calls as arguments that expand to literals
+/// -- e.g., `println!("{}", env!("FOO"))`.
+///
+/// **Example:**
+/// ```rust
+/// println!("{}", "foo");
+/// ```
+declare_clippy_lint! {
+    pub PRINT_LITERAL,
+    style,
+    "printing a literal with a format string"
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PRINT_WITH_NEWLINE, PRINTLN_EMPTY_STRING, PRINT_STDOUT, USE_DEBUG)
+        lint_array!(PRINT_WITH_NEWLINE, PRINTLN_EMPTY_STRING, PRINT_STDOUT, USE_DEBUG, PRINT_LITERAL)
     }
 }
 
@@ -106,6 +125,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         };
 
                         span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
+
+                        // Check for literals in the print!/println! args
+                        // Also, ensure the format string is `{}` with no special options, like `{:X}`
+                        check_print_args_for_literal(cx, args);
 
                         if_chain! {
                             // ensure we're calling Arguments::new_v1
@@ -139,6 +162,49 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Check for literals in print!/println! args
+// ensuring the format string for the literal is `DISPLAY_FMT_METHOD`
+// e.g., `println!("... {} ...", "foo")`
+//                                ^ literal in `println!`
+fn check_print_args_for_literal<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    args: &HirVec<Expr>
+) {
+    if_chain! {
+        if args.len() == 1;
+        if let ExprCall(_, ref args_args) = args[0].node;
+        if args_args.len() > 1;
+        if let ExprAddrOf(_, ref match_expr) = args_args[1].node;
+        if let ExprMatch(ref matchee, ref arms, _) = match_expr.node;
+        if let ExprTup(ref tup) = matchee.node;
+        if arms.len() == 1;
+        if let ExprArray(ref arm_body_exprs) = arms[0].body.node;
+        then {
+            // it doesn't matter how many args there are in the `print!`/`println!`,
+            // if there's one literal, we should warn the user
+            for (idx, tup_arg) in tup.iter().enumerate() {
+                if_chain! {
+                    // first, make sure we're dealing with a literal (i.e., an ExprLit)
+                    if let ExprAddrOf(_, ref tup_val) = tup_arg.node;
+                    if let ExprLit(_) = tup_val.node;
+
+                    // next, check the corresponding match arm body to ensure
+                    // this is "{}", or DISPLAY_FMT_METHOD
+                    if let ExprCall(_, ref body_args) = arm_body_exprs[idx].node;
+                    if body_args.len() == 2;
+                    if let ExprPath(ref body_qpath) = body_args[1].node;
+                    if let Some(fun_def_id) = opt_def_id(resolve_node(cx, body_qpath, body_args[1].hir_id));
+                    if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD) ||
+                       match_def_path(cx.tcx, fun_def_id, &paths::DEBUG_FMT_METHOD);
+                    then {
+                        span_lint(cx, PRINT_LITERAL, tup_val.span, "printing a literal with an empty format string");
                     }
                 }
             }

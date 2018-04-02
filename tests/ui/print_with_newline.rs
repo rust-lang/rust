@@ -1,5 +1,6 @@
 
 
+#![allow(print_literal)]
 #![warn(print_with_newline)]
 
 fn main() {
