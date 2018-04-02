@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Encountered while testing #44614.
-// must-compile-successfully
+// compile-pass
 
 pub fn main() {
     // Constant of generic type (int)

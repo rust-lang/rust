@@ -13,7 +13,7 @@
 // including) the call to `use_x`. The `else` branch is not included.
 
 // compile-flags:-Znll -Zborrowck=mir
-// must-compile-successfully
+// compile-pass
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]

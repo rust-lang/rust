@@ -13,7 +13,7 @@
 
 // revisions:cfail1 cfail2
 // compile-flags: -Z query-dep-graph -Cpanic=unwind
-// must-compile-successfully
+// compile-pass
 
 #![feature(panic_unwind)]
 

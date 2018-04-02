@@ -12,7 +12,7 @@
 // report an error because of the (implied) bound that `'b: 'a`.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
+// compile-pass
 
 #![allow(warnings)]
 

@@ -10,7 +10,7 @@
 
 // compile-flags: --emit=metadata
 // no-prefer-dynamic
-// must-compile-successfully
+// compile-pass
 
 #[deny(warnings)]
 

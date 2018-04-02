@@ -10,7 +10,7 @@
 
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Coverflow-checks=on
-// must-compile-successfully
+// compile-pass
 
 #![allow(warnings)]
 

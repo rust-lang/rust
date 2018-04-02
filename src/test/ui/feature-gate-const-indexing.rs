@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 fn main() {
     const ARR: [i32; 6] = [42, 43, 44, 45, 46, 47];

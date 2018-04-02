@@ -232,7 +232,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn check_if_test_should_compile(&self, proc_res: &ProcRes) {
-        if self.props.must_compile_successfully {
+        if self.props.compile_pass {
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test compilation failed although it shouldn't!", proc_res);
             }
@@ -1100,7 +1100,7 @@ impl<'test> TestCx<'test> {
 
     fn check_error_patterns(&self, output_to_check: &str, proc_res: &ProcRes) {
         if self.props.error_patterns.is_empty() {
-            if self.props.must_compile_successfully {
+            if self.props.compile_pass {
                 return;
             } else {
                 self.fatal(&format!(

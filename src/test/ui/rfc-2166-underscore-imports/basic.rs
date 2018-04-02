@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(underscore_imports)]
 #![warn(unused_imports, unused_extern_crates)]

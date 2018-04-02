@@ -23,7 +23,7 @@
 //    |
 //    = note: move occurs because the value has type `A`, which does not implement the `Copy` trait
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(nll)]
 #![feature(box_patterns)]

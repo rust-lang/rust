@@ -13,7 +13,7 @@
 // See https://github.com/rust-lang/rust/issues/47309
 
 // compile-flags:-Clink-dead-code
-// must-compile-successfully
+// compile-pass
 
 #![crate_type="rlib"]
 

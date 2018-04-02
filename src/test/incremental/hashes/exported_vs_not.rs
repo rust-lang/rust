@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -Zincremental-ignore-spans
 

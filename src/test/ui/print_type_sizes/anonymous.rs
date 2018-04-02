@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
+// compile-pass
 
 // All of the types that occur in this function are uninteresting, in
 // that one cannot control the sizes of these types with the same sort

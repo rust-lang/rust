@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(infer_outlives_requirements)]
 // Outlives requirementes are inferred (RFC 2093)

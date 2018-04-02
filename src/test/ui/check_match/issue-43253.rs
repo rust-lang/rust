@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(exclusive_range_pattern)]
 #![warn(unreachable_patterns)]

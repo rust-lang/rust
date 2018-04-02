@@ -10,7 +10,7 @@
 
 // revisions:cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph --test
-// must-compile-successfully
+// compile-pass
 
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]

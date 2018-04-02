@@ -11,7 +11,7 @@
 // aux-build:incremental_proc_macro_aux.rs
 // ignore-stage1
 // revisions: cfail1 cfail2
-// must-compile-successfully
+// compile-pass
 
 // This test makes sure that we still find the proc-macro registrar function
 // when we compile proc-macros incrementally (see #47292).
