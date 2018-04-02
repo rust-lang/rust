@@ -21,6 +21,26 @@ use mem;
 use usize;
 use ptr::{self, NonNull};
 
+extern {
+    /// An opaque, unsized type. Used for pointers to allocated memory.
+    ///
+    /// This type can only be used behind a pointer like `*mut Void` or `ptr::NonNull<Void>`.
+    /// Such pointers are similar to C’s `void*` type.
+    pub type Void;
+}
+
+impl Void {
+    /// Similar to `std::ptr::null`, which requires `T: Sized`.
+    pub fn null() -> *const Self {
+        0 as _
+    }
+
+    /// Similar to `std::ptr::null_mut`, which requires `T: Sized`.
+    pub fn null_mut() -> *mut Self {
+        0 as _
+    }
+}
+
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
 #[derive(Debug)]

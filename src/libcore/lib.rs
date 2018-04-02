@@ -75,6 +75,7 @@
 #![feature(custom_attribute)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
+#![feature(extern_types)]
 #![feature(fn_must_use)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
