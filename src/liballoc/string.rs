@@ -1517,7 +1517,7 @@ impl String {
         }
     }
 
-    /// Creates a splicing iterator that removes the specified range in the string,
+    /// Removes the specified range in the string,
     /// and replaces it with the given string.
     /// The given string doesn't need to be the same length as the range.
     ///
@@ -1537,21 +1537,20 @@ impl String {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(splice)]
     /// let mut s = String::from("α is alpha, β is beta");
     /// let beta_offset = s.find('β').unwrap_or(s.len());
     ///
     /// // Replace the range up until the β from the string
-    /// s.splice(..beta_offset, "Α is capital alpha; ");
+    /// s.replace_range(..beta_offset, "Α is capital alpha; ");
     /// assert_eq!(s, "Α is capital alpha; β is beta");
     /// ```
-    #[unstable(feature = "splice", reason = "recently added", issue = "44643")]
-    pub fn splice<R>(&mut self, range: R, replace_with: &str)
+    #[stable(feature = "splice", since = "1.27.0")]
+    pub fn replace_range<R>(&mut self, range: R, replace_with: &str)
         where R: RangeBounds<usize>
     {
         // Memory safety
         //
-        // The String version of Splice does not have the memory safety issues
+        // Replace_range does not have the memory safety issues of a vector Splice.
         // of the vector version. The data is just plain bytes.
 
         match range.start() {
