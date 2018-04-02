@@ -55,7 +55,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use heap::{Heap, Layout, Alloc};
+use heap::Heap;
 use raw_vec::RawVec;
 
 use core::any::Any;
@@ -63,6 +63,7 @@ use core::borrow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::heap::{Alloc, Layout};
 use core::iter::FusedIterator;
 use core::marker::{self, Unpin, Unsize};
 use core::mem::{self, Pin};

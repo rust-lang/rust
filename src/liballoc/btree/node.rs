@@ -41,13 +41,14 @@
 // - A node of length `n` has `n` keys, `n` values, and (in an internal node) `n + 1` edges.
 //   This implies that even an empty internal node has at least one edge.
 
+use core::heap::{Alloc, Layout};
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
 use boxed::Box;
-use heap::{Heap, Alloc, Layout};
+use heap::Heap;
 
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
