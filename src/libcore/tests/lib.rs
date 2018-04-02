@@ -28,7 +28,6 @@
 #![feature(iterator_try_fold)]
 #![feature(iterator_flatten)]
 #![cfg_attr(stage0, feature(conservative_impl_trait))]
-#![feature(iter_rfind)]
 #![feature(iterator_repeat_with)]
 #![feature(nonzero)]
 #![feature(pattern)]
