@@ -23,5 +23,6 @@ RUN sh /scripts/sccache.sh
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-3.9 \
+      --enable-combined-tests \
       --enable-llvm-link-shared
 ENV RUST_CHECK_TARGET check

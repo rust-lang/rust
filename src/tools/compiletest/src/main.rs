@@ -11,7 +11,7 @@
 #![crate_name = "compiletest"]
 #![feature(test)]
 #![feature(slice_rotate)]
-#![deny(warnings)]
+//#![deny(warnings)]
 
 extern crate diff;
 extern crate env_logger;
@@ -26,22 +26,26 @@ extern crate regex;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate test;
+extern crate itertools;
 
 use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::str;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use filetime::FileTime;
 use getopts::Options;
 use common::{Config, TestPaths};
-use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use common::{CombineTest, DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
 use common::{expected_output_path, UI_EXTENSIONS};
 use test::ColorConfig;
 use util::logv;
 
-use self::header::EarlyProps;
+use header::TestProps;
 
 pub mod util;
 mod json;
@@ -62,7 +66,7 @@ fn main() {
     }
 
     log_config(&config);
-    run_tests(&config);
+    run_tests(config);
 }
 
 pub fn parse_config(args: Vec<String>) -> Config {
@@ -227,6 +231,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "path to the remote test client",
             "PATH",
         )
+        .optflag("", "combine", "merge tests together when possible")
         .optflag("h", "help", "show this message");
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -295,6 +300,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             .parse()
             .expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
+        combine: matches.opt_present("combine"),
         filter: matches.free.first().cloned(),
         filter_exact: matches.opt_present("exact"),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
@@ -329,6 +335,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_components: matches.opt_str("llvm-components").unwrap(),
         llvm_cxxflags: matches.opt_str("llvm-cxxflags").unwrap(),
         nodejs: matches.opt_str("nodejs"),
+        stats: Arc::new(Mutex::new(Vec::new())),
+        no_capture: match env::var("RUST_TEST_NOCAPTURE") {
+            Ok(val) => &val != "0",
+            Err(_) => false,
+        },
     }
 }
 
@@ -400,7 +411,8 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
     }
 }
 
-pub fn run_tests(config: &Config) {
+pub fn run_tests(config: Config) {
+    let config = Arc::new(config);
     if config.target.contains("android") {
         if let DebugInfoGdb = config.mode {
             println!(
@@ -457,8 +469,8 @@ pub fn run_tests(config: &Config) {
         let _ = fs::remove_dir_all("tmp/partitioning-tests");
     }
 
-    let opts = test_opts(config);
-    let tests = make_tests(config);
+    let opts = test_opts(&config);
+    let tests = make_tests(&config);
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
@@ -472,7 +484,24 @@ pub fn run_tests(config: &Config) {
     // Let tests know which target they're running as
     env::set_var("TARGET", &config.target);
 
-    let res = test::run_tests_console(&opts, tests.into_iter().collect());
+    let config2 = config.clone();
+
+    let res = test::run_tests_console(&opts,
+                                      tests.into_iter().collect(),
+                                      move |tests, cores| {
+        runtest::combine::run_combined(config2, tests, cores)
+    });
+    let lock = config.stats.lock().unwrap();
+    let mut times: Vec<_> = lock.iter().filter(|r| r.1.as_secs() > 5).collect();
+    times.sort_by_key(|t| t.1);
+    times.reverse();
+    if !times.is_empty() {
+        println!("Actions taking more than 5 seconds during tests:");
+    }
+    for &(ref action, ref time) in times.into_iter() {
+        let sec = (time.as_secs() as f64) + (time.subsec_nanos() as f64 / 1000_000_000.0);
+        println!("   {} took {:.2} seconds", action, sec);
+    }
     match res {
         Ok(true) => {}
         Ok(false) => panic!("Some tests failed"),
@@ -491,10 +520,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
-        nocapture: match env::var("RUST_TEST_NOCAPTURE") {
-            Ok(val) => &val != "0",
-            Err(_) => false,
-        },
+        nocapture: config.no_capture,
         color: config.color,
         test_threads: None,
         skip: vec![],
@@ -503,7 +529,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
+pub fn make_tests(config: &Arc<Config>) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}", config.src_base.display());
     let mut tests = Vec::new();
     collect_tests_from_dir(
@@ -517,7 +543,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
 }
 
 fn collect_tests_from_dir(
-    config: &Config,
+    config: &Arc<Config>,
     base: &Path,
     dir: &Path,
     relative_dir_path: &Path,
@@ -599,15 +625,15 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
-    let early_props = EarlyProps::from_file(config, &testpaths.file);
+pub fn make_test(config: &Arc<Config>, testpaths: &TestPaths) -> test::TestDescAndFn {
+    let props = TestProps::from_file(&testpaths.file, None, &config);
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
     // If desired, we could add a `should-fail-pretty` annotation.
     let should_panic = match config.mode {
         Pretty => test::ShouldPanic::No,
-        _ => if early_props.should_fail {
+        _ => if props.should_fail {
             test::ShouldPanic::Yes
         } else {
             test::ShouldPanic::No
@@ -615,18 +641,40 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     };
 
     // Debugging emscripten code doesn't make sense today
-    let ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props)
+    let ignore = props.ignore || !up_to_date(config, testpaths, &props)
         || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
             && config.target.contains("emscripten");
 
+    // FIXME: Parse and group by `recursion_limit`
+    // FIXME: Parse and group by crate attributes?
+
+    let feature_blacklist = ["main", "custom_attribute", "rustc_attrs", "start", "no_std", "no_core"];
+
+    let combine = config.combine &&
+        props.aux_builds.is_empty() &&
+        props.revisions.is_empty() &&
+        props.compile_flags.is_empty() &&
+        !props.no_combine &&
+        !props.features.iter().any(|f| feature_blacklist.contains(&&**f) ) &&
+        config.mode == Mode::RunPass;
+
     test::TestDescAndFn {
         desc: test::TestDesc {
-            name: make_test_name(config, testpaths),
+            name: make_test_name(config, testpaths, combine),
             ignore,
             should_panic,
             allow_fail: false,
         },
-        testfn: make_test_closure(config, testpaths),
+        testfn: if combine {
+            test::TestFn::CombineTest(Box::new(Some(CombineTest {
+                config: config.clone(),
+                features: props.features.clone(),
+                paths: testpaths.clone(),
+                props,
+            })))
+        } else {
+            make_test_closure(config, testpaths, props)
+        },
     }
 }
 
@@ -644,13 +692,13 @@ fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
         .join(stamp_name)
 }
 
-fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> bool {
+fn up_to_date(config: &Config, testpaths: &TestPaths, props: &TestProps) -> bool {
     let rust_src_dir = config
         .find_rust_src_root()
         .expect("Could not find Rust source root");
     let stamp = mtime(&stamp(config, testpaths));
     let mut inputs = vec![mtime(&testpaths.file), mtime(&config.rustc_path)];
-    for aux in props.aux.iter() {
+    for aux in props.aux_builds.iter() {
         inputs.push(mtime(&testpaths
             .file
             .parent()
@@ -707,20 +755,27 @@ fn mtime(path: &Path) -> FileTime {
         .unwrap_or_else(|_| FileTime::zero())
 }
 
-pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {
+pub fn make_test_name(config: &Config, testpaths: &TestPaths, combine: bool) -> test::TestName {
     // Convert a complete path to something like
     //
     //    run-pass/foo/bar/baz.rs
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
-    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
+    test::DynTestName(format!("{}[{}] {}",
+                              if combine { "combined " } else { "" },
+                              config.mode,
+                              path.display()))
 }
 
-pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
+pub fn make_test_closure(
+    config: &Arc<Config>,
+    testpaths: &TestPaths,
+    base_props: TestProps
+) -> test::TestFn {
     let config = config.clone();
     let testpaths = testpaths.clone();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths)))
+    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, base_props)))
 }
 
 /// Returns (Path to GDB, GDB Version, GDB has Rust Support)

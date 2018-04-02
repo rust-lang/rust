@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-combine - main doesn't return ()
+
 use std::io::Error;
 
 fn main() -> Result<(), Box<Error>> {

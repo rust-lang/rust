@@ -120,6 +120,7 @@ pub struct Config {
     pub low_priority: bool,
     pub channel: String,
     pub quiet_tests: bool,
+    pub combine_tests: bool,
     pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
@@ -292,6 +293,7 @@ struct Rust {
     debug: Option<bool>,
     dist_src: Option<bool>,
     quiet_tests: Option<bool>,
+    combine_tests: Option<bool>,
     test_miri: Option<bool>,
     save_toolstates: Option<String>,
     codegen_backends: Option<Vec<String>>,
@@ -485,6 +487,7 @@ impl Config {
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);
+            set(&mut config.combine_tests, rust.combine_tests);
             set(&mut config.quiet_tests, rust.quiet_tests);
             set(&mut config.test_miri, rust.test_miri);
             set(&mut config.wasm_syscall, rust.wasm_syscall);

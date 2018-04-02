@@ -847,12 +847,30 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         });
     }
 
+    if sess.opts.debugging_opts.ast_json_noexpand {
+        println!("\n\n\n\n\n\n\n\nPRE EXPAND:");
+        println!("{}", json::as_json(&krate));
+    }
+
     krate = time(sess, "creating allocators", || {
         allocator::expand::modify(&sess.parse_sess,
                                   &mut resolver,
                                   krate,
                                   sess.diagnostic())
     });
+/*
+    if sess.opts.debugging_opts.submodules_crate_like {
+        krate = time(sess,
+            "Pretending submodules are crates",
+            || rustc_passes::submodules_crate_like::modify_crate(krate));
+        eprintln!("expanded module");
+    }
+*/
+    if sess.opts.debugging_opts.ast_json_noexpand {
+        println!("\n\n\n\n\n\n\n\nPOST EXPAND: {:#?}", krate);
+        println!("\n\n\n\n\n\n\n\nPOST EXPAND:");
+        println!("{}", json::as_json(&krate));
+    }
 
     after_expand(&krate)?;
 
@@ -884,7 +902,8 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
                                               &sess.parse_sess,
                                               &sess.features_untracked(),
                                               &attributes,
-                                              sess.opts.unstable_features);
+                                              sess.opts.unstable_features,
+                                              sess.opts.debugging_opts.edition);
         })
     })?;
 

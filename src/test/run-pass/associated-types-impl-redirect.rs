@@ -14,6 +14,8 @@
 // for `ByRef`. The right answer was to consider the result ambiguous
 // until more type information was available.
 
+// no-combine - Uses no_implicit_prelude
+
 #![feature(lang_items)]
 #![no_implicit_prelude]
 

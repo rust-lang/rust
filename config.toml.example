@@ -290,6 +290,9 @@
 # desired in distributions, for example.
 #rpath = true
 
+# Merge Rust test files into larger units for faster testing
+#combine-tests = false
+
 # Suppresses extraneous output from tests to ensure the output of the test
 # harness is relatively clean.
 #quiet-tests = false

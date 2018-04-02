@@ -12,6 +12,8 @@
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
+// no-combine - Uses custom attributes
+
 #![feature(custom_attribute)]
 #![allow(unused_attribute)]
 #![attr1 = "val"]

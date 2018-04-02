@@ -55,6 +55,7 @@ pub struct ParseSess {
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
     // These are used to issue errors if the non_modrs_mods feature is not enabled.
     pub non_modrs_mods: RefCell<Vec<(ast::Ident, Span)>>,
+    pub combine_tests: bool,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
     code_map: Lrc<CodeMap>,
@@ -80,6 +81,7 @@ impl ParseSess {
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map,
+            combine_tests: false,
             non_modrs_mods: RefCell::new(vec![]),
         }
     }

@@ -32,6 +32,7 @@ use syntax_pos::hygiene::ExpnFormat;
 use tokenstream::{TokenStream, TokenTree};
 use util::small_vector::SmallVector;
 use visit::Visitor;
+use combine_tests;
 
 use std::collections::HashMap;
 use std::fs::File;
@@ -46,6 +47,7 @@ macro_rules! expansions {
             $(.$visit:ident)*  $(lift .$visit_elt:ident)*;)*) => {
         #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum ExpansionKind { OptExpr, $( $kind, )*  }
+        #[derive(Debug)]
         pub enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
 
         impl ExpansionKind {
@@ -393,7 +395,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn collect_invocations(&mut self, expansion: Expansion, derives: &[Mark])
                            -> (Expansion, Vec<Invocation>) {
-        let result = {
+        let (mut expansion, invocations) = {
             let mut collector = InvocationCollector {
                 cfg: StripUnconfigured {
                     should_test: self.cx.ecfg.should_test,
@@ -408,13 +410,34 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         if self.monotonic {
+            if self.cx.parse_sess.combine_tests {
+                // If we expand something inside a module, we have to fix up the paths
+                // to refer to the module as the root
+                // We must do this after running InvocationCollector since it removes
+                // things that would be expanded further. We only want to fix paths once
+                // when things are fully expanded.
+                //eprintln!("processing expansion {:#?}", expansion);
+                expansion = if self.cx.current_expansion.module.mod_path.len() > 1 {
+                    // We are already inside a module
+                    expansion.fold_with(&mut combine_tests::PathFolder {
+                        root: self.cx.current_expansion.module.mod_path[1],
+                    })
+                } else {
+                    // We are at crate-level
+                    expansion.fold_with(&mut combine_tests::RootPathFolder {
+                        cx: self.cx,
+                    })
+                };
+                //eprintln!("processed expansion {:#?}", expansion);
+            }
+
             let err_count = self.cx.parse_sess.span_diagnostic.err_count();
             let mark = self.cx.current_expansion.mark;
-            self.cx.resolver.visit_expansion(mark, &result.0, derives);
+            self.cx.resolver.visit_expansion(mark, &expansion, derives);
             self.cx.resolve_err_count += self.cx.parse_sess.span_diagnostic.err_count() - err_count;
         }
 
-        result
+        (expansion, invocations)
     }
 
     fn fully_configure(&mut self, item: Annotatable) -> Annotatable {
@@ -854,7 +877,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         placeholder(expansion_kind, NodeId::placeholder_from_mark(mark))
     }
 
-    fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: ExpansionKind) -> Expansion {
+    fn collect_bang(&mut self, mut mac: ast::Mac, span: Span, kind: ExpansionKind) -> Expansion {
+        if self.cx.parse_sess.combine_tests && self.cx.current_expansion.module.mod_path.len() > 1 {
+            // Add a module prefix to ::macro! paths
+            mac = combine_tests::PathFolder {
+                root: self.cx.current_expansion.module.mod_path[1],
+            }.fold_mac(mac);
+        }
         self.collect(kind, InvocationKind::Bang { mac: mac, ident: None, span: span })
     }
 

@@ -20,166 +20,16 @@ use util;
 
 use extract_gdb_version;
 
-/// Properties which must be known very early, before actually running
-/// the test.
-pub struct EarlyProps {
-    pub ignore: bool,
-    pub should_fail: bool,
-    pub aux: Vec<String>,
-    pub revisions: Vec<String>,
-}
-
-impl EarlyProps {
-    pub fn from_file(config: &Config, testfile: &Path) -> Self {
-        let mut props = EarlyProps {
-            ignore: false,
-            should_fail: false,
-            aux: Vec::new(),
-            revisions: vec![],
-        };
-
-        iter_header(testfile,
-                    None,
-                    &mut |ln| {
-            // we should check if any only-<platform> exists and if it exists
-            // and does not matches the current platform, skip the test
-            props.ignore =
-                props.ignore ||
-                config.parse_cfg_name_directive(ln, "ignore") ||
-                (config.has_cfg_prefix(ln, "only") &&
-                !config.parse_cfg_name_directive(ln, "only")) ||
-                ignore_gdb(config, ln) ||
-                ignore_lldb(config, ln) ||
-                ignore_llvm(config, ln);
-
-            if let Some(s) = config.parse_aux_build(ln) {
-                props.aux.push(s);
-            }
-
-            if let Some(r) = config.parse_revisions(ln) {
-                props.revisions.extend(r);
-            }
-
-            props.should_fail = props.should_fail || config.parse_name_directive(ln, "should-fail");
-        });
-
-        return props;
-
-        fn ignore_gdb(config: &Config, line: &str) -> bool {
-            if config.mode != common::DebugInfoGdb {
-                return false;
-            }
-
-            if let Some(actual_version) = config.gdb_version {
-                if line.starts_with("min-gdb-version") {
-                    let (start_ver, end_ver) = extract_gdb_version_range(line);
-
-                    if start_ver != end_ver {
-                        panic!("Expected single GDB version")
-                    }
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    actual_version < start_ver
-                } else if line.starts_with("ignore-gdb-version") {
-                    let (min_version, max_version) = extract_gdb_version_range(line);
-
-                    if max_version < min_version {
-                        panic!("Malformed GDB version range: max < min")
-                    }
-
-                    actual_version >= min_version && actual_version <= max_version
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-
-        // Takes a directive of the form "ignore-gdb-version <version1> [- <version2>]",
-        // returns the numeric representation of <version1> and <version2> as
-        // tuple: (<version1> as u32, <version2> as u32)
-        // If the <version2> part is omitted, the second component of the tuple
-        // is the same as <version1>.
-        fn extract_gdb_version_range(line: &str) -> (u32, u32) {
-            const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
-
-            let range_components = line.split(&[' ', '-'][..])
-                                       .filter(|word| !word.is_empty())
-                                       .map(extract_gdb_version)
-                                       .skip_while(Option::is_none)
-                                       .take(3) // 3 or more = invalid, so take at most 3.
-                                       .collect::<Vec<Option<u32>>>();
-
-            match range_components.len() {
-                1 => {
-                    let v = range_components[0].unwrap();
-                    (v, v)
-                }
-                2 => {
-                    let v_min = range_components[0].unwrap();
-                    let v_max = range_components[1].expect(ERROR_MESSAGE);
-                    (v_min, v_max)
-                }
-                _ => panic!(ERROR_MESSAGE),
-            }
-        }
-
-        fn ignore_lldb(config: &Config, line: &str) -> bool {
-            if config.mode != common::DebugInfoLldb {
-                return false;
-            }
-
-            if let Some(ref actual_version) = config.lldb_version {
-                if line.starts_with("min-lldb-version") {
-                    let min_version = line.trim_right()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed lldb version directive");
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-
-        fn ignore_llvm(config: &Config, line: &str) -> bool {
-            if config.system_llvm && line.starts_with("no-system-llvm") {
-                    return true;
-            }
-            if let Some(ref actual_version) = config.llvm_version {
-                if line.starts_with("min-llvm-version") {
-                    let min_version = line.trim_right()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed llvm version directive");
-                    // Ignore if actual version is smaller the minimum required
-                    // version
-                    &actual_version[..] < min_version
-                } else if line.starts_with("min-system-llvm-version") {
-                    let min_version = line.trim_right()
-                        .rsplit(' ')
-                        .next()
-                        .expect("Malformed llvm version directive");
-                    // Ignore if using system LLVM and actual version
-                    // is smaller the minimum required version
-                    config.system_llvm && &actual_version[..] < min_version
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct TestProps {
+    // Is this test ignored
+    pub ignore: bool,
+    // Do not combine the test with other tests
+    pub no_combine: bool,
+    // Should the test fail
+    pub should_fail: bool,
+    // Rust features the test enables
+    pub features: Vec<String>,
     // Lines that should be expected, in order, on standard out
     pub error_patterns: Vec<String>,
     // Extra flags to pass to the compiler
@@ -239,6 +89,10 @@ pub struct TestProps {
 impl TestProps {
     pub fn new() -> Self {
         TestProps {
+            features: vec![],
+            ignore: false,
+            no_combine: false,
+            should_fail: false,
             error_patterns: vec![],
             compile_flags: vec![],
             run_flags: None,
@@ -295,9 +149,7 @@ impl TestProps {
                  testfile: &Path,
                  cfg: Option<&str>,
                  config: &Config) {
-        iter_header(testfile,
-                    cfg,
-                    &mut |ln| {
+        self.features = iter_header(testfile, cfg, &mut |ln| {
             if let Some(ep) = config.parse_error_pattern(ln) {
                 self.error_patterns.push(ep);
             }
@@ -330,6 +182,19 @@ impl TestProps {
             if !self.check_stdout {
                 self.check_stdout = config.parse_check_stdout(ln);
             }
+
+            // we should check if any only-<platform> exists and if it exists
+            // and does not matches the current platform, skip the test
+            self.ignore = self.ignore ||
+                config.parse_cfg_name_directive(ln, "ignore") ||
+                (config.has_cfg_prefix(ln, "only") &&
+                !config.parse_cfg_name_directive(ln, "only")) ||
+                ignore_gdb(config, ln) ||
+                ignore_lldb(config, ln) ||
+                ignore_llvm(config, ln);
+
+            self.no_combine = self.no_combine || config.parse_name_directive(ln, "no-combine");
+            self.should_fail = self.should_fail || config.parse_name_directive(ln, "should-fail");
 
             if !self.no_prefer_dynamic {
                 self.no_prefer_dynamic = config.parse_no_prefer_dynamic(ln);
@@ -398,6 +263,8 @@ impl TestProps {
             }
         });
 
+        self.features.sort();
+
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
                 if self.exec_env.iter().find(|&&(ref x, _)| x == key).is_none() {
@@ -408,11 +275,156 @@ impl TestProps {
     }
 }
 
-fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
+fn ignore_gdb(config: &Config, line: &str) -> bool {
+    if config.mode != common::DebugInfoGdb {
+        return false;
+    }
+
+    if let Some(actual_version) = config.gdb_version {
+        if line.starts_with("min-gdb-version") {
+            let (start_ver, end_ver) = extract_gdb_version_range(line);
+
+            if start_ver != end_ver {
+                panic!("Expected single GDB version")
+            }
+            // Ignore if actual version is smaller the minimum required
+            // version
+            actual_version < start_ver
+        } else if line.starts_with("ignore-gdb-version") {
+            let (min_version, max_version) = extract_gdb_version_range(line);
+
+            if max_version < min_version {
+                panic!("Malformed GDB version range: max < min")
+            }
+
+            actual_version >= min_version && actual_version <= max_version
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+// Takes a directive of the form "ignore-gdb-version <version1> [- <version2>]",
+// returns the numeric representation of <version1> and <version2> as
+// tuple: (<version1> as u32, <version2> as u32)
+// If the <version2> part is omitted, the second component of the tuple
+// is the same as <version1>.
+fn extract_gdb_version_range(line: &str) -> (u32, u32) {
+    const ERROR_MESSAGE: &'static str = "Malformed GDB version directive";
+
+    let range_components = line.split(&[' ', '-'][..])
+                                .filter(|word| !word.is_empty())
+                                .map(extract_gdb_version)
+                                .skip_while(Option::is_none)
+                                .take(3) // 3 or more = invalid, so take at most 3.
+                                .collect::<Vec<Option<u32>>>();
+
+    match range_components.len() {
+        1 => {
+            let v = range_components[0].unwrap();
+            (v, v)
+        }
+        2 => {
+            let v_min = range_components[0].unwrap();
+            let v_max = range_components[1].expect(ERROR_MESSAGE);
+            (v_min, v_max)
+        }
+        _ => panic!(ERROR_MESSAGE),
+    }
+}
+
+fn ignore_lldb(config: &Config, line: &str) -> bool {
+    if config.mode != common::DebugInfoLldb {
+        return false;
+    }
+
+    if let Some(ref actual_version) = config.lldb_version {
+        if line.starts_with("min-lldb-version") {
+            let min_version = line.trim_right()
+                .rsplit(' ')
+                .next()
+                .expect("Malformed lldb version directive");
+            // Ignore if actual version is smaller the minimum required
+            // version
+            lldb_version_to_int(actual_version) < lldb_version_to_int(min_version)
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+fn ignore_llvm(config: &Config, line: &str) -> bool {
+    if config.system_llvm && line.starts_with("no-system-llvm") {
+            return true;
+    }
+    if let Some(ref actual_version) = config.llvm_version {
+        if line.starts_with("min-llvm-version") {
+            let min_version = line.trim_right()
+                .rsplit(' ')
+                .next()
+                .expect("Malformed llvm version directive");
+            // Ignore if actual version is smaller the minimum required
+            // version
+            &actual_version[..] < min_version
+        } else if line.starts_with("min-system-llvm-version") {
+            let min_version = line.trim_right()
+                .rsplit(' ')
+                .next()
+                .expect("Malformed llvm version directive");
+            // Ignore if using system LLVM and actual version
+            // is smaller the minimum required version
+            config.system_llvm && &actual_version[..] < min_version
+        } else {
+            false
+        }
+    } else {
+        false
+    }
+}
+
+fn parse_features(line: &str) -> Vec<String> {
+    fn skip_if(pos: &mut &str, str: &str) -> bool {
+        if pos.starts_with(str) {
+            *pos = pos[str.len()..].trim();
+            true
+        } else {
+            false
+        }
+    }
+    let mut pos = line;
+    &mut pos;
+    if !skip_if(&mut pos, "#![") { return Vec::new() }
+    if !skip_if(&mut pos, "feature") { return Vec::new() }
+    if !skip_if(&mut pos, "(") { return Vec::new() }
+
+    let mut end = 0;
+    loop {
+        if end == pos.len() {
+            return Vec::new();
+        }
+        if pos.as_bytes()[end] == ')' as u8 {
+            break;
+        }
+        end += 1;
+    }
+
+    pos[0..end].split(",").map(|f| f.trim().to_string()).collect()
+}
+
+fn iter_header(
+    testfile: &Path,
+    cfg: Option<&str>,
+    it: &mut FnMut(&str)) -> Vec<String>
+{
     if testfile.is_dir() {
-        return;
+        return Vec::new();
     }
     let rdr = BufReader::new(File::open(testfile).unwrap());
+    let mut features = Vec::new();
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
@@ -420,7 +432,9 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
         let ln = ln.unwrap();
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
-            return;
+            return features;
+        } else if ln.starts_with("#") {
+            features.extend(parse_features(ln));
         } else if ln.starts_with("//[") {
             // A comment like `//[foo]` is specific to revision `foo`
             if let Some(close_brace) = ln.find(']') {
@@ -440,7 +454,7 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
             it(ln[2..].trim_left());
         }
     }
-    return;
+    features
 }
 
 impl Config {

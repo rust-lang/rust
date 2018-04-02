@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-combine - missing_docs does not apply to main
+
 #![deny(missing_docs)]
 //! this tests the syntax of `thread_local!`
 

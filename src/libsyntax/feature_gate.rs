@@ -58,10 +58,21 @@ macro_rules! declare_features {
     ($((active, $feature: ident, $ver: expr, $issue: expr, $edition: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
-        const ACTIVE_FEATURES:
-                &'static [(&'static str, &'static str, Option<u32>,
-                           Option<Edition>, fn(&mut Features, Span))] =
-            &[$((stringify!($feature), $ver, $issue, $edition, set!($feature))),+];
+        struct ActiveFeature {
+            name: &'static str,
+            _ver: &'static str,
+            issue: Option<u32>,
+            edition: Option<Edition>,
+            set: fn(&mut Features, Span),
+        }
+
+        const ACTIVE_FEATURES: &'static [ActiveFeature] = &[$(ActiveFeature {
+            name: stringify!($feature),
+            _ver: $ver,
+            issue: $issue,
+            edition: $edition,
+            set: set!($feature),
+        }),+];
 
         /// A set of features to be used by later passes.
         #[derive(Clone)]
@@ -73,6 +84,14 @@ macro_rules! declare_features {
             $(pub $feature: bool),+
         }
 
+        fn eq_features(a: &Vec<(Symbol, Span)>, b: &Vec<(Symbol, Span)>) -> bool {
+            let mut a: Vec<_> = a.iter().map(|f| f.0).collect();
+            let mut b: Vec<_> = b.iter().map(|f| f.0).collect();
+            a.sort();
+            b.sort();
+            a == b
+        }
+
         impl Features {
             pub fn new() -> Features {
                 Features {
@@ -80,6 +99,13 @@ macro_rules! declare_features {
                     declared_lib_features: Vec::new(),
                     $($feature: false),+
                 }
+            }
+
+            fn eq(&self, other: &Features) -> bool {
+                eq_features(&self.declared_stable_lang_features,
+                            &other.declared_stable_lang_features)
+                    && eq_features(&self.declared_lib_features, &other.declared_lib_features)
+                    $(&& self.$feature == other.$feature)+
             }
 
             pub fn walk_feature_fields<F>(&self, mut f: F)
@@ -1167,8 +1193,8 @@ pub fn find_lang_feature_accepted_version(feature: &str) -> Option<&'static str>
 }
 
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
-    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.0 == feature) {
-        let issue = info.2;
+    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
+        let issue = info.issue;
         // FIXME (#28244): enforce that active features have issue numbers
         // assert!(issue.is_some())
         issue
@@ -1298,6 +1324,8 @@ pub const EXPLAIN_MACRO_AT_MOST_ONCE_REP: &'static str =
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
+    edition: Edition,
+    in_module: bool,
 }
 
 macro_rules! gate_feature_post {
@@ -1385,6 +1413,109 @@ fn contains_novel_literal(item: &ast::MetaItem) -> bool {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
+    fn check_modular_attr(&mut self, attr: &ast::Attribute) {
+        if !self.context.parse_sess.combine_tests {
+            return;
+        }
+        if let Some(name) = attr.name() {
+            let whitelist = &[
+                "feature",
+                "path",
+                "deny",
+                "allow",
+                "forbid",
+                "doc",
+                "repr",
+                "derive",
+                "automatically_derived",
+                "rustc_copy_clone_marker",
+                "structural_match",
+                "unsafe_destructor_blind_to_params",
+                "cfg",
+                "macro_use",
+                "inline",
+                "used",
+                "thread_local",
+                "macro_export",
+                "may_dangle",
+                "unwind",
+                "link",
+                "link_name",
+                "link_section",
+                "export_name",
+                "no_mangle",
+                "non_exhaustive",
+                "target_feature",
+                "prelude_import"];
+            if !whitelist.iter().any(|a| &*name.as_str() == *a) &&
+            !attr.is_sugared_doc {
+                let mut err = self.context.parse_sess.span_diagnostic.struct_span_err(
+                    attr.span,
+                    &format!("combined test has unknown attribute `{}`", name)
+                );
+                err.help("add `// no-combine` at the top of the test file");
+                err.emit();
+            }
+        } else {
+            let mut err = self.context.parse_sess.span_diagnostic.struct_span_err(
+                attr.span,
+                &format!("combined test has unnamed attribute")
+            );
+            err.help("add `// no-combine` at the top of the test file");
+            err.emit();
+        }
+    }
+
+    fn visit_module_item(&mut self, item: &'a ast::Item) {
+        let is_module = match item.node {
+            ast::ItemKind::Mod(ast::Mod { inner, .. }) => Some(inner),
+            _ => None,
+        };
+        if is_module.is_none() || !self.context.parse_sess.combine_tests || self.in_module {
+            visit::walk_item(self, item);
+            return;
+        }
+        let mut visitor = PostExpansionVisitor {
+            edition: self.edition,
+            context: self.context,
+            in_module: true,
+        };
+
+        for attr in &item.attrs {
+            if !attr.check_name("feature") &&
+               !attr.check_name("path") &&
+               !attr.check_name("deny") &&
+               !attr.check_name("allow") &&
+               !attr.check_name("forbid") &&
+               !attr.check_name("doc") &&
+               !attr.is_sugared_doc {
+                let mut err = self.context.parse_sess.span_diagnostic.struct_span_err(
+                    attr.span,
+                    &format!("combined test has crate attribute")
+                );
+                err.help("add `// no-combine` at the top of the test file");
+                err.emit();
+                continue
+            }
+        }
+
+        let features = get_features(
+            &self.context.parse_sess.span_diagnostic,
+            &item.attrs,
+            self.edition);
+
+        if !features.eq(self.context.features) {
+            let mut err = self.context.parse_sess.span_diagnostic.struct_span_err(
+                is_module.unwrap(),
+                &format!("module features differ from crate features")
+            );
+            err.help("make sure the test's feature list is on one line");
+            err.emit();
+        }
+
+        visit::walk_item(&mut visitor, item);
+    }
+
     fn whole_crate_feature_gates(&mut self, _krate: &ast::Crate) {
         for &(ident, span) in &*self.context.parse_sess.non_modrs_mods.borrow() {
             if !span.allows_unstable() {
@@ -1411,6 +1542,8 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        self.check_modular_attr(attr);
+
         if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
@@ -1579,7 +1712,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
 
-        visit::walk_item(self, i);
+        self.visit_module_item(i);
     }
 
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
@@ -1799,23 +1932,27 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
-                    edition: Edition) -> Features {
+pub fn get_features(
+    span_handler: &Handler,
+    attrs: &[ast::Attribute],
+    edition: Edition,
+) -> Features
+{
     let mut features = Features::new();
 
     let mut feature_checker = FeatureChecker::default();
 
-    for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
-        if let Some(f_edition) = f_edition {
+    for feature in ACTIVE_FEATURES.iter() {
+        if let Some(f_edition) = feature.edition {
             if edition >= f_edition {
                 // FIXME(Manishearth) there is currently no way to set
                 // lang features by edition
-                set(&mut features, DUMMY_SP);
+                (feature.set)(&mut features, DUMMY_SP);
             }
         }
     }
 
-    for attr in krate_attrs {
+    for attr in attrs {
         if !attr.check_name("feature") {
             continue
         }
@@ -1835,18 +1972,18 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                         continue
                     };
 
-                    if let Some(&(_, _, _, _, set)) = ACTIVE_FEATURES.iter()
-                        .find(|& &(n, ..)| name == n) {
-                        set(&mut features, mi.span);
+                    if let Some(feature) = ACTIVE_FEATURES.iter()
+                        .find(|feature| name == feature.name) {
+                        (feature.set)(&mut features, mi.span);
                         feature_checker.collect(&features, mi.span);
                     }
-                    else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
+                    else if let Some(_) = REMOVED_FEATURES.iter()
                             .find(|& &(n, _, _)| name == n)
                         .or_else(|| STABLE_REMOVED_FEATURES.iter()
                             .find(|& &(n, _, _)| name == n)) {
                         span_err!(span_handler, mi.span, E0557, "feature has been removed");
                     }
-                    else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
+                    else if let Some(_) = ACCEPTED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
                         features.declared_stable_lang_features.push((name, mi.span));
                     } else {
@@ -1900,7 +2037,8 @@ pub fn check_crate(krate: &ast::Crate,
                    sess: &ParseSess,
                    features: &Features,
                    plugin_attributes: &[(String, AttributeType)],
-                   unstable: UnstableFeatures) {
+                   unstable: UnstableFeatures,
+                   edition: Edition) {
     maybe_stage_features(&sess.span_diagnostic, krate, unstable);
     let ctx = Context {
         features,
@@ -1917,8 +2055,11 @@ pub fn check_crate(krate: &ast::Crate,
             }
         }
     }
-
-    let visitor = &mut PostExpansionVisitor { context: &ctx };
+    let visitor = &mut PostExpansionVisitor {
+        edition,
+        context: &ctx,
+        in_module: false,
+    };
     visitor.whole_crate_feature_gates(krate);
     visit::walk_crate(visitor, krate);
 }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-combine - Cannot be combined due to use of module_path!
 
 mod foo {
     pub mod bar {

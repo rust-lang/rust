@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-combine - main doesn't return ()
+
 #![feature(process_exitcode_placeholder)]
 
 use std::process::ExitCode;

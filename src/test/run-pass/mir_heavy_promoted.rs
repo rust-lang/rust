@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // ignore-emscripten apparently only works in optimized mode
+// FIXME: This test take 3 minutes to compile
+// ignore-test
 
 const TEST_DATA: [u8; 32 * 1024 * 1024] = [42; 32 * 1024 * 1024];
 

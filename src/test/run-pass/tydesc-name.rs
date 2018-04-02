@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// no-combine - Cannot be combined due to use of type_name
 
 #![feature(core_intrinsics)]
 

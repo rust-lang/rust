@@ -10,6 +10,7 @@
 
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// no-combine - Hides feature in cfg_attr
 
 // Previously libstd would set stdio descriptors of a child process
 // by `dup`ing the requested descriptors to inherit directly into the
