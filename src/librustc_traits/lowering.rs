@@ -188,11 +188,11 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx > {
             if attr.check_name("rustc_dump_program_clauses") {
                 let clauses = self.tcx.program_clauses_for(def_id);
                 for clause in &*clauses {
+                    // Skip the top-level binder for a less verbose output
                     let program_clause = match clause {
                         Clause::Implies(program_clause) => program_clause,
                         Clause::ForAll(program_clause) => program_clause.skip_binder(),
                     };
-                    // Skip the top-level binder for a less verbose output
                     self.tcx.sess.struct_span_err(attr.span, &format!("{}", program_clause)).emit();
                 }
             }
