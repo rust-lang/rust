@@ -672,6 +672,51 @@ macro_rules! wrapping_int_impl_signed {
 
 wrapping_int_impl_signed! { isize i8 i16 i32 i64 i128 }
 
+macro_rules! wrapping_int_impl_unsigned {
+    ($($t:ty)*) => ($(
+        impl Wrapping<$t> {
+            /// Returns `true` if and only if `self == 2^k` for some `k`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// assert!(Wrapping(16).is_power_of_two());
+            /// assert!(!Wrapping(10).is_power_of_two());
+            /// assert!(!Wrapping(0).is_power_of_two());
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn is_power_of_two(self) -> bool {
+                self.0.is_power_of_two()
+            }
+
+            /// Returns the smallest power of two greater than or equal to `n`. If
+            /// the next power of two is greater than the type's maximum value,
+            /// the return value is wrapped to `0`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            ///
+            /// assert_eq!(Wrapping(2).next_power_of_two(), Wrapping(2));
+            /// assert_eq!(Wrapping(3).next_power_of_two(), Wrapping(4));
+            /// assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn next_power_of_two(self) -> Self {
+                Wrapping(self.0.wrapping_next_power_of_two())
+            }
+        }
+    )*)
+}
+
+wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
