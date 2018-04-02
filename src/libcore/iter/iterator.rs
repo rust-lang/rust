@@ -1446,7 +1446,6 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = [1, 2, 3];
     ///
     /// // the checked sum of all of the elements of the array
@@ -1458,7 +1457,6 @@ pub trait Iterator {
     /// Short-circuiting:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = [10, 20, 30, 100, 40, 50];
     /// let mut it = a.iter();
     ///
@@ -1472,7 +1470,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(&40));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
@@ -1495,7 +1493,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// use std::fs::rename;
     /// use std::io::{stdout, Write};
     /// use std::path::Path;
@@ -1512,7 +1509,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some("stale_bread.json"));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_for_each<F, R>(&mut self, mut f: F) -> R where
         Self: Sized, F: FnMut(Self::Item) -> R, R: Try<Ok=()>
     {

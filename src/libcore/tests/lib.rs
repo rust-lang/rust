@@ -25,7 +25,6 @@
 #![feature(iterator_step_by)]
 #![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
-#![feature(iterator_try_fold)]
 #![feature(iterator_flatten)]
 #![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(iterator_repeat_with)]

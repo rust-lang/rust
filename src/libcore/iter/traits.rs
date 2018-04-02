@@ -427,7 +427,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = ["1", "2", "3"];
     /// let sum = a.iter()
     ///     .map(|&s| s.parse::<i32>())
@@ -438,7 +437,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Short-circuiting:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = ["1", "rust", "3"];
     /// let mut it = a.iter();
     /// let sum = it
@@ -452,7 +450,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(it.next_back(), Some(&"1"));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
