@@ -100,7 +100,6 @@
 #![feature(fundamental)]
 #![feature(generic_param_attrs)]
 #![cfg_attr(stage0, feature(i128_type))]
-#![feature(iter_rfold)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]

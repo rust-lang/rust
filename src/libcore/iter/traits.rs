@@ -491,7 +491,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_rfold)]
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of a
@@ -505,7 +504,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// and continuing with each element from the back until the front:
     ///
     /// ```
-    /// #![feature(iter_rfold)]
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let zero = "0".to_string();
@@ -517,7 +515,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
     /// ```
     #[inline]
-    #[unstable(feature = "iter_rfold", issue = "44705")]
+    #[stable(feature = "iter_rfold", since = "1.27.0")]
     fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
