@@ -55,6 +55,13 @@ impl Edition {
             Edition::Edition2018 => "edition_2018",
         }
     }
+
+    pub fn feature_name(&self) -> &'static str {
+        match *self {
+            Edition::Edition2015 => "rust_2015_preview",
+            Edition::Edition2018 => "rust_2018_preview",
+        }
+    }
 }
 
 impl FromStr for Edition {

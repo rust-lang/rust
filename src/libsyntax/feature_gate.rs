@@ -28,7 +28,7 @@ use self::AttributeGate::*;
 use abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
-use edition::Edition;
+use edition::{ALL_EDITIONS, Edition};
 use codemap::Spanned;
 use syntax_pos::{Span, DUMMY_SP};
 use errors::{DiagnosticBuilder, Handler, FatalError};
@@ -1800,20 +1800,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 }
 
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
-                    edition: Edition) -> Features {
+                    crate_edition: Edition) -> Features {
+    fn feature_removed(span_handler: &Handler, span: Span) {
+        span_err!(span_handler, span, E0557, "feature has been removed");
+    }
+
     let mut features = Features::new();
 
     let mut feature_checker = FeatureChecker::default();
-
-    for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
-        if let Some(f_edition) = f_edition {
-            if edition >= f_edition {
-                // FIXME(Manishearth) there is currently no way to set
-                // lang features by edition
-                set(&mut features, DUMMY_SP);
-            }
-        }
-    }
 
     for attr in krate_attrs {
         if !attr.check_name("feature") {
@@ -1827,6 +1821,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
             Some(list) => {
                 for mi in list {
+
                     let name = if let Some(word) = mi.word() {
                         word.name()
                     } else {
@@ -1844,11 +1839,26 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                             .find(|& &(n, _, _)| name == n)
                         .or_else(|| STABLE_REMOVED_FEATURES.iter()
                             .find(|& &(n, _, _)| name == n)) {
-                        span_err!(span_handler, mi.span, E0557, "feature has been removed");
+                        feature_removed(span_handler, mi.span);
                     }
                     else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
                         features.declared_stable_lang_features.push((name, mi.span));
+                    } else if let Some(&edition) = ALL_EDITIONS.iter()
+                                                              .find(|e| name == e.feature_name()) {
+                        if edition <= crate_edition {
+                            feature_removed(span_handler, mi.span);
+                        } else {
+                            for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
+                                if let Some(f_edition) = f_edition {
+                                    if edition >= f_edition {
+                                        // FIXME(Manishearth) there is currently no way to set
+                                        // lib features by edition
+                                        set(&mut features, DUMMY_SP);
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         features.declared_lib_features.push((name, mi.span));
                     }
