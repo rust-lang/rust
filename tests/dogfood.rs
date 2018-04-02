@@ -15,6 +15,7 @@ fn dogfood() {
             .arg("cargo-clippy")
             .arg("--manifest-path")
             .arg(root_dir.join("Cargo.toml"))
+            .env("CLIPPY_DOGFOOD", "true")
             .output()
             .unwrap();
         println!("status: {}", output.status);

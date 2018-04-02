@@ -77,10 +77,30 @@ where
     if cfg!(windows) {
         path.set_extension("exe");
     }
+
+    let target_dir = std::env::var_os("CLIPPY_DOGFOOD")
+        .map(|_| {
+            std::env::var_os("CARGO_MANIFEST_DIR").map_or_else(
+                || {
+                    let mut fallback = std::ffi::OsString::new();
+                    fallback.push("clippy_dogfood");
+                    fallback
+                },
+                |d| {
+                    std::path::PathBuf::from(d)
+                        .join("target")
+                        .join("dogfood")
+                        .into_os_string()
+                },
+            )
+        })
+        .map(|p| ("CARGO_TARGET_DIR", p));
+
     let exit_status = std::process::Command::new("cargo")
         .args(&args)
         .env("RUSTC_WRAPPER", path)
         .env("CLIPPY_ARGS", clippy_args)
+        .envs(target_dir)
         .spawn()
         .expect("could not run cargo")
         .wait()

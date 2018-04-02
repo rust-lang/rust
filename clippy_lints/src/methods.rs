@@ -680,9 +680,7 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    #[allow(unused_attributes)]
-    // ^ required because `cyclomatic_complexity` attribute shows up as unused
-    #[cyclomatic_complexity = "30"]
+    #[allow(cyclomatic_complexity)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if in_macro(expr.span) {
             return;
@@ -889,6 +887,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, method_span: Span, name:
     }
 
     /// Check for `*or(foo())`.
+    #[allow(too_many_arguments)]
     fn check_general_case(
         cx: &LateContext,
         name: &str,

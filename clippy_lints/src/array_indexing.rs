@@ -3,6 +3,7 @@ use rustc::ty;
 use rustc::hir;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
+use utils::higher::Range;
 use consts::{constant, Constant};
 
 /// **What it does:** Checks for out of bounds array indexing with a constant
@@ -73,10 +74,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
 
                 // Index is a constant range
                 if let Some(range) = higher::range(index) {
-                    let start = range.start.map(|start| constant(cx, start).map(|(c, _)| c));
-                    let end = range.end.map(|end| constant(cx, end).map(|(c, _)| c));
-
-                    if let Some((start, end)) = to_const_range(&start, &end, range.limits, size) {
+                    if let Some((start, end)) = to_const_range(cx, range, size) {
                         if start > size || end > size {
                             utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "range is out of bounds");
                         }
@@ -102,20 +100,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
 
 /// Returns an option containing a tuple with the start and end (exclusive) of
 /// the range.
-fn to_const_range(
-    start: &Option<Option<Constant>>,
-    end: &Option<Option<Constant>>,
-    limits: RangeLimits,
-    array_size: u128,
-) -> Option<(u128, u128)> {
-    let start = match *start {
+fn to_const_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, range: Range, array_size: u128) -> Option<(u128, u128)> {
+    let s = range.start.map(|expr| constant(cx, expr).map(|(c, _)| c));
+    let start = match s {
         Some(Some(Constant::Int(x))) => x,
         Some(_) => return None,
         None => 0,
     };
 
-    let end = match *end {
-        Some(Some(Constant::Int(x))) => if limits == RangeLimits::Closed {
+    let e = range.end.map(|expr| constant(cx, expr).map(|(c, _)| c));
+    let end = match e {
+        Some(Some(Constant::Int(x))) => if range.limits == RangeLimits::Closed {
             x + 1
         } else {
             x
