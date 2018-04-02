@@ -10,12 +10,6 @@ fn main() {
     println!("Hello {}", world);
     println!("3 in hex is {:X}", 3);
 
-    // this in theory shouldn't yield a warning,
-    // but at present time, it's a known edge case
-    // that isn't handled (because we can't expand
-    // `println!` and not `env!`)
-    println!("foo: {}", env!("BAR"));
-
     // these should throw warnings
     print!("Hello {}", "world");
     println!("Hello {} {}", world, "world");
