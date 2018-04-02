@@ -348,6 +348,20 @@ macro lex_err($kind: ident $(, $body: expr)*) {
 methods![ get, post, delete, ];
 methods!( get, post, delete, );
 
+// #2588
+macro_rules! m {
+    () => {
+        r#"
+            test
+        "#
+    };
+}
+fn foo() {
+    f!{r#"
+            test
+       "#};
+}
+
 // #2591
 fn foo() {
     match 0u32 {
