@@ -35,6 +35,12 @@ as an included feature during build. All of these options are detailed below.
 
 As a general rule clippy will only work with the *latest* Rust nightly for now.
 
+To install Rust nightly, the recommended way is to use [rustup](https://rustup.rs/):
+
+```terminal
+rustup install nightly
+```
+
 ### As a cargo subcommand (`cargo clippy`)
 
 One way to use clippy is by installing clippy through cargo as a cargo
@@ -47,6 +53,13 @@ cargo +nightly install clippy
 (The `+nightly` is not necessary if your default `rustup` install is nightly)
 
 Now you can run clippy by invoking `cargo +nightly clippy`.
+
+To update the subcommand together with the latest nightly use the [rust-update](rust-update) script or run:
+
+```terminal
+rustup update nightly
+cargo +nightly install --force clippy
+```
 
 In case you are not using rustup, you need to set the environment flag
 `SYSROOT` during installation so clippy knows where to find `librustc` and
@@ -191,7 +204,7 @@ You can add options  to `allow`/`warn`/`deny`:
 Note: `deny` produces errors instead of warnings.
 
 For convenience, `cargo clippy` automatically defines a `cargo-clippy`
-features. This lets you set lints level and compile with or without clippy
+feature. This lets you set lint levels and compile with or without clippy
 transparently:
 
 ```rust
