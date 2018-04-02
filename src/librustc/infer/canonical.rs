@@ -557,31 +557,24 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                     .unwrap()
                     .borrow_region_constraints()
                     .opportunistic_resolve_var(self.tcx, vid);
-                let info = CanonicalVarInfo {
-                    kind: CanonicalVarKind::Region,
-                };
                 debug!(
                     "canonical: region var found with vid {:?}, \
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                let cvar = self.canonical_var(info, Kind::from(r));
-                self.tcx().mk_region(ty::ReCanonical(cvar))
+                self.canonicalize_region(r)
             }
+
+            ty::ReSkolemized(..) => self.canonicalize_region(r),
 
             ty::ReStatic
             | ty::ReEarlyBound(..)
             | ty::ReFree(_)
             | ty::ReScope(_)
-            | ty::ReSkolemized(..)
             | ty::ReEmpty
             | ty::ReErased => {
                 if self.canonicalize_all_free_regions.0 {
-                    let info = CanonicalVarInfo {
-                        kind: CanonicalVarKind::Region,
-                    };
-                    let cvar = self.canonical_var(info, Kind::from(r));
-                    self.tcx().mk_region(ty::ReCanonical(cvar))
+                    self.canonicalize_region(r)
                 } else {
                     r
                 }
@@ -763,6 +756,14 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             let cvar = self.canonical_var(info, Kind::from(ty_var));
             self.tcx().mk_infer(ty::InferTy::CanonicalTy(cvar))
         }
+    }
+
+    fn canonicalize_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        let info = CanonicalVarInfo {
+            kind: CanonicalVarKind::Region,
+        };
+        let cvar = self.canonical_var(info, Kind::from(r));
+        self.tcx().mk_region(ty::ReCanonical(cvar))
     }
 }
 
