@@ -149,17 +149,24 @@ impl<'a> StripUnconfigured<'a> {
     fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
-            if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                let mut err = feature_err(self.sess,
-                                          "stmt_expr_attributes",
-                                          attr.span,
-                                          GateIssue::Language,
-                                          EXPLAIN_STMT_ATTR_SYNTAX);
-                if attr.is_sugared_doc {
-                    err.help("`///` is for documentation comments. For a plain comment, use `//`.");
-                }
-                err.emit();
+            self.maybe_emit_expr_attr_err(attr);
+        }
+    }
+
+    /// If attributes are not allowed on expressions, emit an error for `attr`
+    pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
+        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+            let mut err = feature_err(self.sess,
+                                      "stmt_expr_attributes",
+                                      attr.span,
+                                      GateIssue::Language,
+                                      EXPLAIN_STMT_ATTR_SYNTAX);
+
+            if attr.is_sugared_doc {
+                err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
+
+            err.emit();
         }
     }
 

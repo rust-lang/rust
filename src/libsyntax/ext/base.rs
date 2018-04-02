@@ -38,6 +38,8 @@ pub enum Annotatable {
     Item(P<ast::Item>),
     TraitItem(P<ast::TraitItem>),
     ImplItem(P<ast::ImplItem>),
+    Stmt(P<ast::Stmt>),
+    Expr(P<ast::Expr>),
 }
 
 impl HasAttrs for Annotatable {
@@ -46,6 +48,8 @@ impl HasAttrs for Annotatable {
             Annotatable::Item(ref item) => &item.attrs,
             Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
             Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
+            Annotatable::Stmt(ref stmt) => stmt.attrs(),
+            Annotatable::Expr(ref expr) => &expr.attrs,
         }
     }
 
@@ -54,6 +58,8 @@ impl HasAttrs for Annotatable {
             Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
             Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
             Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
+            Annotatable::Stmt(stmt) => Annotatable::Stmt(stmt.map_attrs(f)),
+            Annotatable::Expr(expr) => Annotatable::Expr(expr.map_attrs(f)),
         }
     }
 }
@@ -64,6 +70,8 @@ impl Annotatable {
             Annotatable::Item(ref item) => item.span,
             Annotatable::TraitItem(ref trait_item) => trait_item.span,
             Annotatable::ImplItem(ref impl_item) => impl_item.span,
+            Annotatable::Stmt(ref stmt) => stmt.span,
+            Annotatable::Expr(ref expr) => expr.span,
         }
     }
 

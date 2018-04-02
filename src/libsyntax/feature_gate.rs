@@ -1250,7 +1250,7 @@ const EXPLAIN_BOX_SYNTAX: &'static str =
     "box expression syntax is experimental; you can call `Box::new` instead.";
 
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
-    "attributes on non-item statements and expressions are experimental.";
+    "attributes on expressions are experimental.";
 
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
