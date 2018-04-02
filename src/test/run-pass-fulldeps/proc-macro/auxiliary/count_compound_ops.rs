@@ -15,20 +15,25 @@
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, TokenNode, Spacing, Literal, quote};
+use proc_macro::{TokenStream, TokenTree, Spacing, Literal, quote};
 
 #[proc_macro]
 pub fn count_compound_ops(input: TokenStream) -> TokenStream {
     assert_eq!(count_compound_ops_helper(quote!(++ (&&) 4@a)), 3);
-    TokenNode::Literal(Literal::u32(count_compound_ops_helper(input))).into()
+    let l = Literal::u32_suffixed(count_compound_ops_helper(input));
+    TokenTree::from(l).into()
 }
 
 fn count_compound_ops_helper(input: TokenStream) -> u32 {
     let mut count = 0;
     for token in input {
-        match token.kind {
-            TokenNode::Op(c, Spacing::Alone) => count += 1,
-            TokenNode::Group(_, tokens) => count += count_compound_ops_helper(tokens),
+        match &token {
+            TokenTree::Op(tt) if tt.spacing() == Spacing::Alone => {
+                count += 1;
+            }
+            TokenTree::Group(tt) => {
+                count += count_compound_ops_helper(tt.stream());
+            }
             _ => {}
         }
     }

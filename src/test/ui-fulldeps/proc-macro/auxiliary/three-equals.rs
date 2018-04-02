@@ -14,26 +14,27 @@
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, TokenNode, Span, Diagnostic};
+use proc_macro::{TokenStream, TokenTree, Span, Diagnostic};
 
 fn parse(input: TokenStream) -> Result<(), Diagnostic> {
     let mut count = 0;
     let mut last_span = Span::def_site();
     for tree in input {
-        let span = tree.span;
+        let span = tree.span();
         if count >= 3 {
             return Err(span.error(format!("expected EOF, found `{}`.", tree))
                            .span_note(last_span, "last good input was here")
                            .help("input must be: `===`"))
         }
 
-        if let TokenNode::Op('=', _) = tree.kind {
-            count += 1;
-        } else {
-            return Err(span.error(format!("expected `=`, found `{}`.", tree)));
+        if let TokenTree::Op(tt) = tree {
+            if tt.op() == '=' {
+                count += 1;
+                last_span = span;
+                continue
+            }
         }
-
-        last_span = span;
+        return Err(span.error(format!("expected `=`, found `{}`.", tree)));
     }
 
     if count < 3 {

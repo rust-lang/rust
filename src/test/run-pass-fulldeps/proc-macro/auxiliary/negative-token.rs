@@ -19,16 +19,10 @@ use proc_macro::*;
 
 #[proc_macro]
 pub fn neg_one(_input: TokenStream) -> TokenStream {
-    TokenTree {
-        span: Span::call_site(),
-        kind: TokenNode::Literal(Literal::i32(-1)),
-    }.into()
+    TokenTree::Literal(Literal::i32_suffixed(-1)).into()
 }
 
 #[proc_macro]
 pub fn neg_one_float(_input: TokenStream) -> TokenStream {
-    TokenTree {
-        span: Span::call_site(),
-        kind: TokenNode::Literal(Literal::f32(-1.0)),
-    }.into()
+    TokenTree::Literal(Literal::f32_suffixed(-1.0)).into()
 }
