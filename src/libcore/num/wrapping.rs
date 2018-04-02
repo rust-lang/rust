@@ -682,6 +682,10 @@ macro_rules! wrapping_int_impl_unsigned {
             /// Basic usage:
             ///
             /// ```
+            /// #![feature(wrapping_int_impl)]
+            ///
+            /// use std::num::wrapping;
+            ///
             /// assert!(Wrapping(16).is_power_of_two());
             /// assert!(!Wrapping(10).is_power_of_two());
             /// assert!(!Wrapping(0).is_power_of_two());
@@ -702,6 +706,8 @@ macro_rules! wrapping_int_impl_unsigned {
             ///
             /// ```
             /// #![feature(wrapping_int_impl)]
+            ///
+            /// use std::num::wrapping;
             ///
             /// assert_eq!(Wrapping(2).next_power_of_two(), Wrapping(2));
             /// assert_eq!(Wrapping(3).next_power_of_two(), Wrapping(4));
