@@ -79,4 +79,16 @@ pub enum FooFighter {
     Bar4
 }
 
+// This should not produce a warning because the empty line is inside a block comment
+#[crate_type = "lib"]
+/*
+
+*/
+pub struct S;
+
+// This should not produce a warning
+#[crate_type = "lib"]
+/* test */
+pub struct T;
+
 fn main() { }

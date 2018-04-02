@@ -7,12 +7,11 @@ import collections
 import logging as log
 log.basicConfig(level=log.INFO, format='%(levelname)s: %(message)s')
 
-Lint = collections.namedtuple('Lint', 'name level doc sourcefile')
+Lint = collections.namedtuple('Lint', 'name level doc sourcefile group')
 Config = collections.namedtuple('Config', 'name ty doc default')
 
 lintname_re = re.compile(r'''pub\s+([A-Z_][A-Z_0-9]*)''')
-level_re = re.compile(r'''(Forbid|Deny|Warn|Allow)''')
-group_re = re.compile(r'''([a-z_][a-z_0-9]+)''')
+group_re = re.compile(r'''\s*([a-z_][a-z_0-9]+)''')
 conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
 confvar_re = re.compile(
     r'''/// Lint: (\w+). (.*).*\n\s*\([^,]+,\s+"([^"]+)",\s+([^=\)]+)=>\s+(.*)\),''', re.MULTILINE)
@@ -26,6 +25,7 @@ lint_levels = {
     "pedantic": 'Allow',
     "nursery": 'Allow',
 }
+
 
 def parse_lints(lints, filepath):
     last_comment = []
@@ -57,36 +57,30 @@ def parse_lints(lints, filepath):
                 else:
                     last_comment = []
             if not comment:
-                if name:
-                    g = group_re.search(line)
-                    if g:
-                        group = g.group(1).lower()
-                        level = lint_levels[group]
-                        log.info("found %s with level %s in %s",
-                                name, level, filepath)
-                        lints.append(Lint(name, level, last_comment, filepath, group))
-                        last_comment = []
-                        comment = True
-                else:
-                    m = lintname_re.search(line)
-                    if m:
-                        name = m.group(1).lower()
+                m = lintname_re.search(line)
 
-                        if deprecated:
-                            level = "Deprecated"
-                        else:
-                            while True:
-                                m = level_re.search(line)
-                                if m:
-                                    level = m.group(0)
-                                    break
-                                line = next(fp)
-                        if not clippy:
-                            log.info("found %s with level %s in %s",
-                                    name, level, filepath)
-                            lints.append(Lint(name, level, last_comment, filepath, "deprecated"))
-                            last_comment = []
-                            comment = True
+                if m:
+                    name = m.group(1).lower()
+                    line = next(fp)
+
+                    if deprecated:
+                        level = "Deprecated"
+                        group = "deprecated"
+                    else:
+                        while True:
+                            g = group_re.search(line)
+                            if g:
+                                group = g.group(1).lower()
+                                level = lint_levels[group]
+                                break
+                            line = next(fp)
+
+                    log.info("found %s with level %s in %s",
+                             name, level, filepath)
+                    lints.append(Lint(name, level, last_comment, filepath, group))
+                    last_comment = []
+                    comment = True
+
                     if "}" in line:
                         log.warn("Warning: missing Lint-Name in %s", filepath)
                         comment = True

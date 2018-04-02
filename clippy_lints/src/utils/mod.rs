@@ -1086,3 +1086,36 @@ pub fn clip(tcx: TyCtxt, u: u128, ity: ast::UintTy) -> u128 {
     let amt = 128 - bits;
     (u << amt) >> amt
 }
+
+/// Remove block comments from the given Vec of lines
+///
+/// # Examples
+///
+/// ```rust,ignore
+/// without_block_comments(vec!["/*", "foo", "*/"]);
+/// // => vec![]
+///
+/// without_block_comments(vec!["bar", "/*", "foo", "*/"]);
+/// // => vec!["bar"]
+/// ```
+pub fn without_block_comments(lines: Vec<&str>) -> Vec<&str> {
+    let mut without = vec![];
+
+    let mut nest_level = 0;
+
+    for line in lines.into_iter() {
+        if line.contains("/*") {
+            nest_level += 1;
+            continue;
+        } else if line.contains("*/") {
+            nest_level -= 1;
+            continue;
+        }
+
+        if nest_level == 0 {
+            without.push(line);
+        }
+    }
+
+    without
+}
