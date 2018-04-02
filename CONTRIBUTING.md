@@ -51,6 +51,44 @@ to lint-writing, though it does get into advanced stuff. Most lints consist of a
 `LintPass` with one or more of its default methods overridden. See the existing lints for examples
 of this.
 
+
+#### Author lint
+
+There is also the internal `author` lint to generate clippy code that detects the offending pattern. It does not work for all of the Rust syntax, but can give a good starting point.
+
+Create a new UI test with the pattern you want to match:
+
+```rust
+// ./tests/ui/my_lint.rs
+
+// The custom_attribute needs to be enabled for the author lint to work
+#![feature(plugin, custom_attribute)]
+
+fn main() {
+    #[clippy(author)]
+    let arr: [i32; 1] = [7]; // Replace line with the code you want to match
+}
+```
+
+Now you run `TESTNAME=ui/my_lint cargo test --test compile-test` to produce
+the file with the generated code:
+
+```rust
+// ./tests/ui/my_lint.stdout
+
+if_chain! {
+    if let Expr_::ExprArray(ref elements) = stmt.node;
+    if elements.len() == 1;
+    if let Expr_::ExprLit(ref lit) = elements[0].node;
+    if let LitKind::Int(7, _) = lit.node;
+    then {
+        // report your lint here
+    }
+}
+```
+
+#### Documentation
+
 Please document your lint with a doc comment akin to the following:
 
 ```rust
@@ -70,6 +108,8 @@ Please document your lint with a doc comment akin to the following:
 /// Insert a short example of improved code that doesn't trigger the lint
 /// ```
 ```
+
+Once your lint is merged it will show up in the [lint list](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
 
 ### Running test suite
 
