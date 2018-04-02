@@ -47,7 +47,7 @@ use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 
 use checkstyle::{output_footer, output_header};
-use comment::{CharClasses, FullCodeCharKind};
+use comment::{CharClasses, FullCodeCharKind, LineClasses};
 use issues::{BadIssueSeeker, Issue};
 use shape::Indent;
 use utils::use_colored_tty;
@@ -605,10 +605,19 @@ const FN_MAIN_PREFIX: &str = "fn main() {\n";
 
 fn enclose_in_main_block(s: &str, config: &Config) -> String {
     let indent = Indent::from_width(config, config.tab_spaces());
-    FN_MAIN_PREFIX.to_owned() + &indent.to_string(config)
-        + &s.lines()
-            .collect::<Vec<_>>()
-            .join(&indent.to_string_with_newline(config)) + "\n}"
+    let mut result = String::with_capacity(s.len() * 2);
+    result.push_str(FN_MAIN_PREFIX);
+    let mut need_indent = true;
+    for (kind, line) in LineClasses::new(s) {
+        if need_indent {
+            result.push_str(&indent.to_string(config));
+        }
+        result.push_str(&line);
+        result.push('\n');
+        need_indent = !(kind.is_string() && !line.ends_with('\\'));
+    }
+    result.push('}');
+    result
 }
 
 /// Format the given code block. Mainly targeted for code block in comment.
@@ -626,13 +635,16 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
     let formatted = format_snippet(&snippet, config)?;
     // 2 = "}\n"
     let block_len = formatted.len().checked_sub(2).unwrap_or(0);
-    for line in formatted[FN_MAIN_PREFIX.len()..block_len].lines() {
+    let mut is_indented = true;
+    for (kind, ref line) in LineClasses::new(&formatted[FN_MAIN_PREFIX.len()..block_len]) {
         if !is_first {
             result.push('\n');
         } else {
             is_first = false;
         }
-        let trimmed_line = if line.len() > config.max_width() {
+        let trimmed_line = if !is_indented {
+            line
+        } else if line.len() > config.max_width() {
             // If there are lines that are larger than max width, we cannot tell
             // whether we have succeeded but have some comments or strings that
             // are too long, or we have failed to format code block. We will be
@@ -655,6 +667,7 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
             line
         };
         result.push_str(trimmed_line);
+        is_indented = !(kind.is_string() && !line.ends_with('\\'));
     }
     Some(result)
 }
