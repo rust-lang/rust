@@ -88,7 +88,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             span,
             kind: AllocatorKind::Global,
             global: item.ident,
-            alloc: Ident::from_str("alloc"),
+            core: Ident::from_str("core"),
             cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
         };
         let super_path = f.cx.path(f.span, vec![
@@ -96,7 +96,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             f.global,
         ]);
         let mut items = vec![
-            f.cx.item_extern_crate(f.span, f.alloc),
+            f.cx.item_extern_crate(f.span, f.core),
             f.cx.item_use_simple(
                 f.span,
                 respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
@@ -126,7 +126,7 @@ struct AllocFnFactory<'a> {
     span: Span,
     kind: AllocatorKind,
     global: Ident,
-    alloc: Ident,
+    core: Ident,
     cx: ExtCtxt<'a>,
 }
 
@@ -159,7 +159,7 @@ impl<'a> AllocFnFactory<'a> {
 
     fn call_allocator(&self, method: &str, mut args: Vec<P<Expr>>) -> P<Expr> {
         let method = self.cx.path(self.span, vec![
-            self.alloc,
+            self.core,
             Ident::from_str("heap"),
             Ident::from_str("Alloc"),
             Ident::from_str(method),
@@ -205,7 +205,7 @@ impl<'a> AllocFnFactory<'a> {
                 args.push(self.cx.arg(self.span, align, ty_usize));
 
                 let layout_new = self.cx.path(self.span, vec![
-                    self.alloc,
+                    self.core,
                     Ident::from_str("heap"),
                     Ident::from_str("Layout"),
                     Ident::from_str("from_size_align_unchecked"),
@@ -250,9 +250,17 @@ impl<'a> AllocFnFactory<'a> {
             }
 
             AllocatorTy::Ptr => {
+                let nonnull_new = self.cx.path(self.span, vec![
+                    self.core,
+                    Ident::from_str("ptr"),
+                    Ident::from_str("NonNull"),
+                    Ident::from_str("new_unchecked"),
+                ]);
+                let nonnull_new = self.cx.expr_path(nonnull_new);
                 let ident = ident();
                 args.push(self.cx.arg(self.span, ident, self.ptr_u8()));
-                self.cx.expr_ident(self.span, ident)
+                let expr = self.cx.expr_ident(self.span, ident);
+                self.cx.expr_call(self.span, nonnull_new, vec![expr])
             }
 
             AllocatorTy::ResultPtr |
@@ -314,7 +322,7 @@ impl<'a> AllocFnFactory<'a> {
                 //      match #expr {
                 //          Ok(ptr) => {
                 //              *excess = ptr.1;
-                //              ptr.0
+                //              ptr.0.as_ptr()
                 //          }
                 //          Err(e) => {
                 //              ptr::write(err_ptr, e);
@@ -344,6 +352,12 @@ impl<'a> AllocFnFactory<'a> {
                     let ret = self.cx.expr_tup_field_access(self.span,
                                                             ptr.clone(),
                                                             0);
+                    let ret = self.cx.expr_method_call(
+                        self.span,
+                        ret,
+                        Ident::from_str("as_ptr"),
+                        Vec::new()
+                    );
                     let ret = self.cx.stmt_expr(ret);
                     let block = self.cx.block(self.span, vec![write, ret]);
                     self.cx.expr_block(block)
@@ -357,9 +371,7 @@ impl<'a> AllocFnFactory<'a> {
                 let err_expr = {
                     let err = self.cx.expr_ident(self.span, name);
                     let write = self.cx.path(self.span, vec![
-                        self.alloc,
-                        Ident::from_str("heap"),
-                        Ident::from_str("__core"),
+                        self.core,
                         Ident::from_str("ptr"),
                         Ident::from_str("write"),
                     ]);
@@ -386,7 +398,7 @@ impl<'a> AllocFnFactory<'a> {
                 // We're creating:
                 //
                 //      match #expr {
-                //          Ok(ptr) => ptr,
+                //          Ok(ptr) => ptr.as_ptr(),
                 //          Err(e) => {
                 //              ptr::write(err_ptr, e);
                 //              0 as *mut u8
@@ -402,6 +414,12 @@ impl<'a> AllocFnFactory<'a> {
 
                 let name = ident();
                 let ok_expr = self.cx.expr_ident(self.span, name);
+                let ok_expr = self.cx.expr_method_call(
+                    self.span,
+                    ok_expr,
+                    Ident::from_str("as_ptr"),
+                    Vec::new()
+                );
                 let pat = self.cx.pat_ident(self.span, name);
                 let ok = self.cx.path_ident(self.span, Ident::from_str("Ok"));
                 let ok = self.cx.pat_tuple_struct(self.span, ok, vec![pat]);
@@ -411,9 +429,7 @@ impl<'a> AllocFnFactory<'a> {
                 let err_expr = {
                     let err = self.cx.expr_ident(self.span, name);
                     let write = self.cx.path(self.span, vec![
-                        self.alloc,
-                        Ident::from_str("heap"),
-                        Ident::from_str("__core"),
+                        self.core,
                         Ident::from_str("ptr"),
                         Ident::from_str("write"),
                     ]);
@@ -484,7 +500,7 @@ impl<'a> AllocFnFactory<'a> {
 
     fn layout_ptr(&self) -> P<Ty> {
         let layout = self.cx.path(self.span, vec![
-            self.alloc,
+            self.core,
             Ident::from_str("heap"),
             Ident::from_str("Layout"),
         ]);
@@ -494,7 +510,7 @@ impl<'a> AllocFnFactory<'a> {
 
     fn alloc_err_ptr(&self) -> P<Ty> {
         let err = self.cx.path(self.span, vec![
-            self.alloc,
+            self.core,
             Ident::from_str("heap"),
             Ident::from_str("AllocErr"),
         ]);

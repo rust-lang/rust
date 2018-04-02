@@ -14,17 +14,18 @@
 #![crate_type = "rlib"]
 
 use std::heap::{Alloc, System, AllocErr, Layout};
+use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct A(pub AtomicUsize);
 
 unsafe impl<'a> Alloc for &'a A {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         self.0.fetch_add(1, Ordering::SeqCst);
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
         self.0.fetch_add(1, Ordering::SeqCst);
         System.dealloc(ptr, layout)
     }

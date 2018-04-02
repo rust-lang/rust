@@ -17,10 +17,15 @@
 
 use core::intrinsics::{min_align_of_val, size_of_val};
 use core::mem::{self, ManuallyDrop};
+use core::ptr::NonNull;
 use core::usize;
 
-pub use core::heap::*;
+use core::heap;
+pub use core::heap::{AllocErr, CannotReallocInPlace, CollectionAllocErr, Layout};
+#[cfg(not(stage0))]
+pub use core::heap::{Alloc, Excess};
 #[doc(hidden)]
+#[cfg(stage0)]
 pub mod __core {
     pub use core::*;
 }
@@ -77,18 +82,14 @@ extern "Rust" {
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Heap;
 
-unsafe impl Alloc for Heap {
+unsafe impl heap::Alloc for Heap {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
         let ptr = __rust_alloc(layout.size(),
                                layout.align(),
                                &mut *err as *mut AllocErr as *mut u8);
-        if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
-        } else {
-            Ok(ptr)
-        }
+        NonNull::new(ptr).ok_or_else(|| ManuallyDrop::into_inner(err))
     }
 
     #[inline]
@@ -100,8 +101,8 @@ unsafe impl Alloc for Heap {
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        __rust_dealloc(ptr, layout.size(), layout.align())
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        __rust_dealloc(ptr.as_ptr(), layout.size(), layout.align())
     }
 
     #[inline]
@@ -118,85 +119,70 @@ unsafe impl Alloc for Heap {
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: *mut u8,
+                      ptr: NonNull<u8>,
                       layout: Layout,
                       new_layout: Layout)
-                      -> Result<*mut u8, AllocErr>
+                      -> Result<NonNull<u8>, AllocErr>
     {
         let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
-        let ptr = __rust_realloc(ptr,
+        let ptr = __rust_realloc(ptr.as_ptr(),
                                  layout.size(),
                                  layout.align(),
                                  new_layout.size(),
                                  new_layout.align(),
                                  &mut *err as *mut AllocErr as *mut u8);
-        if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
-        } else {
-            mem::forget(err);
-            Ok(ptr)
-        }
+        NonNull::new(ptr).ok_or_else(|| ManuallyDrop::into_inner(err))
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
         let ptr = __rust_alloc_zeroed(layout.size(),
                                       layout.align(),
                                       &mut *err as *mut AllocErr as *mut u8);
-        if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
-        } else {
-            Ok(ptr)
-        }
+        NonNull::new(ptr).ok_or_else(|| ManuallyDrop::into_inner(err))
     }
 
     #[inline]
-    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<heap::Excess, AllocErr> {
         let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
         let mut size = 0;
         let ptr = __rust_alloc_excess(layout.size(),
                                       layout.align(),
                                       &mut size,
                                       &mut *err as *mut AllocErr as *mut u8);
-        if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
-        } else {
-            Ok(Excess(ptr, size))
-        }
+        NonNull::new(ptr).map(|p| heap::Excess(p, size))
+            .ok_or_else(|| ManuallyDrop::into_inner(err))
     }
 
     #[inline]
     unsafe fn realloc_excess(&mut self,
-                             ptr: *mut u8,
+                             ptr: NonNull<u8>,
                              layout: Layout,
-                             new_layout: Layout) -> Result<Excess, AllocErr> {
+                             new_layout: Layout) -> Result<heap::Excess, AllocErr> {
         let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
         let mut size = 0;
-        let ptr = __rust_realloc_excess(ptr,
+        let ptr = __rust_realloc_excess(ptr.as_ptr(),
                                         layout.size(),
                                         layout.align(),
                                         new_layout.size(),
                                         new_layout.align(),
                                         &mut size,
                                         &mut *err as *mut AllocErr as *mut u8);
-        if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
-        } else {
-            Ok(Excess(ptr, size))
-        }
+        NonNull::new(ptr).map(|p| heap::Excess(p, size))
+            .ok_or_else(|| ManuallyDrop::into_inner(err))
     }
 
     #[inline]
     unsafe fn grow_in_place(&mut self,
-                            ptr: *mut u8,
+                            ptr: NonNull<u8>,
                             layout: Layout,
                             new_layout: Layout)
                             -> Result<(), CannotReallocInPlace>
     {
         debug_assert!(new_layout.size() >= layout.size());
         debug_assert!(new_layout.align() == layout.align());
-        let ret = __rust_grow_in_place(ptr,
+        let ret = __rust_grow_in_place(ptr.as_ptr(),
                                        layout.size(),
                                        layout.align(),
                                        new_layout.size(),
@@ -210,12 +196,12 @@ unsafe impl Alloc for Heap {
 
     #[inline]
     unsafe fn shrink_in_place(&mut self,
-                              ptr: *mut u8,
+                              ptr: NonNull<u8>,
                               layout: Layout,
                               new_layout: Layout) -> Result<(), CannotReallocInPlace> {
         debug_assert!(new_layout.size() <= layout.size());
         debug_assert!(new_layout.align() == layout.align());
-        let ret = __rust_shrink_in_place(ptr,
+        let ret = __rust_shrink_in_place(ptr.as_ptr(),
                                          layout.size(),
                                          layout.align(),
                                          new_layout.size(),
@@ -228,6 +214,76 @@ unsafe impl Alloc for Heap {
     }
 }
 
+// When building stage0 with an older rustc, #[global_allocator] will
+// expand to code using alloc::heap::Alloc and expecting the old API.
+// A newer rustc's #[global_allocator] expansion uses core::heap::Alloc
+// and the new API. For stage0, we thus expose the old API from this
+// module.
+#[cfg(stage0)]
+#[derive(Debug)]
+pub struct Excess(pub *mut u8, pub usize);
+
+#[cfg(stage0)]
+pub unsafe trait Alloc: heap::Alloc {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        heap::Alloc::alloc(self, layout).map(|p| p.as_ptr())
+    }
+
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        heap::Alloc::dealloc(self, NonNull::new_unchecked(ptr), layout)
+    }
+
+    fn oom(&mut self, e: AllocErr) -> ! {
+        heap::Alloc::oom(self, e)
+    }
+
+    fn usable_size(&self, layout: &Layout) -> (usize, usize) {
+        heap::Alloc::usable_size(self, layout)
+    }
+
+    unsafe fn realloc(&mut self,
+                      ptr: *mut u8,
+                      layout: Layout,
+                      new_layout: Layout) -> Result<*mut u8, AllocErr> {
+        heap::Alloc::realloc(self, NonNull::new_unchecked(ptr), layout, new_layout)
+            .map(|p| p.as_ptr())
+    }
+
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        heap::Alloc::alloc_zeroed(self, layout).map(|p| p.as_ptr())
+    }
+
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
+        heap::Alloc::alloc_excess(self, layout)
+            .map(|heap::Excess(p, s)| Excess(p.as_ptr(), s))
+    }
+
+    unsafe fn realloc_excess(&mut self,
+                             ptr: *mut u8,
+                             layout: Layout,
+                             new_layout: Layout) -> Result<Excess, AllocErr> {
+        heap::Alloc::realloc_excess(self, NonNull::new_unchecked(ptr), layout, new_layout)
+            .map(|heap::Excess(p, s)| Excess(p.as_ptr(), s))
+    }
+
+    unsafe fn grow_in_place(&mut self,
+                            ptr: *mut u8,
+                            layout: Layout,
+                            new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        heap::Alloc::grow_in_place(self, NonNull::new_unchecked(ptr), layout, new_layout)
+    }
+
+    unsafe fn shrink_in_place(&mut self,
+                              ptr: *mut u8,
+                              layout: Layout,
+                              new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        heap::Alloc::shrink_in_place(self, NonNull::new_unchecked(ptr), layout, new_layout)
+    }
+}
+
+#[cfg(stage0)]
+unsafe impl<T: heap::Alloc> Alloc for T {}
+
 /// The allocator for unique pointers.
 // This function must not unwind. If it does, MIR trans will fail.
 #[cfg(not(test))]
@@ -238,9 +294,9 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Heap.alloc(layout).unwrap_or_else(|err| {
-            Heap.oom(err)
-        })
+        heap::Alloc::alloc(&mut Heap, layout).unwrap_or_else(|err| {
+            heap::Alloc::oom(&mut Heap, err)
+        }).as_ptr()
     }
 }
 
@@ -252,7 +308,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Heap.dealloc(ptr as *mut u8, layout);
+        heap::Alloc::dealloc(&mut Heap, NonNull::new_unchecked(ptr).cast(), layout);
     }
 }
 
@@ -261,7 +317,8 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;
-    use heap::{Heap, Alloc, Layout};
+    use heap::Heap;
+    use core::heap::{Alloc, Layout};
 
     #[test]
     fn allocate_zeroed() {
@@ -270,8 +327,8 @@ mod tests {
             let ptr = Heap.alloc_zeroed(layout.clone())
                 .unwrap_or_else(|e| Heap.oom(e));
 
-            let end = ptr.offset(layout.size() as isize);
-            let mut i = ptr;
+            let end = ptr.as_ptr().offset(layout.size() as isize);
+            let mut i = ptr.as_ptr();
             while i < end {
                 assert_eq!(*i, 0);
                 i = i.offset(1);

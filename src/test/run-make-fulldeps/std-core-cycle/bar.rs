@@ -12,15 +12,16 @@
 #![crate_type = "rlib"]
 
 use std::heap::*;
+use std::ptr::NonNull;
 
 pub struct A;
 
 unsafe impl<'a> Alloc for &'a A {
-    unsafe fn alloc(&mut self, _: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, _: Layout) -> Result<NonNull<u8>, AllocErr> {
         loop {}
     }
 
-    unsafe fn dealloc(&mut self, _ptr: *mut u8, _: Layout) {
+    unsafe fn dealloc(&mut self, _ptr: NonNull<u8>, _: Layout) {
         loop {}
     }
 }

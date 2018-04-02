@@ -102,6 +102,7 @@
 #![feature(iter_rfold)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
+#![feature(nonnull_cast)]
 #![feature(nonzero)]
 #![feature(offset_to)]
 #![feature(optin_builtin_traits)]

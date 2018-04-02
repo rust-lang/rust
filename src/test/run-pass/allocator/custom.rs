@@ -16,6 +16,7 @@
 extern crate helper;
 
 use std::heap::{Heap, Alloc, System, Layout, AllocErr};
+use std::ptr::NonNull;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -23,12 +24,12 @@ static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
 struct A;
 
 unsafe impl<'a> Alloc for &'a A {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.dealloc(ptr, layout)
     }
