@@ -14,7 +14,7 @@
 
 pub use alloc::heap::Heap;
 pub use alloc_system::System;
-pub use core::heap::*;
+#[doc(inline)] pub use core::heap::*;
 
 #[cfg(not(test))]
 #[doc(hidden)]

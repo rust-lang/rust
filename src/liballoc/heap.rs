@@ -19,7 +19,9 @@ use core::intrinsics::{min_align_of_val, size_of_val};
 use core::mem::{self, ManuallyDrop};
 use core::usize;
 
+#[doc(inline)]
 pub use core::heap::*;
+
 #[doc(hidden)]
 pub mod __core {
     pub use core::*;
