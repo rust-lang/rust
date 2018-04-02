@@ -11,9 +11,10 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::heap::{Heap, Alloc};
+use alloc::heap::Heap;
 use alloc::allocator::CollectionAllocErr;
 use cell::Cell;
+use core::heap::Alloc;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};

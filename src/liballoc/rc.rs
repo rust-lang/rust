@@ -250,6 +250,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::heap::{Alloc, Layout};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::{Unsize, PhantomData};
@@ -259,7 +260,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 
-use heap::{Heap, Alloc, Layout, box_free};
+use heap::{Heap, box_free};
 use string::String;
 use vec::Vec;
 

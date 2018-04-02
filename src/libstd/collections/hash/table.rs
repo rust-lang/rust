@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::heap::{Heap, Alloc, Layout};
+use alloc::heap::Heap;
+use core::heap::{Alloc, Layout};
 
 use cmp;
 use hash::{BuildHasher, Hash, Hasher};

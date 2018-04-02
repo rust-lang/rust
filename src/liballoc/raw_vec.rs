@@ -9,11 +9,12 @@
 // except according to those terms.
 
 use core::cmp;
+use core::heap::{Alloc, Layout};
 use core::mem;
 use core::ops::Drop;
 use core::ptr::{self, Unique};
 use core::slice;
-use heap::{Alloc, Layout, Heap};
+use heap::Heap;
 use super::boxed::Box;
 use super::allocator::CollectionAllocErr;
 use super::allocator::CollectionAllocErr::*;
