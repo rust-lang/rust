@@ -13,6 +13,7 @@
 #![feature(allocator_api)]
 
 use std::heap::{Alloc, Heap, Layout};
+use std::ptr::NonNull;
 
 struct arena(());
 
@@ -33,7 +34,7 @@ fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
         let ptr = Heap.alloc(Layout::new::<Bcx>())
             .unwrap_or_else(|_| Heap.oom());
-        &*(ptr as *const _)
+        &*(ptr.as_ptr() as *const _)
     }
 }
 
@@ -45,7 +46,7 @@ fn g(fcx : &Fcx) {
     let bcx = Bcx { fcx: fcx };
     let bcx2 = h(&bcx);
     unsafe {
-        Heap.dealloc(bcx2 as *const _ as *mut _, Layout::new::<Bcx>());
+        Heap.dealloc(NonNull::new_unchecked(bcx2 as *const _ as *mut _), Layout::new::<Bcx>());
     }
 }
 

@@ -42,6 +42,7 @@ const MIN_ALIGN: usize = 8;
 const MIN_ALIGN: usize = 16;
 
 use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout, Void};
+use core::ptr::NonNull;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub struct System;
@@ -49,26 +50,26 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
         GlobalAlloc::alloc(self, layout).into()
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
         GlobalAlloc::alloc_zeroed(self, layout).into()
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr as *mut Void, layout)
+    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout) {
+        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: *mut u8,
+                      ptr: NonNull<Void>,
                       old_layout: Layout,
-                      new_size: usize) -> Result<*mut u8, AllocErr> {
-        GlobalAlloc::realloc(self, ptr as *mut Void, old_layout, new_size).into()
+                      new_size: usize) -> Result<NonNull<Void>, AllocErr> {
+        GlobalAlloc::realloc(self, ptr.as_ptr(), old_layout, new_size).into()
     }
 
     #[inline]
@@ -81,26 +82,26 @@ unsafe impl Alloc for System {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<'a> Alloc for &'a System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
         GlobalAlloc::alloc(*self, layout).into()
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
         GlobalAlloc::alloc_zeroed(*self, layout).into()
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        GlobalAlloc::dealloc(*self, ptr as *mut Void, layout)
+    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout) {
+        GlobalAlloc::dealloc(*self, ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: *mut u8,
+                      ptr: NonNull<Void>,
                       old_layout: Layout,
-                      new_size: usize) -> Result<*mut u8, AllocErr> {
-        GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_size).into()
+                      new_size: usize) -> Result<NonNull<Void>, AllocErr> {
+        GlobalAlloc::realloc(*self, ptr.as_ptr(), old_layout, new_size).into()
     }
 
     #[inline]

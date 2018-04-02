@@ -16,6 +16,7 @@
             issue = "32838")]
 
 use core::intrinsics::{min_align_of_val, size_of_val};
+use core::ptr::NonNull;
 use core::usize;
 
 #[doc(inline)]
@@ -120,27 +121,27 @@ unsafe impl GlobalAlloc for Global {
 
 unsafe impl Alloc for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
         GlobalAlloc::alloc(self, layout).into()
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr as *mut Void, layout)
+    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout) {
+        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: *mut u8,
+                      ptr: NonNull<Void>,
                       layout: Layout,
                       new_size: usize)
-                      -> Result<*mut u8, AllocErr>
+                      -> Result<NonNull<Void>, AllocErr>
     {
-        GlobalAlloc::realloc(self, ptr as *mut Void, layout, new_size).into()
+        GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size).into()
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
         GlobalAlloc::alloc_zeroed(self, layout).into()
     }
 
@@ -195,8 +196,8 @@ mod tests {
             let ptr = Global.alloc_zeroed(layout.clone())
                 .unwrap_or_else(|_| Global.oom());
 
-            let end = ptr.offset(layout.size() as isize);
-            let mut i = ptr;
+            let mut i = ptr.cast::<u8>().as_ptr();
+            let end = i.offset(layout.size() as isize);
             while i < end {
                 assert_eq!(*i, 0);
                 i = i.offset(1);

@@ -2750,6 +2750,14 @@ impl<T: ?Sized> NonNull<T> {
             NonNull::new_unchecked(self.as_ptr() as *mut U)
         }
     }
+
+    /// Cast to a `Void` pointer
+    #[unstable(feature = "allocator_api", issue = "32838")]
+    pub fn as_void(self) -> NonNull<::alloc::Void> {
+        unsafe {
+            NonNull::new_unchecked(self.as_ptr() as _)
+        }
+    }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]

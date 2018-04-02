@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use alloc::{Excess, Layout, AllocErr, CannotReallocInPlace};
+#![allow(deprecated)]
+
+pub use alloc::{Layout, AllocErr, CannotReallocInPlace, Void};
 use core::alloc::Alloc as CoreAlloc;
+use core::ptr::NonNull;
 
 #[doc(hidden)]
 pub mod __core {
     pub use core::*;
 }
+
+#[derive(Debug)]
+pub struct Excess(pub *mut u8, pub usize);
 
 /// Compatibility with older versions of #[global_allocator] during bootstrap
 pub unsafe trait Alloc {
@@ -42,13 +48,13 @@ pub unsafe trait Alloc {
                               new_layout: Layout) -> Result<(), CannotReallocInPlace>;
 }
 
-#[allow(deprecated)]
 unsafe impl<T> Alloc for T where T: CoreAlloc {
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        CoreAlloc::alloc(self, layout)
+        CoreAlloc::alloc(self, layout).map(|ptr| ptr.cast().as_ptr())
     }
 
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        let ptr = NonNull::new_unchecked(ptr as *mut Void);
         CoreAlloc::dealloc(self, ptr, layout)
     }
 
@@ -64,28 +70,33 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                       ptr: *mut u8,
                       layout: Layout,
                       new_layout: Layout) -> Result<*mut u8, AllocErr> {
-        CoreAlloc::realloc(self, ptr, layout, new_layout.size())
+        let ptr = NonNull::new_unchecked(ptr as *mut Void);
+        CoreAlloc::realloc(self, ptr, layout, new_layout.size()).map(|ptr| ptr.cast().as_ptr())
     }
 
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        CoreAlloc::alloc_zeroed(self, layout)
+        CoreAlloc::alloc_zeroed(self, layout).map(|ptr| ptr.cast().as_ptr())
     }
 
     unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
         CoreAlloc::alloc_excess(self, layout)
+            .map(|e| Excess(e.0 .cast().as_ptr(), e.1))
     }
 
     unsafe fn realloc_excess(&mut self,
                              ptr: *mut u8,
                              layout: Layout,
                              new_layout: Layout) -> Result<Excess, AllocErr> {
+        let ptr = NonNull::new_unchecked(ptr as *mut Void);
         CoreAlloc::realloc_excess(self, ptr, layout, new_layout.size())
+            .map(|e| Excess(e.0 .cast().as_ptr(), e.1))
     }
 
     unsafe fn grow_in_place(&mut self,
                             ptr: *mut u8,
                             layout: Layout,
                             new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        let ptr = NonNull::new_unchecked(ptr as *mut Void);
         CoreAlloc::grow_in_place(self, ptr, layout, new_layout.size())
     }
 
@@ -93,6 +104,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                               ptr: *mut u8,
                               layout: Layout,
                               new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        let ptr = NonNull::new_unchecked(ptr as *mut Void);
         CoreAlloc::shrink_in_place(self, ptr, layout, new_layout.size())
     }
 }

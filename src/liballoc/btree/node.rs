@@ -236,7 +236,7 @@ impl<K, V> Root<K, V> {
     pub fn pop_level(&mut self) {
         debug_assert!(self.height > 0);
 
-        let top = self.node.ptr.as_ptr() as *mut u8;
+        let top = self.node.ptr;
 
         self.node = unsafe {
             BoxedNode::from_ptr(self.as_mut()
@@ -249,7 +249,7 @@ impl<K, V> Root<K, V> {
         self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
-            Global.dealloc(top, Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(NonNull::from(top).as_void(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -433,9 +433,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
             marker::Edge
         >
     > {
-        let ptr = self.as_leaf() as *const LeafNode<K, V> as *const u8 as *mut u8;
+        let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(ptr, Layout::new::<LeafNode<K, V>>());
+        Global.dealloc(node.as_void(), Layout::new::<LeafNode<K, V>>());
         ret
     }
 }
@@ -454,9 +454,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
             marker::Edge
         >
     > {
-        let ptr = self.as_internal() as *const InternalNode<K, V> as *const u8 as *mut u8;
+        let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(ptr, Layout::new::<InternalNode<K, V>>());
+        Global.dealloc(node.as_void(), Layout::new::<InternalNode<K, V>>());
         ret
     }
 }
@@ -1239,12 +1239,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 }
 
                 Global.dealloc(
-                    right_node.node.as_ptr() as *mut u8,
+                    right_node.node.as_void(),
                     Layout::new::<InternalNode<K, V>>(),
                 );
             } else {
                 Global.dealloc(
-                    right_node.node.as_ptr() as *mut u8,
+                    right_node.node.as_void(),
                     Layout::new::<LeafNode<K, V>>(),
                 );
             }

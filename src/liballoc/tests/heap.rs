@@ -34,7 +34,8 @@ fn check_overalign_requests<T: Alloc>(mut allocator: T) {
             allocator.alloc(Layout::from_size_align(size, align).unwrap()).unwrap()
         }).collect();
         for &ptr in &pointers {
-            assert_eq!((ptr as usize) % align, 0, "Got a pointer less aligned than requested")
+            assert_eq!((ptr.as_ptr() as usize) % align, 0,
+                       "Got a pointer less aligned than requested")
         }
 
         // Clean up

@@ -30,6 +30,7 @@ looks like:
 #![feature(global_allocator, allocator_api, heap_api)]
 
 use std::alloc::{GlobalAlloc, System, Layout, Void};
+use std::ptr::NonNull;
 
 struct MyAllocator;
 

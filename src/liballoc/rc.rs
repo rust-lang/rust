@@ -259,7 +259,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, box_free};
+use alloc::{Global, Alloc, Layout, Void, box_free};
 use string::String;
 use vec::Vec;
 
@@ -671,7 +671,7 @@ impl<T: ?Sized> Rc<T> {
             .unwrap_or_else(|_| Global.oom());
 
         // Initialize the real RcBox
-        let inner = set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>;
+        let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;
 
         ptr::write(&mut (*inner).strong, Cell::new(1));
         ptr::write(&mut (*inner).weak, Cell::new(1));
@@ -737,7 +737,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
         struct Guard<T> {
-            mem: *mut u8,
+            mem: NonNull<Void>,
             elems: *mut T,
             layout: Layout,
             n_elems: usize,
@@ -760,14 +760,14 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             let v_ptr = v as *const [T];
             let ptr = Self::allocate_for_ptr(v_ptr);
 
-            let mem = ptr as *mut _ as *mut u8;
+            let mem = ptr as *mut _ as *mut Void;
             let layout = Layout::for_value(&*ptr);
 
             // Pointer to first element
             let elems = &mut (*ptr).value as *mut [T] as *mut T;
 
             let mut guard = Guard{
-                mem: mem,
+                mem: NonNull::new_unchecked(mem),
                 elems: elems,
                 layout: layout,
                 n_elems: 0,
@@ -834,8 +834,6 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_ptr();
-
             self.dec_strong();
             if self.strong() == 0 {
                 // destroy the contained object
@@ -846,7 +844,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Global.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
+                    Global.dealloc(self.ptr.as_void(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
         }
@@ -1266,13 +1264,11 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_ptr();
-
             self.dec_weak();
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                Global.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
+                Global.dealloc(self.ptr.as_void(), Layout::for_value(self.ptr.as_ref()));
             }
         }
     }

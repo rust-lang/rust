@@ -757,12 +757,10 @@ impl<K, V> RawTable<K, V> {
         let buffer = Global.alloc(Layout::from_size_align(size, alignment)
             .map_err(|_| CollectionAllocErr::CapacityOverflow)?)?;
 
-        let hashes = buffer as *mut HashUint;
-
         Ok(RawTable {
             capacity_mask: capacity.wrapping_sub(1),
             size: 0,
-            hashes: TaggedHashUintPtr::new(hashes),
+            hashes: TaggedHashUintPtr::new(buffer.cast().as_ptr()),
             marker: marker::PhantomData,
         })
     }
@@ -1185,7 +1183,7 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         debug_assert!(!oflo, "should be impossible");
 
         unsafe {
-            Global.dealloc(self.hashes.ptr() as *mut u8,
+            Global.dealloc(NonNull::new_unchecked(self.hashes.ptr()).as_void(),
                            Layout::from_size_align(size, align).unwrap());
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
