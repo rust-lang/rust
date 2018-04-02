@@ -257,6 +257,11 @@ fn check(cache: &mut Cache,
                     return;
                 }
 
+                // These appear to be broken in mdbook right now?
+                if fragment.starts_with("-") {
+                    return;
+                }
+
                 let entry = &mut cache.get_mut(&pretty_path).unwrap();
                 entry.parse_ids(&pretty_path, &contents, errors);
 
