@@ -1147,6 +1147,33 @@ fn test_find() {
 }
 
 #[test]
+fn test_find_map() {
+    let xs: &[isize] = &[];
+    assert_eq!(xs.iter().find_map(half_if_even), None);
+    let xs: &[isize] = &[3, 5];
+    assert_eq!(xs.iter().find_map(half_if_even), None);
+    let xs: &[isize] = &[4, 5];
+    assert_eq!(xs.iter().find_map(half_if_even), Some(2));
+    let xs: &[isize] = &[3, 6];
+    assert_eq!(xs.iter().find_map(half_if_even), Some(3));
+
+    let xs: &[isize] = &[1, 2, 3, 4, 5, 6, 7];
+    let mut iter = xs.iter();
+    assert_eq!(iter.find_map(half_if_even), Some(1));
+    assert_eq!(iter.find_map(half_if_even), Some(2));
+    assert_eq!(iter.find_map(half_if_even), Some(3));
+    assert_eq!(iter.next(), Some(&7));
+
+    fn half_if_even(x: &isize) -> Option<isize> {
+        if x % 2 == 0 {
+            Some(x / 2)
+        } else {
+            None
+        }
+    }
+}
+
+#[test]
 fn test_position() {
     let v = &[1, 3, 9, 27, 103, 14, 11];
     assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);

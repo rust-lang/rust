@@ -48,6 +48,7 @@
 #![feature(atomic_nand)]
 #![feature(reverse_bits)]
 #![feature(inclusive_range_fields)]
+#![feature(iterator_find_map)]
 
 extern crate core;
 extern crate test;
