@@ -13,6 +13,7 @@
 
 use ich::StableHashingContext;
 
+use std::cmp;
 use std::hash as std_hash;
 use std::mem;
 
@@ -29,6 +30,30 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
+/// InternedString is not compared lexicographically but by pointer value. So,
+/// in order to use it as a stable key we introduce a wrapper type with
+/// the correct Ord, Eq, and Hash implementations.
+#[derive(Eq, Ord, Clone, Copy)]
+pub struct InternedStringSortStable(InternedString);
+
+impl std_hash::Hash for InternedStringSortStable {
+    fn hash<H: std_hash::Hasher>(&self, state: &mut H) {
+        std_hash::Hash::hash(&self.0[..], state);
+    }
+}
+
+impl cmp::PartialOrd for InternedStringSortStable {
+    fn partial_cmp(&self, other: &InternedStringSortStable) -> Option<cmp::Ordering> {
+        (&self.0[..]).partial_cmp(&other.0[..])
+    }
+}
+
+impl cmp::PartialEq for InternedStringSortStable {
+    fn eq(&self, other: &InternedStringSortStable) -> bool {
+        (&self.0[..]).eq(&other.0[..])
+    }
+}
+
 impl<'a> HashStable<StableHashingContext<'a>> for InternedString {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
@@ -39,14 +64,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for InternedString {
     }
 }
 
+impl_stable_hash_for!(tuple_struct self::InternedStringSortStable { inner });
+
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for InternedString {
-    type KeyType = InternedString;
+    type KeyType = InternedStringSortStable;
 
     #[inline]
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
-                          -> InternedString {
-        self.clone()
+                          -> InternedStringSortStable {
+        InternedStringSortStable(self.clone())
     }
 }
 
@@ -60,13 +87,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
 }
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::Name {
-    type KeyType = InternedString;
+    type KeyType = InternedStringSortStable;
 
     #[inline]
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
-                          -> InternedString {
-        self.as_str()
+                          -> InternedStringSortStable {
+        InternedStringSortStable(self.as_str())
     }
 }
 
