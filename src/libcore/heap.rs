@@ -404,6 +404,36 @@ impl From<AllocErr> for CollectionAllocErr {
     }
 }
 
+// FIXME: docs
+pub unsafe trait GlobalAlloc {
+    unsafe fn alloc(&self, layout: Layout) -> *mut Void;
+
+    unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout);
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
+        let size = layout.size();
+        let ptr = self.alloc(layout);
+        if !ptr.is_null() {
+            ptr::write_bytes(ptr as *mut u8, 0, size);
+        }
+        ptr
+    }
+
+    unsafe fn realloc(&self, ptr: *mut Void, old_layout: Layout, new_size: usize) -> *mut Void {
+        let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
+        let new_ptr = self.alloc(new_layout);
+        if !new_ptr.is_null() {
+            ptr::copy_nonoverlapping(
+                ptr as *const u8,
+                new_ptr as *mut u8,
+                cmp::min(old_layout.size(), new_size),
+            );
+            self.dealloc(ptr, old_layout);
+        }
+        new_ptr
+    }
+}
+
 /// An implementation of `Alloc` can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
