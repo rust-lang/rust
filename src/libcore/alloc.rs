@@ -381,6 +381,10 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
+    /// # Safety
+    ///
+    /// `new_size`, when rounded up to the nearest multiple of `old_layout.align()`,
+    /// must not overflow (i.e. the rounded value must be less than `usize::MAX`).
     unsafe fn realloc(&self, ptr: *mut Void, old_layout: Layout, new_size: usize) -> *mut Void {
         let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
         let new_ptr = self.alloc(new_layout);
