@@ -93,6 +93,8 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 }
             })
         }
+        // these are covered in proc_macro/attr-stmt-expr.rs
+        Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item")
     }
 }
 
@@ -145,6 +147,8 @@ fn expand_duplicate(cx: &mut ExtCtxt,
             new_it.ident = copy_name;
             push(Annotatable::TraitItem(P(new_it)));
         }
+        // covered in proc_macro/attr-stmt-expr.rs
+        Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item")
     }
 }
 

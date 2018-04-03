@@ -837,6 +837,13 @@ impl Stmt {
             _ => false,
         }
     }
+
+    pub fn is_expr(&self) -> bool {
+        match self.node {
+            StmtKind::Expr(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Debug for Stmt {
