@@ -25,7 +25,7 @@ documentation:
 Naturally, there's more than just this, and those descriptions simplify out
 lots of details, but that's the high-level overview.
 
-(Side note: `librustdoc` is a library crate! The `rustdoc` binary is crated
+(Side note: `librustdoc` is a library crate! The `rustdoc` binary is created
 using the project in [`src/tools/rustdoc`][bin]. Note that literally all that
 does is call the `main()` that's in this crate's `lib.rs`, though.)
 
