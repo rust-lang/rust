@@ -141,7 +141,10 @@ mod macros;
 
 #[rustc_deprecated(since = "1.27.0", reason = "use the heap module in core, alloc, or std instead")]
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub use core::heap as allocator;
+/// Use the `alloc` module instead.
+pub mod allocator {
+    pub use alloc::*;
+}
 
 // Heaps provided for low-level allocation strategies
 
@@ -149,7 +152,10 @@ pub mod alloc;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
-pub use alloc as heap;
+/// Use the `alloc` module instead.
+pub mod heap {
+    pub use alloc::*;
+}
 
 // Primitive types using the heaps above
 

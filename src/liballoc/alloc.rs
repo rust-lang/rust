@@ -20,7 +20,7 @@ use core::mem::{self, ManuallyDrop};
 use core::usize;
 
 #[doc(inline)]
-pub use core::heap::*;
+pub use core::alloc::*;
 
 #[doc(hidden)]
 pub mod __core {
