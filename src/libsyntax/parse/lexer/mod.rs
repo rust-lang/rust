@@ -1778,6 +1778,7 @@ mod tests {
     use symbol::Symbol;
     use syntax_pos::{BytePos, Span, NO_EXPANSION};
     use codemap::CodeMap;
+    use edition::Edition;
     use errors;
     use feature_gate::UnstableFeatures;
     use parse::token;
@@ -1802,6 +1803,7 @@ mod tests {
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             non_modrs_mods: Lock::new(vec![]),
+            edition: Edition::Edition2015,
         }
     }
 

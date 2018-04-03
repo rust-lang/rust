@@ -14,6 +14,7 @@ use rustc_data_structures::sync::{Lrc, Lock};
 use ast::{self, CrateConfig};
 use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, Span, FileMap, NO_EXPANSION, FileName};
+use edition::Edition;
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
@@ -54,6 +55,7 @@ pub struct ParseSess {
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
     // These are used to issue errors if the non_modrs_mods feature is not enabled.
     pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
+    pub edition: Edition,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
     code_map: Lrc<CodeMap>,
@@ -66,10 +68,11 @@ impl ParseSess {
                                                 true,
                                                 false,
                                                 Some(cm.clone()));
-        ParseSess::with_span_handler(handler, cm)
+        ParseSess::with_span_handler(handler, cm, Edition::Edition2015)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>,
+                             edition: Edition) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -80,6 +83,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             code_map,
             non_modrs_mods: Lock::new(vec![]),
+            edition,
         }
     }
 
