@@ -116,8 +116,6 @@ matrix:
       if: branch = auto
     - env: IMAGE=dist-various-2 DEPLOY=1
       if: branch = auto
-    - env: IMAGE=dist-various-3 DEPLOY=1
-      if: branch = auto
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
       if: branch = auto
     - env: IMAGE=dist-android DEPLOY=1
