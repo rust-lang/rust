@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See rustc guide chapters on [trait-resolution] and [trait-specialization] for more info on how
-//! this works.
-//!
-//! [trait-resolution]: https://rust-lang-nursery.github.io/rustc-guide/trait-resolution.html
-//! [trait-specialization]: https://rust-lang-nursery.github.io/rustc-guide/trait-specialization.html
+//! See `README.md` for high-level documentation
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
-use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
+use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
 use traits::IntercrateMode;
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
@@ -123,7 +119,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
     // empty environment.
-    let param_env = ty::ParamEnv::empty();
+    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
 
     let a_impl_header = with_fresh_ty_vars(selcx, param_env, a_def_id);
     let b_impl_header = with_fresh_ty_vars(selcx, param_env, b_def_id);
@@ -140,7 +136,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
         Err(_) => return None
     };
 
-    debug!("overlap: unification check succeeded");
+    debug!("overlap: unification check succeeded {:?}", obligations);
 
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
@@ -281,7 +277,7 @@ pub fn orphan_check<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 ///     is bad, because the only local type with `T` as a subtree is
 ///     `LocalType<T>`, and `Vec<->` is between it and the type parameter.
 ///     - similarly, `FundamentalPair<LocalType<T>, T>` is bad, because
-///     the second occurrence of `T` is not a subtree of *any* local type.
+///     the second occurence of `T` is not a subtree of *any* local type.
 ///     - however, `LocalType<Vec<T>>` is OK, because `T` is a subtree of
 ///     `LocalType<Vec<T>>`, which is local and has no types between it and
 ///     the type parameter.

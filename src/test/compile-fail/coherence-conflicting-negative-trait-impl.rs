@@ -21,6 +21,7 @@ impl<T: MyTrait> !Send for TestType<T> {}
 //~^ ERROR conflicting implementations of trait `std::marker::Send`
 
 unsafe impl<T:'static> Send for TestType<T> {}
+//~^ ERROR conflicting implementations of trait `std::marker::Send`
 
 impl !Send for TestType<i32> {}
 //~^ ERROR conflicting implementations of trait `std::marker::Send`
