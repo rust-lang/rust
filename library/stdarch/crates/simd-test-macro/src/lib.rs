@@ -12,11 +12,10 @@ extern crate quote;
 
 use std::env;
 
-use proc_macro2::Literal;
-use proc_macro2::{Term, TokenNode, TokenStream, TokenTree};
+use proc_macro2::{Literal, Span, Term, TokenStream, TokenTree};
 
 fn string(s: &str) -> TokenTree {
-    TokenNode::Literal(Literal::string(s)).into()
+    Literal::string(s).into()
 }
 
 #[proc_macro_attribute]
@@ -29,12 +28,12 @@ pub fn simd_test(
     if tokens.len() != 2 {
         panic!("expected #[simd_test = \"feature\"]");
     }
-    match tokens[0].kind {
-        TokenNode::Op('=', _) => {}
+    match &tokens[0] {
+        TokenTree::Op(tt) if tt.op() == '=' => {}
         _ => panic!("expected #[simd_test = \"feature\"]"),
     }
-    let target_features = match tokens[1].kind {
-        TokenNode::Literal(ref l) => l.to_string(),
+    let target_features = match &tokens[1] {
+        TokenTree::Literal(tt) => tt.to_string(),
         _ => panic!("expected #[simd_test = \"feature\"]"),
     };
     let target_features: Vec<String> = target_features
@@ -44,8 +43,8 @@ pub fn simd_test(
         .map(|v| String::from(v))
         .collect();
 
-    let enable_feature = match tokens[1].kind {
-        TokenNode::Literal(ref l) => l.to_string(),
+    let enable_feature = match &tokens[1] {
+        TokenTree::Literal(tt) => tt.to_string(),
         _ => panic!("expected #[simd_test = \"feature\"]"),
     };
     let enable_feature = enable_feature
@@ -88,7 +87,7 @@ pub fn simd_test(
         }
         t => panic!("unknown target: {}", t),
     };
-    let macro_test = proc_macro2::Term::intern(macro_test);
+    let macro_test = proc_macro2::Term::new(macro_test, Span::call_site());
 
     let mut cfg_target_features = quote::Tokens::new();
     use quote::ToTokens;
@@ -123,15 +122,15 @@ pub fn simd_test(
 fn find_name(item: TokenStream) -> Term {
     let mut tokens = item.into_iter();
     while let Some(tok) = tokens.next() {
-        if let TokenNode::Term(word) = tok.kind {
+        if let TokenTree::Term(word) = tok {
             if word.as_str() == "fn" {
                 break;
             }
         }
     }
 
-    match tokens.next().map(|t| t.kind) {
-        Some(TokenNode::Term(word)) => word,
+    match tokens.next() {
+        Some(TokenTree::Term(word)) => word,
         _ => panic!("failed to find function name"),
     }
 }
