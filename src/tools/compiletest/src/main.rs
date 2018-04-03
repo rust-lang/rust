@@ -623,7 +623,8 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     };
 
     // Debugging emscripten code doesn't make sense today
-    let ignore = early_props.ignore || (!up_to_date(config, testpaths, &early_props) && config.compare_mode.is_none())
+    let ignore = early_props.ignore
+        || (!up_to_date(config, testpaths, &early_props) && config.compare_mode.is_none())
         || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
             && config.target.contains("emscripten");
 
