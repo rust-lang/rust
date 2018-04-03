@@ -784,7 +784,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn reserve(&mut self, additional: usize) {
         match self.try_reserve(additional) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(e)) => Global.oom(e),
+            Err(CollectionAllocErr::AllocErr(_)) => Global.oom(),
             Ok(()) => { /* yay */ }
          }
     }

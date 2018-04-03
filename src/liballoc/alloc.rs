@@ -136,8 +136,8 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Global.alloc(layout).unwrap_or_else(|err| {
-            Global.oom(err)
+        Global.alloc(layout).unwrap_or_else(|_| {
+            Global.oom()
         })
     }
 }
@@ -166,7 +166,7 @@ mod tests {
         unsafe {
             let layout = Layout::from_size_align(1024, 1).unwrap();
             let ptr = Global.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|e| Global.oom(e));
+                .unwrap_or_else(|_| Global.oom());
 
             let end = ptr.offset(layout.size() as isize);
             let mut i = ptr;

@@ -73,8 +73,8 @@ unsafe impl Alloc for System {
         Alloc::realloc(&mut &*self, ptr, old_layout, new_layout)
     }
 
-    fn oom(&mut self, err: AllocErr) -> ! {
-        Alloc::oom(&mut &*self, err)
+    fn oom(&mut self) -> ! {
+        Alloc::oom(&mut &*self)
     }
 
     #[inline]
@@ -242,7 +242,7 @@ mod platform {
     unsafe impl<'a> Alloc for &'a System {
         alloc_methods_based_on_global_alloc!();
 
-        fn oom(&mut self, err: AllocErr) -> ! {
+        fn oom(&mut self) -> ! {
             use core::fmt::{self, Write};
 
             // Print a message to stderr before aborting to assist with
@@ -250,7 +250,7 @@ mod platform {
             // memory since we are in an OOM situation. Any errors are ignored
             // while printing since there's nothing we can do about them and we
             // are about to exit anyways.
-            drop(writeln!(Stderr, "fatal runtime error: {}", err));
+            drop(writeln!(Stderr, "fatal runtime error: {}", AllocErr));
             unsafe {
                 ::core::intrinsics::abort();
             }
@@ -459,11 +459,11 @@ mod platform {
             }
         }
 
-        fn oom(&mut self, err: AllocErr) -> ! {
+        fn oom(&mut self) -> ! {
             use core::fmt::{self, Write};
 
             // Same as with unix we ignore all errors here
-            drop(writeln!(Stderr, "fatal runtime error: {}", err));
+            drop(writeln!(Stderr, "fatal runtime error: {}", AllocErr));
             unsafe {
                 ::core::intrinsics::abort();
             }

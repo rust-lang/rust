@@ -32,7 +32,7 @@ struct Ccx {
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {
     unsafe {
         let ptr = Heap.alloc(Layout::new::<Bcx>())
-            .unwrap_or_else(|e| Heap.oom(e));
+            .unwrap_or_else(|_| Heap.oom());
         &*(ptr as *const _)
     }
 }

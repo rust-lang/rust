@@ -52,8 +52,8 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
         CoreAlloc::dealloc(self, ptr, layout)
     }
 
-    fn oom(&mut self, err: AllocErr) -> ! {
-        CoreAlloc::oom(self, err)
+    fn oom(&mut self, _: AllocErr) -> ! {
+        CoreAlloc::oom(self)
     }
 
     fn usable_size(&self, layout: &Layout) -> (usize, usize) {

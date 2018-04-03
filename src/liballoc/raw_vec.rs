@@ -100,7 +100,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                 };
                 match result {
                     Ok(ptr) => ptr,
-                    Err(err) => a.oom(err),
+                    Err(_) => a.oom(),
                 }
             };
 
@@ -316,7 +316,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                                                  new_layout);
                     match ptr_res {
                         Ok(ptr) => (new_cap, Unique::new_unchecked(ptr as *mut T)),
-                        Err(e) => self.a.oom(e),
+                        Err(_) => self.a.oom(),
                     }
                 }
                 None => {
@@ -325,7 +325,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                     match self.a.alloc_array::<T>(new_cap) {
                         Ok(ptr) => (new_cap, ptr.into()),
-                        Err(e) => self.a.oom(e),
+                        Err(_) => self.a.oom(),
                     }
                 }
             };
@@ -444,7 +444,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve_exact(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.try_reserve_exact(used_cap, needed_extra_cap) {
             Err(CapacityOverflow) => panic!("capacity overflow"),
-            Err(AllocErr(e)) => self.a.oom(e),
+            Err(AllocErr(_)) => self.a.oom(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -554,7 +554,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.try_reserve(used_cap, needed_extra_cap) {
             Err(CapacityOverflow) => panic!("capacity overflow"),
-            Err(AllocErr(e)) => self.a.oom(e),
+            Err(AllocErr(_)) => self.a.oom(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -669,7 +669,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                                      old_layout,
                                      new_layout) {
                     Ok(p) => self.ptr = Unique::new_unchecked(p as *mut T),
-                    Err(err) => self.a.oom(err),
+                    Err(_) => self.a.oom(),
                 }
             }
             self.cap = amount;

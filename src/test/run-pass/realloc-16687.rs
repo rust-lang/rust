@@ -50,7 +50,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?})", layout);
         }
 
-        let ret = Heap.alloc(layout.clone()).unwrap_or_else(|e| Heap.oom(e));
+        let ret = Heap.alloc(layout.clone()).unwrap_or_else(|_| Heap.oom());
 
         if PRINT {
             println!("allocate({:?}) = {:?}", layout, ret);
@@ -73,7 +73,7 @@ unsafe fn test_triangle() -> bool {
         }
 
         let ret = Heap.realloc(ptr, old.clone(), new.clone())
-            .unwrap_or_else(|e| Heap.oom(e));
+            .unwrap_or_else(|_| Heap.oom());
 
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}",

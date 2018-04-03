@@ -555,7 +555,7 @@ impl<T: ?Sized> Arc<T> {
         let layout = Layout::for_value(&*fake_ptr);
 
         let mem = Global.alloc(layout)
-            .unwrap_or_else(|e| Global.oom(e));
+            .unwrap_or_else(|_| Global.oom());
 
         // Initialize the real ArcInner
         let inner = set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>;

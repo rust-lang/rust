@@ -14,8 +14,8 @@ use std::heap::{Heap, Alloc};
 
 fn main() {
     unsafe {
-        let ptr = Heap.alloc_one::<i32>().unwrap_or_else(|e| {
-            Heap.oom(e)
+        let ptr = Heap.alloc_one::<i32>().unwrap_or_else(|_| {
+            Heap.oom()
         });
         *ptr.as_ptr() = 4;
         assert_eq!(*ptr.as_ptr(), 4);
