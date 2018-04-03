@@ -12,6 +12,7 @@
 // ignore-aarch64
 // ignore-wasm
 // ignore-emscripten
+// ignore-mips
 
 #![feature(target_feature)]
 
