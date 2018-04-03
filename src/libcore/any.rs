@@ -91,7 +91,6 @@ pub trait Any: 'static {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_type_id)]
     ///
     /// use std::any::{Any, TypeId};
     ///
@@ -104,9 +103,7 @@ pub trait Any: 'static {
     ///     assert_eq!(is_string(&"cookie monster".to_string()), true);
     /// }
     /// ```
-    #[unstable(feature = "get_type_id",
-               reason = "this method will likely be replaced by an associated static",
-               issue = "27745")]
+    #[stable(feature = "get_type_id", since = "1.27.0")]
     fn get_type_id(&self) -> TypeId;
 }
 
