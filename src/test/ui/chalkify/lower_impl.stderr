@@ -4,5 +4,11 @@ error: Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i
 LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(T: Foo) :-
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: Normalize(<T as Bar>::Assoc == std::vec::Vec<T>) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized).
+  --> $DIR/lower_impl.rs:23:5
+   |
+LL |     #[rustc_dump_program_clauses] //~ ERROR Normalize(<T as Bar>::Assoc == std::vec::Vec<T>) :-
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 

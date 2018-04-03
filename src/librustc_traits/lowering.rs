@@ -118,10 +118,20 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
                                        -> Lrc<&'tcx Slice<Clause<'tcx>>>
 {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let item = tcx.hir.expect_item(node_id);
-    match item.node {
-        hir::ItemTrait(..) => program_clauses_for_trait(tcx, def_id),
-        hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
+    let node = tcx.hir.find(node_id).unwrap();
+    match node {
+        hir::map::Node::NodeItem(item) => match item.node {
+            hir::ItemTrait(..) => program_clauses_for_trait(tcx, def_id),
+            hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
+            _ => Lrc::new(vec![]),
+        }
+        hir::map::Node::NodeImplItem(item) => {
+            if let hir::ImplItemKind::Type(..) = item.node {
+                program_clauses_for_associated_type(tcx, def_id)
+            } else {
+                Lrc::new(vec![])
+            }
+        },
 
         // FIXME: other constructions e.g. traits, associated types...
         _ => Lrc::new(tcx.mk_clauses(iter::empty::<Clause>())),
@@ -231,6 +241,53 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
         )
     };
     Lrc::new(tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause)))))
+}
+
+pub fn program_clauses_for_associated_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: DefId)
+    -> Lrc<Vec<Clause<'tcx>>> {
+    // Rule Normalize-From-Impl (see rustc guide)
+    //
+    // ```impl<P0..Pn> Trait<A1..An> for A0
+    // where WC
+    // {
+    //     type AssocType<Pn+1..Pm> where WC1 = T;
+    // }```
+    //
+    // ```
+    // forall<P0..Pm> {
+    //   forall<Pn+1..Pm> {
+    //     Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
+    //       WC && WC1
+    //   }
+    // }
+    // ```
+
+    let item = tcx.associated_item(item_id);
+    debug_assert_eq!(item.kind, ty::AssociatedKind::Type);
+    let impl_id = if let ty::AssociatedItemContainer::ImplContainer(impl_id) = item.container {
+        impl_id
+    } else {
+        bug!()
+    };
+    // `A0 as Trait<A1..An>`
+    let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
+    // `T`
+    let ty = tcx.type_of(item_id);
+    // `WC`
+    let impl_where_clauses = tcx.predicates_of(impl_id).predicates.lower();
+    // `WC1`
+    let item_where_clauses = tcx.predicates_of(item_id).predicates.lower();
+    // `WC && WC1`
+    let mut where_clauses = vec![];
+    where_clauses.extend(impl_where_clauses);
+    where_clauses.extend(item_where_clauses);
+    // `<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm>`
+    let projection_ty = ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, item.name);
+    // `Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T)`
+    let normalize_goal = DomainGoal::Normalize(ty::ProjectionPredicate { projection_ty, ty });
+    // `Normalize(... -> T) :- WC && WC1`
+    let clause = Clause::Implies(where_clauses, normalize_goal);
+    Lrc::new(vec![clause])
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

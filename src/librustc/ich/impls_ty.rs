@@ -1388,6 +1388,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::DomainGoal<'tcx>
             FromEnv(where_clause) => where_clause.hash_stable(hcx, hasher),
 
             WellFormedTy(ty) => ty.hash_stable(hcx, hasher),
+            Normalize(projection) => projection.hash_stable(hcx, hasher),
             FromEnvTy(ty) => ty.hash_stable(hcx, hasher),
             RegionOutlives(predicate) => predicate.hash_stable(hcx, hasher),
             TypeOutlives(predicate) => predicate.hash_stable(hcx, hasher),
