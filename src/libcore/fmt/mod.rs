@@ -401,10 +401,9 @@ impl<'a> Arguments<'a> {
 /// safely be done, so no constructors are given and the fields are private
 /// to prevent modification.
 ///
-/// The [`format_args!`] macro will safely create an instance of this structure
-/// and pass it to a function or closure, passed as the first argument. The
-/// macro validates the format string at compile-time so usage of the [`write`]
-/// and [`format`] functions can be safely performed.
+/// The [`format_args!`] macro will safely create an instance of this structure.
+/// The macro validates the format string at compile-time so usage of the
+/// [`write`] and [`format`] functions can be safely performed.
 ///
 /// You can use the `Arguments<'a>` that [`format_args!`] returns in `Debug`
 /// and `Display` contexts as seen below. The example also shows that `Debug`
@@ -412,8 +411,8 @@ impl<'a> Arguments<'a> {
 /// in `format_args!`.
 ///
 /// ```rust
-/// let display = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
-/// let debug = format!("{}", format_args!("{} foo {:?}", 1, 2));
+/// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
+/// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
 /// assert_eq!("1 foo 2", display);
 /// assert_eq!(display, debug);
 /// ```
