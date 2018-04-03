@@ -488,6 +488,7 @@ macro_rules! try_from_unbounded {
 }
 
 // unsigned to signed (only positive bound)
+#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
 macro_rules! try_from_upper_bounded {
     ($($target:ty),*) => {$(
         impl PrivateTryFromUsize for $target {
