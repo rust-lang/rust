@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_bitwise_reductions {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl $id {
             /// Lane-wise bitwise `and` of the vector elements.
             #[cfg(not(target_arch = "aarch64"))]
@@ -68,7 +68,7 @@ macro_rules! impl_bitwise_reductions {
 }
 
 macro_rules! impl_bool_bitwise_reductions {
-    ($id: ident, $elem_ty: ident, $internal_ty: ident) => {
+    ($id:ident, $elem_ty:ident, $internal_ty:ident) => {
         impl $id {
             /// Lane-wise bitwise `and` of the vector elements.
             #[cfg(not(target_arch = "aarch64"))]
@@ -144,7 +144,7 @@ macro_rules! impl_bool_bitwise_reductions {
 
 #[cfg(test)]
 macro_rules! test_bitwise_reductions {
-    ($id: ident, $true: expr) => {
+    ($id:ident, $true:expr) => {
         #[test]
         fn and() {
             let false_ = !$true;

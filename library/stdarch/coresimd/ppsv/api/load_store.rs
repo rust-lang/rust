@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_load_store {
-    ($id: ident, $elem_ty: ident, $elem_count: expr) => {
+    ($id:ident, $elem_ty:ident, $elem_count:expr) => {
         impl $id {
             /// Writes the values of the vector to the `slice`.
             ///
@@ -149,7 +149,7 @@ macro_rules! impl_load_store {
 
 #[cfg(test)]
 macro_rules! test_load_store {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn store_unaligned() {
             use coresimd::simd::$id;

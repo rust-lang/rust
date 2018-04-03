@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_minmax_reductions {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl $id {
             /// Largest vector value.
             ///
@@ -63,7 +63,7 @@ macro_rules! impl_minmax_reductions {
 
 #[cfg(test)]
 macro_rules! test_minmax_reductions {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn max() {
             use coresimd::simd::$id;

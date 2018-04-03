@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_default {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl ::default::Default for $id {
             #[inline]
             fn default() -> Self {
@@ -14,7 +14,7 @@ macro_rules! impl_default {
 
 #[cfg(test)]
 macro_rules! test_default {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn default() {
             use coresimd::simd::$id;

@@ -45,22 +45,22 @@ extern crate stdsimd_test;
 extern crate test;
 
 macro_rules! test_v16 {
-    ($item: item) => {};
+    ($item:item) => {};
 }
 macro_rules! test_v32 {
-    ($item: item) => {};
+    ($item:item) => {};
 }
 macro_rules! test_v64 {
-    ($item: item) => {};
+    ($item:item) => {};
 }
 macro_rules! test_v128 {
-    ($item: item) => {};
+    ($item:item) => {};
 }
 macro_rules! test_v256 {
-    ($item: item) => {};
+    ($item:item) => {};
 }
 macro_rules! test_v512 {
-    ($item: item) => {};
+    ($item:item) => {};
 }
 macro_rules! vector_impl {
     ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* }

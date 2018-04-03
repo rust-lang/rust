@@ -326,7 +326,7 @@ unsafe fn _mm_slli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (_mm_set1_epi8(0).as_i8x16(), imm8 as u32);
     let a = a.as_i8x16();
     macro_rules! shuffle {
-        ($shift: expr) => {
+        ($shift:expr) => {
             simd_shuffle16::<i8x16, i8x16>(
                 zero,
                 a,
@@ -500,7 +500,7 @@ unsafe fn _mm_srli_si128_impl(a: __m128i, imm8: i32) -> __m128i {
     let (zero, imm8) = (_mm_set1_epi8(0).as_i8x16(), imm8 as u32);
     let a = a.as_i8x16();
     macro_rules! shuffle {
-        ($shift: expr) => {
+        ($shift:expr) => {
             simd_shuffle16(
                 a,
                 zero,
@@ -1079,12 +1079,12 @@ pub unsafe fn _mm_shuffle_epi32(a: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i32x4();
 
     macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle4(a, a, [$x01, $x23, $x45, $x67])
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -1094,7 +1094,7 @@ pub unsafe fn _mm_shuffle_epi32(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -1104,7 +1104,7 @@ pub unsafe fn _mm_shuffle_epi32(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -1136,7 +1136,7 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
     let imm8 = (imm8 & 0xFF) as u8;
     let a = a.as_i16x8();
     macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle8(
                 a,
                 a,
@@ -1154,7 +1154,7 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -1164,7 +1164,7 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -1174,7 +1174,7 @@ pub unsafe fn _mm_shufflehi_epi16(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -1207,12 +1207,12 @@ pub unsafe fn _mm_shufflelo_epi16(a: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i16x8();
 
     macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle8(a, a, [$x01, $x23, $x45, $x67, 4, 5, 6, 7])
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -1222,7 +1222,7 @@ pub unsafe fn _mm_shufflelo_epi16(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -1232,7 +1232,7 @@ pub unsafe fn _mm_shufflelo_epi16(a: __m128i, imm8: i32) -> __m128i {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),

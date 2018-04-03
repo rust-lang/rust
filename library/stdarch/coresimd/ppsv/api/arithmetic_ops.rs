@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_arithmetic_ops {
-    ($id: ident) => {
+    ($id:ident) => {
         impl ::ops::Add for $id {
             type Output = Self;
             #[inline]
@@ -87,7 +87,7 @@ macro_rules! impl_arithmetic_ops {
 
 #[cfg(test)]
 macro_rules! test_arithmetic_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn arithmetic() {
             use coresimd::simd::$id;

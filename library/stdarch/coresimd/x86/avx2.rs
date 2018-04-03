@@ -330,12 +330,12 @@ pub unsafe fn _mm_blend_epi32(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     macro_rules! blend2 {
-        ($a: expr, $b: expr, $c: expr, $d: expr) => {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
             simd_shuffle4(a, b, [$a, $b, $c, $d]);
         };
     }
     macro_rules! blend1 {
-        ($a: expr, $b: expr) => {
+        ($a:expr, $b:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => blend2!($a, $b, 2, 3),
                 0b01 => blend2!($a, $b, 6, 3),
@@ -366,20 +366,20 @@ pub unsafe fn _mm256_blend_epi32(
     let b = b.as_i32x8();
     macro_rules! blend4 {
         (
-            $a: expr,
-            $b: expr,
-            $c: expr,
-            $d: expr,
-            $e: expr,
-            $f: expr,
-            $g: expr,
-            $h: expr
+            $a:expr,
+            $b:expr,
+            $c:expr,
+            $d:expr,
+            $e:expr,
+            $f:expr,
+            $g:expr,
+            $h:expr
         ) => {
             simd_shuffle8(a, b, [$a, $b, $c, $d, $e, $f, $g, $h]);
         };
     }
     macro_rules! blend3 {
-        ($a: expr, $b: expr, $c: expr, $d: expr, $e: expr, $f: expr) => {
+        ($a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $f:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => blend4!($a, $b, $c, $d, $e, $f, 6, 7),
                 0b01 => blend4!($a, $b, $c, $d, $e, $f, 14, 7),
@@ -389,7 +389,7 @@ pub unsafe fn _mm256_blend_epi32(
         };
     }
     macro_rules! blend2 {
-        ($a: expr, $b: expr, $c: expr, $d: expr) => {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => blend3!($a, $b, $c, $d, 4, 5),
                 0b01 => blend3!($a, $b, $c, $d, 12, 5),
@@ -399,7 +399,7 @@ pub unsafe fn _mm256_blend_epi32(
         };
     }
     macro_rules! blend1 {
-        ($a: expr, $b: expr) => {
+        ($a:expr, $b:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => blend2!($a, $b, 2, 3),
                 0b01 => blend2!($a, $b, 10, 3),
@@ -430,22 +430,22 @@ pub unsafe fn _mm256_blend_epi16(
     let b = b.as_i16x16();
     macro_rules! blend4 {
         (
-            $a: expr,
-            $b: expr,
-            $c: expr,
-            $d: expr,
-            $e: expr,
-            $f: expr,
-            $g: expr,
-            $h: expr,
-            $i: expr,
-            $j: expr,
-            $k: expr,
-            $l: expr,
-            $m: expr,
-            $n: expr,
-            $o: expr,
-            $p: expr
+            $a:expr,
+            $b:expr,
+            $c:expr,
+            $d:expr,
+            $e:expr,
+            $f:expr,
+            $g:expr,
+            $h:expr,
+            $i:expr,
+            $j:expr,
+            $k:expr,
+            $l:expr,
+            $m:expr,
+            $n:expr,
+            $o:expr,
+            $p:expr
         ) => {
             simd_shuffle16(
                 a,
@@ -459,18 +459,18 @@ pub unsafe fn _mm256_blend_epi16(
     }
     macro_rules! blend3 {
         (
-            $a: expr,
-            $b: expr,
-            $c: expr,
-            $d: expr,
-            $e: expr,
-            $f: expr,
-            $a2: expr,
-            $b2: expr,
-            $c2: expr,
-            $d2: expr,
-            $e2: expr,
-            $f2: expr
+            $a:expr,
+            $b:expr,
+            $c:expr,
+            $d:expr,
+            $e:expr,
+            $f:expr,
+            $a2:expr,
+            $b2:expr,
+            $c2:expr,
+            $d2:expr,
+            $e2:expr,
+            $f2:expr
         ) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => blend4!(
@@ -550,14 +550,14 @@ pub unsafe fn _mm256_blend_epi16(
     }
     macro_rules! blend2 {
         (
-            $a: expr,
-            $b: expr,
-            $c: expr,
-            $d: expr,
-            $a2: expr,
-            $b2: expr,
-            $c2: expr,
-            $d2: expr
+            $a:expr,
+            $b:expr,
+            $c:expr,
+            $d:expr,
+            $a2:expr,
+            $b2:expr,
+            $c2:expr,
+            $d2:expr
         ) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => blend3!(
@@ -620,7 +620,7 @@ pub unsafe fn _mm256_blend_epi16(
         };
     }
     macro_rules! blend1 {
-        ($a1: expr, $b1: expr, $a2: expr, $b2: expr) => {
+        ($a1:expr, $b1:expr, $a2:expr, $b2:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => blend2!($a1, $b1, 2, 3, $a2, $b2, 10, 11),
                 0b01 => blend2!($a1, $b1, 18, 3, $a2, $b2, 26, 11),
@@ -1050,7 +1050,7 @@ pub unsafe fn _mm_i32gather_epi32(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1075,7 +1075,7 @@ pub unsafe fn _mm_mask_i32gather_epi32(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1098,7 +1098,7 @@ pub unsafe fn _mm256_i32gather_epi32(
     let offsets = offsets.as_i32x8();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1123,7 +1123,7 @@ pub unsafe fn _mm256_mask_i32gather_epi32(
     let offsets = offsets.as_i32x8();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1146,7 +1146,7 @@ pub unsafe fn _mm_i32gather_ps(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdps(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1167,7 +1167,7 @@ pub unsafe fn _mm_mask_i32gather_ps(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdps(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1189,7 +1189,7 @@ pub unsafe fn _mm256_i32gather_ps(
     let offsets = offsets.as_i32x8();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdps(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1210,7 +1210,7 @@ pub unsafe fn _mm256_mask_i32gather_ps(
     let offsets = offsets.as_i32x8();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdps(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1232,7 +1232,7 @@ pub unsafe fn _mm_i32gather_epi64(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdq(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1257,7 +1257,7 @@ pub unsafe fn _mm_mask_i32gather_epi64(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdq(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1280,7 +1280,7 @@ pub unsafe fn _mm256_i32gather_epi64(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdq(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1305,7 +1305,7 @@ pub unsafe fn _mm256_mask_i32gather_epi64(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdq(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1328,7 +1328,7 @@ pub unsafe fn _mm_i32gather_pd(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1350,7 +1350,7 @@ pub unsafe fn _mm_mask_i32gather_pd(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherdpd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1372,7 +1372,7 @@ pub unsafe fn _mm256_i32gather_pd(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1394,7 +1394,7 @@ pub unsafe fn _mm256_mask_i32gather_pd(
     let offsets = offsets.as_i32x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherdpd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1416,7 +1416,7 @@ pub unsafe fn _mm_i64gather_epi32(
     let offsets = offsets.as_i64x2();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1441,7 +1441,7 @@ pub unsafe fn _mm_mask_i64gather_epi32(
     let offsets = offsets.as_i64x2();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1464,7 +1464,7 @@ pub unsafe fn _mm256_i64gather_epi32(
     let offsets = offsets.as_i64x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1489,7 +1489,7 @@ pub unsafe fn _mm256_mask_i64gather_epi32(
     let offsets = offsets.as_i64x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1512,7 +1512,7 @@ pub unsafe fn _mm_i64gather_ps(
     let offsets = offsets.as_i64x2();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqps(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1533,7 +1533,7 @@ pub unsafe fn _mm_mask_i64gather_ps(
     let offsets = offsets.as_i64x2();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqps(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1555,7 +1555,7 @@ pub unsafe fn _mm256_i64gather_ps(
     let offsets = offsets.as_i64x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqps(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1576,7 +1576,7 @@ pub unsafe fn _mm256_mask_i64gather_ps(
     let offsets = offsets.as_i64x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqps(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1598,7 +1598,7 @@ pub unsafe fn _mm_i64gather_epi64(
     let slice = slice as *const i8;
     let offsets = offsets.as_i64x2();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqq(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1623,7 +1623,7 @@ pub unsafe fn _mm_mask_i64gather_epi64(
     let offsets = offsets.as_i64x2();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqq(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1646,7 +1646,7 @@ pub unsafe fn _mm256_i64gather_epi64(
     let slice = slice as *const i8;
     let offsets = offsets.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqq(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1671,7 +1671,7 @@ pub unsafe fn _mm256_mask_i64gather_epi64(
     let offsets = offsets.as_i64x4();
     let slice = slice as *const i8;
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqq(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1694,7 +1694,7 @@ pub unsafe fn _mm_i64gather_pd(
     let slice = slice as *const i8;
     let offsets = offsets.as_i64x2();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1716,7 +1716,7 @@ pub unsafe fn _mm_mask_i64gather_pd(
     let slice = slice as *const i8;
     let offsets = offsets.as_i64x2();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pgatherqpd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -1738,7 +1738,7 @@ pub unsafe fn _mm256_i64gather_pd(
     let slice = slice as *const i8;
     let offsets = offsets.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqpd(zero, slice, offsets, neg_one, $imm8)
         };
     }
@@ -1760,7 +1760,7 @@ pub unsafe fn _mm256_mask_i64gather_pd(
     let slice = slice as *const i8;
     let offsets = offsets.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpgatherqpd(src, slice, offsets, mask, $imm8)
         };
     }
@@ -2064,7 +2064,7 @@ pub unsafe fn _mm256_mpsadbw_epu8(
     let a = a.as_u8x32();
     let b = b.as_u8x32();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             mpsadbw(a, b, $imm8)
         };
     }
@@ -2211,12 +2211,12 @@ pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
     let zero = _mm256_setzero_si256().as_i64x4();
     let a = a.as_i64x4();
     macro_rules! permute4 {
-        ($a: expr, $b: expr, $c: expr, $d: expr) => {
+        ($a:expr, $b:expr, $c:expr, $d:expr) => {
             simd_shuffle4(a, zero, [$a, $b, $c, $d]);
         };
     }
     macro_rules! permute3 {
-        ($a: expr, $b: expr, $c: expr) => {
+        ($a:expr, $b:expr, $c:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => permute4!($a, $b, $c, 0),
                 0b01 => permute4!($a, $b, $c, 1),
@@ -2226,7 +2226,7 @@ pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! permute2 {
-        ($a: expr, $b: expr) => {
+        ($a:expr, $b:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => permute3!($a, $b, 0),
                 0b01 => permute3!($a, $b, 1),
@@ -2236,7 +2236,7 @@ pub unsafe fn _mm256_permute4x64_epi64(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! permute1 {
-        ($a: expr) => {
+        ($a:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => permute2!($a, 0),
                 0b01 => permute2!($a, 1),
@@ -2265,7 +2265,7 @@ pub unsafe fn _mm256_permute2x128_si256(
     let a = a.as_i64x4();
     let b = b.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vperm2i128(a, b, $imm8)
         };
     }
@@ -2282,12 +2282,12 @@ pub unsafe fn _mm256_permute4x64_pd(a: __m256d, imm8: i32) -> __m256d {
     let imm8 = (imm8 & 0xFF) as u8;
     let undef = _mm256_undefined_pd();
     macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle4(a, undef, [$x01, $x23, $x45, $x67])
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -2297,7 +2297,7 @@ pub unsafe fn _mm256_permute4x64_pd(a: __m256d, imm8: i32) -> __m256d {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -2307,7 +2307,7 @@ pub unsafe fn _mm256_permute4x64_pd(a: __m256d, imm8: i32) -> __m256d {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -2432,7 +2432,7 @@ pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
 
     let a = a.as_i32x8();
     macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle8(
                 a,
                 a,
@@ -2450,7 +2450,7 @@ pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -2460,7 +2460,7 @@ pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -2470,7 +2470,7 @@ pub unsafe fn _mm256_shuffle_epi32(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -2508,7 +2508,7 @@ pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
         }
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -2518,7 +2518,7 @@ pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -2528,7 +2528,7 @@ pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -2566,7 +2566,7 @@ pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (imm8 >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 0),
                 0b01 => shuffle_done!($x01, $x23, $x45, 1),
@@ -2576,7 +2576,7 @@ pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (imm8 >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 0),
                 0b01 => shuffle_x67!($x01, $x23, 1),
@@ -2586,7 +2586,7 @@ pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (imm8 >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -2696,7 +2696,7 @@ pub unsafe fn _mm256_slli_epi64(a: __m256i, imm8: i32) -> __m256i {
 pub unsafe fn _mm256_slli_si256(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpslldq(a, $imm8)
         };
     }
@@ -2711,7 +2711,7 @@ pub unsafe fn _mm256_slli_si256(a: __m256i, imm8: i32) -> __m256i {
 pub unsafe fn _mm256_bslli_epi128(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpslldq(a, $imm8)
         };
     }
@@ -2820,7 +2820,7 @@ pub unsafe fn _mm256_srav_epi32(a: __m256i, count: __m256i) -> __m256i {
 pub unsafe fn _mm256_srli_si256(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpsrldq(a, $imm8)
         };
     }
@@ -2835,7 +2835,7 @@ pub unsafe fn _mm256_srli_si256(a: __m256i, imm8: i32) -> __m256i {
 pub unsafe fn _mm256_bsrli_epi128(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i64x4();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             vpsrldq(a, $imm8)
         };
     }

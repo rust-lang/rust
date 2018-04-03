@@ -84,7 +84,7 @@ use coresimd::arch::x86::{__m128, __m128d, __m128i};
 use coresimd::arch::x86_64::{__m128, __m128d, __m128i};
 
 macro_rules! from_bits_x86 {
-    ($id: ident, $elem_ty: ident, $test_mod: ident) => {
+    ($id:ident, $elem_ty:ident, $test_mod:ident) => {
         #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
         impl_from_bits_!($id: __m128, __m128i, __m128d);
     };
@@ -121,12 +121,7 @@ use coresimd::arch::aarch64::{// FIXME: float16x8_t,
                               uint8x16_t};
 
 macro_rules! from_bits_arm {
-    (
-        $id: ident,
-        $elem_ty: ident,
-        $test_mod_arm: ident,
-        $test_mod_a64: ident
-    ) => {
+    ($id:ident, $elem_ty:ident, $test_mod_arm:ident, $test_mod_a64:ident) => {
         #[cfg(any(all(target_arch = "arm", target_feature = "neon",
                       target_feature = "v7"),
                   target_arch = "aarch64"))]

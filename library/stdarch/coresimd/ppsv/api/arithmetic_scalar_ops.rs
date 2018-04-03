@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_arithmetic_scalar_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl ::ops::Add<$elem_ty> for $id {
             type Output = Self;
             #[inline]
@@ -117,7 +117,7 @@ macro_rules! impl_arithmetic_scalar_ops {
 
 #[cfg(test)]
 macro_rules! test_arithmetic_scalar_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn arithmetic_scalar() {
             use coresimd::simd::$id;

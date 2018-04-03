@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_arithmetic_reductions {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl $id {
             /// Lane-wise addition of the vector elements.
             ///
@@ -65,7 +65,7 @@ macro_rules! impl_arithmetic_reductions {
 
 #[cfg(test)]
 macro_rules! test_arithmetic_reductions {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         fn alternating(x: usize) -> ::coresimd::simd::$id {
             use coresimd::simd::$id;
             let mut v = $id::splat(1 as $elem_ty);

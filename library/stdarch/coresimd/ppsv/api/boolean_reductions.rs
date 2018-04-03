@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_bool_reductions {
-    ($id: ident) => {
+    ($id:ident) => {
         impl $id {
             /// Are `all` vector lanes `true`?
             #[cfg(not(target_arch = "aarch64"))]
@@ -47,7 +47,7 @@ macro_rules! impl_bool_reductions {
 
 #[cfg(test)]
 macro_rules! test_bool_reductions {
-    ($id: ident) => {
+    ($id:ident) => {
         #[test]
         fn all() {
             use coresimd::simd::$id;

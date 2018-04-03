@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_bitwise_scalar_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl ::ops::BitXor<$elem_ty> for $id {
             type Output = Self;
             #[inline]
@@ -71,7 +71,7 @@ macro_rules! impl_bitwise_scalar_ops {
 
 #[cfg(test)]
 macro_rules! test_int_bitwise_scalar_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn bitwise_scalar_ops() {
             use coresimd::simd::$id;
@@ -157,7 +157,7 @@ macro_rules! test_int_bitwise_scalar_ops {
 
 #[cfg(test)]
 macro_rules! test_bool_bitwise_scalar_ops {
-    ($id: ident) => {
+    ($id:ident) => {
         #[test]
         fn bool_scalar_arithmetic() {
             use coresimd::simd::*;

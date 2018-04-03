@@ -38,7 +38,7 @@ pub unsafe fn _mm_clmulepi64_si128(
     a: __m128i, b: __m128i, imm8: i32
 ) -> __m128i {
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pclmulqdq(a, b, $imm8)
         };
     }

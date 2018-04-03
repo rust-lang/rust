@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_hex_fmt {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl ::fmt::LowerHex for $id {
             fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
                 use mem;
@@ -140,7 +140,7 @@ macro_rules! test_hex_fmt_impl {
 
 #[cfg(test)]
 macro_rules! test_hex_fmt {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         test_hex_fmt_impl!(
             $id,
             $elem_ty,

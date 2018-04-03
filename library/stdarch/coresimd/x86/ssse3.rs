@@ -92,7 +92,7 @@ pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
     let b = b.as_i8x16();
 
     macro_rules! shuffle {
-        ($shift: expr) => {
+        ($shift:expr) => {
             simd_shuffle16(
                 b,
                 a,
@@ -295,7 +295,7 @@ pub unsafe fn _mm_shuffle_pi8(a: __m64, b: __m64) -> __m64 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_alignr_pi8(a: __m64, b: __m64, n: i32) -> __m64 {
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             palignrb(a, b, $imm8)
         };
     }

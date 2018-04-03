@@ -84,7 +84,7 @@ macro_rules! impl_minimal {
 
 #[cfg(test)]
 macro_rules! test_minimal {
-    ($id: ident, $elem_ty: ident, $elem_count: expr) => {
+    ($id:ident, $elem_ty:ident, $elem_count:expr) => {
         #[test]
         fn minimal() {
             use coresimd::simd::$id;

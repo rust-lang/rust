@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_bitwise_ops {
-    ($id: ident, $true_val: expr) => {
+    ($id:ident, $true_val:expr) => {
         impl ::ops::Not for $id {
             type Output = Self;
             #[inline]
@@ -57,7 +57,7 @@ macro_rules! impl_bitwise_ops {
 
 #[cfg(test)]
 macro_rules! test_int_bitwise_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn bitwise_ops() {
             use coresimd::simd::$id;
@@ -124,7 +124,7 @@ macro_rules! test_int_bitwise_ops {
 
 #[cfg(test)]
 macro_rules! test_bool_bitwise_ops {
-    ($id: ident) => {
+    ($id:ident) => {
         #[test]
         fn bool_arithmetic() {
             use coresimd::simd::*;

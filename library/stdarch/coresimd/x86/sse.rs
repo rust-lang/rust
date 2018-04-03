@@ -768,12 +768,12 @@ pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
     let mask = (mask & 0xFF) as u8;
 
     macro_rules! shuffle_done {
-        ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
             simd_shuffle4(a, b, [$x01, $x23, $x45, $x67])
         };
     }
     macro_rules! shuffle_x67 {
-        ($x01: expr, $x23: expr, $x45: expr) => {
+        ($x01:expr, $x23:expr, $x45:expr) => {
             match (mask >> 6) & 0b11 {
                 0b00 => shuffle_done!($x01, $x23, $x45, 4),
                 0b01 => shuffle_done!($x01, $x23, $x45, 5),
@@ -783,7 +783,7 @@ pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
         };
     }
     macro_rules! shuffle_x45 {
-        ($x01: expr, $x23: expr) => {
+        ($x01:expr, $x23:expr) => {
             match (mask >> 4) & 0b11 {
                 0b00 => shuffle_x67!($x01, $x23, 4),
                 0b01 => shuffle_x67!($x01, $x23, 5),
@@ -793,7 +793,7 @@ pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
         };
     }
     macro_rules! shuffle_x23 {
-        ($x01: expr) => {
+        ($x01:expr) => {
             match (mask >> 2) & 0b11 {
                 0b00 => shuffle_x45!($x01, 0),
                 0b01 => shuffle_x45!($x01, 1),
@@ -1564,7 +1564,7 @@ pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
     // We use the `llvm.prefetch` instrinsic with `rw` = 0 (read), and
     // `cache type` = 1 (data cache). `locality` is based on our `strategy`.
     macro_rules! pref {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             match $imm8 {
                 0 => prefetch(p, 0, 0, 1),
                 1 => prefetch(p, 0, 1, 1),
@@ -2010,7 +2010,7 @@ pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
     macro_rules! call {
-        ($imm2: expr) => {
+        ($imm2:expr) => {
             pextrw(a, $imm2) as i32
         };
     }
@@ -2025,7 +2025,7 @@ pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
 #[rustc_args_required_const(1)]
 pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
     macro_rules! call {
-        ($imm2: expr) => {
+        ($imm2:expr) => {
             pextrw(a, $imm2) as i32
         };
     }
@@ -2041,7 +2041,7 @@ pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
     macro_rules! call {
-        ($imm2: expr) => {
+        ($imm2:expr) => {
             pinsrw(a, d, $imm2)
         };
     }
@@ -2057,7 +2057,7 @@ pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
 #[rustc_args_required_const(2)]
 pub unsafe fn _m_pinsrw(a: __m64, d: i32, imm2: i32) -> __m64 {
     macro_rules! call {
-        ($imm2: expr) => {
+        ($imm2:expr) => {
             pinsrw(a, d, $imm2)
         };
     }
@@ -2092,7 +2092,7 @@ pub unsafe fn _m_pmovmskb(a: __m64) -> i32 {
 #[rustc_args_required_const(1)]
 pub unsafe fn _mm_shuffle_pi16(a: __m64, imm8: i32) -> __m64 {
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pshufw(a, $imm8)
         };
     }
@@ -2107,7 +2107,7 @@ pub unsafe fn _mm_shuffle_pi16(a: __m64, imm8: i32) -> __m64 {
 #[rustc_args_required_const(1)]
 pub unsafe fn _m_pshufw(a: __m64, imm8: i32) -> __m64 {
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pshufw(a, $imm8)
         };
     }

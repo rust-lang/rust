@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_cmp {
-    ($id: ident, $bool_ty: ident) => {
+    ($id:ident, $bool_ty:ident) => {
         impl $id {
             /// Lane-wise equality comparison.
             #[inline]
@@ -50,7 +50,7 @@ macro_rules! impl_cmp {
 }
 
 macro_rules! impl_bool_cmp {
-    ($id: ident, $bool_ty: ident) => {
+    ($id:ident, $bool_ty:ident) => {
         impl $id {
             /// Lane-wise equality comparison.
             #[inline]
@@ -99,13 +99,7 @@ macro_rules! impl_bool_cmp {
 
 #[cfg(test)]
 macro_rules! test_cmp {
-    (
-        $id: ident,
-        $elem_ty: ident,
-        $bool_ty: ident,
-        $true: expr,
-        $false: expr
-    ) => {
+    ($id:ident, $elem_ty:ident, $bool_ty:ident, $true:expr, $false:expr) => {
         #[test]
         fn cmp() {
             use coresimd::simd::*;

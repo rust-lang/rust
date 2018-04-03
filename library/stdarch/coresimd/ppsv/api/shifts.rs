@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_vector_shifts {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl ::ops::Shl<$id> for $id {
             type Output = Self;
             #[inline]
@@ -36,7 +36,7 @@ macro_rules! impl_vector_shifts {
 
 #[cfg(test)]
 macro_rules! test_vector_shift_ops {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn shift_ops() {
             use coresimd::simd::$id;

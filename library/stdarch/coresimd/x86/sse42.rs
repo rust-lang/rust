@@ -57,7 +57,7 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistrm128(a, b, $imm8)
         };
     }
@@ -304,7 +304,7 @@ pub unsafe fn _mm_cmpistri(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistri128(a, b, $imm8)
         };
     }
@@ -322,7 +322,7 @@ pub unsafe fn _mm_cmpistrz(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistriz128(a, b, $imm8)
         };
     }
@@ -340,7 +340,7 @@ pub unsafe fn _mm_cmpistrc(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistric128(a, b, $imm8)
         };
     }
@@ -358,7 +358,7 @@ pub unsafe fn _mm_cmpistrs(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistris128(a, b, $imm8)
         };
     }
@@ -375,7 +375,7 @@ pub unsafe fn _mm_cmpistro(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistrio128(a, b, $imm8)
         };
     }
@@ -393,7 +393,7 @@ pub unsafe fn _mm_cmpistra(a: __m128i, b: __m128i, imm8: i32) -> i32 {
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpistria128(a, b, $imm8)
         };
     }
@@ -412,7 +412,7 @@ pub unsafe fn _mm_cmpestrm(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestrm128(a, la, b, lb, $imm8)
         };
     }
@@ -516,7 +516,7 @@ pub unsafe fn _mm_cmpestri(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestri128(a, la, b, lb, $imm8)
         };
     }
@@ -536,7 +536,7 @@ pub unsafe fn _mm_cmpestrz(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestriz128(a, la, b, lb, $imm8)
         };
     }
@@ -556,7 +556,7 @@ pub unsafe fn _mm_cmpestrc(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestric128(a, la, b, lb, $imm8)
         };
     }
@@ -576,7 +576,7 @@ pub unsafe fn _mm_cmpestrs(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestris128(a, la, b, lb, $imm8)
         };
     }
@@ -596,7 +596,7 @@ pub unsafe fn _mm_cmpestro(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestrio128(a, la, b, lb, $imm8)
         };
     }
@@ -617,7 +617,7 @@ pub unsafe fn _mm_cmpestra(
     let a = a.as_i8x16();
     let b = b.as_i8x16();
     macro_rules! call {
-        ($imm8: expr) => {
+        ($imm8:expr) => {
             pcmpestria128(a, la, b, lb, $imm8)
         };
     }

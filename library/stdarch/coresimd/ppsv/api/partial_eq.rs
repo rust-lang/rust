@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_partial_eq {
-    ($id: ident) => {
+    ($id:ident) => {
         impl ::cmp::PartialEq<$id> for $id {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
@@ -18,7 +18,7 @@ macro_rules! impl_partial_eq {
 
 #[cfg(test)]
 macro_rules! test_partial_eq {
-    ($id: ident, $true: expr, $false: expr) => {
+    ($id:ident, $true:expr, $false:expr) => {
         #[test]
         fn partial_eq() {
             use coresimd::simd::*;

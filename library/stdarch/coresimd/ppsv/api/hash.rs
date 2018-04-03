@@ -2,7 +2,7 @@
 #![allow(unused)]
 
 macro_rules! impl_hash {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         impl ::hash::Hash for $id {
             #[inline]
             fn hash<H: ::hash::Hasher>(&self, state: &mut H) {
@@ -18,7 +18,7 @@ macro_rules! impl_hash {
 
 #[cfg(test)]
 macro_rules! test_hash {
-    ($id: ident, $elem_ty: ident) => {
+    ($id:ident, $elem_ty:ident) => {
         #[test]
         fn hash() {
             use coresimd::simd::$id;

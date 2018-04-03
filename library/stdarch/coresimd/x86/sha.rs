@@ -68,7 +68,7 @@ pub unsafe fn _mm_sha1rnds4_epu32(
     let a = a.as_i32x4();
     let b = b.as_i32x4();
     macro_rules! call {
-        ($imm2: expr) => {
+        ($imm2:expr) => {
             sha1rnds4(a, b, $imm2)
         };
     }
