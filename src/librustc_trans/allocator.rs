@@ -30,7 +30,6 @@ pub(crate) unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) 
     };
     let i8 = llvm::LLVMInt8TypeInContext(llcx);
     let i8p = llvm::LLVMPointerType(i8, 0);
-    let usizep = llvm::LLVMPointerType(usize, 0);
     let void = llvm::LLVMVoidTypeInContext(llcx);
 
     for method in ALLOCATOR_METHODS {
@@ -41,40 +40,19 @@ pub(crate) unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) 
                     args.push(usize); // size
                     args.push(usize); // align
                 }
-                AllocatorTy::LayoutRef => args.push(i8p),
                 AllocatorTy::Ptr => args.push(i8p),
-                AllocatorTy::AllocErr => args.push(i8p),
+                AllocatorTy::Usize => args.push(usize),
 
-                AllocatorTy::Bang |
-                AllocatorTy::ResultExcess |
                 AllocatorTy::ResultPtr |
-                AllocatorTy::ResultUnit |
-                AllocatorTy::UsizePair |
                 AllocatorTy::Unit => panic!("invalid allocator arg"),
             }
         }
         let output = match method.output {
-            AllocatorTy::UsizePair => {
-                args.push(usizep); // min
-                args.push(usizep); // max
-                None
-            }
-            AllocatorTy::Bang => None,
-            AllocatorTy::ResultExcess => {
-                args.push(i8p); // excess_ptr
-                args.push(i8p); // err_ptr
-                Some(i8p)
-            }
-            AllocatorTy::ResultPtr => {
-                args.push(i8p); // err_ptr
-                Some(i8p)
-            }
-            AllocatorTy::ResultUnit => Some(i8),
+            AllocatorTy::ResultPtr => Some(i8p),
             AllocatorTy::Unit => None,
 
-            AllocatorTy::AllocErr |
             AllocatorTy::Layout |
-            AllocatorTy::LayoutRef |
+            AllocatorTy::Usize |
             AllocatorTy::Ptr => panic!("invalid allocator output"),
         };
         let ty = llvm::LLVMFunctionType(output.unwrap_or(void),

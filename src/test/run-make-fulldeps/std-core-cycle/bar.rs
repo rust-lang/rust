@@ -11,16 +11,16 @@
 #![feature(allocator_api)]
 #![crate_type = "rlib"]
 
-use std::heap::*;
+use std::alloc::*;
 
 pub struct A;
 
-unsafe impl<'a> Alloc for &'a A {
-    unsafe fn alloc(&mut self, _: Layout) -> Result<*mut u8, AllocErr> {
+unsafe impl GlobalAlloc for A {
+    unsafe fn alloc(&self, _: Layout) -> *mut Void {
         loop {}
     }
 
-    unsafe fn dealloc(&mut self, _ptr: *mut u8, _: Layout) {
+    unsafe fn dealloc(&self, _ptr: *mut Void, _: Layout) {
         loop {}
     }
 }

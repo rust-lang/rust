@@ -21,7 +21,7 @@
 #[doc(hidden)]
 #[allow(unused_attributes)]
 pub mod __default_lib_allocator {
-    use super::{System, Layout, Alloc, AllocErr, CannotReallocInPlace};
+    use super::{System, Layout, GlobalAlloc, Void};
     // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
@@ -30,20 +30,9 @@ pub mod __default_lib_allocator {
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_alloc(size: usize,
-                                     align: usize,
-                                     _err: *mut u8) -> *mut u8 {
+    pub unsafe extern fn __rdl_alloc(size: usize, align: usize) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        match System.alloc(layout) {
-            Ok(p) => p,
-            Err(AllocErr) => 0 as *mut u8,
-        }
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_oom(err: *const u8) -> ! {
-        System.oom((*(err as *const AllocErr)).clone())
+        System.alloc(layout) as *mut u8
     }
 
     #[no_mangle]
@@ -51,110 +40,76 @@ pub mod __default_lib_allocator {
     pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
-        System.dealloc(ptr, Layout::from_size_align_unchecked(size, align))
-    }
-
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_usable_size(layout: *const u8,
-                                           min: *mut usize,
-                                           max: *mut usize) {
-        let pair = System.usable_size(&*(layout as *const Layout));
-        *min = pair.0;
-        *max = pair.1;
+        System.dealloc(ptr as *mut Void, Layout::from_size_align_unchecked(size, align))
     }
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_realloc(ptr: *mut u8,
                                        old_size: usize,
-                                       old_align: usize,
-                                       new_size: usize,
-                                       new_align: usize,
-                                       _err: *mut u8) -> *mut u8 {
-        let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
-        let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.realloc(ptr, old_layout, new_layout) {
-            Ok(p) => p,
-            Err(AllocErr) => 0 as *mut u8,
-        }
+                                       align: usize,
+                                       new_size: usize) -> *mut u8 {
+        let old_layout = Layout::from_size_align_unchecked(old_size, align);
+        System.realloc(ptr as *mut Void, old_layout, new_size) as *mut u8
     }
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_alloc_zeroed(size: usize,
-                                            align: usize,
-                                            _err: *mut u8) -> *mut u8 {
+    pub unsafe extern fn __rdl_alloc_zeroed(size: usize, align: usize) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        match System.alloc_zeroed(layout) {
-            Ok(p) => p,
-            Err(AllocErr) => 0 as *mut u8,
-        }
+        System.alloc_zeroed(layout) as *mut u8
     }
 
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_alloc_excess(size: usize,
-                                            align: usize,
-                                            excess: *mut usize,
-                                            _err: *mut u8) -> *mut u8 {
-        let layout = Layout::from_size_align_unchecked(size, align);
-        match System.alloc_excess(layout) {
-            Ok(p) => {
-                *excess = p.1;
-                p.0
-            }
-            Err(AllocErr) => 0 as *mut u8,
+    #[cfg(stage0)]
+    pub mod stage0 {
+        #[no_mangle]
+        #[rustc_std_internal_symbol]
+        pub unsafe extern fn __rdl_usable_size(_layout: *const u8,
+                                               _min: *mut usize,
+                                               _max: *mut usize) {
+            unimplemented!()
         }
-    }
 
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_realloc_excess(ptr: *mut u8,
-                                              old_size: usize,
-                                              old_align: usize,
-                                              new_size: usize,
-                                              new_align: usize,
-                                              excess: *mut usize,
-                                              _err: *mut u8) -> *mut u8 {
-        let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
-        let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.realloc_excess(ptr, old_layout, new_layout) {
-            Ok(p) => {
-                *excess = p.1;
-                p.0
-            }
-            Err(AllocErr) => 0 as *mut u8,
+        #[no_mangle]
+        #[rustc_std_internal_symbol]
+        pub unsafe extern fn __rdl_alloc_excess(_size: usize,
+                                                _align: usize,
+                                                _excess: *mut usize,
+                                                _err: *mut u8) -> *mut u8 {
+            unimplemented!()
         }
-    }
 
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_grow_in_place(ptr: *mut u8,
-                                             old_size: usize,
-                                             old_align: usize,
-                                             new_size: usize,
-                                             new_align: usize) -> u8 {
-        let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
-        let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.grow_in_place(ptr, old_layout, new_layout) {
-            Ok(()) => 1,
-            Err(CannotReallocInPlace) => 0,
+        #[no_mangle]
+        #[rustc_std_internal_symbol]
+        pub unsafe extern fn __rdl_realloc_excess(_ptr: *mut u8,
+                                                  _old_size: usize,
+                                                  _old_align: usize,
+                                                  _new_size: usize,
+                                                  _new_align: usize,
+                                                  _excess: *mut usize,
+                                                  _err: *mut u8) -> *mut u8 {
+            unimplemented!()
         }
-    }
 
-    #[no_mangle]
-    #[rustc_std_internal_symbol]
-    pub unsafe extern fn __rdl_shrink_in_place(ptr: *mut u8,
-                                               old_size: usize,
-                                               old_align: usize,
-                                               new_size: usize,
-                                               new_align: usize) -> u8 {
-        let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
-        let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.shrink_in_place(ptr, old_layout, new_layout) {
-            Ok(()) => 1,
-            Err(CannotReallocInPlace) => 0,
+        #[no_mangle]
+        #[rustc_std_internal_symbol]
+        pub unsafe extern fn __rdl_grow_in_place(_ptr: *mut u8,
+                                                 _old_size: usize,
+                                                 _old_align: usize,
+                                                 _new_size: usize,
+                                                 _new_align: usize) -> u8 {
+            unimplemented!()
         }
+
+        #[no_mangle]
+        #[rustc_std_internal_symbol]
+        pub unsafe extern fn __rdl_shrink_in_place(_ptr: *mut u8,
+                                                   _old_size: usize,
+                                                   _old_align: usize,
+                                                   _new_size: usize,
+                                                   _new_align: usize) -> u8 {
+            unimplemented!()
+        }
+
     }
 }
