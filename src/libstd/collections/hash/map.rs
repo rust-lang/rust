@@ -11,15 +11,13 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::heap::Heap;
-use alloc::allocator::CollectionAllocErr;
 use cell::Cell;
-use core::heap::Alloc;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
 #[allow(deprecated)]
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
+use heap::{Heap, Alloc, CollectionAllocErr};
 use iter::{FromIterator, FusedIterator};
 use mem::{self, replace};
 use ops::{Deref, Index};

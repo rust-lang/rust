@@ -12,7 +12,7 @@
 
 #![unstable(issue = "32838", feature = "allocator_api")]
 
-pub use alloc::heap::Heap;
+pub use alloc_crate::heap::Heap;
 pub use alloc_system::System;
 #[doc(inline)] pub use core::heap::*;
 

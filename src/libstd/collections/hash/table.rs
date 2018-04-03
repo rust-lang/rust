@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::heap::Heap;
-use core::heap::{Alloc, Layout};
-
 use cmp;
 use hash::{BuildHasher, Hash, Hasher};
+use heap::{Heap, Alloc, Layout, CollectionAllocErr};
 use marker;
 use mem::{align_of, size_of, needs_drop};
 use mem;
 use ops::{Deref, DerefMut};
 use ptr::{self, Unique, NonNull};
-use alloc::allocator::CollectionAllocErr;
 
 use self::BucketState::*;
 

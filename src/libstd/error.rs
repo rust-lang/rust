@@ -51,13 +51,13 @@
 // coherence challenge (e.g., specialization, neg impls, etc) we can
 // reconsider what crate these items belong in.
 
-use alloc::allocator;
 use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
 use core::array;
 use fmt::{self, Debug, Display};
+use heap::{AllocErr, CannotReallocInPlace};
 use mem::transmute;
 use num;
 use str;
@@ -241,18 +241,18 @@ impl Error for ! {
 #[unstable(feature = "allocator_api",
            reason = "the precise API and guarantees it provides may be tweaked.",
            issue = "32838")]
-impl Error for allocator::AllocErr {
+impl Error for AllocErr {
     fn description(&self) -> &str {
-        allocator::AllocErr::description(self)
+        AllocErr::description(self)
     }
 }
 
 #[unstable(feature = "allocator_api",
            reason = "the precise API and guarantees it provides may be tweaked.",
            issue = "32838")]
-impl Error for allocator::CannotReallocInPlace {
+impl Error for CannotReallocInPlace {
     fn description(&self) -> &str {
-        allocator::CannotReallocInPlace::description(self)
+        CannotReallocInPlace::description(self)
     }
 }
 

@@ -351,7 +351,7 @@ extern crate core as __core;
 
 #[macro_use]
 #[macro_reexport(vec, format)]
-extern crate alloc;
+extern crate alloc as alloc_crate;
 extern crate alloc_system;
 #[doc(masked)]
 extern crate libc;
@@ -437,21 +437,21 @@ pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::boxed;
+pub use alloc_crate::boxed;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::rc;
+pub use alloc_crate::rc;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::borrow;
+pub use alloc_crate::borrow;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::fmt;
+pub use alloc_crate::fmt;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::slice;
+pub use alloc_crate::slice;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::str;
+pub use alloc_crate::str;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::string;
+pub use alloc_crate::string;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::vec;
+pub use alloc_crate::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char;
 #[stable(feature = "i128", since = "1.26.0")]
