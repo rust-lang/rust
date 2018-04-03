@@ -173,6 +173,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(_, _, name, None) = fieldpat.node.pat.node {
                     if name.node == fieldpat.node.name {
+                        if let Some(_) = fieldpat.span.ctxt().outer().expn_info() {
+                            // Don't lint if this is a macro expansion: macro authors
+                            // shouldn't have to worry about this kind of style issue
+                            // (Issue #49588)
+                            return;
+                        }
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant",
