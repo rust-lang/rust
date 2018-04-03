@@ -27,7 +27,7 @@ use syntax::codemap::Spanned;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
 use rustc::middle::const_val::ConstVal;
@@ -1794,7 +1794,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
         let stripped_typarams = gens.types.iter().filter_map(|tp| {
-            if tp.name == keywords::SelfType.name() {
+            if tp.name == keywords::SelfType.name().as_str() {
                 assert_eq!(tp.index, 0);
                 None
             } else {
@@ -3369,6 +3369,12 @@ fn qpath_to_string(p: &hir::QPath) -> String {
 }
 
 impl Clean<String> for ast::Name {
+    fn clean(&self, _: &DocContext) -> String {
+        self.to_string()
+    }
+}
+
+impl Clean<String> for InternedString {
     fn clean(&self, _: &DocContext) -> String {
         self.to_string()
     }

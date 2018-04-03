@@ -260,7 +260,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                 P(hir::Path {
                     span: DUMMY_SP,
                     def: Def::TyParam(param.def_id),
-                    segments: HirVec::from_vec(vec![hir::PathSegment::from_name(param.name)]),
+                    segments: HirVec::from_vec(vec![
+                        hir::PathSegment::from_name(Symbol::intern(&param.name))
+                    ]),
                 }),
             )),
             span: DUMMY_SP,
