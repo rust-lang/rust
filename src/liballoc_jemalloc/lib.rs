@@ -32,7 +32,7 @@ pub use contents::*;
 mod contents {
     use core::ptr;
 
-    use core::heap::{Alloc, AllocErr, Layout};
+    use core::alloc::{Alloc, AllocErr, Layout};
     use alloc_system::System;
     use libc::{c_int, c_void, size_t};
 

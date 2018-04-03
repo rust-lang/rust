@@ -22,11 +22,6 @@ use core::usize;
 #[doc(inline)]
 pub use core::alloc::*;
 
-#[doc(hidden)]
-pub mod __core {
-    pub use core::*;
-}
-
 extern "Rust" {
     #[allocator]
     #[rustc_allocator_nounwind]

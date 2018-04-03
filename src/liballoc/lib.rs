@@ -153,9 +153,15 @@ pub mod alloc;
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
 /// Use the `alloc` module instead.
+#[cfg(not(stage0))]
 pub mod heap {
     pub use alloc::*;
 }
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
+#[cfg(stage0)]
+pub mod heap;
 
 // Primitive types using the heaps above
 

@@ -41,7 +41,7 @@ const MIN_ALIGN: usize = 8;
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
 
-use core::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+use core::alloc::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub struct System;
@@ -121,7 +121,7 @@ mod platform {
 
     use MIN_ALIGN;
     use System;
-    use core::heap::{Alloc, AllocErr, Layout};
+    use core::alloc::{Alloc, AllocErr, Layout};
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl<'a> Alloc for &'a System {
@@ -283,7 +283,7 @@ mod platform {
 
     use MIN_ALIGN;
     use System;
-    use core::heap::{Alloc, AllocErr, Layout, CannotReallocInPlace};
+    use core::alloc::{Alloc, AllocErr, Layout, CannotReallocInPlace};
 
     type LPVOID = *mut u8;
     type HANDLE = LPVOID;
@@ -495,7 +495,7 @@ mod platform {
 mod platform {
     extern crate dlmalloc;
 
-    use core::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+    use core::alloc::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
     use System;
     use self::dlmalloc::GlobalDlmalloc;
 
