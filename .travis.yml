@@ -30,7 +30,6 @@ matrix:
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
@@ -50,7 +49,6 @@ matrix:
         RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
@@ -64,7 +62,6 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
@@ -85,7 +82,6 @@ matrix:
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
@@ -99,7 +95,6 @@ matrix:
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
@@ -227,7 +222,7 @@ install:
             travis_retry brew update &&
             travis_retry brew install xz;
           fi &&
-          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
           travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/stamp
@@ -267,12 +262,6 @@ after_failure:
       echo "#### Build failed; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
-
-  # One of these is the linux sccache log, one is the OSX sccache log. Instead
-  # of worrying about what system we are just cat both. One of these commands
-  # will fail but that's ok, they'll both get executed.
-  - cat obj/tmp/sccache.log
-  - cat /tmp/sccache.log
 
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
