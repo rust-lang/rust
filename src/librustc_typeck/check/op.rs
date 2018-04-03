@@ -14,7 +14,7 @@ use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef, TyAdt};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
 use syntax_pos::Span;
@@ -203,7 +203,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             hir::MutMutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
-                                allow_two_phase_borrow: true,
+                                allow_two_phase_borrow: AllowTwoPhase::Yes,
                             }
                         };
                         let autoref = Adjustment {
@@ -220,7 +220,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             hir::MutMutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
-                                allow_two_phase_borrow: true,
+                                allow_two_phase_borrow: AllowTwoPhase::Yes,
                             }
                         };
                         let autoref = Adjustment {

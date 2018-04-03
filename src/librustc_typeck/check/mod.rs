@@ -97,7 +97,7 @@ use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
-use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
@@ -2377,12 +2377,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mutbl = match mt.mutbl {
                         hir::MutImmutable => AutoBorrowMutability::Immutable,
                         hir::MutMutable => AutoBorrowMutability::Mutable {
-                            // FIXME (#46747): arguably indexing is
-                            // "just another kind of call"; perhaps it
-                            // would be more consistent to allow
-                            // two-phase borrows for .index()
-                            // receivers here.
-                            allow_two_phase_borrow: false,
+                            // Indexing can be desugared to a method call,
+                            // so maybe we could use two-phase here.
+                            // See the documentation of AllowTwoPhase for why that's
+                            // not the case today.
+                            allow_two_phase_borrow: AllowTwoPhase::No,
                         }
                     };
                     adjustments.push(Adjustment {
@@ -2685,7 +2684,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
                 let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
+                // We're processing function arguments so we definitely want to use
+                // two-phase borrows.
+                self.demand_coerce(&arg,
+                                   checked_ty,
+                                   coerce_ty.unwrap_or(formal_ty),
+                                   AllowTwoPhase::Yes);
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
@@ -2847,7 +2851,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expr,
             ExpectHasType(expected),
             needs);
-        self.demand_coerce(expr, ty, expected)
+        // checks don't need two phase
+        self.demand_coerce(expr, ty, expected, AllowTwoPhase::No)
     }
 
     fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
@@ -3674,7 +3679,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         // (It shouldn't actually matter for unary ops whether
                                         // we enable two-phase borrows or not, since a unary
                                         // op has no additional operands.)
-                                        allow_two_phase_borrow: false,
+                                        allow_two_phase_borrow: AllowTwoPhase::No,
                                     }
                                 };
                                 self.apply_adjustments(oprnd, vec![Adjustment {
@@ -4138,7 +4143,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let base_t = self.structurally_resolved_type(expr.span, base_t);
                   match self.lookup_indexing(expr, base, base_t, idx_t, needs) {
                       Some((index_ty, element_ty)) => {
-                          self.demand_coerce(idx, idx_t, index_ty);
+                          // two-phase not needed because index_ty is never mutable
+                          self.demand_coerce(idx, idx_t, index_ty, AllowTwoPhase::No);
                           element_ty
                       }
                       None => {

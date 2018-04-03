@@ -662,9 +662,13 @@ trait ToBorrowKind { fn to_borrow_kind(&self) -> BorrowKind; }
 
 impl ToBorrowKind for AutoBorrowMutability {
     fn to_borrow_kind(&self) -> BorrowKind {
+        use rustc::ty::adjustment::AllowTwoPhase;
         match *self {
             AutoBorrowMutability::Mutable { allow_two_phase_borrow } =>
-                BorrowKind::Mut { allow_two_phase_borrow },
+                BorrowKind::Mut { allow_two_phase_borrow: match allow_two_phase_borrow {
+                    AllowTwoPhase::Yes => true,
+                    AllowTwoPhase::No => false
+                }},
             AutoBorrowMutability::Immutable =>
                 BorrowKind::Shared,
         }

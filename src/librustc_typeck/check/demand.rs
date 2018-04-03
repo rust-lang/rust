@@ -22,6 +22,7 @@ use rustc::hir::def::Def;
 use rustc::hir::map::NodeItem;
 use rustc::hir::{Item, ItemConst, print};
 use rustc::ty::{self, Ty, AssociatedItem};
+use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{DiagnosticBuilder, CodeMapper};
 
 use super::method::probe;
@@ -80,9 +81,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce(&self,
                          expr: &hir::Expr,
                          checked_ty: Ty<'tcx>,
-                         expected: Ty<'tcx>)
+                         expected: Ty<'tcx>,
+                         allow_two_phase: AllowTwoPhase)
                          -> Ty<'tcx> {
-        let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected);
+        let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected, allow_two_phase);
         if let Some(mut err) = err {
             err.emit();
         }
@@ -97,11 +99,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce_diag(&self,
                               expr: &hir::Expr,
                               checked_ty: Ty<'tcx>,
-                              expected: Ty<'tcx>)
+                              expected: Ty<'tcx>,
+                              allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
-        let e = match self.try_coerce(expr, checked_ty, expected) {
+        let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
             Ok(ty) => return (ty, None),
             Err(e) => e
         };

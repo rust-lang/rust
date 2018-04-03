@@ -17,7 +17,8 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, OverloadedDeref};
+use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
+use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
 use syntax_pos::Span;
@@ -170,7 +171,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 hir::MutMutable => AutoBorrowMutability::Mutable {
                     // Method call receivers are the primary use case
                     // for two-phase borrows.
-                    allow_two_phase_borrow: true,
+                    allow_two_phase_borrow: AllowTwoPhase::Yes,
                 }
             };
             adjustments.push(Adjustment {
@@ -544,7 +545,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                             // For initial two-phase borrow
                             // deployment, conservatively omit
                             // overloaded operators.
-                            allow_two_phase_borrow: false,
+                            allow_two_phase_borrow: AllowTwoPhase::No,
                         }
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));
