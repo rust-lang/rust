@@ -180,7 +180,7 @@ impl<R: Read> BufReader<R> {
     ///
     /// # Examples
     ///
-    /// ```no_ru
+    /// ```no_run
     /// # #![feature(bufreader_buffer)]
     /// use std::io::{BufReader, BufRead};
     /// use std::fs::File;
