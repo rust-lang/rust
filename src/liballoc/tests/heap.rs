@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use alloc_system::System;
-use std::heap::{Heap, Alloc, Layout};
+use std::alloc::{Global, Alloc, Layout};
 
 /// https://github.com/rust-lang/rust/issues/45955
 ///
@@ -22,7 +22,7 @@ fn alloc_system_overaligned_request() {
 
 #[test]
 fn std_heap_overaligned_request() {
-    check_overalign_requests(Heap)
+    check_overalign_requests(Global)
 }
 
 fn check_overalign_requests<T: Alloc>(mut allocator: T) {

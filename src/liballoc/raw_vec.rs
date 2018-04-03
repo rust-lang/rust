@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::{Alloc, Layout, Global};
 use core::cmp;
-use core::heap::{Alloc, Layout};
 use core::mem;
 use core::ops::Drop;
 use core::ptr::{self, Unique};
 use core::slice;
-use heap::Heap;
 use super::boxed::Box;
 use super::allocator::CollectionAllocErr;
 use super::allocator::CollectionAllocErr::*;
@@ -47,7 +46,7 @@ use super::allocator::CollectionAllocErr::*;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Alloc = Heap> {
+pub struct RawVec<T, A: Alloc = Global> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
@@ -114,14 +113,14 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, Heap> {
+impl<T> RawVec<T, Global> {
     /// Creates the biggest possible RawVec (on the system heap)
     /// without allocating. If T has positive size, then this makes a
     /// RawVec with capacity 0. If T has 0 size, then it makes a
     /// RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     pub fn new() -> Self {
-        Self::new_in(Heap)
+        Self::new_in(Global)
     }
 
     /// Creates a RawVec (on the system heap) with exactly the
@@ -141,13 +140,13 @@ impl<T> RawVec<T, Heap> {
     /// Aborts on OOM
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        RawVec::allocate_in(cap, false, Heap)
+        RawVec::allocate_in(cap, false, Global)
     }
 
     /// Like `with_capacity` but guarantees the buffer is zeroed.
     #[inline]
     pub fn with_capacity_zeroed(cap: usize) -> Self {
-        RawVec::allocate_in(cap, true, Heap)
+        RawVec::allocate_in(cap, true, Global)
     }
 }
 
@@ -168,7 +167,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, Heap> {
+impl<T> RawVec<T, Global> {
     /// Reconstitutes a RawVec from a pointer, capacity.
     ///
     /// # Undefined Behavior
@@ -180,7 +179,7 @@ impl<T> RawVec<T, Heap> {
         RawVec {
             ptr: Unique::new_unchecked(ptr),
             cap,
-            a: Heap,
+            a: Global,
         }
     }
 
@@ -678,7 +677,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, Heap> {
+impl<T> RawVec<T, Global> {
     /// Converts the entire buffer into `Box<[T]>`.
     ///
     /// While it is not *strictly* Undefined Behavior to call
@@ -763,13 +762,13 @@ mod tests {
                 if size > self.fuel {
                     return Err(AllocErr::Unsupported { details: "fuel exhausted" });
                 }
-                match Heap.alloc(layout) {
+                match Global.alloc(layout) {
                     ok @ Ok(_) => { self.fuel -= size; ok }
                     err @ Err(_) => err,
                 }
             }
             unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-                Heap.dealloc(ptr, layout)
+                Global.dealloc(ptr, layout)
             }
         }
 

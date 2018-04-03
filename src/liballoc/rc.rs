@@ -250,7 +250,6 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::heap::{Alloc, Layout};
 use core::intrinsics::abort;
 use core::marker;
 use core::marker::{Unsize, PhantomData};
@@ -260,7 +259,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 
-use heap::{Heap, box_free};
+use alloc::{Global, Alloc, Layout, box_free};
 use string::String;
 use vec::Vec;
 
@@ -668,8 +667,8 @@ impl<T: ?Sized> Rc<T> {
 
         let layout = Layout::for_value(&*fake_ptr);
 
-        let mem = Heap.alloc(layout)
-            .unwrap_or_else(|e| Heap.oom(e));
+        let mem = Global.alloc(layout)
+            .unwrap_or_else(|e| Global.oom(e));
 
         // Initialize the real RcBox
         let inner = set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>;
@@ -752,7 +751,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Heap.dealloc(self.mem, self.layout.clone());
+                    Global.dealloc(self.mem, self.layout.clone());
                 }
             }
         }
@@ -847,7 +846,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
+                    Global.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
                 }
             }
         }
@@ -1273,7 +1272,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
+                Global.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
             }
         }
     }

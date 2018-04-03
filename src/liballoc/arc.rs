@@ -21,7 +21,6 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
-use core::heap::{Alloc, Layout};
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val, uninitialized};
 use core::ops::Deref;
@@ -32,7 +31,7 @@ use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
 
-use heap::{Heap, box_free};
+use alloc::{Global, Alloc, Layout, box_free};
 use boxed::Box;
 use string::String;
 use vec::Vec;
@@ -521,7 +520,7 @@ impl<T: ?Sized> Arc<T> {
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+            Global.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
         }
     }
 
@@ -555,8 +554,8 @@ impl<T: ?Sized> Arc<T> {
 
         let layout = Layout::for_value(&*fake_ptr);
 
-        let mem = Heap.alloc(layout)
-            .unwrap_or_else(|e| Heap.oom(e));
+        let mem = Global.alloc(layout)
+            .unwrap_or_else(|e| Global.oom(e));
 
         // Initialize the real ArcInner
         let inner = set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>;
@@ -640,7 +639,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Heap.dealloc(self.mem, self.layout.clone());
+                    Global.dealloc(self.mem, self.layout.clone());
                 }
             }
         }
@@ -1161,7 +1160,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
             unsafe {
-                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+                Global.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
             }
         }
     }

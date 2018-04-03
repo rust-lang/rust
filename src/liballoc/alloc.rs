@@ -81,8 +81,12 @@ pub struct Global;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
-pub use self::Global as Heap;
+pub type Heap = Global;
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
+#[allow(non_upper_case_globals)]
+pub const Heap: Global = Global;
 
 unsafe impl Alloc for Global {
     #[inline]
@@ -268,7 +272,7 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;
-    use heap::{Global, Alloc, Layout};
+    use alloc::{Global, Alloc, Layout};
 
     #[test]
     fn allocate_zeroed() {

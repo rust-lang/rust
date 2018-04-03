@@ -41,14 +41,13 @@
 // - A node of length `n` has `n` keys, `n` values, and (in an internal node) `n + 1` edges.
 //   This implies that even an empty internal node has at least one edge.
 
-use core::heap::{Alloc, Layout};
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
+use alloc::{Global, Alloc, Layout};
 use boxed::Box;
-use heap::Heap;
 
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
@@ -250,7 +249,7 @@ impl<K, V> Root<K, V> {
         self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
-            Heap.dealloc(top, Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(top, Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -436,7 +435,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     > {
         let ptr = self.as_leaf() as *const LeafNode<K, V> as *const u8 as *mut u8;
         let ret = self.ascend().ok();
-        Heap.dealloc(ptr, Layout::new::<LeafNode<K, V>>());
+        Global.dealloc(ptr, Layout::new::<LeafNode<K, V>>());
         ret
     }
 }
@@ -457,7 +456,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     > {
         let ptr = self.as_internal() as *const InternalNode<K, V> as *const u8 as *mut u8;
         let ret = self.ascend().ok();
-        Heap.dealloc(ptr, Layout::new::<InternalNode<K, V>>());
+        Global.dealloc(ptr, Layout::new::<InternalNode<K, V>>());
         ret
     }
 }
@@ -1239,12 +1238,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     ).correct_parent_link();
                 }
 
-                Heap.dealloc(
+                Global.dealloc(
                     right_node.node.as_ptr() as *mut u8,
                     Layout::new::<InternalNode<K, V>>(),
                 );
             } else {
-                Heap.dealloc(
+                Global.dealloc(
                     right_node.node.as_ptr() as *mut u8,
                     Layout::new::<LeafNode<K, V>>(),
                 );

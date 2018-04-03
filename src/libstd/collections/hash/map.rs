@@ -11,13 +11,13 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
+use alloc::{Global, Alloc, CollectionAllocErr};
 use cell::Cell;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
 #[allow(deprecated)]
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
-use heap::{Heap, Alloc, CollectionAllocErr};
 use iter::{FromIterator, FusedIterator};
 use mem::{self, replace};
 use ops::{Deref, Index};
@@ -784,7 +784,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn reserve(&mut self, additional: usize) {
         match self.try_reserve(additional) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(e)) => Heap.oom(e),
+            Err(CollectionAllocErr::AllocErr(e)) => Global.oom(e),
             Ok(()) => { /* yay */ }
          }
     }
