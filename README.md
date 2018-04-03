@@ -41,6 +41,14 @@ to run on a cargo project in the current working directory:
 cargo fmt
 ```
 
+For the latest and greatest `rustfmt` (nightly required):
+```
+rustup component add rustfmt-preview --toolchain nightly
+```
+To run:
+```
+cargo +nightly fmt
+```
 
 ## Limitations
 
