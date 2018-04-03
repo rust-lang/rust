@@ -325,6 +325,9 @@ declare_keywords! {
     (37, Use,                "use")
     (38, Where,              "where")
     (39, While,              "while")
+    // edition-gated used keywords go here
+    // be sure to update is_used_keyword and
+    // is_future_edition_keyword_* below
 
     // Keywords reserved for future use.
     (40, Abstract,           "abstract")
@@ -343,17 +346,45 @@ declare_keywords! {
     (53, Unsized,            "unsized")
     (54, Virtual,            "virtual")
     (55, Yield,              "yield")
+    // edition-gated reserved keywords
+    // be sure to update is_unused_keyword and
+    // is_future_edition_keyword_* below
+    (56, Async,              "async") // Rust 2018+ only
 
     // Special lifetime names
-    (56, UnderscoreLifetime, "'_")
-    (57, StaticLifetime,     "'static")
+    (57, UnderscoreLifetime, "'_")
+    (58, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (58, Auto,               "auto")
-    (59, Catch,              "catch")
-    (60, Default,            "default")
-    (61, Dyn,                "dyn")
-    (62, Union,              "union")
+    (59, Auto,               "auto")
+    (60, Catch,              "catch")
+    (61, Default,            "default")
+    (62, Dyn,                "dyn")
+    (63, Union,              "union")
+}
+
+// Returns true for reserved identifiers used internally for elided lifetimes,
+// unnamed method parameters, crate root module, error recovery etc.
+pub fn is_special_ident(id: Ident) -> bool {
+    id.name <= self::keywords::Underscore.name()
+}
+
+/// Returns `true` if the token is a keyword used in the language.
+pub fn is_used_keyword(id: Ident) -> bool {
+    id.name >= self::keywords::As.name() && id.name <= self::keywords::While.name()
+}
+
+/// Returns `true` if the token is a keyword reserved for possible future use.
+pub fn is_unused_keyword(id: Ident) -> bool {
+    id.name >= self::keywords::Abstract.name() && id.name <= self::keywords::Async.name()
+}
+
+pub fn is_future_edition_keyword_2015(sym: Symbol) -> bool {
+    sym == self::keywords::Async.name()
+}
+
+pub fn is_future_edition_keyword_2018(_: Symbol) -> bool {
+    false
 }
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.

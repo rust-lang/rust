@@ -1117,7 +1117,7 @@ impl<'a> StringReader<'a> {
         let c = self.ch;
 
         if ident_start(c) {
-            let (is_ident_start, is_raw_ident) =
+            let (is_ident_start, mut is_raw_ident) =
                 match (c.unwrap(), self.nextch(), self.nextnextch()) {
                     // r# followed by an identifier starter is a raw identifier.
                     // This is an exception to the r# case below.
@@ -1155,9 +1155,13 @@ impl<'a> StringReader<'a> {
                             &format!("`r#{}` is not currently supported.", ident.name)
                         ).raise();
                     }
+
                     if is_raw_ident {
                         let span = self.mk_sp(raw_start, self.pos);
                         self.sess.raw_identifier_spans.borrow_mut().push(span);
+                    } else if self.sess.edition.is_future_edition_keyword(ident.name) {
+                        // we pretend these are raw even if they aren't
+                        is_raw_ident = true;
                     }
                     token::Ident(ident, is_raw_ident)
                 }));

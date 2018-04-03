@@ -148,21 +148,7 @@ pub fn is_raw_guess(ident: ast::Ident) -> bool {
     is_reserved_ident(ident) && !is_path_segment_keyword(ident)
 }
 
-// Returns true for reserved identifiers used internally for elided lifetimes,
-// unnamed method parameters, crate root module, error recovery etc.
-pub fn is_special_ident(id: ast::Ident) -> bool {
-    id.name <= keywords::Underscore.name()
-}
-
-/// Returns `true` if the token is a keyword used in the language.
-pub fn is_used_keyword(id: ast::Ident) -> bool {
-    id.name >= keywords::As.name() && id.name <= keywords::While.name()
-}
-
-/// Returns `true` if the token is a keyword reserved for possible future use.
-pub fn is_unused_keyword(id: ast::Ident) -> bool {
-    id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name()
-}
+pub use syntax_pos::symbol::{is_special_ident, is_used_keyword, is_unused_keyword};
 
 /// Returns `true` if the token is either a special identifier or a keyword.
 pub fn is_reserved_ident(id: ast::Ident) -> bool {

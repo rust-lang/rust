@@ -10,6 +10,7 @@
 
 use std::fmt;
 use std::str::FromStr;
+use symbol::{self, Symbol};
 
 /// The edition of the compiler (RFC 2052)
 #[derive(Clone, Copy, Hash, PartialOrd, Ord, Eq, PartialEq, Debug)]
@@ -53,6 +54,13 @@ impl Edition {
         match *self {
             Edition::Edition2015 => "edition_2015",
             Edition::Edition2018 => "edition_2018",
+        }
+    }
+
+    pub fn is_future_edition_keyword(&self, sym: Symbol) -> bool {
+        match *self {
+            Edition::Edition2015 => symbol::is_future_edition_keyword_2015(sym),
+            Edition::Edition2018 => symbol::is_future_edition_keyword_2018(sym),
         }
     }
 
