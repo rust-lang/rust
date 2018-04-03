@@ -44,3 +44,18 @@ pub fn expect_print_expr(attr: TokenStream, item: TokenStream) -> TokenStream {
     assert_eq!(item.to_string(), "println!(\"{}\" , string)");
     item
 }
+
+#[proc_macro_attribute]
+pub fn no_output(attr: TokenStream, item: TokenStream) -> TokenStream {
+    assert!(attr.to_string().is_empty());
+    assert!(!item.to_string().is_empty());
+    "".parse().unwrap()
+
+}
+
+#[proc_macro_attribute]
+pub fn noop(attr: TokenStream, item: TokenStream) -> TokenStream {
+    assert!(attr.to_string().is_empty());
+    assert!(!item.to_string().is_empty());
+    item
+}
