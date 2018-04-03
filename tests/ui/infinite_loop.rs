@@ -55,6 +55,12 @@ fn immutable_condition() {
         }
     };
     c();
+
+    let mut tup = (0, 0);
+    while tup.0 < 5 {
+        tup.0 += 1;
+        println!("OK - tup.0 gets mutated")
+    }
 }
 
 fn unused_var() {
