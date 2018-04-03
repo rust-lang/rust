@@ -2508,7 +2508,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             sp: Span,
                             expr_sp: Span,
                             fn_inputs: &[Ty<'tcx>],
-                            expected_arg_tys: &[Ty<'tcx>],
+                            mut expected_arg_tys: &[Ty<'tcx>],
                             args: &'gcx [hir::Expr],
                             variadic: bool,
                             tuple_arguments: TupleArgumentsFlag,
@@ -2529,19 +2529,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.register_wf_obligation(fn_input_ty, sp, traits::MiscObligation);
         }
 
-        let mut expected_arg_tys = expected_arg_tys;
         let expected_arg_count = fn_inputs.len();
 
-        fn parameter_count_error<'tcx>(sess: &Session,
-                                       sp: Span,
-                                       expr_sp: Span,
-                                       expected_count: usize,
-                                       arg_count: usize,
-                                       error_code: &str,
-                                       variadic: bool,
-                                       def_span: Option<Span>,
-                                       sugg_unit: bool) {
-            let mut err = sess.struct_span_err_with_code(sp,
+        let param_count_error = |expected_count: usize,
+                                arg_count: usize,
+                                error_code: &str,
+                                variadic: bool,
+                                sugg_unit: bool| {
+            let mut err = tcx.sess.struct_span_err_with_code(sp,
                 &format!("this function takes {}{} parameter{} but {} parameter{} supplied",
                     if variadic {"at least "} else {""},
                     expected_count,
@@ -2550,11 +2545,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if arg_count == 1 {" was"} else {"s were"}),
                 DiagnosticId::Error(error_code.to_owned()));
 
-            if let Some(def_s) = def_span.map(|sp| sess.codemap().def_span(sp)) {
+            if let Some(def_s) = def_span.map(|sp| tcx.sess.codemap().def_span(sp)) {
                 err.span_label(def_s, "defined here");
             }
             if sugg_unit {
-                let sugg_span = sess.codemap().end_point(expr_sp);
+                let sugg_span = tcx.sess.codemap().end_point(expr_sp);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(
@@ -2568,14 +2563,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             if expected_count == 1 {""} else {"s"}));
             }
             err.emit();
-        }
+        };
 
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
                 ty::TyTuple(arg_types) if arg_types.len() != args.len() => {
-                    parameter_count_error(tcx.sess, sp, expr_sp, arg_types.len(), args.len(),
-                                          "E0057", false, def_span, false);
+                    param_count_error(arg_types.len(), args.len(), "E0057", false, false);
                     expected_arg_tys = &[];
                     self.err_args(args.len())
                 }
@@ -2603,8 +2597,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if supplied_arg_count >= expected_arg_count {
                 fn_inputs.to_vec()
             } else {
-                parameter_count_error(tcx.sess, sp, expr_sp, expected_arg_count,
-                                      supplied_arg_count, "E0060", true, def_span, false);
+                param_count_error(expected_arg_count, supplied_arg_count, "E0060", true, false);
                 expected_arg_tys = &[];
                 self.err_args(supplied_arg_count)
             }
@@ -2617,10 +2610,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 false
             };
-            parameter_count_error(tcx.sess, sp, expr_sp, expected_arg_count,
-                                  supplied_arg_count, "E0061", false, def_span, sugg_unit);
+            param_count_error(expected_arg_count, supplied_arg_count, "E0061", false, sugg_unit);
+
             expected_arg_tys = &[];
             self.err_args(supplied_arg_count)
+        };
+        // If there is no expectation, expect formal_tys.
+        let expected_arg_tys = if !expected_arg_tys.is_empty() {
+            expected_arg_tys
+        } else {
+            &formal_tys
         };
 
         debug!("check_argument_types: formal_tys={:?}",
@@ -2673,23 +2672,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
-                let expected = expected_arg_tys.get(i).map(|&ty| {
-                    Expectation::rvalue_hint(self, ty)
-                });
+                let expected = Expectation::rvalue_hint(self, expected_arg_tys[i]);
 
-                let checked_ty = self.check_expr_with_expectation(
-                    &arg,
-                    expected.unwrap_or(ExpectHasType(formal_ty)));
+                let checked_ty = self.check_expr_with_expectation(&arg, expected);
 
                 // 2. Coerce to the most detailed type that could be coerced
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
-                let coerce_ty = expected.and_then(|e| e.only_has_type(self));
-                self.demand_coerce(&arg, checked_ty, coerce_ty.unwrap_or(formal_ty));
+                let coerce_ty = expected.only_has_type(self).unwrap_or(formal_ty);
+                self.demand_coerce(&arg, checked_ty, coerce_ty);
 
                 // 3. Relate the expected type and the formal one,
                 //    if the expected type was used for the coercion.
-                coerce_ty.map(|ty| self.demand_suptype(arg.span, formal_ty, ty));
+                self.demand_suptype(arg.span, formal_ty, coerce_ty);
             }
         }
 
@@ -2835,18 +2830,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_coercable_to_type(&self,
                                     expr: &'gcx hir::Expr,
                                     expected: Ty<'tcx>) -> Ty<'tcx> {
-        self.check_expr_coercable_to_type_with_needs(expr, expected, Needs::None)
-    }
-
-    fn check_expr_coercable_to_type_with_needs(&self,
-                                               expr: &'gcx hir::Expr,
-                                               expected: Ty<'tcx>,
-                                               needs: Needs)
-                                               -> Ty<'tcx> {
-        let ty = self.check_expr_with_expectation_and_needs(
-            expr,
-            ExpectHasType(expected),
-            needs);
+        let ty = self.check_expr_with_hint(expr, expected);
         self.demand_coerce(expr, ty, expected)
     }
 
@@ -2895,45 +2879,47 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            formal_args: &[Ty<'tcx>])
                                            -> Vec<Ty<'tcx>> {
         let formal_ret = self.resolve_type_vars_with_obligations(formal_ret);
-        let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
-            self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
-                // Attempt to apply a subtyping relationship between the formal
-                // return type (likely containing type variables if the function
-                // is polymorphic) and the expected return type.
-                // No argument expectations are produced if unification fails.
-                let origin = self.misc(call_span);
-                let ures = self.at(&origin, self.param_env).sup(ret_ty, &formal_ret);
+        let ret_ty = match expected_ret.only_has_type(self) {
+            Some(ret) => ret,
+            None => return Vec::new()
+        };
+        let expect_args = self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
+            // Attempt to apply a subtyping relationship between the formal
+            // return type (likely containing type variables if the function
+            // is polymorphic) and the expected return type.
+            // No argument expectations are produced if unification fails.
+            let origin = self.misc(call_span);
+            let ures = self.at(&origin, self.param_env).sup(ret_ty, &formal_ret);
 
-                // FIXME(#27336) can't use ? here, Try::from_error doesn't default
-                // to identity so the resulting type is not constrained.
-                match ures {
-                    Ok(ok) => {
-                        // Process any obligations locally as much as
-                        // we can.  We don't care if some things turn
-                        // out unconstrained or ambiguous, as we're
-                        // just trying to get hints here.
-                        self.save_and_restore_in_snapshot_flag(|_| {
-                            let mut fulfill = TraitEngine::new(self.tcx);
-                            for obligation in ok.obligations {
-                                fulfill.register_predicate_obligation(self, obligation);
-                            }
-                            fulfill.select_where_possible(self)
-                        }).map_err(|_| ())?;
-                    }
-                    Err(_) => return Err(()),
+            // FIXME(#27336) can't use ? here, Try::from_error doesn't default
+            // to identity so the resulting type is not constrained.
+            match ures {
+                Ok(ok) => {
+                    // Process any obligations locally as much as
+                    // we can.  We don't care if some things turn
+                    // out unconstrained or ambiguous, as we're
+                    // just trying to get hints here.
+                    self.save_and_restore_in_snapshot_flag(|_| {
+                        let mut fulfill = TraitEngine::new(self.tcx);
+                        for obligation in ok.obligations {
+                            fulfill.register_predicate_obligation(self, obligation);
+                        }
+                        fulfill.select_where_possible(self)
+                    }).map_err(|_| ())?;
                 }
+                Err(_) => return Err(()),
+            }
 
-                // Record all the argument types, with the substitutions
-                // produced from the above subtyping unification.
-                Ok(formal_args.iter().map(|ty| {
-                    self.resolve_type_vars_if_possible(ty)
-                }).collect())
-            }).ok()
-        }).unwrap_or(vec![]);
+            // Record all the argument types, with the substitutions
+            // produced from the above subtyping unification.
+            Ok(formal_args.iter().map(|ty| {
+                self.resolve_type_vars_if_possible(ty)
+            }).collect())
+        }).unwrap_or(Vec::new());
         debug!("expected_inputs_for_expected_output(formal={:?} -> {:?}, expected={:?} -> {:?})",
                formal_args, formal_ret,
-               expected_args, expected_ret);
-        expected_args
+               expect_args, expected_ret);
+        expect_args
     }
 
     // Checks a method call.

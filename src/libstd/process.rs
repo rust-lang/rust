@@ -1426,7 +1426,7 @@ pub fn abort() -> ! {
 /// ```
 ///
 ///
-#[stable(feature = "getpid", since = "1.27.0")]
+#[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
     ::sys::os::getpid()
 }
