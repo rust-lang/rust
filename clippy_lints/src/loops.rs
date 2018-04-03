@@ -2237,7 +2237,7 @@ struct MutVarsDelegate {
 }
 
 impl<'tcx> MutVarsDelegate {
-    fn update(&mut self, cat: &'tcx Categorization, sp: Span) {
+    fn update(&mut self, cat: &'tcx Categorization) {
         match *cat {
             Categorization::Local(id) =>
                 if let Some(used) = self.used_mutably.get_mut(&id) {
@@ -2249,7 +2249,7 @@ impl<'tcx> MutVarsDelegate {
                 //`while`-body, not just the ones in the condition.
                 self.skip = true
             },
-            Categorization::Deref(ref cmt, _) => self.update(&cmt.cat, sp),
+            Categorization::Deref(ref cmt, _) | Categorization::Interior(ref cmt, _) => self.update(&cmt.cat),
             _ => {}
         }
     }
@@ -2263,14 +2263,14 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 
     fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
-            self.update(&cmt.cat, sp)
+            self.update(&cmt.cat)
         }
     }
 
-    fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
-        self.update(&cmt.cat, sp)
+    fn mutate(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: MutateMode) {
+        self.update(&cmt.cat)
     }
 
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}

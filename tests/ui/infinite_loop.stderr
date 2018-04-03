@@ -19,39 +19,39 @@ error: Variable in the condition are not mutated in the loop body. This either l
    |           ^^^^^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:64:11
+  --> $DIR/infinite_loop.rs:70:11
    |
-64 |     while i < 3 {
+70 |     while i < 3 {
    |           ^^^^^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:69:11
+  --> $DIR/infinite_loop.rs:75:11
    |
-69 |     while i < 3 && j > 0 {
+75 |     while i < 3 && j > 0 {
    |           ^^^^^^^^^^^^^^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:73:11
+  --> $DIR/infinite_loop.rs:79:11
    |
-73 |     while i < 3 {
+79 |     while i < 3 {
    |           ^^^^^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:88:11
+  --> $DIR/infinite_loop.rs:94:11
    |
-88 |     while i < 3 {
+94 |     while i < 3 {
    |           ^^^^^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
-  --> $DIR/infinite_loop.rs:93:11
+  --> $DIR/infinite_loop.rs:99:11
    |
-93 |     while i < 3 {
+99 |     while i < 3 {
    |           ^^^^^
 
 error: Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.
-   --> $DIR/infinite_loop.rs:156:15
+   --> $DIR/infinite_loop.rs:162:15
     |
-156 |         while self.count < n {
+162 |         while self.count < n {
     |               ^^^^^^^^^^^^^^
 
 error: aborting due to 9 previous errors
