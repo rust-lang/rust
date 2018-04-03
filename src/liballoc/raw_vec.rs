@@ -760,7 +760,7 @@ mod tests {
             unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
                 let size = layout.size();
                 if size > self.fuel {
-                    return Err(AllocErr::Unsupported { details: "fuel exhausted" });
+                    return Err(AllocErr);
                 }
                 match Global.alloc(layout) {
                     ok @ Ok(_) => { self.fuel -= size; ok }

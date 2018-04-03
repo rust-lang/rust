@@ -16,7 +16,7 @@
             issue = "32838")]
 
 use core::intrinsics::{min_align_of_val, size_of_val};
-use core::mem::{self, ManuallyDrop};
+use core::mem;
 use core::usize;
 
 #[doc(inline)]
@@ -86,12 +86,12 @@ pub const Heap: Global = Global;
 unsafe impl Alloc for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
+        let mut err = AllocErr;
         let ptr = __rust_alloc(layout.size(),
                                layout.align(),
-                               &mut *err as *mut AllocErr as *mut u8);
+                               &mut err as *mut AllocErr as *mut u8);
         if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
+            Err(AllocErr)
         } else {
             Ok(ptr)
         }
@@ -129,15 +129,15 @@ unsafe impl Alloc for Global {
                       new_layout: Layout)
                       -> Result<*mut u8, AllocErr>
     {
-        let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
+        let mut err = AllocErr;
         let ptr = __rust_realloc(ptr,
                                  layout.size(),
                                  layout.align(),
                                  new_layout.size(),
                                  new_layout.align(),
-                                 &mut *err as *mut AllocErr as *mut u8);
+                                 &mut err as *mut AllocErr as *mut u8);
         if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
+            Err(AllocErr)
         } else {
             mem::forget(err);
             Ok(ptr)
@@ -146,12 +146,12 @@ unsafe impl Alloc for Global {
 
     #[inline]
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
+        let mut err = AllocErr;
         let ptr = __rust_alloc_zeroed(layout.size(),
                                       layout.align(),
-                                      &mut *err as *mut AllocErr as *mut u8);
+                                      &mut err as *mut AllocErr as *mut u8);
         if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
+            Err(AllocErr)
         } else {
             Ok(ptr)
         }
@@ -159,14 +159,14 @@ unsafe impl Alloc for Global {
 
     #[inline]
     unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
-        let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
+        let mut err = AllocErr;
         let mut size = 0;
         let ptr = __rust_alloc_excess(layout.size(),
                                       layout.align(),
                                       &mut size,
-                                      &mut *err as *mut AllocErr as *mut u8);
+                                      &mut err as *mut AllocErr as *mut u8);
         if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
+            Err(AllocErr)
         } else {
             Ok(Excess(ptr, size))
         }
@@ -177,7 +177,7 @@ unsafe impl Alloc for Global {
                              ptr: *mut u8,
                              layout: Layout,
                              new_layout: Layout) -> Result<Excess, AllocErr> {
-        let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
+        let mut err = AllocErr;
         let mut size = 0;
         let ptr = __rust_realloc_excess(ptr,
                                         layout.size(),
@@ -185,9 +185,9 @@ unsafe impl Alloc for Global {
                                         new_layout.size(),
                                         new_layout.align(),
                                         &mut size,
-                                        &mut *err as *mut AllocErr as *mut u8);
+                                        &mut err as *mut AllocErr as *mut u8);
         if ptr.is_null() {
-            Err(ManuallyDrop::into_inner(err))
+            Err(AllocErr)
         } else {
             Ok(Excess(ptr, size))
         }

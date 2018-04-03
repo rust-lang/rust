@@ -30,8 +30,6 @@ extern crate libc;
 pub use contents::*;
 #[cfg(not(dummy_jemalloc))]
 mod contents {
-    use core::ptr;
-
     use core::alloc::{Alloc, AllocErr, Layout};
     use alloc_system::System;
     use libc::{c_int, c_void, size_t};
@@ -106,14 +104,9 @@ mod contents {
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_alloc(size: usize,
                                      align: usize,
-                                     err: *mut u8) -> *mut u8 {
+                                     _err: *mut u8) -> *mut u8 {
         let flags = align_to_flags(align, size);
         let ptr = mallocx(size as size_t, flags) as *mut u8;
-        if ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(size, align);
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Exhausted { request: layout });
-        }
         ptr
     }
 
@@ -155,20 +148,13 @@ mod contents {
                                        old_align: usize,
                                        new_size: usize,
                                        new_align: usize,
-                                       err: *mut u8) -> *mut u8 {
+                                       _err: *mut u8) -> *mut u8 {
         if new_align != old_align {
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Unsupported { details: "can't change alignments" });
             return 0 as *mut u8
         }
 
         let flags = align_to_flags(new_align, new_size);
         let ptr = rallocx(ptr as *mut c_void, new_size, flags) as *mut u8;
-        if ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(new_size, new_align);
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Exhausted { request: layout });
-        }
         ptr
     }
 
@@ -176,18 +162,13 @@ mod contents {
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_alloc_zeroed(size: usize,
                                             align: usize,
-                                            err: *mut u8) -> *mut u8 {
+                                            _err: *mut u8) -> *mut u8 {
         let ptr = if align <= MIN_ALIGN && align <= size {
             calloc(size as size_t, 1) as *mut u8
         } else {
             let flags = align_to_flags(align, size) | MALLOCX_ZERO;
             mallocx(size as size_t, flags) as *mut u8
         };
-        if ptr.is_null() {
-            let layout = Layout::from_size_align_unchecked(size, align);
-            ptr::write(err as *mut AllocErr,
-                       AllocErr::Exhausted { request: layout });
-        }
         ptr
     }
 

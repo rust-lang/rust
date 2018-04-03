@@ -21,9 +21,7 @@
 #[doc(hidden)]
 #[allow(unused_attributes)]
 pub mod __default_lib_allocator {
-    use super::{System, Layout, Alloc, AllocErr};
-    use ptr;
-
+    use super::{System, Layout, Alloc, AllocErr, CannotReallocInPlace};
     // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
@@ -34,14 +32,11 @@ pub mod __default_lib_allocator {
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_alloc(size: usize,
                                      align: usize,
-                                     err: *mut u8) -> *mut u8 {
+                                     _err: *mut u8) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         match System.alloc(layout) {
             Ok(p) => p,
-            Err(e) => {
-                ptr::write(err as *mut AllocErr, e);
-                0 as *mut u8
-            }
+            Err(AllocErr) => 0 as *mut u8,
         }
     }
 
@@ -76,15 +71,12 @@ pub mod __default_lib_allocator {
                                        old_align: usize,
                                        new_size: usize,
                                        new_align: usize,
-                                       err: *mut u8) -> *mut u8 {
+                                       _err: *mut u8) -> *mut u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
         match System.realloc(ptr, old_layout, new_layout) {
             Ok(p) => p,
-            Err(e) => {
-                ptr::write(err as *mut AllocErr, e);
-                0 as *mut u8
-            }
+            Err(AllocErr) => 0 as *mut u8,
         }
     }
 
@@ -92,14 +84,11 @@ pub mod __default_lib_allocator {
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_alloc_zeroed(size: usize,
                                             align: usize,
-                                            err: *mut u8) -> *mut u8 {
+                                            _err: *mut u8) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         match System.alloc_zeroed(layout) {
             Ok(p) => p,
-            Err(e) => {
-                ptr::write(err as *mut AllocErr, e);
-                0 as *mut u8
-            }
+            Err(AllocErr) => 0 as *mut u8,
         }
     }
 
@@ -108,17 +97,14 @@ pub mod __default_lib_allocator {
     pub unsafe extern fn __rdl_alloc_excess(size: usize,
                                             align: usize,
                                             excess: *mut usize,
-                                            err: *mut u8) -> *mut u8 {
+                                            _err: *mut u8) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         match System.alloc_excess(layout) {
             Ok(p) => {
                 *excess = p.1;
                 p.0
             }
-            Err(e) => {
-                ptr::write(err as *mut AllocErr, e);
-                0 as *mut u8
-            }
+            Err(AllocErr) => 0 as *mut u8,
         }
     }
 
@@ -130,7 +116,7 @@ pub mod __default_lib_allocator {
                                               new_size: usize,
                                               new_align: usize,
                                               excess: *mut usize,
-                                              err: *mut u8) -> *mut u8 {
+                                              _err: *mut u8) -> *mut u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
         match System.realloc_excess(ptr, old_layout, new_layout) {
@@ -138,10 +124,7 @@ pub mod __default_lib_allocator {
                 *excess = p.1;
                 p.0
             }
-            Err(e) => {
-                ptr::write(err as *mut AllocErr, e);
-                0 as *mut u8
-            }
+            Err(AllocErr) => 0 as *mut u8,
         }
     }
 
@@ -156,7 +139,7 @@ pub mod __default_lib_allocator {
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
         match System.grow_in_place(ptr, old_layout, new_layout) {
             Ok(()) => 1,
-            Err(_) => 0,
+            Err(CannotReallocInPlace) => 0,
         }
     }
 
@@ -171,7 +154,7 @@ pub mod __default_lib_allocator {
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
         match System.shrink_in_place(ptr, old_layout, new_layout) {
             Ok(()) => 1,
-            Err(_) => 0,
+            Err(CannotReallocInPlace) => 0,
         }
     }
 }

@@ -243,7 +243,7 @@ impl Error for ! {
            issue = "32838")]
 impl Error for AllocErr {
     fn description(&self) -> &str {
-        AllocErr::description(self)
+        "memory allocation failed"
     }
 }
 

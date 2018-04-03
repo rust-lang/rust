@@ -320,50 +320,12 @@ impl Layout {
 /// something wrong when combining the given input arguments with this
 /// allocator.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum AllocErr {
-    /// Error due to hitting some resource limit or otherwise running
-    /// out of memory. This condition strongly implies that *some*
-    /// series of deallocations would allow a subsequent reissuing of
-    /// the original allocation request to succeed.
-    Exhausted { request: Layout },
-
-    /// Error due to allocator being fundamentally incapable of
-    /// satisfying the original request. This condition implies that
-    /// such an allocation request will never succeed on the given
-    /// allocator, regardless of environment, memory pressure, or
-    /// other contextual conditions.
-    ///
-    /// For example, an allocator that does not support requests for
-    /// large memory blocks might return this error variant.
-    Unsupported { details: &'static str },
-}
-
-impl AllocErr {
-    #[inline]
-    pub fn invalid_input(details: &'static str) -> Self {
-        AllocErr::Unsupported { details: details }
-    }
-    #[inline]
-    pub fn is_memory_exhausted(&self) -> bool {
-        if let AllocErr::Exhausted { .. } = *self { true } else { false }
-    }
-    #[inline]
-    pub fn is_request_unsupported(&self) -> bool {
-        if let AllocErr::Unsupported { .. } = *self { true } else { false }
-    }
-    #[inline]
-    pub fn description(&self) -> &str {
-        match *self {
-            AllocErr::Exhausted { .. } => "allocator memory exhausted",
-            AllocErr::Unsupported { .. } => "unsupported allocator request",
-        }
-    }
-}
+pub struct AllocErr;
 
 // (we need this for downstream impl of trait Error)
 impl fmt::Display for AllocErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
+        f.write_str("memory allocation failed")
     }
 }
 
@@ -592,12 +554,8 @@ pub unsafe trait Alloc {
     /// aborting.
     ///
     /// `oom` is meant to be used by clients unable to cope with an
-    /// unsatisfied allocation request (signaled by an error such as
-    /// `AllocErr::Exhausted`), and wish to abandon computation rather
-    /// than attempt to recover locally. Such clients should pass the
-    /// signaling error value back into `oom`, where the allocator
-    /// may incorporate that error value into its diagnostic report
-    /// before aborting.
+    /// unsatisfied allocation request, and wish to abandon
+    /// computation rather than attempt to recover locally.
     ///
     /// Implementations of the `oom` method are discouraged from
     /// infinitely regressing in nested calls to `oom`. In
@@ -963,7 +921,7 @@ pub unsafe trait Alloc {
         if k.size() > 0 {
             unsafe { self.alloc(k).map(|p| NonNull::new_unchecked(p as *mut T)) }
         } else {
-            Err(AllocErr::invalid_input("zero-sized type invalid for alloc_one"))
+            Err(AllocErr)
         }
     }
 
@@ -1036,7 +994,7 @@ pub unsafe trait Alloc {
                         })
                 }
             }
-            _ => Err(AllocErr::invalid_input("invalid layout for alloc_array")),
+            _ => Err(AllocErr),
         }
     }
 
@@ -1084,7 +1042,7 @@ pub unsafe trait Alloc {
                     .map(|p| NonNull::new_unchecked(p as *mut T))
             }
             _ => {
-                Err(AllocErr::invalid_input("invalid layout for realloc_array"))
+                Err(AllocErr)
             }
         }
     }
@@ -1118,7 +1076,7 @@ pub unsafe trait Alloc {
                 Ok(self.dealloc(raw_ptr, k.clone()))
             }
             _ => {
-                Err(AllocErr::invalid_input("invalid layout for dealloc_array"))
+                Err(AllocErr)
             }
         }
     }
