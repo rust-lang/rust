@@ -157,6 +157,7 @@ impl Decodable for Symbol {
 }
 
 impl PartialEq<InternedString> for Symbol {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         // Compare pointers
         self.as_str() == *other
@@ -370,8 +371,17 @@ impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::co
 }
 
 impl ::std::cmp::PartialEq<InternedString> for InternedString {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         self.as_ptr() == other.as_ptr()
+    }
+}
+
+impl PartialEq<Symbol> for InternedString {
+    #[inline]
+    fn eq(&self, other: &Symbol) -> bool {
+        // Compare pointers
+        *self == other.as_str()
     }
 }
 
