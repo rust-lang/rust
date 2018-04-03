@@ -25,7 +25,7 @@ pub fn target() -> TargetResult {
         target_os: "l4re".to_string(),
         target_env: "uclibc".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Ld,
+        linker_flavor: LinkerFlavor::L4Bender,
         options: base,
     })
 }
