@@ -3,6 +3,12 @@
 - RFC PR: [rust-lang/rfcs#1228](https://github.com/rust-lang/rfcs/pull/1228)
 - Rust Issue: [rust-lang/rust#27779](https://github.com/rust-lang/rust/issues/27779)
 
+# This RFC has been **unapproved**
+
+For details see the [summary comment].
+
+[summary comment]: https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911
+
 # Summary
 
 Rather than trying to find a clever syntax for placement-new that leverages
