@@ -185,7 +185,11 @@ pub mod unicode;
 
 /* Heap memory allocator trait */
 #[allow(missing_docs)]
-pub mod heap;
+pub mod alloc;
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
+pub use alloc as heap;
 
 // note: does not need to be public
 mod iter_private;

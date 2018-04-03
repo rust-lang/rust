@@ -57,7 +57,7 @@
 //!
 //! ## Heap interfaces
 //!
-//! The [`heap`](heap/index.html) module defines the low-level interface to the
+//! The [`alloc`](alloc/index.html) module defines the low-level interface to the
 //! default global allocator. It is not compatible with the libc allocator API.
 
 #![allow(unused_attributes)]
@@ -145,7 +145,11 @@ pub use core::heap as allocator;
 
 // Heaps provided for low-level allocation strategies
 
-pub mod heap;
+pub mod alloc;
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
+pub use alloc as heap;
 
 // Primitive types using the heaps above
 
