@@ -352,6 +352,10 @@ impl<'a, 'tcx, M: Machine<'tcx>> Memory<'a, 'tcx, M> {
             .ok_or(EvalErrorKind::ExecuteMemory.into())
     }
 
+    pub fn get_alloc_kind(&self, id: AllocId) -> Option<MemoryKind<M::MemoryKinds>> {
+        self.alloc_kind.get(&id).cloned()
+    }
+
     /// For debugging, print an allocation and all allocations it points to, recursively.
     pub fn dump_alloc(&self, id: AllocId) {
         self.dump_allocs(vec![id]);
