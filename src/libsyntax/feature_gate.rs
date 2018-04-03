@@ -231,9 +231,6 @@ declare_features! (
     // allow `repr(simd)`, and importing the various simd intrinsics
     (active, repr_simd, "1.4.0", Some(27731), None),
 
-    // Allows cfg(target_feature = "...").
-    (active, cfg_target_feature, "1.4.0", Some(29717), None),
-
     // allow `extern "platform-intrinsic" { ... }`
     (active, platform_intrinsics, "1.4.0", Some(27731), None),
 
@@ -292,9 +289,6 @@ declare_features! (
     (active, link_cfg, "1.14.0", Some(37406), None),
 
     (active, use_extern_macros, "1.15.0", Some(35896), None),
-
-    // Allows #[target_feature(...)]
-    (active, target_feature, "1.15.0", None, None),
 
     // `extern "ptx-*" fn()`
     (active, abi_ptx, "1.15.0", None, None),
@@ -574,6 +568,10 @@ declare_features! (
     (accepted, underscore_lifetimes, "1.26.0", Some(44524), None),
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (accepted, generic_param_attrs, "1.26.0", Some(48848), None),
+    // Allows cfg(target_feature = "...").
+    (accepted, cfg_target_feature, "1.27.0", Some(29717), None),
+    // Allows #[target_feature(...)]
+    (accepted, target_feature, "1.27.0", None, None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -918,10 +916,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "the `#[naked]` attribute \
                                   is an experimental feature",
                                  cfg_fn!(naked_functions))),
-    ("target_feature", Whitelisted, Gated(
-        Stability::Unstable, "target_feature",
-        "the `#[target_feature]` attribute is an experimental feature",
-        cfg_fn!(target_feature))),
+    ("target_feature", Normal, Ungated),
     ("export_name", Whitelisted, Ungated),
     ("inline", Whitelisted, Ungated),
     ("link", Whitelisted, Ungated),
@@ -1052,7 +1047,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
 // cfg(...)'s that are feature gated
 const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
-    ("target_feature", "cfg_target_feature", cfg_fn!(cfg_target_feature)),
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
     ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
