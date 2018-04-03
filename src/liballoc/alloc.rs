@@ -77,9 +77,14 @@ extern "Rust" {
 }
 
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Heap;
+pub struct Global;
 
-unsafe impl Alloc for Heap {
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[rustc_deprecated(since = "1.27.0", reason = "type renamed to `Global`")]
+pub use self::Global as Heap;
+
+
+unsafe impl Alloc for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
         let mut err = ManuallyDrop::new(mem::uninitialized::<AllocErr>());
@@ -240,8 +245,8 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Heap.alloc(layout).unwrap_or_else(|err| {
-            Heap.oom(err)
+        Global.alloc(layout).unwrap_or_else(|err| {
+            Global.oom(err)
         })
     }
 }
@@ -254,7 +259,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Heap.dealloc(ptr as *mut u8, layout);
+        Global.dealloc(ptr as *mut u8, layout);
     }
 }
 
@@ -263,14 +268,14 @@ mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;
-    use heap::{Heap, Alloc, Layout};
+    use heap::{Global, Alloc, Layout};
 
     #[test]
     fn allocate_zeroed() {
         unsafe {
             let layout = Layout::from_size_align(1024, 1).unwrap();
-            let ptr = Heap.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|e| Heap.oom(e));
+            let ptr = Global.alloc_zeroed(layout.clone())
+                .unwrap_or_else(|e| Global.oom(e));
 
             let end = ptr.offset(layout.size() as isize);
             let mut i = ptr;
@@ -278,7 +283,7 @@ mod tests {
                 assert_eq!(*i, 0);
                 i = i.offset(1);
             }
-            Heap.dealloc(ptr, layout);
+            Global.dealloc(ptr, layout);
         }
     }
 
