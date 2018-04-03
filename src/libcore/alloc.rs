@@ -356,13 +356,13 @@ pub enum CollectionAllocErr {
     /// (usually `isize::MAX` bytes).
     CapacityOverflow,
     /// Error due to the allocator (see the `AllocErr` type's docs).
-    AllocErr(AllocErr),
+    AllocErr,
 }
 
 #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
 impl From<AllocErr> for CollectionAllocErr {
-    fn from(err: AllocErr) -> Self {
-        CollectionAllocErr::AllocErr(err)
+    fn from(AllocErr: AllocErr) -> Self {
+        CollectionAllocErr::AllocErr
     }
 }
 

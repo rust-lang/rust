@@ -772,7 +772,7 @@ impl<K, V> RawTable<K, V> {
     unsafe fn new_uninitialized(capacity: usize) -> RawTable<K, V> {
         match Self::try_new_uninitialized(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(_)) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
             Ok(table) => { table }
         }
     }
@@ -811,7 +811,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         match Self::try_new(capacity) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(_)) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
             Ok(table) => { table }
         }
     }

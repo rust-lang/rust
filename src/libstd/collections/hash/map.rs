@@ -784,7 +784,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn reserve(&mut self, additional: usize) {
         match self.try_reserve(additional) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr(_)) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => Global.oom(),
             Ok(()) => { /* yay */ }
          }
     }
@@ -3634,7 +3634,7 @@ mod test_map {
             if let Err(CapacityOverflow) = empty_bytes.try_reserve(max_no_ovf) {
             } else { panic!("isize::MAX + 1 should trigger a CapacityOverflow!") }
         } else {
-            if let Err(AllocErr(_)) = empty_bytes.try_reserve(max_no_ovf) {
+            if let Err(AllocErr) = empty_bytes.try_reserve(max_no_ovf) {
             } else { panic!("isize::MAX + 1 should trigger an OOM!") }
         }
     }

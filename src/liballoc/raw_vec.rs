@@ -444,7 +444,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve_exact(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.try_reserve_exact(used_cap, needed_extra_cap) {
             Err(CapacityOverflow) => panic!("capacity overflow"),
-            Err(AllocErr(_)) => self.a.oom(),
+            Err(AllocErr) => self.a.oom(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -554,7 +554,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.try_reserve(used_cap, needed_extra_cap) {
             Err(CapacityOverflow) => panic!("capacity overflow"),
-            Err(AllocErr(_)) => self.a.oom(),
+            Err(AllocErr) => self.a.oom(),
             Ok(()) => { /* yay */ }
          }
      }
