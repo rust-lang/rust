@@ -309,6 +309,7 @@ mod platform {
         let mut out = ptr::null_mut();
         let ret = libc::posix_memalign(&mut out, layout.align(), layout.size());
         if ret != 0 {
+            // FIXME: use Void::null_mut https://github.com/rust-lang/rust/issues/49659
             0 as *mut Void
         } else {
             out as *mut Void
