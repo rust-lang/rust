@@ -41,7 +41,7 @@ const MIN_ALIGN: usize = 8;
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
 
-use core::alloc::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout, Void};
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub struct System;
@@ -50,19 +50,17 @@ pub struct System;
 unsafe impl Alloc for System {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        Alloc::alloc(&mut &*self, layout)
+        GlobalAlloc::alloc(self, layout).into()
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout)
-        -> Result<*mut u8, AllocErr>
-    {
-        Alloc::alloc_zeroed(&mut &*self, layout)
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        GlobalAlloc::alloc_zeroed(self, layout).into()
     }
 
     #[inline]
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        Alloc::dealloc(&mut &*self, ptr, layout)
+        GlobalAlloc::dealloc(self, ptr as *mut Void, layout)
     }
 
     #[inline]
@@ -70,45 +68,44 @@ unsafe impl Alloc for System {
                       ptr: *mut u8,
                       old_layout: Layout,
                       new_size: usize) -> Result<*mut u8, AllocErr> {
-        Alloc::realloc(&mut &*self, ptr, old_layout, new_size)
+        GlobalAlloc::realloc(self, ptr as *mut Void, old_layout, new_size).into()
     }
 
+    #[inline]
     fn oom(&mut self) -> ! {
-        Alloc::oom(&mut &*self)
+        ::oom()
+    }
+}
+
+#[cfg(stage0)]
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl<'a> Alloc for &'a System {
+    #[inline]
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        GlobalAlloc::alloc(*self, layout).into()
     }
 
     #[inline]
-    fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-        Alloc::usable_size(&mut &*self, layout)
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        GlobalAlloc::alloc_zeroed(*self, layout).into()
     }
 
     #[inline]
-    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
-        Alloc::alloc_excess(&mut &*self, layout)
+    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+        GlobalAlloc::dealloc(*self, ptr as *mut Void, layout)
     }
 
     #[inline]
-    unsafe fn realloc_excess(&mut self,
-                             ptr: *mut u8,
-                             layout: Layout,
-                             new_size: usize) -> Result<Excess, AllocErr> {
-        Alloc::realloc_excess(&mut &*self, ptr, layout, new_size)
+    unsafe fn realloc(&mut self,
+                      ptr: *mut u8,
+                      old_layout: Layout,
+                      new_size: usize) -> Result<*mut u8, AllocErr> {
+        GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_size).into()
     }
 
     #[inline]
-    unsafe fn grow_in_place(&mut self,
-                            ptr: *mut u8,
-                            layout: Layout,
-                            new_size: usize) -> Result<(), CannotReallocInPlace> {
-        Alloc::grow_in_place(&mut &*self, ptr, layout, new_size)
-    }
-
-    #[inline]
-    unsafe fn shrink_in_place(&mut self,
-                              ptr: *mut u8,
-                              layout: Layout,
-                              new_size: usize) -> Result<(), CannotReallocInPlace> {
-        Alloc::shrink_in_place(&mut &*self, ptr, layout, new_size)
+    fn oom(&mut self) -> ! {
+        ::oom()
     }
 }
 
@@ -135,33 +132,6 @@ mod realloc_fallback {
     }
 }
 
-macro_rules! alloc_methods_based_on_global_alloc {
-    () => {
-        #[inline]
-        unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            GlobalAlloc::alloc(*self, layout).into()
-        }
-
-        #[inline]
-        unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            GlobalAlloc::alloc_zeroed(*self, layout).into()
-        }
-
-        #[inline]
-        unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-            GlobalAlloc::dealloc(*self, ptr as *mut Void, layout)
-        }
-
-        #[inline]
-        unsafe fn realloc(&mut self,
-                          ptr: *mut u8,
-                          old_layout: Layout,
-                          new_size: usize) -> Result<*mut u8, AllocErr> {
-            GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_size).into()
-        }
-    }
-}
-
 #[cfg(any(unix, target_os = "cloudabi", target_os = "redox"))]
 mod platform {
     extern crate libc;
@@ -170,7 +140,7 @@ mod platform {
 
     use MIN_ALIGN;
     use System;
-    use core::alloc::{GlobalAlloc, Alloc, AllocErr, Layout, Void};
+    use core::alloc::{GlobalAlloc, Layout, Void};
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl GlobalAlloc for System {
@@ -219,15 +189,6 @@ mod platform {
         }
     }
 
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    unsafe impl<'a> Alloc for &'a System {
-        alloc_methods_based_on_global_alloc!();
-
-        fn oom(&mut self) -> ! {
-            ::oom()
-        }
-    }
-
     #[cfg(any(target_os = "android", target_os = "redox", target_os = "solaris"))]
     #[inline]
     unsafe fn aligned_malloc(layout: &Layout) -> *mut Void {
@@ -270,7 +231,7 @@ mod platform {
 mod platform {
     use MIN_ALIGN;
     use System;
-    use core::alloc::{GlobalAlloc, Alloc, Void, AllocErr, Layout, CannotReallocInPlace};
+    use core::alloc::{GlobalAlloc, Void, Layout};
 
     type LPVOID = *mut u8;
     type HANDLE = LPVOID;
@@ -353,47 +314,6 @@ mod platform {
             }
         }
     }
-
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    unsafe impl<'a> Alloc for &'a System {
-        alloc_methods_based_on_global_alloc!();
-
-        #[inline]
-        unsafe fn grow_in_place(&mut self,
-                                ptr: *mut u8,
-                                layout: Layout,
-                                new_size: usize) -> Result<(), CannotReallocInPlace> {
-            self.shrink_in_place(ptr, layout, new_size)
-        }
-
-        #[inline]
-        unsafe fn shrink_in_place(&mut self,
-                                  ptr: *mut u8,
-                                  layout: Layout,
-                                  new_size: usize) -> Result<(), CannotReallocInPlace> {
-            let new = if layout.align() <= MIN_ALIGN {
-                HeapReAlloc(GetProcessHeap(),
-                            HEAP_REALLOC_IN_PLACE_ONLY,
-                            ptr as LPVOID,
-                            new_size)
-            } else {
-                let header = get_header(ptr);
-                HeapReAlloc(GetProcessHeap(),
-                            HEAP_REALLOC_IN_PLACE_ONLY,
-                            header.0 as LPVOID,
-                            new_size + layout.align())
-            };
-            if new.is_null() {
-                Err(CannotReallocInPlace)
-            } else {
-                Ok(())
-            }
-        }
-
-        fn oom(&mut self) -> ! {
-            ::oom()
-        }
-    }
 }
 
 // This is an implementation of a global allocator on the wasm32 platform when
@@ -417,7 +337,7 @@ mod platform {
 mod platform {
     extern crate dlmalloc;
 
-    use core::alloc::{GlobalAlloc, Alloc, AllocErr, Layout, Void};
+    use core::alloc::{GlobalAlloc, Layout, Void};
     use System;
 
     // No need for synchronization here as wasm is currently single-threaded
@@ -444,11 +364,6 @@ mod platform {
         unsafe fn realloc(&self, ptr: *mut Void, layout: Layout, new_size: usize) -> *mut Void {
             DLMALLOC.realloc(ptr as *mut u8, layout.size(), layout.align(), new_size) as *mut Void
         }
-    }
-
-    #[unstable(feature = "allocator_api", issue = "32838")]
-    unsafe impl<'a> Alloc for &'a System {
-        alloc_methods_based_on_global_alloc!();
     }
 }
 
