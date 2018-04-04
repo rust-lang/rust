@@ -145,10 +145,10 @@ pub fn std_cargo(build: &Builder,
     }
 
     if build.no_std(target) == Some(true) {
-        // for no-std targets we only compile core and compiler-builtins
-        cargo.arg("--features").arg("c mem")
-            .arg("--manifest-path")
-            .arg(build.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
+        // for no-std targets we compile a minimal nostd crate that only depends on crates that work
+        // without an OS
+        cargo.arg("--manifest-path")
+            .arg(build.src.join("src/libnostd/Cargo.toml"));
     } else {
         let mut features = build.std_features();
 

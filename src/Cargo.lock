@@ -1082,6 +1082,16 @@ version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "nostd"
+version = "0.0.0"
+dependencies = [
+ "alloc 0.0.0",
+ "compiler_builtins 0.0.0",
+ "core 0.0.0",
+ "std_unicode 0.0.0",
+]
+
+[[package]]
 name = "num"
 version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
