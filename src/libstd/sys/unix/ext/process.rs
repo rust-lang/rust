@@ -193,7 +193,7 @@ impl IntoRawFd for process::ChildStderr {
 }
 
 /// Returns the OS-assigned process identifier associated with this process's parent.
-#[unstable(feature = "unix_ppid", issue = "46104")]
+#[stable(feature = "unix_ppid", since = "1.27.0")]
 pub fn parent_id() -> u32 {
     ::sys::os::getppid()
 }
