@@ -136,13 +136,13 @@ define_maps! { <'tcx>
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
+    [] fn variances_of: ItemVariances(DefId) -> Lrc<[ty::Variance]>,
 
     /// Maps from def-id of a type to its (inferred) outlives.
     [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Vec<ty::Predicate<'tcx>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
-    [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<Vec<DefId>>,
+    [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<[DefId]>,
 
     /// Maps from a trait item to the trait item "descriptor"
     [] fn associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
@@ -256,7 +256,7 @@ define_maps! { <'tcx>
     [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Lrc<ItemLocalSet>,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
     [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
-                          -> Lrc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
+                          -> Lrc<[Option<(DefId, &'tcx Substs<'tcx>)>]>,
 
     [] fn trans_fulfill_obligation: fulfill_obligation_dep_node(
         (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> Vtable<'tcx, ()>,
@@ -283,7 +283,7 @@ define_maps! { <'tcx>
                                             ty::layout::LayoutError<'tcx>>,
 
     [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
-                                    -> Lrc<Vec<(CrateNum, LinkagePreference)>>,
+                                    -> Lrc<[(CrateNum, LinkagePreference)]>,
 
     [fatal_cycle] fn is_panic_runtime: IsPanicRuntime(CrateNum) -> bool,
     [fatal_cycle] fn is_compiler_builtins: IsCompilerBuiltins(CrateNum) -> bool,
@@ -298,7 +298,7 @@ define_maps! { <'tcx>
     [] fn specializes: specializes_node((DefId, DefId)) -> bool,
     [] fn in_scope_traits_map: InScopeTraits(DefIndex)
         -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<StableVec<TraitCandidate>>>>>,
-    [] fn module_exports: ModuleExports(DefId) -> Option<Lrc<Vec<Export>>>,
+    [] fn module_exports: ModuleExports(DefId) -> Option<Lrc<[Export]>>,
     [] fn lint_levels: lint_levels_node(CrateNum) -> Lrc<lint::LintLevelMap>,
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
@@ -329,9 +329,9 @@ define_maps! { <'tcx>
     [] fn upstream_monomorphizations_for: UpstreamMonomorphizationsFor(DefId)
         -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>,
 
-    [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
+    [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<[NativeLibrary]>,
 
-    [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
+    [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<[ForeignModule]>,
 
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
@@ -341,9 +341,9 @@ define_maps! { <'tcx>
     [] fn extra_filename: ExtraFileName(CrateNum) -> String,
 
     [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
-        -> Lrc<Vec<DefId>>,
+        -> Lrc<[DefId]>,
     [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
-        -> Lrc<Vec<DefId>>,
+        -> Lrc<[DefId]>,
 
     [] fn dllimport_foreign_items: DllimportForeignItems(CrateNum)
         -> Lrc<FxHashSet<DefId>>,
@@ -351,7 +351,7 @@ define_maps! { <'tcx>
     [] fn is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
     [] fn native_library_kind: NativeLibraryKind(DefId)
         -> Option<NativeLibraryKind>,
-    [] fn link_args: link_args_node(CrateNum) -> Lrc<Vec<String>>,
+    [] fn link_args: link_args_node(CrateNum) -> Lrc<[String]>,
 
     // Lifetime resolution. See `middle::resolve_lifetimes`.
     [] fn resolve_lifetimes: ResolveLifetimes(CrateNum) -> Lrc<ResolveLifetimes>,
@@ -360,31 +360,31 @@ define_maps! { <'tcx>
     [] fn is_late_bound_map: IsLateBound(DefIndex) ->
         Option<Lrc<FxHashSet<ItemLocalId>>>,
     [] fn object_lifetime_defaults_map: ObjectLifetimeDefaults(DefIndex)
-        -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>>,
+        -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<[ObjectLifetimeDefault]>>>>,
 
     [] fn visibility: Visibility(DefId) -> ty::Visibility,
     [] fn dep_kind: DepKind(CrateNum) -> DepKind,
     [] fn crate_name: CrateName(CrateNum) -> Symbol,
-    [] fn item_children: ItemChildren(DefId) -> Lrc<Vec<Export>>,
+    [] fn item_children: ItemChildren(DefId) -> Lrc<[Export]>,
     [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
     [] fn get_lang_items: get_lang_items_node(CrateNum) -> Lrc<LanguageItems>,
-    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Lrc<Vec<(DefId, usize)>>,
-    [] fn missing_lang_items: MissingLangItems(CrateNum) -> Lrc<Vec<LangItem>>,
+    [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Lrc<[(DefId, usize)]>,
+    [] fn missing_lang_items: MissingLangItems(CrateNum) -> Lrc<[LangItem]>,
     [] fn extern_const_body: ExternConstBody(DefId) -> ExternConstBody<'tcx>,
     [] fn visible_parent_map: visible_parent_map_node(CrateNum)
         -> Lrc<DefIdMap<DefId>>,
     [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
     [] fn used_crate_source: UsedCrateSource(CrateNum) -> Lrc<CrateSource>,
-    [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
+    [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Lrc<[CrateNum]>,
 
-    [] fn freevars: Freevars(DefId) -> Option<Lrc<Vec<hir::Freevar>>>,
+    [] fn freevars: Freevars(DefId) -> Option<Lrc<[hir::Freevar]>>,
     [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(DefId) -> bool,
     [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
-        -> Lrc<Vec<(DefId, Span)>>,
+        -> Lrc<[(DefId, Span)]>,
 
     [] fn stability_index: stability_index_node(CrateNum) -> Lrc<stability::Index<'tcx>>,
-    [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
+    [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<[CrateNum]>,
 
     [] fn exported_symbols: ExportedSymbols(CrateNum)
         -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>>,
@@ -435,9 +435,9 @@ define_maps! { <'tcx>
 
     [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
 
-    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<Clause<'tcx>>>,
+    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<[Clause<'tcx>]>,
 
-    [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
+    [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<[DefId]>,
     [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
         -> Lrc<FxHashMap<DefId, String>>,
 }

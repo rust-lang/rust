@@ -217,7 +217,7 @@ pub struct ResolveLifetimes {
     defs: FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Region>>>,
     late_bound: FxHashMap<LocalDefId, Lrc<FxHashSet<ItemLocalId>>>,
     object_lifetime_defaults:
-        FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>>,
+        FxHashMap<LocalDefId, Lrc<FxHashMap<ItemLocalId, Lrc<[ObjectLifetimeDefault]>>>>,
 }
 
 impl_stable_hash_for!(struct ::middle::resolve_lifetime::ResolveLifetimes {
@@ -406,7 +406,7 @@ fn resolve_lifetimes<'tcx>(
             .or_insert_with(|| Lrc::new(FxHashMap()));
         Lrc::get_mut(map)
             .unwrap()
-            .insert(hir_id.local_id, Lrc::new(v));
+            .insert(hir_id.local_id, Lrc::from(v));
     }
 
     Lrc::new(ResolveLifetimes {

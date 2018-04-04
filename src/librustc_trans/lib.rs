@@ -398,17 +398,17 @@ struct CrateInfo {
     profiler_runtime: Option<CrateNum>,
     sanitizer_runtime: Option<CrateNum>,
     is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
+    native_libraries: FxHashMap<CrateNum, Lrc<[NativeLibrary]>>,
     crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Lrc<Vec<NativeLibrary>>,
-    link_args: Lrc<Vec<String>>,
+    used_libraries: Lrc<[NativeLibrary]>,
+    link_args: Lrc<[String]>,
     used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     used_crates_static: Vec<(CrateNum, LibSource)>,
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
     wasm_custom_sections: BTreeMap<String, Vec<u8>>,
     wasm_imports: FxHashMap<String, String>,
     lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Lrc<Vec<LangItem>>>,
+    missing_lang_items: FxHashMap<CrateNum, Lrc<[LangItem]>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
