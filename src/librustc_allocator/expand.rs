@@ -231,6 +231,7 @@ impl<'a> AllocFnFactory<'a> {
             }
 
             AllocatorTy::ResultPtr |
+            AllocatorTy::Bang |
             AllocatorTy::Unit => {
                 panic!("can't convert AllocatorTy to an argument")
             }
@@ -246,6 +247,10 @@ impl<'a> AllocFnFactory<'a> {
 
                 let expr = self.cx.expr_cast(self.span, expr, self.ptr_u8());
                 (self.ptr_u8(), expr)
+            }
+
+            AllocatorTy::Bang => {
+                (self.cx.ty(self.span, TyKind::Never), expr)
             }
 
             AllocatorTy::Unit => {

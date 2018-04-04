@@ -43,11 +43,13 @@ pub(crate) unsafe fn trans(tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) 
                 AllocatorTy::Ptr => args.push(i8p),
                 AllocatorTy::Usize => args.push(usize),
 
+                AllocatorTy::Bang |
                 AllocatorTy::ResultPtr |
                 AllocatorTy::Unit => panic!("invalid allocator arg"),
             }
         }
         let output = match method.output {
+            AllocatorTy::Bang => None,
             AllocatorTy::ResultPtr => Some(i8p),
             AllocatorTy::Unit => None,
 

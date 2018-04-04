@@ -367,6 +367,7 @@ mod platform {
     }
 }
 
+#[inline]
 fn oom() -> ! {
     write_to_stderr("fatal runtime error: memory allocation failed");
     unsafe {
@@ -375,6 +376,7 @@ fn oom() -> ! {
 }
 
 #[cfg(any(unix, target_os = "redox"))]
+#[inline]
 fn write_to_stderr(s: &str) {
     extern crate libc;
 
@@ -386,6 +388,7 @@ fn write_to_stderr(s: &str) {
 }
 
 #[cfg(windows)]
+#[inline]
 fn write_to_stderr(s: &str) {
     use core::ptr;
 
@@ -421,4 +424,5 @@ fn write_to_stderr(s: &str) {
 }
 
 #[cfg(not(any(windows, unix, target_os = "redox")))]
+#[inline]
 fn write_to_stderr(_: &str) {}

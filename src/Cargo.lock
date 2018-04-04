@@ -19,6 +19,7 @@ dependencies = [
 name = "alloc_jemalloc"
 version = "0.0.0"
 dependencies = [
+ "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cc 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",

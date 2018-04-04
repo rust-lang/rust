@@ -438,6 +438,10 @@ pub unsafe trait GlobalAlloc {
         }
         new_ptr
     }
+
+    fn oom(&self) -> ! {
+        unsafe { ::intrinsics::abort() }
+    }
 }
 
 /// An implementation of `Alloc` can allocate, reallocate, and

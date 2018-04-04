@@ -97,6 +97,7 @@
 #![feature(from_ref)]
 #![feature(fundamental)]
 #![feature(lang_items)]
+#![feature(libc)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]

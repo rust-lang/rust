@@ -14,6 +14,7 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
+#![feature(alloc_system)]
 #![feature(libc)]
 #![feature(linkage)]
 #![feature(staged_api)]
@@ -22,12 +23,15 @@
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 #![rustc_alloc_kind = "exe"]
 
+extern crate alloc_system;
 extern crate libc;
 
 #[cfg(not(dummy_jemalloc))]
 pub use contents::*;
 #[cfg(not(dummy_jemalloc))]
 mod contents {
+    use core::alloc::GlobalAlloc;
+    use alloc_system::System;
     use libc::{c_int, c_void, size_t};
 
     // Note that the symbols here are prefixed by default on macOS and Windows (we
@@ -94,6 +98,12 @@ mod contents {
         let flags = align_to_flags(align, size);
         let ptr = mallocx(size as size_t, flags) as *mut u8;
         ptr
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rde_oom() -> ! {
+        System.oom()
     }
 
     #[no_mangle]

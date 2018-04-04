@@ -24,6 +24,11 @@ pub static ALLOCATOR_METHODS: &[AllocatorMethod] = &[
         output: AllocatorTy::ResultPtr,
     },
     AllocatorMethod {
+        name: "oom",
+        inputs: &[],
+        output: AllocatorTy::Bang,
+    },
+    AllocatorMethod {
         name: "dealloc",
         inputs: &[AllocatorTy::Ptr, AllocatorTy::Layout],
         output: AllocatorTy::Unit,
@@ -47,6 +52,7 @@ pub struct AllocatorMethod {
 }
 
 pub enum AllocatorTy {
+    Bang,
     Layout,
     Ptr,
     ResultPtr,

@@ -26,6 +26,9 @@ extern "Rust" {
     #[allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize, err: *mut u8) -> *mut u8;
+    #[cold]
+    #[rustc_allocator_nounwind]
+    fn __rust_oom(err: *const u8) -> !;
     #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_allocator_nounwind]
@@ -44,6 +47,9 @@ extern "Rust" {
     #[allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
+    #[cold]
+    #[rustc_allocator_nounwind]
+    fn __rust_oom() -> !;
     #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_allocator_nounwind]
@@ -118,6 +124,16 @@ unsafe impl Alloc for Global {
             Ok(ptr)
         } else {
             Err(AllocErr)
+        }
+    }
+
+    #[inline]
+    fn oom(&mut self) -> ! {
+        unsafe {
+            #[cfg(not(stage0))]
+            __rust_oom();
+            #[cfg(stage0)]
+            __rust_oom(&mut 0);
         }
     }
 }

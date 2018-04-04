@@ -37,6 +37,12 @@ pub mod __default_lib_allocator {
 
     #[no_mangle]
     #[rustc_std_internal_symbol]
+    pub unsafe extern fn __rdl_oom() -> ! {
+        System.oom()
+    }
+
+    #[no_mangle]
+    #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
