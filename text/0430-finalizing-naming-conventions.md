@@ -20,7 +20,7 @@ official.
 
 ## General naming conventions
 
-In general, Rust tends to use `CamelCase` for "type-level" constructs
+In general, Rust tends to use `UpperCamelCase` for "type-level" constructs
 (types and traits) and `snake_case` for "value-level" constructs. More
 precisely, the proposed (and mostly followed) conventions are:
 
@@ -28,9 +28,9 @@ precisely, the proposed (and mostly followed) conventions are:
 | ---- | ---------- |
 | Crates | `snake_case` (but prefer single word) |
 | Modules | `snake_case` |
-| Types | `CamelCase` |
-| Traits | `CamelCase` |
-| Enum variants | `CamelCase` |
+| Types | `UpperCamelCase` |
+| Traits | `UpperCamelCase` |
+| Enum variants | `UpperCamelCase` |
 | Functions | `snake_case` |
 | Methods | `snake_case` |
 | General constructors | `new` or `with_more_details` |
@@ -38,12 +38,12 @@ precisely, the proposed (and mostly followed) conventions are:
 | Local variables | `snake_case` |
 | Static variables | `SCREAMING_SNAKE_CASE` |
 | Constant variables | `SCREAMING_SNAKE_CASE` |
-| Type parameters | concise `CamelCase`, usually single uppercase letter: `T` |
+| Type parameters | concise `UpperCamelCase`, usually single uppercase letter: `T` |
 | Lifetimes | short, lowercase: `'a` |
 
 ### Fine points
 
-In `CamelCase`, acronyms count as one word: use `Uuid` rather than
+In `UpperCamelCase`, acronyms count as one word: use `Uuid` rather than
 `UUID`.  In `snake_case`, acronyms are lower-cased: `is_xid_start`.
 
 In `snake_case` or `SCREAMING_SNAKE_CASE`, a "word" should never
