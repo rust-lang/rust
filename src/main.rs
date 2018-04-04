@@ -35,7 +35,7 @@ fn show_help() {
 
 #[allow(print_stdout)]
 fn show_version() {
-    println!("{}", env!("CARGO_PKG_VERSION"));
+    println!(env!("CARGO_PKG_VERSION"));
 }
 
 pub fn main() {
