@@ -224,40 +224,7 @@ mod platform {
         alloc_methods_based_on_global_alloc!();
 
         fn oom(&mut self) -> ! {
-            use core::fmt::{self, Write};
-
-            // Print a message to stderr before aborting to assist with
-            // debugging. It is critical that this code does not allocate any
-            // memory since we are in an OOM situation. Any errors are ignored
-            // while printing since there's nothing we can do about them and we
-            // are about to exit anyways.
-            drop(writeln!(Stderr, "fatal runtime error: {}", AllocErr));
-            unsafe {
-                ::core::intrinsics::abort();
-            }
-
-            struct Stderr;
-
-            impl Write for Stderr {
-                #[cfg(target_os = "cloudabi")]
-                fn write_str(&mut self, _: &str) -> fmt::Result {
-                    // CloudABI does not have any reserved file descriptor
-                    // numbers. We should not attempt to write to file
-                    // descriptor #2, as it may be associated with any kind of
-                    // resource.
-                    Ok(())
-                }
-
-                #[cfg(not(target_os = "cloudabi"))]
-                fn write_str(&mut self, s: &str) -> fmt::Result {
-                    unsafe {
-                        libc::write(libc::STDERR_FILENO,
-                                    s.as_ptr() as *const libc::c_void,
-                                    s.len());
-                    }
-                    Ok(())
-                }
-            }
+            ::oom()
         }
     }
 
@@ -301,8 +268,6 @@ mod platform {
 #[cfg(windows)]
 #[allow(bad_style)]
 mod platform {
-    use core::ptr;
-
     use MIN_ALIGN;
     use System;
     use core::alloc::{GlobalAlloc, Alloc, Void, AllocErr, Layout, CannotReallocInPlace};
@@ -312,10 +277,6 @@ mod platform {
     type SIZE_T = usize;
     type DWORD = u32;
     type BOOL = i32;
-    type LPDWORD = *mut DWORD;
-    type LPOVERLAPPED = *mut u8;
-
-    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
 
     extern "system" {
         fn GetProcessHeap() -> HANDLE;
@@ -323,20 +284,12 @@ mod platform {
         fn HeapReAlloc(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID, dwBytes: SIZE_T) -> LPVOID;
         fn HeapFree(hHeap: HANDLE, dwFlags: DWORD, lpMem: LPVOID) -> BOOL;
         fn GetLastError() -> DWORD;
-        fn WriteFile(hFile: HANDLE,
-                     lpBuffer: LPVOID,
-                     nNumberOfBytesToWrite: DWORD,
-                     lpNumberOfBytesWritten: LPDWORD,
-                     lpOverlapped: LPOVERLAPPED)
-                     -> BOOL;
-        fn GetStdHandle(which: DWORD) -> HANDLE;
     }
 
     #[repr(C)]
     struct Header(*mut u8);
 
     const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
-    const HEAP_REALLOC_IN_PLACE_ONLY: DWORD = 0x00000010;
 
     unsafe fn get_header<'a>(ptr: *mut u8) -> &'a mut Header {
         &mut *(ptr as *mut Header).offset(-1)
@@ -438,31 +391,7 @@ mod platform {
         }
 
         fn oom(&mut self) -> ! {
-            use core::fmt::{self, Write};
-
-            // Same as with unix we ignore all errors here
-            drop(writeln!(Stderr, "fatal runtime error: {}", AllocErr));
-            unsafe {
-                ::core::intrinsics::abort();
-            }
-
-            struct Stderr;
-
-            impl Write for Stderr {
-                fn write_str(&mut self, s: &str) -> fmt::Result {
-                    unsafe {
-                        // WriteFile silently fails if it is passed an invalid
-                        // handle, so there is no need to check the result of
-                        // GetStdHandle.
-                        WriteFile(GetStdHandle(STD_ERROR_HANDLE),
-                                  s.as_ptr() as LPVOID,
-                                  s.len() as DWORD,
-                                  ptr::null_mut(),
-                                  ptr::null_mut());
-                    }
-                    Ok(())
-                }
-            }
+            ::oom()
         }
     }
 }
@@ -522,3 +451,59 @@ mod platform {
         alloc_methods_based_on_global_alloc!();
     }
 }
+
+fn oom() -> ! {
+    write_to_stderr("fatal runtime error: memory allocation failed");
+    unsafe {
+        ::core::intrinsics::abort();
+    }
+}
+
+#[cfg(any(unix, target_os = "redox"))]
+fn write_to_stderr(s: &str) {
+    extern crate libc;
+
+    unsafe {
+        libc::write(libc::STDERR_FILENO,
+                    s.as_ptr() as *const libc::c_void,
+                    s.len());
+    }
+}
+
+#[cfg(windows)]
+fn write_to_stderr(s: &str) {
+    use core::ptr;
+
+    type LPVOID = *mut u8;
+    type HANDLE = LPVOID;
+    type DWORD = u32;
+    type BOOL = i32;
+    type LPDWORD = *mut DWORD;
+    type LPOVERLAPPED = *mut u8;
+
+    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
+
+    extern "system" {
+        fn WriteFile(hFile: HANDLE,
+                     lpBuffer: LPVOID,
+                     nNumberOfBytesToWrite: DWORD,
+                     lpNumberOfBytesWritten: LPDWORD,
+                     lpOverlapped: LPOVERLAPPED)
+                     -> BOOL;
+        fn GetStdHandle(which: DWORD) -> HANDLE;
+    }
+
+    unsafe {
+        // WriteFile silently fails if it is passed an invalid
+        // handle, so there is no need to check the result of
+        // GetStdHandle.
+        WriteFile(GetStdHandle(STD_ERROR_HANDLE),
+                  s.as_ptr() as LPVOID,
+                  s.len() as DWORD,
+                  ptr::null_mut(),
+                  ptr::null_mut());
+    }
+}
+
+#[cfg(not(any(windows, unix, target_os = "redox")))]
+fn write_to_stderr(_: &str) {}
