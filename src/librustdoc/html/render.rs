@@ -2113,9 +2113,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}",
-                               since,
-                               MarkdownHtml(&deprecated_reason));
+            let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
+                format!("Deprecated{}{}",
+                        since,
+                        MarkdownHtml(&deprecated_reason))
+            } else {
+                format!("Deprecating in {}{}",
+                        Escape(&stab.deprecated_since),
+                        MarkdownHtml(&deprecated_reason))
+            };
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -2165,7 +2171,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
+        let text = if stability::deprecation_in_effect(&depr.since) {
+            format!("Deprecated{}{}",
+                    since,
+                    MarkdownHtml(&note))
+        } else {
+            format!("Deprecating in {}{}",
+                    Escape(&depr.since),
+                    MarkdownHtml(&note))
+        };
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
@@ -2801,10 +2815,15 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "<h2 id='fields' class='fields small-section-header'>
                    Fields<a href='#fields' class='anchor'></a></h2>")?;
         for (field, ty) in fields {
-            write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
+            let name = field.name.as_ref().expect("union field name");
+            let id = format!("{}.{}", ItemType::StructField, name);
+            write!(w, "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
+                           <a href=\"#{id}\" class=\"anchor field\"></a>\
+                           <span class='invisible'><code>{name}: {ty}</code></span>\
                        </span>",
+                   id = id,
+                   name = name,
                    shortty = ItemType::StructField,
-                   name = field.name.as_ref().unwrap(),
                    ty = ty)?;
             if let Some(stability_class) = field.stability_class() {
                 write!(w, "<span class='stab {stab}'></span>",

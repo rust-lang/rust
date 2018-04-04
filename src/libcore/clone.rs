@@ -117,6 +117,7 @@ pub trait Clone : Sized {
     /// assert_eq!("Hello", hello.clone());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "cloning is often expensive and is not expected to have side effects"]
     fn clone(&self) -> Self;
 
     /// Performs copy-assignment from `source`.
