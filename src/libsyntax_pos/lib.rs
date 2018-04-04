@@ -751,7 +751,7 @@ pub struct FileMap {
     /// Indicates which crate this FileMap was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
-    pub src: Option<Lrc<String>>,
+    pub src: Option<Lrc<str>>,
     /// The source code's hash
     pub src_hash: u128,
     /// The external source code (used for external crates, which will have a `None`
@@ -937,7 +937,7 @@ impl FileMap {
             name_was_remapped,
             unmapped_path: Some(unmapped_path),
             crate_of_origin: 0,
-            src: Some(Lrc::new(src)),
+            src: Some(Lrc::from(src)),
             src_hash,
             external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,

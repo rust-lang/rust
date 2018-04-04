@@ -184,7 +184,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Toke
             // dependency information, but don't enter it's contents
             cx.codemap().new_filemap_and_lines(&file, "");
 
-            base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
+            base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::from(bytes))))
         }
     }
 }
