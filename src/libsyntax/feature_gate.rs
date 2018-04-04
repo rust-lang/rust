@@ -483,7 +483,7 @@ declare_features! (
     // allow empty structs and enum variants with braces
     (accepted, braced_empty_structs, "1.8.0", Some(29720), None),
     // Allows indexing into constant arrays.
-    (accepted, const_indexing, "1.24.0", Some(29947), None),
+    (accepted, const_indexing, "1.26.0", Some(29947), None),
     (accepted, default_type_params, "1.0.0", None, None),
     (accepted, globs, "1.0.0", None, None),
     (accepted, if_let, "1.0.0", None, None),

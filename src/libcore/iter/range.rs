@@ -200,7 +200,7 @@ macro_rules! range_trusted_len_impl {
 
 macro_rules! range_incl_trusted_len_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "inclusive_range", since = "1.26.0")]
+        #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
     )*)
 }
