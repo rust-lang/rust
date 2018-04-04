@@ -2938,9 +2938,8 @@ the return value is wrapped to `0`.
 Basic usage:
 
 ```
-", $Feature,
-"#![feature(wrapping_int_impl)]
-
+#![feature(wrapping_int_impl)]
+", $Feature, "
 assert_eq!(2", stringify!($SelfT), ".wrapping_next_power_of_two(), 2);
 assert_eq!(3", stringify!($SelfT), ".wrapping_next_power_of_two(), 4);
 assert_eq!(", stringify!($SelfT), "::max_value().wrapping_next_power_of_two(), 0);",

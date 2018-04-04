@@ -684,11 +684,11 @@ macro_rules! wrapping_int_impl_unsigned {
             /// ```
             /// #![feature(wrapping_int_impl)]
             ///
-            /// use std::num::wrapping;
+            /// use std::num::Wrapping;
             ///
-            /// assert!(Wrapping(16).is_power_of_two());
-            /// assert!(!Wrapping(10).is_power_of_two());
-            /// assert!(!Wrapping(0).is_power_of_two());
+            /// assert!(Wrapping(16_u32).is_power_of_two());
+            /// assert!(!Wrapping(10_u64).is_power_of_two());
+            /// assert!(!Wrapping(0_usize).is_power_of_two());
             /// ```
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
@@ -707,10 +707,10 @@ macro_rules! wrapping_int_impl_unsigned {
             /// ```
             /// #![feature(wrapping_int_impl)]
             ///
-            /// use std::num::wrapping;
+            /// use std::num::Wrapping;
             ///
-            /// assert_eq!(Wrapping(2).next_power_of_two(), Wrapping(2));
-            /// assert_eq!(Wrapping(3).next_power_of_two(), Wrapping(4));
+            /// assert_eq!(Wrapping(2_u32).next_power_of_two(), Wrapping(2));
+            /// assert_eq!(Wrapping(3_u64).next_power_of_two(), Wrapping(4));
             /// assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
             /// ```
             #[inline]
