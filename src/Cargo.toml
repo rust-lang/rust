@@ -2,7 +2,6 @@
 members = [
   "bootstrap",
   "rustc",
-  "libnostd",
   "libstd",
   "libtest",
   "librustc_trans",
