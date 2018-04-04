@@ -1908,16 +1908,16 @@ differs from the behavior for `&T`, which is always `Copy`).
 
 E0206: r##"
 You can only implement `Copy` for a struct or enum. Both of the following
-examples will fail, because neither `i32` (primitive type) nor `&'static Bar`
-(reference to `Bar`) is a struct or enum:
+examples will fail, because neither `[u8; 256]` nor `&'static mut Bar`
+(mutable reference to `Bar`) is a struct or enum:
 
 ```compile_fail,E0206
-type Foo = i32;
+type Foo = [u8; 256];
 impl Copy for Foo { } // error
 
 #[derive(Copy, Clone)]
 struct Bar;
-impl Copy for &'static Bar { } // error
+impl Copy for &'static mut Bar { } // error
 ```
 "##,
 
