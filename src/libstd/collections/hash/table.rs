@@ -755,7 +755,7 @@ impl<K, V> RawTable<K, V> {
         }
 
         let buffer = Global.alloc(Layout::from_size_align(size, alignment)
-            .ok_or(CollectionAllocErr::CapacityOverflow)?)?;
+            .map_err(|_| CollectionAllocErr::CapacityOverflow)?)?;
 
         let hashes = buffer as *mut HashUint;
 

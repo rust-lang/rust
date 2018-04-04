@@ -94,9 +94,9 @@ impl Layout {
     ///    must not overflow (i.e. the rounded value must be less than
     ///    `usize::MAX`).
     #[inline]
-    pub fn from_size_align(size: usize, align: usize) -> Option<Layout> {
+    pub fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutErr> {
         if !align.is_power_of_two() {
-            return None;
+            return Err(LayoutErr { private: () });
         }
 
         // (power-of-two implies align != 0.)
@@ -114,11 +114,11 @@ impl Layout {
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
         if size > usize::MAX - (align - 1) {
-            return None;
+            return Err(LayoutErr { private: () });
         }
 
         unsafe {
-            Some(Layout::from_size_align_unchecked(size, align))
+            Ok(Layout::from_size_align_unchecked(size, align))
         }
     }
 
@@ -130,7 +130,7 @@ impl Layout {
     /// a power-of-two nor `size` aligned to `align` fits within the
     /// address space (i.e. the `Layout::from_size_align` preconditions).
     #[inline]
-    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Layout {
+    pub unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         Layout { size: size, align: align }
     }
 
@@ -229,15 +229,17 @@ impl Layout {
     ///
     /// On arithmetic overflow, returns `None`.
     #[inline]
-    pub fn repeat(&self, n: usize) -> Option<(Self, usize)> {
-        let padded_size = self.size.checked_add(self.padding_needed_for(self.align))?;
-        let alloc_size = padded_size.checked_mul(n)?;
+    pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
+        let padded_size = self.size.checked_add(self.padding_needed_for(self.align))
+            .ok_or(LayoutErr { private: () })?;
+        let alloc_size = padded_size.checked_mul(n)
+            .ok_or(LayoutErr { private: () })?;
 
         // We can assume that `self.align` is a power-of-two.
         // Furthermore, `alloc_size` has already been rounded up
         // to a multiple of `self.align`; therefore, the call to
         // `Layout::from_size_align` below should never panic.
-        Some((Layout::from_size_align(alloc_size, self.align).unwrap(), padded_size))
+        Ok((Layout::from_size_align(alloc_size, self.align).unwrap(), padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -251,17 +253,19 @@ impl Layout {
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `None`.
-    pub fn extend(&self, next: Self) -> Option<(Self, usize)> {
+    pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align, next.align);
         let realigned = Layout::from_size_align(self.size, new_align)?;
 
         let pad = realigned.padding_needed_for(next.align);
 
-        let offset = self.size.checked_add(pad)?;
-        let new_size = offset.checked_add(next.size)?;
+        let offset = self.size.checked_add(pad)
+            .ok_or(LayoutErr { private: () })?;
+        let new_size = offset.checked_add(next.size)
+            .ok_or(LayoutErr { private: () })?;
 
         let layout = Layout::from_size_align(new_size, new_align)?;
-        Some((layout, offset))
+        Ok((layout, offset))
     }
 
     /// Creates a layout describing the record for `n` instances of
@@ -276,8 +280,8 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `None`.
-    pub fn repeat_packed(&self, n: usize) -> Option<Self> {
-        let size = self.size().checked_mul(n)?;
+    pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
+        let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
         Layout::from_size_align(size, self.align)
     }
 
@@ -296,22 +300,37 @@ impl Layout {
     ///  `extend`.)
     ///
     /// On arithmetic overflow, returns `None`.
-    pub fn extend_packed(&self, next: Self) -> Option<(Self, usize)> {
-        let new_size = self.size().checked_add(next.size())?;
+    pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
+        let new_size = self.size().checked_add(next.size())
+            .ok_or(LayoutErr { private: () })?;
         let layout = Layout::from_size_align(new_size, self.align)?;
-        Some((layout, self.size()))
+        Ok((layout, self.size()))
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `None`.
-    pub fn array<T>(n: usize) -> Option<Self> {
+    pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
         Layout::new::<T>()
             .repeat(n)
             .map(|(k, offs)| {
                 debug_assert!(offs == mem::size_of::<T>());
                 k
             })
+    }
+}
+
+/// The parameters given to `Layout::from_size_align` do not satisfy
+/// its documented constraints.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct LayoutErr {
+    private: ()
+}
+
+// (we need this for downstream impl of trait Error)
+impl fmt::Display for LayoutErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
 
@@ -990,7 +1009,7 @@ pub unsafe trait Alloc {
         where Self: Sized
     {
         match Layout::array::<T>(n) {
-            Some(ref layout) if layout.size() > 0 => {
+            Ok(ref layout) if layout.size() > 0 => {
                 unsafe {
                     self.alloc(layout.clone())
                         .map(|p| {
@@ -1041,7 +1060,7 @@ pub unsafe trait Alloc {
         where Self: Sized
     {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new), ptr.as_ptr()) {
-            (Some(ref k_old), Some(ref k_new), ptr) if k_old.size() > 0 && k_new.size() > 0 => {
+            (Ok(ref k_old), Ok(ref k_new), ptr) if k_old.size() > 0 && k_new.size() > 0 => {
                 self.realloc(ptr as *mut u8, k_old.clone(), k_new.clone())
                     .map(|p| NonNull::new_unchecked(p as *mut T))
             }
@@ -1076,7 +1095,7 @@ pub unsafe trait Alloc {
     {
         let raw_ptr = ptr.as_ptr() as *mut u8;
         match Layout::array::<T>(n) {
-            Some(ref k) if k.size() > 0 => {
+            Ok(ref k) if k.size() > 0 => {
                 Ok(self.dealloc(raw_ptr, k.clone()))
             }
             _ => {

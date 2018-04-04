@@ -57,7 +57,7 @@ use cell;
 use char;
 use core::array;
 use fmt::{self, Debug, Display};
-use heap::{AllocErr, CannotReallocInPlace};
+use heap::{AllocErr, LayoutErr, CannotReallocInPlace};
 use mem::transmute;
 use num;
 use str;
@@ -244,6 +244,15 @@ impl Error for ! {
 impl Error for AllocErr {
     fn description(&self) -> &str {
         "memory allocation failed"
+    }
+}
+
+#[unstable(feature = "allocator_api",
+           reason = "the precise API and guarantees it provides may be tweaked.",
+           issue = "32838")]
+impl Error for LayoutErr {
+    fn description(&self) -> &str {
+        "invalid parameters to Layout::from_size_align"
     }
 }
 
