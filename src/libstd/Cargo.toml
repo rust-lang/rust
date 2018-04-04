@@ -58,3 +58,6 @@ wasm_syscall = []
 # the environment for hooking up some thread-related information like the
 # current thread id and accessing/getting the current thread's TCB
 wasm-bindgen-threads = []
+
+# setjmp / longjmp exception handling for i686-pc-windows-gnu
+sjlj_eh = ["unwind/sjlj_eh"]

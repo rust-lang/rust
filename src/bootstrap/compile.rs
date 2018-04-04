@@ -150,6 +150,11 @@ pub fn std_cargo(builder: &Builder,
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
+    // FIXME: Temporary detection of SJLJ MinGW compilers.
+    if build.build.build.contains("linux") && target == "i686-pc-windows-gnu" {
+        features.push_str(" sjlj_eh");
+    }
+
     if builder.no_std(target) == Some(true) {
         // for no-std targets we only compile a few no_std crates
         cargo.arg("--features").arg("c mem")
