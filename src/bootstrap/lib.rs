@@ -114,7 +114,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
-#![feature(core_intrinsics)]
+#![feature(conservative_impl_trait, fs_read_write, core_intrinsics)]
 #![feature(slice_concat_ext)]
 
 #[macro_use]
@@ -131,6 +131,11 @@ extern crate getopts;
 extern crate num_cpus;
 extern crate toml;
 extern crate time;
+extern crate petgraph;
+
+#[cfg(test)]
+#[macro_use]
+extern crate pretty_assertions;
 
 #[cfg(unix)]
 extern crate libc;
@@ -138,13 +143,15 @@ extern crate libc;
 use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
 use std::env;
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs::{self, OpenOptions, File};
+use std::io::{self, Seek, SeekFrom, Write, Read};
 use std::path::{PathBuf, Path};
 use std::process::{self, Command};
 use std::slice;
+use std::str;
 
 use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
+use filetime::FileTime;
 
 use util::{exe, libdir, OutputFolder, CiEnv};
 
@@ -198,7 +205,7 @@ use toolstate::ToolState;
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct Compiler {
     stage: u32,
     host: Interned<String>,
@@ -309,9 +316,8 @@ impl Build {
     ///
     /// By default all build output will be placed in the current directory.
     pub fn new(config: Config) -> Build {
-        let cwd = t!(env::current_dir());
         let src = config.src.clone();
-        let out = cwd.join("build");
+        let out = config.out.clone();
 
         let is_sudo = match env::var_os("SUDO_USER") {
             Some(sudo_user) => {
@@ -327,7 +333,7 @@ impl Build {
         let rls_info = channel::GitInfo::new(&config, &src.join("src/tools/rls"));
         let rustfmt_info = channel::GitInfo::new(&config, &src.join("src/tools/rustfmt"));
 
-        Build {
+        let mut build = Build {
             initial_rustc: config.initial_rustc.clone(),
             initial_cargo: config.initial_cargo.clone(),
             local_rebuild: config.local_rebuild,
@@ -358,7 +364,30 @@ impl Build {
             delayed_failures: RefCell::new(Vec::new()),
             prerelease_version: Cell::new(None),
             tool_artifacts: Default::default(),
+        };
+
+        build.verbose("finding compilers");
+        cc_detect::find(&mut build);
+        build.verbose("running sanity check");
+        sanity::check(&mut build);
+
+        // If local-rust is the same major.minor as the current version, then force a
+        // local-rebuild
+        let local_version_verbose = output(
+            Command::new(&build.initial_rustc).arg("--version").arg("--verbose"));
+        let local_release = local_version_verbose
+            .lines().filter(|x| x.starts_with("release:"))
+            .next().unwrap().trim_left_matches("release:").trim();
+        let my_version = channel::CFG_RELEASE_NUM;
+        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
+            build.verbose(&format!("auto-detected local-rebuild {}", local_release));
+            build.local_rebuild = true;
         }
+
+        build.verbose("learning about cargo");
+        metadata::build(&mut build);
+
+        build
     }
 
     pub fn build_triple(&self) -> &[Interned<String>] {
@@ -377,25 +406,28 @@ impl Build {
             return clean::clean(self, all);
         }
 
-        self.verbose("finding compilers");
-        cc_detect::find(self);
-        self.verbose("running sanity check");
-        sanity::check(self);
-        // If local-rust is the same major.minor as the current version, then force a local-rebuild
-        let local_version_verbose = output(
-            Command::new(&self.initial_rustc).arg("--version").arg("--verbose"));
-        let local_release = local_version_verbose
-            .lines().filter(|x| x.starts_with("release:"))
-            .next().unwrap().trim_left_matches("release:").trim();
-        let my_version = channel::CFG_RELEASE_NUM;
-        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
-            self.verbose(&format!("auto-detected local-rebuild {}", local_release));
-            self.local_rebuild = true;
+        {
+            let builder = builder::Builder::new(&self);
+            if let Some(path) = builder.paths.get(0) {
+                if path == Path::new("nonexistent/path/to/trigger/cargo/metadata") {
+                    return;
+                }
+            }
         }
-        self.verbose("learning about cargo");
-        metadata::build(self);
 
-        builder::Builder::run(&self);
+        if !self.config.dry_run {
+            {
+                self.config.dry_run = true;
+                let builder = builder::Builder::new(&self);
+                builder.execute_cli();
+            }
+            self.config.dry_run = false;
+            let builder = builder::Builder::new(&self);
+            builder.execute_cli();
+        } else {
+            let builder = builder::Builder::new(&self);
+            let _ = builder.execute_cli();
+        }
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
@@ -586,12 +618,14 @@ impl Build {
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run(&self, cmd: &mut Command) {
+        if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
         run_silent(cmd)
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
     fn run_quiet(&self, cmd: &mut Command) {
+        if self.config.dry_run { return; }
         self.verbose(&format!("running: {:?}", cmd));
         run_suppressed(cmd)
     }
@@ -600,6 +634,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run(&self, cmd: &mut Command) -> bool {
+        if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_silent(cmd)
     }
@@ -608,6 +643,7 @@ impl Build {
     /// Exits if the command failed to execute at all, otherwise returns its
     /// `status.success()`.
     fn try_run_quiet(&self, cmd: &mut Command) -> bool {
+        if self.config.dry_run { return true; }
         self.verbose(&format!("running: {:?}", cmd));
         try_run_suppressed(cmd)
     }
@@ -621,6 +657,11 @@ impl Build {
         if self.is_verbose() {
             println!("{}", msg);
         }
+    }
+
+    fn info(&self, msg: &str) {
+        if self.config.dry_run { return; }
+        println!("{}", msg);
     }
 
     /// Returns the number of parallel jobs that have been configured for this
@@ -930,7 +971,7 @@ impl Build {
     pub fn fold_output<D, F>(&self, name: F) -> Option<OutputFolder>
         where D: Into<String>, F: FnOnce() -> D
     {
-        if self.ci_env == CiEnv::Travis {
+        if !self.config.dry_run && self.ci_env == CiEnv::Travis {
             Some(OutputFolder::new(name().into()))
         } else {
             None
@@ -978,7 +1019,172 @@ impl Build {
         }
         ret
     }
+
+    fn read_stamp_file(&self, stamp: &Path) -> Vec<PathBuf> {
+        if self.config.dry_run {
+            return Vec::new();
+        }
+
+        let mut paths = Vec::new();
+        let mut contents = Vec::new();
+        t!(t!(File::open(stamp)).read_to_end(&mut contents));
+        // This is the method we use for extracting paths from the stamp file passed to us. See
+        // run_cargo for more information (in compile.rs).
+        for part in contents.split(|b| *b == 0) {
+            if part.is_empty() {
+                continue
+            }
+            let path = PathBuf::from(t!(str::from_utf8(part)));
+            paths.push(path);
+        }
+        paths
+    }
+
+    /// Copies a file from `src` to `dst`
+    pub fn copy(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run { return; }
+        let _ = fs::remove_file(&dst);
+        // Attempt to "easy copy" by creating a hard link (symlinks don't work on
+        // windows), but if that fails just fall back to a slow `copy` operation.
+        if let Ok(()) = fs::hard_link(src, dst) {
+            return
+        }
+        if let Err(e) = fs::copy(src, dst) {
+            panic!("failed to copy `{}` to `{}`: {}", src.display(),
+                dst.display(), e)
+        }
+        let metadata = t!(src.metadata());
+        t!(fs::set_permissions(dst, metadata.permissions()));
+        let atime = FileTime::from_last_access_time(&metadata);
+        let mtime = FileTime::from_last_modification_time(&metadata);
+        t!(filetime::set_file_times(dst, atime, mtime));
+    }
+
+    /// Search-and-replaces within a file. (Not maximally efficiently: allocates a
+    /// new string for each replacement.)
+    pub fn replace_in_file(&self, path: &Path, replacements: &[(&str, &str)]) {
+        if self.config.dry_run { return; }
+        let mut contents = String::new();
+        let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
+        t!(file.read_to_string(&mut contents));
+        for &(target, replacement) in replacements {
+            contents = contents.replace(target, replacement);
+        }
+        t!(file.seek(SeekFrom::Start(0)));
+        t!(file.set_len(0));
+        t!(file.write_all(contents.as_bytes()));
+    }
+
+    /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+    /// when this function is called.
+    pub fn cp_r(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run { return; }
+        for f in t!(fs::read_dir(src)) {
+            let f = t!(f);
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            if t!(f.file_type()).is_dir() {
+                t!(fs::create_dir_all(&dst));
+                self.cp_r(&path, &dst);
+            } else {
+                let _ = fs::remove_file(&dst);
+                self.copy(&path, &dst);
+            }
+        }
+    }
+
+    /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
+    /// when this function is called. Unwanted files or directories can be skipped
+    /// by returning `false` from the filter function.
+    pub fn cp_filtered(&self, src: &Path, dst: &Path, filter: &Fn(&Path) -> bool) {
+        // Immediately recurse with an empty relative path
+        self.recurse_(src, dst, Path::new(""), filter)
+    }
+
+    // Inner function does the actual work
+    fn recurse_(&self, src: &Path, dst: &Path, relative: &Path, filter: &Fn(&Path) -> bool) {
+        for f in self.read_dir(src) {
+            let path = f.path();
+            let name = path.file_name().unwrap();
+            let dst = dst.join(name);
+            let relative = relative.join(name);
+            // Only copy file or directory if the filter function returns true
+            if filter(&relative) {
+                if t!(f.file_type()).is_dir() {
+                    let _ = fs::remove_dir_all(&dst);
+                    self.create_dir(&dst);
+                    self.recurse_(&path, &dst, &relative, filter);
+                } else {
+                    let _ = fs::remove_file(&dst);
+                    self.copy(&path, &dst);
+                }
+            }
+        }
+    }
+
+    fn copy_to_folder(&self, src: &Path, dest_folder: &Path) {
+        let file_name = src.file_name().unwrap();
+        let dest = dest_folder.join(file_name);
+        self.copy(src, &dest);
+    }
+
+    fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
+        if self.config.dry_run { return; }
+        let dst = dstdir.join(src.file_name().unwrap());
+        t!(fs::create_dir_all(dstdir));
+        drop(fs::remove_file(&dst));
+        {
+            let mut s = t!(fs::File::open(&src));
+            let mut d = t!(fs::File::create(&dst));
+            io::copy(&mut s, &mut d).expect("failed to copy");
+        }
+        chmod(&dst, perms);
+    }
+
+    fn create(&self, path: &Path, s: &str) {
+        if self.config.dry_run { return; }
+        t!(fs::write(path, s));
+    }
+
+    fn read(&self, path: &Path) -> String {
+        if self.config.dry_run { return String::new(); }
+        t!(fs::read_string(path))
+    }
+
+    fn create_dir(&self, dir: &Path) {
+        if self.config.dry_run { return; }
+        t!(fs::create_dir_all(dir))
+    }
+
+    fn remove_dir(&self, dir: &Path) {
+        if self.config.dry_run { return; }
+        t!(fs::remove_dir_all(dir))
+    }
+
+    fn read_dir(&self, dir: &Path) -> impl Iterator<Item=fs::DirEntry> {
+        let iter = match fs::read_dir(dir) {
+            Ok(v) => v,
+            Err(_) if self.config.dry_run => return vec![].into_iter(),
+            Err(err) => panic!("could not read dir {:?}: {:?}", dir, err),
+        };
+        iter.map(|e| t!(e)).collect::<Vec<_>>().into_iter()
+    }
+
+    fn remove(&self, f: &Path) {
+        if self.config.dry_run { return; }
+        fs::remove_file(f).unwrap_or_else(|_| panic!("failed to remove {:?}", f));
+    }
 }
+
+#[cfg(unix)]
+fn chmod(path: &Path, perms: u32) {
+    use std::os::unix::fs::*;
+    t!(fs::set_permissions(path, fs::Permissions::from_mode(perms)));
+}
+#[cfg(windows)]
+fn chmod(_path: &Path, _perms: u32) {}
+
 
 impl<'a> Compiler {
     pub fn with_stage(mut self, stage: u32) -> Compiler {

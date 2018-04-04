@@ -53,7 +53,7 @@ impl Step for Std {
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
-        add_to_sysroot(&libdir, &libstd_stamp(build, compiler, target));
+        add_to_sysroot(&build, &libdir, &libstd_stamp(build, compiler, target));
     }
 }
 
@@ -102,7 +102,7 @@ impl Step for Rustc {
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
-        add_to_sysroot(&libdir, &librustc_stamp(build, compiler, target));
+        add_to_sysroot(&build, &libdir, &librustc_stamp(build, compiler, target));
     }
 }
 
@@ -143,7 +143,7 @@ impl Step for Test {
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
-        add_to_sysroot(&libdir, &libtest_stamp(build, compiler, target));
+        add_to_sysroot(&build, &libdir, &libtest_stamp(build, compiler, target));
     }
 }
 

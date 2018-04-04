@@ -17,7 +17,7 @@ use std::slice::SliceConcatExt;
 use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{copy, exe, add_lib_path};
+use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
@@ -116,7 +116,7 @@ impl Step for ToolBuild {
         cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
-        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
+        build.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
         let is_expected = compile::stream_cargo(build, &mut cargo, &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
@@ -207,7 +207,7 @@ impl Step for ToolBuild {
             let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
                 .join(exe(tool, &compiler.host));
             let bin = build.tools_dir(compiler).join(exe(tool, &compiler.host));
-            copy(&cargo_out, &bin);
+            build.copy(&cargo_out, &bin);
             Some(bin)
         }
     }
@@ -427,7 +427,8 @@ impl Step for Rustdoc {
              .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
 
         let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
-        println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
+        build.info(&format!("Building rustdoc for stage{} ({})",
+            target_compiler.stage, target_compiler.host));
         build.run(&mut cargo);
 
         // Cargo adds a number of paths to the dylib search path on windows, which results in
@@ -443,7 +444,7 @@ impl Step for Rustdoc {
             t!(fs::create_dir_all(&bindir));
             let bin_rustdoc = bindir.join(exe("rustdoc", &*target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
-            copy(&tool_rustdoc, &bin_rustdoc);
+            build.copy(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
         } else {
             tool_rustdoc

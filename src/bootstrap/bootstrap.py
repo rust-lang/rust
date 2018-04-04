@@ -314,7 +314,7 @@ class RustBuild(object):
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
         self.config_toml = ''
-        self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+        self.rust_root = ''
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
         self.verbose = False
@@ -710,6 +710,7 @@ def bootstrap(help_triggered):
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
+    parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
@@ -718,6 +719,7 @@ def bootstrap(help_triggered):
 
     # Configure initial bootstrap
     build = RustBuild()
+    build.rust_root = args.src or os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose
     build.clean = args.clean
 
@@ -788,6 +790,7 @@ def bootstrap(help_triggered):
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
+    env["BUILD_DIR"] = build.build_dir
     run(args, env=env, verbose=build.verbose)
 
 

@@ -15,7 +15,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -69,6 +69,7 @@ pub struct Config {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
+    pub dry_run: bool,
 
     // llvm codegen options
     pub llvm_enabled: bool,
@@ -143,6 +144,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub out: PathBuf,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -317,11 +319,8 @@ struct TomlTarget {
 }
 
 impl Config {
-    pub fn parse(args: &[String]) -> Config {
-        let flags = Flags::parse(&args);
-        let file = flags.config.clone();
+    pub fn default_opts() -> Config {
         let mut config = Config::default();
-        config.exclude = flags.exclude;
         config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.llvm_version_check = true;
@@ -341,14 +340,37 @@ impl Config {
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.rust_codegen_backends_dir = "codegen-backends".to_owned();
 
+        // set by bootstrap.py
+        config.src = env::var_os("SRC").map(PathBuf::from).expect("'SRC' to be set");
+        config.build = INTERNER.intern_str(&env::var("BUILD").expect("'BUILD' to be set"));
+        config.out = env::var_os("BUILD_DIR").map(PathBuf::from).expect("'BUILD_DIR' set");
+
+        let stage0_root = config.out.join(&config.build).join("stage0/bin");
+        config.initial_rustc = stage0_root.join(exe("rustc", &config.build));
+        config.initial_cargo = stage0_root.join(exe("cargo", &config.build));
+
+        config
+    }
+
+    pub fn parse(args: &[String]) -> Config {
+        let flags = Flags::parse(&args);
+        let file = flags.config.clone();
+        let mut config = Config::default_opts();
+        config.exclude = flags.exclude;
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
-        config.src = flags.src;
         config.jobs = flags.jobs;
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
+        config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
+
+        if config.dry_run {
+            let dir = config.out.join("tmp-dry-run");
+            t!(fs::create_dir_all(&dir));
+            config.out = dir;
+        }
 
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
         config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
@@ -368,12 +390,7 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build.clone().unwrap_or(Build::default());
-        set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
-        set(&mut config.build, flags.build);
-        if config.build.is_empty() {
-            // set by bootstrap.py
-            config.build = INTERNER.intern_str(&env::var("BUILD").unwrap());
-        }
+        // set by bootstrap.py
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
@@ -514,13 +531,13 @@ impl Config {
                 let mut target = Target::default();
 
                 if let Some(ref s) = cfg.llvm_config {
-                    target.llvm_config = Some(env::current_dir().unwrap().join(s));
+                    target.llvm_config = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.jemalloc {
-                    target.jemalloc = Some(env::current_dir().unwrap().join(s));
+                    target.jemalloc = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.android_ndk {
-                    target.ndk = Some(env::current_dir().unwrap().join(s));
+                    target.ndk = Some(config.src.join(s));
                 }
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
@@ -541,21 +558,11 @@ impl Config {
             set(&mut config.rust_dist_src, t.src_tarball);
         }
 
-        let cwd = t!(env::current_dir());
-        let out = cwd.join("build");
-
-        let stage0_root = out.join(&config.build).join("stage0/bin");
-        config.initial_rustc = match build.rustc {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("rustc", &config.build)),
-        };
-        config.initial_cargo = match build.cargo {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("cargo", &config.build)),
-        };
-
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
+
+        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
+        set(&mut config.initial_rustc, build.cargo.map(PathBuf::from));
 
         let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);

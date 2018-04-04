@@ -63,7 +63,7 @@ fn install_sh(
     host: Option<Interned<String>>
 ) {
     let build = builder.build;
-    println!("Install {} stage{} ({:?})", package, stage, host);
+    build.info(&format!("Install {} stage{} ({:?})", package, stage, host));
 
     let prefix_default = PathBuf::from("/usr/local");
     let sysconfdir_default = PathBuf::from("/etc");
@@ -212,7 +212,7 @@ install!((self, builder, _config),
             Self::should_install(builder) {
             install_rls(builder, self.stage, self.target);
         } else {
-            println!("skipping Install RLS stage{} ({})", self.stage, self.target);
+            builder.info(&format!("skipping Install RLS stage{} ({})", self.stage, self.target));
         }
     };
     Rustfmt, "rustfmt", Self::should_build(_config), only_hosts: true, {
@@ -220,7 +220,8 @@ install!((self, builder, _config),
             Self::should_install(builder) {
             install_rustfmt(builder, self.stage, self.target);
         } else {
-            println!("skipping Install Rustfmt stage{} ({})", self.stage, self.target);
+            builder.info(
+                &format!("skipping Install Rustfmt stage{} ({})", self.stage, self.target));
         }
     };
     Analysis, "analysis", Self::should_build(_config), only_hosts: false, {
