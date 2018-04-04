@@ -91,21 +91,17 @@ unsafe impl Alloc for Global {
     unsafe fn realloc(&mut self,
                       ptr: *mut u8,
                       layout: Layout,
-                      new_layout: Layout)
+                      new_size: usize)
                       -> Result<*mut u8, AllocErr>
     {
-        if layout.align() == new_layout.align() {
-            #[cfg(not(stage0))]
-            let ptr = __rust_realloc(ptr, layout.size(), layout.align(), new_layout.size());
-            #[cfg(stage0)]
-            let ptr = __rust_realloc(ptr, layout.size(), layout.align(),
-                                     new_layout.size(), new_layout.align(), &mut 0);
+        #[cfg(not(stage0))]
+        let ptr = __rust_realloc(ptr, layout.size(), layout.align(), new_size);
+        #[cfg(stage0)]
+        let ptr = __rust_realloc(ptr, layout.size(), layout.align(),
+                                 new_size, layout.align(), &mut 0);
 
-            if !ptr.is_null() {
-                Ok(ptr)
-            } else {
-                Err(AllocErr)
-            }
+        if !ptr.is_null() {
+            Ok(ptr)
         } else {
             Err(AllocErr)
         }

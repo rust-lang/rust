@@ -69,8 +69,8 @@ unsafe impl Alloc for System {
     unsafe fn realloc(&mut self,
                       ptr: *mut u8,
                       old_layout: Layout,
-                      new_layout: Layout) -> Result<*mut u8, AllocErr> {
-        Alloc::realloc(&mut &*self, ptr, old_layout, new_layout)
+                      new_size: usize) -> Result<*mut u8, AllocErr> {
+        Alloc::realloc(&mut &*self, ptr, old_layout, new_size)
     }
 
     fn oom(&mut self) -> ! {
@@ -91,24 +91,24 @@ unsafe impl Alloc for System {
     unsafe fn realloc_excess(&mut self,
                              ptr: *mut u8,
                              layout: Layout,
-                             new_layout: Layout) -> Result<Excess, AllocErr> {
-        Alloc::realloc_excess(&mut &*self, ptr, layout, new_layout)
+                             new_size: usize) -> Result<Excess, AllocErr> {
+        Alloc::realloc_excess(&mut &*self, ptr, layout, new_size)
     }
 
     #[inline]
     unsafe fn grow_in_place(&mut self,
                             ptr: *mut u8,
                             layout: Layout,
-                            new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-        Alloc::grow_in_place(&mut &*self, ptr, layout, new_layout)
+                            new_size: usize) -> Result<(), CannotReallocInPlace> {
+        Alloc::grow_in_place(&mut &*self, ptr, layout, new_size)
     }
 
     #[inline]
     unsafe fn shrink_in_place(&mut self,
                               ptr: *mut u8,
                               layout: Layout,
-                              new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-        Alloc::shrink_in_place(&mut &*self, ptr, layout, new_layout)
+                              new_size: usize) -> Result<(), CannotReallocInPlace> {
+        Alloc::shrink_in_place(&mut &*self, ptr, layout, new_size)
     }
 }
 
@@ -166,12 +166,8 @@ macro_rules! alloc_methods_based_on_global_alloc {
         unsafe fn realloc(&mut self,
                           ptr: *mut u8,
                           old_layout: Layout,
-                          new_layout: Layout) -> Result<*mut u8, AllocErr> {
-            if old_layout.align() != new_layout.align() {
-                return Err(AllocErr)
-            }
-
-            let ptr = GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_layout.size());
+                          new_size: usize) -> Result<*mut u8, AllocErr> {
+            let ptr = GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_size);
             if !ptr.is_null() {
                 Ok(ptr as *mut u8)
             } else {
@@ -428,30 +424,26 @@ mod platform {
         unsafe fn grow_in_place(&mut self,
                                 ptr: *mut u8,
                                 layout: Layout,
-                                new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-            self.shrink_in_place(ptr, layout, new_layout)
+                                new_size: usize) -> Result<(), CannotReallocInPlace> {
+            self.shrink_in_place(ptr, layout, new_size)
         }
 
         #[inline]
         unsafe fn shrink_in_place(&mut self,
                                   ptr: *mut u8,
-                                  old_layout: Layout,
-                                  new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-            if old_layout.align() != new_layout.align() {
-                return Err(CannotReallocInPlace)
-            }
-
-            let new = if new_layout.align() <= MIN_ALIGN {
+                                  layout: Layout,
+                                  new_size: usize) -> Result<(), CannotReallocInPlace> {
+            let new = if layout.align() <= MIN_ALIGN {
                 HeapReAlloc(GetProcessHeap(),
                             HEAP_REALLOC_IN_PLACE_ONLY,
                             ptr as LPVOID,
-                            new_layout.size())
+                            new_size)
             } else {
                 let header = get_header(ptr);
                 HeapReAlloc(GetProcessHeap(),
                             HEAP_REALLOC_IN_PLACE_ONLY,
                             header.0 as LPVOID,
-                            new_layout.size() + new_layout.align())
+                            new_size + layout.align())
             };
             if new.is_null() {
                 Err(CannotReallocInPlace)

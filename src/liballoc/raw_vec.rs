@@ -309,11 +309,10 @@ impl<T, A: Alloc> RawVec<T, A> {
                     // `from_size_align_unchecked`.
                     let new_cap = 2 * self.cap;
                     let new_size = new_cap * elem_size;
-                    let new_layout = Layout::from_size_align_unchecked(new_size, cur.align());
                     alloc_guard(new_size).expect("capacity overflow");
                     let ptr_res = self.a.realloc(self.ptr.as_ptr() as *mut u8,
                                                  cur,
-                                                 new_layout);
+                                                 new_size);
                     match ptr_res {
                         Ok(ptr) => (new_cap, Unique::new_unchecked(ptr as *mut T)),
                         Err(_) => self.a.oom(),
@@ -371,8 +370,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             let new_size = new_cap * elem_size;
             alloc_guard(new_size).expect("capacity overflow");
             let ptr = self.ptr() as *mut _;
-            let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
+            match self.a.grow_in_place(ptr, old_layout, new_size) {
                 Ok(_) => {
                     // We can't directly divide `size`.
                     self.cap = new_cap;
@@ -428,8 +426,9 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let res = match self.current_layout() {
                 Some(layout) => {
+                    debug_assert!(new_layout.align() == layout.align());
                     let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    self.a.realloc(old_ptr, layout, new_layout.size())
                 }
                 None => self.a.alloc(new_layout),
             };
@@ -537,8 +536,9 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let res = match self.current_layout() {
                 Some(layout) => {
+                    debug_assert!(new_layout.align() == layout.align());
                     let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    self.a.realloc(old_ptr, layout, new_layout.size())
                 }
                 None => self.a.alloc(new_layout),
             };
@@ -604,7 +604,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size()).expect("capacity overflow");
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
+            match self.a.grow_in_place(ptr, old_layout, new_layout.size()) {
                 Ok(_) => {
                     self.cap = new_cap;
                     true
@@ -664,10 +664,9 @@ impl<T, A: Alloc> RawVec<T, A> {
                 let new_size = elem_size * amount;
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
-                let new_layout = Layout::from_size_align_unchecked(new_size, align);
                 match self.a.realloc(self.ptr.as_ptr() as *mut u8,
                                      old_layout,
-                                     new_layout) {
+                                     new_size) {
                     Ok(p) => self.ptr = Unique::new_unchecked(p as *mut T),
                     Err(_) => self.a.oom(),
                 }

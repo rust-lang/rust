@@ -633,9 +633,10 @@ pub unsafe trait Alloc {
     // realloc. alloc_excess, realloc_excess
 
     /// Returns a pointer suitable for holding data described by
-    /// `new_layout`, meeting its size and alignment guarantees. To
+    /// a new layout with `layout`’s alginment and a size given
+    /// by `new_size`. To
     /// accomplish this, this may extend or shrink the allocation
-    /// referenced by `ptr` to fit `new_layout`.
+    /// referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block
     /// referenced by `ptr` has been transferred to this
@@ -648,12 +649,6 @@ pub unsafe trait Alloc {
     /// block has not been transferred to this allocator, and the
     /// contents of the memory block are unaltered.
     ///
-    /// For best results, `new_layout` should not impose a different
-    /// alignment constraint than `layout`. (In other words,
-    /// `new_layout.align()` should equal `layout.align()`.) However,
-    /// behavior is well-defined (though underspecified) when this
-    /// constraint is violated; further discussion below.
-    ///
     /// # Safety
     ///
     /// This function is unsafe because undefined behavior can result
@@ -661,12 +656,13 @@ pub unsafe trait Alloc {
     ///
     /// * `ptr` must be currently allocated via this allocator,
     ///
-    /// * `layout` must *fit* the `ptr` (see above). (The `new_layout`
+    /// * `layout` must *fit* the `ptr` (see above). (The `new_size`
     ///   argument need not fit it.)
     ///
-    /// * `new_layout` must have size greater than zero.
+    /// * `new_size` must be greater than zero.
     ///
-    /// * the alignment of `new_layout` is non-zero.
+    /// * `new_size`, when rounded up to the nearest multiple of `layout.align()`,
+    ///   must not overflow (i.e. the rounded value must be less than `usize::MAX`).
     ///
     /// (Extension subtraits might provide more specific bounds on
     /// behavior, e.g. guarantee a sentinel address or a null pointer
@@ -674,17 +670,10 @@ pub unsafe trait Alloc {
     ///
     /// # Errors
     ///
-    /// Returns `Err` only if `new_layout` does not match the
-    /// alignment of `layout`, or does not meet the allocator's size
+    /// Returns `Err` only if the new layout
+    /// does not meet the allocator's size
     /// and alignment constraints of the allocator, or if reallocation
     /// otherwise fails.
-    ///
-    /// (Note the previous sentence did not say "if and only if" -- in
-    /// particular, an implementation of this method *can* return `Ok`
-    /// if `new_layout.align() != old_layout.align()`; or it can
-    /// return `Err` in that scenario, depending on whether this
-    /// allocator can dynamically adjust the alignment constraint for
-    /// the block.)
     ///
     /// Implementations are encouraged to return `Err` on memory
     /// exhaustion rather than panicking or aborting, but this is not
@@ -698,22 +687,21 @@ pub unsafe trait Alloc {
     unsafe fn realloc(&mut self,
                       ptr: *mut u8,
                       layout: Layout,
-                      new_layout: Layout) -> Result<*mut u8, AllocErr> {
-        let new_size = new_layout.size();
+                      new_size: usize) -> Result<*mut u8, AllocErr> {
         let old_size = layout.size();
-        let aligns_match = layout.align == new_layout.align;
 
-        if new_size >= old_size && aligns_match {
-            if let Ok(()) = self.grow_in_place(ptr, layout.clone(), new_layout.clone()) {
+        if new_size >= old_size {
+            if let Ok(()) = self.grow_in_place(ptr, layout.clone(), new_size) {
                 return Ok(ptr);
             }
-        } else if new_size < old_size && aligns_match {
-            if let Ok(()) = self.shrink_in_place(ptr, layout.clone(), new_layout.clone()) {
+        } else if new_size < old_size {
+            if let Ok(()) = self.shrink_in_place(ptr, layout.clone(), new_size) {
                 return Ok(ptr);
             }
         }
 
         // otherwise, fall back on alloc + copy + dealloc.
+        let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let result = self.alloc(new_layout);
         if let Ok(new_ptr) = result {
             ptr::copy_nonoverlapping(ptr as *const u8, new_ptr, cmp::min(old_size, new_size));
@@ -789,17 +777,19 @@ pub unsafe trait Alloc {
     unsafe fn realloc_excess(&mut self,
                              ptr: *mut u8,
                              layout: Layout,
-                             new_layout: Layout) -> Result<Excess, AllocErr> {
+                             new_size: usize) -> Result<Excess, AllocErr> {
+        let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let usable_size = self.usable_size(&new_layout);
-        self.realloc(ptr, layout, new_layout)
+        self.realloc(ptr, layout, new_size)
             .map(|p| Excess(p, usable_size.1))
     }
 
-    /// Attempts to extend the allocation referenced by `ptr` to fit `new_layout`.
+    /// Attempts to extend the allocation referenced by `ptr` to fit `new_size`.
     ///
     /// If this returns `Ok`, then the allocator has asserted that the
-    /// memory block referenced by `ptr` now fits `new_layout`, and thus can
-    /// be used to carry data of that layout. (The allocator is allowed to
+    /// memory block referenced by `ptr` now fits `new_size`, and thus can
+    /// be used to carry data of a layout of that size and same alignment as
+    /// `layout`. (The allocator is allowed to
     /// expend effort to accomplish this, such as extending the memory block to
     /// include successor blocks, or virtual memory tricks.)
     ///
@@ -815,11 +805,9 @@ pub unsafe trait Alloc {
     /// * `ptr` must be currently allocated via this allocator,
     ///
     /// * `layout` must *fit* the `ptr` (see above); note the
-    ///   `new_layout` argument need not fit it,
+    ///   `new_size` argument need not fit it,
     ///
-    /// * `new_layout.size()` must not be less than `layout.size()`,
-    ///
-    /// * `new_layout.align()` must equal `layout.align()`.
+    /// * `new_size` must not be less than `layout.size()`,
     ///
     /// # Errors
     ///
@@ -834,24 +822,23 @@ pub unsafe trait Alloc {
     unsafe fn grow_in_place(&mut self,
                             ptr: *mut u8,
                             layout: Layout,
-                            new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+                            new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
-        debug_assert!(new_layout.size >= layout.size);
-        debug_assert!(new_layout.align == layout.align);
+        debug_assert!(new_size >= layout.size);
         let (_l, u) = self.usable_size(&layout);
         // _l <= layout.size()                       [guaranteed by usable_size()]
         //       layout.size() <= new_layout.size()  [required by this method]
-        if new_layout.size <= u {
+        if new_size <= u {
             return Ok(());
         } else {
             return Err(CannotReallocInPlace);
         }
     }
 
-    /// Attempts to shrink the allocation referenced by `ptr` to fit `new_layout`.
+    /// Attempts to shrink the allocation referenced by `ptr` to fit `new_size`.
     ///
     /// If this returns `Ok`, then the allocator has asserted that the
-    /// memory block referenced by `ptr` now fits `new_layout`, and
+    /// memory block referenced by `ptr` now fits `new_size`, and
     /// thus can only be used to carry data of that smaller
     /// layout. (The allocator is allowed to take advantage of this,
     /// carving off portions of the block for reuse elsewhere.) The
@@ -872,12 +859,10 @@ pub unsafe trait Alloc {
     /// * `ptr` must be currently allocated via this allocator,
     ///
     /// * `layout` must *fit* the `ptr` (see above); note the
-    ///   `new_layout` argument need not fit it,
+    ///   `new_size` argument need not fit it,
     ///
-    /// * `new_layout.size()` must not be greater than `layout.size()`
+    /// * `new_size` must not be greater than `layout.size()`
     ///   (and must be greater than zero),
-    ///
-    /// * `new_layout.align()` must equal `layout.align()`.
     ///
     /// # Errors
     ///
@@ -892,14 +877,13 @@ pub unsafe trait Alloc {
     unsafe fn shrink_in_place(&mut self,
                               ptr: *mut u8,
                               layout: Layout,
-                              new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+                              new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
-        debug_assert!(new_layout.size <= layout.size);
-        debug_assert!(new_layout.align == layout.align);
+        debug_assert!(new_size <= layout.size);
         let (l, _u) = self.usable_size(&layout);
         //                      layout.size() <= _u  [guaranteed by usable_size()]
         // new_layout.size() <= layout.size()        [required by this method]
-        if l <= new_layout.size {
+        if l <= new_size {
             return Ok(());
         } else {
             return Err(CannotReallocInPlace);
@@ -1061,7 +1045,8 @@ pub unsafe trait Alloc {
     {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new), ptr.as_ptr()) {
             (Ok(ref k_old), Ok(ref k_new), ptr) if k_old.size() > 0 && k_new.size() > 0 => {
-                self.realloc(ptr as *mut u8, k_old.clone(), k_new.clone())
+                debug_assert!(k_old.align() == k_new.align());
+                self.realloc(ptr as *mut u8, k_old.clone(), k_new.size())
                     .map(|p| NonNull::new_unchecked(p as *mut T))
             }
             _ => {

@@ -64,7 +64,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                       ptr: *mut u8,
                       layout: Layout,
                       new_layout: Layout) -> Result<*mut u8, AllocErr> {
-        CoreAlloc::realloc(self, ptr, layout, new_layout)
+        CoreAlloc::realloc(self, ptr, layout, new_layout.size())
     }
 
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
@@ -79,20 +79,20 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                              ptr: *mut u8,
                              layout: Layout,
                              new_layout: Layout) -> Result<Excess, AllocErr> {
-        CoreAlloc::realloc_excess(self, ptr, layout, new_layout)
+        CoreAlloc::realloc_excess(self, ptr, layout, new_layout.size())
     }
 
     unsafe fn grow_in_place(&mut self,
                             ptr: *mut u8,
                             layout: Layout,
                             new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-        CoreAlloc::grow_in_place(self, ptr, layout, new_layout)
+        CoreAlloc::grow_in_place(self, ptr, layout, new_layout.size())
     }
 
     unsafe fn shrink_in_place(&mut self,
                               ptr: *mut u8,
                               layout: Layout,
                               new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-        CoreAlloc::shrink_in_place(self, ptr, layout, new_layout)
+        CoreAlloc::shrink_in_place(self, ptr, layout, new_layout.size())
     }
 }
