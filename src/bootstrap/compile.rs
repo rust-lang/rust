@@ -145,8 +145,11 @@ pub fn std_cargo(build: &Builder,
     }
 
     if build.no_std(target) == Some(true) {
-        // for no-std targets we only compile core and compiler-builtins
+        // for no-std targets we only compile a few no_std crates
         cargo.arg("--features").arg("c mem")
+            .args(&["-p", "alloc"])
+            .args(&["-p", "compiler_builtins"])
+            .args(&["-p", "std_unicode"])
             .arg("--manifest-path")
             .arg(build.src.join("src/rustc/compiler_builtins_shim/Cargo.toml"));
     } else {
