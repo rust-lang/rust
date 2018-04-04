@@ -362,7 +362,9 @@ enum EvaluationResult {
     /// When checking `foo`, we have to prove `T: Trait`. This basically
     /// translates into this:
     ///
+    /// ```plain,ignore
     ///     (T: Trait + Sized →_\impl T: Trait), T: Trait ⊢ T: Trait
+    /// ```
     ///
     /// When we try to prove it, we first go the first option, which
     /// recurses. This shows us that the impl is "useless" - it won't

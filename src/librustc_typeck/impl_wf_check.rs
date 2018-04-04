@@ -42,21 +42,21 @@ use syntax_pos::Span;
 ///
 /// Example:
 ///
-/// ```
+/// ```rust,ignore (pseudo-Rust)
 /// impl<T> Trait<Foo> for Bar { ... }
-///      ^ T does not appear in `Foo` or `Bar`, error!
+/// //   ^ T does not appear in `Foo` or `Bar`, error!
 ///
 /// impl<T> Trait<Foo<T>> for Bar { ... }
-///      ^ T appears in `Foo<T>`, ok.
+/// //   ^ T appears in `Foo<T>`, ok.
 ///
 /// impl<T> Trait<Foo> for Bar where Bar: Iterator<Item=T> { ... }
-///      ^ T is bound to `<Bar as Iterator>::Item`, ok.
+/// //   ^ T is bound to `<Bar as Iterator>::Item`, ok.
 ///
 /// impl<'a> Trait<Foo> for Bar { }
-///      ^ 'a is unused, but for back-compat we allow it
+/// //   ^ 'a is unused, but for back-compat we allow it
 ///
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
-///      ^ 'a is unused and appears in assoc type, error
+/// //   ^ 'a is unused and appears in assoc type, error
 /// ```
 pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
