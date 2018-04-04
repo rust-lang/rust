@@ -347,3 +347,15 @@ macro lex_err($kind: ident $(, $body: expr)*) {
 // Preserve trailing comma on item-level macro with `()` or `[]`.
 methods![ get, post, delete, ];
 methods!( get, post, delete, );
+
+// #2591
+fn foo() {
+    match 0u32 {
+        0 => (),
+        _ => unreachable!(/* obviously */),
+    }
+}
+
+fn foo() {
+    let _ = column!(/* here */);
+}
