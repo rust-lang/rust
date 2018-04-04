@@ -278,8 +278,8 @@ macro_rules! declare_keywords {(
 // NB: leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max
 // of the reserved words, and thus tagged as "reserved".
-// After modifying this list adjust `is_special_ident`, `is_used_keyword`/`is_unused_keyword`,
-// this should be rarely necessary though if the keywords are kept in alphabetic order.
+// After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
+// velow
 declare_keywords! {
     // Special reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
@@ -363,28 +363,49 @@ declare_keywords! {
     (63, Union,              "union")
 }
 
-// Returns true for reserved identifiers used internally for elided lifetimes,
-// unnamed method parameters, crate root module, error recovery etc.
-pub fn is_special_ident(id: Ident) -> bool {
-    id.name <= self::keywords::Underscore.name()
+impl Ident {
+    // Returns true for reserved identifiers used internally for elided lifetimes,
+    // unnamed method parameters, crate root module, error recovery etc.
+    #[inline]
+    pub fn is_special(self) -> bool {
+        self.name <= self::keywords::Underscore.name()
+    }
+
+    /// Returns `true` if the token is a keyword used in the language, for
+    /// at least one edition.
+    ///
+    /// Keywords from future editions will be lexed as if they were raw identifiers
+    /// so they will not reach this step.
+    #[inline]
+    pub fn is_used_keyword(self) -> bool {
+        self.name >= self::keywords::As.name() && self.name <= self::keywords::While.name()
+    }
+
+    /// Returns `true` if the token is a keyword reserved for possible future use, for
+    /// at least one edition.
+    #[inline]
+    pub fn is_unused_keyword(self) -> bool {
+        self.name >= self::keywords::Abstract.name() && self.name <= self::keywords::Async.name()
+    }
+
+
+    /// Returns `true` if the token is either a special identifier or a keyword.
+    #[inline]
+    pub fn is_reserved(self) -> bool {
+        self.is_special() || self.is_used_keyword() || self.is_unused_keyword()
+    }
 }
 
-/// Returns `true` if the token is a keyword used in the language.
-pub fn is_used_keyword(id: Ident) -> bool {
-    id.name >= self::keywords::As.name() && id.name <= self::keywords::While.name()
-}
+impl Symbol {
+    #[inline]
+    pub fn is_future_edition_keyword_2015(self) -> bool {
+        self == self::keywords::Async.name()
+    }
 
-/// Returns `true` if the token is a keyword reserved for possible future use.
-pub fn is_unused_keyword(id: Ident) -> bool {
-    id.name >= self::keywords::Abstract.name() && id.name <= self::keywords::Async.name()
-}
-
-pub fn is_future_edition_keyword_2015(sym: Symbol) -> bool {
-    sym == self::keywords::Async.name()
-}
-
-pub fn is_future_edition_keyword_2018(_: Symbol) -> bool {
-    false
+    #[inline]
+    pub fn is_future_edition_keyword_2018(self) -> bool {
+        false
+    }
 }
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.

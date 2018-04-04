@@ -145,14 +145,7 @@ pub fn is_path_segment_keyword(id: ast::Ident) -> bool {
 // How was it written originally? Did it use the raw form? Let's try to guess.
 pub fn is_raw_guess(ident: ast::Ident) -> bool {
     ident.name != keywords::Invalid.name() &&
-    is_reserved_ident(ident) && !is_path_segment_keyword(ident)
-}
-
-pub use syntax_pos::symbol::{is_special_ident, is_used_keyword, is_unused_keyword};
-
-/// Returns `true` if the token is either a special identifier or a keyword.
-pub fn is_reserved_ident(id: ast::Ident) -> bool {
-    is_special_ident(id) || is_used_keyword(id) || is_unused_keyword(id)
+    ident.is_reserved() && !is_path_segment_keyword(ident)
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
@@ -399,7 +392,7 @@ impl Token {
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_special_ident(id),
+            Some((id, false)) => id.is_special(),
             _ => false,
         }
     }
@@ -407,7 +400,7 @@ impl Token {
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_used_keyword(id),
+            Some((id, false)) => id.is_used_keyword(),
             _ => false,
         }
     }
@@ -415,7 +408,7 @@ impl Token {
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_unused_keyword(id),
+            Some((id, false)) => id.is_unused_keyword(),
             _ => false,
         }
     }
@@ -423,7 +416,7 @@ impl Token {
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_reserved_ident(id),
+            Some((id, false)) => id.is_reserved(),
             _ => false,
         }
     }
