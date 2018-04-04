@@ -2192,12 +2192,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 }
 
 direct_interners!('tcx,
-    region: mk_region(|r| {
-        match r {
-            &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
-            _ => false
-        }
-    }) -> RegionKind,
+    region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
     const_: mk_const(|c: &Const| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>
 );
 
