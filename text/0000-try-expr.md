@@ -478,6 +478,36 @@ However, `trap` is used as an error handler in at least one langauge.
 It also does not have the familiarity that `try` does have and is entirely
 inconsistent wrt. naming in the standard library.
 
+## Alternative: reserving `result`
+
+1. **Fidelity to the construct's actual behavior:** Somewhat good
+2. **Precedent from existing languages:** None
+3. **Brevity / Length:** 6
+4. **Consistency with the naming of the trait used for `?`:** Inconsistent
+5. **Consistency with related libstd fn conventions:** Inconsistent
+6. **Risk of breakage:** Very high
+    - **Used in std:** [*Yes*](https://doc.rust-lang.org/nightly/std/?search=result) for the `{std, core}::result` modules.
+    - **Used as crate?** [*Yes*](https://crates.io/crates/result). 6 reverse dependencies (transitive closure).
+    - **Usage (sourcegraph):** **43+** regex:
+    ```
+    repogroup:crates case:yes max:400
+    \b((let|const|type|)\s+result\s+=|(fn|impl|mod|struct|enum|union|trait)\s+result)\b
+    ```
+7. **Consistency with old learning material:** Untaught
+
+## Review
+
+[final encoding]: http://okmij.org/ftp/tagless-final/course/lecture.pdf
+
+The fidelity of `result` is somewhat good due to the association with the
+`Result` type as well as `Try` being a [final encoding] of `Result`.
+
+However, when you consider `Option`, the association is less direct,
+and thus it does not fit `Option` and other types well.
+
+The breakage of the `result` module is however quite problematic,
+making this particular choice of keyword more or less a non-starter.
+
 ## Alternative: a smattering of other possible keywords
 
 There are a host of other keywords which have been suggested.
