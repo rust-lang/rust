@@ -132,6 +132,12 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 self.goto_block(return_to_block);
                 return Ok(true);
             }
+            "std::sys::unix::fast_thread_local::register_dtor" => {
+                // TODO: register the dtor
+                let (_return_place, return_to_block) = destination.unwrap();
+                self.goto_block(return_to_block);
+                return Ok(true);
+            }
             _ => {}
         }
 

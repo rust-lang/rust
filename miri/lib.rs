@@ -269,21 +269,21 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
+        // Step 1: If the static has already been evaluated return the cached version
         if let Some(alloc_id) = ecx.memory.data.mut_statics.get(&cid) {
             return Ok(*alloc_id);
         }
 
         let tcx = ecx.tcx.tcx;
-        let param_env = ty::ParamEnv::reveal_all();
 
+        // Step 2: Load mir
         let mut mir = ecx.load_mir(cid.instance.def)?;
         if let Some(index) = cid.promoted {
             mir = &mir.promoted[index];
         }
         assert!(mir.arg_count == 0);
 
-        // we start out with the best span we have
-        // and try improving it down the road when more information is available
+        // Step 3: Allocate storage
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
         assert!(!layout.is_unsized());
         let ptr = ecx.memory.allocate(
@@ -292,23 +292,11 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             None,
         )?;
 
-        let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-        let mutability = tcx.is_static(cid.instance.def_id());
-        if mutability != Some(::rustc::hir::Mutability::MutMutable) && !internally_mutable {
-            ecx.const_eval(cid)?;
-            return Ok(ecx
-            .tcx
-            .interpret_interner
-            .get_cached(cid.instance.def_id())
-            .expect("uncached static"));
-        }
+        // Step 4: Cache allocation id for recursive statics
+        assert!(ecx.memory.data.mut_statics.insert(cid, ptr.alloc_id).is_none());
 
-        //let cleanup = StackPopCleanup::MarkStatic(Mutability::Mutable);
+        // Step 5: Push stackframe to evaluate static
         let cleanup = StackPopCleanup::None;
-        let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-        let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
-        trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
-        let caller_stackframe = ecx.stack().len();
         ecx.push_stack_frame(
             cid.instance,
             mir.span,
@@ -317,10 +305,30 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
             cleanup,
         )?;
 
-        while ecx.step()? && ecx.stack().len() > caller_stackframe {}
+        // Step 6: Step until static has been initialized
+        let call_stackframe = ecx.stack().len();
+        while ecx.step()? && ecx.stack().len() >= call_stackframe {
+            if ecx.stack().len() == call_stackframe {
+                let frame = ecx.stack().last().unwrap();
+                let bb = &frame.mir.basic_blocks()[frame.block];
+                if bb.statements.len() == frame.stmt && !bb.is_cleanup {
+                    match bb.terminator().kind {
+                        ::rustc::mir::TerminatorKind::Return => {
+                            for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
+                                // Don't deallocate locals, because the return value might reference them
+                                // ------------------------------------------------------------
+                                // ||||||||||||| TODO: remove this horrible hack ||||||||||||||
+                                // ------------------------------------------------------------
+                                unsafe { &mut *(frame as *const Frame as *mut Frame) }.storage_dead(local);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
 
-        assert!(ecx.memory.data.mut_statics.insert(cid, ptr.alloc_id).is_none());
-
+        // Step 7: Return the alloc
         Ok(ptr.alloc_id)
     }
 
