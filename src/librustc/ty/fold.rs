@@ -111,15 +111,6 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
-    fn is_normalized_for_trans(&self) -> bool {
-        !self.has_type_flags(TypeFlags::HAS_RE_INFER |
-                             TypeFlags::HAS_FREE_REGIONS |
-                             TypeFlags::HAS_TY_INFER |
-                             TypeFlags::HAS_PARAMS |
-                             TypeFlags::HAS_NORMALIZABLE_PROJECTION |
-                             TypeFlags::HAS_TY_ERR |
-                             TypeFlags::HAS_SELF)
-    }
     /// Indicates whether this value references only 'global'
     /// types/lifetimes that are the same regardless of what fn we are
     /// in. This is used for caching. Errs on the side of returning

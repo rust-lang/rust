@@ -1171,13 +1171,6 @@ impl RegionKind {
         }
     }
 
-    pub fn needs_infer(&self) -> bool {
-        match *self {
-            ty::ReVar(..) | ty::ReSkolemized(..) => true,
-            _ => false
-        }
-    }
-
     pub fn escapes_depth(&self, depth: u32) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
