@@ -2354,7 +2354,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // exhaust self first
-        while let Some(_) = self.next() {}
+        self.for_each(drop);
 
         if self.tail_len > 0 {
             unsafe {
@@ -2474,9 +2474,7 @@ impl<'a, I: Iterator> ExactSizeIterator for Splice<'a, I> {}
 #[stable(feature = "vec_splice", since = "1.21.0")]
 impl<'a, I: Iterator> Drop for Splice<'a, I> {
     fn drop(&mut self) {
-        // exhaust drain first
-        while let Some(_) = self.drain.next() {}
-
+        self.drain.by_ref().for_each(drop);
 
         unsafe {
             if self.drain.tail_len == 0 {
@@ -2605,8 +2603,7 @@ impl<'a, T, F> Drop for DrainFilter<'a, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        for _ in self.by_ref() { }
-
+        self.for_each(drop);
         unsafe {
             self.vec.set_len(self.old_len - self.del);
         }
