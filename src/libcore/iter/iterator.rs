@@ -1368,6 +1368,7 @@ pub trait Iterator {
     /// [`Result`]: ../../std/result/enum.Result.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
     fn collect<B: FromIterator<Self::Item>>(self) -> B where Self: Sized {
         FromIterator::from_iter(self)
     }

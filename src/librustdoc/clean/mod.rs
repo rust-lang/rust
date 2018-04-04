@@ -1074,8 +1074,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
         let ty = cx.resolver.borrow_mut()
                             .with_scope(*id,
             |resolver| {
-                resolver.resolve_str_path_error(DUMMY_SP,
-                                                &path, false)
+                resolver.resolve_str_path_error(DUMMY_SP, &path, false)
         })?;
         match ty.def {
             Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
@@ -1090,7 +1089,27 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                     };
                     Ok((ty.def, Some(format!("{}.{}", out, item_name))))
                 } else {
-                    Err(())
+                    let is_enum = match ty.def {
+                        Def::Enum(_) => true,
+                        _ => false,
+                    };
+                    let elem = if is_enum {
+                        cx.tcx.adt_def(did).all_fields().find(|item| item.name == item_name)
+                    } else {
+                        cx.tcx.adt_def(did)
+                              .non_enum_variant()
+                              .fields
+                              .iter()
+                              .find(|item| item.name == item_name)
+                    };
+                    if let Some(item) = elem {
+                        Ok((ty.def,
+                            Some(format!("{}.{}",
+                                         if is_enum { "variant" } else { "structfield" },
+                                         item.name))))
+                    } else {
+                        Err(())
+                    }
                 }
             }
             Def::Trait(did) => {
@@ -1101,7 +1120,13 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                     let kind = match item.kind {
                         ty::AssociatedKind::Const if is_val => "associatedconstant",
                         ty::AssociatedKind::Type if !is_val => "associatedtype",
-                        ty::AssociatedKind::Method if is_val => "tymethod",
+                        ty::AssociatedKind::Method if is_val => {
+                            if item.defaultness.has_value() {
+                                "method"
+                            } else {
+                                "tymethod"
+                            }
+                        }
                         _ => return Err(())
                     };
 
