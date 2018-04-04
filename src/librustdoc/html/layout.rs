@@ -53,7 +53,7 @@ r##"<!DOCTYPE html>
           id="mainThemeStyle">
     {themes}
     <link rel="stylesheet" type="text/css" href="{root_path}dark{suffix}.css">
-    <link rel="stylesheet" type="text/css" href="{root_path}main{suffix}.css" id="themeStyle">
+    <link rel="stylesheet" type="text/css" href="{root_path}light{suffix}.css" id="themeStyle">
     <script src="{root_path}storage{suffix}.js"></script>
     {css_extension}
 

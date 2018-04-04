@@ -66,6 +66,14 @@ RUN env \
     bash musl.sh mipsel && \
     rm -rf /build/*
 
+# FIXME(mozilla/sccache#235) this shouldn't be necessary but is currently
+# necessary to disambiguate the mips compiler with the mipsel compiler. We want
+# to give these two wrapper scripts (currently identical ones) different hashes
+# to ensure that sccache understands that they're different compilers.
+RUN \
+  echo "# a" >> /usr/local/mips-linux-musl/bin/mips-openwrt-linux-musl-wrapper.sh && \
+  echo "# b" >> /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-musl-wrapper.sh
+
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
 ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
@@ -95,7 +103,8 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
-      --enable-emscripten
+      --enable-emscripten \
+      --disable-docs
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 

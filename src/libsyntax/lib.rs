@@ -22,9 +22,9 @@
 
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(match_default_bindings)]
+#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(non_exhaustive)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(const_atomic_usize_new)]
 #![feature(rustc_attrs)]
 
@@ -145,7 +145,7 @@ pub mod codemap;
 #[macro_use]
 pub mod config;
 pub mod entry;
-pub mod epoch;
+pub mod edition;
 pub mod feature_gate;
 pub mod fold;
 pub mod parse;

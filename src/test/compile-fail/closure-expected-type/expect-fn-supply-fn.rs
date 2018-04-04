@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(underscore_lifetimes)]
-
 fn with_closure_expecting_fn_with_free_region<F>(_: F)
     where F: for<'a> FnOnce(fn(&'a u32), &i32)
 {

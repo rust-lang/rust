@@ -19,11 +19,11 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use core::intrinsics;
-use core::nonzero::NonZero;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
 use std::mem;
+use std::num::NonZeroUsize;
 
 /// An entity in the Rust typesystem, which can be one of
 /// several kinds (only types and lifetimes for now).
@@ -32,7 +32,7 @@ use std::mem;
 /// indicate the type (`Ty` or `Region`) it points to.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Kind<'tcx> {
-    ptr: NonZero<usize>,
+    ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>)>
 }
 
@@ -63,7 +63,7 @@ impl<'tcx> UnpackedKind<'tcx> {
 
         Kind {
             ptr: unsafe {
-                NonZero::new_unchecked(ptr | tag)
+                NonZeroUsize::new_unchecked(ptr | tag)
             },
             marker: PhantomData
         }

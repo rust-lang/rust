@@ -132,7 +132,13 @@ pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
     pub name: Symbol,
     pub cfg: Option<ast::MetaItem>,
+    pub foreign_module: Option<DefId>,
+}
+
+#[derive(Clone, Hash, RustcEncodable, RustcDecodable)]
+pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
+    pub def_id: DefId,
 }
 
 pub enum LoadedMacro {

@@ -322,6 +322,7 @@ pub enum DiagnosticKind {
     OptimizationRemarkAnalysisAliasing,
     OptimizationRemarkOther,
     OptimizationFailure,
+    PGOProfile,
 }
 
 /// LLVMRustArchiveKind
@@ -935,6 +936,11 @@ extern "C" {
                          RHS: ValueRef,
                          Name: *const c_char)
                          -> ValueRef;
+    pub fn LLVMBuildExactUDiv(B: BuilderRef,
+                              LHS: ValueRef,
+                              RHS: ValueRef,
+                              Name: *const c_char)
+                              -> ValueRef;
     pub fn LLVMBuildSDiv(B: BuilderRef,
                          LHS: ValueRef,
                          RHS: ValueRef,
@@ -1241,6 +1247,9 @@ extern "C" {
                                          Src: ValueRef,
                                          IsNaN: bool)
                                          -> ValueRef;
+
+    pub fn LLVMRustBuildMinNum(B: BuilderRef, LHS: ValueRef, LHS: ValueRef) -> ValueRef;
+    pub fn LLVMRustBuildMaxNum(B: BuilderRef, LHS: ValueRef, LHS: ValueRef) -> ValueRef;
 
     pub fn LLVMBuildIsNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
     pub fn LLVMBuildIsNotNull(B: BuilderRef, Val: ValueRef, Name: *const c_char) -> ValueRef;
@@ -1641,7 +1650,9 @@ extern "C" {
                                                OptLevel: CodeGenOptLevel,
                                                MergeFunctions: bool,
                                                SLPVectorize: bool,
-                                               LoopVectorize: bool);
+                                               LoopVectorize: bool,
+                                               PGOGenPath: *const c_char,
+                                               PGOUsePath: *const c_char);
     pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,
                                   M: ModuleRef,
                                   DisableSimplifyLibCalls: bool);
@@ -1736,6 +1747,7 @@ extern "C" {
     pub fn LLVMRustModuleCost(M: ModuleRef) -> u64;
 
     pub fn LLVMRustThinLTOAvailable() -> bool;
+    pub fn LLVMRustPGOAvailable() -> bool;
     pub fn LLVMRustWriteThinBitcodeToFile(PMR: PassManagerRef,
                                           M: ModuleRef,
                                           BC: *const c_char) -> bool;

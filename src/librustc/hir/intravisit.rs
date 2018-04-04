@@ -420,7 +420,10 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
         LifetimeName::Name(name) => {
             visitor.visit_name(lifetime.span, name);
         }
-        LifetimeName::Static | LifetimeName::Implicit | LifetimeName::Underscore => {}
+        LifetimeName::Fresh(_) |
+        LifetimeName::Static |
+        LifetimeName::Implicit |
+        LifetimeName::Underscore => {}
     }
 }
 

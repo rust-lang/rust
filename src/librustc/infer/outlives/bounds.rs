@@ -11,7 +11,7 @@
 use infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::Span;
-use traits::FulfillmentContext;
+use traits::{FulfillmentContext, TraitEngine};
 use ty::{self, Ty, TypeFoldable};
 use ty::outlives::Component;
 use ty::wf;

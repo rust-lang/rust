@@ -67,7 +67,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
@@ -84,6 +84,13 @@ struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     cause: ObligationCause<'tcx>,
     use_lub: bool,
+    /// Determines whether or not allow_two_phase_borrow is set on any
+    /// autoref adjustments we create while coercing. We don't want to
+    /// allow deref coercions to create two-phase borrows, at least initially,
+    /// but we do need two-phase borrows for function argument reborrows.
+    /// See #47489 and #48598
+    /// See docs on the "AllowTwoPhase" type for a more detailed discussion
+    allow_two_phase: AllowTwoPhase,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for Coerce<'a, 'gcx, 'tcx> {
@@ -123,10 +130,13 @@ fn success<'tcx>(adj: Vec<Adjustment<'tcx>>,
 }
 
 impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
-    fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>, cause: ObligationCause<'tcx>) -> Self {
+    fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>,
+           cause: ObligationCause<'tcx>,
+           allow_two_phase: AllowTwoPhase) -> Self {
         Coerce {
             fcx,
             cause,
+            allow_two_phase,
             use_lub: false,
         }
     }
@@ -176,7 +186,6 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // micro-optimization: no need for this if `b` is
                 // already resolved in some way.
                 let diverging_ty = self.next_diverging_ty_var(
-                    ty::UniverseIndex::ROOT,
                     TypeVariableOrigin::AdjustmentType(self.cause.span));
                 self.unify_and(&b, &diverging_ty, simple(Adjust::NeverToAny))
             } else {
@@ -424,10 +433,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let mutbl = match mt_b.mutbl {
             hir::MutImmutable => AutoBorrowMutability::Immutable,
             hir::MutMutable => AutoBorrowMutability::Mutable {
-                // Deref-coercion is a case where we deliberately
-                // disallow two-phase borrows in its initial
-                // deployment; see discussion on PR #47489.
-                allow_two_phase_borrow: false,
+                allow_two_phase_borrow: self.allow_two_phase,
             }
         };
         adjustments.push(Adjustment {
@@ -473,7 +479,10 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 let mutbl = match mt_b.mutbl {
                     hir::MutImmutable => AutoBorrowMutability::Immutable,
                     hir::MutMutable => AutoBorrowMutability::Mutable {
-                        allow_two_phase_borrow: false,
+                        // We don't allow two-phase borrows here, at least for initial
+                        // implementation. If it happens that this coercion is a function argument,
+                        // the reborrow in coerce_borrowed_ptr will pick it up.
+                        allow_two_phase_borrow: AllowTwoPhase::No,
                     }
                 };
                 Some((Adjustment {
@@ -510,7 +519,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // We only have the latter, so we use an inference variable
         // for the former and let type inference do the rest.
         let origin = TypeVariableOrigin::MiscVariable(self.cause.span);
-        let coerce_target = self.next_ty_var(ty::UniverseIndex::ROOT, origin);
+        let coerce_target = self.next_ty_var(origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
             let unsize = Adjustment {
                 kind: Adjust::Unsize,
@@ -751,13 +760,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn try_coerce(&self,
                       expr: &hir::Expr,
                       expr_ty: Ty<'tcx>,
-                      target: Ty<'tcx>)
+                      target: Ty<'tcx>,
+                      allow_two_phase: AllowTwoPhase)
                       -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
-        let coerce = Coerce::new(self, cause);
+        let coerce = Coerce::new(self, cause, allow_two_phase);
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
 
         let (adjustments, _) = self.register_infer_ok_obligations(ok);
@@ -771,7 +781,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("coercion::can({:?} -> {:?})", source, target);
 
         let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
-        let coerce = Coerce::new(self, cause);
+        // We don't ever need two-phase here since we throw out the result of the coercion
+        let coerce = Coerce::new(self, cause, AllowTwoPhase::No);
         self.probe(|_| coerce.coerce(source, target)).is_ok()
     }
 
@@ -840,7 +851,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return Ok(fn_ptr);
         }
 
-        let mut coerce = Coerce::new(self, cause.clone());
+        // Configure a Coerce instance to compute the LUB.
+        // We don't allow two-phase borrows on any autorefs this creates since we
+        // probably aren't processing function arguments here and even if we were,
+        // they're going to get autorefed again anyway and we can apply 2-phase borrows
+        // at that time.
+        let mut coerce = Coerce::new(self, cause.clone(), AllowTwoPhase::No);
         coerce.use_lub = true;
 
         // First try to coerce the new expression to the type of the previous ones,
@@ -1106,7 +1122,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             if self.pushed == 0 {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
-                fcx.try_coerce(expression, expression_ty, self.expected_ty)
+                // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
+                fcx.try_coerce(expression, expression_ty, self.expected_ty, AllowTwoPhase::No)
             } else {
                 match self.expressions {
                     Expressions::Dynamic(ref exprs) =>

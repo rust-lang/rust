@@ -344,6 +344,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn exactudiv(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("exactudiv");
+        unsafe {
+            llvm::LLVMBuildExactUDiv(self.llbuilder, lhs, rhs, noname())
+        }
+    }
+
     pub fn sdiv(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("sdiv");
         unsafe {
@@ -910,6 +917,27 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn minnum(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("minnum");
+        unsafe {
+            let instr = llvm::LLVMRustBuildMinNum(self.llbuilder, lhs, rhs);
+            if instr.is_null() {
+                bug!("LLVMRustBuildMinNum is not available in LLVM version < 6.0");
+            }
+            instr
+        }
+    }
+    pub fn maxnum(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("maxnum");
+        unsafe {
+            let instr = llvm::LLVMRustBuildMaxNum(self.llbuilder, lhs, rhs);
+            if instr.is_null() {
+                bug!("LLVMRustBuildMaxNum is not available in LLVM version < 6.0");
+            }
+            instr
+        }
+    }
+
     pub fn select(&self, cond: ValueRef, then_val: ValueRef, else_val: ValueRef) -> ValueRef {
         self.count_insn("select");
         unsafe {
@@ -1036,7 +1064,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmin(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmin");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, true);
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
             }
@@ -1046,7 +1074,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmax(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmax");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, true);
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
             }
@@ -1056,7 +1084,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmin_fast(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmin_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, false);
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
             }
@@ -1067,7 +1095,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn vector_reduce_fmax_fast(&self, src: ValueRef) -> ValueRef {
         self.count_insn("vector.reduce.fmax_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, false);
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
             if instr.is_null() {
                 bug!("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
             }

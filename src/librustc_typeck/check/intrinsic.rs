@@ -283,7 +283,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (1, vec![param(0), param(0)],
                 tcx.intern_tup(&[param(0), tcx.types.bool])),
 
-            "unchecked_div" | "unchecked_rem" =>
+            "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
             "unchecked_shl" | "unchecked_shr" =>
                 (1, vec![param(0), param(0)], param(0)),
@@ -355,12 +355,14 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
         "simd_div" | "simd_shl" | "simd_shr" |
-        "simd_and" | "simd_or" | "simd_xor" => {
+        "simd_and" | "simd_or" | "simd_xor" |
+        "simd_fmin" | "simd_fmax" => {
             (1, vec![param(0), param(0)], param(0))
         }
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
         "simd_cast" => (2, vec![param(0)], param(1)),
+        "simd_select" => (2, vec![param(0), param(1), param(1)], param(1)),
         "simd_reduce_all" | "simd_reduce_any" => (1, vec![param(0)], tcx.types.bool),
         "simd_reduce_add_ordered" | "simd_reduce_mul_ordered"
             => (2, vec![param(0), param(1)], param(1)),

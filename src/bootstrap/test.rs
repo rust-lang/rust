@@ -530,8 +530,6 @@ impl Step for Tidy {
     fn run(self, builder: &Builder) {
         let build = builder.build;
 
-        let _folder = build.fold_output(|| "tidy");
-        println!("tidy check");
         let mut cmd = builder.tool_cmd(Tool::Tidy);
         cmd.arg(build.src.join("src"));
         cmd.arg(&build.initial_cargo);
@@ -541,6 +539,9 @@ impl Step for Tidy {
         if build.config.quiet_tests {
             cmd.arg("--quiet");
         }
+
+        let _folder = build.fold_output(|| "tidy");
+        println!("tidy check");
         try_run(build, &mut cmd);
     }
 
@@ -759,10 +760,16 @@ test!(RunFailFullDepsPretty {
     host: true
 });
 
-host_test!(RunMake {
+default_test!(RunMake {
     path: "src/test/run-make",
     mode: "run-make",
     suite: "run-make"
+});
+
+host_test!(RunMakeFullDeps {
+    path: "src/test/run-make-fulldeps",
+    mode: "run-make",
+    suite: "run-make-fulldeps"
 });
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -827,8 +834,7 @@ impl Step for Compiletest {
             // FIXME: Does pretty need librustc compiled? Note that there are
             // fulldeps test suites with mode = pretty as well.
             mode == "pretty" ||
-            mode == "rustdoc" ||
-            mode == "run-make" {
+            mode == "rustdoc" {
             builder.ensure(compile::Rustc { compiler, target });
         }
 
@@ -836,9 +842,6 @@ impl Step for Compiletest {
         builder.ensure(native::TestHelpers { target });
         builder.ensure(RemoteCopyLibs { compiler, target });
 
-        let _folder = build.fold_output(|| format!("test_{}", suite));
-        println!("Check compiletest suite={} mode={} ({} -> {})",
-                 suite, mode, &compiler.host, target);
         let mut cmd = builder.tool_cmd(Tool::Compiletest);
 
         // compiletest currently has... a lot of arguments, so let's just pass all
@@ -849,7 +852,7 @@ impl Step for Compiletest {
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
         // Avoid depending on rustdoc when we don't need it.
-        if mode == "rustdoc" || mode == "run-make" {
+        if mode == "rustdoc" || (mode == "run-make" && suite.ends_with("fulldeps")) {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
@@ -931,7 +934,7 @@ impl Step for Compiletest {
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if suite == "run-make" {
+            if suite == "run-make-fulldeps" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc").arg(build.cc(target))
@@ -944,12 +947,12 @@ impl Step for Compiletest {
                 }
             }
         }
-        if suite == "run-make" && !build.config.llvm_enabled {
+        if suite == "run-make-fulldeps" && !build.config.llvm_enabled {
             println!("Ignoring run-make test suite as they generally don't work without LLVM");
             return;
         }
 
-        if suite != "run-make" {
+        if suite != "run-make-fulldeps" {
             cmd.arg("--cc").arg("")
                .arg("--cxx").arg("")
                .arg("--cflags").arg("")
@@ -998,6 +1001,9 @@ impl Step for Compiletest {
 
         build.ci_env.force_coloring_in_ci(&mut cmd);
 
+        let _folder = build.fold_output(|| format!("test_{}", suite));
+        println!("Check compiletest suite={} mode={} ({} -> {})",
+                 suite, mode, &compiler.host, target);
         let _time = util::timeit();
         try_run(build, &mut cmd);
     }
@@ -1142,20 +1148,21 @@ impl Step for ErrorIndex {
 
         builder.ensure(compile::Std { compiler, target: compiler.host });
 
-        let _folder = build.fold_output(|| "test_error_index");
-        println!("Testing error-index stage{}", compiler.stage);
-
         let dir = testdir(build, compiler.host);
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
-        let _time = util::timeit();
-        build.run(builder.tool_cmd(Tool::ErrorIndex)
-                    .arg("markdown")
-                    .arg(&output)
-                    .env("CFG_BUILD", &build.build)
-                    .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir()));
+        let mut tool = builder.tool_cmd(Tool::ErrorIndex);
+        tool.arg("markdown")
+            .arg(&output)
+            .env("CFG_BUILD", &build.build)
+            .env("RUSTC_ERROR_METADATA_DST", build.extended_error_dir());
 
+
+        let _folder = build.fold_output(|| "test_error_index");
+        println!("Testing error-index stage{}", compiler.stage);
+        let _time = util::timeit();
+        build.run(&mut tool);
         markdown_test(builder, compiler, &output);
     }
 }
@@ -1400,11 +1407,6 @@ impl Step for Crate {
             }
             _ => panic!("can only test libraries"),
         };
-        let _folder = build.fold_output(|| {
-            format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, krate)
-        });
-        println!("{} {} stage{} ({} -> {})", test_kind, krate, compiler.stage,
-                &compiler.host, target);
 
         // Build up the base `cargo test` command.
         //
@@ -1436,8 +1438,6 @@ impl Step for Crate {
             cargo.arg("--quiet");
         }
 
-        let _time = util::timeit();
-
         if target.contains("emscripten") {
             cargo.env(format!("CARGO_TARGET_{}_RUNNER", envify(&target)),
                       build.config.nodejs.as_ref().expect("nodejs not configured"));
@@ -1465,6 +1465,13 @@ impl Step for Crate {
                       format!("{} run",
                               builder.tool_exe(Tool::RemoteTestClient).display()));
         }
+
+        let _folder = build.fold_output(|| {
+            format!("{}_stage{}-{}", test_kind.subcommand(), compiler.stage, krate)
+        });
+        println!("{} {} stage{} ({} -> {})", test_kind, krate, compiler.stage,
+                &compiler.host, target);
+        let _time = util::timeit();
         try_run(build, &mut cargo);
     }
 }
@@ -1513,12 +1520,6 @@ impl Step for CrateRustdoc {
                                                  target,
                                                  test_kind.subcommand(),
                                                  "src/tools/rustdoc");
-        let _folder = build.fold_output(|| {
-            format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage)
-        });
-        println!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
-                &compiler.host, target);
-
         if test_kind.subcommand() == "test" && !build.fail_fast {
             cargo.arg("--no-fail-fast");
         }
@@ -1532,6 +1533,11 @@ impl Step for CrateRustdoc {
             cargo.arg("--quiet");
         }
 
+        let _folder = build.fold_output(|| {
+            format!("{}_stage{}-rustdoc", test_kind.subcommand(), compiler.stage)
+        });
+        println!("{} rustdoc stage{} ({} -> {})", test_kind, compiler.stage,
+                &compiler.host, target);
         let _time = util::timeit();
 
         try_run(build, &mut cargo);
@@ -1689,6 +1695,12 @@ impl Step for Bootstrap {
            .env("CARGO_TARGET_DIR", build.out.join("bootstrap"))
            .env("RUSTC_BOOTSTRAP", "1")
            .env("RUSTC", &build.initial_rustc);
+        if let Some(flags) = option_env!("RUSTFLAGS") {
+            // Use the same rustc flags for testing as for "normal" compilation,
+            // so that Cargo doesn’t recompile the entire dependency graph every time:
+            // https://github.com/rust-lang/rust/issues/49215
+            cmd.env("RUSTFLAGS", flags);
+        }
         if !build.fail_fast {
             cmd.arg("--no-fail-fast");
         }

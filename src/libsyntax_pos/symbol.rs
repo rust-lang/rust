@@ -83,8 +83,12 @@ impl Decodable for Ident {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(u32);
 
-// The interner in thread-local, so `Symbol` shouldn't move between threads.
+// The interner is pointed to by a thread local value which is only set on the main thread
+// with parallelization is disabled. So we don't allow Symbol to transfer between threads
+// to avoid panics and other errors, even though it would be memory safe to do so.
+#[cfg(not(parallel_queries))]
 impl !Send for Symbol { }
+#[cfg(not(parallel_queries))]
 impl !Sync for Symbol { }
 
 impl Symbol {

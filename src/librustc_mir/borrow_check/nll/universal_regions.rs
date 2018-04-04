@@ -777,6 +777,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!(
+            "replace_bound_regions_with_nll_infer_vars(value={:?}, all_outlive_scope={:?})",
+            value,
+            all_outlive_scope,
+        );
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope,
@@ -784,6 +789,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
             }));
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
+            debug!("liberated_region={:?} => {:?}", liberated_region, region_vid);
             region_vid
         });
         value

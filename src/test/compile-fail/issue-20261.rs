@@ -11,7 +11,7 @@
 fn main() {
     // NB: this (almost) typechecks when default binding modes are enabled.
     for (ref i,) in [].iter() {
-        //~^ ERROR non-reference pattern used to match a reference
         i.clone();
+        //~^ ERROR type annotations needed
     }
 }

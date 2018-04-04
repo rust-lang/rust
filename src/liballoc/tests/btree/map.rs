@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use std::collections::BTreeMap;
-use std::collections::Bound::{self, Excluded, Included, Unbounded};
 use std::collections::btree_map::Entry::{Occupied, Vacant};
+use std::ops::Bound::{self, Excluded, Included, Unbounded};
 use std::rc::Rc;
 
 use std::iter::FromIterator;

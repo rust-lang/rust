@@ -203,9 +203,31 @@ pub struct Lifetime {
 
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum LifetimeName {
+    /// User typed nothing. e.g. the lifetime in `&u32`.
     Implicit,
+
+    /// User typed `'_`.
     Underscore,
+
+    /// Synthetic name generated when user elided a lifetime in an impl header,
+    /// e.g. the lifetimes in cases like these:
+    ///
+    ///     impl Foo for &u32
+    ///     impl Foo<'_> for u32
+    ///
+    /// in that case, we rewrite to
+    ///
+    ///     impl<'f> Foo for &'f u32
+    ///     impl<'f> Foo<'f> for u32
+    ///
+    /// where `'f` is something like `Fresh(0)`. The indices are
+    /// unique per impl, but not necessarily continuous.
+    Fresh(usize),
+
+    /// User wrote `'static`
     Static,
+
+    /// Some user-given name like `'x`
     Name(Name),
 }
 
@@ -214,7 +236,7 @@ impl LifetimeName {
         use self::LifetimeName::*;
         match *self {
             Implicit => keywords::Invalid.name(),
-            Underscore => keywords::UnderscoreLifetime.name(),
+            Fresh(_) | Underscore => keywords::UnderscoreLifetime.name(),
             Static => keywords::StaticLifetime.name(),
             Name(name) => name,
         }
@@ -235,7 +257,13 @@ impl Lifetime {
         use self::LifetimeName::*;
         match self.name {
             Implicit | Underscore => true,
-            Static | Name(_) => false,
+
+            // It might seem surprising that `Fresh(_)` counts as
+            // *not* elided -- but this is because, as far as the code
+            // in the compiler is concerned -- `Fresh(_)` variants act
+            // equivalently to "some fresh name". They correspond to
+            // early-bound regions on an impl, in other words.
+            Fresh(_) | Static | Name(_) => false,
         }
     }
 
@@ -395,6 +423,15 @@ pub enum TyParamBound {
     RegionTyParamBound(Lifetime),
 }
 
+impl TyParamBound {
+    pub fn span(&self) -> Span {
+        match self {
+            &TraitTyParamBound(ref t, ..) => t.span,
+            &RegionTyParamBound(ref l) => l.span,
+        }
+    }
+}
+
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -414,6 +451,7 @@ pub struct TyParam {
     pub span: Span,
     pub pure_wrt_drop: bool,
     pub synthetic: Option<SyntheticTyParamKind>,
+    pub attrs: HirVec<Attribute>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -568,6 +606,16 @@ pub enum WherePredicate {
     RegionPredicate(WhereRegionPredicate),
     /// An equality predicate (unsupported)
     EqPredicate(WhereEqPredicate),
+}
+
+impl WherePredicate {
+    pub fn span(&self) -> Span {
+        match self {
+            &WherePredicate::BoundPredicate(ref p) => p.span,
+            &WherePredicate::RegionPredicate(ref p) => p.span,
+            &WherePredicate::EqPredicate(ref p) => p.span,
+        }
+    }
 }
 
 /// A type bound, eg `for<'c> Foo: Send+Clone+'c`

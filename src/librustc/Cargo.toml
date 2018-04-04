@@ -56,3 +56,4 @@ byteorder = { version = "1.1", features = ["i128"]}
 #        later crate stop compiling. If you can remove this and everything
 #        compiles, then please feel free to do so!
 flate2 = "1.0"
+tempdir = "0.3"

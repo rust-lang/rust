@@ -44,6 +44,10 @@
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
+#if LLVM_VERSION_GE(4, 0)
+#define PGO_AVAILABLE
+#endif
+
 using namespace llvm;
 using namespace llvm::legacy;
 
@@ -201,17 +205,13 @@ GEN_SUBTARGETS
 
 extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
                                    const char *Feature) {
-#if LLVM_RUSTLLVM
+#if LLVM_VERSION_GE(6, 0)
   TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
-  const FeatureBitset &Bits = MCInfo->getFeatureBits();
-  const ArrayRef<SubtargetFeatureKV> FeatTable = MCInfo->getFeatureTable();
-
-  for (auto &FeatureEntry : FeatTable)
-    if (!strcmp(FeatureEntry.Key, Feature))
-      return (Bits & FeatureEntry.Value) == FeatureEntry.Value;
-#endif
+  return MCInfo->checkFeatures(std::string("+") + Feature);
+#else
   return false;
+#endif
 }
 
 enum class LLVMRustCodeModel {
@@ -428,12 +428,27 @@ extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
 
 extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
-    bool MergeFunctions, bool SLPVectorize, bool LoopVectorize) {
+    bool MergeFunctions, bool SLPVectorize, bool LoopVectorize,
+    const char* PGOGenPath, const char* PGOUsePath) {
   // Ignore mergefunc for now as enabling it causes crashes.
   // unwrap(PMBR)->MergeFunctions = MergeFunctions;
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
+
+#ifdef PGO_AVAILABLE
+  if (PGOGenPath) {
+    assert(!PGOUsePath);
+    unwrap(PMBR)->EnablePGOInstrGen = true;
+    unwrap(PMBR)->PGOInstrGen = PGOGenPath;
+  }
+  if (PGOUsePath) {
+    assert(!PGOGenPath);
+    unwrap(PMBR)->PGOInstrUse = PGOUsePath;
+  }
+#else
+  assert(!PGOGenPath && !PGOUsePath && "Should've caught earlier");
+#endif
 }
 
 // Unfortunately, the LLVM C API doesn't provide a way to set the `LibraryInfo`
@@ -760,6 +775,15 @@ extern "C" void LLVMRustSetModulePIELevel(LLVMModuleRef M) {
 extern "C" bool
 LLVMRustThinLTOAvailable() {
 #if LLVM_VERSION_GE(4, 0)
+  return true;
+#else
+  return false;
+#endif
+}
+
+extern "C" bool
+LLVMRustPGOAvailable() {
+#ifdef PGO_AVAILABLE
   return true;
 #else
   return false;

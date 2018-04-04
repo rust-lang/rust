@@ -21,6 +21,7 @@ use hir::map::DefPathData;
 use hir::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
+use infer::canonical::{Canonical, Canonicalize};
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -34,6 +35,7 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
+use util::captures::Captures;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
@@ -67,7 +69,7 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
+pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
@@ -552,6 +554,17 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
+
+pub type CanonicalTy<'gcx> = Canonical<'gcx, Ty<'gcx>>;
+
+impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
+    type Canonicalized = CanonicalTy<'gcx>;
+
+    fn intern(_gcx: TyCtxt<'_, 'gcx, 'gcx>,
+              value: Canonical<'gcx, Self::Lifted>) -> Self::Canonicalized {
+        value
+    }
+}
 
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
@@ -1331,13 +1344,15 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// type name in a non-zero universe is a skolemized type -- an
 /// idealized representative of "types in general" that we use for
 /// checking generic functions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UniverseIndex(u32);
 
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
-    pub const ROOT: UniverseIndex = UniverseIndex(0);
+    pub fn root() -> UniverseIndex {
+        UniverseIndex(0)
+    }
 
     /// A "subuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
@@ -1351,26 +1366,7 @@ impl UniverseIndex {
     /// region `'a`, but that region was not nameable from `U` because
     /// it was not in scope there.
     pub fn subuniverse(self) -> UniverseIndex {
-        UniverseIndex(self.0.checked_add(1).unwrap())
-    }
-
-    pub fn from(v: u32) -> UniverseIndex {
-        UniverseIndex(v)
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    /// Gets the "depth" of this universe in the universe tree. This
-    /// is not really useful except for e.g. the `HashStable`
-    /// implementation
-    pub fn depth(&self) -> u32 {
-        self.0
+        UniverseIndex(self.0 + 1)
     }
 }
 
@@ -1388,17 +1384,6 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
-
-    /// What is the innermost universe we have created? Starts out as
-    /// `UniverseIndex::root()` but grows from there as we enter
-    /// universal quantifiers.
-    ///
-    /// NB: At present, we exclude the universal quantifiers on the
-    /// item we are type-checking, and just consider those names as
-    /// part of the root universe. So this would only get incremented
-    /// when we enter into a higher-ranked (`for<..>`) type or trait
-    /// bound.
-    pub universe: UniverseIndex,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
@@ -1407,7 +1392,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Trait`) are left hidden, so this is suitable for ordinary
     /// type-checking.
     pub fn empty() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::UserFacing, ty::UniverseIndex::ROOT)
+        Self::new(ty::Slice::empty(), Reveal::UserFacing)
     }
 
     /// Construct a trait environment with no where clauses in scope
@@ -1418,15 +1403,14 @@ impl<'tcx> ParamEnv<'tcx> {
     /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
     pub fn reveal_all() -> Self {
-        Self::new(ty::Slice::empty(), Reveal::All, ty::UniverseIndex::ROOT)
+        Self::new(ty::Slice::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
     pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
-               reveal: Reveal,
-               universe: ty::UniverseIndex)
+               reveal: Reveal)
                -> Self {
-        ty::ParamEnv { caller_bounds, reveal, universe }
+        ty::ParamEnv { caller_bounds, reveal }
     }
 
     /// Returns a new parameter environment with the same clauses, but
@@ -1886,7 +1870,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     ) -> Option<Discr<'tcx>> {
         let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
-        let bit_size = layout::Integer::from_attr(tcx, repr_type).size().bits();
         let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
         let instance = ty::Instance::new(expr_did, substs);
         let cid = GlobalId {
@@ -1896,25 +1879,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match tcx.const_eval(param_env.and(cid)) {
             Ok(&ty::Const {
                 val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                ..
+                ty,
             }) => {
                 trace!("discriminants: {} ({:?})", b, repr_type);
-                let ty = repr_type.to_ty(tcx);
-                if repr_type.is_signed() {
-                    let val = b as i128;
-                    // sign extend to i128
-                    let amt = 128 - bit_size;
-                    let val = (val << amt) >> amt;
-                    Some(Discr {
-                        val: val as u128,
-                        ty,
-                    })
-                } else {
-                    Some(Discr {
-                        val: b,
-                        ty,
-                    })
-                }
+                Some(Discr {
+                    val: b,
+                    ty,
+                })
             },
             Ok(&ty::Const {
                 val: ConstVal::Value(other),
@@ -1942,8 +1913,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                         -> impl Iterator<Item=Discr<'tcx>> + 'a {
+    pub fn discriminants(
+        &'a self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> impl Iterator<Item=Discr<'tcx>> + Captures<'gcx> + 'a {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;
@@ -2290,7 +2263,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns an iterator of the def-ids for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir.krate().body_ids.iter()`.
-    pub fn body_owners(self) -> impl Iterator<Item = DefId> + 'a {
+    pub fn body_owners(
+        self,
+    ) -> impl Iterator<Item = DefId> + Captures<'tcx> + Captures<'gcx> + 'a {
         self.hir.krate()
                 .body_ids
                 .iter()
@@ -2394,11 +2369,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-    pub fn associated_items(self, def_id: DefId)
-                            -> impl Iterator<Item = ty::AssociatedItem> + 'a {
+    pub fn associated_items(
+        self,
+        def_id: DefId,
+    ) -> impl Iterator<Item = ty::AssociatedItem> + 'a {
         let def_ids = self.associated_item_def_ids(def_id);
-        (0..def_ids.len()).map(move |i| self.associated_item(def_ids[i]))
+        Box::new((0..def_ids.len()).map(move |i| self.associated_item(def_ids[i])))
+            as Box<dyn Iterator<Item = ty::AssociatedItem> + 'a>
     }
 
     /// Returns true if the impls are the same polarity and are implementing
@@ -2725,8 +2702,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // sure that this will succeed without errors anyway.
 
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                             traits::Reveal::UserFacing,
-                                             ty::UniverseIndex::ROOT);
+                                             traits::Reveal::UserFacing);
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)

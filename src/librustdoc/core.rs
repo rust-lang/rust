@@ -22,9 +22,11 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
+use rustc_back::target::TargetTriple;
 
 use syntax::ast::NodeId;
 use syntax::codemap;
+use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use errors;
 use errors::emitter::ColorConfig;
@@ -72,6 +74,8 @@ pub struct DocContext<'a, 'tcx: 'a, 'rcx: 'a> {
     pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
+    /// Table DefId of `impl Trait` in argument position -> bounds
+    pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::TyParamBound>>>,
     pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
@@ -116,11 +120,12 @@ pub fn run_core(search_paths: SearchPaths,
                 cfgs: Vec<String>,
                 externs: config::Externs,
                 input: Input,
-                triple: Option<String>,
+                triple: Option<TargetTriple>,
                 maybe_sysroot: Option<PathBuf>,
                 allow_warnings: bool,
                 crate_name: Option<String>,
-                force_unstable_if_unmarked: bool) -> (clean::Crate, RenderInfo)
+                force_unstable_if_unmarked: bool,
+                edition: Edition) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -131,6 +136,7 @@ pub fn run_core(search_paths: SearchPaths,
 
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
+    let host_triple = TargetTriple::from_triple(config::host_triple());
     let sessopts = config::Options {
         maybe_sysroot,
         search_paths,
@@ -138,12 +144,13 @@ pub fn run_core(search_paths: SearchPaths,
         lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
         lint_cap: Some(lint::Allow),
         externs,
-        target_triple: triple.unwrap_or(config::host_triple().to_string()),
+        target_triple: triple.unwrap_or(host_triple),
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
             force_unstable_if_unmarked,
+            edition,
             ..config::basic_debugging_options()
         },
         ..config::basic_options().clone()
@@ -261,6 +268,7 @@ pub fn run_core(search_paths: SearchPaths,
             renderinfo: Default::default(),
             ty_substs: Default::default(),
             lt_substs: Default::default(),
+            impl_trait_bounds: Default::default(),
             mod_ids: Default::default(),
             send_trait: send_trait,
             fake_def_ids: RefCell::new(FxHashMap()),

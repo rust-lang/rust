@@ -1,0 +1,15 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/feature-gate-in_band_lifetimes-impl.rs:15:26
+   |
+LL | impl<'a> MyTrait<'a> for &u32 { }
+   |                          ^ expected lifetime parameter
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/feature-gate-in_band_lifetimes-impl.rs:18:18
+   |
+LL | impl<'a> MyTrait<'_> for &'a f32 { }
+   |                  ^^ expected lifetime parameter
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

@@ -21,6 +21,13 @@ pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError}
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
 
+#[unstable(feature = "nonzero", issue = "49137")]
+#[allow(deprecated)]
+pub use core::num::{
+    NonZeroU8, NonZeroI8, NonZeroU16, NonZeroI16, NonZeroU32, NonZeroI32,
+    NonZeroU64, NonZeroI64, NonZeroU128, NonZeroI128, NonZeroUsize, NonZeroIsize,
+};
+
 #[cfg(test)] use fmt;
 #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 
@@ -169,7 +176,6 @@ mod tests {
 
     macro_rules! test_checked_next_power_of_two {
         ($test_name:ident, $T:ident) => (
-            #[cfg_attr(target_os = "emscripten", ignore)] // FIXME(#39119)
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));

@@ -112,7 +112,7 @@ impl Path {
     // or starts with something like `self`/`super`/`$crate`/etc.
     pub fn make_root(&self) -> Option<PathSegment> {
         if let Some(ident) = self.segments.get(0).map(|seg| seg.identifier) {
-            if ::parse::token::Ident(ident).is_path_segment_keyword() &&
+            if ::parse::token::is_path_segment_keyword(ident) &&
                ident.name != keywords::Crate.name() {
                 return None;
             }
@@ -837,6 +837,13 @@ impl Stmt {
             _ => false,
         }
     }
+
+    pub fn is_expr(&self) -> bool {
+        match self.node {
+            StmtKind::Expr(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Debug for Stmt {
@@ -1004,7 +1011,6 @@ impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
         match self.node {
             ExprKind::Box(_) => ExprPrecedence::Box,
-            ExprKind::InPlace(..) => ExprPrecedence::InPlace,
             ExprKind::Array(_) => ExprPrecedence::Array,
             ExprKind::Call(..) => ExprPrecedence::Call,
             ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
@@ -1064,8 +1070,6 @@ pub enum RangeLimits {
 pub enum ExprKind {
     /// A `box x` expression.
     Box(P<Expr>),
-    /// First expr is the place; second expr is the value.
-    InPlace(P<Expr>, P<Expr>),
     /// An array (`[a, b, c, d]`)
     Array(Vec<P<Expr>>),
     /// A function call

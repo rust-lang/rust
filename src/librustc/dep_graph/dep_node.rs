@@ -579,6 +579,9 @@ define_dep_nodes!( <'tcx>
     [] GetPanicStrategy(CrateNum),
     [] IsNoBuiltins(CrateNum),
     [] ImplDefaultness(DefId),
+    [] CheckItemWellFormed(DefId),
+    [] CheckTraitItemWellFormed(DefId),
+    [] CheckImplItemWellFormed(DefId),
     [] ReachableNonGenerics(CrateNum),
     [] NativeLibraries(CrateNum),
     [] PluginRegistrarFn(CrateNum),
@@ -590,6 +593,7 @@ define_dep_nodes!( <'tcx>
     [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },
     [] AllTraitImplementations(CrateNum),
 
+    [] DllimportForeignItems(CrateNum),
     [] IsDllimportForeignItem(DefId),
     [] IsStaticallyIncludedForeignItem(DefId),
     [] NativeLibraryKind(DefId),
@@ -613,8 +617,6 @@ define_dep_nodes!( <'tcx>
     [input] MissingExternCrateItem(CrateNum),
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
-    [] HasCloneClosures(CrateNum),
-    [] HasCopyClosures(CrateNum),
 
     // This query is not expected to have inputs -- as a result, it's
     // not a good candidate for "replay" because it's essentially a
@@ -647,9 +649,13 @@ define_dep_nodes!( <'tcx>
 
     [] GetSymbolExportLevel(DefId),
 
+    [] WasmCustomSections(CrateNum),
+
     [input] Features,
 
     [] ProgramClausesFor(DefId),
+    [] WasmImportModuleMap(CrateNum),
+    [] ForeignModules(CrateNum),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {

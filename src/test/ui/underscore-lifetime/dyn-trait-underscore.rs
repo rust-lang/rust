@@ -14,7 +14,6 @@
 // cc #48468
 
 #![feature(dyn_trait)]
-#![feature(underscore_lifetimes)]
 
 fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`

@@ -1325,6 +1325,8 @@ impl<'test> TestCx<'test> {
 
         rustdoc
             .arg("-L")
+            .arg(self.config.run_lib_path.to_str().unwrap())
+            .arg("-L")
             .arg(aux_dir)
             .arg("-o")
             .arg(out_dir)
@@ -2358,11 +2360,6 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_rmake_test(&self) {
-        // FIXME(#11094): we should fix these tests
-        if self.config.host != self.config.target {
-            return;
-        }
-
         let cwd = env::current_dir().unwrap();
         let src_root = self.config
             .src_base
@@ -2399,13 +2396,6 @@ impl<'test> TestCx<'test> {
             .env("S", src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env(
-                "RUSTDOC",
-                cwd.join(&self.config
-                    .rustdoc_path
-                    .as_ref()
-                    .expect("--rustdoc-path passed")),
-            )
             .env("TMPDIR", &tmpdir)
             .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
             .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
@@ -2420,6 +2410,14 @@ impl<'test> TestCx<'test> {
             .env_remove("MFLAGS")
             .env_remove("CARGO_MAKEFLAGS");
 
+        if let Some(ref rustdoc) = self.config.rustdoc_path {
+            cmd.env("RUSTDOC", cwd.join(rustdoc));
+        }
+
+        if let Some(ref node) = self.config.nodejs {
+            cmd.env("NODE", node);
+        }
+
         if let Some(ref linker) = self.config.linker {
             cmd.env("RUSTC_LINKER", linker);
         }
@@ -2428,7 +2426,7 @@ impl<'test> TestCx<'test> {
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
 
-        if self.config.target.contains("msvc") {
+        if self.config.target.contains("msvc") && self.config.cc != "" {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
             // and that `lib.exe` lives next to it.
             let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");

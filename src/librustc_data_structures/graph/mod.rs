@@ -334,6 +334,11 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentEdges<'g, N, E> {
         self.next = edge.next_edge[self.direction.repr];
         Some((edge_index, edge))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // At most, all the edges in the graph.
+        (0, Some(self.graph.len_edges()))
+    }
 }
 
 pub struct DepthFirstTraversal<'g, N, E>
@@ -383,7 +388,15 @@ impl<'g, N: Debug, E: Debug> Iterator for DepthFirstTraversal<'g, N, E> {
         }
         next
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We will visit every node in the graph exactly once.
+        let remaining = self.graph.len_nodes() - self.visited.count();
+        (remaining, Some(remaining))
+    }
 }
+
+impl<'g, N: Debug, E: Debug> ExactSizeIterator for DepthFirstTraversal<'g, N, E> {}
 
 impl<E> Edge<E> {
     pub fn source(&self) -> NodeIndex {

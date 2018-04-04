@@ -24,14 +24,13 @@
 #![feature(custom_attribute)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
-#![feature(i128_type)]
-#![feature(i128)]
+#![cfg_attr(stage0, feature(i128_type, i128))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![cfg_attr(stage0, feature(slice_patterns))]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(optin_builtin_traits)]
 #![feature(inclusive_range_fields)]
 
@@ -72,12 +71,14 @@ pub use llvm_util::target_features;
 use std::any::Any;
 use std::path::PathBuf;
 use std::sync::mpsc;
+use std::collections::BTreeMap;
 use rustc_data_structures::sync::Lrc;
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::CrateNum;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
+use rustc::middle::lang_items::LangItem;
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc::ty::{self, TyCtxt};
@@ -98,6 +99,7 @@ mod back {
     pub mod symbol_export;
     pub mod write;
     mod rpath;
+    mod wasm;
 }
 
 mod abi;
@@ -214,6 +216,8 @@ impl TransCrate for LlvmTransCrate {
 
     fn provide_extern(&self, providers: &mut ty::maps::Providers) {
         back::symbol_export::provide_extern(providers);
+        base::provide_extern(providers);
+        attributes::provide_extern(providers);
     }
 
     fn trans_crate<'a, 'tcx>(
@@ -400,6 +404,10 @@ struct CrateInfo {
     used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     used_crates_static: Vec<(CrateNum, LibSource)>,
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
+    wasm_custom_sections: BTreeMap<String, Vec<u8>>,
+    wasm_imports: FxHashMap<String, String>,
+    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
+    missing_lang_items: FxHashMap<CrateNum, Lrc<Vec<LangItem>>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

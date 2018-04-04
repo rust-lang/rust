@@ -15,11 +15,10 @@
 //!
 //! The N above is determined by Array's implementor, by way of an associated constant.
 
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, RangeBounds};
 use std::iter::{self, IntoIterator, FromIterator};
 use std::slice;
 use std::vec;
-use std::collections::range::RangeArgument;
 
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 
@@ -74,7 +73,7 @@ impl<A: Array> AccumulateVec<A> {
     }
 
     pub fn drain<R>(&mut self, range: R) -> Drain<A>
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         match *self {
             AccumulateVec::Array(ref mut v) => {

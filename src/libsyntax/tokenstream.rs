@@ -684,7 +684,7 @@ mod tests {
         with_globals(|| {
             let test0: TokenStream = Vec::<TokenTree>::new().into_iter().collect();
             let test1: TokenStream =
-                TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"))).into();
+                TokenTree::Token(sp(0, 1), Token::Ident(Ident::from_str("a"), false)).into();
             let test2 = string_to_ts("foo(bar::baz)");
 
             assert_eq!(test0.is_empty(), true);

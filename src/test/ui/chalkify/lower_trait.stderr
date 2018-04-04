@@ -1,0 +1,8 @@
+error: Implemented(Self: Foo<S, T, U>) :- FromEnv(Self: Foo<S, T, U>).
+  --> $DIR/lower_trait.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

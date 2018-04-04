@@ -52,7 +52,7 @@ error[E0026]: union `U` does not have a field named `c`
   --> $DIR/union-fields-2.rs:28:19
    |
 LL |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
-   |                   ^ union `U` does not have field `c`
+   |                   ^ union `U` does not have this field
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:28:9

@@ -45,6 +45,7 @@ pub struct Config {
     pub ninja: bool,
     pub verbose: usize,
     pub submodules: bool,
+    pub fast_submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
     pub locked_deps: bool,
@@ -121,6 +122,7 @@ pub struct Config {
     pub quiet_tests: bool,
     pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
+    pub print_step_timings: bool,
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -190,6 +192,7 @@ struct Build {
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
+    fast_submodules: Option<bool>,
     gdb: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
@@ -204,6 +207,7 @@ struct Build {
     openssl_static: Option<bool>,
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
+    print_step_timings: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -326,6 +330,7 @@ impl Config {
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
         config.submodules = true;
+        config.fast_submodules = true;
         config.docs = true;
         config.rust_rpath = true;
         config.channel = "dev".to_string();
@@ -402,6 +407,7 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
+        set(&mut config.fast_submodules, build.fast_submodules);
         set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
@@ -413,6 +419,7 @@ impl Config {
         set(&mut config.openssl_static, build.openssl_static);
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
+        set(&mut config.print_step_timings, build.print_step_timings);
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
         if let Some(ref install) = toml.install {

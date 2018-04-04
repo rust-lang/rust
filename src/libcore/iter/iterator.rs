@@ -974,13 +974,13 @@ pub trait Iterator {
     ///     // each iteration, we'll multiply the state by the element
     ///     *state = *state * x;
     ///
-    ///     // the value passed on to the next iteration
-    ///     Some(*state)
+    ///     // then, we'll yield the negation of the state
+    ///     Some(-*state)
     /// });
     ///
-    /// assert_eq!(iter.next(), Some(1));
-    /// assert_eq!(iter.next(), Some(2));
-    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), Some(-1));
+    /// assert_eq!(iter.next(), Some(-2));
+    /// assert_eq!(iter.next(), Some(-6));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
@@ -1742,6 +1742,38 @@ pub trait Iterator {
         self.try_for_each(move |x| {
             if predicate(&x) { LoopState::Break(x) }
             else { LoopState::Continue(()) }
+        }).break_value()
+    }
+
+    /// Applies function to the elements of iterator and returns
+    /// the first non-none result.
+    ///
+    /// `iter.find_map(f)` is equivalent to `iter.filter_map(f).next()`.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iterator_find_map)]
+    /// let a = ["lol", "NaN", "2", "5"];
+    ///
+    /// let mut first_number = a.iter().find_map(|s| s.parse().ok());
+    ///
+    /// assert_eq!(first_number, Some(2));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_find_map",
+               reason = "unstable new API",
+               issue = "49602")]
+    fn find_map<B, F>(&mut self, mut f: F) -> Option<B> where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Option<B>,
+    {
+        self.try_for_each(move |x| {
+            match f(x) {
+                Some(x) => LoopState::Break(x),
+                None => LoopState::Continue(()),
+            }
         }).break_value()
     }
 

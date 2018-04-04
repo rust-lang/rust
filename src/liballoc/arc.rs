@@ -21,6 +21,7 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
+use core::heap::{Alloc, Layout};
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val, uninitialized};
 use core::ops::Deref;
@@ -31,7 +32,7 @@ use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
 
-use heap::{Heap, Alloc, Layout, box_free};
+use heap::{Heap, box_free};
 use boxed::Box;
 use string::String;
 use vec::Vec;

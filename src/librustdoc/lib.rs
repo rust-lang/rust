@@ -61,9 +61,11 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
 
+use syntax::edition::Edition;
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options, Externs};
+use rustc_back::target::TargetTriple;
 
 #[macro_use]
 pub mod externalfiles;
@@ -266,9 +268,14 @@ pub fn opts() -> Vec<RustcOptGroup> {
         unstable("resource-suffix", |o| {
             o.optopt("",
                      "resource-suffix",
-                     "suffix to add to CSS and JavaScript files, e.g. \"main.css\" will become \
-                      \"main-suffix.css\"",
+                     "suffix to add to CSS and JavaScript files, e.g. \"light.css\" will become \
+                      \"light-suffix.css\"",
                      "PATH")
+        }),
+        unstable("edition", |o| {
+            o.optopt("", "edition",
+                     "edition to use when compiling rust code (default: 2015)",
+                     "EDITION")
         }),
     ]
 }
@@ -321,7 +328,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     let to_check = matches.opt_strs("theme-checker");
     if !to_check.is_empty() {
-        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
         let mut errors = 0;
 
         println!("rustdoc: [theme-checker] Starting tests!");
@@ -392,7 +399,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     let mut themes = Vec::new();
     if matches.opt_present("themes") {
-        let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
+        let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
 
         for (theme_file, theme_s) in matches.opt_strs("themes")
                                             .iter()
@@ -428,14 +435,23 @@ pub fn main_args(args: &[String]) -> isize {
     let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
     let resource_suffix = matches.opt_str("resource-suffix");
 
+    let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
+    let edition = match edition.parse() {
+        Ok(e) => e,
+        Err(_) => {
+            print_error("could not parse edition");
+            return 1;
+        }
+    };
+
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
-                                  display_warnings, linker)
+                                  display_warnings, linker, edition)
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
-                             maybe_sysroot, display_warnings, linker)
+                             maybe_sysroot, display_warnings, linker, edition)
         }
         (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),
@@ -445,7 +461,7 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let output_format = matches.opt_str("w");
-    let res = acquire_input(PathBuf::from(input), externs, &matches, move |out| {
+    let res = acquire_input(PathBuf::from(input), externs, edition, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
@@ -486,14 +502,15 @@ fn print_error<T>(error_message: T) where T: Display {
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input<R, F>(input: PathBuf,
                        externs: Externs,
+                       edition: Edition,
                        matches: &getopts::Matches,
                        f: F)
                        -> Result<R, String>
 where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
-        Some("rust") => Ok(rust_input(input, externs, matches, f)),
+        Some("rust") => Ok(rust_input(input, externs, edition, matches, f)),
         Some(s) => Err(format!("unknown input format: {}", s)),
-        None => Ok(rust_input(input, externs, matches, f))
+        None => Ok(rust_input(input, externs, edition, matches, f))
     }
 }
 
@@ -519,8 +536,14 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(cratefile: PathBuf, externs: Externs, matches: &getopts::Matches, f: F) -> R
-where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
+fn rust_input<R, F>(cratefile: PathBuf,
+                    externs: Externs,
+                    edition: Edition,
+                    matches: &getopts::Matches,
+                    f: F) -> R
+where R: 'static + Send,
+      F: 'static + Send + FnOnce(Output) -> R
+{
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
@@ -542,7 +565,13 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         paths.add_path(s, ErrorOutputType::default());
     }
     let cfgs = matches.opt_strs("cfg");
-    let triple = matches.opt_str("target");
+    let triple = matches.opt_str("target").map(|target| {
+        if target.ends_with(".json") {
+            TargetTriple::TargetPath(PathBuf::from(target))
+        } else {
+            TargetTriple::TargetTriple(target)
+        }
+    });
     let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
     let crate_name = matches.opt_str("crate-name");
     let crate_version = matches.opt_str("crate-version");
@@ -563,7 +592,7 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
                            display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked);
+                           force_unstable_if_unmarked, edition);
 
         info!("finished with rustc");
 

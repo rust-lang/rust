@@ -779,7 +779,7 @@ impl<'a, 'tcx> FnType<'tcx> {
 
                     // HACK(eddyb) LLVM inserts `llvm.assume` calls when inlining functions
                     // with align attributes, and those calls later block optimizations.
-                    if !is_return {
+                    if !is_return && !cx.tcx.sess.opts.debugging_opts.arg_align_attributes {
                         attrs.pointee_align = None;
                     }
 
@@ -950,7 +950,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             "s390x" => cabi_s390x::compute_abi_info(cx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(cx, self),
             "wasm32" => {
-                if cx.sess().opts.target_triple.contains("emscripten") {
+                if cx.sess().opts.target_triple.triple().contains("emscripten") {
                     cabi_asmjs::compute_abi_info(cx, self)
                 } else {
                     cabi_wasm32::compute_abi_info(cx, self)

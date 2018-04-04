@@ -265,7 +265,7 @@ impl FromStr for char {
 }
 
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl TryFrom<u32> for char {
     type Error = CharTryFromError;
 
@@ -280,11 +280,11 @@ impl TryFrom<u32> for char {
 }
 
 /// The error type returned when a conversion from u32 to char fails.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct CharTryFromError(());
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl fmt::Display for CharTryFromError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "converted integer out of range for `char`".fmt(f)
@@ -901,6 +901,16 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
                 Ok(from_u32_unchecked(code_point))
             }
         })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.0.size_hint();
+
+        // A code point is at most 4 bytes long.
+        let min_code_points = lower / 4;
+
+        (min_code_points, upper)
     }
 }
 

@@ -16,6 +16,7 @@
 //! compiler. This module is also responsible for assembling the sysroot as it
 //! goes along from the output of the previous stage.
 
+use std::borrow::Cow;
 use std::env;
 use std::fs::{self, File};
 use std::io::BufReader;
@@ -93,19 +94,19 @@ impl Step for Std {
             return;
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
-        println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target);
-
         if target.contains("musl") {
             let libdir = builder.sysroot_libdir(compiler, target);
             copy_musl_third_party_objects(build, target, &libdir);
         }
 
-        let out_dir = build.stage_out(compiler, Mode::Libstd);
+        let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
         build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "build");
         std_cargo(builder, &compiler, target, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
+        println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
+                &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &libstd_stamp(build, compiler, target),
@@ -360,13 +361,14 @@ impl Step for Test {
             return;
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
-        println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
-                &compiler.host, target);
-        let out_dir = build.stage_out(compiler, Mode::Libtest);
+        let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
         build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "build");
         test_cargo(build, &compiler, target, &mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
+        println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
+                &compiler.host, target);
         run_cargo(build,
                   &mut cargo,
                   &libtest_stamp(build, compiler, target),
@@ -481,17 +483,16 @@ impl Step for Rustc {
             compiler: builder.compiler(self.compiler.stage, build.build),
             target: build.build,
         });
+        let cargo_out = builder.cargo_out(compiler, Mode::Librustc, target);
+        build.clear_if_dirty(&cargo_out, &libstd_stamp(build, compiler, target));
+        build.clear_if_dirty(&cargo_out, &libtest_stamp(build, compiler, target));
+
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
+        rustc_cargo(build, &mut cargo);
 
         let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
         println!("Building stage{} compiler artifacts ({} -> {})",
                  compiler.stage, &compiler.host, target);
-
-        let stage_out = builder.stage_out(compiler, Mode::Librustc);
-        build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
-        build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
-
-        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
-        rustc_cargo(build, &mut cargo);
         run_cargo(build,
                   &mut cargo,
                   &librustc_stamp(build, compiler, target),
@@ -634,8 +635,6 @@ impl Step for CodegenBackend {
             .arg(build.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
-
         match &*self.backend {
             "llvm" | "emscripten" => {
                 // Build LLVM for our target. This will implicitly build the
@@ -685,6 +684,8 @@ impl Step for CodegenBackend {
 
         let tmp_stamp = build.cargo_out(compiler, Mode::Librustc, target)
             .join(".tmp.stamp");
+
+        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
         let files = run_cargo(build,
                               cargo.arg("--features").arg(features),
                               &tmp_stamp,
@@ -915,7 +916,7 @@ impl Step for Assemble {
             }
         }
 
-        let lld_install = if build.config.lld_enabled && target_compiler.stage > 0 {
+        let lld_install = if build.config.lld_enabled {
             Some(builder.ensure(native::Lld {
                 target: target_compiler.host,
             }))
@@ -996,24 +997,6 @@ fn stderr_isatty() -> bool {
 pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: bool)
     -> Vec<PathBuf>
 {
-    // Instruct Cargo to give us json messages on stdout, critically leaving
-    // stderr as piped so we can get those pretty colors.
-    cargo.arg("--message-format").arg("json")
-         .stdout(Stdio::piped());
-
-    if stderr_isatty() && build.ci_env == CiEnv::None {
-        // since we pass message-format=json to cargo, we need to tell the rustc
-        // wrapper to give us colored output if necessary. This is because we
-        // only want Cargo's JSON output, not rustcs.
-        cargo.env("RUSTC_COLOR", "1");
-    }
-
-    build.verbose(&format!("running: {:?}", cargo));
-    let mut child = match cargo.spawn() {
-        Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
-    };
-
     // `target_root_dir` looks like $dir/$target/release
     let target_root_dir = stamp.parent().unwrap();
     // `target_deps_dir` looks like $dir/$target/release/deps
@@ -1028,46 +1011,33 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
     // files we need to probe for later.
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
-    let stdout = BufReader::new(child.stdout.take().unwrap());
-    for line in stdout.lines() {
-        let line = t!(line);
-        let json: serde_json::Value = if line.starts_with("{") {
-            t!(serde_json::from_str(&line))
-        } else {
-            // If this was informational, just print it out and continue
-            println!("{}", line);
-            continue
+    let ok = stream_cargo(build, cargo, &mut |msg| {
+        let filenames = match msg {
+            CargoMessage::CompilerArtifact { filenames, .. } => filenames,
+            _ => return,
         };
-        if json["reason"].as_str() != Some("compiler-artifact") {
-            if build.config.rustc_error_format.as_ref().map_or(false, |e| e == "json") {
-                // most likely not a cargo message, so let's send it out as well
-                println!("{}", line);
-            }
-            continue
-        }
-        for filename in json["filenames"].as_array().unwrap() {
-            let filename = filename.as_str().unwrap();
+        for filename in filenames {
             // Skip files like executables
             if !filename.ends_with(".rlib") &&
                !filename.ends_with(".lib") &&
                !is_dylib(&filename) &&
                !(is_check && filename.ends_with(".rmeta")) {
-                continue
+                return;
             }
 
-            let filename = Path::new(filename);
+            let filename = Path::new(&*filename);
 
             // If this was an output file in the "host dir" we don't actually
             // worry about it, it's not relevant for us.
             if filename.starts_with(&host_root_dir) {
-                continue;
+                return;
             }
 
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
             if filename.starts_with(&target_deps_dir) {
                 deps.push(filename.to_path_buf());
-                continue;
+                return;
             }
 
             // Otherwise this was a "top level artifact" which right now doesn't
@@ -1088,15 +1058,10 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
 
             toplevel.push((file_stem, extension, expected_len));
         }
-    }
+    });
 
-    // Make sure Cargo actually succeeded after we read all of its stdout.
-    let status = t!(child.wait());
-    if !status.success() {
-        panic!("command did not execute successfully: {:?}\n\
-                expected success, got: {}",
-               cargo,
-               status);
+    if !ok {
+        panic!("cargo must succeed");
     }
 
     // Ok now we need to actually find all the files listed in `toplevel`. We've
@@ -1155,7 +1120,7 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
     let max = max.unwrap();
     let max_path = max_path.unwrap();
     if stamp_contents == new_contents && max <= stamp_mtime {
-        build.verbose(&format!("not updating {:?}; contents equal and {} <= {}",
+        build.verbose(&format!("not updating {:?}; contents equal and {:?} <= {:?}",
                 stamp, max, stamp_mtime));
         return deps
     }
@@ -1166,4 +1131,64 @@ pub fn run_cargo(build: &Build, cargo: &mut Command, stamp: &Path, is_check: boo
     }
     t!(t!(File::create(stamp)).write_all(&new_contents));
     deps
+}
+
+pub fn stream_cargo(
+    build: &Build,
+    cargo: &mut Command,
+    cb: &mut FnMut(CargoMessage),
+) -> bool {
+    // Instruct Cargo to give us json messages on stdout, critically leaving
+    // stderr as piped so we can get those pretty colors.
+    cargo.arg("--message-format").arg("json")
+         .stdout(Stdio::piped());
+
+    if stderr_isatty() && build.ci_env == CiEnv::None {
+        // since we pass message-format=json to cargo, we need to tell the rustc
+        // wrapper to give us colored output if necessary. This is because we
+        // only want Cargo's JSON output, not rustcs.
+        cargo.env("RUSTC_COLOR", "1");
+    }
+
+    build.verbose(&format!("running: {:?}", cargo));
+    let mut child = match cargo.spawn() {
+        Ok(child) => child,
+        Err(e) => panic!("failed to execute command: {:?}\nerror: {}", cargo, e),
+    };
+
+    // Spawn Cargo slurping up its JSON output. We'll start building up the
+    // `deps` array of all files it generated along with a `toplevel` array of
+    // files we need to probe for later.
+    let stdout = BufReader::new(child.stdout.take().unwrap());
+    for line in stdout.lines() {
+        let line = t!(line);
+        match serde_json::from_str::<CargoMessage>(&line) {
+            Ok(msg) => cb(msg),
+            // If this was informational, just print it out and continue
+            Err(_) => println!("{}", line)
+        }
+    }
+
+    // Make sure Cargo actually succeeded after we read all of its stdout.
+    let status = t!(child.wait());
+    if !status.success() {
+        println!("command did not execute successfully: {:?}\n\
+                  expected success, got: {}",
+                 cargo,
+                 status);
+    }
+    status.success()
+}
+
+#[derive(Deserialize)]
+#[serde(tag = "reason", rename_all = "kebab-case")]
+pub enum CargoMessage<'a> {
+    CompilerArtifact {
+        package_id: Cow<'a, str>,
+        features: Vec<Cow<'a, str>>,
+        filenames: Vec<Cow<'a, str>>,
+    },
+    BuildScriptExecuted {
+        package_id: Cow<'a, str>,
+    }
 }

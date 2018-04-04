@@ -23,11 +23,11 @@
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
 #![feature(iterator_step_by)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(iterator_try_fold)]
 #![feature(iterator_flatten)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(iter_rfind)]
 #![feature(iter_rfold)]
 #![feature(iterator_repeat_with)]
@@ -43,12 +43,12 @@
 #![feature(step_trait)]
 #![feature(test)]
 #![feature(trusted_len)]
-#![feature(try_from)]
 #![feature(try_trait)]
 #![feature(exact_chunks)]
 #![feature(atomic_nand)]
 #![feature(reverse_bits)]
 #![feature(inclusive_range_fields)]
+#![feature(iterator_find_map)]
 
 extern crate core;
 extern crate test;

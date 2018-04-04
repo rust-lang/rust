@@ -146,13 +146,12 @@
 //!
 //! ```
 //! #![feature(core_intrinsics)]
-//! #![feature(shared)]
 //! use std::cell::Cell;
-//! use std::ptr::Shared;
+//! use std::ptr::NonNull;
 //! use std::intrinsics::abort;
 //!
 //! struct Rc<T: ?Sized> {
-//!     ptr: Shared<RcBox<T>>
+//!     ptr: NonNull<RcBox<T>>
 //! }
 //!
 //! struct RcBox<T: ?Sized> {

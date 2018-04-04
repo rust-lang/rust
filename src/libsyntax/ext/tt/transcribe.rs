@@ -169,7 +169,7 @@ pub fn transcribe(cx: &ExtCtxt,
                         Ident { ctxt: ident.ctxt.apply_mark(cx.current_expansion.mark), ..ident };
                     sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
                     result.push(TokenTree::Token(sp, token::Dollar).into());
-                    result.push(TokenTree::Token(sp, token::Ident(ident)).into());
+                    result.push(TokenTree::Token(sp, token::Token::from_ast_ident(ident)).into());
                 }
             }
             quoted::TokenTree::Delimited(mut span, delimited) => {

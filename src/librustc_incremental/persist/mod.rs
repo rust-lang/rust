@@ -27,6 +27,7 @@ pub use self::fs::prepare_session_directory;
 pub use self::load::dep_graph_tcx_init;
 pub use self::load::load_dep_graph;
 pub use self::load::load_query_result_cache;
+pub use self::load::LoadResult;
 pub use self::save::save_dep_graph;
 pub use self::save::save_work_products;
 pub use self::work_product::save_trans_partition;

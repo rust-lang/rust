@@ -51,13 +51,11 @@ use libc::MSG_NOSIGNAL;
 const MSG_NOSIGNAL: libc::c_int = 0x0;
 
 fn sun_path_offset() -> usize {
-    unsafe {
-        // Work with an actual instance of the type since using a null pointer is UB
-        let addr: libc::sockaddr_un = mem::uninitialized();
-        let base = &addr as *const _ as usize;
-        let path = &addr.sun_path as *const _ as usize;
-        path - base
-    }
+    // Work with an actual instance of the type since using a null pointer is UB
+    let addr: libc::sockaddr_un = unsafe { mem::uninitialized() };
+    let base = &addr as *const _ as usize;
+    let path = &addr.sun_path as *const _ as usize;
+    path - base
 }
 
 unsafe fn sockaddr_un(path: &Path) -> io::Result<(libc::sockaddr_un, libc::socklen_t)> {

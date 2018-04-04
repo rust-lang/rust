@@ -41,13 +41,13 @@ impl<'a> AstValidator<'a> {
                            keywords::StaticLifetime.name(),
                            keywords::Invalid.name()];
         if !valid_names.contains(&lifetime.ident.name) &&
-            token::Ident(lifetime.ident.without_first_quote()).is_reserved_ident() {
+            token::is_reserved_ident(lifetime.ident.without_first_quote()) {
             self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
         }
     }
 
     fn check_label(&self, label: Ident, span: Span) {
-        if token::Ident(label.without_first_quote()).is_reserved_ident() {
+        if token::is_reserved_ident(label.without_first_quote()) {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
     }

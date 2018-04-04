@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
 use std::fmt::Debug;
@@ -18,6 +18,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{Instant, Duration};
 
 use compile;
 use install;
@@ -40,6 +41,7 @@ pub struct Builder<'a> {
     pub kind: Kind,
     cache: Cache,
     stack: RefCell<Vec<Box<Any>>>,
+    time_spent_on_dependencies: Cell<Duration>,
 }
 
 impl<'a> Deref for Builder<'a> {
@@ -308,19 +310,24 @@ impl<'a> Builder<'a> {
                 test::UiFullDeps, test::RunPassFullDeps, test::RunFailFullDeps,
                 test::CompileFailFullDeps, test::IncrementalFullDeps, test::Rustdoc, test::Pretty,
                 test::RunPassPretty, test::RunFailPretty, test::RunPassValgrindPretty,
-                test::RunPassFullDepsPretty, test::RunFailFullDepsPretty, test::RunMake,
+                test::RunPassFullDepsPretty, test::RunFailFullDepsPretty,
                 test::Crate, test::CrateLibrustc, test::CrateRustdoc, test::Linkcheck,
                 test::Cargotest, test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
+                test::RunMakeFullDeps,
                 test::Nomicon, test::Reference, test::RustdocBook, test::RustByExample,
                 test::TheBook, test::UnstableBook,
-                test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme),
+                test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme,
+                // Run run-make last, since these won't pass without make on Windows
+                test::RunMake),
             Kind::Bench => describe!(test::Crate, test::CrateLibrustc),
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
-                doc::Standalone, doc::Std, doc::Test, doc::Rustc, doc::ErrorIndex, doc::Nomicon,
-                doc::Reference, doc::Rustdoc, doc::RustByExample, doc::CargoBook),
-            Kind::Dist => describe!(dist::Docs, dist::Mingw, dist::Rustc, dist::DebuggerScripts,
-                dist::Std, dist::Analysis, dist::Src, dist::PlainSourceTarball, dist::Cargo,
-                dist::Rls, dist::Rustfmt, dist::Extended, dist::HashSign),
+                doc::Standalone, doc::Std, doc::Test, doc::WhitelistedRustc, doc::Rustc,
+                doc::ErrorIndex, doc::Nomicon, doc::Reference, doc::Rustdoc, doc::RustByExample,
+                doc::CargoBook),
+            Kind::Dist => describe!(dist::Docs, dist::RustcDocs, dist::Mingw, dist::Rustc,
+                dist::DebuggerScripts, dist::Std, dist::Analysis, dist::Src,
+                dist::PlainSourceTarball, dist::Cargo, dist::Rls, dist::Rustfmt, dist::Extended,
+                dist::HashSign),
             Kind::Install => describe!(install::Docs, install::Std, install::Cargo, install::Rls,
                 install::Rustfmt, install::Analysis, install::Src, install::Rustc),
         }
@@ -343,6 +350,7 @@ impl<'a> Builder<'a> {
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
+            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
         };
 
         let builder = &builder;
@@ -383,6 +391,7 @@ impl<'a> Builder<'a> {
             kind,
             cache: Cache::new(),
             stack: RefCell::new(Vec::new()),
+            time_spent_on_dependencies: Cell::new(Duration::new(0, 0)),
         };
 
         if kind == Kind::Dist {
@@ -546,7 +555,9 @@ impl<'a> Builder<'a> {
         let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
         if stage != 0 {
             let s = env::var("RUSTFLAGS_STAGE_NOT_0").unwrap_or_default();
-            extra_args.push_str(" ");
+            if !extra_args.is_empty() {
+                extra_args.push_str(" ");
+            }
             extra_args.push_str(&s);
         }
 
@@ -660,6 +671,10 @@ impl<'a> Builder<'a> {
 
         if let Some(ref on_fail) = self.config.on_fail {
             cargo.env("RUSTC_ON_FAIL", on_fail);
+        }
+
+        if self.config.print_step_timings {
+            cargo.env("RUSTC_PRINT_STEP_TIMINGS", "1");
         }
 
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
@@ -818,7 +833,24 @@ impl<'a> Builder<'a> {
             self.build.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
-        let out = step.clone().run(self);
+
+        let (out, dur) = {
+            let start = Instant::now();
+            let zero = Duration::new(0, 0);
+            let parent = self.time_spent_on_dependencies.replace(zero);
+            let out = step.clone().run(self);
+            let dur = start.elapsed();
+            let deps = self.time_spent_on_dependencies.replace(parent + dur);
+            (out, dur - deps)
+        };
+
+        if self.build.config.print_step_timings && dur > Duration::from_millis(100) {
+            println!("[TIMING] {:?} -- {}.{:03}",
+                     step,
+                     dur.as_secs(),
+                     dur.subsec_nanos() / 1_000_000);
+        }
+
         {
             let mut stack = self.stack.borrow_mut();
             let cur_step = stack.pop().expect("step stack empty");

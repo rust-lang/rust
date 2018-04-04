@@ -871,6 +871,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::GetPanicStrategy => { force!(panic_strategy, krate!()); }
         DepKind::IsNoBuiltins => { force!(is_no_builtins, krate!()); }
         DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
+        DepKind::CheckItemWellFormed => { force!(check_item_well_formed, def_id!()); }
+        DepKind::CheckTraitItemWellFormed => { force!(check_trait_item_well_formed, def_id!()); }
+        DepKind::CheckImplItemWellFormed => { force!(check_impl_item_well_formed, def_id!()); }
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
@@ -883,6 +886,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
             force!(all_trait_implementations, krate!());
         }
 
+        DepKind::DllimportForeignItems => {
+            force!(dllimport_foreign_items, krate!());
+        }
         DepKind::IsDllimportForeignItem => {
             force!(is_dllimport_foreign_item, def_id!());
         }
@@ -914,8 +920,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
         DepKind::UsedCrateSource => { force!(used_crate_source, krate!()); }
         DepKind::PostorderCnums => { force!(postorder_cnums, LOCAL_CRATE); }
-        DepKind::HasCloneClosures => { force!(has_clone_closures, krate!()); }
-        DepKind::HasCopyClosures => { force!(has_copy_closures, krate!()); }
 
         DepKind::Freevars => { force!(freevars, def_id!()); }
         DepKind::MaybeUnusedTraitImport => {
@@ -937,6 +941,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
 
         DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
+        DepKind::WasmCustomSections => { force!(wasm_custom_sections, krate!()); }
+        DepKind::WasmImportModuleMap => { force!(wasm_import_module_map, krate!()); }
+        DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
     }
 
     true

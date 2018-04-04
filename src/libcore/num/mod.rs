@@ -12,11 +12,110 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use convert::{Infallible, TryFrom};
+use convert::TryFrom;
 use fmt;
 use intrinsics;
+#[allow(deprecated)] use nonzero::NonZero;
 use ops;
 use str::FromStr;
+
+macro_rules! impl_nonzero_fmt {
+    ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
+        $(
+            #[$stability]
+            #[allow(deprecated)]
+            impl fmt::$Trait for $Ty {
+                #[inline]
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    self.get().fmt(f)
+                }
+            }
+        )+
+    }
+}
+
+macro_rules! nonzero_integers {
+    ( #[$stability: meta] #[$deprecation: meta] $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            /// An integer that is known not to equal zero.
+            ///
+            /// This may enable some memory layout optimization such as:
+            ///
+            /// ```rust
+            /// # #![feature(nonzero)]
+            /// use std::mem::size_of;
+            /// assert_eq!(size_of::<Option<std::num::NonZeroU32>>(), size_of::<u32>());
+            /// ```
+            #[$stability]
+            #[$deprecation]
+            #[allow(deprecated)]
+            #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+            pub struct $Ty(NonZero<$Int>);
+
+            #[allow(deprecated)]
+            impl $Ty {
+                /// Create a non-zero without checking the value.
+                ///
+                /// # Safety
+                ///
+                /// The value must not be zero.
+                #[$stability]
+                #[inline]
+                pub const unsafe fn new_unchecked(n: $Int) -> Self {
+                    $Ty(NonZero(n))
+                }
+
+                /// Create a non-zero if the given value is not zero.
+                #[$stability]
+                #[inline]
+                pub fn new(n: $Int) -> Option<Self> {
+                    if n != 0 {
+                        Some($Ty(NonZero(n)))
+                    } else {
+                        None
+                    }
+                }
+
+                /// Returns the value as a primitive type.
+                #[$stability]
+                #[inline]
+                pub fn get(self) -> $Int {
+                    self.0 .0
+                }
+
+            }
+
+            impl_nonzero_fmt! {
+                #[$stability]
+                (Debug, Display, Binary, Octal, LowerHex, UpperHex) for $Ty
+            }
+        )+
+    }
+}
+
+nonzero_integers! {
+    #[unstable(feature = "nonzero", issue = "49137")]
+    #[allow(deprecated)]  // Redundant, works around "error: inconsistent lockstep iteration"
+    NonZeroU8(u8);
+    NonZeroU16(u16);
+    NonZeroU32(u32);
+    NonZeroU64(u64);
+    NonZeroU128(u128);
+    NonZeroUsize(usize);
+}
+
+nonzero_integers! {
+    #[unstable(feature = "nonzero", issue = "49137")]
+    #[rustc_deprecated(since = "1.26.0", reason = "\
+        signed non-zero integers are considered for removal due to lack of known use cases. \
+        If you’re using them, please comment on https://github.com/rust-lang/rust/issues/49137")]
+    NonZeroI8(i8);
+    NonZeroI16(i16);
+    NonZeroI32(i32);
+    NonZeroI64(i64);
+    NonZeroI128(i128);
+    NonZeroIsize(isize);
+}
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -1546,11 +1645,7 @@ impl i64 {
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727, "#![feature(i128_type)]
-#![feature(i128)]
-# fn main() {
-", "
-# }" }
+        170141183460469231731687303715884105727, "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -3404,12 +3499,7 @@ impl u64 {
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "#![feature(i128_type)]
-#![feature(i128)]
-
-# fn main() {
-", "
-# }" }
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -3573,7 +3663,7 @@ macro_rules! from_str_radix_int_impl {
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 /// The error type returned when a checked integral type conversion fails.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromIntError(());
 
@@ -3588,40 +3678,24 @@ impl TryFromIntError {
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl fmt::Display for TryFromIntError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         self.__description().fmt(fmt)
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
-impl From<Infallible> for TryFromIntError {
-    fn from(infallible: Infallible) -> TryFromIntError {
-        match infallible {
-        }
+#[stable(feature = "try_from", since = "1.26.0")]
+impl From<!> for TryFromIntError {
+    fn from(never: !) -> TryFromIntError {
+        never
     }
-}
-
-// no possible bounds violation
-macro_rules! try_from_unbounded {
-    ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
-        impl TryFrom<$source> for $target {
-            type Error = Infallible;
-
-            #[inline]
-            fn try_from(value: $source) -> Result<Self, Self::Error> {
-                Ok(value as $target)
-            }
-        }
-    )*}
 }
 
 // only negative bounds
 macro_rules! try_from_lower_bounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -3640,7 +3714,7 @@ macro_rules! try_from_lower_bounded {
 // unsigned to signed (only positive bound)
 macro_rules! try_from_upper_bounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -3659,7 +3733,7 @@ macro_rules! try_from_upper_bounded {
 // all other cases
 macro_rules! try_from_both_bounded {
     ($source:ty, $($target:ty),*) => {$(
-        #[unstable(feature = "try_from", issue = "33417")]
+        #[stable(feature = "try_from", since = "1.26.0")]
         impl TryFrom<$source> for $target {
             type Error = TryFromIntError;
 
@@ -3716,82 +3790,44 @@ try_from_both_bounded!(i128, u64, u32, u16, u8);
 try_from_upper_bounded!(usize, isize);
 try_from_lower_bounded!(isize, usize);
 
+try_from_upper_bounded!(usize, u8);
+try_from_upper_bounded!(usize, i8, i16);
+try_from_both_bounded!(isize, u8);
+try_from_both_bounded!(isize, i8);
+
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use convert::{Infallible, TryFrom};
+    use convert::TryFrom;
 
-    try_from_upper_bounded!(usize, u8);
-    try_from_unbounded!(usize, u16, u32, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16);
-    try_from_unbounded!(usize, i32, i64, i128);
-
-    try_from_both_bounded!(isize, u8);
+    // Fallible across platfoms, only implementation differs
     try_from_lower_bounded!(isize, u16, u32, u64, u128);
-    try_from_both_bounded!(isize, i8);
-    try_from_unbounded!(isize, i16, i32, i64, i128);
-
-    rev!(try_from_unbounded, usize, u16);
-    rev!(try_from_upper_bounded, usize, u32, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16);
     rev!(try_from_both_bounded, usize, i32, i64, i128);
-
-    rev!(try_from_unbounded, isize, u8);
-    rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i16);
-    rev!(try_from_both_bounded, isize, i32, i64, i128);
 }
 
 #[cfg(target_pointer_width = "32")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use convert::{Infallible, TryFrom};
+    use convert::TryFrom;
 
-    try_from_upper_bounded!(usize, u8, u16);
-    try_from_unbounded!(usize, u32, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, i32);
-    try_from_unbounded!(usize, i64, i128);
-
-    try_from_both_bounded!(isize, u8, u16);
+    // Fallible across platfoms, only implementation differs
+    try_from_both_bounded!(isize, u16);
     try_from_lower_bounded!(isize, u32, u64, u128);
-    try_from_both_bounded!(isize, i8, i16);
-    try_from_unbounded!(isize, i32, i64, i128);
-
-    rev!(try_from_unbounded, usize, u16, u32);
-    rev!(try_from_upper_bounded, usize, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32);
     rev!(try_from_both_bounded, usize, i64, i128);
-
-    rev!(try_from_unbounded, isize, u8, u16);
-    rev!(try_from_upper_bounded, isize, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i16, i32);
-    rev!(try_from_both_bounded, isize, i64, i128);
 }
 
 #[cfg(target_pointer_width = "64")]
 mod ptr_try_from_impls {
     use super::TryFromIntError;
-    use convert::{Infallible, TryFrom};
+    use convert::TryFrom;
 
-    try_from_upper_bounded!(usize, u8, u16, u32);
-    try_from_unbounded!(usize, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, i32, i64);
-    try_from_unbounded!(usize, i128);
-
-    try_from_both_bounded!(isize, u8, u16, u32);
+    // Fallible across platfoms, only implementation differs
+    try_from_both_bounded!(isize, u16, u32);
     try_from_lower_bounded!(isize, u64, u128);
-    try_from_both_bounded!(isize, i8, i16, i32);
-    try_from_unbounded!(isize, i64, i128);
-
-    rev!(try_from_unbounded, usize, u16, u32, u64);
-    rev!(try_from_upper_bounded, usize, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
     rev!(try_from_both_bounded, usize, i128);
-
-    rev!(try_from_unbounded, isize, u8, u16, u32);
-    rev!(try_from_upper_bounded, isize, u64, u128);
-    rev!(try_from_unbounded, isize, i16, i32, i64);
-    rev!(try_from_both_bounded, isize, i128);
 }
 
 #[doc(hidden)]
@@ -3967,39 +4003,53 @@ macro_rules! impl_from {
 impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u8, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u16, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u32, u128, #[unstable(feature = "i128", issue = "35118")] }
-impl_from! { u64, u128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, u128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { u64, u128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Signed -> Signed
 impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i32, i128, #[unstable(feature = "i128", issue = "35118")] }
-impl_from! { i64, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { i32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { i64, i128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Unsigned -> Signed
 impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u32, i128, #[unstable(feature = "i128", issue = "35118")] }
-impl_from! { u64, i128, #[unstable(feature = "i128", issue = "35118")] }
+impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
+
+// The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
+// which imply that pointer-sized integers must be at least 16 bits:
+// https://port70.net/~nsz/c/c99/n1256.html#7.18.2.4
+impl_from! { u16, usize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
+impl_from! { u8, isize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
+impl_from! { i16, isize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
+
+// RISC-V defines the possibility of a 128-bit address space (RV128).
+
+// CHERI proposes 256-bit “capabilities”. Unclear if this would be relevant to usize/isize.
+// https://www.cl.cam.ac.uk/research/security/ctsrd/pdfs/20171017a-cheri-poster.pdf
+// http://www.csl.sri.com/users/neumann/2012resolve-cheri.pdf
+
 
 // Note: integers can only be represented with full precision in a float if
 // they fit in the significand, which is 24 bits in f32 and 53 bits in f64.

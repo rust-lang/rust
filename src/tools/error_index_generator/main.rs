@@ -61,8 +61,8 @@ impl Formatter for HTMLFormatter {
 <head>
 <title>Rust Compiler Error Index</title>
 <meta charset="utf-8">
-<!-- Include rust.css after main.css so its rules take priority. -->
-<link rel="stylesheet" type="text/css" href="main.css"/>
+<!-- Include rust.css after light.css so its rules take priority. -->
+<link rel="stylesheet" type="text/css" href="light.css"/>
 <link rel="stylesheet" type="text/css" href="rust.css"/>
 <style>
 .error-undescribed {{

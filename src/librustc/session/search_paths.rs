@@ -78,4 +78,11 @@ impl<'a> Iterator for Iter<'a> {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // This iterator will never return more elements than the base iterator;
+        // but it can ignore all the remaining elements.
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
 }

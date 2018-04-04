@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
-use rustc::traits;
+use rustc::traits::{self, TraitEngine};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::maps::Providers;
@@ -1099,6 +1099,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                 StatementKind::InlineAsm {..} |
                 StatementKind::EndRegion(_) |
                 StatementKind::Validate(..) |
+                StatementKind::UserAssertTy(..) |
                 StatementKind::Nop => {}
             }
         });

@@ -38,6 +38,8 @@ pub enum Annotatable {
     Item(P<ast::Item>),
     TraitItem(P<ast::TraitItem>),
     ImplItem(P<ast::ImplItem>),
+    Stmt(P<ast::Stmt>),
+    Expr(P<ast::Expr>),
 }
 
 impl HasAttrs for Annotatable {
@@ -46,6 +48,8 @@ impl HasAttrs for Annotatable {
             Annotatable::Item(ref item) => &item.attrs,
             Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
             Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
+            Annotatable::Stmt(ref stmt) => stmt.attrs(),
+            Annotatable::Expr(ref expr) => &expr.attrs,
         }
     }
 
@@ -54,6 +58,8 @@ impl HasAttrs for Annotatable {
             Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
             Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
             Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
+            Annotatable::Stmt(stmt) => Annotatable::Stmt(stmt.map_attrs(f)),
+            Annotatable::Expr(expr) => Annotatable::Expr(expr.map_attrs(f)),
         }
     }
 }
@@ -64,6 +70,8 @@ impl Annotatable {
             Annotatable::Item(ref item) => item.span,
             Annotatable::TraitItem(ref trait_item) => trait_item.span,
             Annotatable::ImplItem(ref impl_item) => impl_item.span,
+            Annotatable::Stmt(ref stmt) => stmt.span,
+            Annotatable::Expr(ref expr) => expr.span,
         }
     }
 
@@ -229,8 +237,9 @@ impl<F> TTMacroExpander for F
         impl Folder for AvoidInterpolatedIdents {
             fn fold_tt(&mut self, tt: tokenstream::TokenTree) -> tokenstream::TokenTree {
                 if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
-                    if let token::NtIdent(ident) = nt.0 {
-                        return tokenstream::TokenTree::Token(ident.span, token::Ident(ident.node));
+                    if let token::NtIdent(ident, is_raw) = nt.0 {
+                        return tokenstream::TokenTree::Token(ident.span,
+                                                             token::Ident(ident.node, is_raw));
                     }
                 }
                 fold::noop_fold_tt(tt, self)

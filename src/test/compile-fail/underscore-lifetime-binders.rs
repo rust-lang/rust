@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(underscore_lifetimes)]
-
 struct Foo<'a>(&'a u8);
 struct Baz<'a>(&'_ &'a u8); //~ ERROR missing lifetime specifier
 

@@ -12,7 +12,6 @@
 
 use cstore::{self, CStore, CrateSource, MetadataBlob};
 use locator::{self, CratePaths};
-use native_libs::relevant_lib;
 use schema::CrateRoot;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
@@ -23,6 +22,7 @@ use rustc::middle::cstore::DepKind;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_back::PanicStrategy;
+use rustc_back::target::TargetTriple;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
 use rustc::middle::cstore::{validate_crate_name, ExternCrate};
@@ -230,7 +230,7 @@ impl<'a> CrateLoader<'a> {
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
 
-        let mut cmeta = cstore::CrateMetadata {
+        let cmeta = cstore::CrateMetadata {
             name,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
@@ -250,24 +250,7 @@ impl<'a> CrateLoader<'a> {
                 rlib,
                 rmeta,
             },
-            // Initialize this with an empty set. The field is populated below
-            // after we were able to deserialize its contents.
-            dllimport_foreign_items: FxHashSet(),
         };
-
-        let dllimports: FxHashSet<_> = cmeta
-            .root
-            .native_libraries
-            .decode((&cmeta, self.sess))
-            .filter(|lib| relevant_lib(self.sess, lib) &&
-                          lib.kind == cstore::NativeLibraryKind::NativeUnknown)
-            .flat_map(|lib| {
-                assert!(lib.foreign_items.iter().all(|def_id| def_id.krate == cnum));
-                lib.foreign_items.into_iter().map(|def_id| def_id.index)
-            })
-            .collect();
-
-        cmeta.dllimport_foreign_items = dllimports;
 
         let cmeta = Lrc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());
@@ -313,7 +296,7 @@ impl<'a> CrateLoader<'a> {
 
                 let mut proc_macro_locator = locator::Context {
                     target: &self.sess.host,
-                    triple: config::host_triple(),
+                    triple: &TargetTriple::from_triple(config::host_triple()),
                     filesearch: self.sess.host_filesearch(path_kind),
                     rejected_via_hash: vec![],
                     rejected_via_triple: vec![],
@@ -357,7 +340,7 @@ impl<'a> CrateLoader<'a> {
         // don't want to match a host crate against an equivalent target one
         // already loaded.
         let root = library.metadata.get_root();
-        if locate_ctxt.triple == self.sess.opts.target_triple {
+        if locate_ctxt.triple == &self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
                 if data.name() == root.name && root.hash == data.hash() {
@@ -444,8 +427,9 @@ impl<'a> CrateLoader<'a> {
     fn read_extension_crate(&mut self, span: Span, orig_name: Symbol, rename: Symbol)
                             -> ExtensionCrate {
         info!("read extension crate `extern crate {} as {}`", orig_name, rename);
-        let target_triple = &self.sess.opts.target_triple[..];
-        let is_cross = target_triple != config::host_triple();
+        let target_triple = &self.sess.opts.target_triple;
+        let host_triple = TargetTriple::from_triple(config::host_triple());
+        let is_cross = target_triple != &host_triple;
         let mut target_only = false;
         let mut locate_ctxt = locator::Context {
             sess: self.sess,
@@ -455,7 +439,7 @@ impl<'a> CrateLoader<'a> {
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             target: &self.sess.host,
-            triple: config::host_triple(),
+            triple: &host_triple,
             root: &None,
             rejected_via_hash: vec![],
             rejected_via_triple: vec![],
@@ -802,7 +786,9 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_profiler_runtime(&mut self) {
-        if self.sess.opts.debugging_opts.profile {
+        if self.sess.opts.debugging_opts.profile ||
+            self.sess.opts.debugging_opts.pgo_gen.is_some()
+        {
             info!("loading profiler");
 
             let symbol = Symbol::intern("profiler_builtins");

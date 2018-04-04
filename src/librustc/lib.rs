@@ -43,20 +43,19 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(const_fn)]
-#![feature(copy_closures, clone_closures)]
+#![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(dyn_trait)]
 #![feature(entry_or_default)]
 #![feature(from_ref)]
 #![feature(fs_read_write)]
-#![feature(i128)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type, i128))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![cfg_attr(windows, feature(libc))]
-#![feature(match_default_bindings)]
+#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(macro_lifetime_matcher)]
 #![feature(macro_vis_matcher)]
 #![feature(exhaustive_patterns)]
@@ -69,8 +68,8 @@
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
-#![feature(underscore_lifetimes)]
-#![feature(universal_impl_trait)]
+#![cfg_attr(stage0, feature(underscore_lifetimes))]
+#![cfg_attr(stage0, feature(universal_impl_trait))]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(catch_expr)]
@@ -157,6 +156,7 @@ pub mod traits;
 pub mod ty;
 
 pub mod util {
+    pub mod captures;
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;

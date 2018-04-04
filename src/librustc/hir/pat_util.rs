@@ -31,6 +31,10 @@ impl<I> Iterator for EnumerateAndAdjust<I> where I: Iterator {
             (if i < self.gap_pos { i } else { i + self.gap_len }, elem)
         })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.enumerate.size_hint()
+    }
 }
 
 pub trait EnumerateAndAdjustIterator {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(warnings)]
-#![feature(in_band_lifetimes, universal_impl_trait)]
+#![feature(in_band_lifetimes)]
 
 fn bar<F>(x: &F) where F: Fn(&'a u32) {} //~ ERROR must be explicitly
 

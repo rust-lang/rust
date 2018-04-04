@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(associated_consts)]
-#![feature(conservative_impl_trait)]
 #![feature(decl_macro)]
 #![allow(private_in_public)]
 
