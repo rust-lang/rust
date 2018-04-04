@@ -14,3 +14,7 @@ doc = false
 [dependencies]
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
+
+[features]
+sjlj_eh = []
+
