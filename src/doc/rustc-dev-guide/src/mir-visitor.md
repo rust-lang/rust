@@ -7,7 +7,7 @@ them, generated via a single macro: `Visitor` (which operates on a
 `&Mir` and gives back shared references) and `MutVisitor` (which
 operates on a `&mut Mir` and gives back mutable references).
 
-[m-v]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir/visit.rs
+[m-v]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/visit/index.html
 
 To implement a visitor, you have to create a type that represents
 your visitor. Typically, this type wants to "hang on" to whatever
@@ -41,7 +41,7 @@ A very simple example of a visitor can be found in [`NoLandingPads`].
 That visitor doesn't even require any state: it just visits all
 terminators and removes their `unwind` successors.
 
-[`NoLandingPads`]: https://github.com/rust-lang/rust/tree/master/src/librustc_mir/transform/no_landing_pads.rs
+[`NoLandingPads`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/no_landing_pads/struct.NoLandingPads.html
 
 ## Traversal
 
@@ -50,6 +50,6 @@ contains useful functions for walking the MIR CFG in
 [different standard orders][traversal] (e.g. pre-order, reverse
 post-order, and so forth).
 
-[t]: https://github.com/rust-lang/rust/tree/master/src/librustc/mir/traversal.rs
+[t]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/mir/traversal/index.html
 [traversal]: https://en.wikipedia.org/wiki/Tree_traversal
 

@@ -67,10 +67,10 @@ pervasive lifetimes. The `rustc::ty::tls` module is used to access these
 thread-locals, although you should rarely need to touch it.
 
 
-[`rustc_driver`]: https://github.com/rust-lang/rust/tree/master/src/librustc_driver
-[`CompileState`]: https://github.com/rust-lang/rust/blob/master/src/librustc_driver/driver.rs
-[`Session`]: https://github.com/rust-lang/rust/blob/master/src/librustc/session/mod.rs
-[`TyCtxt`]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/context.rs
-[`CodeMap`]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/codemap.rs
+[`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/
+[`CompileState`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/struct.CompileState.html
+[`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html
+[`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
+[`CodeMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html
 [stupid-stats]: https://github.com/nrc/stupid-stats
 [Appendix A]: appendix-stupid-stats.html

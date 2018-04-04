@@ -216,7 +216,7 @@ the big macro invocation in
 changed by the time you read this README, but at present it looks
 something like:
 
-[maps-mod]: https://github.com/rust-lang/rust/blob/master/src/librustc/ty/maps/mod.rs
+[maps-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/maps/index.html
 
 ```
 define_maps! { <'tcx>
@@ -270,7 +270,7 @@ Let's go over them one by one:
     of `Steal` for more details. New uses of `Steal` should **not** be
     added without alerting `@rust-lang/compiler`.
 
-[dep-node]: https://github.com/rust-lang/rust/blob/master/src/librustc/dep_graph/dep_node.rs
+[dep-node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/dep_graph/struct.DepNode.html
 
 So, to add a query:
 

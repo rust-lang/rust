@@ -4,7 +4,7 @@ The program clauses described in the
 [lowering rules](./traits-lowering-rules.html) section are actually
 created in the [`rustc_traits::lowering`][lowering] module.
 
-[lowering]: https://github.com/rust-lang/rust/tree/master/src/librustc_traits/lowering.rs
+[lowering]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_traits/lowering/
 
 ## The `program_clauses_for` query
 

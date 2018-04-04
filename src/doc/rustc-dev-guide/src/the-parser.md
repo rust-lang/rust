@@ -34,9 +34,9 @@ all the information needed while parsing, as well as the `CodeMap` itself.
 [libsyntax]: https://github.com/rust-lang/rust/tree/master/src/libsyntax
 [rustc_errors]: https://github.com/rust-lang/rust/tree/master/src/librustc_errors
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-[`CodeMap`]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/codemap.rs
-[ast module]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/ast.rs
+[`CodeMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/codemap/struct.CodeMap.html
+[ast module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
 [parser module]: https://github.com/rust-lang/rust/tree/master/src/libsyntax/parse
-[`Parser`]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/parser.rs
-[`StringReader`]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/parse/lexer/mod.rs
-[visit module]: https://github.com/rust-lang/rust/blob/master/src/libsyntax/visit.rs
+[`Parser`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/parser/struct.Parser.html
+[`StringReader`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/parse/lexer/struct.StringReader.html
+[visit module]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/visit/index.html
