@@ -154,6 +154,14 @@ fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
     }
 }
 
+fn get_llvm_reloc_model(sess: &Session) -> llvm::RelocMode {
+    if sess.target.target.options.force_pic_relocation_model {
+        llvm::RelocMode::PIC
+    } else {
+        get_reloc_model(sess)
+    }
+}
+
 pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     target_machine_factory(sess)().unwrap_or_else(|err| {
         llvm_err(sess.diagnostic(), err).raise()
@@ -163,7 +171,7 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
 pub fn target_machine_factory(sess: &Session)
     -> Arc<Fn() -> Result<TargetMachineRef, String> + Send + Sync>
 {
-    let reloc_model = get_reloc_model(sess);
+    let reloc_model = get_llvm_reloc_model(sess);
 
     let opt_level = get_llvm_opt_level(sess.opts.optimize);
     let use_softfp = sess.opts.cg.soft_float;
