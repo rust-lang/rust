@@ -37,7 +37,7 @@ as `E-medium`, since they might be somewhat involved code wise, but not difficul
 
 [`T-middle`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues can
 be more involved and require verifying types. The
-[`ty`](http://manishearth.github.io/rust-internals-docs/rustc/ty) module contains a
+[`ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty) module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
