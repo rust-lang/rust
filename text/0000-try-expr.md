@@ -262,7 +262,7 @@ We believe `catch` to be a poor choice of keyword, because it:
 
 ## Alternative: keeping `do catch { .. }`
 
-1. **Fidelity to the construct's actual behavior:** High
+1. **Fidelity to the construct's actual behavior:** Low
 2. **Precedent from existing languages:**
     + `do`: Haskell, Idris
     + `catch`: None, see [prior-art]
