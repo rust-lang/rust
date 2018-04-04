@@ -139,22 +139,12 @@ macro_rules! alloc_methods_based_on_global_alloc {
     () => {
         #[inline]
         unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            let ptr = GlobalAlloc::alloc(*self, layout);
-            if !ptr.is_null() {
-                Ok(ptr as *mut u8)
-            } else {
-                Err(AllocErr)
-            }
+            GlobalAlloc::alloc(*self, layout).into()
         }
 
         #[inline]
         unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            let ptr = GlobalAlloc::alloc_zeroed(*self, layout);
-            if !ptr.is_null() {
-                Ok(ptr as *mut u8)
-            } else {
-                Err(AllocErr)
-            }
+            GlobalAlloc::alloc_zeroed(*self, layout).into()
         }
 
         #[inline]
@@ -167,12 +157,7 @@ macro_rules! alloc_methods_based_on_global_alloc {
                           ptr: *mut u8,
                           old_layout: Layout,
                           new_size: usize) -> Result<*mut u8, AllocErr> {
-            let ptr = GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_size);
-            if !ptr.is_null() {
-                Ok(ptr as *mut u8)
-            } else {
-                Err(AllocErr)
-            }
+            GlobalAlloc::realloc(*self, ptr as *mut Void, old_layout, new_size).into()
         }
     }
 }
