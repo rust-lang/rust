@@ -180,6 +180,11 @@ mod this_crate {
     #[deprecated(since = "1.0.0", note = "text")]
     pub fn deprecated_text() {}
 
+    #[deprecated(since = "99.99.99", note = "text")]
+    pub fn deprecated_future() {}
+    #[deprecated(since = "99.99.99", note = "text")]
+    pub fn deprecated_future_text() {}
+
     pub struct MethodTester;
 
     impl MethodTester {
@@ -265,6 +270,9 @@ mod this_crate {
         Trait::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
+
+        deprecated_future(); // Fine; no error.
+        deprecated_future_text(); // Fine; no error.
 
         let _ = DeprecatedStruct {
             //~^ ERROR use of deprecated item 'this_crate::DeprecatedStruct': text
