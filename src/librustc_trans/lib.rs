@@ -29,7 +29,6 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
 #![feature(inclusive_range_fields)]
-#![feature(underscore_lifetimes)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
