@@ -1476,7 +1476,11 @@ impl<'tcx> ParamEnv<'tcx> {
             }
 
             Reveal::All => {
-                if value.needs_infer() || value.has_param_types() || value.has_self_ty() {
+                if value.has_skol()
+                    || value.needs_infer()
+                    || value.has_param_types()
+                    || value.has_self_ty()
+                {
                     ParamEnvAnd {
                         param_env: self,
                         value,
