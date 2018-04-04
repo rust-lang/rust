@@ -19,8 +19,6 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
-#![cfg_attr(stage0, feature(i128_type, i128))]
-
 extern crate rustc_apfloat;
 
 extern crate syntax;

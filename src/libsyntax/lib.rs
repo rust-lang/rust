@@ -22,9 +22,7 @@
 
 #![feature(unicode)]
 #![feature(rustc_diagnostic_macros)]
-#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(non_exhaustive)]
-#![cfg_attr(stage0, feature(i128_type))]
 #![feature(const_atomic_usize_new)]
 #![feature(rustc_attrs)]
 

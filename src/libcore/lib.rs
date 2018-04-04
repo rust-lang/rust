@@ -78,8 +78,6 @@
 #![feature(doc_spotlight)]
 #![feature(fn_must_use)]
 #![feature(fundamental)]
-#![cfg_attr(stage0, feature(i128_type))]
-#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(intrinsics)]
 #![feature(iterator_flatten)]
 #![feature(iterator_repeat_with)]
@@ -102,9 +100,6 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
-
-#![cfg_attr(stage0, allow(unused_attributes))]
-#![cfg_attr(stage0, feature(never_type))]
 
 #[prelude_import]
 #[allow(unused)]

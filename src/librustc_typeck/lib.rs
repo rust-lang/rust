@@ -72,22 +72,16 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
-#![cfg_attr(stage0, feature(advanced_slice_patterns))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(stage0, feature(conservative_impl_trait))]
-#![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(crate_visibility_modifier)]
 #![feature(from_ref)]
-#![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(exhaustive_patterns)]
 #![feature(option_filter)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![cfg_attr(stage0, feature(i128_type))]
-#![cfg_attr(stage0, feature(never_type))]
 #![feature(dyn_trait)]
 
 #[macro_use] extern crate log;

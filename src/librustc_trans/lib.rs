@@ -24,13 +24,9 @@
 #![feature(custom_attribute)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
-#![cfg_attr(stage0, feature(i128_type, i128))]
-#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![cfg_attr(stage0, feature(slice_patterns))]
-#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(optin_builtin_traits)]
 #![feature(inclusive_range_fields)]
 

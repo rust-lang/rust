@@ -14,8 +14,6 @@
 #![deny(warnings)]
 
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(stage0, feature(match_default_bindings))]
-#![cfg_attr(stage0, feature(underscore_lifetimes))]
 
 #[macro_use]
 extern crate log;

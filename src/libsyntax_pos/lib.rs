@@ -21,7 +21,6 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
-#![cfg_attr(stage0, feature(i128_type))]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
