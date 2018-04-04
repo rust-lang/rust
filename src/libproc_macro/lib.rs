@@ -59,6 +59,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream;
+use syntax::parse::lexer::comments;
 use syntax_pos::{FileMap, Pos, SyntaxContext, FileName};
 use syntax_pos::hygiene::Mark;
 
@@ -1056,12 +1057,17 @@ impl TokenTree {
             }
             Literal(..) => tt!(self::Literal { token, span: Span(span) }),
             DocComment(c) => {
+                let style = comments::doc_comment_style(&c.as_str());
+                let stripped = comments::strip_doc_comment_decoration(&c.as_str());
                 let stream = vec![
                     tt!(Term::new("doc", Span(span))),
                     tt!(Op::new('=', Spacing::Alone)),
-                    tt!(self::Literal::string(&c.as_str())),
+                    tt!(self::Literal::string(&stripped)),
                 ].into_iter().collect();
                 stack.push(tt!(Group::new(Delimiter::Bracket, stream)));
+                if style == ast::AttrStyle::Inner {
+                    stack.push(tt!(Op::new('!', Spacing::Alone)));
+                }
                 tt!(Op::new('#', Spacing::Alone))
             }
 
