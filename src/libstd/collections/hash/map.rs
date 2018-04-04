@@ -2341,14 +2341,14 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// use std::collections::hash_map::{Entry, HashMap};
     /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// map.insert(Rc::new("Stringthing".to_string()), 15);
+    /// let mut map: HashMap<Rc<str>, u32> = HashMap::new();
+    /// map.insert("Stringthing".into(), 15);
     ///
-    /// let my_key = Rc::new("Stringthing".to_string());
+    /// let my_key: Rc<str> = "Stringthing".into();
     ///
     /// if let Entry::Occupied(entry) = map.entry(my_key) {
     ///     // Also replace the key with a handle to our other key.
-    ///     let (old_key, old_value): (Rc<String>, u32) = entry.replace_entry(16);
+    ///     let (old_key, old_value): (Rc<str>, u32) = entry.replace_entry(16);
     /// }
     ///
     /// ```
@@ -2371,14 +2371,14 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// use std::collections::hash_map::{Entry, HashMap};
     /// use std::rc::Rc;
     ///
-    /// let mut map: HashMap<Rc<String>, u32> = HashMap::new();
-    /// let mut known_strings: Vec<Rc<String>> = Vec::new();
+    /// let mut map: HashMap<Rc<str>, u32> = HashMap::new();
+    /// let mut known_strings: Vec<Rc<str>> = Vec::new();
     ///
     /// // Initialise known strings, run program, etc.
     ///
     /// reclaim_memory(&mut map, &known_strings);
     ///
-    /// fn reclaim_memory(map: &mut HashMap<Rc<String>, u32>, known_strings: &[Rc<String>] ) {
+    /// fn reclaim_memory(map: &mut HashMap<Rc<str>, u32>, known_strings: &[Rc<str>] ) {
     ///     for s in known_strings {
     ///         if let Entry::Occupied(entry) = map.entry(s.clone()) {
     ///             // Replaces the entry's key with our version of it in `known_strings`.
