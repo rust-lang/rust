@@ -348,6 +348,10 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// interner lives for the life of the thread, this can be safely treated as an
 /// immortal string, as long as it never crosses between threads.
 ///
+/// CAUTION: InternedStrings are *not* compared and hashed lexicographically!
+///          Instead their pointer values are compared/hashed, so cast to &str
+///          if you need things to be stable across process boundaries.
+///
 /// FIXME(pcwalton): You must be careful about what you do in the destructors
 /// of objects stored in TLS, because they may run after the interner is
 /// destroyed. In particular, they must not access string contents. This can
