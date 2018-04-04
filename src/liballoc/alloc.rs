@@ -73,24 +73,60 @@ pub type Heap = Global;
 #[allow(non_upper_case_globals)]
 pub const Heap: Global = Global;
 
-unsafe impl Alloc for Global {
+unsafe impl GlobalAlloc for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&self, layout: Layout) -> *mut Void {
         #[cfg(not(stage0))]
         let ptr = __rust_alloc(layout.size(), layout.align());
         #[cfg(stage0)]
         let ptr = __rust_alloc(layout.size(), layout.align(), &mut 0);
+        ptr as *mut Void
+    }
 
-        if !ptr.is_null() {
-            Ok(ptr)
-        } else {
-            Err(AllocErr)
+    #[inline]
+    unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout) {
+        __rust_dealloc(ptr as *mut u8, layout.size(), layout.align())
+    }
+
+    #[inline]
+    unsafe fn realloc(&self, ptr: *mut Void, layout: Layout, new_size: usize) -> *mut Void {
+        #[cfg(not(stage0))]
+        let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(), new_size);
+        #[cfg(stage0)]
+        let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(),
+                                 new_size, layout.align(), &mut 0);
+        ptr as *mut Void
+    }
+
+    #[inline]
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
+        #[cfg(not(stage0))]
+        let ptr = __rust_alloc_zeroed(layout.size(), layout.align());
+        #[cfg(stage0)]
+        let ptr = __rust_alloc_zeroed(layout.size(), layout.align(), &mut 0);
+        ptr as *mut Void
+    }
+
+    #[inline]
+    fn oom(&self) -> ! {
+        unsafe {
+            #[cfg(not(stage0))]
+            __rust_oom();
+            #[cfg(stage0)]
+            __rust_oom(&mut 0);
         }
+    }
+}
+
+unsafe impl Alloc for Global {
+    #[inline]
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+        GlobalAlloc::alloc(self, layout).into()
     }
 
     #[inline]
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        __rust_dealloc(ptr, layout.size(), layout.align())
+        GlobalAlloc::dealloc(self, ptr as *mut Void, layout)
     }
 
     #[inline]
@@ -100,41 +136,17 @@ unsafe impl Alloc for Global {
                       new_size: usize)
                       -> Result<*mut u8, AllocErr>
     {
-        #[cfg(not(stage0))]
-        let ptr = __rust_realloc(ptr, layout.size(), layout.align(), new_size);
-        #[cfg(stage0)]
-        let ptr = __rust_realloc(ptr, layout.size(), layout.align(),
-                                 new_size, layout.align(), &mut 0);
-
-        if !ptr.is_null() {
-            Ok(ptr)
-        } else {
-            Err(AllocErr)
-        }
+        GlobalAlloc::realloc(self, ptr as *mut Void, layout, new_size).into()
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-        #[cfg(not(stage0))]
-        let ptr = __rust_alloc_zeroed(layout.size(), layout.align());
-        #[cfg(stage0)]
-        let ptr = __rust_alloc_zeroed(layout.size(), layout.align(), &mut 0);
-
-        if !ptr.is_null() {
-            Ok(ptr)
-        } else {
-            Err(AllocErr)
-        }
+        GlobalAlloc::alloc_zeroed(self, layout).into()
     }
 
     #[inline]
     fn oom(&mut self) -> ! {
-        unsafe {
-            #[cfg(not(stage0))]
-            __rust_oom();
-            #[cfg(stage0)]
-            __rust_oom(&mut 0);
-        }
+        GlobalAlloc::oom(self)
     }
 }
 
@@ -148,9 +160,12 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         align as *mut u8
     } else {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Global.alloc(layout).unwrap_or_else(|_| {
+        let ptr = Global.alloc(layout);
+        if !ptr.is_null() {
+            ptr as *mut u8
+        } else {
             Global.oom()
-        })
+        }
     }
 }
 
@@ -162,7 +177,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Global.dealloc(ptr as *mut u8, layout);
+        Global.dealloc(ptr as *mut Void, layout);
     }
 }
 
