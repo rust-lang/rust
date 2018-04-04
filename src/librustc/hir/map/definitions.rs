@@ -220,7 +220,7 @@ impl DefKey {
             DefPathData::EnumVariant(name) |
             DefPathData::Field(name) |
             DefPathData::GlobalMetaData(name) => {
-                name.hash(&mut hasher);
+                (&name[..]).hash(&mut hasher);
             }
 
             DefPathData::Impl |
