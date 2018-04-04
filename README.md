@@ -14,9 +14,9 @@ We have a bunch of lint categories to allow you to choose how much clippy is sup
 * `clippy` (everything that has no false positives)
 * `clippy_pedantic` (everything)
 * `clippy_style` (code that should be written in a more idiomatic way)
-* `complexity` (code that does something simple but in a complex way)
-* `perf` (code that can be written in a faster way)
-* **`correctness`** (code that is just outright wrong or very very useless)
+* `clippy_complexity` (code that does something simple but in a complex way)
+* `clippy_perf` (code that can be written in a faster way)
+* **`clippy_correctness`** (code that is just outright wrong or very very useless)
 
 More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
 
