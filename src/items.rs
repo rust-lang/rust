@@ -11,7 +11,7 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use std::borrow::Cow;
-use std::cmp::min;
+use std::cmp::{min, Ordering};
 
 use config::lists::*;
 use regex::Regex;
@@ -660,12 +660,55 @@ pub fn format_impl(
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_context(context);
-            visitor.block_indent = offset.block_only().block_indent(context.config);
+            let item_indent = offset.block_only().block_indent(context.config);
+            visitor.block_indent = item_indent;
             visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
 
             visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
-            for item in items {
-                visitor.visit_impl_item(item);
+            if context.config.reorder_impl_items() {
+                // Create visitor for each items, then reorder them.
+                let mut buffer = vec![];
+                for item in items {
+                    visitor.visit_impl_item(item);
+                    buffer.push((visitor.buffer.clone(), item.clone()));
+                    visitor.buffer.clear();
+                }
+                // type -> const -> macro -> method
+                use ast::ImplItemKind::*;
+                fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
+                    match (a, b) {
+                        (Type(..), Type(..)) | (Const(..), Const(..)) => false,
+                        _ => true,
+                    }
+                }
+
+                buffer.sort_by(|(_, a), (_, b)| match (&a.node, &b.node) {
+                    (Type(..), _) => Ordering::Less,
+                    (_, Type(..)) => Ordering::Greater,
+                    (Const(..), _) => Ordering::Less,
+                    (_, Const(..)) => Ordering::Greater,
+                    (Macro(..), _) => Ordering::Less,
+                    (_, Macro(..)) => Ordering::Greater,
+                    _ => Ordering::Less,
+                });
+                let mut prev_kind = None;
+                for (buf, item) in buffer {
+                    // Make sure that there are at least a single empty line between
+                    // different impl items.
+                    if prev_kind
+                        .as_ref()
+                        .map_or(false, |prev_kind| need_empty_line(prev_kind, &item.node))
+                    {
+                        visitor.push_str("\n");
+                    }
+                    visitor.push_str(&item_indent.to_string_with_newline(context.config));
+                    visitor.push_str(buf.trim());
+                    prev_kind = Some(item.node.clone());
+                }
+            } else {
+                for item in items {
+                    visitor.visit_impl_item(item);
+                }
             }
 
             visitor.format_missing(item.span.hi() - BytePos(1));
