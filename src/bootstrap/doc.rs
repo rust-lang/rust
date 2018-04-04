@@ -696,6 +696,7 @@ impl Step for Rustc {
         t!(symlink_dir_force(&out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
+        cargo.env("RUSTDOCFLAGS", "--document-private-items");
         compile::rustc_cargo(build, &mut cargo);
 
         // Only include compiler crates, no dependencies of those, such as `libc`.
