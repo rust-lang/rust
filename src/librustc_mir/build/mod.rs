@@ -317,7 +317,7 @@ newtype_index!(ScopeId);
 /// macro (and methods below) makes working with `BlockAnd` much more
 /// convenient.
 
-#[must_use] // if you don't use one of these results, you're leaving a dangling edge
+#[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
 trait BlockAndExtension {
