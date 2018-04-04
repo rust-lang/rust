@@ -2911,117 +2911,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_expr(&mut self, e: &Expr) -> hir::Expr {
         let kind = match e.node {
-            // Issue #22181:
-            // Eventually a desugaring for `box EXPR`
-            // (similar to the desugaring above for `in PLACE BLOCK`)
-            // should go here, desugaring
-            //
-            // to:
-            //
-            // let mut place = BoxPlace::make_place();
-            // let raw_place = Place::pointer(&mut place);
-            // let value = $value;
-            // unsafe {
-            //     ::std::ptr::write(raw_place, value);
-            //     Boxed::finalize(place)
-            // }
-            //
-            // But for now there are type-inference issues doing that.
             ExprKind::Box(ref inner) => hir::ExprBox(P(self.lower_expr(inner))),
-
-            // Desugar ExprBox: `in (PLACE) EXPR`
-            ExprKind::InPlace(ref placer, ref value_expr) => {
-                // to:
-                //
-                // let p = PLACE;
-                // let mut place = Placer::make_place(p);
-                // let raw_place = Place::pointer(&mut place);
-                // push_unsafe!({
-                //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
-                //     InPlace::finalize(place)
-                // })
-                let placer_expr = P(self.lower_expr(placer));
-                let value_expr = P(self.lower_expr(value_expr));
-
-                let placer_ident = self.str_to_ident("placer");
-                let place_ident = self.str_to_ident("place");
-                let p_ptr_ident = self.str_to_ident("p_ptr");
-
-                let make_place = ["ops", "Placer", "make_place"];
-                let place_pointer = ["ops", "Place", "pointer"];
-                let move_val_init = ["intrinsics", "move_val_init"];
-                let inplace_finalize = ["ops", "InPlace", "finalize"];
-
-                let unstable_span =
-                    self.allow_internal_unstable(CompilerDesugaringKind::BackArrow, e.span);
-                let make_call = |this: &mut LoweringContext, p, args| {
-                    let path = P(this.expr_std_path(unstable_span, p, ThinVec::new()));
-                    P(this.expr_call(e.span, path, args))
-                };
-
-                let mk_stmt_let = |this: &mut LoweringContext, bind, expr| {
-                    this.stmt_let(e.span, false, bind, expr)
-                };
-
-                let mk_stmt_let_mut = |this: &mut LoweringContext, bind, expr| {
-                    this.stmt_let(e.span, true, bind, expr)
-                };
-
-                // let placer = <placer_expr> ;
-                let (s1, placer_binding) = { mk_stmt_let(self, placer_ident, placer_expr) };
-
-                // let mut place = Placer::make_place(placer);
-                let (s2, place_binding) = {
-                    let placer = self.expr_ident(e.span, placer_ident, placer_binding);
-                    let call = make_call(self, &make_place, hir_vec![placer]);
-                    mk_stmt_let_mut(self, place_ident, call)
-                };
-
-                // let p_ptr = Place::pointer(&mut place);
-                let (s3, p_ptr_binding) = {
-                    let agent = P(self.expr_ident(e.span, place_ident, place_binding));
-                    let args = hir_vec![self.expr_mut_addr_of(e.span, agent)];
-                    let call = make_call(self, &place_pointer, args);
-                    mk_stmt_let(self, p_ptr_ident, call)
-                };
-
-                // pop_unsafe!(EXPR));
-                let pop_unsafe_expr = {
-                    self.signal_block_expr(
-                        hir_vec![],
-                        value_expr,
-                        e.span,
-                        hir::PopUnsafeBlock(hir::CompilerGenerated),
-                        ThinVec::new(),
-                    )
-                };
-
-                // push_unsafe!({
-                //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
-                //     InPlace::finalize(place)
-                // })
-                let expr = {
-                    let ptr = self.expr_ident(e.span, p_ptr_ident, p_ptr_binding);
-                    let call_move_val_init = hir::StmtSemi(
-                        make_call(self, &move_val_init, hir_vec![ptr, pop_unsafe_expr]),
-                        self.next_id().node_id,
-                    );
-                    let call_move_val_init = respan(e.span, call_move_val_init);
-
-                    let place = self.expr_ident(e.span, place_ident, place_binding);
-                    let call = make_call(self, &inplace_finalize, hir_vec![place]);
-                    P(self.signal_block_expr(
-                        hir_vec![call_move_val_init],
-                        call,
-                        e.span,
-                        hir::PushUnsafeBlock(hir::CompilerGenerated),
-                        ThinVec::new(),
-                    ))
-                };
-
-                let block = self.block_all(e.span, hir_vec![s1, s2, s3], Some(expr));
-                hir::ExprBlock(P(block))
-            }
 
             ExprKind::Array(ref exprs) => {
                 hir::ExprArray(exprs.iter().map(|x| self.lower_expr(x)).collect())
@@ -4067,29 +3957,6 @@ impl<'a> LoweringContext<'a> {
     fn std_path(&mut self, span: Span, components: &[&str], is_value: bool) -> hir::Path {
         self.resolver
             .resolve_str_path(span, self.crate_root, components, is_value)
-    }
-
-    fn signal_block_expr(
-        &mut self,
-        stmts: hir::HirVec<hir::Stmt>,
-        expr: P<hir::Expr>,
-        span: Span,
-        rule: hir::BlockCheckMode,
-        attrs: ThinVec<Attribute>,
-    ) -> hir::Expr {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
-
-        let block = P(hir::Block {
-            rules: rule,
-            span,
-            id: node_id,
-            hir_id,
-            stmts,
-            expr: Some(expr),
-            targeted_by_break: false,
-            recovered: false,
-        });
-        self.expr_block(block, attrs)
     }
 
     fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> P<hir::Ty> {

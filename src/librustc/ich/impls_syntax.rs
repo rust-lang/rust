@@ -371,7 +371,6 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
-    BackArrow,
     DotFill,
     QuestionMark
 });

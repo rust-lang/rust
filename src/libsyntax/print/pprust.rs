@@ -1877,16 +1877,6 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    fn print_expr_in_place(&mut self,
-                           place: &ast::Expr,
-                           expr: &ast::Expr) -> io::Result<()> {
-        let prec = AssocOp::Inplace.precedence() as i8;
-        self.print_expr_maybe_paren(place, prec + 1)?;
-        self.s.space()?;
-        self.word_space("<-")?;
-        self.print_expr_maybe_paren(expr, prec)
-    }
-
     fn print_expr_vec(&mut self, exprs: &[P<ast::Expr>],
                       attrs: &[Attribute]) -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
@@ -2055,9 +2045,6 @@ impl<'a> State<'a> {
             ast::ExprKind::Box(ref expr) => {
                 self.word_space("box")?;
                 self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)?;
-            }
-            ast::ExprKind::InPlace(ref place, ref expr) => {
-                self.print_expr_in_place(place, expr)?;
             }
             ast::ExprKind::Array(ref exprs) => {
                 self.print_expr_vec(&exprs[..], attrs)?;

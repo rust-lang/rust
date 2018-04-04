@@ -430,7 +430,6 @@ pub enum ExpnFormat {
 /// The kind of compiler desugaring.
 #[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum CompilerDesugaringKind {
-    BackArrow,
     DotFill,
     QuestionMark,
 }
@@ -439,7 +438,6 @@ impl CompilerDesugaringKind {
     pub fn as_symbol(&self) -> Symbol {
         use CompilerDesugaringKind::*;
         let s = match *self {
-            BackArrow => "<-",
             DotFill => "...",
             QuestionMark => "?",
         };
