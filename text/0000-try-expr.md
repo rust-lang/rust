@@ -56,7 +56,7 @@ anywhere in the ecosystem which happens to be beneficial to us.
 
 ## For reserving `try` specifically
 
-This is discussed in the [Rationale][alternatives].
+This is discussed in the [rationale for `try`][rationale for try].
 
 # Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
@@ -157,7 +157,7 @@ seem to outweigh the drawbacks of the difficulty with purging [`try!`] from
 our collective memory.
 
 # Rationale and alternatives
-[alternatives]: #alternatives
+[rationale-and-alternatives]: #rationale-and-alternatives
 
 ## Review considerations
 
