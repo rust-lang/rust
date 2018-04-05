@@ -42,9 +42,9 @@ pub fn test_combined(
     all_tests: Vec<TestDescAndFn>,
     _threads: usize,
 ) -> Option<JoinHandle<Vec<TestEvent>>> {
-    eprintln!("running rustdoc0 combined - {} tests", all_tests.len());
+    //eprintln!("running rustdoc0 combined - {} tests", all_tests.len());
     Some(thread::spawn(move || {
-        eprintln!("running rustdoc combined - {} tests", all_tests.len());
+        //eprintln!("running rustdoc combined - {} tests", all_tests.len());
 
         if all_tests.is_empty() {
             return Vec::new();
@@ -117,11 +117,11 @@ pub fn test_combined(
 
         // Run largest groups first
         feature_groups.sort_by_key(|a: &(TestGroup, Vec<(TestDesc, CombineTest)>)| a.1.len());
-        
+        /*
         for &(ref f, ref group) in &feature_groups {
             eprintln!("group [{:?}] has {} tests", f, group.len());
         }
-
+*/
         let groups = Arc::new(Mutex::new(feature_groups));
 
         let threads: Vec<_> = (0..threads)
@@ -289,11 +289,11 @@ fn run_combined_instance(
     println!("output {:?}", outdir);
 
     let time = Instant::now().duration_since(start);
-    println!(
+    /*println!(
         "rustdoc combined test {} compiled in {} seconds",
         instance,
         time.as_secs()
-    );
+    );*/
 
     if group.no_run {
         for test in tests {
@@ -322,13 +322,13 @@ fn run_combined_instance(
     }
 
     let time = Instant::now().duration_since(start);
-    println!(
+    /*println!(
         "rustdoc combined test {} ran in {} seconds",
         instance,
         time.as_secs()
-    );
+    );*/
 
-    ::std::mem::drop(outdir.into_path());
+    //::std::mem::drop(outdir.into_path());
 
     events
 }

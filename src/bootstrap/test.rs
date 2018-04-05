@@ -1426,7 +1426,7 @@ impl Step for Crate {
 
         if build.config.combine_tests {
             cargo.env("RUSTDOC_COMBINE_TESTS", "1");
-            cargo.arg("--doc");
+            //cargo.arg("--doc"); -- RUNS ONLY DOCTESTS
         }
 
         cargo.arg("-p").arg(krate);

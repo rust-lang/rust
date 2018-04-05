@@ -260,7 +260,7 @@ pub fn compile_test(
             .. config::basic_codegen_options()
         },
         debugging_opts: config::DebuggingOptions {
-            combine_tests, 
+            combine_tests,
             ..config::basic_debugging_options()
         },
         test: as_test_harness,
@@ -619,7 +619,7 @@ impl Collector {
             should_panic: testing::ShouldPanic::No,
             allow_fail,
         };
-        if self.settings.combine_tests && !no_combine && !compile_fail {
+        if self.settings.combine_tests && !no_combine && !compile_fail && !as_test_harness {
             let features = find_features(&test);
             self.tests.push(testing::TestDescAndFn {
                 desc,

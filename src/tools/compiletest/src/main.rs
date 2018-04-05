@@ -648,7 +648,8 @@ pub fn make_test(config: &Arc<Config>, testpaths: &TestPaths) -> test::TestDescA
     // FIXME: Parse and group by `recursion_limit`
     // FIXME: Parse and group by crate attributes?
 
-    let feature_blacklist = ["main", "custom_attribute", "rustc_attrs", "start", "no_std", "no_core"];
+    let feature_blacklist = ["main", "custom_attribute", "rustc_attrs",
+                             "start", "no_std", "no_core"];
 
     let combine = config.combine &&
         props.aux_builds.is_empty() &&

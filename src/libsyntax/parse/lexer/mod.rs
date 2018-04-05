@@ -1803,6 +1803,7 @@ mod tests {
             raw_identifier_spans: RefCell::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             non_modrs_mods: RefCell::new(vec![]),
+            combine_tests: false,
         }
     }
 

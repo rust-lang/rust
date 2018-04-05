@@ -799,6 +799,7 @@ mod tests {
             compile_fail: bool, allow_fail: bool, error_codes: Vec<String>) {
             assert_eq!(LangString::parse(s), LangString {
                 should_panic,
+                no_combine: false,
                 no_run,
                 ignore,
                 rust,
