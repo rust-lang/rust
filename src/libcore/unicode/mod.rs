@@ -16,7 +16,6 @@ pub(crate) mod tables;
 pub(crate) mod version;
 
 pub mod str;
-pub(crate) mod char;
 
 // For use in liballoc, not re-exported in libstd.
 pub mod derived_property {
