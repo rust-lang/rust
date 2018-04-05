@@ -1,0 +1,10 @@
+error: using `writeln!(v, "")`
+ --> $DIR/writeln_empty_string.rs:9:5
+  |
+9 |     writeln!(&mut v, "");
+  |     ^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(v)`
+  |
+  = note: `-D write-with-newline` implied by `-D warnings`
+
+error: aborting due to previous error
+
