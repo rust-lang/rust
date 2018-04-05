@@ -279,7 +279,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 if self.items.len() == 1 =>
             {
                 // When we are rewriting a nested function call, we restrict the
-                // bugdet for the inner function to avoid them being deeply nested.
+                // budget for the inner function to avoid them being deeply nested.
                 // However, when the inner function has a prefix or a suffix
                 // (e.g. `foo() as u32`), this budget reduction may produce poorly
                 // formatted code, where a prefix or a suffix being left on its own

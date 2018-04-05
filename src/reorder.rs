@@ -12,7 +12,7 @@
 //!
 //! `mod`, `extern crate` and `use` declarations are reorderd in alphabetical
 //! order. Trait items are reordered in pre-determined order (associated types
-//! and constatns comes before methods).
+//! and constants comes before methods).
 
 // TODO(#2455): Reorder trait items.
 

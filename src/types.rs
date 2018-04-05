@@ -732,7 +732,7 @@ fn rewrite_bare_fn(
     {
         result.push_str("for<");
         // 6 = "for<> ".len(), 4 = "for<".
-        // This doesn't work out so nicely for mutliline situation with lots of
+        // This doesn't work out so nicely for multiline situation with lots of
         // rightward drift. If that is a problem, we could use the list stuff.
         result.push_str(lifetime_str);
         result.push_str("> ");

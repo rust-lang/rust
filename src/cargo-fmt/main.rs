@@ -211,7 +211,7 @@ impl Hash for Target {
 pub enum CargoFmtStrategy {
     /// Format every packages and dependencies.
     All,
-    /// Format pacakges that are specified by the command line argument.
+    /// Format packages that are specified by the command line argument.
     Some(Vec<String>),
     /// Format the root packages only.
     Root,
