@@ -288,9 +288,6 @@ declare_features! (
     // rustc internal
     (active, compiler_builtins, "1.13.0", None, None),
 
-    // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
-    (active, generic_param_attrs, "1.11.0", Some(34761), None),
-
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406), None),
 
@@ -566,6 +563,8 @@ declare_features! (
     (accepted, match_default_bindings, "1.26.0", Some(42640), None),
     // allow `'_` placeholder lifetimes
     (accepted, underscore_lifetimes, "1.26.0", Some(44524), None),
+    // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
+    (accepted, generic_param_attrs, "1.26.0", Some(48848), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1774,21 +1773,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                "`crate` visibility modifier is experimental");
         }
         visit::walk_vis(self, vis);
-    }
-
-    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
-        let (attrs, explain) = match *param {
-            ast::GenericParam::Lifetime(ref ld) =>
-                (&ld.attrs, "attributes on lifetime bindings are experimental"),
-            ast::GenericParam::Type(ref t) =>
-                (&t.attrs, "attributes on type parameter bindings are experimental"),
-        };
-
-        if !attrs.is_empty() {
-            gate_feature_post!(&self, generic_param_attrs, attrs[0].span, explain);
-        }
-
-        visit::walk_generic_param(self, param)
     }
 }
 
