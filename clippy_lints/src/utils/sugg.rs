@@ -98,7 +98,6 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Closure(..) |
             ast::ExprKind::If(..) |
             ast::ExprKind::IfLet(..) |
-            ast::ExprKind::InPlace(..) |
             ast::ExprKind::Unary(..) |
             ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
             ast::ExprKind::Block(..) |
@@ -308,7 +307,6 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
         AssocOp::ShiftLeft |
         AssocOp::ShiftRight |
         AssocOp::Subtract => format!("{} {} {}", lhs, op.to_ast_binop().expect("Those are AST ops").to_string(), rhs),
-        AssocOp::Inplace => format!("in ({}) {}", lhs, rhs),
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
         AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
         AssocOp::As => format!("{} as {}", lhs, rhs),
@@ -350,7 +348,7 @@ fn associativity(op: &AssocOp) -> Associativity {
     use syntax::util::parser::AssocOp::*;
 
     match *op {
-        Inplace | Assign | AssignOp(_) => Associativity::Right,
+        Assign | AssignOp(_) => Associativity::Right,
         Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As | Colon => Associativity::Both,
         Divide |
         Equal |
