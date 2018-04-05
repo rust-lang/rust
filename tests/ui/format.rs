@@ -2,6 +2,12 @@
 
 #![warn(useless_format)]
 
+struct Foo(pub String);
+
+macro_rules! foo {
+  ($($t:tt)*) => (Foo(format!($($t)*)))
+}
+
 fn main() {
     format!("foo");
 
@@ -31,4 +37,7 @@ fn main() {
     println!("foo {}", "foo");
     println!("{}", 42);
     println!("foo {}", 42);
+
+    // A format! inside a macro should not trigger a warning
+    foo!("should not warn");
 }

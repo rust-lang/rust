@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::LitKind;
 use utils::paths;
-use utils::{is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
+use utils::{in_macro, is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -39,6 +39,9 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let Some(span) = is_expn_of(expr.span, "format") {
+            if in_macro(span) {
+                return;
+            }
             match expr.node {
                 // `format!("{}", foo)` expansion
                 ExprCall(ref fun, ref args) => {
