@@ -1,0 +1,49 @@
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:9:5
+   |
+9  | /     match x {
+10 | |         Some(y) => { println!("{:?}", y); }
+11 | |         _ => ()
+12 | |     };
+   | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y); }`
+   |
+   = note: `-D single-match` implied by `-D warnings`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:15:5
+   |
+15 | /     match z {
+16 | |         (2...3, 7...9) => dummy(),
+17 | |         _ => {}
+18 | |     };
+   | |_____^ help: try this: `if let (2...3, 7...9) = z { dummy() }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:41:5
+   |
+41 | /     match x {
+42 | |         Some(y) => dummy(),
+43 | |         None => ()
+44 | |     };
+   | |_____^ help: try this: `if let Some(y) = x { dummy() }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:46:5
+   |
+46 | /     match y {
+47 | |         Ok(y) => dummy(),
+48 | |         Err(..) => ()
+49 | |     };
+   | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:53:5
+   |
+53 | /     match c {
+54 | |         Cow::Borrowed(..) => dummy(),
+55 | |         Cow::Owned(..) => (),
+56 | |     };
+   | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
+
+error: aborting due to 5 previous errors
+
