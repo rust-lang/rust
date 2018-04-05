@@ -187,7 +187,6 @@ pub mod unicode;
 pub mod heap;
 
 // note: does not need to be public
-mod char_private;
 mod iter_private;
 mod tuple;
 mod unit;

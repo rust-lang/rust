@@ -15,7 +15,9 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use char_private::is_printable;
+mod printable;
+
+use self::printable::is_printable;
 use convert::TryFrom;
 use fmt::{self, Write};
 use slice;
