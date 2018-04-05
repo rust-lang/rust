@@ -75,6 +75,7 @@ create_config! {
     reorder_imported_names: bool, true, false,
         "Reorder lists of names in import statements alphabetically";
     reorder_modules: bool, true, false, "Reorder module statemtents alphabetically in group";
+    reorder_impl_items: bool, false, false, "Reorder impl items";
 
     // Spaces around punctuation
     binop_separator: SeparatorPlace, SeparatorPlace::Front, false,

@@ -1413,6 +1413,42 @@ mod sit;
 **Note** `mod` with `#[macro_export]` will not be reordered since that could change the semantic
 of the original source code.
 
+## `reorder_impl_items`
+
+Reorder impl items. `type` and `const` are put first, then macros and methods.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default)
+
+```rust
+struct Dummy;
+
+impl Iterator for Dummy {
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+
+    type Item = i32;
+}
+```
+
+#### `true`
+
+```rust
+struct Dummy;
+
+impl Iterator for Dummy {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+```
+
 ## `report_todo`
 
 Report `TODO` items in comments.
