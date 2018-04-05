@@ -27,4 +27,8 @@ trait SelfBound<T: Copy=Self> {}
 // Not even for well-formedness.
 struct WellFormedProjection<A, T=<A as Iterator>::Item>(A, T);
 
+// Issue #49344, predicates with lifetimes should not be checked.
+trait Scope<'a> {}
+struct Request<'a, S: Scope<'a> = i32>(S, &'a ());
+
 fn main() {}
