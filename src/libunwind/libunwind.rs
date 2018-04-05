@@ -10,11 +10,6 @@
 
 #![allow(bad_style)]
 
-macro_rules! cfg_if {
-    ( $( if #[cfg( $meta:meta )] { $($it1:item)* } else { $($it2:item)* } )* ) =>
-        ( $( $( #[cfg($meta)] $it1)* $( #[cfg(not($meta))] $it2)* )* )
-}
-
 use libc::{c_int, c_void, uintptr_t};
 
 #[repr(C)]
@@ -85,7 +80,6 @@ pub type _Unwind_Exception_Cleanup_Fn = extern "C" fn(unwind_code: _Unwind_Reaso
 extern "C" {
     #[cfg_attr(stage0, unwind)]
     #[cfg_attr(not(stage0), unwind(allowed))]
-    pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
     pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
     pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
@@ -217,28 +211,52 @@ if #[cfg(all(any(target_os = "ios", not(target_arch = "arm"))))] {
         pc
     }
 }
+} // cfg_if!
 
-if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
-    // Not 32-bit iOS
-    extern "C" {
-        #[cfg_attr(stage0, unwind)]
-        #[cfg_attr(not(stage0), unwind(allowed))]
-        pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-        pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
-                                 trace_argument: *mut c_void)
-                                 -> _Unwind_Reason_Code;
-    }
-} else {
+cfg_if! {
+if #[cfg(all(target_os = "ios", target_arch = "arm"))] {
     // 32-bit iOS uses SjLj and does not provide _Unwind_Backtrace()
     extern "C" {
         #[cfg_attr(stage0, unwind)]
         #[cfg_attr(not(stage0), unwind(allowed))]
+        pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
         pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
     }
 
     #[inline]
     pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
         _Unwind_SjLj_RaiseException(exc)
+    }
+
+} else if #[cfg(feature = "sjlj_eh")] {
+    extern "C" {
+        #[cfg_attr(stage0, unwind)]
+        #[cfg_attr(not(stage0), unwind(allowed))]
+        pub fn _Unwind_SjLj_Resume(e: *mut _Unwind_Exception) -> !;
+        pub fn _Unwind_SjLj_RaiseException(e: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
+        pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
+                                 trace_argument: *mut c_void)
+                                 -> _Unwind_Reason_Code;
+    }
+
+    #[inline]
+    pub unsafe fn _Unwind_Resume(exc: *mut _Unwind_Exception) -> ! {
+        _Unwind_SjLj_Resume(exc)
+    }
+
+    #[inline]
+    pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
+        _Unwind_SjLj_RaiseException(exc)
+    }
+} else {
+    extern "C" {
+        #[cfg_attr(stage0, unwind)]
+        #[cfg_attr(not(stage0), unwind(allowed))]
+        pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
+        pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
+        pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
+                                 trace_argument: *mut c_void)
+                                 -> _Unwind_Reason_Code;
     }
 }
 } // cfg_if!

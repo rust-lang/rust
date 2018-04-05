@@ -146,6 +146,11 @@ pub fn std_cargo(build: &Builder,
         cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
     }
 
+    // FIXME: Temporary detection of SJLJ MinGW compilers.
+    if build.build.build.contains("linux") && target == "i686-pc-windows-gnu" {
+        features.push_str(" sjlj_eh");
+    }
+
     // When doing a local rebuild we tell cargo that we're stage1 rather than
     // stage0. This works fine if the local rust and being-built rust have the
     // same view of what the default allocator is, but fails otherwise. Since
