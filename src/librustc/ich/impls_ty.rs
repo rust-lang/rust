@@ -1392,6 +1392,12 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
     }
 }
 
+impl_stable_hash_for!(
+    impl<'tcx> for struct traits::ProgramClause<'tcx> {
+        goal, hypotheses
+    }
+);
+
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Clause<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -1400,11 +1406,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Clause<'tcx> {
 
         mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
-            Implies(hypotheses, goal) => {
-                hypotheses.hash_stable(hcx, hasher);
-                goal.hash_stable(hcx, hasher);
-            }
-            DomainGoal(domain_goal) => domain_goal.hash_stable(hcx, hasher),
+            Implies(clause) => clause.hash_stable(hcx, hasher),
             ForAll(clause) => clause.hash_stable(hcx, hasher),
         }
     }
