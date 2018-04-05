@@ -314,7 +314,6 @@ declare_keywords! {
     (46, Offsetof,           "offsetof")
     (47, Override,           "override")
     (48, Priv,               "priv")
-    (49, Proc,               "proc")
     (50, Pure,               "pure")
     (51, Sizeof,             "sizeof")
     (52, Typeof,             "typeof")
