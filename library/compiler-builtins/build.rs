@@ -4991,8 +4991,6 @@ mod c {
                 "divxc3.c",
                 "extendsfdf2.c",
                 "extendhfsf2.c",
-                "floatdisf.c",
-                "floatundisf.c",
                 "int_util.c",
                 "muldc3.c",
                 "mulsc3.c",
