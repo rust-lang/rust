@@ -14,7 +14,6 @@
 // A scenario with significant destruction code extents (which have
 // suffix "dce" in current `-Z identify_regions` rendering).
 
-#![feature(generic_param_attrs)]
 #![feature(dropck_eyepatch)]
 
 fn main() {
