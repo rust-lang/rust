@@ -1204,7 +1204,7 @@ fn test_rev_split_char_iterator_no_trailing() {
 
 #[test]
 fn test_utf16_code_units() {
-    use core::unicode::str::Utf16Encoder;
+    use core::unicode::Utf16Encoder;
     assert_eq!(Utf16Encoder::new(vec!['é', '\u{1F4A9}'].into_iter()).collect::<Vec<u16>>(),
                [0xE9, 0xD83D, 0xDCA9])
 }

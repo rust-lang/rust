@@ -45,7 +45,7 @@ use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
-use core::unicode::str::{UnicodeStr, Utf16Encoder};
+use core::unicode::Utf16Encoder;
 
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
@@ -74,7 +74,7 @@ pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::unicode::str::SplitWhitespace;
+pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 
@@ -800,7 +800,7 @@ impl str {
     #[stable(feature = "split_whitespace", since = "1.1.0")]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace {
-        UnicodeStr::split_whitespace(self)
+        StrExt::split_whitespace(self)
     }
 
     /// An iterator over the lines of a string, as string slices.
@@ -1570,7 +1570,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim(&self) -> &str {
-        UnicodeStr::trim(self)
+        StrExt::trim(self)
     }
 
     /// Returns a string slice with leading whitespace removed.
@@ -1606,7 +1606,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left(&self) -> &str {
-        UnicodeStr::trim_left(self)
+        StrExt::trim_left(self)
     }
 
     /// Returns a string slice with trailing whitespace removed.
@@ -1642,7 +1642,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right(&self) -> &str {
-        UnicodeStr::trim_right(self)
+        StrExt::trim_right(self)
     }
 
     /// Returns a string slice with all prefixes and suffixes that match a
@@ -2141,7 +2141,7 @@ impl str {
     #[stable(feature = "unicode_methods_on_intrinsics", since = "1.27.0")]
     #[inline]
     pub fn is_whitespace(&self) -> bool {
-        UnicodeStr::is_whitespace(self)
+        StrExt::is_whitespace(self)
     }
 
     /// Returns true if this `str` is entirely alphanumeric, and false otherwise.
@@ -2160,7 +2160,7 @@ impl str {
     #[stable(feature = "unicode_methods_on_intrinsics", since = "1.27.0")]
     #[inline]
     pub fn is_alphanumeric(&self) -> bool {
-        UnicodeStr::is_alphanumeric(self)
+        StrExt::is_alphanumeric(self)
     }
 
     /// Checks if all characters in this string are within the ASCII range.
