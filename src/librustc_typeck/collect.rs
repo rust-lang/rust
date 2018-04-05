@@ -37,13 +37,14 @@ use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::util::Discr;
 use rustc::util::captures::Captures;
-use rustc::util::nodemap::{FxHashSet, FxHashMap};
+use rustc::util::nodemap::FxHashMap;
 
 use syntax::{abi, ast};
 use syntax::ast::MetaItemKind;
 use syntax::attr::{InlineAttr, list_contains_name, mark_used};
 use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
+use syntax::feature_gate;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::{self, map as hir_map, TransFnAttrs, TransFnAttrFlags, Unsafety};
@@ -1682,7 +1683,7 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn from_target_feature(
     tcx: TyCtxt,
     attr: &ast::Attribute,
-    whitelist: &FxHashSet<String>,
+    whitelist: &FxHashMap<String, Option<String>>,
     target_features: &mut Vec<Symbol>,
 ) {
     let list = match attr.meta_item_list() {
@@ -1694,16 +1695,19 @@ fn from_target_feature(
             return
         }
     };
-
+    let rust_features = tcx.features();
     for item in list {
+        // Only `enable = ...` is accepted in the meta item list
         if !item.check_name("enable") {
             let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
                        currently";
             tcx.sess.span_err(item.span, &msg);
             continue
         }
+
+        // Must be of the form `enable = "..."` ( a string)
         let value = match item.value_str() {
-            Some(list) => list,
+            Some(value) => value,
             None => {
                 let msg = "#[target_feature] attribute must be of the form \
                            #[target_feature(enable = \"..\")]";
@@ -1711,24 +1715,55 @@ fn from_target_feature(
                 continue
             }
         };
-        let value = value.as_str();
-        for feature in value.split(',') {
-            if whitelist.contains(feature) {
-                target_features.push(Symbol::intern(feature));
+
+        // We allow comma separation to enable multiple features
+        for feature in value.as_str().split(',') {
+
+            // Only allow whitelisted features per platform
+            let feature_gate = match whitelist.get(feature) {
+                Some(g) => g,
+                None => {
+                    let msg = format!("the feature named `{}` is not valid for \
+                                       this target", feature);
+                    let mut err = tcx.sess.struct_span_err(item.span, &msg);
+
+                    if feature.starts_with("+") {
+                        let valid = whitelist.contains_key(&feature[1..]);
+                        if valid {
+                            err.help("consider removing the leading `+` in the feature name");
+                        }
+                    }
+                    err.emit();
+                    continue
+                }
+            };
+
+            // Only allow features whose feature gates have been enabled
+            let allowed = match feature_gate.as_ref().map(|s| &**s) {
+                Some("arm_target_feature") => rust_features.arm_target_feature,
+                Some("aarch64_target_feature") => rust_features.aarch64_target_feature,
+                Some("hexagon_target_feature") => rust_features.hexagon_target_feature,
+                Some("powerpc_target_feature") => rust_features.powerpc_target_feature,
+                Some("mips_target_feature") => rust_features.mips_target_feature,
+                Some("avx512_target_feature") => rust_features.avx512_target_feature,
+                Some("mmx_target_feature") => rust_features.mmx_target_feature,
+                Some("sse4a_target_feature") => rust_features.sse4a_target_feature,
+                Some("tbm_target_feature") => rust_features.tbm_target_feature,
+                Some(name) => bug!("unknown target feature gate {}", name),
+                None => true,
+            };
+            if !allowed {
+                feature_gate::emit_feature_err(
+                    &tcx.sess.parse_sess,
+                    feature_gate.as_ref().unwrap(),
+                    item.span,
+                    feature_gate::GateIssue::Language,
+                    &format!("the target feature `{}` is currently unstable",
+                             feature),
+                );
                 continue
             }
-
-            let msg = format!("the feature named `{}` is not valid for \
-                               this target", feature);
-            let mut err = tcx.sess.struct_span_err(item.span, &msg);
-
-            if feature.starts_with("+") {
-                let valid = whitelist.contains(&feature[1..]);
-                if valid {
-                    err.help("consider removing the leading `+` in the feature name");
-                }
-            }
-            err.emit();
+            target_features.push(Symbol::intern(feature));
         }
     }
 }
@@ -1835,20 +1870,6 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                     .emit();
             }
         } else if attr.check_name("target_feature") {
-            // handle deprecated #[target_feature = "..."]
-            if let Some(val) = attr.value_str() {
-                for feat in val.as_str().split(",").map(|f| f.trim()) {
-                    if !feat.is_empty() && !feat.contains('\0') {
-                        trans_fn_attrs.target_features.push(Symbol::intern(feat));
-                    }
-                }
-                let msg = "#[target_feature = \"..\"] is deprecated and will \
-                           eventually be removed, use \
-                           #[target_feature(enable = \"..\")] instead";
-                tcx.sess.span_warn(attr.span, &msg);
-                continue
-            }
-
             if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
                 let msg = "#[target_feature(..)] can only be applied to \
                            `unsafe` function";

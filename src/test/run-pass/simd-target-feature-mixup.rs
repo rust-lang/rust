@@ -11,6 +11,7 @@
 // ignore-emscripten
 
 #![feature(repr_simd, target_feature, cfg_target_feature)]
+#![feature(avx512_target_feature)]
 
 use std::process::{Command, ExitStatus};
 use std::env;

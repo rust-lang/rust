@@ -99,6 +99,14 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 
+#![cfg_attr(not(stage0), feature(mmx_target_feature))]
+#![cfg_attr(not(stage0), feature(tbm_target_feature))]
+#![cfg_attr(not(stage0), feature(sse4a_target_feature))]
+#![cfg_attr(not(stage0), feature(arm_target_feature))]
+#![cfg_attr(not(stage0), feature(powerpc_target_feature))]
+#![cfg_attr(not(stage0), feature(mips_target_feature))]
+#![cfg_attr(not(stage0), feature(aarch64_target_feature))]
+
 #![cfg_attr(stage0, feature(target_feature))]
 #![cfg_attr(stage0, feature(cfg_target_feature))]
 

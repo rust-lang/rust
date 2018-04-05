@@ -49,7 +49,7 @@
 	url = https://github.com/rust-lang/llvm
 [submodule "src/stdsimd"]
 	path = src/stdsimd
-	url = https://github.com/alexcrichton/stdsimd
+	url = https://github.com/rust-lang-nursery/stdsimd
 [submodule "src/tools/lld"]
 	path = src/tools/lld
 	url = https://github.com/rust-lang/lld.git

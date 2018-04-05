@@ -446,6 +446,17 @@ declare_features! (
 
     // Allows macro invocations in `extern {}` blocks
     (active, macros_in_extern, "1.27.0", Some(49476), None),
+
+    // unstable #[target_feature] directives
+    (active, arm_target_feature, "1.27.0", None, None),
+    (active, aarch64_target_feature, "1.27.0", None, None),
+    (active, hexagon_target_feature, "1.27.0", None, None),
+    (active, powerpc_target_feature, "1.27.0", None, None),
+    (active, mips_target_feature, "1.27.0", None, None),
+    (active, avx512_target_feature, "1.27.0", None, None),
+    (active, mmx_target_feature, "1.27.0", None, None),
+    (active, sse4a_target_feature, "1.27.0", None, None),
+    (active, tbm_target_feature, "1.27.0", None, None),
 );
 
 declare_features! (

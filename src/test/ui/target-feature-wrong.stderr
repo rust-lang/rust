@@ -1,4 +1,4 @@
-warning: #[target_feature = ".."] is deprecated and will eventually be removed, use #[target_feature(enable = "..")] instead
+error: #[target_feature] attribute must be of the form #[target_feature(..)]
   --> $DIR/target-feature-wrong.rs:21:1
    |
 LL | #[target_feature = "+sse2"]
@@ -43,5 +43,5 @@ error: cannot use #[inline(always)] with #[target_feature]
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
