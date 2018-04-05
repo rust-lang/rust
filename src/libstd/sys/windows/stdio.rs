@@ -227,3 +227,7 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 // idea is that on windows we use a slightly smaller buffer that's
 // been seen to be acceptable.
 pub const STDIN_BUF_SIZE: usize = 8 * 1024;
+
+pub fn stderr_prints_nothing() -> bool {
+    false
+}
