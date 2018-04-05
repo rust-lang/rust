@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
         let generic_map = generics.types.iter().map(|param| {
-            (param.name.as_str().to_string(),
+            (param.name.to_string(),
              trait_ref.substs.type_for_def(param).to_string())
         }).collect::<FxHashMap<String, String>>();
 

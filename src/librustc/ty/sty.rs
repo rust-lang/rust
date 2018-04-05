@@ -24,7 +24,7 @@ use std::iter;
 use std::cmp::Ordering;
 use syntax::abi;
 use syntax::ast::{self, Name};
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, InternedString};
 
 use serialize;
 
@@ -864,16 +864,16 @@ impl<'tcx> PolyFnSig<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct ParamTy {
     pub idx: u32,
-    pub name: Name,
+    pub name: InternedString,
 }
 
 impl<'a, 'gcx, 'tcx> ParamTy {
-    pub fn new(index: u32, name: Name) -> ParamTy {
+    pub fn new(index: u32, name: InternedString) -> ParamTy {
         ParamTy { idx: index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfType.name())
+        ParamTy::new(0, keywords::SelfType.name().as_str())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
@@ -885,7 +885,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn is_self(&self) -> bool {
-        if self.name == keywords::SelfType.name() {
+        if self.name == keywords::SelfType.name().as_str() {
             assert_eq!(self.idx, 0);
             true
         } else {

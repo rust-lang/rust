@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 use ty::{self, Ty};
 
@@ -53,7 +53,7 @@ pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
     TypeInference(Span),
-    TypeParameterDefinition(Span, ast::Name),
+    TypeParameterDefinition(Span, InternedString),
 
     /// one of the upvars or closure kind parameters in a `ClosureSubsts`
     /// (before it has been determined)

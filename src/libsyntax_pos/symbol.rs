@@ -18,6 +18,8 @@ use GLOBALS;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Ident {
@@ -158,9 +160,11 @@ impl Decodable for Symbol {
     }
 }
 
-impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
-    fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.deref()
+impl PartialEq<InternedString> for Symbol {
+    #[inline]
+    fn eq(&self, other: &InternedString) -> bool {
+        // Compare pointers
+        self.as_str() == *other
     }
 }
 
@@ -348,14 +352,24 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// interner lives for the life of the thread, this can be safely treated as an
 /// immortal string, as long as it never crosses between threads.
 ///
+/// CAUTION: InternedStrings are *not* compared and hashed lexicographically!
+///          Instead their pointer values are compared/hashed, so cast to &str
+///          if you need things to be stable across process boundaries.
+///
 /// FIXME(pcwalton): You must be careful about what you do in the destructors
 /// of objects stored in TLS, because they may run after the interner is
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until thread death
 /// somehow.
-#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialOrd, Eq, Ord)]
 pub struct InternedString {
     string: &'static str,
+}
+
+impl Hash for InternedString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.as_ptr().hash(state);
+    }
 }
 
 impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::convert::AsRef<U> {
@@ -364,35 +378,57 @@ impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::co
     }
 }
 
-impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for InternedString {
-    fn eq(&self, other: &T) -> bool {
-        self.string == other.deref()
+impl ::std::cmp::PartialEq<InternedString> for InternedString {
+    #[inline]
+    fn eq(&self, other: &InternedString) -> bool {
+        self.as_ptr() == other.as_ptr()
     }
 }
 
-impl ::std::cmp::PartialEq<InternedString> for str {
-    fn eq(&self, other: &InternedString) -> bool {
-        self == other.string
+impl PartialEq<Symbol> for InternedString {
+    #[inline]
+    fn eq(&self, other: &Symbol) -> bool {
+        // Compare pointers
+        *self == other.as_str()
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a str {
-    fn eq(&self, other: &InternedString) -> bool {
-        *self == other.string
-    }
+macro_rules! impl_partial_eq_for_symbol_and_interned_string {
+    ($(impl $(<$impl_lt:lifetime>)* for $t:ty;)*) => ($(
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<$t> for InternedString {
+            fn eq(&self, other: &$t) -> bool {
+                let s: &str = other.deref();
+                self.string == s
+            }
+        }
+
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<InternedString> for $t {
+            fn eq(&self, other: &InternedString) -> bool {
+                let s: &str = self.deref();
+                s == other.string
+            }
+        }
+
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<$t> for Symbol {
+            fn eq(&self, other: &$t) -> bool {
+                self.as_str() == *other
+            }
+        }
+
+        impl<$($impl_lt),*> ::std::cmp::PartialEq<Symbol> for $t {
+            fn eq(&self, other: &Symbol) -> bool {
+                *self == other.as_str()
+            }
+        }
+    )*)
 }
 
-impl ::std::cmp::PartialEq<InternedString> for String {
-    fn eq(&self, other: &InternedString) -> bool {
-        self == other.string
-    }
-}
-
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a String {
-    fn eq(&self, other: &InternedString) -> bool {
-        *self == other.string
-    }
-}
+impl_partial_eq_for_symbol_and_interned_string!(
+    impl for str;
+    impl for String;
+    impl<'a> for &'a str;
+    impl<'a> for &'a String;
+);
 
 impl !Send for InternedString { }
 
