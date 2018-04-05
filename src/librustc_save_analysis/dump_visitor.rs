@@ -1005,20 +1005,16 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
                 let variant = adt.variant_of_def(self.save_ctxt.get_path_def(p.id));
 
-                for &Spanned {
-                    node: ref field,
-                    span,
-                } in fields
-                {
+                for &Spanned { node: ref field, span } in fields {
                     let sub_span = self.span.span_for_first_ident(span);
-                    if let Some(f) = variant.find_field_named(field.ident.name) {
+                    if let Some(index) = self.tcx.find_field_index(field.ident, variant) {
                         if !self.span.filter_generated(sub_span, span) {
                             let span =
                                 self.span_from_span(sub_span.expect("No span fund for var ref"));
                             self.dumper.dump_ref(Ref {
                                 kind: RefKind::Variable,
                                 span,
-                                ref_id: ::id_from_def_id(f.did),
+                                ref_id: ::id_from_def_id(variant.fields[index].did),
                             });
                         }
                     }

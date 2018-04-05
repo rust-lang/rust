@@ -50,7 +50,7 @@ use std::vec::IntoIter;
 use std::mem;
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
-use syntax::ext::hygiene::{Mark, SyntaxContext};
+use syntax::ext::hygiene::Mark;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
@@ -2091,32 +2091,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 }
 
-impl<'a, 'gcx, 'tcx> VariantDef {
-    #[inline]
-    pub fn find_field_named(&self, name: ast::Name) -> Option<&FieldDef> {
-        self.index_of_field_named(name).map(|index| &self.fields[index])
-    }
-
-    pub fn index_of_field_named(&self, name: ast::Name) -> Option<usize> {
-        if let Some(index) = self.fields.iter().position(|f| f.name == name) {
-            return Some(index);
-        }
-        let mut ident = name.to_ident();
-        while ident.span.ctxt() != SyntaxContext::empty() {
-            ident.span.remove_mark();
-            if let Some(field) = self.fields.iter().position(|f| f.name.to_ident() == ident) {
-                return Some(field);
-            }
-        }
-        None
-    }
-
-    #[inline]
-    pub fn field_named(&self, name: ast::Name) -> &FieldDef {
-        self.find_field_named(name).unwrap()
-    }
-}
-
 impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         tcx.type_of(self.did).subst(tcx, subst)
@@ -2381,6 +2355,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             container: ImplContainer(parent_def_id),
             method_has_self_argument: has_self
         }
+    }
+
+    pub fn field_index(self, node_id: NodeId, tables: &TypeckTables) -> usize {
+        let hir_id = self.hir.node_to_hir_id(node_id);
+        tables.field_indices().get(hir_id).cloned().expect("no index for a field")
+    }
+
+    pub fn find_field_index(self, ident: Ident, variant: &VariantDef) -> Option<usize> {
+        variant.fields.iter().position(|field| {
+            self.adjust_ident(ident.modern(), variant.did, DUMMY_NODE_ID).0 == field.name.to_ident()
+        })
     }
 
     pub fn associated_items(

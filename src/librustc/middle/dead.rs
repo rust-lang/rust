@@ -13,7 +13,7 @@
 // from live codes are live, and everything else is dead.
 
 use hir::map as hir_map;
-use hir::{self, Item_, PatKind};
+use hir::{self, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 
@@ -99,10 +99,11 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.check_def_id(self.tables.type_dependent_defs()[id].def_id());
     }
 
-    fn handle_field_access(&mut self, lhs: &hir::Expr, name: ast::Name) {
+    fn handle_field_access(&mut self, lhs: &hir::Expr, node_id: ast::NodeId) {
         match self.tables.expr_ty_adjusted(lhs).sty {
             ty::TyAdt(def, _) => {
-                self.insert_def_id(def.non_enum_variant().field_named(name).did);
+                let index = self.tcx.field_index(node_id, self.tables);
+                self.insert_def_id(def.non_enum_variant().fields[index].did);
             }
             ty::TyTuple(..) => {}
             _ => span_bug!(lhs.span, "named field access on non-ADT"),
@@ -119,7 +120,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             if let PatKind::Wild = pat.node.pat.node {
                 continue;
             }
-            self.insert_def_id(variant.field_named(pat.node.name).did);
+            let index = self.tcx.field_index(pat.node.id, self.tables);
+            self.insert_def_id(variant.fields[index].did);
         }
     }
 
@@ -182,18 +184,11 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         self.inherited_pub_visibility = had_inherited_pub_visibility;
     }
 
-    fn mark_as_used_if_union(&mut self, did: DefId, fields: &hir::HirVec<hir::Field>) {
-        if let Some(node_id) = self.tcx.hir.as_local_node_id(did) {
-            if let Some(hir_map::NodeItem(item)) = self.tcx.hir.find(node_id) {
-                if let Item_::ItemUnion(ref variant, _) = item.node {
-                    if variant.fields().len() > 1 {
-                        for field in variant.fields() {
-                            if fields.iter().find(|x| x.name.node == field.name).is_some() {
-                                self.live_symbols.insert(field.id);
-                            }
-                        }
-                    }
-                }
+    fn mark_as_used_if_union(&mut self, adt: &ty::AdtDef, fields: &hir::HirVec<hir::Field>) {
+        if adt.is_union() && adt.non_enum_variant().fields.len() > 1 && adt.did.is_local() {
+            for field in fields {
+                let index = self.tcx.field_index(field.id, self.tables);
+                self.insert_def_id(adt.non_enum_variant().fields[index].did);
             }
         }
     }
@@ -233,14 +228,12 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
             hir::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
             }
-            hir::ExprField(ref lhs, ref name) => {
-                self.handle_field_access(&lhs, name.node);
+            hir::ExprField(ref lhs, ..) => {
+                self.handle_field_access(&lhs, expr.id);
             }
             hir::ExprStruct(_, ref fields, _) => {
-                if let ty::TypeVariants::TyAdt(ref def, _) = self.tables.expr_ty(expr).sty {
-                    if def.is_union() {
-                        self.mark_as_used_if_union(def.did, fields);
-                    }
+                if let ty::TypeVariants::TyAdt(ref adt, _) = self.tables.expr_ty(expr).sty {
+                    self.mark_as_used_if_union(adt, fields);
                 }
             }
             _ => ()

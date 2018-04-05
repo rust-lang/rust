@@ -2604,8 +2604,7 @@ impl<'a> Parser<'a> {
                   token::Literal(token::Integer(name), _) => {
                     let span = self.span;
                     self.bump();
-                    let ident = Ident { name, ctxt: span.ctxt() };
-                    let field = ExprKind::Field(e, respan(span, ident));
+                    let field = ExprKind::Field(e, Ident::new(name, span));
                     e = self.mk_expr(lo.to(span), field, ThinVec::new());
                   }
                   token::Literal(token::Float(n), _suf) => {
@@ -7031,7 +7030,7 @@ impl<'a> Parser<'a> {
             match self.token {
                 token::Ident(ident, false) if ident.name == keywords::Underscore.name() => {
                     self.bump(); // `_`
-                    Ok(Some(Ident { name: ident.name.gensymed(), ..ident }))
+                    Ok(Some(Ident::new(ident.name.gensymed(), ident.span)))
                 }
                 _ => self.parse_ident().map(Some),
             }

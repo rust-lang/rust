@@ -568,8 +568,10 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                     // If the expression uses FRU we need to make sure all the unmentioned fields
                     // are checked for privacy (RFC 736). Rather than computing the set of
                     // unmentioned fields, just check them all.
-                    for variant_field in &variant.fields {
-                        let field = fields.iter().find(|f| f.name.node == variant_field.name);
+                    for (vf_index, variant_field) in variant.fields.iter().enumerate() {
+                        let field = fields.iter().find(|f| {
+                            self.tcx.field_index(f.id, self.tables) == vf_index
+                        });
                         let (use_ctxt, span) = match field {
                             Some(field) => (field.name.node.to_ident().span, field.span),
                             None => (base.span, base.span),
@@ -579,8 +581,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 } else {
                     for field in fields {
                         let use_ctxt = field.name.node.to_ident().span;
-                        let field_def = variant.field_named(field.name.node);
-                        self.check_field(use_ctxt, field.span, adt, field_def);
+                        let index = self.tcx.field_index(field.id, self.tables);
+                        self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                     }
                 }
             }
@@ -598,8 +600,8 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
                 let variant = adt.variant_of_def(def);
                 for field in fields {
                     let use_ctxt = field.node.name.to_ident().span;
-                    let field_def = variant.field_named(field.node.name);
-                    self.check_field(use_ctxt, field.span, adt, field_def);
+                    let index = self.tcx.field_index(field.node.id, self.tables);
+                    self.check_field(use_ctxt, field.span, adt, &variant.fields[index]);
                 }
             }
             _ => {}

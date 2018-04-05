@@ -166,19 +166,24 @@ impl LintPass for NonShorthandFieldPatterns {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &LateContext, pat: &hir::Pat) {
-        if let PatKind::Struct(_, ref field_pats, _) = pat.node {
+        if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.node {
+            let variant = cx.tables.pat_ty(pat).ty_adt_def()
+                                   .expect("struct pattern type is not an ADT")
+                                   .variant_of_def(cx.tables.qpath_def(qpath, pat.hir_id));
             for fieldpat in field_pats {
                 if fieldpat.node.is_shorthand {
                     continue;
                 }
+                if fieldpat.span.ctxt().outer().expn_info().is_some() {
+                    // Don't lint if this is a macro expansion: macro authors
+                    // shouldn't have to worry about this kind of style issue
+                    // (Issue #49588)
+                    continue;
+                }
                 if let PatKind::Binding(_, _, name, None) = fieldpat.node.pat.node {
-                    if name.node == fieldpat.node.name {
-                        if let Some(_) = fieldpat.span.ctxt().outer().expn_info() {
-                            // Don't lint if this is a macro expansion: macro authors
-                            // shouldn't have to worry about this kind of style issue
-                            // (Issue #49588)
-                            return;
-                        }
+                    let binding_ident = ast::Ident::new(name.node, name.span);
+                    if cx.tcx.find_field_index(binding_ident, &variant) ==
+                       Some(cx.tcx.field_index(fieldpat.node.id, cx.tables)) {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant",

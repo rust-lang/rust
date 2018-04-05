@@ -553,14 +553,15 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 };
                 match self.tables.expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
-                        let f = def.non_enum_variant().field_named(ident.name);
+                        let variant = &def.non_enum_variant();
+                        let index = self.tcx.find_field_index(ident, variant).unwrap();
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
                         filter!(self.span_utils, sub_span, expr.span, None);
                         let span = self.span_from_span(sub_span.unwrap());
                         return Some(Data::RefData(Ref {
                             kind: RefKind::Variable,
                             span,
-                            ref_id: id_from_def_id(f.did),
+                            ref_id: id_from_def_id(variant.fields[index].did),
                         }));
                     }
                     ty::TyTuple(..) => None,
@@ -817,7 +818,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         field_ref: &ast::Field,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
-        let f = variant.find_field_named(field_ref.ident.name)?;
+        let index = self.tcx.find_field_index(field_ref.ident, variant).unwrap();
         // We don't really need a sub-span here, but no harm done
         let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
         filter!(self.span_utils, sub_span, field_ref.ident.span, None);
@@ -825,7 +826,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         Some(Ref {
             kind: RefKind::Variable,
             span,
-            ref_id: id_from_def_id(f.did),
+            ref_id: id_from_def_id(variant.fields[index].did),
         })
     }
 

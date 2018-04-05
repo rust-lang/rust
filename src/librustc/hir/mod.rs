@@ -827,6 +827,7 @@ impl Pat {
 /// except is_shorthand is true
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FieldPat {
+    pub id: NodeId,
     /// The identifier for the field
     pub name: Name,
     /// The pattern the field is destructured to
@@ -1172,6 +1173,7 @@ pub struct Arm {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Field {
+    pub id: NodeId,
     pub name: Spanned<Name>,
     pub expr: P<Expr>,
     pub span: Span,

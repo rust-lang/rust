@@ -226,13 +226,24 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
         self.visit_node_id(e.span, e.hir_id);
 
-        if let hir::ExprClosure(_, _, body, _, _) = e.node {
-            let body = self.fcx.tcx.hir.body(body);
-            for arg in &body.arguments {
-                self.visit_node_id(e.span, arg.hir_id);
-            }
+        match e.node {
+            hir::ExprClosure(_, _, body, _, _) => {
+                let body = self.fcx.tcx.hir.body(body);
+                for arg in &body.arguments {
+                    self.visit_node_id(e.span, arg.hir_id);
+                }
 
-            self.visit_body(body);
+                self.visit_body(body);
+            }
+            hir::ExprStruct(_, ref fields, _) => {
+                for field in fields {
+                    self.visit_field_id(field.id);
+                }
+            }
+            hir::ExprField(..) => {
+                self.visit_field_id(e.id);
+            }
+            _ => {}
         }
 
         intravisit::walk_expr(self, e);
@@ -253,6 +264,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
                     .get(p.hir_id)
                     .expect("missing binding mode");
                 self.tables.pat_binding_modes_mut().insert(p.hir_id, bm);
+            }
+            hir::PatKind::Struct(_, ref fields, _) => {
+                for field in fields {
+                    self.visit_field_id(field.node.id);
+                }
             }
             _ => {}
         };
@@ -381,6 +397,13 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             );
             let hir_id = self.tcx().hir.node_to_hir_id(node_id);
             self.tables.node_types_mut().insert(hir_id, definition_ty);
+        }
+    }
+
+    fn visit_field_id(&mut self, node_id: ast::NodeId) {
+        let hir_id = self.tcx().hir.node_to_hir_id(node_id);
+        if let Some(index) = self.fcx.tables.borrow_mut().field_indices_mut().remove(hir_id) {
+            self.tables.field_indices_mut().insert(hir_id, index);
         }
     }
 

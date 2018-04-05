@@ -860,7 +860,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         // Index the struct fields' types.
         let field_map = variant.fields
             .iter()
-            .map(|field| (field.name, field))
+            .enumerate()
+            .map(|(i, field)| (field.name.to_ident(), (i, field)))
             .collect::<FxHashMap<_, _>>();
 
         // Keep track of which fields have already appeared in the pattern.
@@ -869,7 +870,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let mut inexistent_fields = vec![];
         // Typecheck each field.
         for &Spanned { node: ref field, span } in fields {
-            let field_ty = match used_fields.entry(field.name) {
+            let ident = tcx.adjust(field.name, variant.did, self.body_id).0;
+            let field_ty = match used_fields.entry(ident) {
                 Occupied(occupied) => {
                     struct_span_err!(tcx.sess, span, E0025,
                                      "field `{}` bound multiple times \
@@ -883,10 +885,10 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 }
                 Vacant(vacant) => {
                     vacant.insert(span);
-                    field_map.get(&field.name)
-                        .map(|f| {
+                    field_map.get(&ident)
+                        .map(|(i, f)| {
+                            self.write_field_index(field.id, *i);
                             self.tcx.check_stability(f.did, Some(pat_id), span);
-
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
@@ -958,8 +960,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         } else if !etc {
             let unmentioned_fields = variant.fields
                 .iter()
-                .map(|field| field.name)
-                .filter(|field| !used_fields.contains_key(&field))
+                .map(|field| field.name.to_ident())
+                .filter(|ident| !used_fields.contains_key(&ident))
                 .collect::<Vec<_>>();
             if unmentioned_fields.len() > 0 {
                 let field_names = if unmentioned_fields.len() == 1 {

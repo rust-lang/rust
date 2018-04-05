@@ -513,11 +513,11 @@ fn convert_struct_variant<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     discr: ty::VariantDiscr,
                                     def: &hir::VariantData)
                                     -> ty::VariantDef {
-    let mut seen_fields: FxHashMap<ast::Name, Span> = FxHashMap();
+    let mut seen_fields: FxHashMap<ast::Ident, Span> = FxHashMap();
     let node_id = tcx.hir.as_local_node_id(did).unwrap();
     let fields = def.fields().iter().map(|f| {
         let fid = tcx.hir.local_def_id(f.id);
-        let dup_span = seen_fields.get(&f.name).cloned();
+        let dup_span = seen_fields.get(&f.name.to_ident()).cloned();
         if let Some(prev_span) = dup_span {
             struct_span_err!(tcx.sess, f.span, E0124,
                              "field `{}` is already declared",
@@ -526,7 +526,7 @@ fn convert_struct_variant<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 .span_label(prev_span, format!("`{}` first declared here", f.name))
                 .emit();
         } else {
-            seen_fields.insert(f.name, f.span);
+            seen_fields.insert(f.name.to_ident(), f.span);
         }
 
         ty::FieldDef {

@@ -1336,10 +1336,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 out.push(')');
             }
 
-            LpExtend(ref lp_base, _, LpInterior(_, InteriorField(mc::FieldIndex(fname)))) => {
+            LpExtend(ref lp_base, _, LpInterior(_, InteriorField(mc::FieldIndex(_, info)))) => {
                 self.append_autoderefd_loan_path_to_string(&lp_base, out);
                 out.push('.');
-                out.push_str(&fname.as_str());
+                out.push_str(&info.as_str());
             }
 
             LpExtend(ref lp_base, _, LpInterior(_, InteriorElement)) => {
@@ -1414,7 +1414,7 @@ impl DataFlowOperator for LoanDataFlowOperator {
 impl<'tcx> fmt::Debug for InteriorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InteriorField(mc::FieldIndex(name)) => write!(f, "{}", name),
+            InteriorField(mc::FieldIndex(_, info)) => write!(f, "{}", info),
             InteriorElement => write!(f, "[]"),
         }
     }

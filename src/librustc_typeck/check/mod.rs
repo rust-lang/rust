@@ -1938,6 +1938,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn write_field_index(&self, node_id: ast::NodeId, index: usize) {
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        self.tables.borrow_mut().field_indices_mut().insert(hir_id, index);
+    }
+
     // The NodeId and the ItemLocalId must identify the same item. We just pass
     // both of them for consistency checking.
     pub fn write_method_call(&self,
@@ -3069,15 +3074,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let (ident, def_scope) =
                         self.tcx.adjust(field.node, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
-                    if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
+                    if let Some(index) = fields.iter().position(|f| f.name.to_ident() == ident) {
+                        let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             let adjustments = autoderef.adjust_steps(needs);
                             self.apply_adjustments(base, adjustments);
                             autoderef.finalize();
 
+                            self.write_field_index(expr.id, index);
                             self.tcx.check_stability(field.did, Some(expr.id), expr.span);
-
                             return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));
@@ -3092,6 +3098,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 self.apply_adjustments(base, adjustments);
                                 autoderef.finalize();
 
+                                self.write_field_index(expr.id, index);
                                 return field_ty;
                             }
                         }
@@ -3284,8 +3291,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         let mut remaining_fields = FxHashMap();
-        for field in &variant.fields {
-            remaining_fields.insert(field.name.to_ident(), field);
+        for (i, field) in variant.fields.iter().enumerate() {
+            remaining_fields.insert(field.name.to_ident(), (i, field));
         }
 
         let mut seen_fields = FxHashMap();
@@ -3295,8 +3302,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Typecheck each field.
         for field in ast_fields {
             let ident = tcx.adjust(field.name.node, variant.did, self.body_id).0;
-            let field_type = if let Some(v_field) = remaining_fields.remove(&ident) {
-                seen_fields.insert(field.name.node, field.span);
+            let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
+                seen_fields.insert(ident, field.span);
+                self.write_field_index(field.id, i);
 
                 // we don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
@@ -3308,18 +3316,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.field_ty(field.span, v_field, substs)
             } else {
                 error_happened = true;
-                if let Some(_) = variant.find_field_named(field.name.node) {
+                if let Some(prev_span) = seen_fields.get(&ident) {
                     let mut err = struct_span_err!(self.tcx.sess,
                                                 field.name.span,
                                                 E0062,
                                                 "field `{}` specified more than once",
-                                                field.name.node);
+                                                ident);
 
                     err.span_label(field.name.span, "used more than once");
-
-                    if let Some(prev_span) = seen_fields.get(&field.name.node) {
-                        err.span_label(*prev_span, format!("first use of `{}`", field.name.node));
-                    }
+                    err.span_label(*prev_span, format!("first use of `{}`", ident));
 
                     err.emit();
                 } else {

@@ -84,6 +84,7 @@ use syntax::ast::{self, Name};
 use syntax_pos::Span;
 
 use std::fmt;
+use std::hash::{Hash, Hasher};
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use util::nodemap::ItemLocalSet;
@@ -132,9 +133,22 @@ pub enum InteriorKind {
     InteriorElement(InteriorOffsetKind),
 }
 
-// FIXME: Use actual index instead of `ast::Name` with questionable hygiene
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FieldIndex(pub ast::Name);
+// Contains index of a field that is actually used for loan path comparisons and
+// string representation of the field that should be used only for diagnostics.
+#[derive(Clone, Copy, Eq)]
+pub struct FieldIndex(pub usize, pub Name);
+
+impl PartialEq for FieldIndex {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.0 == rhs.0
+    }
+}
+
+impl Hash for FieldIndex {
+    fn hash<H: Hasher>(&self, h: &mut H) {
+        self.0.hash(h)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InteriorOffsetKind {
@@ -195,7 +209,7 @@ pub enum ImmutabilityBlame<'tcx> {
 }
 
 impl<'tcx> cmt_<'tcx> {
-    fn resolve_field(&self, field_name: Name) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
+    fn resolve_field(&self, field_index: usize) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
     {
         let adt_def = match self.ty.sty {
             ty::TyAdt(def, _) => def,
@@ -212,7 +226,7 @@ impl<'tcx> cmt_<'tcx> {
                 &adt_def.variants[0]
             }
         };
-        Some((adt_def, variant_def.field_named(field_name)))
+        Some((adt_def, &variant_def.fields[field_index]))
     }
 
     pub fn immutability_blame(&self) -> Option<ImmutabilityBlame<'tcx>> {
@@ -639,7 +653,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                    expr.id,
                    expr,
                    base_cmt);
-            Ok(self.cat_field(expr, base_cmt, f_name.node, expr_ty))
+            let f_index = self.tcx.field_index(expr.id, self.tables);
+            Ok(self.cat_field(expr, base_cmt, f_index, f_name.node, expr_ty))
           }
 
           hir::ExprIndex(ref base, _) => {
@@ -967,6 +982,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn cat_field<N:ast_node>(&self,
                                  node: &N,
                                  base_cmt: cmt<'tcx>,
+                                 f_index: usize,
                                  f_name: Name,
                                  f_ty: Ty<'tcx>)
                                  -> cmt<'tcx> {
@@ -974,7 +990,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             id: node.id(),
             span: node.span(),
             mutbl: base_cmt.mutbl.inherit(),
-            cat: Categorization::Interior(base_cmt, InteriorField(FieldIndex(f_name))),
+            cat: Categorization::Interior(base_cmt, InteriorField(FieldIndex(f_index, f_name))),
             ty: f_ty,
             note: NoteNone
         });
@@ -1262,7 +1278,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                 let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-                let interior = InteriorField(FieldIndex(Name::intern(&i.to_string())));
+                let interior = InteriorField(FieldIndex(i, Name::intern(&i.to_string())));
                 let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior);
                 self.cat_pattern_(subcmt, &subpat, op)?;
             }
@@ -1285,7 +1301,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
             for fp in field_pats {
                 let field_ty = self.pat_ty(&fp.node.pat)?; // see (*2)
-                let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.name, field_ty);
+                let f_index = self.tcx.field_index(fp.node.id, self.tables);
+                let cmt_field = self.cat_field(pat, cmt.clone(), f_index, fp.node.name, field_ty);
                 self.cat_pattern_(cmt_field, &fp.node.pat, op)?;
             }
           }
@@ -1302,7 +1319,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {
                 let subpat_ty = self.pat_ty(&subpat)?; // see (*2)
-                let interior = InteriorField(FieldIndex(Name::intern(&i.to_string())));
+                let interior = InteriorField(FieldIndex(i, Name::intern(&i.to_string())));
                 let subcmt = self.cat_imm_interior(pat, cmt.clone(), subpat_ty, interior);
                 self.cat_pattern_(subcmt, &subpat, op)?;
             }
@@ -1521,7 +1538,7 @@ pub fn ptr_sigil(ptr: PointerKind) -> &'static str {
 impl fmt::Debug for InteriorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            InteriorField(FieldIndex(name)) => write!(f, "{}", name),
+            InteriorField(FieldIndex(_, info)) => write!(f, "{}", info),
             InteriorElement(..) => write!(f, "[]"),
         }
     }

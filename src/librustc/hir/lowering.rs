@@ -2100,6 +2100,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_field(&mut self, f: &Field) -> hir::Field {
         hir::Field {
+            id: self.next_id().node_id,
             name: respan(f.ident.span, self.lower_ident(f.ident)),
             expr: P(self.lower_expr(&f.expr)),
             span: f.span,
@@ -2863,6 +2864,7 @@ impl<'a> LoweringContext<'a> {
                     .map(|f| Spanned {
                         span: f.span,
                         node: hir::FieldPat {
+                            id: self.next_id().node_id,
                             name: self.lower_ident(f.node.ident),
                             pat: self.lower_pat(&f.node.pat),
                             is_shorthand: f.node.is_shorthand,
@@ -3741,6 +3743,7 @@ impl<'a> LoweringContext<'a> {
 
     fn field(&mut self, name: Name, expr: P<hir::Expr>, span: Span) -> hir::Field {
         hir::Field {
+            id: self.next_id().node_id,
             name: Spanned { node: name, span },
             span,
             expr,
