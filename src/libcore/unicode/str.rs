@@ -13,9 +13,9 @@
 //! This module provides functionality to `str` that requires the Unicode
 //! methods provided by the unicode parts of the CharExt trait.
 
-use core::char;
-use core::iter::{Filter, FusedIterator};
-use core::str::Split;
+use char;
+use iter::{Filter, FusedIterator};
+use str::Split;
 
 /// An iterator over the non-whitespace substrings of a string,
 /// separated by any amount of whitespace.
