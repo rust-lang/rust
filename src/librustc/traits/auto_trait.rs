@@ -21,7 +21,7 @@ use infer::region_constraints::{Constraint, RegionConstraintData};
 use ty::{Region, RegionVid};
 use ty::fold::TypeFolder;
 
-// TODO(twk): this is obviously not nice to duplicate like that
+// FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 pub enum RegionTarget<'tcx> {
     Region(Region<'tcx>),
@@ -374,7 +374,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
     }
 
-    // TODO(twk): lifetime branding
     pub fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, String>) -> String {
         self.region_name(region)
             .map(|name| {
@@ -382,7 +381,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     panic!("Missing lifetime with name {:?} for {:?}", name, region)
                 })
             })
-            // TODO(twk): .unwrap_or(&Lifetime::statik())
             .unwrap_or(&"'static".to_string())
             .clone()
     }
