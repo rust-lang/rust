@@ -56,6 +56,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
@@ -64,7 +65,6 @@ use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
 use core::str::pattern::Pattern;
 use core::str::lossy;
-use core::unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};

@@ -454,7 +454,7 @@ pub use alloc::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::unicode::char;
+pub use core::char;
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
 

@@ -15,6 +15,18 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
+// stable re-exports
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use unicode::char::{ToLowercase, ToUppercase};
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+pub use unicode::char::{decode_utf16, DecodeUtf16, DecodeUtf16Error};
+
+// unstable re-exports
+#[unstable(feature = "unicode", issue = "27783")]
+pub use unicode::tables::{UNICODE_VERSION};
+#[unstable(feature = "unicode", issue = "27783")]
+pub use unicode::version::UnicodeVersion;
+
 mod printable;
 
 use self::printable::is_printable;

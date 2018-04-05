@@ -132,7 +132,7 @@ fn test_from_utf16() {
         let s_as_utf16 = s.encode_utf16().collect::<Vec<u16>>();
         let u_as_string = String::from_utf16(&u).unwrap();
 
-        assert!(::core::unicode::char::decode_utf16(u.iter().cloned()).all(|r| r.is_ok()));
+        assert!(::core::char::decode_utf16(u.iter().cloned()).all(|r| r.is_ok()));
         assert_eq!(s_as_utf16, u);
 
         assert_eq!(u_as_string, s);
