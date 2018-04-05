@@ -38,6 +38,8 @@ use tables::{conversions, derived_property, general_category, property};
 pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+pub use core::char::REPLACEMENT_CHARACTER;
 #[stable(feature = "char_from_str", since = "1.20.0")]
 pub use core::char::ParseCharError;
 
@@ -1581,11 +1583,3 @@ impl fmt::Display for DecodeUtf16Error {
         write!(f, "unpaired surrogate found: {:x}", self.code)
     }
 }
-
-/// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
-/// decoding error.
-///
-/// It can occur, for example, when giving ill-formed UTF-8 bytes to
-/// [`String::from_utf8_lossy`](../../std/string/struct.String.html#method.from_utf8_lossy).
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
