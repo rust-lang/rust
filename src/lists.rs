@@ -56,7 +56,7 @@ impl AsRef<ListItem> for ListItem {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum ListItemCommentStyle {
     // Try to keep the comment on the same line with the item.
     SameLine,
@@ -66,7 +66,7 @@ pub enum ListItemCommentStyle {
     None,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ListItem {
     // None for comments mean that they are not present.
     pub pre_comment: Option<String>,
@@ -257,7 +257,9 @@ where
                     result.push(' ');
                 }
             }
-            DefinitiveListTactic::Vertical if !first => {
+            DefinitiveListTactic::Vertical
+                if !first && !inner_item.is_empty() && !result.is_empty() =>
+            {
                 result.push('\n');
                 result.push_str(indent_str);
             }
@@ -617,6 +619,8 @@ where
 
             let post_snippet_trimmed = if post_snippet.starts_with(|c| c == ',' || c == ':') {
                 post_snippet[1..].trim_matches(white_space)
+            } else if post_snippet.starts_with(self.separator) {
+                post_snippet[self.separator.len()..].trim_matches(white_space)
             } else if post_snippet.ends_with(',') {
                 post_snippet[..(post_snippet.len() - 1)].trim_matches(white_space)
             } else {
