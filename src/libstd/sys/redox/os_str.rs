@@ -19,7 +19,7 @@ use rc::Rc;
 use sync::Arc;
 use sys_common::{AsInner, IntoInner};
 use sys_common::bytestring::debug_fmt_bytestring;
-use std_unicode::lossy::Utf8Lossy;
+use core::str::lossy::Utf8Lossy;
 
 #[derive(Clone, Hash)]
 pub struct Buf {

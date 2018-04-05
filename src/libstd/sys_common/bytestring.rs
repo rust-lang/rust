@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 
 use fmt::{Formatter, Result, Write};
-use std_unicode::lossy::{Utf8Lossy, Utf8LossyChunk};
+use core::str::lossy::{Utf8Lossy, Utf8LossyChunk};
 
 pub fn debug_fmt_bytestring(slice: &[u8], f: &mut Formatter) -> Result {
     // Writes out a valid unicode string with the correct escape sequences

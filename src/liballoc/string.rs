@@ -63,7 +63,7 @@ use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
 use core::str::pattern::Pattern;
-use std_unicode::lossy;
+use core::str::lossy;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
