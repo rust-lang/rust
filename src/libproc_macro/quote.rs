@@ -14,7 +14,7 @@
 //! This quasiquoter uses macros 2.0 hygiene to reliably access
 //! items from `proc_macro`, to build a `proc_macro::TokenStream`.
 
-use {Delimiter, Literal, Spacing, Span, Term, TokenNode, TokenStream, TokenTree};
+use {Delimiter, Literal, Spacing, Span, Term, Op, Group, TokenStream, TokenTree};
 
 use syntax::ext::base::{ExtCtxt, ProcMacro};
 use syntax::parse::token;
@@ -23,47 +23,59 @@ use syntax::tokenstream;
 pub struct Quoter;
 
 pub fn unquote<T: Into<TokenStream> + Clone>(tokens: &T) -> TokenStream {
-    T::into(tokens.clone())
+    tokens.clone().into()
 }
 
 pub trait Quote {
     fn quote(self) -> TokenStream;
 }
 
+macro_rules! tt2ts {
+    ($e:expr) => (TokenStream::from(TokenTree::from($e)))
+}
+
 macro_rules! quote_tok {
-    (,) => { TokenNode::Op(',', Spacing::Alone) };
-    (.) => { TokenNode::Op('.', Spacing::Alone) };
-    (:) => { TokenNode::Op(':', Spacing::Alone) };
+    (,) => { tt2ts!(Op::new(',', Spacing::Alone)) };
+    (.) => { tt2ts!(Op::new('.', Spacing::Alone)) };
+    (:) => { tt2ts!(Op::new(':', Spacing::Alone)) };
+    (|) => { tt2ts!(Op::new('|', Spacing::Alone)) };
     (::) => {
         [
-            TokenNode::Op(':', Spacing::Joint),
-            TokenNode::Op(':', Spacing::Alone)
-        ].iter().cloned().collect::<TokenStream>()
+            TokenTree::from(Op::new(':', Spacing::Joint)),
+            TokenTree::from(Op::new(':', Spacing::Alone)),
+        ].iter()
+            .cloned()
+            .map(|mut x| {
+                x.set_span(Span::def_site());
+                x
+            })
+            .collect::<TokenStream>()
     };
-    (!) => { TokenNode::Op('!', Spacing::Alone) };
-    (<) => { TokenNode::Op('<', Spacing::Alone) };
-    (>) => { TokenNode::Op('>', Spacing::Alone) };
-    (_) => { TokenNode::Op('_', Spacing::Alone) };
-    (0) => { TokenNode::Literal(::Literal::integer(0)) };
-    (&) => { TokenNode::Op('&', Spacing::Alone) };
-    ($i:ident) => { TokenNode::Term(Term::intern(stringify!($i))) };
+    (!) => { tt2ts!(Op::new('!', Spacing::Alone)) };
+    (<) => { tt2ts!(Op::new('<', Spacing::Alone)) };
+    (>) => { tt2ts!(Op::new('>', Spacing::Alone)) };
+    (_) => { tt2ts!(Op::new('_', Spacing::Alone)) };
+    (0) => { tt2ts!(Literal::i8_unsuffixed(0)) };
+    (&) => { tt2ts!(Op::new('&', Spacing::Alone)) };
+    ($i:ident) => { tt2ts!(Term::new(stringify!($i), Span::def_site())) };
 }
 
 macro_rules! quote_tree {
     ((unquote $($t:tt)*)) => { $($t)* };
     ((quote $($t:tt)*)) => { ($($t)*).quote() };
-    (($($t:tt)*)) => { TokenNode::Group(Delimiter::Parenthesis, quote!($($t)*)) };
-    ([$($t:tt)*]) => { TokenNode::Group(Delimiter::Bracket, quote!($($t)*)) };
-    ({$($t:tt)*}) => { TokenNode::Group(Delimiter::Brace, quote!($($t)*)) };
+    (($($t:tt)*)) => { tt2ts!(Group::new(Delimiter::Parenthesis, quote!($($t)*))) };
+    ([$($t:tt)*]) => { tt2ts!(Group::new(Delimiter::Bracket, quote!($($t)*))) };
+    ({$($t:tt)*}) => { tt2ts!(Group::new(Delimiter::Brace, quote!($($t)*))) };
     ($t:tt) => { quote_tok!($t) };
 }
 
 macro_rules! quote {
     () => { TokenStream::empty() };
     ($($t:tt)*) => {
-        [
-            $(TokenStream::from(quote_tree!($t)),)*
-        ].iter().cloned().collect::<TokenStream>()
+        [$(quote_tree!($t),)*].iter()
+            .cloned()
+            .flat_map(|x| x.into_iter())
+            .collect::<TokenStream>()
     };
 }
 
@@ -97,72 +109,81 @@ impl Quote for TokenStream {
         let tokens = self.into_iter().filter_map(|tree| {
             if after_dollar {
                 after_dollar = false;
-                match tree.kind {
-                    TokenNode::Term(_) => {
+                match tree {
+                    TokenTree::Term(_) => {
+                        let tree = TokenStream::from(tree);
                         return Some(quote!(::__internal::unquote(&(unquote tree)),));
                     }
-                    TokenNode::Op('$', _) => {}
+                    TokenTree::Op(ref tt) if tt.op() == '$' => {}
                     _ => panic!("`$` must be followed by an ident or `$` in `quote!`"),
                 }
-            } else if let TokenNode::Op('$', _) = tree.kind {
-                after_dollar = true;
-                return None;
+            } else if let TokenTree::Op(tt) = tree {
+                if tt.op() == '$' {
+                    after_dollar = true;
+                    return None;
+                }
             }
 
             Some(quote!(::TokenStream::from((quote tree)),))
-        }).collect::<TokenStream>();
+        }).flat_map(|t| t.into_iter()).collect::<TokenStream>();
 
         if after_dollar {
             panic!("unexpected trailing `$` in `quote!`");
         }
 
-        quote!([(unquote tokens)].iter().cloned().collect::<::TokenStream>())
+        quote!(
+            [(unquote tokens)].iter()
+                .cloned()
+                .flat_map(|x| x.into_iter())
+                .collect::<::TokenStream>()
+        )
     }
 }
 
 impl Quote for TokenTree {
     fn quote(self) -> TokenStream {
-        quote!(::TokenTree { span: (quote self.span), kind: (quote self.kind) })
-    }
-}
-
-impl Quote for TokenNode {
-    fn quote(self) -> TokenStream {
-        macro_rules! gen_match {
-            ($($i:ident($($arg:ident),+)),*) => {
-                match self {
-                    $(TokenNode::$i($($arg),+) => quote! {
-                        ::TokenNode::$i($((quote $arg)),+)
-                    },)*
-                }
-            }
+        match self {
+            TokenTree::Op(tt) => quote!(::TokenTree::Op( (quote tt) )),
+            TokenTree::Group(tt) => quote!(::TokenTree::Group( (quote tt) )),
+            TokenTree::Term(tt) => quote!(::TokenTree::Term( (quote tt) )),
+            TokenTree::Literal(tt) => quote!(::TokenTree::Literal( (quote tt) )),
         }
-
-        gen_match! { Op(op, kind), Group(delim, tokens), Term(term), Literal(lit) }
     }
 }
 
 impl Quote for char {
     fn quote(self) -> TokenStream {
-        TokenNode::Literal(Literal::character(self)).into()
+        TokenTree::from(Literal::character(self)).into()
     }
 }
 
 impl<'a> Quote for &'a str {
     fn quote(self) -> TokenStream {
-        TokenNode::Literal(Literal::string(self)).into()
+        TokenTree::from(Literal::string(self)).into()
     }
 }
 
 impl Quote for usize {
     fn quote(self) -> TokenStream {
-        TokenNode::Literal(Literal::integer(self as i128)).into()
+        TokenTree::from(Literal::usize_unsuffixed(self)).into()
+    }
+}
+
+impl Quote for Group {
+    fn quote(self) -> TokenStream {
+        quote!(::Group::new((quote self.delimiter()), (quote self.stream())))
+    }
+}
+
+impl Quote for Op {
+    fn quote(self) -> TokenStream {
+        quote!(::Op::new((quote self.op()), (quote self.spacing())))
     }
 }
 
 impl Quote for Term {
     fn quote(self) -> TokenStream {
-        quote!(::Term::intern((quote self.as_str())))
+        quote!(::Term::new((quote self.as_str()), (quote self.span())))
     }
 }
 
@@ -182,14 +203,20 @@ macro_rules! literals {
         impl LiteralKind {
             pub fn with_contents_and_suffix(self, contents: Term, suffix: Option<Term>)
                                             -> Literal {
-                let contents = contents.0;
-                let suffix = suffix.map(|t| t.0);
+                let sym = contents.sym;
+                let suffix = suffix.map(|t| t.sym);
                 match self {
                     $(LiteralKind::$i => {
-                        Literal(token::Literal(token::Lit::$i(contents), suffix))
+                        Literal {
+                            token: token::Literal(token::Lit::$i(sym), suffix),
+                            span: contents.span,
+                        }
                     })*
                     $(LiteralKind::$raw(n) => {
-                        Literal(token::Literal(token::Lit::$raw(contents, n), suffix))
+                        Literal {
+                            token: token::Literal(token::Lit::$raw(sym, n), suffix),
+                            span: contents.span,
+                        }
                     })*
                 }
             }
@@ -197,16 +224,17 @@ macro_rules! literals {
 
         impl Literal {
             fn kind_contents_and_suffix(self) -> (LiteralKind, Term, Option<Term>) {
-                let (lit, suffix) = match self.0 {
+                let (lit, suffix) = match self.token {
                     token::Literal(lit, suffix) => (lit, suffix),
-                    _ => panic!("unsupported literal {:?}", self.0),
+                    _ => panic!("unsupported literal {:?}", self.token),
                 };
 
                 let (kind, contents) = match lit {
                     $(token::Lit::$i(contents) => (LiteralKind::$i, contents),)*
                     $(token::Lit::$raw(contents, n) => (LiteralKind::$raw(n), contents),)*
                 };
-                (kind, Term(contents), suffix.map(Term))
+                let suffix = suffix.map(|sym| Term::new(&sym.as_str(), self.span()));
+                (kind, Term::new(&contents.as_str(), self.span()), suffix)
             }
         }
 
