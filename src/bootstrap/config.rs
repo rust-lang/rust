@@ -161,6 +161,7 @@ pub struct Target {
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
+    pub no_std: bool,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.

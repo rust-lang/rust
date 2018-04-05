@@ -20,7 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bzip2 \
   patch \
   libssl-dev \
-  pkg-config
+  pkg-config \
+  gcc-arm-none-eabi \
+  libnewlib-arm-none-eabi
 
 WORKDIR /build
 
@@ -86,6 +88,10 @@ ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,x86_64-unknown-redox
+ENV TARGETS=$TARGETS,thumbv6m-none-eabi
+ENV TARGETS=$TARGETS,thumbv7m-none-eabi
+ENV TARGETS=$TARGETS,thumbv7em-none-eabi
+ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 
 # FIXME: remove armv5te vars after https://github.com/alexcrichton/cc-rs/issues/271
 #        get fixed and cc update
