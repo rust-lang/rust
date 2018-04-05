@@ -301,7 +301,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                             if let layout::Int(_, s) = scalar.value {
                                 signed = s;
 
-                                if scalar.valid_range.end > scalar.valid_range.start {
+                                if scalar.valid_range.end() > scalar.valid_range.start() {
                                     // We want `table[e as usize]` to not
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`.
@@ -309,7 +309,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                     base::call_assume(&bx, bx.icmp(
                                         llvm::IntULE,
                                         llval,
-                                        C_uint_big(ll_t_in, scalar.valid_range.end)
+                                        C_uint_big(ll_t_in, *scalar.valid_range.end())
                                     ));
                                 }
                             }

@@ -19,7 +19,6 @@ use std::cmp;
 use std::fmt;
 use std::i128;
 use std::mem;
-use std::ops::RangeInclusive;
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -492,7 +491,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::TyFloat(FloatTy::F64) => scalar(F64),
             ty::TyFnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
-                ptr.valid_range.start = 1;
+                ptr.valid_range = 1..=*ptr.valid_range.end();
                 tcx.intern_layout(LayoutDetails::scalar(self, ptr))
             }
 
@@ -506,7 +505,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
-                    data_ptr.valid_range.start = 1;
+                    data_ptr.valid_range = 1..=*data_ptr.valid_range.end();
                 }
 
                 let pointee = tcx.normalize_erasing_regions(param_env, pointee);
@@ -524,7 +523,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
                     ty::TyDynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
-                        vtable.valid_range.start = 1;
+                        vtable.valid_range = 1..=*vtable.valid_range.end();
                         vtable
                     }
                     _ => return Err(LayoutError::Unknown(unsized_part))
@@ -751,8 +750,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         match st.abi {
                             Abi::Scalar(ref mut scalar) |
                             Abi::ScalarPair(ref mut scalar, _) => {
-                                if scalar.valid_range.start == 0 {
-                                    scalar.valid_range.start = 1;
+                                if *scalar.valid_range.start() == 0 {
+                                    scalar.valid_range = 1..=*scalar.valid_range.end();
                                 }
                             }
                             _ => {}
@@ -788,18 +787,15 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 }
                             }
                         }
-                        if niche_variants.start > v {
-                            niche_variants.start = v;
-                        }
-                        niche_variants.end = v;
+                        niche_variants = *niche_variants.start().min(&v)..=v;
                     }
 
-                    if niche_variants.start > niche_variants.end {
+                    if niche_variants.start() > niche_variants.end() {
                         dataful_variant = None;
                     }
 
                     if let Some(i) = dataful_variant {
-                        let count = (niche_variants.end - niche_variants.start + 1) as u128;
+                        let count = (niche_variants.end() - niche_variants.start() + 1) as u128;
                         for (field_index, &field) in variants[i].iter().enumerate() {
                             let (offset, niche, niche_start) =
                                 match self.find_niche(field, count)? {
@@ -1659,10 +1655,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let max_value = !0u128 >> (128 - bits);
 
             // Find out how many values are outside the valid range.
-            let niches = if v.start <= v.end {
-                v.start + (max_value - v.end)
+            let niches = if v.start() <= v.end() {
+                v.start() + (max_value - v.end())
             } else {
-                v.start - v.end - 1
+                v.start() - v.end() - 1
             };
 
             // Give up if we can't fit `count` consecutive niches.
@@ -1670,11 +1666,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 return None;
             }
 
-            let niche_start = v.end.wrapping_add(1) & max_value;
-            let niche_end = v.end.wrapping_add(count) & max_value;
+            let niche_start = v.end().wrapping_add(1) & max_value;
+            let niche_end = v.end().wrapping_add(count) & max_value;
             Some((offset, Scalar {
                 value,
-                valid_range: v.start..=niche_end
+                valid_range: *v.start()..=niche_end
             }, niche_start))
         };
 
@@ -1744,14 +1740,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
             }
             NicheFilling {
                 dataful_variant,
-                niche_variants: RangeInclusive { start, end },
+                ref niche_variants,
                 ref niche,
                 niche_start,
                 ref variants,
             } => {
                 dataful_variant.hash_stable(hcx, hasher);
-                start.hash_stable(hcx, hasher);
-                end.hash_stable(hcx, hasher);
+                niche_variants.start().hash_stable(hcx, hasher);
+                niche_variants.end().hash_stable(hcx, hasher);
                 niche.hash_stable(hcx, hasher);
                 niche_start.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
@@ -1814,10 +1810,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        let Scalar { value, valid_range: RangeInclusive { start, end } } = *self;
+        let Scalar { value, ref valid_range } = *self;
         value.hash_stable(hcx, hasher);
-        start.hash_stable(hcx, hasher);
-        end.hash_stable(hcx, hasher);
+        valid_range.start().hash_stable(hcx, hasher);
+        valid_range.end().hash_stable(hcx, hasher);
     }
 }
 

@@ -388,8 +388,8 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                 return;
             }
 
-            if scalar.valid_range.start < scalar.valid_range.end {
-                if scalar.valid_range.start > 0 {
+            if scalar.valid_range.start() < scalar.valid_range.end() {
+                if *scalar.valid_range.start() > 0 {
                     attrs.set(ArgAttribute::NonNull);
                 }
             }

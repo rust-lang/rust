@@ -1236,7 +1236,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                    self.layout,
                                    self.layout.fields.offset(0),
                                    self.layout.field(cx, 0).size);
-                name.push_str(&adt.variants[niche_variants.start].name.as_str());
+                name.push_str(&adt.variants[*niche_variants.start()].name.as_str());
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![
