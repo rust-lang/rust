@@ -193,7 +193,7 @@ declare_features! (
     (active, rustc_attrs, "1.0.0", Some(29642), None),
 
     // Allows the use of non lexical lifetimes; RFC 2094
-    (active, nll, "1.0.0", Some(43234), None),
+    (active, nll, "1.0.0", Some(43234), Some(Edition::Edition2018)),
 
     // Allows the use of #[allow_internal_unstable]. This is an
     // attribute on macro_rules! and can't use the attribute handling
@@ -388,7 +388,7 @@ declare_features! (
     (active, dyn_trait, "1.22.0", Some(44662), Some(Edition::Edition2018)),
 
     // `crate` as visibility modifier, synonymous to `pub(crate)`
-    (active, crate_visibility_modifier, "1.23.0", Some(45388), None),
+    (active, crate_visibility_modifier, "1.23.0", Some(45388), Some(Edition::Edition2018)),
 
     // extern types
     (active, extern_types, "1.23.0", Some(43467), None),
@@ -397,10 +397,10 @@ declare_features! (
     (active, arbitrary_self_types, "1.23.0", Some(44874), None),
 
     // `crate` in paths
-    (active, crate_in_paths, "1.23.0", Some(45477), None),
+    (active, crate_in_paths, "1.23.0", Some(45477), Some(Edition::Edition2018)),
 
     // In-band lifetime bindings (e.g. `fn foo(x: &'a u8) -> &'a u8`)
-    (active, in_band_lifetimes, "1.23.0", Some(44524), None),
+    (active, in_band_lifetimes, "1.23.0", Some(44524), Some(Edition::Edition2018)),
 
     // generic associated types (RFC 1598)
     (active, generic_associated_types, "1.23.0", Some(44265), None),
@@ -409,10 +409,10 @@ declare_features! (
     (active, extern_absolute_paths, "1.24.0", Some(44660), None),
 
     // `foo.rs` as an alternative to `foo/mod.rs`
-    (active, non_modrs_mods, "1.24.0", Some(44660), None),
+    (active, non_modrs_mods, "1.24.0", Some(44660), Some(Edition::Edition2018)),
 
     // Termination trait in tests (RFC 1937)
-    (active, termination_trait_test, "1.24.0", Some(48854), None),
+    (active, termination_trait_test, "1.24.0", Some(48854), Some(Edition::Edition2018)),
 
     // Allows use of the :lifetime macro fragment specifier
     (active, macro_lifetime_matcher, "1.24.0", Some(46895), None),

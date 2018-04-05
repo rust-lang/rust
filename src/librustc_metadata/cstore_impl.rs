@@ -213,6 +213,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     crate_hash => { cdata.hash() }
     original_crate_name => { cdata.name() }
 
+    extra_filename => { cdata.root.extra_filename.clone() }
+
+
     implementations_of_trait => {
         let mut result = vec![];
         let filter = Some(other);

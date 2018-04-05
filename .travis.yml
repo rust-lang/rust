@@ -171,8 +171,6 @@ matrix:
       if: branch = auto
     - env: IMAGE=x86_64-gnu-distcheck
       if: branch = auto
-    - env: IMAGE=x86_64-gnu-incremental
-      if: branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push
