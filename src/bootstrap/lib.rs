@@ -750,6 +750,12 @@ impl Build {
             .map(|p| &**p)
     }
 
+    /// Returns true if this is a no-std `target`, if defined
+    fn no_std(&self, target: Interned<String>) -> Option<bool> {
+        self.config.target_config.get(&target)
+            .map(|t| t.no_std)
+    }
+
     /// Returns whether the target will be tested using the `remote-test-client`
     /// and `remote-test-server` binaries.
     fn remote_tested(&self, target: Interned<String>) -> bool {
