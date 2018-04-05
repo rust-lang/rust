@@ -14,6 +14,7 @@ use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::print::pprust;
+use syntax::symbol::Symbol;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -35,9 +36,9 @@ pub fn expand_assert<'cx>(
         None
     };
 
-    let sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
+    let sp = sp.apply_mark(cx.current_expansion.mark);
     let panic_call = Mac_ {
-        path: Path::from_ident(sp, Ident::from_str("panic")),
+        path: Path::from_ident(Ident::new(Symbol::intern("panic"), sp)),
         tts: if let Some(ts) = custom_msg_args {
             ts.into()
         } else {

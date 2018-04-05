@@ -53,7 +53,7 @@ impl<'a> ParserAnyMacro<'a> {
         }
 
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
-        let path = ast::Path::from_ident(site_span, macro_ident);
+        let path = ast::Path::from_ident(macro_ident.with_span_pos(site_span));
         parser.ensure_complete_parse(&path, kind.name(), site_span);
         expansion
     }

@@ -13,21 +13,27 @@
 //! type, and vice versa.
 
 use hygiene::SyntaxContext;
-use GLOBALS;
+use {Span, DUMMY_SP, GLOBALS};
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::collections::HashMap;
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Eq)]
 pub struct Ident {
     pub name: Symbol,
-    pub ctxt: SyntaxContext,
+    pub span: Span,
 }
 
 impl Ident {
+    #[inline]
+    pub const fn new(name: Symbol, span: Span) -> Ident {
+        Ident { name, span }
+    }
+    #[inline]
     pub const fn with_empty_ctxt(name: Symbol) -> Ident {
-        Ident { name: name, ctxt: SyntaxContext::empty() }
+        Ident::new(name, DUMMY_SP)
     }
 
     /// Maps a string to an identifier with an empty syntax context.
@@ -35,18 +41,36 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
-    pub fn without_first_quote(&self) -> Ident {
-        Ident { name: Symbol::from(self.name.as_str().trim_left_matches('\'')), ctxt: self.ctxt }
+    /// Replace `lo` and `hi` with those from `span`, but keep hygiene context.
+    pub fn with_span_pos(self, span: Span) -> Ident {
+        Ident::new(self.name, span.with_ctxt(self.span.ctxt()))
+    }
+
+    pub fn without_first_quote(self) -> Ident {
+        Ident::new(Symbol::intern(self.name.as_str().trim_left_matches('\'')), self.span)
     }
 
     pub fn modern(self) -> Ident {
-        Ident { name: self.name, ctxt: self.ctxt.modern() }
+        Ident::new(self.name, self.span.modern())
+    }
+}
+
+impl PartialEq for Ident {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
+    }
+}
+
+impl Hash for Ident {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.span.ctxt().hash(state);
     }
 }
 
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{:?}", self.name, self.ctxt)
+        write!(f, "{}{:?}", self.name, self.span.ctxt())
     }
 }
 
@@ -58,7 +82,7 @@ impl fmt::Display for Ident {
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        if self.ctxt.modern() == SyntaxContext::empty() {
+        if self.span.ctxt().modern() == SyntaxContext::empty() {
             s.emit_str(&self.name.as_str())
         } else { // FIXME(jseyfried) intercrate hygiene
             let mut string = "#".to_owned();
@@ -120,12 +144,6 @@ impl Symbol {
 
     pub fn as_u32(self) -> u32 {
         self.0
-    }
-}
-
-impl<'a> From<&'a str> for Symbol {
-    fn from(string: &'a str) -> Symbol {
-        Symbol::intern(string)
     }
 }
 
