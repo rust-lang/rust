@@ -349,6 +349,8 @@ pub enum SelectionError<'tcx> {
                                 ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
     ConstEvalFailure(ConstEvalErr<'tcx>),
+    // upon overflow, stores the obligation that hit the recursion limit
+    Overflow(TraitObligation<'tcx>),
 }
 
 pub struct FulfillmentError<'tcx> {

@@ -24,6 +24,7 @@ use super::{
     SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
+    Overflow,
 };
 
 use errors::DiagnosticBuilder;
@@ -829,6 +830,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     return;
                 }
                 err.struct_error(self.tcx, span, "constant expression")
+            }
+
+            Overflow(_) => {
+                bug!("overflow should be handled before the `report_selection_error` path");
             }
         };
         self.note_obligation_cause(&mut err, obligation);
