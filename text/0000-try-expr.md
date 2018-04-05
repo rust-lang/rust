@@ -195,9 +195,7 @@ Among the considerations when picking a keyword are, ordered by importance:
 [rationale for try]: #rationale-for-try
 
 1. **Fidelity to the construct's actual behavior:** Very high
-2. **Precedent from existing languages:**
-    + `do`: Haskell, Idris
-    + `try`: A lot, see [prior-art]
+2. **Precedent from existing languages:** A lot, see [prior-art]
     1. **Popularity of the languages:** Massive accumulated dominance
     2. **Fidelity to behavior in those languages:** Very high
     3. **Familiarity with respect to their analogous constructs:** Very high
