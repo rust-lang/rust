@@ -1553,7 +1553,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 if place != place_err {
                     if let Some(name) = self.describe_place(place_err) {
-                        err.note(&format!("the value which is causing this path not to be mutable is...: `{}`", name));
+                        err.note(&format!("the value which is causing this path not to be mutable \
+                                           is...: `{}`", name));
                     }
                 }
 
@@ -1580,7 +1581,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                                 } else {
                                                     self.get_main_error_message(place)
                                                 };
-                                                err_info = Some((self.mir.source_info(locations[0]).span,
+                                                err_info = Some((
+                                                    self.mir.source_info(locations[0]).span,
                                                       "consider changing this to be a \
                                                        mutable reference: `&mut`", item_msg,
                                                        "cannot assign through `&`-reference"));
@@ -1608,8 +1610,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         err.span_label(span, "cannot mutate");
                         if place != place_err {
                             if let Some(name) = self.describe_place(place_err) {
-                                err.note(&format!("the value which is causing this path not to be mutable is...: `{}`",
-                                                  name));
+                                err.note(&format!("the value which is causing this path not to be \
+                                                   mutable is...: `{}`", name));
                             }
                         }
                         err.emit();
