@@ -46,7 +46,6 @@ mod tables;
 mod u_str;
 mod version;
 pub mod char;
-pub mod lossy;
 
 #[allow(deprecated)]
 pub mod str {
