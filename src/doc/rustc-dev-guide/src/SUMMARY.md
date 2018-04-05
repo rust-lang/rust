@@ -38,6 +38,7 @@
 - [The HIR (High-level IR)](./hir.md)
     - [Lowering AST to HIR](./lowering.md)
 - [The `ty` module: representing types](./ty.md)
+- [Kinds](./kinds.md)
 - [Type inference](./type-inference.md)
 - [Trait solving (old-style)](./traits/resolution.md)
     - [Higher-ranked trait bounds](./traits/hrtb.md)

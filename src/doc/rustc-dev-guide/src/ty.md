@@ -141,8 +141,8 @@ In addition to types, there are a number of other arena-allocated data
 structures that you can allocate, and which are found in this
 module. Here are a few examples:
 
-- `Substs`, allocated with `mk_substs` – this will intern a slice of types,
-  often used to specify the values to be substituted for generics
+- [`Substs`][subst], allocated with `mk_substs` – this will intern a slice of
+  types, often used to specify the values to be substituted for generics
   (e.g. `HashMap<i32, u32>` would be represented as a slice
   `&'tcx [tcx.types.i32, tcx.types.u32]`).
 - `TraitRef`, typically passed by value – a **trait reference**
@@ -152,6 +152,8 @@ module. Here are a few examples:
   `i32`).
 - `Predicate` defines something the trait system has to prove (see `traits`
   module).
+
+[subst]: ./kinds.html#subst
 
 ### Import conventions
 
