@@ -497,7 +497,8 @@ fn rewrite_nested_use_tree(
 
     let list_str = write_list(&list_items, &fmt)?;
 
-    let result = if list_str.contains('\n') && context.config.imports_indent() == IndentStyle::Block
+    let result = if (list_str.contains('\n') || list_str.len() > remaining_width)
+        && context.config.imports_indent() == IndentStyle::Block
     {
         format!(
             "{{\n{}{}\n{}}}",

@@ -172,11 +172,10 @@ where
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,
-        ListTactic::Mixed => return DefinitiveListTactic::Mixed,
         ListTactic::Horizontal => return DefinitiveListTactic::Horizontal,
         ListTactic::Vertical => return DefinitiveListTactic::Vertical,
         ListTactic::LimitedHorizontalVertical(limit) => ::std::cmp::min(width, limit),
-        ListTactic::HorizontalVertical => width,
+        ListTactic::Mixed | ListTactic::HorizontalVertical => width,
     };
 
     let (sep_count, total_width) = calculate_width(items.clone());
@@ -188,7 +187,10 @@ where
     {
         DefinitiveListTactic::Horizontal
     } else {
-        DefinitiveListTactic::Vertical
+        match tactic {
+            ListTactic::Mixed => DefinitiveListTactic::Mixed,
+            _ => DefinitiveListTactic::Vertical,
+        }
     }
 }
 
@@ -278,8 +280,7 @@ where
 
                 if last && formatting.ends_with_newline {
                     match formatting.trailing_separator {
-                        SeparatorTactic::Always => separate = true,
-                        SeparatorTactic::Vertical if result.contains('\n') => separate = true,
+                        SeparatorTactic::Always | SeparatorTactic::Vertical => separate = true,
                         _ => (),
                     }
                 }
