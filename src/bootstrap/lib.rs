@@ -113,7 +113,6 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
-#![deny(warnings)]
 #![feature(core_intrinsics)]
 #![feature(slice_concat_ext)]
 

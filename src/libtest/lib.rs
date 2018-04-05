@@ -271,6 +271,18 @@ impl Options {
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
+    test_main_combine(args, tests, options, |_, _| None)
+}
+
+pub fn test_main_combine<F>(
+    args: &[String],
+    tests: Vec<TestDescAndFn>,
+    options: Options,
+    run_combined: F
+)
+where
+    F: FnOnce(Vec<TestDescAndFn>, usize) -> Option<JoinHandle<Vec<TestEvent>>>
+{
     let mut opts = match parse_opts(args) {
         Some(Ok(o)) => o,
         Some(Err(msg)) => {
@@ -287,7 +299,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Options) {
             process::exit(101);
         }
     } else {
-        match run_tests_console(&opts, tests, |_, _| None) {
+        match run_tests_console(&opts, tests, run_combined) {
             Ok(true) => {}
             Ok(false) => process::exit(101),
             Err(e) => {

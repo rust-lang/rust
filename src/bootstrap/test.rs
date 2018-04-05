@@ -1424,6 +1424,11 @@ impl Step for Crate {
             cargo.arg("--doc");
         }
 
+        if build.config.combine_tests {
+            cargo.env("RUSTDOC_COMBINE_TESTS", "1");
+            cargo.arg("--doc");
+        }
+
         cargo.arg("-p").arg(krate);
 
         // The tests are going to run with the *target* libraries, so we need to

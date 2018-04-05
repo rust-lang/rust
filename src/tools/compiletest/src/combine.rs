@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -23,7 +23,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::SystemTime;
+use std::time::Instant;
 use std::path::{PathBuf};
 
 pub fn run_combined(config: Arc<Config>, all_tests: Vec<TestDescAndFn>,
@@ -182,7 +182,7 @@ pub fn run_combined_instance(config: &Config,
         long_compile: true,
     };
 
-    let start = SystemTime::now();
+    let start = Instant::now();
 
     let compile_task = TestDesc {
         name: TestName::StaticTestName("combined compilation of tests"),
@@ -200,10 +200,10 @@ pub fn run_combined_instance(config: &Config,
         return events;
     }
 
-    //let time = SystemTime::now().duration_since(start).unwrap();
+    //let time = Instant::now().duration_since(start);
     //println!("run-pass combined test {} compiled in {} seconds", instance, time.as_secs());
 
-    //let start = SystemTime::now();
+    //let start = Instant::now();
 
     let mut progress = File::create(&progress_file).unwrap();
 
@@ -238,7 +238,7 @@ pub fn run_combined_instance(config: &Config,
      // it is ok if the deletion failed.
     let _ = fs::remove_file(base_cx.make_exe_name());
 
-    //let time = SystemTime::now().duration_since(start).unwrap();
+    //let time = Instant::now().duration_since(start).unwrap();
     //println!("run-pass combined test {} ran in {} seconds", instance, time.as_secs());
 
     events

@@ -14,6 +14,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fmt::Debug;
 use std::fs;
+use std::cmp;
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -304,14 +305,14 @@ impl<'a> Builder<'a> {
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
                 native::Llvm, tool::Rustfmt, tool::Miri, native::Lld),
             Kind::Check => describe!(check::Std, check::Test, check::Rustc),
-            Kind::Test => describe!(/*test::Tidy, test::Bootstrap, test::Ui, */test::RunPass,/*
+            Kind::Test => describe!(/*test::Tidy, test::Bootstrap, test::Ui, test::RunPass,
                 test::CompileFail, test::ParseFail, test::RunFail, test::RunPassValgrind,
                 test::MirOpt, test::Codegen, test::CodegenUnits, test::Incremental, test::Debuginfo,
                 test::UiFullDeps, test::RunPassFullDeps, test::RunFailFullDeps,
                 test::CompileFailFullDeps, test::IncrementalFullDeps, test::Rustdoc, test::Pretty,
                 test::RunPassPretty, test::RunFailPretty, test::RunPassValgrindPretty,
-                test::RunPassFullDepsPretty, test::RunFailFullDepsPretty,*/
-                test::Crate/*, test::CrateLibrustc, test::CrateRustdoc, test::Linkcheck,
+                test::RunPassFullDepsPretty, test::RunFailFullDepsPretty,
+                */test::Crate/*, test::CrateLibrustc, test::CrateRustdoc, test::Linkcheck,
                 test::Cargotest, test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
                 test::RunMakeFullDeps,
                 test::Nomicon, test::Reference, test::RustdocBook, test::RustByExample,
@@ -413,6 +414,7 @@ impl<'a> Builder<'a> {
     /// obtained through this function, since it ensures that they are valid
     /// (i.e., built and assembled).
     pub fn compiler(&self, stage: u32, host: Interned<String>) -> Compiler {
+        if stage == 2 { panic!("boom")}
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
 
@@ -551,6 +553,7 @@ impl<'a> Builder<'a> {
         } else {
             stage = compiler.stage;
         }
+        let source_stage = cmp::max(stage, 1);
 
         let mut extra_args = env::var(&format!("RUSTFLAGS_STAGE_{}", stage)).unwrap_or_default();
         if stage != 0 {
@@ -598,7 +601,8 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" {
-            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.build)));
+            cargo.env("RUSTDOC_LIBDIR",
+                      self.rustc_libdir(self.compiler(source_stage, self.build.build)));
         }
 
         if mode != Mode::Tool {

@@ -12,7 +12,6 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
-#![deny(warnings)]
 
 #![feature(ascii_ctype)]
 #![feature(rustc_private)]
@@ -48,6 +47,7 @@ extern crate std_unicode;
 extern crate rustc_errors as errors;
 extern crate pulldown_cmark;
 extern crate tempdir;
+extern crate itertools;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -60,6 +60,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
+use std::str::FromStr;
 
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
@@ -89,6 +90,7 @@ pub mod visit_ast;
 pub mod visit_lib;
 pub mod test;
 pub mod theme;
+mod combine;
 
 use clean::AttributesExt;
 
@@ -390,6 +392,11 @@ pub fn main_args(args: &[String]) -> isize {
         }
     }
 
+    let combine_tests = match env::var("RUSTDOC_COMBINE_TESTS") {
+        Ok(s) => usize::from_str(&s).expect("RUSTDOC_COMBINE_TESTS should be an integer") > 0,
+        Err(_) => false,
+    };
+
     let mut themes = Vec::new();
     if matches.opt_present("themes") {
         let paths = theme::load_css_paths(include_bytes!("html/static/themes/main.css"));
@@ -431,11 +438,11 @@ pub fn main_args(args: &[String]) -> isize {
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
-                                  display_warnings, linker)
+                                  display_warnings, linker, combine_tests)
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
-                             maybe_sysroot, display_warnings, linker)
+                             maybe_sysroot, display_warnings, linker, combine_tests)
         }
         (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),

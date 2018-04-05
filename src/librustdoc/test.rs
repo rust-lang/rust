@@ -18,7 +18,9 @@ use std::process::Command;
 use std::str;
 use rustc_data_structures::sync::Lrc;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
+use combine;
 use testing;
 use rustc_lint;
 use rustc::hir;
@@ -53,12 +55,14 @@ pub fn run(input_path: &Path,
            cfgs: Vec<String>,
            libs: SearchPaths,
            externs: Externs,
-           mut test_args: Vec<String>,
+           test_args: Vec<String>,
            crate_name: Option<String>,
            maybe_sysroot: Option<PathBuf>,
            display_warnings: bool,
-           linker: Option<PathBuf>)
+           linker: Option<PathBuf>,
+           combine_tests: bool)
            -> isize {
+    let start = Instant::now();
     let input = config::Input::File(input_path.to_owned());
 
     let sessopts = config::Options {
@@ -108,17 +112,19 @@ pub fn run(input_path: &Path,
         ::rustc_trans_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
     });
     let opts = scrape_test_config(hir_forest.krate());
-    let mut collector = Collector::new(crate_name,
-                                       cfgs,
-                                       libs,
-                                       externs,
-                                       false,
-                                       opts,
-                                       maybe_sysroot,
-                                       Some(codemap),
-                                       None,
-                                       linker);
-
+    let settings = Arc::new(TestSettings {
+        cratename: crate_name,
+        cfgs,
+        libs,
+        externs,
+        use_headers: false,
+        opts,
+        maybe_sysroot,
+        filename: None,
+        linker,
+        combine_tests
+    });
+    let mut collector = Collector::new(settings, Some(codemap));
     {
         let map = hir::map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
         let krate = map.krate();
@@ -132,12 +138,23 @@ pub fn run(input_path: &Path,
         });
     }
 
-    test_args.insert(0, "rustdoctest".to_string());
+    let time = Instant::now().duration_since(start);
+    eprintln!("collected test for {} in {} seconds", input_path.to_str().unwrap(), time.as_secs());
 
-    testing::test_main(&test_args,
-                       collector.tests.into_iter().collect(),
-                       testing::Options::new().display_output(display_warnings));
+    run_tests(test_args, collector, display_warnings);
     0
+}
+
+pub fn run_tests(mut test_args: Vec<String>, collector: Collector, display_warnings: bool) {
+    test_args.insert(0, "rustdoctest".to_string());
+    eprintln!("running rustdoc tests");
+    testing::test_main_combine(
+        &test_args,
+        collector.tests,
+        testing::Options::new().display_output(display_warnings),
+        move |tests, cores| {
+            combine::test_combined(tests, cores)
+        });
 }
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
@@ -173,15 +190,54 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 }
 
 fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
-            cfgs: Vec<String>, libs: SearchPaths,
+            cfgs: &Vec<String>, libs: SearchPaths,
             externs: Externs,
             should_panic: bool, no_run: bool, as_test_harness: bool,
-            compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
+            compile_fail: bool, error_codes: Vec<String>, opts: &TestOptions,
             maybe_sysroot: Option<PathBuf>,
             linker: Option<PathBuf>) {
+    let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
+    let libdir = compile_test(
+        test,
+        filename,
+        line,
+        cfgs,
+        libs,
+        externs,
+        as_test_harness,
+        compile_fail,
+        no_run,
+        error_codes,
+        maybe_sysroot,
+        linker,
+        outdir.as_ref(),
+        line_offset,
+        false);
+    if !no_run {
+        run_built_test(outdir.as_ref(), &libdir, should_panic)
+    }
+}
+
+pub fn compile_test(
+    test: String,
+    filename: &FileName,
+    line: usize,
+    cfgs: &Vec<String>,
+    libs: SearchPaths,
+    externs: Externs,
+    as_test_harness: bool,
+    compile_fail: bool,
+    no_run: bool,
+    mut error_codes: Vec<String>,
+    maybe_sysroot: Option<PathBuf>,
+    linker: Option<PathBuf>,
+    outdir: &Path,
+    line_offset: usize,
+    combine_tests: bool,
+) -> PathBuf {
     // FIXME(#44940): if doctests ever support path remapping, then this filename
     // needs to be the result of CodeMap::span_to_unmapped_path
     let input = config::Input::Str {
@@ -200,7 +256,12 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
             linker,
+            codegen_units: Some(1),
             .. config::basic_codegen_options()
+        },
+        debugging_opts: config::DebuggingOptions {
+            combine_tests, 
+            ..config::basic_debugging_options()
         },
         test: as_test_harness,
         unstable_features: UnstableFeatures::from_environment(),
@@ -251,12 +312,11 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let cstore = CStore::new(trans.metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
     sess.parse_sess.config =
         config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-    let out = Some(outdir.lock().unwrap().path().to_path_buf());
+    let out = Some(outdir.to_path_buf());
 
     if no_run {
         control.after_analysis.stop = Compilation::Stop;
@@ -301,20 +361,22 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         panic!("Some expected error codes were not found: {:?}", error_codes);
     }
 
-    if no_run { return }
+    libdir
+}
 
+pub fn run_built_test(outdir: &Path, libdir: &Path, should_panic: bool) {
     // Run the code!
     //
     // We're careful to prepend the *target* dylib search path to the child's
     // environment to ensure that the target loads the right libraries at
     // runtime. It would be a sad day if the *host* libraries were loaded as a
     // mistake.
-    let mut cmd = Command::new(&outdir.lock().unwrap().path().join("rust_out"));
+    let mut cmd = Command::new(outdir.join("rust_out"));
     let var = DynamicLibrary::envvar();
     let newpath = {
         let path = env::var_os(var).unwrap_or(OsString::new());
         let mut path = env::split_paths(&path).collect::<Vec<_>>();
-        path.insert(0, libdir.clone());
+        path.insert(0, libdir.to_path_buf());
         env::join_paths(path).unwrap()
     };
     cmd.env(var, &newpath);
@@ -431,6 +493,73 @@ fn partition_source(s: &str) -> (String, String) {
     (before, after)
 }
 
+fn parse_features(line: &str) -> Vec<String> {
+    fn skip_if(pos: &mut &str, str: &str) -> bool {
+        if pos.starts_with(str) {
+            *pos = pos[str.len()..].trim();
+            true
+        } else {
+            false
+        }
+    }
+    let mut pos = line;
+    &mut pos;
+    if !skip_if(&mut pos, "#![") { return Vec::new() }
+    if !skip_if(&mut pos, "feature") { return Vec::new() }
+    if !skip_if(&mut pos, "(") { return Vec::new() }
+
+    let mut end = 0;
+    loop {
+        if end == pos.len() {
+            return Vec::new();
+        }
+        if pos.as_bytes()[end] == ')' as u8 {
+            break;
+        }
+        end += 1;
+    }
+
+    pos[0..end].split(",").map(|f| f.trim().to_string()).collect()
+}
+
+fn find_features(test: &str) -> Vec<String> {
+    let mut features = Vec::new();
+    for ln in test.lines() {
+        // Assume that any directives will be found before the first
+        // module or function. This doesn't seem to be an optimization
+        // with a warm page cache. Maybe with a cold one.
+        let ln = ln.trim();
+        if ln.starts_with("fn") || ln.starts_with("mod") {
+            return features;
+        } else if ln.starts_with("#") {
+            features.extend(parse_features(ln));
+        }
+    }
+    features
+}
+
+pub struct TestSettings {
+    pub cfgs: Vec<String>,
+    pub libs: SearchPaths,
+    pub externs: Externs,
+    pub use_headers: bool,
+    pub cratename: String,
+    pub opts: TestOptions,
+    pub maybe_sysroot: Option<PathBuf>,
+    pub filename: Option<PathBuf>,
+    pub linker: Option<PathBuf>,
+    pub combine_tests: bool,
+}
+
+pub struct CombineTest {
+    pub features: Vec<String>,
+    pub test: String,
+    pub settings: Arc<TestSettings>,
+    pub should_panic: bool,
+    pub as_test_harness: bool,
+    pub no_run: bool,
+}
+
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
 
@@ -456,38 +585,19 @@ pub struct Collector {
     // the `names` vector of that test will be `["Title", "Subtitle"]`.
     names: Vec<String>,
 
-    cfgs: Vec<String>,
-    libs: SearchPaths,
-    externs: Externs,
-    use_headers: bool,
-    cratename: String,
-    opts: TestOptions,
-    maybe_sysroot: Option<PathBuf>,
-    position: Span,
     codemap: Option<Lrc<CodeMap>>,
-    filename: Option<PathBuf>,
-    linker: Option<PathBuf>,
+    position: Span,
+    settings: Arc<TestSettings>,
 }
 
 impl Collector {
-    pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
-               use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Lrc<CodeMap>>, filename: Option<PathBuf>,
-               linker: Option<PathBuf>) -> Collector {
+    pub fn new(settings: Arc<TestSettings>, codemap: Option<Lrc<CodeMap>>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
-            cfgs,
-            libs,
-            externs,
-            use_headers,
-            cratename,
-            opts,
-            maybe_sysroot,
             position: DUMMY_SP,
+            settings,
             codemap,
-            filename,
-            linker,
         }
     }
 
@@ -498,25 +608,37 @@ impl Collector {
     pub fn add_test(&mut self, test: String,
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: FileName, allow_fail: bool) {
+                    line: usize, filename: FileName, allow_fail: bool, no_combine: bool) {
         let name = self.generate_name(line, &filename);
-        let cfgs = self.cfgs.clone();
-        let libs = self.libs.clone();
-        let externs = self.externs.clone();
-        let cratename = self.cratename.to_string();
-        let opts = self.opts.clone();
-        let maybe_sysroot = self.maybe_sysroot.clone();
-        let linker = self.linker.clone();
+        let settings = self.settings.clone();
         debug!("Creating test {}: {}", name, test);
+        let desc = testing::TestDesc {
+            name: testing::DynTestName(name),
+            ignore: should_ignore,
+            // compiler failures are test failures
+            should_panic: testing::ShouldPanic::No,
+            allow_fail,
+        };
+        if self.settings.combine_tests && !no_combine && !compile_fail {
+            let features = find_features(&test);
+            self.tests.push(testing::TestDescAndFn {
+                desc,
+                testfn: testing::CombineTest(box Some(CombineTest {
+                    test,
+                    features,
+                    settings,
+                    should_panic,
+                    as_test_harness,
+                    no_run,
+                })),
+            });
+            return;
+        }
+
         self.tests.push(testing::TestDescAndFn {
-            desc: testing::TestDesc {
-                name: testing::DynTestName(name),
-                ignore: should_ignore,
-                // compiler failures are test failures
-                should_panic: testing::ShouldPanic::No,
-                allow_fail,
-            },
+            desc,
             testfn: testing::DynTestFn(box move || {
+                let settings = settings;
                 let panic = io::set_panic(None);
                 let print = io::set_print(None);
                 match {
@@ -524,20 +646,20 @@ impl Collector {
                         io::set_panic(panic);
                         io::set_print(print);
                         run_test(&test,
-                                 &cratename,
+                                 &settings.cratename,
                                  &filename,
                                  line,
-                                 cfgs,
-                                 libs,
-                                 externs,
+                                 &settings.cfgs,
+                                 settings.libs.clone(),
+                                 settings.externs.clone(),
                                  should_panic,
                                  no_run,
                                  as_test_harness,
                                  compile_fail,
                                  error_codes,
-                                 &opts,
-                                 maybe_sysroot,
-                                 linker)
+                                 &settings.opts,
+                                 settings.maybe_sysroot.clone(),
+                                 settings.linker.clone())
                     }))
                 } {
                     Ok(()) => (),
@@ -572,7 +694,7 @@ impl Collector {
                 }
             }
             filename
-        } else if let Some(ref filename) = self.filename {
+        } else if let Some(ref filename) = self.settings.filename {
             filename.clone().into()
         } else {
             FileName::Custom("input".to_owned())
@@ -580,7 +702,7 @@ impl Collector {
     }
 
     pub fn register_header(&mut self, name: &str, level: u32) {
-        if self.use_headers {
+        if self.settings.use_headers {
             // we use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {

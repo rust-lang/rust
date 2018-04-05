@@ -483,7 +483,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                                    block_info.should_panic, block_info.no_run,
                                    block_info.ignore, block_info.test_harness,
                                    block_info.compile_fail, block_info.error_codes,
-                                   line, filename, block_info.allow_fail);
+                                   line, filename, block_info.allow_fail, block_info.no_combine);
                     prev_offset = offset;
                 } else {
                     if let Some(ref sess) = sess {
@@ -513,6 +513,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
 struct LangString {
     original: String,
     should_panic: bool,
+    no_combine: bool,
     no_run: bool,
     ignore: bool,
     rust: bool,
@@ -529,6 +530,7 @@ impl LangString {
             should_panic: false,
             no_run: false,
             ignore: false,
+            no_combine: false,
             rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
             compile_fail: false,
@@ -558,6 +560,7 @@ impl LangString {
                     data.should_panic = true;
                     seen_rust_tags = seen_other_tags == false;
                 }
+                "no_combine" => { data.no_combine = true; seen_rust_tags = !seen_other_tags; }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
                 "ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
                 "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
