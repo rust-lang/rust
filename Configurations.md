@@ -889,7 +889,7 @@ See also [`control_brace_style`](#control_brace_style).
 
 ## `where_single_line`
 
-To force single line where layout
+Forces the `where` clause to be laid out on a single line.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`

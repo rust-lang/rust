@@ -61,7 +61,7 @@ create_config! {
     struct_lit_single_line: bool, true, false,
         "Put small struct literals on a single line";
     fn_single_line: bool, false, false, "Put single-expression functions on a single line";
-    where_single_line: bool, false, false, "To force single line where layout";
+    where_single_line: bool, false, false, "Force where clauses to be on a single line";
 
     // Imports
     imports_indent: IndentStyle, IndentStyle::Visual, false, "Indent of imports";
