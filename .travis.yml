@@ -21,7 +21,7 @@ matrix:
     # "alternate" deployments, these are "nightlies" but have LLVM assertions
     # turned on, they're deployed to a different location primarily for
     # additional testing.
-    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1
+    - env: IMAGE=dist-x86_64-linux DEPLOY_ALT=1 CI_JOB_NAME=dist-x86_64-linux-alt
       if: branch = try OR branch = auto
 
     - env: >
@@ -33,6 +33,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=dist-x86_64-apple-alt
       os: osx
       osx_image: xcode9.3-moar
       if: branch = auto
@@ -53,6 +54,7 @@ matrix:
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
       if: branch = auto
@@ -66,6 +68,7 @@ matrix:
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=i686-apple
       os: osx
       osx_image: xcode9.3-moar
       if: branch = auto
@@ -85,6 +88,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=dist-i686-apple
       os: osx
       osx_image: xcode9.3-moar
       if: branch = auto
@@ -98,6 +102,7 @@ matrix:
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
+        CI_JOB_NAME=dist-x86_64-apple
       os: osx
       osx_image: xcode9.3-moar
       if: branch = auto

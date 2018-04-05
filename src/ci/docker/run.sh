@@ -130,6 +130,7 @@ exec docker \
   --env TRAVIS \
   --env TRAVIS_BRANCH \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
+  --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --volume "$HOME/.cargo:/cargo" \
   --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --init \
