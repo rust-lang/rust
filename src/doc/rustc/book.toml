@@ -1,0 +1,5 @@
+[book]
+authors = ["steveklabnik"]
+multilingual = false
+src = "src"
+title = "The rustc book"
