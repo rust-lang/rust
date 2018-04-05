@@ -226,9 +226,7 @@ This is our choice of keyword, because it:
 ## Alternative: reserving `catch`
 
 1. **Fidelity to the construct's actual behavior:** Low
-2. **Precedent from existing languages:**
-    + `do`: Haskell, Idris
-    + `try`: None
+2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 6
 4. **Consistency with the naming of the trait used for `?`:** Inconsistent
 5. **Consistency with related libstd fn conventions:** Somewhat consistent
