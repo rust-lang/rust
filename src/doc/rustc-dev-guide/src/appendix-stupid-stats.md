@@ -87,14 +87,15 @@ in [librustc_back](https://github.com/rust-lang/rust/tree/master/src/librustc_ba
 (which also contains some things used primarily during translation).
 
 All these phases are coordinated by the driver. To see the exact sequence, look
-at the `compile_input` function in [librustc_driver/driver.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/).
-The driver (which is found in [librust_driver](https://github.com/rust-lang/rust/tree/master/src/librustc_driver))
-handles all the highest level coordination of compilation - handling command
-line arguments, maintaining compilation state (primarily in the `Session`), and
-calling the appropriate code to run each phase of compilation. It also handles
+at [the `compile_input` function in `librustc_driver`][compile-input].
+The driver handles all the highest level coordination of compilation - handling
+command-line arguments, maintaining compilation state (primarily in the `Session`),
+and calling the appropriate code to run each phase of compilation. It also handles
 high level coordination of pretty printing and testing. To create a drop-in
 compiler replacement or a compiler replacement, we leave most of compilation
 alone and customise the driver using its APIs.
+
+[compile-input]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/driver/fn.compile_input.html
 
 
 ## The driver customisation APIs
