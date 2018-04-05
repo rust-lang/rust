@@ -1,7 +1,7 @@
-- Feature Name: type_alias_enum_variants
+- Feature Name: `type_alias_enum_variants`
 - Start Date: 2018-02-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2338](https://github.com/rust-lang/rfcs/pull/2338)
+- Rust Issue: [rust-lang/rust#49683](https://github.com/rust-lang/rust/issues/49683)
 
 # Summary
 [summary]: #summary
