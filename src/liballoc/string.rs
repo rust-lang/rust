@@ -64,7 +64,7 @@ use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ptr;
 use core::str::pattern::Pattern;
 use core::str::lossy;
-use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 
 use borrow::{Cow, ToOwned};
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};

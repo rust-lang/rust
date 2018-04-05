@@ -31,5 +31,6 @@
 
 #![feature(unicode)]
 #![feature(staged_api)]
+#![rustc_deprecated(since = "1.27.0", reason = "moved into libcore")]
 
 pub use core::unicode::*;
