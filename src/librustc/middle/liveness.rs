@@ -184,6 +184,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IrMaps<'a, 'tcx> {
                 b: hir::BodyId, s: Span, id: NodeId) {
         visit_fn(self, fk, fd, b, s, id);
     }
+
     fn visit_local(&mut self, l: &'tcx hir::Local) { visit_local(self, l); }
     fn visit_expr(&mut self, ex: &'tcx Expr) { visit_expr(self, ex); }
     fn visit_arm(&mut self, a: &'tcx hir::Arm) { visit_arm(self, a); }
@@ -360,6 +361,16 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 
     // swap in a new set of IR maps for this function body:
     let mut fn_maps = IrMaps::new(ir.tcx);
+
+    // Don't run unused pass for #[derive()]
+    if let FnKind::Method(..) = fk {
+        let parent = ir.tcx.hir.get_parent(id);
+        if let Some(hir::map::Node::NodeItem(i)) = ir.tcx.hir.find(parent) {
+            if i.attrs.iter().any(|a| a.check_name("automatically_derived")) {
+                return;
+            }
+        }
+    }
 
     debug!("creating fn_maps: {:?}", &fn_maps as *const IrMaps);
 
