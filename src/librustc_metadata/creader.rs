@@ -262,6 +262,7 @@ impl<'a> CrateLoader<'a> {
                      ident: Symbol,
                      name: Symbol,
                      hash: Option<&Svh>,
+                     extra_filename: Option<&str>,
                      span: Span,
                      path_kind: PathKind,
                      mut dep_kind: DepKind)
@@ -277,6 +278,7 @@ impl<'a> CrateLoader<'a> {
                 ident,
                 crate_name: name,
                 hash: hash.map(|a| &*a),
+                extra_filename: extra_filename,
                 filesearch: self.sess.target_filesearch(path_kind),
                 target: &self.sess.target.target,
                 triple: &self.sess.opts.target_triple,
@@ -409,7 +411,8 @@ impl<'a> CrateLoader<'a> {
         ::std::iter::once(krate).chain(crate_root.crate_deps
                                                  .decode(metadata)
                                                  .map(|dep| {
-            debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
+            info!("resolving dep crate {} hash: `{}` extra filename: `{}`", dep.name, dep.hash,
+                  dep.extra_filename);
             if dep.kind == DepKind::UnexportedMacrosOnly {
                 return krate;
             }
@@ -418,7 +421,8 @@ impl<'a> CrateLoader<'a> {
                 _ => dep.kind,
             };
             let (local_cnum, ..) = self.resolve_crate(
-                root, dep.name, dep.name, Some(&dep.hash), span, PathKind::Dependency, dep_kind,
+                root, dep.name, dep.name, Some(&dep.hash), Some(&dep.extra_filename), span,
+                PathKind::Dependency, dep_kind,
             );
             local_cnum
         })).collect()
@@ -437,6 +441,7 @@ impl<'a> CrateLoader<'a> {
             ident: orig_name,
             crate_name: rename,
             hash: None,
+            extra_filename: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             target: &self.sess.host,
             triple: &host_triple,
@@ -664,7 +669,7 @@ impl<'a> CrateLoader<'a> {
 
         let dep_kind = DepKind::Implicit;
         let (cnum, data) =
-            self.resolve_crate(&None, name, name, None, DUMMY_SP, PathKind::Crate, dep_kind);
+            self.resolve_crate(&None, name, name, None, None, DUMMY_SP, PathKind::Crate, dep_kind);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
@@ -771,7 +776,7 @@ impl<'a> CrateLoader<'a> {
                 let symbol = Symbol::intern(name);
                 let dep_kind = DepKind::Explicit;
                 let (_, data) =
-                    self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
+                    self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
                                        PathKind::Crate, dep_kind);
 
                 // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
@@ -794,7 +799,7 @@ impl<'a> CrateLoader<'a> {
             let symbol = Symbol::intern("profiler_builtins");
             let dep_kind = DepKind::Implicit;
             let (_, data) =
-                self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
+                self.resolve_crate(&None, symbol, symbol, None, None, DUMMY_SP,
                                    PathKind::Crate, dep_kind);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -908,6 +913,7 @@ impl<'a> CrateLoader<'a> {
                         let (cnum, data) = self.resolve_crate(&None,
                                                               name,
                                                               name,
+                                                              None,
                                                               None,
                                                               DUMMY_SP,
                                                               PathKind::Crate,
@@ -1059,7 +1065,8 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 };
 
                 let (cnum, ..) = self.resolve_crate(
-                    &None, item.ident.name, orig_name, None, item.span, PathKind::Crate, dep_kind,
+                    &None, item.ident.name, orig_name, None, None,
+                    item.span, PathKind::Crate, dep_kind,
                 );
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
@@ -1074,6 +1081,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
     }
 
     fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum {
-        self.resolve_crate(&None, name, name, None, span, PathKind::Crate, DepKind::Explicit).0
+        self.resolve_crate(&None, name, name, None, None, span, PathKind::Crate,
+                           DepKind::Explicit).0
     }
 }

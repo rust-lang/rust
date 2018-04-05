@@ -328,6 +328,7 @@ define_maps! { <'tcx>
     [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
+    [] fn extra_filename: ExtraFileName(CrateNum) -> String,
 
     [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
         -> Lrc<Vec<DefId>>,
