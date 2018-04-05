@@ -1594,40 +1594,69 @@ impl SpecFromElem for u8 {
     }
 }
 
-macro_rules! impl_spec_from_elem {
-    ($t: ty, $is_zero: expr) => {
-        impl SpecFromElem for $t {
-            #[inline]
-            fn from_elem(elem: $t, n: usize) -> Vec<$t> {
-                if $is_zero(elem) {
-                    return Vec {
-                        buf: RawVec::with_capacity_zeroed(n),
-                        len: n,
-                    }
-                }
-                let mut v = Vec::with_capacity(n);
-                v.extend_with(n, ExtendElement(elem));
-                v
+impl<T: Clone + IsZero> SpecFromElem for T {
+    #[inline]
+    fn from_elem(elem: T, n: usize) -> Vec<T> {
+        if elem.is_zero() {
+            return Vec {
+                buf: RawVec::with_capacity_zeroed(n),
+                len: n,
             }
         }
-    };
+        let mut v = Vec::with_capacity(n);
+        v.extend_with(n, ExtendElement(elem));
+        v
+    }
 }
 
-impl_spec_from_elem!(i8, |x| x == 0);
-impl_spec_from_elem!(i16, |x| x == 0);
-impl_spec_from_elem!(i32, |x| x == 0);
-impl_spec_from_elem!(i64, |x| x == 0);
-impl_spec_from_elem!(i128, |x| x == 0);
-impl_spec_from_elem!(isize, |x| x == 0);
+unsafe trait IsZero {
+    /// Whether this value is zero
+    fn is_zero(&self) -> bool;
+}
 
-impl_spec_from_elem!(u16, |x| x == 0);
-impl_spec_from_elem!(u32, |x| x == 0);
-impl_spec_from_elem!(u64, |x| x == 0);
-impl_spec_from_elem!(u128, |x| x == 0);
-impl_spec_from_elem!(usize, |x| x == 0);
+macro_rules! impl_is_zero {
+    ($t: ty, $is_zero: expr) => {
+        unsafe impl IsZero for $t {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                $is_zero(*self)
+            }
+        }
+    }
+}
 
-impl_spec_from_elem!(f32, |x: f32| x.to_bits() == 0);
-impl_spec_from_elem!(f64, |x: f64| x.to_bits() == 0);
+impl_is_zero!(i8, |x| x == 0);
+impl_is_zero!(i16, |x| x == 0);
+impl_is_zero!(i32, |x| x == 0);
+impl_is_zero!(i64, |x| x == 0);
+impl_is_zero!(i128, |x| x == 0);
+impl_is_zero!(isize, |x| x == 0);
+
+impl_is_zero!(u16, |x| x == 0);
+impl_is_zero!(u32, |x| x == 0);
+impl_is_zero!(u64, |x| x == 0);
+impl_is_zero!(u128, |x| x == 0);
+impl_is_zero!(usize, |x| x == 0);
+
+impl_is_zero!(char, |x| x == '\0');
+
+impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
+impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
+
+unsafe impl<T: ?Sized> IsZero for *const T {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        (*self).is_null()
+    }
+}
+
+unsafe impl<T: ?Sized> IsZero for *mut T {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        (*self).is_null()
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
