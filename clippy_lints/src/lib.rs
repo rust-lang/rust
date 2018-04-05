@@ -472,7 +472,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
         attrs::DEPRECATED_SEMVER,
-        attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         attrs::USELESS_ATTRIBUTE,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
@@ -611,6 +610,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         panic::PANIC_PARAMS,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
+        print::PRINT_LITERAL,
         print::PRINT_WITH_NEWLINE,
         print::PRINTLN_EMPTY_STRING,
         ptr::CMP_NULL,
@@ -665,7 +665,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
 
     reg.register_lint_group("clippy_style", vec![
         assign_ops::ASSIGN_OP_PATTERN,
-        attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         bit_mask::VERBOSE_BIT_MASK,
         blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
@@ -725,6 +724,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         ok_if_let::IF_LET_SOME_RESULT,
         panic::PANIC_PARAMS,
+        print::PRINT_LITERAL,
         print::PRINT_WITH_NEWLINE,
         print::PRINTLN_EMPTY_STRING,
         ptr::CMP_NULL,
@@ -870,6 +870,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     ]);
 
     reg.register_lint_group("clippy_nursery", vec![
+        attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         fallible_impl_from::FALLIBLE_IMPL_FROM,
         mutex_atomic::MUTEX_INTEGER,
         ranges::RANGE_PLUS_ONE,
