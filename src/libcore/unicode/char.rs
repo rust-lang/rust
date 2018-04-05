@@ -28,30 +28,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use char::*;
 use char::CharExt as C;
 use iter::FusedIterator;
 use fmt::{self, Write};
 use unicode::tables::{conversions, derived_property, general_category, property};
-
-// stable re-exports
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use char::{MAX, from_digit, from_u32, from_u32_unchecked};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use char::{EscapeDebug, EscapeDefault, EscapeUnicode};
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-pub use char::REPLACEMENT_CHARACTER;
-#[stable(feature = "char_from_str", since = "1.20.0")]
-pub use char::ParseCharError;
-
-// unstable re-exports
-#[stable(feature = "try_from", since = "1.26.0")]
-pub use char::CharTryFromError;
-#[unstable(feature = "decode_utf8", issue = "33906")]
-pub use char::{DecodeUtf8, decode_utf8};
-#[unstable(feature = "unicode", issue = "27783")]
-pub use unicode::tables::{UNICODE_VERSION};
-#[unstable(feature = "unicode", issue = "27783")]
-pub use unicode::version::UnicodeVersion;
 
 /// Returns an iterator that yields the lowercase equivalent of a `char`.
 ///
