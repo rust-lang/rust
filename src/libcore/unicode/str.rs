@@ -9,9 +9,6 @@
 // except according to those terms.
 
 //! Unicode-intensive string manipulations.
-//!
-//! This module provides functionality to `str` that requires the Unicode
-//! methods provided by the unicode parts of the CharExt trait.
 
 use char;
 use iter::{Filter, FusedIterator};
@@ -109,7 +106,7 @@ impl<I> Iterator for Utf16Encoder<I>
 
         let mut buf = [0; 2];
         self.chars.next().map(|ch| {
-            let n = CharExt::encode_utf16(ch, &mut buf).len();
+            let n = ch.encode_utf16(&mut buf).len();
             if n == 2 {
                 self.extra = buf[1];
             }
