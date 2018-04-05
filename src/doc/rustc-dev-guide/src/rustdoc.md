@@ -70,7 +70,7 @@ The main process of crate crawling is done in `clean/mod.rs` through several
 implementations of the `Clean` trait defined within. This is a conversion
 trait, which defines one method:
 
-```rust
+```rust,ignore
 pub trait Clean<T> {
     fn clean(&self, cx: &DocContext) -> T;
 }

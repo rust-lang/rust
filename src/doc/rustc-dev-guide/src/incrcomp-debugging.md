@@ -10,7 +10,7 @@ As an example, see `src/test/compile-fail/dep-graph-caller-callee.rs`.
 
 The idea is that you can annotate a test like:
 
-```rust
+```rust,ignore
 #[rustc_if_this_changed]
 fn foo() { }
 
@@ -48,7 +48,7 @@ the graph. You can filter in three ways:
 To filter, use the `RUST_DEP_GRAPH_FILTER` environment variable, which should
 look like one of the following:
 
-```
+```txt
 source_filter     // nodes originating from source_filter
 -> target_filter  // nodes that can reach target_filter
 source_filter -> target_filter // nodes in between source_filter and target_filter
@@ -58,14 +58,14 @@ source_filter -> target_filter // nodes in between source_filter and target_filt
 A node is considered to match a filter if all of those strings appear in its
 label. So, for example:
 
-```
+```txt
 RUST_DEP_GRAPH_FILTER='-> TypeckTables'
 ```
 
 would select the predecessors of all `TypeckTables` nodes. Usually though you
 want the `TypeckTables` node for some particular fn, so you might write:
 
-```
+```txt
 RUST_DEP_GRAPH_FILTER='-> TypeckTables & bar'
 ```
 
@@ -75,7 +75,7 @@ with `bar` in their name.
 Perhaps you are finding that when you change `foo` you need to re-type-check
 `bar`, but you don't think you should have to. In that case, you might do:
 
-```
+```txt
 RUST_DEP_GRAPH_FILTER='Hir & foo -> TypeckTables & bar'
 ```
 
@@ -105,8 +105,10 @@ check of `bar` and you don't think there should be. You dump the
 dep-graph as described in the previous section and open `dep-graph.txt`
 to see something like:
 
-    Hir(foo) -> Collect(bar)
-    Collect(bar) -> TypeckTables(bar)
+```txt
+Hir(foo) -> Collect(bar)
+Collect(bar) -> TypeckTables(bar)
+```
 
 That first edge looks suspicious to you. So you set
 `RUST_FORBID_DEP_GRAPH_EDGE` to `Hir&foo -> Collect&bar`, re-run, and

@@ -30,7 +30,7 @@ impl<T> Clone for Vec<T> where T: Clone { }
 We could map these declarations to some Horn clauses, written in a
 Prolog-like notation, as follows:
 
-```
+```txt
 Clone(usize).
 Clone(Vec<?T>) :- Clone(?T).
 
@@ -51,18 +51,18 @@ so by applying the rules recursively:
 - `Clone(Vec<Vec<usize>>)` is provable if:
   - `Clone(Vec<usize>)` is provable if:
     - `Clone(usize)` is provable. (Which is is, so we're all good.)
-    
+
 But now suppose we tried to prove that `Clone(Vec<Bar>)`. This would
 fail (after all, I didn't give an impl of `Clone` for `Bar`):
 
 - `Clone(Vec<Bar>)` is provable if:
   - `Clone(Bar)` is provable. (But it is not, as there are no applicable rules.)
-    
+
 We can easily extend the example above to cover generic traits with
 more than one input type. So imagine the `Eq<T>` trait, which declares
 that `Self` is equatable with a value of type `T`:
 
-```rust
+```rust,ignore
 trait Eq<T> { ... }
 impl Eq<usize> for usize { }
 impl<T: Eq<U>> Eq<Vec<U>> for Vec<T> { }
@@ -70,12 +70,12 @@ impl<T: Eq<U>> Eq<Vec<U>> for Vec<T> { }
 
 That could be mapped as follows:
 
-```
+```txt
 Eq(usize, usize).
 Eq(Vec<?T>, Vec<?U>) :- Eq(?T, ?U).
 ```
 
-So far so good. 
+So far so good.
 
 ## Type-checking normal functions
 
@@ -90,7 +90,7 @@ that we need to prove, and those come from type-checking.
 
 Consider type-checking the function `foo()` here:
 
-```rust
+```rust,ignore
 fn foo() { bar::<usize>() }
 fn bar<U: Eq<U>>() { }
 ```
@@ -105,7 +105,7 @@ If we wanted, we could write a Prolog predicate that defines the
 conditions under which `bar()` can be called. We'll say that those
 conditions are called being "well-formed":
 
-```
+```txt
 barWellFormed(?U) :- Eq(?U, ?U).
 ```
 
@@ -113,7 +113,7 @@ Then we can say that `foo()` type-checks if the reference to
 `bar::<usize>` (that is, `bar()` applied to the type `usize`) is
 well-formed:
 
-```
+```txt
 fooTypeChecks :- barWellFormed(usize).
 ```
 
@@ -122,7 +122,7 @@ If we try to prove the goal `fooTypeChecks`, it will succeed:
 - `fooTypeChecks` is provable if:
   - `barWellFormed(usize)`, which is provable if:
     - `Eq(usize, usize)`, which is provable because of an impl.
-    
+
 Ok, so far so good. Let's move on to type-checking a more complex function.
 
 ## Type-checking generic functions: beyond Horn clauses
@@ -134,7 +134,7 @@ a generic function, it turns out we need a stronger notion of goal than Prolog
 can be provide. To see what I'm talking about, let's revamp our previous
 example to make `foo` generic:
 
-```rust
+```rust,ignore
 fn foo<T: Eq<T>>() { bar::<T>() }
 fn bar<U: Eq<U>>() { }
 ```
@@ -144,7 +144,7 @@ To type-check the body of `foo`, we need to be able to hold the type
 type-safe *for all types `T`*, not just for some specific type. We might express
 this like so:
 
-```
+```txt
 fooTypeChecks :-
   // for all types T...
   forall<T> {

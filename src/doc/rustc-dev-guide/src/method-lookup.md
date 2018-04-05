@@ -8,13 +8,13 @@ the code itself, naturally.
 One way to think of method lookup is that we convert an expression of
 the form:
 
-```rust
+```rust,ignore
 receiver.method(...)
 ```
 
 into a more explicit [UFCS] form:
 
-```rust
+```rust,ignore
 Trait::method(ADJ(receiver), ...) // for a trait call
 ReceiverType::method(ADJ(receiver), ...) // for an inherent method call
 ```
@@ -24,7 +24,7 @@ autoderefs and then possibly an autoref (e.g., `&**receiver`). However
 we sometimes do other adjustments and coercions along the way, in
 particular unsizing (e.g., converting from `[T; n]` to `[T]`).
 
-Method lookup is divided into two major phases: 
+Method lookup is divided into two major phases:
 
 1. Probing ([`probe.rs`][probe]). The probe phase is when we decide what method
    to call and how to adjust the receiver.
@@ -51,7 +51,7 @@ until it cannot be deref'd anymore, as well as applying an optional
 "unsize" step. So if the receiver has type `Rc<Box<[T; 3]>>`, this
 might yield:
 
-```rust
+```rust,ignore
 Rc<Box<[T; 3]>>
 Box<[T; 3]>
 [T; 3]
@@ -99,9 +99,10 @@ So, let's continue our example. Imagine that we were calling a method
 that defines it with `&self` for the type `Rc<U>` as well as a method
 on the type `Box` that defines `Foo` but with `&mut self`. Then we
 might have two candidates:
-
-    &Rc<Box<[T; 3]>> from the impl of `Foo` for `Rc<U>` where `U=Box<T; 3]>
-    &mut Box<[T; 3]>> from the inherent impl on `Box<U>` where `U=[T; 3]`
+```txt
+&Rc<Box<[T; 3]>> from the impl of `Foo` for `Rc<U>` where `U=Box<T; 3]>
+&mut Box<[T; 3]>> from the inherent impl on `Box<U>` where `U=[T; 3]`
+```
 
 ### Candidate search
 

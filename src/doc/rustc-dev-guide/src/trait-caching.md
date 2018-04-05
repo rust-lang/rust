@@ -26,7 +26,7 @@ possible impl is this one, with def-id 22:
 
 [selection process]: ./trait-resolution.html#selection
 
-```rust
+```rust,ignore
 impl Foo<isize> for usize { ... } // Impl #22
 ```
 

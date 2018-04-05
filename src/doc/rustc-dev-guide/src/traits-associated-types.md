@@ -29,10 +29,10 @@ that is, simplified -- based on the types given in an impl. So, to
 continue with our example, the impl of `IntoIterator` for `Option<T>`
 declares (among other things) that `Item = T`:
 
-```rust
+```rust,ignore
 impl<T> IntoIterator for Option<T> {
   type Item = T;
-  ..
+  ...
 }
 ```
 
@@ -51,9 +51,11 @@ In our logic, normalization is defined by a predicate
 impls. For example, the `impl` of `IntoIterator` for `Option<T>` that
 we saw above would be lowered to a program clause like so:
 
-    forall<T> {
-        Normalize(<Option<T> as IntoIterator>::Item -> T)
-    }
+```txt
+forall<T> {
+    Normalize(<Option<T> as IntoIterator>::Item -> T)
+}
+```
 
 (An aside: since we do not permit quantification over traits, this is
 really more like a family of predicates, one for each associated
@@ -67,7 +69,7 @@ we've seen so far.
 Sometimes however we want to work with associated types that cannot be
 normalized. For example, consider this function:
 
-```rust
+```rust,ignore
 fn foo<T: IntoIterator>(...) { ... }
 ```
 
@@ -99,20 +101,24 @@ consider an associated type projection equal to another type?":
 We now introduce the `ProjectionEq` predicate to bring those two cases
 together. The `ProjectionEq` predicate looks like so:
 
-    ProjectionEq(<T as IntoIterator>::Item = U)
+```txt
+ProjectionEq(<T as IntoIterator>::Item = U)
+```
 
 and we will see that it can be proven *either* via normalization or
 skolemization. As part of lowering an associated type declaration from
 some trait, we create two program clauses for `ProjectionEq`:
 
-    forall<T, U> {
-        ProjectionEq(<T as IntoIterator>::Item = U) :-
-            Normalize(<T as IntoIterator>::Item -> U)
-    }
+```txt
+forall<T, U> {
+    ProjectionEq(<T as IntoIterator>::Item = U) :-
+        Normalize(<T as IntoIterator>::Item -> U)
+}
 
-    forall<T> {
-        ProjectionEq(<T as IntoIterator>::Item = (IntoIterator::Item)<T>)
-    }
+forall<T> {
+    ProjectionEq(<T as IntoIterator>::Item = (IntoIterator::Item)<T>)
+}
+```
 
 These are the only two `ProjectionEq` program clauses we ever make for
 any given associated item.
@@ -124,7 +130,9 @@ with unification. As described in the
 [type inference](./type-inference.html) section, unification is
 basically a procedure with a signature like this:
 
-    Unify(A, B) = Result<(Subgoals, RegionConstraints), NoSolution>
+```txt
+Unify(A, B) = Result<(Subgoals, RegionConstraints), NoSolution>
+```
 
 In other words, we try to unify two things A and B. That procedure
 might just fail, in which case we get back `Err(NoSolution)`. This

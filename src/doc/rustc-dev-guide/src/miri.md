@@ -14,7 +14,7 @@ placed into metadata.
 
 Once you have a use-site like
 
-```rust
+```rust,ignore
 type Foo = [u8; FOO - 42];
 ```
 
@@ -24,7 +24,7 @@ create items that use the type (locals, constants, function arguments, ...).
 To obtain the (in this case empty) parameter environment, one can call
 `let param_env = tcx.param_env(length_def_id);`. The `GlobalId` needed is
 
-```rust
+```rust,ignore
 let gid = GlobalId {
     promoted: None,
     instance: Instance::mono(length_def_id),

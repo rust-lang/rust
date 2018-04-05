@@ -54,7 +54,7 @@ constraints will be satisfied.
 
 As a simple example, consider:
 
-```rust
+```rust,ignore
 enum Option<A> { Some(A), None }
 enum OptionalFn<B> { Some(|B|), None }
 enum OptionalMap<C> { Some(|C| -> C), None }
@@ -62,19 +62,23 @@ enum OptionalMap<C> { Some(|C| -> C), None }
 
 Here, we will generate the constraints:
 
-    1. V(A) <= +
-    2. V(B) <= -
-    3. V(C) <= +
-    4. V(C) <= -
+```txt
+1. V(A) <= +
+2. V(B) <= -
+3. V(C) <= +
+4. V(C) <= -
+```
 
 These indicate that (1) the variance of A must be at most covariant;
 (2) the variance of B must be at most contravariant; and (3, 4) the
 variance of C must be at most covariant *and* contravariant. All of these
 results are based on a variance lattice defined as follows:
 
-       *      Top (bivariant)
-    -     +
-       o      Bottom (invariant)
+```txt
+    *      Top (bivariant)
+-     +
+    o      Bottom (invariant)
+```txt
 
 Based on this lattice, the solution `V(A)=+`, `V(B)=-`, `V(C)=o` is the
 optimal solution. Note that there is always a naive solution which
@@ -85,8 +89,10 @@ is that the variance of a use site may itself be a function of the
 variance of other type parameters. In full generality, our constraints
 take the form:
 
-    V(X) <= Term
-    Term := + | - | * | o | V(X) | Term x Term
+```txt
+V(X) <= Term
+Term := + | - | * | o | V(X) | Term x Term
+```
 
 Here the notation `V(X)` indicates the variance of a type/region
 parameter `X` with respect to its defining class. `Term x Term`
@@ -101,7 +107,7 @@ represents the "variance transform" as defined in the paper:
 
 If I have a struct or enum with where clauses:
 
-```rust
+```rust,ignore
 struct Foo<T: Bar> { ... }
 ```
 
@@ -170,9 +176,11 @@ another.
 
 To see what I mean, consider a trait like so:
 
-    trait ConvertTo<A> {
-        fn convertTo(&self) -> A;
-    }
+```rust
+trait ConvertTo<A> {
+    fn convertTo(&self) -> A;
+}
+```
 
 Intuitively, If we had one object `O=&ConvertTo<Object>` and another
 `S=&ConvertTo<String>`, then `S <: O` because `String <: Object`
@@ -200,20 +208,24 @@ But traits aren't only used with objects. They're also used when
 deciding whether a given impl satisfies a given trait bound. To set the
 scene here, imagine I had a function:
 
-    fn convertAll<A,T:ConvertTo<A>>(v: &[T]) {
-        ...
-    }
+```rust,ignore
+fn convertAll<A,T:ConvertTo<A>>(v: &[T]) { ... }
+```
 
 Now imagine that I have an implementation of `ConvertTo` for `Object`:
 
-    impl ConvertTo<i32> for Object { ... }
+```rust,ignore
+impl ConvertTo<i32> for Object { ... }
+```
 
 And I want to call `convertAll` on an array of strings. Suppose
 further that for whatever reason I specifically supply the value of
 `String` for the type parameter `T`:
 
-    let mut vector = vec!["string", ...];
-    convertAll::<i32, String>(vector);
+```rust,ignore
+let mut vector = vec!["string", ...];
+convertAll::<i32, String>(vector);
+```
 
 Is this legal? To put another way, can we apply the `impl` for
 `Object` to the type `String`? The answer is yes, but to see why
@@ -222,11 +234,9 @@ we have to expand out what will happen:
 - `convertAll` will create a pointer to one of the entries in the
   vector, which will have type `&String`
 - It will then call the impl of `convertTo()` that is intended
-  for use with objects. This has the type:
+  for use with objects. This has the type `fn(self: &Object) -> i32`.
 
-      fn(self: &Object) -> i32
-
-  It is ok to provide a value for `self` of type `&String` because
+  It is OK to provide a value for `self` of type `&String` because
   `&String <: &Object`.
 
 OK, so intuitively we want this to be legal, so let's bring this back
@@ -238,11 +248,15 @@ Maybe it's helpful to think of a dictionary-passing implementation of
 type classes. In that case, `convertAll()` takes an implicit parameter
 representing the impl. In short, we *have* an impl of type:
 
-    V_O = ConvertTo<i32> for Object
+```txt
+V_O = ConvertTo<i32> for Object
+```
 
 and the function prototype expects an impl of type:
 
-    V_S = ConvertTo<i32> for String
+```txt
+V_S = ConvertTo<i32> for String
+```
 
 As with any argument, this is legal if the type of the value given
 (`V_O`) is a subtype of the type expected (`V_S`). So is `V_O <: V_S`?
@@ -250,9 +264,11 @@ The answer will depend on the variance of the various parameters. In
 this case, because the `Self` parameter is contravariant and `A` is
 covariant, it means that:
 
-    V_O <: V_S iff
-        i32 <: i32
-        String <: Object
+```txt
+V_O <: V_S iff
+    i32 <: i32
+    String <: Object
+```
 
 These conditions are satisfied and so we are happy.
 
@@ -263,7 +279,9 @@ expressions -- must be invariant with respect to all of their
 inputs. To see why this makes sense, consider what subtyping for a
 trait reference means:
 
-    <T as Trait> <: <U as Trait>
+```txt
+<T as Trait> <: <U as Trait>
+```
 
 means that if I know that `T as Trait`, I also know that `U as
 Trait`. Moreover, if you think of it as dictionary passing style,
@@ -279,7 +297,7 @@ Another related reason is that if we didn't make traits with
 associated types invariant, then projection is no longer a
 function with a single result. Consider:
 
-```
+```rust,ignore
 trait Identity { type Out; fn foo(&self); }
 impl<T> Identity for T { type Out = T; ... }
 ```
@@ -287,9 +305,11 @@ impl<T> Identity for T { type Out = T; ... }
 Now if I have `<&'static () as Identity>::Out`, this can be
 validly derived as `&'a ()` for any `'a`:
 
-    <&'a () as Identity> <: <&'static () as Identity>
-    if &'static () < : &'a ()   -- Identity is contravariant in Self
-    if 'static : 'a             -- Subtyping rules for relations
+```txt
+<&'a () as Identity> <: <&'static () as Identity>
+if &'static () < : &'a ()   -- Identity is contravariant in Self
+if 'static : 'a             -- Subtyping rules for relations
+```
 
 This change otoh means that `<'static () as Identity>::Out` is
 always `&'static ()` (which might then be upcast to `'a ()`,

@@ -13,7 +13,7 @@ To implement a visitor, you have to create a type that represents
 your visitor. Typically, this type wants to "hang on" to whatever
 state you will need while processing MIR:
 
-```rust
+```rust,ignore
 struct MyVisitor<...> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     ...
@@ -22,10 +22,10 @@ struct MyVisitor<...> {
 
 and you then implement the `Visitor` or `MutVisitor` trait for that type:
 
-```rust
+```rust,ignore
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
     fn visit_foo(&mut self, ...) {
-        // ...
+        ...
         self.super_foo(...);
     }
 }

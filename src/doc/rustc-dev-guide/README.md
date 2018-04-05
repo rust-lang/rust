@@ -30,8 +30,8 @@ To help prevent accidentally introducing broken links, we use the
 invoke this link checker, otherwise it will emit a warning saying it couldn't
 be found.
 
-```
-$ cargo install mdbook-linkcheck
+```bash
+> cargo install mdbook-linkcheck
 ```
 You will need `mdbook` version `>= 0.1`. `linkcheck` will be run automatically
 when you run `mdbook build`.

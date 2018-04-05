@@ -17,9 +17,9 @@ similar conversions for where-clauses and other bits of the function signature.
 
 To try and get a sense for the difference, consider this function:
 
-```rust
+```rust,ignore
 struct Foo { }
-fn foo(x: Foo, y: self::Foo) { .. }
+fn foo(x: Foo, y: self::Foo) { ... }
 //        ^^^     ^^^^^^^^^
 ```
 

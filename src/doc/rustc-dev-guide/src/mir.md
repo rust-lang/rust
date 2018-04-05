@@ -69,12 +69,12 @@ fn main() {
 
 You should see something like:
 
-```
+```mir
 // WARNING: This output format is intended for human consumers only
 // and is subject to change without notice. Knock yourself out.
 fn main() -> () {
     ...
-}    
+}
 ```
 
 This is the MIR format for the `main` function.
@@ -82,7 +82,7 @@ This is the MIR format for the `main` function.
 **Variable declarations.** If we drill in a bit, we'll see it begins
 with a bunch of variable declarations. They look like this:
 
-```
+```mir
 let mut _0: ();                      // return place
 scope 1 {
     let mut _1: std::vec::Vec<i32>;  // "vec" in scope 1 at src/main.rs:2:9: 2:16
@@ -107,8 +107,8 @@ program (which names were in scope when).
 it may look slightly different when you view it, and I am ignoring some of the
 comments):
 
-```
-bb0: {                              
+```mir
+bb0: {
     StorageLive(_1);
     _1 = const <std::vec::Vec<T>>::new() -> bb2;
 }
@@ -117,7 +117,7 @@ bb0: {
 A basic block is defined by a series of **statements** and a final
 **terminator**.  In this case, there is one statement:
 
-```
+```mir
 StorageLive(_1);
 ```
 
@@ -129,7 +129,7 @@ allocate stack space.
 
 The **terminator** of the block `bb0` is the call to `Vec::new`:
 
-```
+```mir
 _1 = const <std::vec::Vec<T>>::new() -> bb2;
 ```
 
@@ -142,8 +142,8 @@ possible, and hence we list only one succssor block, `bb2`.
 
 If we look ahead to `bb2`, we will see it looks like this:
 
-```
-bb2: {                              
+```mir
+bb2: {
     StorageLive(_3);
     _3 = &mut _1;
     _2 = const <std::vec::Vec<T>>::push(move _3, const 1i32) -> [return: bb3, unwind: bb4];
@@ -153,13 +153,13 @@ bb2: {
 Here there are two statements: another `StorageLive`, introducing the `_3`
 temporary, and then an assignment:
 
-```
+```mir
 _3 = &mut _1;
 ```
 
 Assignments in general have the form:
 
-```
+```txt
 <Place> = <Rvalue>
 ```
 
@@ -169,7 +169,7 @@ value: in this case, the rvalue is a mutable borrow expression, which
 looks like `&mut <Place>`. So we can kind of define a grammar for
 rvalues like so:
 
-```
+```txt
 <Rvalue>  = & (mut)? <Place>
           | <Operand> + <Operand>
           | <Operand> - <Operand>
@@ -178,7 +178,7 @@ rvalues like so:
 <Operand> = Constant
           | copy Place
           | move Place
-```         
+```
 
 As you can see from this grammar, rvalues cannot be nested -- they can
 only reference places and constants. Moreover, when you use a place,
@@ -188,7 +188,7 @@ for a place of any type). So, for example, if we had the expression `x
 = a + b + c` in Rust, that would get compile to two statements and a
 temporary:
 
-```
+```mir
 TMP1 = a + b
 x = TMP1 + c
 ```
@@ -214,14 +214,14 @@ but [you can read about those below](#promoted)).
   we pass around `BasicBlock` values, which are
   [newtype'd] indices into this vector.
 - **Statements** are represented by the type `Statement`.
-- **Terminators** are represented by the `Terminator`.  
+- **Terminators** are represented by the `Terminator`.
 - **Locals** are represented by a [newtype'd] index type `Local`. The
   data for a local variable is found in the `Mir` (the `local_decls`
   vector). There is also a special constant `RETURN_PLACE` identifying
   the special "local" representing the return value.
 - **Places** are identified by the enum `Place`. There are a few variants:
   - Local variables like `_1`
-  - Static variables `FOO` 
+  - Static variables `FOO`
   - **Projections**, which are fields or other things that "project
     out" from a base place. So e.g. the place `_1.f` is a projection,
     with `f` being the "projection element and `_1` being the base

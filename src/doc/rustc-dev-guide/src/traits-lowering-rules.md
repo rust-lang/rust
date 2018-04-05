@@ -67,7 +67,7 @@ but Chalk isn't modeling those right now.
 
 Given a trait definition
 
-```rust
+```rust,ignore
 trait Trait<P1..Pn> // P0 == Self
 where WC
 {
@@ -87,10 +87,12 @@ relationships between different kinds of domain goals.  The first such
 rule from the trait header creates the mapping between the `FromEnv`
 and `Implemented` predicates:
 
-    // Rule Implemented-From-Env
-    forall<Self, P1..Pn> {
-      Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)
-    }
+```txt
+// Rule Implemented-From-Env
+forall<Self, P1..Pn> {
+  Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)
+}
+```
 
 <a name="implied-bounds">
 
@@ -101,17 +103,19 @@ The next few clauses have to do with implied bounds (see also
 
 [RFC 2089]: https://rust-lang.github.io/rfcs/2089-implied-bounds.html
 
-    // Rule Implied-Bound-From-Trait
-    //
-    // For each where clause WC:
-    forall<Self, P1..Pn> {
-      FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
-    }
+```txt
+// Rule Implied-Bound-From-Trait
+//
+// For each where clause WC:
+forall<Self, P1..Pn> {
+  FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn)
+}
+```
 
 This clause says that if we are assuming that the trait holds, then we can also
 assume that it's where-clauses hold. It's perhaps useful to see an example:
 
-```rust
+```rust,ignore
 trait Eq: PartialEq { ... }
 ```
 
@@ -145,7 +149,7 @@ all the where clauses that are transitively implied by `T: Trait`.
 
 An example:
 
-```rust
+```rust,ignore
 trait Foo: A + Bar { }
 trait Bar: B + Foo { }
 trait A { }
@@ -180,7 +184,7 @@ items.
 
 Given a trait that declares a (possibly generic) associated type:
 
-```rust
+```rust,ignore
 trait Trait<P1..Pn> // P0 == Self
 where WC
 {
@@ -190,39 +194,43 @@ where WC
 
 We will produce a number of program clauses. The first two define
 the rules by which `ProjectionEq` can succeed; these two clauses are discussed
-in detail in the [section on associated types](./traits-associated-types.html),,
+in detail in the [section on associated types](./traits-associated-types.html),
 but reproduced here for reference:
 
-    // Rule ProjectionEq-Normalize
-    //
-    // ProjectionEq can succeed by normalizing:
-    forall<Self, P1..Pn, Pn+1..Pm, U> {
-      ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
-          Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
-    }
+```txt
+  // Rule ProjectionEq-Normalize
+  //
+  // ProjectionEq can succeed by normalizing:
+  forall<Self, P1..Pn, Pn+1..Pm, U> {
+    ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
+        Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
+  }
 
-    // Rule ProjectionEq-Skolemize
-    //
-    // ProjectionEq can succeed by skolemizing, see "associated type"
-    // chapter for more:
-    forall<Self, P1..Pn, Pn+1..Pm> {
-      ProjectionEq(
-        <Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> =
-          (Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>
-      ) :-
-        // But only if the trait is implemented, and the conditions from
-        // the associated type are met as well:
-        Implemented(Self: Trait<P1..Pn>)
-        && WC1
-    }
+  // Rule ProjectionEq-Skolemize
+  //
+  // ProjectionEq can succeed by skolemizing, see "associated type"
+  // chapter for more:
+  forall<Self, P1..Pn, Pn+1..Pm> {
+    ProjectionEq(
+      <Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> =
+        (Trait::AssocType)<Self, P1..Pn, Pn+1..Pm>
+    ) :-
+      // But only if the trait is implemented, and the conditions from
+      // the associated type are met as well:
+      Implemented(Self: Trait<P1..Pn>)
+      && WC1
+  }
+```
 
 The next rule covers implied bounds for the projection. In particular,
 the `Bounds` declared on the associated type must be proven to hold to
 show that the impl is well-formed, and hence we can rely on them
 elsewhere.
 
-    // XXX how exactly should we set this up? Have to be careful;
-    // presumably this has to be a kind of `FromEnv` setup.
+```txt
+// XXX how exactly should we set this up? Have to be careful;
+// presumably this has to be a kind of `FromEnv` setup.
+```
 
 ### Lowering function and constant declarations
 
@@ -234,7 +242,7 @@ values below](#constant-vals) for more details.
 
 Given an impl of a trait:
 
-```rust
+```rust,ignore
 impl<P0..Pn> Trait<A1..An> for A0
 where WC
 {
@@ -245,10 +253,12 @@ where WC
 Let `TraitRef` be the trait reference `A0: Trait<A1..An>`. Then we
 will create the following rules:
 
-    // Rule Implemented-From-Impl
-    forall<P0..Pn> {
-      Implemented(TraitRef) :- WC
-    }
+```txt
+// Rule Implemented-From-Impl
+forall<P0..Pn> {
+  Implemented(TraitRef) :- WC
+}
+```
 
 In addition, we will lower all of the *impl items*.
 
@@ -258,7 +268,7 @@ In addition, we will lower all of the *impl items*.
 
 Given an impl that contains:
 
-```rust
+```rust,ignore
 impl<P0..Pn> Trait<A1..An> for A0
 where WC
 {
@@ -268,13 +278,15 @@ where WC
 
 We produce the following rule:
 
-    // Rule Normalize-From-Impl
-    forall<P0..Pm> {
-      forall<Pn+1..Pm> {
-        Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
-          WC && WC1
-      }
-    }
+```txt
+// Rule Normalize-From-Impl
+forall<P0..Pm> {
+  forall<Pn+1..Pm> {
+    Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
+      WC && WC1
+  }
+}
+```
 
 Note that `WC` and `WC1` both encode where-clauses that the impl can
 rely on.

@@ -61,7 +61,8 @@ which takes a single argument (which, in this case is a value of 1).
 (rather than the current Rust default of 101 at the time of this writing).  The
 header command and the argument list (if present) are typically separated by a
 colon:
-```
+
+```rust,ignore
 // Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.

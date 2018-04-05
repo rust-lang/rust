@@ -15,7 +15,7 @@ expansion works.
 It's helpful to have an example to refer to. For the remainder of this chapter,
 whenever we refer to the "example _definition_", we mean the following:
 
-```rust
+```rust,ignore
 macro_rules! printer {
     (print $mvar:ident) => {
         println!("{}", $mvar);
@@ -45,7 +45,7 @@ worrying about _where_. For more information about tokens, see the
 
 Whenever we refer to the "example _invocation_", we mean the following snippet:
 
-```rust
+```rust,ignore
 printer!(print foo); // Assume `foo` is a variable defined somewhere else...
 ```
 
@@ -65,7 +65,7 @@ defined in [`src/libsyntax/ext/tt/macro_parser.rs`][code_mp].
 
 The interface of the macro parser is as follows (this is slightly simplified):
 
-```rust
+```rust,ignore
 fn parse(
     sess: ParserSession,
     tts: TokenStream,

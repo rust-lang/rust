@@ -10,7 +10,7 @@ The `tcx` ("typing context") is the central data structure in the
 compiler. It is the context that you use to perform all manner of
 queries. The struct `TyCtxt` defines a reference to this shared context:
 
-```rust
+```rust,ignore
 tcx: TyCtxt<'a, 'gcx, 'tcx>
 //          --  ----  ----
 //          |   |     |
@@ -47,7 +47,7 @@ for the `'gcx` and `'tcx` parameters of `TyCtxt`. Just to be a touch
 confusing, we tend to use the name `'tcx` in such contexts. Here is an
 example:
 
-```rust
+```rust,ignore
 fn not_in_inference<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     //                                        ----  ----
     //                                        Using the same lifetime here asserts
@@ -59,7 +59,7 @@ fn not_in_inference<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
 In contrast, if we want to code that can be usable during type inference, then
 you need to declare a distinct `'gcx` and `'tcx` lifetime parameter:
 
-```rust
+```rust,ignore
 fn maybe_in_inference<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) {
     //                                                ----  ----
     //                                        Using different lifetimes here means that
@@ -74,7 +74,7 @@ Rust types are represented using the `Ty<'tcx>` defined in the `ty`
 module (not to be confused with the `Ty` struct from [the HIR]). This
 is in fact a simple type alias for a reference with `'tcx` lifetime:
 
-```rust
+```rust,ignore
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 ```
 
@@ -89,7 +89,7 @@ the rustc arenas (never e.g. on the stack).
 One common operation on types is to **match** and see what kinds of
 types they are. This is done by doing `match ty.sty`, sort of like this:
 
-```rust
+```rust,ignore
 fn test_type<'tcx>(ty: Ty<'tcx>) {
     match ty.sty {
         ty::TyArray(elem_ty, len) => { ... }
@@ -111,7 +111,7 @@ To allocate a new type, you can use the various `mk_` methods defined
 on the `tcx`. These have names that correpond mostly to the various kinds
 of type variants. For example:
 
-```rust
+```rust,ignore
 let array_ty = tcx.mk_array(elem_ty, len * 2);
 ```
 
@@ -158,7 +158,7 @@ module. Here are a few examples:
 Although there is no hard and fast rule, the `ty` module tends to be used like
 so:
 
-```rust
+```rust,ignore
 use ty::{self, Ty, TyCtxt};
 ```
 

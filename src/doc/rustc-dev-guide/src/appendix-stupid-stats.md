@@ -3,7 +3,7 @@
 > **Note:** This is a copy of `@nrc`'s amazing [stupid-stats]. You should find
 > a copy of the code on the GitHub repository although due to the compiler's
 > constantly evolving nature, there is no guarantee it'll compile on the first
-> go. 
+> go.
 
 Many tools benefit from being a drop-in replacement for a compiler. By this, I
 mean that any user of the tool can use `mytool` in all the ways they would
@@ -177,7 +177,7 @@ foo.rs` (assuming you have a Rust program called `foo.rs`. You can also pass any
 command line arguments that you would normally pass to rustc). When you run it
 you'll see output similar to
 
-```
+```txt
 In crate: foo,
 
 Found 12 uses of `println!`;
@@ -205,7 +205,7 @@ should dump stupid-stats' stdout to Cargo's stdout).
 
 Let's start with the `main` function for our tool, it is pretty simple:
 
-```
+```rust,ignore
 fn main() {
     let args: Vec<_> = std::env::args().collect();
     rustc_driver::run_compiler(&args, &mut StupidCalls::new());
@@ -223,7 +223,7 @@ this tool different from rustc.
 
 `StupidCalls` is a mostly empty struct:
 
-```
+```rust,ignore
 struct StupidCalls {
     default_calls: RustcDefaultCalls,
 }
@@ -238,7 +238,7 @@ to keep Cargo happy.
 
 Most of the rest of the impl of `CompilerCalls` is trivial:
 
-```
+```rust,ignore
 impl<'a> CompilerCalls<'a> for StupidCalls {
     fn early_callback(&mut self,
                         _: &getopts::Matches,
@@ -300,7 +300,7 @@ tool does it's actual work by walking the AST. We do that by creating an AST
 visitor and making it walk the AST from the top (the crate root). Once we've
 walked the crate, we print the stats we've collected:
 
-```
+```rust,ignore
 fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
     // We mostly want to do what rustc does, which is what basic() will return.
     let mut control = driver::CompileController::basic();
@@ -340,7 +340,7 @@ That is all it takes to create your own drop-in compiler replacement or custom
 compiler! For the sake of completeness I'll go over the rest of the stupid-stats
 tool.
 
-```
+```rust
 struct StupidVisitor {
     println_count: usize,
     arg_counts: Vec<usize>,
@@ -355,7 +355,7 @@ methods, these walk the AST taking no action. We override `visit_item` and
 functions, modules, traits, structs, and so forth, we're only interested in
 functions) and macros:
 
-```
+```rust,ignore
 impl<'v> visit::Visitor<'v> for StupidVisitor {
     fn visit_item(&mut self, i: &'v ast::Item) {
         match i.node {

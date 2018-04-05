@@ -12,22 +12,24 @@ a few new superpowers.
 In Rust's solver, **goals** and **clauses** have the following forms
 (note that the two definitions reference one another):
 
-    Goal = DomainGoal           // defined in the section below
-         | Goal && Goal
-         | Goal || Goal
-         | exists<K> { Goal }   // existential quantification
-         | forall<K> { Goal }   // universal quantification 
-         | if (Clause) { Goal } // implication
-         | true                 // something that's trivially true 
-         | ambiguous            // something that's never provable
+```txt
+Goal = DomainGoal           // defined in the section below
+        | Goal && Goal
+        | Goal || Goal
+        | exists<K> { Goal }   // existential quantification
+        | forall<K> { Goal }   // universal quantification
+        | if (Clause) { Goal } // implication
+        | true                 // something that's trivially true
+        | ambiguous            // something that's never provable
 
-    Clause = DomainGoal
-           | Clause :- Goal     // if can prove Goal, then Clause is true
-           | Clause && Clause
-           | forall<K> { Clause }
-    
-    K = <type>     // a "kind"
-      | <lifetime>
+Clause = DomainGoal
+        | Clause :- Goal     // if can prove Goal, then Clause is true
+        | Clause && Clause
+        | forall<K> { Clause }
+
+K = <type>     // a "kind"
+    | <lifetime>
+```
 
 The proof procedure for these sorts of goals is actually quite
 straightforward.  Essentially, it's a form of depth-first search. The
@@ -47,8 +49,10 @@ To define the set of *domain goals* in our system, we need to first
 introduce a few simple formulations. A **trait reference** consists of
 the name of a trait along with a suitable set of inputs P0..Pn:
 
-    TraitRef = P0: TraitName<P1..Pn>
-    
+```txt
+TraitRef = P0: TraitName<P1..Pn>
+```
+
 So, for example, `u32: Display` is a trait reference, as is `Vec<T>:
 IntoIterator`. Note that Rust surface syntax also permits some extra
 things, like associated type bindings (`Vec<T>: IntoIterator<Item =
@@ -59,20 +63,24 @@ T>`), that are not part of a trait reference.
 A **projection** consists of an associated item reference along with
 its inputs P0..Pm:
 
-    Projection = <P0 as TraitName<P1..Pn>>::AssocItem<Pn+1..Pm>
+```txt
+Projection = <P0 as TraitName<P1..Pn>>::AssocItem<Pn+1..Pm>
+```
 
 Given that, we can define a `DomainGoal` as follows:
 
-    DomainGoal = Implemented(TraitRef)
-               | ProjectionEq(Projection = Type)
-               | Normalize(Projection -> Type)
-               | FromEnv(TraitRef)
-               | FromEnv(Projection = Type)
-               | WellFormed(Type)
-               | WellFormed(TraitRef)
-               | WellFormed(Projection = Type)
-               | Outlives(Type, Region)
-               | Outlives(Region, Region)
+```txt
+DomainGoal = Implemented(TraitRef)
+            | ProjectionEq(Projection = Type)
+            | Normalize(Projection -> Type)
+            | FromEnv(TraitRef)
+            | FromEnv(Projection = Type)
+            | WellFormed(Type)
+            | WellFormed(TraitRef)
+            | WellFormed(Projection = Type)
+            | Outlives(Type, Region)
+            | Outlives(Region, Region)
+```
 
 - `Implemented(TraitRef)` -- true if the given trait is
   implemented for the given input types and lifetimes
@@ -104,9 +112,11 @@ Given that, we can define a `DomainGoal` as follows:
 Most goals in our system are "inductive". In an inductive goal,
 circular reasoning is disallowed. Consider this example clause:
 
+```txt
     Implemented(Foo: Bar) :-
         Implemented(Foo: Bar).
-        
+```
+
 Considered inductively, this clause is useless: if we are trying to
 prove `Implemented(Foo: Bar)`, we would then recursively have to prove
 `Implemented(Foo: Bar)`, and that cycle would continue ad infinitum
@@ -130,8 +140,10 @@ struct Foo {
 The default rules for auto traits say that `Foo` is `Send` if the
 types of its fields are `Send`. Therefore, we would have a rule like
 
-    Implemented(Foo: Send) :-
-        Implemented(Option<Box<Foo>>: Send).
+```txt
+Implemented(Foo: Send) :-
+    Implemented(Option<Box<Foo>>: Send).
+```
 
 As you can probably imagine, proving that `Option<Box<Foo>>: Send` is
 going to wind up circularly requiring us to prove that `Foo: Send`

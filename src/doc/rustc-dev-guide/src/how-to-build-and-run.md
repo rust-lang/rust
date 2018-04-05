@@ -70,8 +70,8 @@ Once you've created a config.toml, you are now ready to run
 `x.py`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local rust:
 
-```
-./x.py build -i --stage 1 src/libstd
+```bash
+> ./x.py build -i --stage 1 src/libstd
 ```
 
 What this command will do is the following:
@@ -106,7 +106,7 @@ will execute the stage2 compiler (which we did not build, but which
 you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
-```
+```bash
 > rustup toolchain link stage1 build/<host-triple>/stage1
 > rustup toolchain link stage2 build/<host-triple>/stage2
 ```
@@ -115,7 +115,7 @@ Now you can run the rustc you built with. If you run with `-vV`, you
 should see a version number ending in `-dev`, indicating a build from
 your local environment:
 
-```
+```bash
 > rustc +stage1 -vV
 rustc 1.25.0-dev
 binary: rustc

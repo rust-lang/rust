@@ -21,7 +21,7 @@ tidy script runs automatically when you do `./x.py test`.
 
 All files must begin with the following copyright notice:
 
-```
+```rust
 // Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -48,7 +48,7 @@ tests -- it can be necessary to exempt yourself from this limit. In
 that case, you can add a comment towards the top of the file (after
 the copyright notice) like so:
 
-```
+```rust
 // ignore-tidy-linelength
 ```
 
@@ -61,7 +61,7 @@ Prefer 4-space indent.
 # Coding for correctness
 
 Beyond formatting, there are a few other tips that are worth
-following. 
+following.
 
 ## Prefer exhaustive matches
 

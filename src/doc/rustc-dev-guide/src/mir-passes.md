@@ -52,13 +52,13 @@ fn main() {
 The files have names like `rustc.main.000-000.CleanEndRegions.after.mir`. These
 names have a number of parts:
 
-```
+```txt
 rustc.main.000-000.CleanEndRegions.after.mir
       ---- --- --- --------------- ----- either before or after
       |    |   |   name of the pass
       |    |   index of dump within the pass (usually 0, but some passes dump intermediate states)
       |    index of the pass
-      def-path to the function etc being dumped    
+      def-path to the function etc being dumped
 ```
 
 You can also make more selective filters. For example, `main & CleanEndRegions`
@@ -159,7 +159,7 @@ ensuring that the reads have already happened (remember that
 [queries are memoized](./query.html), so executing a query twice
 simply loads from a cache the second time):
 
-```
+```txt
 mir_const(D) --read-by--> mir_const_qualif(D)
      |                       ^
   stolen-by                  |

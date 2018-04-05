@@ -100,7 +100,7 @@ are normally put after the short comment that explains the point of
 this test. For example, this test uses the `// compile-flags` command
 to specify a custom flag to give to rustc when the test is compiled:
 
-```rust
+```rust,ignore
 // Copyright 2017 The Rust Project Developers. blah blah blah.
 // ...
 // except according to those terms.
@@ -198,7 +198,7 @@ incremental, though incremental tests are somewhat
 different). Revisions allow a single test file to be used for multiple
 tests. This is done by adding a special header at the top of the file:
 
-```
+```rust
 // revisions: foo bar baz
 ```
 
@@ -211,7 +211,7 @@ You can also customize headers and expected error messages to a particular
 revision. To do this, add `[foo]` (or `bar`, `baz`, etc) after the `//`
 comment, like so:
 
-```
+```rust
 // A flag to pass in only for cfg `foo`:
 //[foo]compile-flags: -Z verbose
 
@@ -284,7 +284,7 @@ between platforms, mainly about filenames:
 Sometimes these built-in normalizations are not enough. In such cases, you
 may provide custom normalization rules using the header commands, e.g.
 
-```
+```rust
 // normalize-stdout-test: "foo" -> "bar"
 // normalize-stderr-32bit: "fn\(\) \(32 bits\)" -> "fn\(\) \($$PTR bits\)"
 // normalize-stderr-64bit: "fn\(\) \(64 bits\)" -> "fn\(\) \($$PTR bits\)"
@@ -298,7 +298,7 @@ default regex flavor provided by `regex` crate.
 The corresponding reference file will use the normalized output to test both
 32-bit and 64-bit platforms:
 
-```
+```txt
 ...
    |
    = note: source type: fn() ($PTR bits)

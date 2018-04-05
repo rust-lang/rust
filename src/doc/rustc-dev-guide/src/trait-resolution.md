@@ -13,13 +13,13 @@ see [*this* traits chapter](./traits.html).
 Trait resolution is the process of pairing up an impl with each
 reference to a trait. So, for example, if there is a generic function like:
 
-```rust
-fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> { /*...*/ }
+```rust,ignore
+fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> { ... }
 ```
 
 and then a call to that function:
 
-```rust
+```rust,ignore
 let v: Vec<isize> = clone_slice(&[1, 2, 3])
 ```
 
@@ -30,7 +30,7 @@ Note that in some cases, like generic functions, we may not be able to
 find a specific impl, but we can figure out that the caller must
 provide an impl. For example, consider the body of `clone_slice`:
 
-```rust
+```rust,ignore
 fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> {
     let mut v = Vec::new();
     for e in &x {
@@ -143,7 +143,7 @@ otherwise the result is considered ambiguous.
 This process is easier if we work through some examples. Consider
 the following trait:
 
-```rust
+```rust,ignore
 trait Convert<Target> {
     fn convert(&self) -> Target;
 }
@@ -154,14 +154,14 @@ converts from the (implicit) `Self` type to the `Target` type. If we
 wanted to permit conversion between `isize` and `usize`, we might
 implement `Convert` like so:
 
-```rust
-impl Convert<usize> for isize { /*...*/ } // isize -> usize
-impl Convert<isize> for usize { /*...*/ } // usize -> isize
+```rust,ignore
+impl Convert<usize> for isize { ... } // isize -> usize
+impl Convert<isize> for usize { ... } // usize -> isize
 ```
 
 Now imagine there is some code like the following:
 
-```rust
+```rust,ignore
 let x: isize = ...;
 let y = x.convert();
 ```
@@ -186,7 +186,7 @@ inference?
 But what happens if there are multiple impls where all the types
 unify? Consider this example:
 
-```rust
+```rust,ignore
 trait Get {
     fn get(&self) -> Self;
 }
@@ -224,11 +224,11 @@ the same trait (or some subtrait) and which can match against the obligation.
 
 Consider this simple example:
 
-```rust
+```rust,ignore
 trait A1 {
     fn do_a1(&self);
 }
-trait A2 : A1 { /*...*/ }
+trait A2 : A1 { ... }
 
 trait B {
     fn do_b(&self);
@@ -256,13 +256,13 @@ values found in the obligation, possibly yielding a type error.
 Suppose we have the following variation of the `Convert` example in the
 previous section:
 
-```rust
+```rust,ignore
 trait Convert<Target> {
     fn convert(&self) -> Target;
 }
 
-impl Convert<usize> for isize { /*...*/ } // isize -> usize
-impl Convert<isize> for usize { /*...*/ } // usize -> isize
+impl Convert<usize> for isize { ... } // isize -> usize
+impl Convert<isize> for usize { ... } // usize -> isize
 
 let x: isize = ...;
 let y: char = x.convert(); // NOTE: `y: char` now!
@@ -296,11 +296,11 @@ everything out.
 
 Here is an example:
 
-```rust
-trait Foo { /*...*/ }
-impl<U,T:Bar<U>> Foo for Vec<T> { /*...*/ }
+```rust,ignore
+trait Foo { ... }
+impl<U, T:Bar<U>> Foo for Vec<T> { ... }
 
-impl Bar<usize> for isize { /*...*/ }
+impl Bar<usize> for isize { ... }
 ```
 
 After one shallow round of selection for an obligation like `Vec<isize>

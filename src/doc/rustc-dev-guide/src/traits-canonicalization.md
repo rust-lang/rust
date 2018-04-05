@@ -42,14 +42,18 @@ This query contains two unbound variables, but it also contains the
 lifetime `'static`. The trait system generally ignores all lifetimes
 and treats them equally, so when canonicalizing, we will *also*
 replace any [free lifetime](./appendix-background.html#free-vs-bound) with a
-canonical variable. Therefore, we get the following result: 
+canonical variable. Therefore, we get the following result:
 
-    ?0: Foo<'?1, ?2>
-    
-Sometimes we write this differently, like so:    
+```txt
+?0: Foo<'?1, ?2>
+```
 
-    for<T,L,T> { ?0: Foo<'?1, ?2> }
-    
+Sometimes we write this differently, like so:
+
+```txt
+for<T,L,T> { ?0: Foo<'?1, ?2> }
+```
+
 This `for<>` gives some information about each of the canonical
 variables within.  In this case, each `T` indicates a type variable,
 so `?0` and `?2` are types; the `L` indicates a lifetime varibale, so
@@ -57,8 +61,10 @@ so `?0` and `?2` are types; the `L` indicates a lifetime varibale, so
 `CanonicalVarValues` array OV with the "original values" for each
 canonicalized variable:
 
-    [?A, 'static, ?B]
-    
+```txt
+[?A, 'static, ?B]
+```
+
 We'll need this vector OV later, when we process the query response.
 
 ## Executing the query
@@ -70,18 +76,24 @@ we create a substitution S from the canonical form containing a fresh
 inference variable (of suitable kind) for each canonical variable.
 So, for our example query:
 
-    for<T,L,T> { ?0: Foo<'?1, ?2> }
+```txt
+for<T,L,T> { ?0: Foo<'?1, ?2> }
+```
 
 the substitution S might be:
 
-    S = [?A, '?B, ?C]
-    
+```txt
+S = [?A, '?B, ?C]
+```
+
 We can then replace the bound canonical variables (`?0`, etc) with
 these inference variables, yielding the following fully instantiated
 query:
 
-    ?A: Foo<'?B, ?C>
-    
+```txt
+?A: Foo<'?B, ?C>
+```
+
 Remember that substitution S though! We're going to need it later.
 
 OK, now that we have a fresh inference context and an instantiated
@@ -93,7 +105,7 @@ created. For example, if there were only one impl of `Foo`, like so:
 
 [cqqr]: ./traits-canonical-queries.html#query-response
 
-```
+```rust,ignore
 impl<'a, X> Foo<'a, X> for Vec<X>
 where X: 'a
 { ... }
@@ -123,39 +135,49 @@ result substitution `var_values`, and some region constraints. To
 create this, we wind up re-using the substitution S that we created
 when first instantiating our query. To refresh your memory, we had a query
 
-    for<T,L,T> { ?0: Foo<'?1, ?2> }
+```txt
+for<T,L,T> { ?0: Foo<'?1, ?2> }
+```
 
 for which we made a substutition S:
 
-    S = [?A, '?B, ?C]
-    
+```txt
+S = [?A, '?B, ?C]
+```
+
 We then did some work which unified some of those variables with other things.
 If we "refresh" S with the latest results, we get:
 
-    S = [Vec<?E>, '?D, ?E]
-    
+```txt
+S = [Vec<?E>, '?D, ?E]
+```
+
 These are precisely the new values for the three input variables from
 our original query. Note though that they include some new variables
 (like `?E`). We can make those go away by canonicalizing again! We don't
 just canonicalize S, though, we canonicalize the whole query response QR:
 
-    QR = {
-      certainty: Proven,             // or whatever
-      var_values: [Vec<?E>, '?D, ?E] // this is S
-      region_constraints: [?E: '?D], // from the impl
-      value: (),                     // for our purposes, just (), but 
-                                     // in some cases this might have
-                                     // a type or other info
-    }                                     
+```txt
+QR = {
+    certainty: Proven,             // or whatever
+    var_values: [Vec<?E>, '?D, ?E] // this is S
+    region_constraints: [?E: '?D], // from the impl
+    value: (),                     // for our purposes, just (), but
+                                    // in some cases this might have
+                                    // a type or other info
+}
+```
 
 The result would be as follows:
 
-    Canonical(QR) = for<T, L> {
-      certainty: Proven,
-      var_values: [Vec<?0>, '?1, ?2]
-      region_constraints: [?2: '?1],
-      value: (),
-    }                                     
+```txt
+Canonical(QR) = for<T, L> {
+    certainty: Proven,
+    var_values: [Vec<?0>, '?1, ?2]
+    region_constraints: [?2: '?1],
+    value: (),
+}
+```
 
 (One subtle point: when we canonicalize the query **result**, we do not
 use any special treatment for free lifetimes. Note that both
@@ -172,20 +194,26 @@ In the previous section we produced a canonical query result. We now have
 to apply that result in our original context. If you recall, way back in the
 beginning, we were trying to prove this query:
 
-    ?A: Foo<'static, ?B>
-    
+```txt
+?A: Foo<'static, ?B>
+```
+
 We canonicalized that into this:
 
-    for<T,L,T> { ?0: Foo<'?1, ?2> }
+```txt
+for<T,L,T> { ?0: Foo<'?1, ?2> }
+```
 
 and now we got back a canonical response:
 
-    for<T, L> {
-      certainty: Proven,
-      var_values: [Vec<?0>, '?1, ?2]
-      region_constraints: [?2: '?1],
-      value: (),
-    }                                     
+```txt
+for<T, L> {
+    certainty: Proven,
+    var_values: [Vec<?0>, '?1, ?2]
+    region_constraints: [?2: '?1],
+    value: (),
+}
+```
 
 We now want to apply that response to our context. Conceptually, how
 we do that is to (a) instantiate each of the canonical variables in
@@ -193,19 +221,19 @@ the result with a fresh inference variable, (b) unify the values in
 the result with the original values, and then (c) record the region
 constraints for later. Doing step (a) would yield a result of
 
-```
+```txt
 {
       certainty: Proven,
       var_values: [Vec<?C>, '?D, ?C]
                        ^^   ^^^ fresh inference variables
       region_constraints: [?C: '?D],
       value: (),
-}         
+}
 ```
 
 Step (b) would then unify:
 
-```
+```txt
 ?A with Vec<?C>
 'static with '?D
 ?B with ?C

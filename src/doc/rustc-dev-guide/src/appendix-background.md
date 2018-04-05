@@ -21,7 +21,7 @@ all the remainder. Only at the end of the block is there the
 possibility of branching to more than one place (in MIR, we call that
 final statement the **terminator**):
 
-```
+```mir
 bb0: {
     statement0;
     statement1;
@@ -34,7 +34,7 @@ bb0: {
 Many expressions that you are used to in Rust compile down to multiple
 basic blocks. For example, consider an if statement:
 
-```rust
+```rust,ignore
 a = 1;
 if some_variable {
     b = 1;
@@ -46,7 +46,7 @@ d = 1;
 
 This would compile into four basic blocks:
 
-```
+```mir
 BB0: {
     a = 1;
     if some_variable { goto BB1 } else { goto BB2 }

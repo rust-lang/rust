@@ -21,7 +21,7 @@ signature, such as the `'a` in `for<'a> fn(&'a u32)`. A region is
 You create and "enter" an inference context by doing something like
 the following:
 
-```rust
+```rust,ignore
 tcx.infer_ctxt().enter(|infcx| {
     // Use the inference context `infcx` here.
 })
@@ -88,7 +88,7 @@ The most basic operations you can perform in the type inferencer is
 recommended way to add an equality constraint is to use the `at`
 method, roughly like so:
 
-```rust
+```rust,ignore
 infcx.at(...).eq(t, u);
 ```
 
@@ -159,7 +159,9 @@ is to first "generalize" `&'a i32` into a type with a region variable:
 `&'?b i32`, and then unify `?T` with that (`?T = &'?b i32`). We then
 relate this new variable with the original bound:
 
-    &'?b i32 <: &'a i32
+```txt
+&'?b i32 <: &'a i32
+```
 
 This will result in a region constraint (see below) of `'?b: 'a`.
 
@@ -176,12 +178,16 @@ eagerly unifying things, we simply collect constraints as we go, but
 make (almost) no attempt to solve regions. These constraints have the
 form of an "outlives" constraint:
 
-    'a: 'b
+```txt
+'a: 'b
+```
 
 Actually the code tends to view them as a subregion relation, but it's the same
 idea:
 
-    'b <= 'a
+```txt
+'b <= 'a
+```
 
 (There are various other kinds of constriants, such as "verifys"; see
 the `region_constraints` module for details.)
@@ -189,7 +195,9 @@ the `region_constraints` module for details.)
 There is one case where we do some amount of eager unification. If you have an
 equality constraint between two regions
 
-    'a = 'b
+```txt
+'a = 'b
+```
 
 we will record that fact in a unification table. You can then use
 `opportunistic_resolve_var` to convert `'b` to `'a` (or vice

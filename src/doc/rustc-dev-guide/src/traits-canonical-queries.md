@@ -19,12 +19,16 @@ In a traditional Prolog system, when you start a query, the solver
 will run off and start supplying you with every possible answer it can
 find. So given something like this:
 
-    ?- Vec<i32>: AsRef<?U>
+```txt
+?- Vec<i32>: AsRef<?U>
+```
 
 The solver might answer:
 
-    Vec<i32>: AsRef<[i32]>
-        continue? (y/n)
+```txt
+Vec<i32>: AsRef<[i32]>
+    continue? (y/n)
+```
 
 This `continue` bit is interesting. The idea in Prolog is that the
 solver is finding **all possible** instantiations of your query that
@@ -35,34 +39,42 @@ response with our original query -- Rust's solver gives back a
 substitution instead). If we were to hit `y`, the solver might then
 give us another possible answer:
 
-    Vec<i32>: AsRef<Vec<i32>>
-        continue? (y/n)
+```txt
+Vec<i32>: AsRef<Vec<i32>>
+    continue? (y/n)
+```
 
 This answer derives from the fact that there is a reflexive impl
 (`impl<T> AsRef<T> for T`) for `AsRef`. If were to hit `y` again,
 then we might get back a negative response:
 
-    no
+```txt
+no
+```
 
 Naturally, in some cases, there may be no possible answers, and hence
 the solver will just give me back `no` right away:
 
-    ?- Box<i32>: Copy
-        no
+```txt
+?- Box<i32>: Copy
+    no
+```
 
 In some cases, there might be an infinite number of responses. So for
 example if I gave this query, and I kept hitting `y`, then the solver
 would never stop giving me back answers:
 
-    ?- Vec<?U>: Clone
-       Vec<i32>: Clone
-         continue? (y/n)
-       Vec<Box<i32>>: Clone
-         continue? (y/n)
-       Vec<Box<Box<i32>>>: Clone
-         continue? (y/n)
-       Vec<Box<Box<Box<i32>>>>: Clone
-         continue? (y/n)
+```txt
+?- Vec<?U>: Clone
+    Vec<i32>: Clone
+        continue? (y/n)
+    Vec<Box<i32>>: Clone
+        continue? (y/n)
+    Vec<Box<Box<i32>>>: Clone
+        continue? (y/n)
+    Vec<Box<Box<Box<i32>>>>: Clone
+        continue? (y/n)
+```
 
 As you can imagine, the solver will gleefully keep adding another
 layer of `Box` until we ask it to stop, or it runs out of memory.
@@ -70,12 +82,16 @@ layer of `Box` until we ask it to stop, or it runs out of memory.
 Another interesting thing is that queries might still have variables
 in them. For example:
 
-    ?- Rc<?T>: Clone
+```txt
+?- Rc<?T>: Clone
+```
 
 might produce the answer:
 
-    Rc<?T>: Clone
-        continue? (y/n)
+```txt
+Rc<?T>: Clone
+    continue? (y/n)
+```
 
 After all, `Rc<?T>` is true **no matter what type `?T` is**.
 
@@ -132,7 +148,7 @@ impls; among them, there are these two (for clarify, I've written the
 
 [borrow]: https://doc.rust-lang.org/std/borrow/trait.Borrow.html
 
-```rust
+```rust,ignore
 impl<T> Borrow<T> for T where T: ?Sized
 impl<T> Borrow<[T]> for Vec<T> where T: Sized
 ```
@@ -140,7 +156,7 @@ impl<T> Borrow<[T]> for Vec<T> where T: Sized
 **Example 1.** Imagine we are type-checking this (rather artificial)
 bit of code:
 
-```rust
+```rust,ignore
 fn foo<A, B>(a: A, vec_b: Option<B>) where A: Borrow<B> { }
 
 fn main() {
@@ -185,7 +201,7 @@ other sources, in which case we can try the trait query again.
 **Example 2.** We can now extend our previous example a bit,
 and assign a value to `u`:
 
-```rust
+```rust,ignore
 fn foo<A, B>(a: A, vec_b: Option<B>) where A: Borrow<B> { }
 
 fn main() {
@@ -210,11 +226,15 @@ Let's suppose that the type checker decides to revisit the
 Borrow<?U>`. `?U` is no longer an unbound inference variable; it now
 has a value, `Vec<?V>`. So, if we "refresh" the query with that value, we get:
 
-    Vec<?T>: Borrow<Vec<?V>>
+```txt
+Vec<?T>: Borrow<Vec<?V>>
+```
 
 This time, there is only one impl that applies, the reflexive impl:
 
-    impl<T> Borrow<T> for T where T: ?Sized
+```txt
+impl<T> Borrow<T> for T where T: ?Sized
+```
 
 Therefore, the trait checker will answer:
 

@@ -18,14 +18,14 @@ trait Foo<X> {
 Let's say we have a function `want_hrtb` that wants a type which
 implements `Foo<&'a isize>` for any `'a`:
 
-```rust
+```rust,ignore
 fn want_hrtb<T>() where T : for<'a> Foo<&'a isize> { ... }
 ```
 
 Now we have a struct `AnyInt` that implements `Foo<&'a isize>` for any
 `'a`:
 
-```rust
+```rust,ignore
 struct AnyInt;
 impl<'a> Foo<&'a isize> for AnyInt { }
 ```
@@ -71,7 +71,7 @@ set for `'0` is `{'0, '$a}`, and hence the check will succeed.
 
 Let's consider a failure case. Imagine we also have a struct
 
-```rust
+```rust,ignore
 struct StaticInt;
 impl Foo<&'static isize> for StaticInt;
 ```

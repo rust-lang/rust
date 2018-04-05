@@ -3,8 +3,8 @@
 You can run the tests using `x.py`. The most basic command -- which
 you will almost never want to use! -- is as follows:
 
-```
-./x.py test
+```bash
+> ./x.py test
 ```
 
 This will build the full stage 2 compiler and then run the whole test
@@ -17,7 +17,7 @@ The test results are cached and previously successful tests are
 `ignored` during testing. The stdout/stderr contents as well as a
 timestamp file for every test can be found under `build/ARCH/test/`.
 To force-rerun a test (e.g. in case the test runner fails to notice
-a change) you can simply remove the timestamp file. 
+a change) you can simply remove the timestamp file.
 
 ## Running a subset of the test suites
 
@@ -27,7 +27,7 @@ test" that can be used after modifying rustc to see if things are
 generally working correctly would be the following:
 
 ```bash
-./x.py test --stage 1 src/test/{ui,compile-fail,run-pass}
+> ./x.py test --stage 1 src/test/{ui,compile-fail,run-pass}
 ```
 
 This will run the `ui`, `compile-fail`, and `run-pass` test suites,
@@ -37,7 +37,7 @@ example, if you are hacking on debuginfo, you may be better off with
 the debuginfo test suite:
 
 ```bash
-./x.py test --stage 1 src/test/debuginfo
+> ./x.py test --stage 1 src/test/debuginfo
 ```
 
 **Warning:** Note that bors only runs the tests with the full stage 2
@@ -51,8 +51,8 @@ Another common thing that people want to do is to run an **individual
 test**, often the test they are trying to fix. One way to do this is
 to invoke `x.py` with the `--test-args` option:
 
-```
-./x.py test --stage 1 src/test/ui --test-args issue-1234
+```bash
+> ./x.py test --stage 1 src/test/ui --test-args issue-1234
 ```
 
 Under the hood, the test runner invokes the standard rust test runner
@@ -62,8 +62,8 @@ filtering for tests that include "issue-1234" in the name.
 Often, though, it's easier to just run the test by hand. Most tests are
 just `rs` files, so you can do something like
 
-```
-rustc +stage1 src/test/ui/issue-1234.rs
+```bash
+> rustc +stage1 src/test/ui/issue-1234.rs
 ```
 
 This is much faster, but doesn't always work. For example, some tests

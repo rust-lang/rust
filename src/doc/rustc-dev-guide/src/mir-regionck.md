@@ -34,7 +34,7 @@ The MIR-based region analysis consists of two major functions:
     are used.
   - More details to come, though the [NLL RFC] also includes fairly thorough
     (and hopefully readable) coverage.
-  
+
 [fvb]: appendix-background.html#free-vs-bound
 [NLL RFC]: http://rust-lang.github.io/rfcs/2094-nll.html
 
@@ -82,7 +82,7 @@ The kinds of region elements are as follows:
   corresponds (intuitively) to some unknown set of other elements --
   for details on skolemization, see the section
   [skolemization and universes](#skol).
-  
+
 ## Causal tracking
 
 *to be written* -- describe how we can extend the values of a variable
@@ -97,7 +97,7 @@ The kinds of region elements are as follows:
 From time to time we have to reason about regions that we can't
 concretely know. For example, consider this program:
 
-```rust
+```rust,ignore
 // A function that needs a static reference
 fn foo(x: &'static u32) { }
 
@@ -122,10 +122,12 @@ stack, for example). But *how* do we reject it and *why*?
 When we type-check `main`, and in particular the call `bar(foo)`, we
 are going to wind up with a subtyping relationship like this one:
 
-    fn(&'static u32) <: for<'a> fn(&'a u32)
-    ----------------    -------------------
-    the type of `foo`   the type `bar` expects
-    
+```txt
+fn(&'static u32) <: for<'a> fn(&'a u32)
+----------------    -------------------
+the type of `foo`   the type `bar` expects
+```
+
 We handle this sort of subtyping by taking the variables that are
 bound in the supertype and **skolemizing** them: this means that we
 replace them with
@@ -135,8 +137,10 @@ regions" -- they represent, basically, "some unknown region".
 
 Once we've done that replacement, we have the following relation:
 
-    fn(&'static u32) <: fn(&'!1 u32)
-    
+```txt
+fn(&'static u32) <: fn(&'!1 u32)
+```
+
 The key idea here is that this unknown region `'!1` is not related to
 any other regions. So if we can prove that the subtyping relationship
 is true for `'!1`, then it ought to be true for any region, which is
@@ -147,7 +151,9 @@ subtypes, we check if their arguments have the desired relationship
 (fn arguments are [contravariant](./appendix-background.html#variance), so
 we swap the left and right here):
 
-    &'!1 u32 <: &'static u32
+```txt
+&'!1 u32 <: &'static u32
+```
 
 According to the basic subtyping rules for a reference, this will be
 true if `'!1: 'static`. That is -- if "some unknown region `!1`" lives
@@ -168,7 +174,7 @@ put generic type parameters into this root universe (in this sense,
 there is not just one root universe, but one per item). So consider
 this function `bar`:
 
-```rust
+```rust,ignore
 struct Foo { }
 
 fn bar<'a, T>(t: &'a T) {
@@ -185,7 +191,7 @@ Basically, the root universe contains all the names that
 
 Now let's extend `bar` a bit by adding a variable `x`:
 
-```rust
+```rust,ignore
 fn bar<'a, T>(t: &'a T) {
     let x: for<'b> fn(&'b u32) = ...;
 }
@@ -195,7 +201,7 @@ Here, the name `'b` is not part of the root universe. Instead, when we
 "enter" into this `for<'b>` (e.g., by skolemizing it), we will create
 a child universe of the root, let's call it U1:
 
-```
+```txt
 U0 (root universe)
 │
 └─ U1 (child universe)
@@ -207,7 +213,7 @@ with a new name, which we are identifying by its universe number:
 
 Now let's extend `bar` a bit by adding one more variable, `y`:
 
-```rust
+```rust,ignore
 fn bar<'a, T>(t: &'a T) {
     let x: for<'b> fn(&'b u32) = ...;
     let y: for<'c> fn(&'b u32) = ...;
@@ -218,7 +224,7 @@ When we enter *this* type, we will again create a new universe, which
 we'll call `U2`. Its parent will be the root universe, and U1 will be
 its sibling:
 
-```
+```txt
 U0 (root universe)
 │
 ├─ U1 (child universe)
@@ -257,11 +263,11 @@ children, that inference variable X would have to be in U0. And since
 X is in U0, it cannot name anything from U1 (or U2). This is perhaps easiest
 to see by using a kind of generic "logic" example:
 
-```
+```txt
 exists<X> {
    forall<Y> { ... /* Y is in U1 ... */ }
    forall<Z> { ... /* Z is in U2 ... */ }
-}   
+}
 ```
 
 Here, the only way for the two foralls to interact would be through X,
@@ -290,8 +296,10 @@ does not say region elements **will** appear.
 
 In the region inference engine, outlives constraints have the form:
 
-    V1: V2 @ P
-    
+```txt
+V1: V2 @ P
+```
+
 where `V1` and `V2` are region indices, and hence map to some region
 variable (which may be universally or existentially quantified). The
 `P` here is a "point" in the control-flow graph; it's not important
@@ -338,8 +346,10 @@ for universal regions from the fn signature.)
 Put another way, the "universal regions" check can be considered to be
 checking constraints like:
 
-    {skol(1)}: V1
-    
+```txt
+{skol(1)}: V1
+```
+
 where `{skol(1)}` is like a constant set, and V1 is the variable we
 made to represent the `!1` region.
 
@@ -348,30 +358,40 @@ made to represent the `!1` region.
 OK, so far so good. Now let's walk through what would happen with our
 first example:
 
-    fn(&'static u32) <: fn(&'!1 u32) @ P  // this point P is not imp't here
+```txt
+fn(&'static u32) <: fn(&'!1 u32) @ P  // this point P is not imp't here
+```
 
 The region inference engine will create a region element domain like this:
 
-    { CFG; end('static); skol(1) }
-      ---  ------------  ------- from the universe `!1`
-      |    'static is always in scope
-      all points in the CFG; not especially relevant here 
+```txt
+{ CFG; end('static); skol(1) }
+    ---  ------------  ------- from the universe `!1`
+    |    'static is always in scope
+    all points in the CFG; not especially relevant here
+```
 
 It will always create two universal variables, one representing
 `'static` and one representing `'!1`. Let's call them Vs and V1. They
 will have initial values like so:
 
-    Vs = { CFG; end('static) } // it is in U0, so can't name anything else
-    V1 = { skol(1) }
-    
+```txt
+Vs = { CFG; end('static) } // it is in U0, so can't name anything else
+V1 = { skol(1) }
+```
+
 From the subtyping constraint above, we would have an outlives constraint like
 
-    '!1: 'static @ P
+```txt
+'!1: 'static @ P
+```
 
 To process this, we would grow the value of V1 to include all of Vs:
 
-    Vs = { CFG; end('static) }
-    V1 = { CFG; end('static), skol(1) }
+```txt
+Vs = { CFG; end('static) }
+V1 = { CFG; end('static), skol(1) }
+```
 
 At that point, constraint propagation is complete, because all the
 outlives relationships are satisfied. Then we would go to the "check
@@ -385,34 +405,44 @@ In this case, `V1` *did* grow too large -- it is not known to outlive
 
 What about this subtyping relationship?
 
-    for<'a> fn(&'a u32, &'a u32)
-        <:
-    for<'b, 'c> fn(&'b u32, &'c u32)
-    
-Here we would skolemize the supertype, as before, yielding:    
+```txt
+for<'a> fn(&'a u32, &'a u32)
+    <:
+for<'b, 'c> fn(&'b u32, &'c u32)
+```
 
-    for<'a> fn(&'a u32, &'a u32)
-        <:
-    fn(&'!1 u32, &'!2 u32)
-    
+Here we would skolemize the supertype, as before, yielding:
+
+```txt
+for<'a> fn(&'a u32, &'a u32)
+    <:
+fn(&'!1 u32, &'!2 u32)
+```
+
 then we instantiate the variable on the left-hand side with an
 existential in universe U2, yielding the following (`?n` is a notation
 for an existential variable):
 
-    fn(&'?3 u32, &'?3 u32) 
-        <: 
-    fn(&'!1 u32, &'!2 u32)
-    
+```txt
+fn(&'?3 u32, &'?3 u32)
+    <:
+fn(&'!1 u32, &'!2 u32)
+```
+
 Then we break this down further:
 
-    &'!1 u32 <: &'?3 u32
-    &'!2 u32 <: &'?3 u32
-    
+```txt
+&'!1 u32 <: &'?3 u32
+&'!2 u32 <: &'?3 u32
+```
+
 and even further, yield up our region constraints:
 
-    '!1: '?3
-    '!2: '?3
-    
+```txt
+'!1: '?3
+'!2: '?3
+```
+
 Note that, in this case, both `'!1` and `'!2` have to outlive the
 variable `'?3`, but the variable `'?3` is not forced to outlive
 anything else. Therefore, it simply starts and ends as the empty set
@@ -430,15 +460,17 @@ common lifetime of our arguments. -nmatsakis)
 
 [ohdeargoditsallbroken]: https://github.com/rust-lang/rust/issues/32330#issuecomment-202536977
 
-## Final example 
+## Final example
 
 Let's look at one last example. We'll extend the previous one to have
 a return type:
 
-    for<'a> fn(&'a u32, &'a u32) -> &'a u32
-        <:
-    for<'b, 'c> fn(&'b u32, &'c u32) -> &'b u32
-    
+```txt
+for<'a> fn(&'a u32, &'a u32) -> &'a u32
+    <:
+for<'b, 'c> fn(&'b u32, &'c u32) -> &'b u32
+```
+
 Despite seeming very similar to the previous example, this case is going to get
 an error. That's good: the problem is that we've gone from a fn that promises
 to return one of its two arguments, to a fn that is promising to return the
@@ -446,45 +478,59 @@ first one. That is unsound. Let's see how it plays out.
 
 First, we skolemize the supertype:
 
-    for<'a> fn(&'a u32, &'a u32) -> &'a u32
-        <:
-    fn(&'!1 u32, &'!2 u32) -> &'!1 u32
-    
+```txt
+for<'a> fn(&'a u32, &'a u32) -> &'a u32
+    <:
+fn(&'!1 u32, &'!2 u32) -> &'!1 u32
+```
+
 Then we instantiate the subtype with existentials (in U2):
 
-    fn(&'?3 u32, &'?3 u32) -> &'?3 u32
-        <:
-    fn(&'!1 u32, &'!2 u32) -> &'!1 u32
-    
+```txt
+fn(&'?3 u32, &'?3 u32) -> &'?3 u32
+    <:
+fn(&'!1 u32, &'!2 u32) -> &'!1 u32
+```
+
 And now we create the subtyping relationships:
 
-    &'!1 u32 <: &'?3 u32 // arg 1
-    &'!2 u32 <: &'?3 u32 // arg 2
-    &'?3 u32 <: &'!1 u32 // return type
-    
+```txt
+&'!1 u32 <: &'?3 u32 // arg 1
+&'!2 u32 <: &'?3 u32 // arg 2
+&'?3 u32 <: &'!1 u32 // return type
+```
+
 And finally the outlives relationships. Here, let V1, V2, and V3 be the
 variables we assign to `!1`, `!2`, and `?3` respectively:
 
-    V1: V3
-    V2: V3
-    V3: V1
-    
+```txt
+V1: V3
+V2: V3
+V3: V1
+```
+
 Those variables will have these initial values:
 
-    V1 in U1 = {skol(1)}
-    V2 in U2 = {skol(2)}
-    V3 in U2 = {}
-    
+```txt
+V1 in U1 = {skol(1)}
+V2 in U2 = {skol(2)}
+V3 in U2 = {}
+```
+
 Now because of the `V3: V1` constraint, we have to add `skol(1)` into `V3` (and
 indeed it is visible from `V3`), so we get:
 
-    V3 in U2 = {skol(1)}
-    
+```txt
+V3 in U2 = {skol(1)}
+```
+
 then we have this constraint `V2: V3`, so we wind up having to enlarge
 `V2` to include `skol(1)` (which it can also see):
 
-    V2 in U2 = {skol(1), skol(2)}
-    
+```txt
+V2 in U2 = {skol(1), skol(2)}
+```
+
 Now contraint propagation is done, but when we check the outlives
 relationships, we find that `V2` includes this new element `skol(1)`,
 so we report an error.
