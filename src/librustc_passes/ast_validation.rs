@@ -36,19 +36,20 @@ impl<'a> AstValidator<'a> {
         &self.session.parse_sess.span_diagnostic
     }
 
-    fn check_lifetime(&self, lifetime: &Lifetime) {
+    fn check_lifetime(&self, ident: Ident) {
         let valid_names = [keywords::UnderscoreLifetime.name(),
                            keywords::StaticLifetime.name(),
                            keywords::Invalid.name()];
-        if !valid_names.contains(&lifetime.ident.name) &&
-            token::is_reserved_ident(lifetime.ident.without_first_quote()) {
-            self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
+        if !valid_names.contains(&ident.name) &&
+            token::is_reserved_ident(ident.without_first_quote()) {
+            self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
         }
     }
 
-    fn check_label(&self, label: Ident, span: Span) {
-        if token::is_reserved_ident(label.without_first_quote()) {
-            self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
+    fn check_label(&self, ident: Ident) {
+        if token::is_reserved_ident(ident.without_first_quote()) {
+            self.err_handler()
+                .span_err(ident.span, &format!("invalid label name `{}`", ident.name));
         }
     }
 
@@ -144,7 +145,7 @@ impl<'a> AstValidator<'a> {
         let non_lifetime_param_spans : Vec<_> = params.iter()
             .filter_map(|param| match *param {
                 GenericParam::Lifetime(_) => None,
-                GenericParam::Type(ref t) => Some(t.span),
+                GenericParam::Type(ref t) => Some(t.ident.span),
             }).collect();
         if !non_lifetime_param_spans.is_empty() {
             self.err_handler().span_err(non_lifetime_param_spans,
@@ -156,7 +157,7 @@ impl<'a> AstValidator<'a> {
             match *param {
                 GenericParam::Lifetime(ref l) => {
                     if !l.bounds.is_empty() {
-                        let spans : Vec<_> = l.bounds.iter().map(|b| b.span).collect();
+                        let spans: Vec<_> = l.bounds.iter().map(|b| b.ident.span).collect();
                         self.err_handler().span_err(spans,
                             "lifetime bounds cannot be used in this context");
                     }
@@ -193,7 +194,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 for bound in bounds {
                     if let RegionTyParamBound(ref lifetime) = *bound {
                         if any_lifetime_bounds {
-                            span_err!(self.session, lifetime.span, E0226,
+                            span_err!(self.session, lifetime.ident.span, E0226,
                                       "only a single explicit lifetime bound is permitted");
                             break;
                         }
@@ -234,12 +235,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_label(&mut self, label: &'a Label) {
-        self.check_label(label.ident, label.span);
+        self.check_label(label.ident);
         visit::walk_label(self, label);
     }
 
     fn visit_lifetime(&mut self, lifetime: &'a Lifetime) {
-        self.check_lifetime(lifetime);
+        self.check_lifetime(lifetime.ident);
         visit::walk_lifetime(self, lifetime);
     }
 
@@ -328,19 +329,19 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::TraitAlias(Generics { ref params, .. }, ..) => {
                 for param in params {
                     if let GenericParam::Type(TyParam {
+                        ident,
                         ref bounds,
                         ref default,
-                        span,
                         ..
                     }) = *param
                     {
                         if !bounds.is_empty() {
-                            self.err_handler().span_err(span,
+                            self.err_handler().span_err(ident.span,
                                                         "type parameters on the left side of a \
                                                          trait alias cannot be bounded");
                         }
                         if !default.is_none() {
-                            self.err_handler().span_err(span,
+                            self.err_handler().span_err(ident.span,
                                                         "type parameters on the left side of a \
                                                          trait alias cannot have defaults");
                         }
@@ -408,7 +409,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             match (param, seen_non_lifetime_param) {
                 (&GenericParam::Lifetime(ref ld), true) => {
                     self.err_handler()
-                        .span_err(ld.lifetime.span, "lifetime parameters must be leading");
+                        .span_err(ld.lifetime.ident.span, "lifetime parameters must be leading");
                 },
                 (&GenericParam::Lifetime(_), false) => {}
                 _ => {
@@ -417,7 +418,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
 
             if let GenericParam::Type(ref ty_param @ TyParam { default: Some(_), .. }) = *param {
-                seen_default = Some(ty_param.span);
+                seen_default = Some(ty_param.ident.span);
             } else if let Some(span) = seen_default {
                 self.err_handler()
                     .span_err(span, "type parameters with a default must be trailing");

@@ -83,7 +83,10 @@
 //! 1. Does the filename match an rlib/dylib pattern? That is to say, does the
 //!    filename have the right prefix/suffix?
 //! 2. Does the filename have the right prefix for the crate name being queried?
-//!    This is filtering for files like `libfoo*.rlib` and such.
+//!    This is filtering for files like `libfoo*.rlib` and such. If the crate
+//!    we're looking for was originally compiled with -C extra-filename, the
+//!    extra filename will be included in this prefix to reduce reading
+//!    metadata from crates that would otherwise share our prefix.
 //! 3. Is the file an actual rust library? This is done by loading the metadata
 //!    from the library and making sure it's actually there.
 //! 4. Does the name in the metadata agree with the name of the library?
@@ -236,6 +239,7 @@ use syntax_pos::Span;
 use rustc_back::target::{Target, TargetTriple};
 
 use std::cmp;
+use std::collections::HashSet;
 use std::fmt;
 use std::fs;
 use std::io::{self, Read};
@@ -256,6 +260,7 @@ pub struct Context<'a> {
     pub ident: Symbol,
     pub crate_name: Symbol,
     pub hash: Option<&'a Svh>,
+    pub extra_filename: Option<&'a str>,
     // points to either self.sess.target.target or self.sess.host, must match triple
     pub target: &'a Target,
     pub triple: &'a TargetTriple,
@@ -303,7 +308,12 @@ impl CratePaths {
 
 impl<'a> Context<'a> {
     pub fn maybe_load_library_crate(&mut self) -> Option<Library> {
-        self.find_library_crate()
+        let mut seen_paths = HashSet::new();
+        match self.extra_filename {
+            Some(s) => self.find_library_crate(s, &mut seen_paths)
+                .or_else(|| self.find_library_crate("", &mut seen_paths)),
+            None => self.find_library_crate("", &mut seen_paths)
+        }
     }
 
     pub fn report_errs(&mut self) -> ! {
@@ -419,7 +429,10 @@ impl<'a> Context<'a> {
         unreachable!();
     }
 
-    fn find_library_crate(&mut self) -> Option<Library> {
+    fn find_library_crate(&mut self,
+                          extra_prefix: &str,
+                          seen_paths: &mut HashSet<PathBuf>)
+                          -> Option<Library> {
         // If an SVH is specified, then this is a transitive dependency that
         // must be loaded via -L plus some filtering.
         if self.hash.is_none() {
@@ -434,9 +447,9 @@ impl<'a> Context<'a> {
         let staticpair = self.staticlibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
-        let dylib_prefix = format!("{}{}", dypair.0, self.crate_name);
-        let rlib_prefix = format!("lib{}", self.crate_name);
-        let staticlib_prefix = format!("{}{}", staticpair.0, self.crate_name);
+        let dylib_prefix = format!("{}{}{}", dypair.0, self.crate_name, extra_prefix);
+        let rlib_prefix = format!("lib{}{}", self.crate_name, extra_prefix);
+        let staticlib_prefix = format!("{}{}{}", staticpair.0, self.crate_name, extra_prefix);
 
         let mut candidates = FxHashMap();
         let mut staticlibs = vec![];
@@ -476,6 +489,7 @@ impl<'a> Context<'a> {
                     }
                     return FileDoesntMatch;
                 };
+
             info!("lib candidate: {}", path.display());
 
             let hash_str = hash.to_string();
@@ -484,6 +498,10 @@ impl<'a> Context<'a> {
             let (ref mut rlibs, ref mut rmetas, ref mut dylibs) = *slot;
             fs::canonicalize(path)
                 .map(|p| {
+                    if seen_paths.contains(&p) {
+                        return FileDoesntMatch
+                    };
+                    seen_paths.insert(p.clone());
                     match found_kind {
                         CrateFlavor::Rlib => { rlibs.insert(p, kind); }
                         CrateFlavor::Rmeta => { rmetas.insert(p, kind); }

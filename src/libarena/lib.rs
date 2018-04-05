@@ -27,7 +27,7 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
-#![feature(generic_param_attrs)]
+#![cfg_attr(stage0, feature(generic_param_attrs))]
 #![cfg_attr(test, feature(test))]
 
 #![allow(deprecated)]

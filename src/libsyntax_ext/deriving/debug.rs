@@ -61,7 +61,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<E
     // based on the "shape".
     let (ident, is_struct) = match *substr.fields {
         Struct(vdata, _) => (substr.type_ident, vdata.is_struct()),
-        EnumMatching(_, _, v, _) => (v.node.name, v.node.data.is_struct()),
+        EnumMatching(_, _, v, _) => (v.node.ident, v.node.data.is_struct()),
         EnumNonMatchingCollapsed(..) |
         StaticStruct(..) |
         StaticEnum(..) => cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`"),

@@ -462,6 +462,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let has_global_allocator = tcx.sess.has_global_allocator.get();
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
+            extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
@@ -1357,6 +1358,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     name: self.tcx.original_crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),
+                    extra_filename: self.tcx.extra_filename(cnum),
                 };
                 (cnum, dep)
             })

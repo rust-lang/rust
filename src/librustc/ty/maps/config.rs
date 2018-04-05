@@ -466,6 +466,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::original_crate_name<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::extra_filename<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the extra filename for a crate")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::implementations_of_trait<'tcx> {
     fn describe(_tcx: TyCtxt, _: (CrateNum, DefId)) -> String {
         format!("looking up implementations of a trait in a crate")

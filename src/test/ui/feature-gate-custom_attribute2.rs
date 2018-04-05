@@ -10,15 +10,8 @@
 
 // This test ensures that attributes on formals in generic parameter
 // lists are included when we are checking for unstable attributes.
-//
-// Note that feature(generic_param_attrs) *is* enabled here. We are
-// checking feature-gating of the attributes themselves, not the
-// capability to parse such attributes in that context.
 
 // gate-test-custom_attribute
-
-#![feature(generic_param_attrs)]
-#![allow(dead_code)]
 
 struct StLt<#[lt_struct] 'a>(&'a u32);
 //~^ ERROR The attribute `lt_struct` is currently unknown to the compiler

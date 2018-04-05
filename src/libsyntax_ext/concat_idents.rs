@@ -16,7 +16,6 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
-use syntax_pos::hygiene::SyntaxContext;
 use syntax::tokenstream::TokenTree;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
@@ -53,31 +52,17 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
             }
         }
     }
-    let res = ast::Ident {
-        name: Symbol::intern(&res_str),
-        ctxt: SyntaxContext::empty().apply_mark(cx.current_expansion.mark),
-    };
 
-    struct Result {
-        ident: ast::Ident,
-        span: Span,
-    };
+    let ident = ast::Ident::new(Symbol::intern(&res_str), sp.apply_mark(cx.current_expansion.mark));
 
-    impl Result {
-        fn path(&self) -> ast::Path {
-            ast::Path {
-                span: self.span,
-                segments: vec![ast::PathSegment::from_ident(self.ident, self.span)],
-            }
-        }
-    }
+    struct ConcatIdentsResult { ident: ast::Ident }
 
-    impl base::MacResult for Result {
+    impl base::MacResult for ConcatIdentsResult {
         fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
             Some(P(ast::Expr {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::ExprKind::Path(None, self.path()),
-                span: self.span,
+                node: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
+                span: self.ident.span,
                 attrs: ast::ThinVec::new(),
             }))
         }
@@ -85,14 +70,11 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
         fn make_ty(self: Box<Self>) -> Option<P<ast::Ty>> {
             Some(P(ast::Ty {
                 id: ast::DUMMY_NODE_ID,
-                node: ast::TyKind::Path(None, self.path()),
-                span: self.span,
+                node: ast::TyKind::Path(None, ast::Path::from_ident(self.ident)),
+                span: self.ident.span,
             }))
         }
     }
 
-    Box::new(Result {
-        ident: res,
-        span: sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark)),
-    })
+    Box::new(ConcatIdentsResult { ident })
 }

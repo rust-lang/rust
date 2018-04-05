@@ -12,8 +12,7 @@
 // `#[oops]` is left dangling (that is, it is unattached, with no
 // formal binding following it).
 
-#![feature(generic_param_attrs, rustc_attrs)]
-#![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 struct RefIntPair<'a, 'b>(&'a u32, &'b u32);
 

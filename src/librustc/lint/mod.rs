@@ -236,7 +236,7 @@ pub trait LateLintPass<'a, 'tcx>: LintPass {
 }
 
 pub trait EarlyLintPass: LintPass {
-    fn check_ident(&mut self, _: &EarlyContext, _: Span, _: ast::Ident) { }
+    fn check_ident(&mut self, _: &EarlyContext, _: ast::Ident) { }
     fn check_crate(&mut self, _: &EarlyContext, _: &ast::Crate) { }
     fn check_crate_post(&mut self, _: &EarlyContext, _: &ast::Crate) { }
     fn check_mod(&mut self, _: &EarlyContext, _: &ast::Mod, _: Span, _: ast::NodeId) { }

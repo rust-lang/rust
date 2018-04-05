@@ -171,16 +171,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
                 if fieldpat.node.is_shorthand {
                     continue;
                 }
-                if let PatKind::Binding(_, _, ident, None) = fieldpat.node.pat.node {
-                    if ident.node == fieldpat.node.name {
+                if let PatKind::Binding(_, _, name, None) = fieldpat.node.pat.node {
+                    if name.node == fieldpat.node.name {
                         let mut err = cx.struct_span_lint(NON_SHORTHAND_FIELD_PATTERNS,
                                      fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant",
-                                              ident.node));
+                                              name.node));
                         let subspan = cx.tcx.sess.codemap().span_through_char(fieldpat.span, ':');
                         err.span_suggestion_short(subspan,
                                                   "remove this",
-                                                  format!("{}", ident.node));
+                                                  format!("{}", name.node));
                         err.emit();
                     }
                 }
@@ -625,7 +625,7 @@ impl EarlyLintPass for AnonymousParameters {
                 for arg in sig.decl.inputs.iter() {
                     match arg.pat.node {
                         ast::PatKind::Ident(_, ident, None) => {
-                            if ident.node.name == keywords::Invalid.name() {
+                            if ident.name == keywords::Invalid.name() {
                                 cx.span_lint(ANONYMOUS_PARAMETERS,
                                              arg.pat.span,
                                              "use of deprecated anonymous parameter");

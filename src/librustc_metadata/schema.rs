@@ -188,6 +188,7 @@ pub enum LazyState {
 pub struct CrateRoot {
     pub name: Symbol,
     pub triple: TargetTriple,
+    pub extra_filename: String,
     pub hash: hir::svh::Svh,
     pub disambiguator: CrateDisambiguator,
     pub panic_strategy: PanicStrategy,
@@ -216,12 +217,14 @@ pub struct CrateDep {
     pub name: ast::Name,
     pub hash: hir::svh::Svh,
     pub kind: DepKind,
+    pub extra_filename: String,
 }
 
 impl_stable_hash_for!(struct CrateDep {
     name,
     hash,
-    kind
+    kind,
+    extra_filename
 });
 
 #[derive(RustcEncodable, RustcDecodable)]

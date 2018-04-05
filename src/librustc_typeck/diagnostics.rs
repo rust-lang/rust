@@ -3784,7 +3784,6 @@ that impl must be declared as an `unsafe impl.
 Erroneous code example:
 
 ```compile_fail,E0569
-#![feature(generic_param_attrs)]
 #![feature(dropck_eyepatch)]
 
 struct Foo<X>(X);
