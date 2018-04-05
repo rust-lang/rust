@@ -181,6 +181,8 @@ pub mod hash;
 pub mod fmt;
 pub mod time;
 
+pub mod unicode;
+
 /* Heap memory allocator trait */
 #[allow(missing_docs)]
 pub mod heap;

@@ -12,8 +12,8 @@
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
-use version::UnicodeVersion;
-use bool_trie::{BoolTrie, SmallBoolTrie};
+use unicode::version::UnicodeVersion;
+use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `CharExt` and `UnicodeStrPrelude` traits are based on.
@@ -1138,9 +1138,6 @@ pub mod property {
 }
 
 pub mod conversions {
-    use core::option::Option;
-    use core::option::Option::{Some, None};
-
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
             None        => [c, '\0', '\0'],
