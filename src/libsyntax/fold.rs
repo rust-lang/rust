@@ -578,7 +578,7 @@ pub fn noop_fold_tts<T: Folder>(tts: TokenStream, fld: &mut T) -> TokenStream {
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
 pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token {
     match t {
-        token::Ident(id) => token::Ident(fld.fold_ident(id)),
+        token::Ident(id, is_raw) => token::Ident(fld.fold_ident(id), is_raw),
         token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
         token::Interpolated(nt) => {
             let nt = match Lrc::try_unwrap(nt) {
@@ -630,7 +630,8 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtPat(pat) => token::NtPat(fld.fold_pat(pat)),
         token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
         token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
-        token::NtIdent(id) => token::NtIdent(Spanned::<Ident>{node: fld.fold_ident(id.node), ..id}),
+        token::NtIdent(id, is_raw) =>
+            token::NtIdent(Spanned::<Ident>{node: fld.fold_ident(id.node), ..id}, is_raw),
         token::NtMeta(meta) => token::NtMeta(fld.fold_meta_item(meta)),
         token::NtPath(path) => token::NtPath(fld.fold_path(path)),
         token::NtTT(tt) => token::NtTT(fld.fold_tt(tt)),
@@ -1165,9 +1166,6 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
         node: match node {
             ExprKind::Box(e) => {
                 ExprKind::Box(folder.fold_expr(e))
-            }
-            ExprKind::InPlace(p, e) => {
-                ExprKind::InPlace(folder.fold_expr(p), folder.fold_expr(e))
             }
             ExprKind::Array(exprs) => {
                 ExprKind::Array(folder.fold_exprs(exprs))

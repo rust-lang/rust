@@ -19,6 +19,7 @@ use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::Name;
+use util::captures::Captures;
 use util::nodemap::{DefIdMap, FxHashMap};
 
 /// A per-trait graph of impls in specialization order. At the moment, this
@@ -313,9 +314,10 @@ impl<'a, 'gcx, 'tcx> Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-    pub fn items(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                 -> impl Iterator<Item = ty::AssociatedItem> + 'a {
+    pub fn items(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> impl Iterator<Item = ty::AssociatedItem> + 'a {
         tcx.associated_items(self.def_id())
     }
 
@@ -367,9 +369,13 @@ impl<'a, 'gcx, 'tcx> Ancestors {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-    pub fn defs(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, trait_item_name: Name,
-                trait_item_kind: ty::AssociatedKind, trait_def_id: DefId)
-                -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + 'a {
+    pub fn defs(
+        self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        trait_item_name: Name,
+        trait_item_kind: ty::AssociatedKind,
+        trait_def_id: DefId,
+    ) -> impl Iterator<Item = NodeItem<ty::AssociatedItem>> + Captures<'gcx> + Captures<'tcx> + 'a {
         self.flat_map(move |node| {
             node.items(tcx).filter(move |impl_item| {
                 impl_item.kind == trait_item_kind &&

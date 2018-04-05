@@ -435,6 +435,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Annotatable::ImplItem(item) => {
                 Annotatable::ImplItem(item.map(|item| cfg.fold_impl_item(item).pop().unwrap()))
             }
+            Annotatable::Stmt(stmt) => {
+                Annotatable::Stmt(stmt.map(|stmt| cfg.fold_stmt(stmt).pop().unwrap()))
+            }
+            Annotatable::Expr(expr) => {
+                Annotatable::Expr(cfg.fold_expr(expr))
+            }
         }
     }
 
@@ -503,6 +509,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
                     Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
+                    Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
+                    Annotatable::Expr(expr) => token::NtExpr(expr),
                 })).into();
                 let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_tok);
                 self.parse_expansion(tok_result, kind, &attr.path, attr.span)
@@ -751,6 +759,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(expansion)
             }
             Err(mut err) => {
+                err.set_span(span);
                 err.emit();
                 self.cx.trace_macros_diag();
                 kind.dummy(span)
@@ -796,7 +805,13 @@ impl<'a> Parser<'a> {
                 Expansion::Stmts(stmts)
             }
             ExpansionKind::Expr => Expansion::Expr(self.parse_expr()?),
-            ExpansionKind::OptExpr => Expansion::OptExpr(Some(self.parse_expr()?)),
+            ExpansionKind::OptExpr => {
+                if self.token != token::Eof {
+                    Expansion::OptExpr(Some(self.parse_expr()?))
+                } else {
+                    Expansion::OptExpr(None)
+                }
+            },
             ExpansionKind::Ty => Expansion::Ty(self.parse_ty()?),
             ExpansionKind::Pat => Expansion::Pat(self.parse_pat()?),
         })
@@ -904,6 +919,18 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         let mut expr = self.cfg.configure_expr(expr).into_inner();
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
+        let (attr, derives, expr) = self.classify_item(expr);
+
+        if attr.is_some() || !derives.is_empty() {
+            // collect the invoc regardless of whether or not attributes are permitted here
+            // expansion will eat the attribute so it won't error later
+            attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
+
+            // ExpansionKind::Expr requires the macro to emit an expression
+            return self.collect_attr(attr, derives, Annotatable::Expr(P(expr)), ExpansionKind::Expr)
+                .make_expr();
+        }
+
         if let ast::ExprKind::Mac(mac) = expr.node {
             self.check_attributes(&expr.attrs);
             self.collect_bang(mac, expr.span, ExpansionKind::Expr).make_expr()
@@ -915,6 +942,16 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
         let mut expr = configure!(self, expr).into_inner();
         expr.node = self.cfg.configure_expr_kind(expr.node);
+
+        let (attr, derives, expr) = self.classify_item(expr);
+
+        if attr.is_some() || !derives.is_empty() {
+            attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
+
+            return self.collect_attr(attr, derives, Annotatable::Expr(P(expr)),
+                                     ExpansionKind::OptExpr)
+                .make_opt_expr();
+        }
 
         if let ast::ExprKind::Mac(mac) = expr.node {
             self.check_attributes(&expr.attrs);
@@ -938,33 +975,47 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_stmt(&mut self, stmt: ast::Stmt) -> SmallVector<ast::Stmt> {
-        let stmt = match self.cfg.configure_stmt(stmt) {
+        let mut stmt = match self.cfg.configure_stmt(stmt) {
             Some(stmt) => stmt,
             None => return SmallVector::new(),
         };
 
-        let (mac, style, attrs) = if let StmtKind::Mac(mac) = stmt.node {
-            mac.into_inner()
-        } else {
-            // The placeholder expander gives ids to statements, so we avoid folding the id here.
-            let ast::Stmt { id, node, span } = stmt;
-            return noop_fold_stmt_kind(node, self).into_iter().map(|node| {
-                ast::Stmt { id: id, node: node, span: span }
-            }).collect()
-        };
+        // we'll expand attributes on expressions separately
+        if !stmt.is_expr() {
+            let (attr, derives, stmt_) = self.classify_item(stmt);
 
-        self.check_attributes(&attrs);
-        let mut placeholder = self.collect_bang(mac, stmt.span, ExpansionKind::Stmts).make_stmts();
-
-        // If this is a macro invocation with a semicolon, then apply that
-        // semicolon to the final statement produced by expansion.
-        if style == MacStmtStyle::Semicolon {
-            if let Some(stmt) = placeholder.pop() {
-                placeholder.push(stmt.add_trailing_semicolon());
+            if attr.is_some() || !derives.is_empty() {
+                return self.collect_attr(attr, derives,
+                                         Annotatable::Stmt(P(stmt_)), ExpansionKind::Stmts)
+                    .make_stmts();
             }
+
+            stmt = stmt_;
         }
 
-        placeholder
+        if let StmtKind::Mac(mac) = stmt.node {
+            let (mac, style, attrs) = mac.into_inner();
+            self.check_attributes(&attrs);
+            let mut placeholder = self.collect_bang(mac, stmt.span, ExpansionKind::Stmts)
+                                        .make_stmts();
+
+            // If this is a macro invocation with a semicolon, then apply that
+            // semicolon to the final statement produced by expansion.
+            if style == MacStmtStyle::Semicolon {
+                if let Some(stmt) = placeholder.pop() {
+                    placeholder.push(stmt.add_trailing_semicolon());
+                }
+            }
+
+            return placeholder;
+        }
+
+        // The placeholder expander gives ids to statements, so we avoid folding the id here.
+        let ast::Stmt { id, node, span } = stmt;
+        noop_fold_stmt_kind(node, self).into_iter().map(|node| {
+            ast::Stmt { id, node, span }
+        }).collect()
+
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {

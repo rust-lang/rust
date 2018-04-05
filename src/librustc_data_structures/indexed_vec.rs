@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::range::RangeArgument;
 use std::fmt::Debug;
 use std::iter::{self, FromIterator};
 use std::slice;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut, Range};
+use std::ops::{Index, IndexMut, Range, RangeBounds};
 use std::fmt;
 use std::vec;
 use std::u32;
@@ -448,13 +447,13 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<'a, R: RangeArgument<usize>>(
+    pub fn drain<'a, R: RangeBounds<usize>>(
         &'a mut self, range: R) -> impl Iterator<Item=T> + 'a {
         self.raw.drain(range)
     }
 
     #[inline]
-    pub fn drain_enumerated<'a, R: RangeArgument<usize>>(
+    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
         &'a mut self, range: R) -> impl Iterator<Item=(I, T)> + 'a {
         self.raw.drain(range).enumerate().map(IntoIdx { _marker: PhantomData })
     }
@@ -501,6 +500,13 @@ impl<I: Idx, T> IndexVec<I, T> {
         } else {
             let (c2, c1) = self.pick2_mut(b, a);
             (c1, c2)
+        }
+    }
+
+    pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
+        IndexVec {
+            raw: self.raw,
+            _marker: PhantomData,
         }
     }
 }

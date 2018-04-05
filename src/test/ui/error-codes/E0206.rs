@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-type Foo = i32;
+type Foo = [u8; 256];
 
 impl Copy for Foo { }
 //~^ ERROR the trait `Copy` may not be implemented for this type
@@ -17,7 +17,7 @@ impl Copy for Foo { }
 #[derive(Copy, Clone)]
 struct Bar;
 
-impl Copy for &'static Bar { }
+impl Copy for &'static mut Bar { }
 //~^ ERROR the trait `Copy` may not be implemented for this type
 
 fn main() {

@@ -13,3 +13,5 @@ LL |         bar(baz: $rest)
 LL |     foo!(true); //~ ERROR expected type, found keyword
    |          ^^^^ expecting a type here because of type ascription
 
+error: aborting due to 2 previous errors
+

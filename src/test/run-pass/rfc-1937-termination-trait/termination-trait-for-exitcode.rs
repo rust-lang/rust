@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(termination_trait)]
 #![feature(process_exitcode_placeholder)]
 
 use std::process::ExitCode;

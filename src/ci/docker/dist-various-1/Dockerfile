@@ -20,7 +20,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bzip2 \
   patch \
   libssl-dev \
-  pkg-config
+  pkg-config \
+  gcc-arm-none-eabi \
+  libnewlib-arm-none-eabi
 
 WORKDIR /build
 
@@ -66,6 +68,14 @@ RUN env \
     bash musl.sh mipsel && \
     rm -rf /build/*
 
+# FIXME(mozilla/sccache#235) this shouldn't be necessary but is currently
+# necessary to disambiguate the mips compiler with the mipsel compiler. We want
+# to give these two wrapper scripts (currently identical ones) different hashes
+# to ensure that sccache understands that they're different compilers.
+RUN \
+  echo "# a" >> /usr/local/mips-linux-musl/bin/mips-openwrt-linux-musl-wrapper.sh && \
+  echo "# b" >> /usr/local/mipsel-linux-musl/bin/mipsel-openwrt-linux-musl-wrapper.sh
+
 ENV TARGETS=asmjs-unknown-emscripten
 ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
 ENV TARGETS=$TARGETS,x86_64-rumprun-netbsd
@@ -78,6 +88,10 @@ ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
 ENV TARGETS=$TARGETS,x86_64-unknown-redox
+ENV TARGETS=$TARGETS,thumbv6m-none-eabi
+ENV TARGETS=$TARGETS,thumbv7m-none-eabi
+ENV TARGETS=$TARGETS,thumbv7em-none-eabi
+ENV TARGETS=$TARGETS,thumbv7em-none-eabihf
 
 # FIXME: remove armv5te vars after https://github.com/alexcrichton/cc-rs/issues/271
 #        get fixed and cc update
@@ -95,7 +109,8 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-aarch64=/musl-aarch64 \
       --musl-root-mips=/musl-mips \
       --musl-root-mipsel=/musl-mipsel \
-      --enable-emscripten
+      --enable-emscripten \
+      --disable-docs
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 

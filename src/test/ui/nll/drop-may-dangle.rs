@@ -17,7 +17,6 @@
 
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]
-#![feature(generic_param_attrs)]
 
 fn use_x(_: usize) -> bool { true }
 

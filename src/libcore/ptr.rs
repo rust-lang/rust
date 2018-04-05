@@ -23,7 +23,7 @@ use fmt;
 use hash;
 use marker::{PhantomData, Unsize};
 use mem;
-use nonzero::NonZero;
+#[allow(deprecated)] use nonzero::NonZero;
 
 use cmp::Ordering::{self, Less, Equal, Greater};
 
@@ -669,7 +669,7 @@ impl<T: ?Sized> *const T {
     /// `mem::size_of::<T>()` then the result of the division is rounded towards
     /// zero.
     ///
-    /// This function returns `None` if `T` is a zero-sized typed.
+    /// This function returns `None` if `T` is a zero-sized type.
     ///
     /// # Examples
     ///
@@ -698,6 +698,124 @@ impl<T: ?Sized> *const T {
             let diff = (other as isize).wrapping_sub(self as isize);
             Some(diff / size as isize)
         }
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// This function is the inverse of [`offset`].
+    ///
+    /// [`offset`]: #method.offset
+    /// [`wrapping_offset_from`]: #method.wrapping_offset_from
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and other pointer must be either in bounds or one
+    ///   byte past the end of the same allocated object.
+    ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The distance between the pointers, in bytes, must be an exact multiple
+    ///   of the size of `T`.
+    ///
+    /// * The distance being in bounds cannot rely on "wrapping around" the address space.
+    ///
+    /// The compiler and standard library generally try to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using [`wrapping_offset_from`] instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *const i32 = &a[1];
+    /// let ptr2: *const i32 = &a[3];
+    /// unsafe {
+    ///     assert_eq!(ptr2.offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.offset_from(ptr2), -2);
+    ///     assert_eq!(ptr1.offset(2), ptr2);
+    ///     assert_eq!(ptr2.offset(-2), ptr1);
+    /// }
+    /// ```
+    #[unstable(feature = "ptr_offset_from", issue = "41079")]
+    #[inline]
+    pub unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
+        let pointee_size = mem::size_of::<T>();
+        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
+
+        // This is the same sequence that Clang emits for pointer subtraction.
+        // It can be neither `nsw` nor `nuw` because the input is treated as
+        // unsigned but then the output is treated as signed, so neither works.
+        let d = isize::wrapping_sub(self as _, origin as _);
+        intrinsics::exact_div(d, pointee_size as _)
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// If the address different between the two pointers is not a multiple of
+    /// `mem::size_of::<T>()` then the result of the division is rounded towards
+    /// zero.
+    ///
+    /// Though this method is safe for any two pointers, note that its result
+    /// will be mostly useless if the two pointers aren't into the same allocated
+    /// object, for example if they point to two different local variables.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a zero-sized type.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *const i32 = &a[1];
+    /// let ptr2: *const i32 = &a[3];
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
+    /// assert_eq!(ptr1.wrapping_offset(2), ptr2);
+    /// assert_eq!(ptr2.wrapping_offset(-2), ptr1);
+    ///
+    /// let ptr1: *const i32 = 3 as _;
+    /// let ptr2: *const i32 = 13 as _;
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
+    #[inline]
+    pub fn wrapping_offset_from(self, origin: *const T) -> isize where T: Sized {
+        let pointee_size = mem::size_of::<T>();
+        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
+
+        let d = isize::wrapping_sub(self as _, origin as _);
+        d.wrapping_div(pointee_size as _)
     }
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
@@ -1316,7 +1434,7 @@ impl<T: ?Sized> *mut T {
     /// `mem::size_of::<T>()` then the result of the division is rounded towards
     /// zero.
     ///
-    /// This function returns `None` if `T` is a zero-sized typed.
+    /// This function returns `None` if `T` is a zero-sized type.
     ///
     /// # Examples
     ///
@@ -1345,6 +1463,113 @@ impl<T: ?Sized> *mut T {
             let diff = (other as isize).wrapping_sub(self as isize);
             Some(diff / size as isize)
         }
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// This function is the inverse of [`offset`].
+    ///
+    /// [`offset`]: #method.offset-1
+    /// [`wrapping_offset_from`]: #method.wrapping_offset_from-1
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and other pointer must be either in bounds or one
+    ///   byte past the end of the same allocated object.
+    ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The distance between the pointers, in bytes, must be an exact multiple
+    ///   of the size of `T`.
+    ///
+    /// * The distance being in bounds cannot rely on "wrapping around" the address space.
+    ///
+    /// The compiler and standard library generally try to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `ptr_into_vec.offset_from(vec.as_ptr())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// Consider using [`wrapping_offset_from`] instead if these constraints are
+    /// difficult to satisfy. The only advantage of this method is that it
+    /// enables more aggressive compiler optimizations.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_offset_from)]
+    ///
+    /// let mut a = [0; 5];
+    /// let ptr1: *mut i32 = &mut a[1];
+    /// let ptr2: *mut i32 = &mut a[3];
+    /// unsafe {
+    ///     assert_eq!(ptr2.offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.offset_from(ptr2), -2);
+    ///     assert_eq!(ptr1.offset(2), ptr2);
+    ///     assert_eq!(ptr2.offset(-2), ptr1);
+    /// }
+    /// ```
+    #[unstable(feature = "ptr_offset_from", issue = "41079")]
+    #[inline]
+    pub unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
+        (self as *const T).offset_from(origin)
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// If the address different between the two pointers is not a multiple of
+    /// `mem::size_of::<T>()` then the result of the division is rounded towards
+    /// zero.
+    ///
+    /// Though this method is safe for any two pointers, note that its result
+    /// will be mostly useless if the two pointers aren't into the same allocated
+    /// object, for example if they point to two different local variables.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a zero-sized type.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(ptr_wrapping_offset_from)]
+    ///
+    /// let mut a = [0; 5];
+    /// let ptr1: *mut i32 = &mut a[1];
+    /// let ptr2: *mut i32 = &mut a[3];
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// assert_eq!(ptr1.wrapping_offset_from(ptr2), -2);
+    /// assert_eq!(ptr1.wrapping_offset(2), ptr2);
+    /// assert_eq!(ptr2.wrapping_offset(-2), ptr1);
+    ///
+    /// let ptr1: *mut i32 = 3 as _;
+    /// let ptr2: *mut i32 = 13 as _;
+    /// assert_eq!(ptr2.wrapping_offset_from(ptr1), 2);
+    /// ```
+    #[unstable(feature = "ptr_wrapping_offset_from", issue = "41079")]
+    #[inline]
+    pub fn wrapping_offset_from(self, origin: *const T) -> isize where T: Sized {
+        (self as *const T).wrapping_offset_from(origin)
     }
 
     /// Computes the byte offset that needs to be applied in order to
@@ -2285,6 +2510,7 @@ impl<T: ?Sized> PartialOrd for *mut T {
 #[unstable(feature = "ptr_internals", issue = "0",
            reason = "use NonNull instead and consider PhantomData<T> \
                      (if you also use #[may_dangle]), Send, and/or Sync")]
+#[allow(deprecated)]
 pub struct Unique<T: ?Sized> {
     pointer: NonZero<*const T>,
     // NOTE: this marker has no consequences for variance, but is necessary
@@ -2332,6 +2558,7 @@ impl<T: Sized> Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
+#[allow(deprecated)]
 impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique`.
     ///
@@ -2339,17 +2566,21 @@ impl<T: ?Sized> Unique<T> {
     ///
     /// `ptr` must be non-null.
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        Unique { pointer: NonZero::new_unchecked(ptr), _marker: PhantomData }
+        Unique { pointer: NonZero(ptr as _), _marker: PhantomData }
     }
 
     /// Creates a new `Unique` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
-        NonZero::new(ptr as *const T).map(|nz| Unique { pointer: nz, _marker: PhantomData })
+        if !ptr.is_null() {
+            Some(Unique { pointer: NonZero(ptr as _), _marker: PhantomData })
+        } else {
+            None
+        }
     }
 
     /// Acquires the underlying `*mut` pointer.
     pub fn as_ptr(self) -> *mut T {
-        self.pointer.get() as *mut T
+        self.pointer.0 as *mut T
     }
 
     /// Dereferences the content.
@@ -2392,16 +2623,18 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
+#[allow(deprecated)]
 impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
     fn from(reference: &'a mut T) -> Self {
-        Unique { pointer: NonZero::from(reference), _marker: PhantomData }
+        Unique { pointer: NonZero(reference as _), _marker: PhantomData }
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
+#[allow(deprecated)]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     fn from(reference: &'a T) -> Self {
-        Unique { pointer: NonZero::from(reference), _marker: PhantomData }
+        Unique { pointer: NonZero(reference as _), _marker: PhantomData }
     }
 }
 
@@ -2412,11 +2645,6 @@ impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
     }
 }
 
-/// Previous name of `NonNull`.
-#[rustc_deprecated(since = "1.25.0", reason = "renamed to `NonNull`")]
-#[unstable(feature = "shared", issue = "27730")]
-pub type Shared<T> = NonNull<T>;
-
 /// `*mut T` but non-zero and covariant.
 ///
 /// This is often the correct thing to use when building data structures using
@@ -2425,7 +2653,7 @@ pub type Shared<T> = NonNull<T>;
 ///
 /// Unlike `*mut T`, the pointer must always be non-null, even if the pointer
 /// is never dereferenced. This is so that enums may use this forbidden value
-/// as a discriminant -- `Option<NonNull<T>>` has the same size as `NonNull<T>`.
+/// as a discriminant -- `Option<NonNull<T>>` has the same size as `*mut T`.
 /// However the pointer may still dangle if it isn't dereferenced.
 ///
 /// Unlike `*mut T`, `NonNull<T>` is covariant over `T`. If this is incorrect
@@ -2436,7 +2664,7 @@ pub type Shared<T> = NonNull<T>;
 /// provide a public API that follows the normal shared XOR mutable rules of Rust.
 #[stable(feature = "nonnull", since = "1.25.0")]
 pub struct NonNull<T: ?Sized> {
-    pointer: NonZero<*const T>,
+    #[allow(deprecated)] pointer: NonZero<*const T>,
 }
 
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
@@ -2463,6 +2691,7 @@ impl<T: Sized> NonNull<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T: ?Sized> NonNull<T> {
     /// Creates a new `NonNull`.
     ///
@@ -2471,19 +2700,23 @@ impl<T: ?Sized> NonNull<T> {
     /// `ptr` must be non-null.
     #[stable(feature = "nonnull", since = "1.25.0")]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        NonNull { pointer: NonZero::new_unchecked(ptr) }
+        NonNull { pointer: NonZero(ptr as _) }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
     #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn new(ptr: *mut T) -> Option<Self> {
-        NonZero::new(ptr as *const T).map(|nz| NonNull { pointer: nz })
+        if !ptr.is_null() {
+            Some(NonNull { pointer: NonZero(ptr as _) })
+        } else {
+            None
+        }
     }
 
     /// Acquires the underlying `*mut` pointer.
     #[stable(feature = "nonnull", since = "1.25.0")]
     pub fn as_ptr(self) -> *mut T {
-        self.pointer.get() as *mut T
+        self.pointer.0 as *mut T
     }
 
     /// Dereferences the content.
@@ -2581,15 +2814,17 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
+#[allow(deprecated)]
 impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
     fn from(reference: &'a mut T) -> Self {
-        NonNull { pointer: NonZero::from(reference) }
+        NonNull { pointer: NonZero(reference as _) }
     }
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
+#[allow(deprecated)]
 impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
     fn from(reference: &'a T) -> Self {
-        NonNull { pointer: NonZero::from(reference) }
+        NonNull { pointer: NonZero(reference as _) }
     }
 }

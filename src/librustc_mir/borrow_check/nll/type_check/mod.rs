@@ -20,7 +20,7 @@ use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, Normalized, FulfillmentContext};
+use rustc::traits::{self, Normalized, TraitEngine};
 use rustc::traits::query::NoSolution;
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
@@ -662,7 +662,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     where
         OP: FnOnce(&mut Self) -> InferResult<'tcx, R>,
     {
-        let mut fulfill_cx = FulfillmentContext::new();
+        let mut fulfill_cx = TraitEngine::new(self.infcx.tcx);
         let InferOk { value, obligations } = self.infcx.commit_if_ok(|_| op(self))?;
         fulfill_cx.register_predicate_obligations(self.infcx, obligations);
         if let Err(e) = fulfill_cx.select_all_or_error(self.infcx) {
@@ -760,6 +760,22 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         variant_index
                     );
                 };
+            }
+            StatementKind::UserAssertTy(ref c_ty, ref local) => {
+                let local_ty = mir.local_decls()[*local].ty;
+                let (ty, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                    stmt.source_info.span, c_ty);
+                debug!("check_stmt: user_assert_ty ty={:?} local_ty={:?}", ty, local_ty);
+                if let Err(terr) = self.eq_types(ty, local_ty, location.at_self()) {
+                    span_mirbug!(
+                        self,
+                        stmt,
+                        "bad type assert ({:?} = {:?}): {:?}",
+                        ty,
+                        local_ty,
+                        terr
+                    );
+                }
             }
             StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)

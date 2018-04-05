@@ -289,7 +289,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
         "bitreverse" | "add_with_overflow" | "sub_with_overflow" |
         "mul_with_overflow" | "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
-        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
+        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "exact_div" => {
             let ty = arg_tys[0];
             match int_type_width_signed(ty, cx) {
                 Some((width, signed)) =>
@@ -343,6 +343,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                         "overflowing_add" => bx.add(args[0].immediate(), args[1].immediate()),
                         "overflowing_sub" => bx.sub(args[0].immediate(), args[1].immediate()),
                         "overflowing_mul" => bx.mul(args[0].immediate(), args[1].immediate()),
+                        "exact_div" =>
+                            if signed {
+                                bx.exactsdiv(args[0].immediate(), args[1].immediate())
+                            } else {
+                                bx.exactudiv(args[0].immediate(), args[1].immediate())
+                            },
                         "unchecked_div" =>
                             if signed {
                                 bx.sdiv(args[0].immediate(), args[1].immediate())
@@ -1153,6 +1159,27 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()))
     }
 
+    if name == "simd_select" {
+        let m_elem_ty = in_elem;
+        let m_len = in_len;
+        let v_len = arg_tys[1].simd_size(tcx);
+        require!(m_len == v_len,
+                 "mismatched lengths: mask length `{}` != other vector length `{}`",
+                 m_len, v_len
+        );
+        match m_elem_ty.sty {
+            ty::TyInt(_) => {},
+            _ => {
+                return_error!("mask element type is `{}`, expected `i_`", m_elem_ty);
+            }
+        }
+        // truncate the mask to a vector of i1s
+        let i1 = Type::i1(bx.cx);
+        let i1xn = Type::vector(&i1, m_len as u64);
+        let m_i1s = bx.trunc(args[0].immediate(), i1xn);
+        return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
+    }
+
     macro_rules! arith_red {
         ($name:tt : $integer_reduce:ident, $float_reduce:ident, $ordered:expr) => {
             if name == $name {
@@ -1405,6 +1432,8 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
         simd_and: TyUint, TyInt => and;
         simd_or: TyUint, TyInt => or;
         simd_xor: TyUint, TyInt => xor;
+        simd_fmax: TyFloat => maxnum;
+        simd_fmin: TyFloat => minnum;
     }
     span_bug!(span, "unknown SIMD intrinsic");
 }

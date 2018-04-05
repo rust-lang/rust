@@ -30,6 +30,7 @@ use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, FileMap};
 use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 use ty;
+use ty::maps::job::QueryResult;
 use ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use ty::context::TyCtxt;
 
@@ -239,6 +240,10 @@ impl<'sess> OnDiskCache<'sess> {
                 for (key, entry) in const_eval::get_cache_internal(tcx).map.iter() {
                     use ty::maps::config::QueryDescription;
                     if const_eval::cache_on_disk(key.clone()) {
+                        let entry = match *entry {
+                            QueryResult::Complete(ref v) => v,
+                            _ => panic!("incomplete query"),
+                        };
                         if let Ok(ref value) = entry.value {
                             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
@@ -820,7 +825,7 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<
                 // of the metadata file, because that would end up making our indices
                 // not special. It is essentially impossible for that to happen,
                 // but let's make sure
-                assert!(pos != interpret::ALLOC_DISCRIMINANT && pos != interpret::FN_DISCRIMINANT);
+                assert!(pos >= interpret::SHORTHAND_START);
                 entry.insert(pos);
                 None
             },
@@ -1109,6 +1114,10 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     for (key, entry) in Q::get_cache_internal(tcx).map.iter() {
         if Q::cache_on_disk(key.clone()) {
+            let entry = match *entry {
+                QueryResult::Complete(ref v) => v,
+                _ => panic!("incomplete query"),
+            };
             let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
             // Record position of the cache entry

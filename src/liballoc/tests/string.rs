@@ -443,53 +443,53 @@ fn test_drain() {
 }
 
 #[test]
-fn test_splice() {
+fn test_replace_range() {
     let mut s = "Hello, world!".to_owned();
-    s.splice(7..12, "世界");
+    s.replace_range(7..12, "世界");
     assert_eq!(s, "Hello, 世界!");
 }
 
 #[test]
 #[should_panic]
-fn test_splice_char_boundary() {
+fn test_replace_range_char_boundary() {
     let mut s = "Hello, 世界!".to_owned();
-    s.splice(..8, "");
+    s.replace_range(..8, "");
 }
 
 #[test]
-fn test_splice_inclusive_range() {
+fn test_replace_range_inclusive_range() {
     let mut v = String::from("12345");
-    v.splice(2..=3, "789");
+    v.replace_range(2..=3, "789");
     assert_eq!(v, "127895");
-    v.splice(1..=2, "A");
+    v.replace_range(1..=2, "A");
     assert_eq!(v, "1A895");
 }
 
 #[test]
 #[should_panic]
-fn test_splice_out_of_bounds() {
+fn test_replace_range_out_of_bounds() {
     let mut s = String::from("12345");
-    s.splice(5..6, "789");
+    s.replace_range(5..6, "789");
 }
 
 #[test]
 #[should_panic]
-fn test_splice_inclusive_out_of_bounds() {
+fn test_replace_range_inclusive_out_of_bounds() {
     let mut s = String::from("12345");
-    s.splice(5..=5, "789");
+    s.replace_range(5..=5, "789");
 }
 
 #[test]
-fn test_splice_empty() {
+fn test_replace_range_empty() {
     let mut s = String::from("12345");
-    s.splice(1..2, "");
+    s.replace_range(1..2, "");
     assert_eq!(s, "1345");
 }
 
 #[test]
-fn test_splice_unbounded() {
+fn test_replace_range_unbounded() {
     let mut s = String::from("12345");
-    s.splice(.., "");
+    s.replace_range(.., "");
     assert_eq!(s, "");
 }
 

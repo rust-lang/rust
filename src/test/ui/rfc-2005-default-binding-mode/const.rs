@@ -10,8 +10,6 @@
 
 // FIXME(tschottdorf): this test should pass.
 
-#![feature(match_default_bindings)]
-
 #[derive(PartialEq, Eq)]
 struct Foo {
     bar: i32,

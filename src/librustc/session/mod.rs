@@ -31,7 +31,7 @@ use rustc_data_structures::sync::{Lrc, Lock};
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
 use errors::emitter::{Emitter, EmitterWriter};
-use syntax::epoch::Epoch;
+use syntax::edition::Edition;
 use syntax::json::JsonEmitter;
 use syntax::feature_gate;
 use syntax::symbol::Symbol;
@@ -42,7 +42,7 @@ use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_back::{LinkerFlavor, PanicStrategy};
-use rustc_back::target::Target;
+use rustc_back::target::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;
 
@@ -707,7 +707,7 @@ impl Session {
     pub fn target_filesearch(&self, kind: PathKind) -> filesearch::FileSearch {
         filesearch::FileSearch::new(
             self.sysroot(),
-            &self.opts.target_triple,
+            self.opts.target_triple.triple(),
             &self.opts.search_paths,
             kind,
         )
@@ -976,13 +976,13 @@ impl Session {
         self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
     }
 
-    /// Are we allowed to use features from the Rust 2018 epoch?
+    /// Are we allowed to use features from the Rust 2018 edition?
     pub fn rust_2018(&self) -> bool {
-        self.opts.debugging_opts.epoch >= Epoch::Epoch2018
+        self.opts.debugging_opts.edition >= Edition::Edition2018
     }
 
-    pub fn epoch(&self) -> Epoch {
-        self.opts.debugging_opts.epoch
+    pub fn edition(&self) -> Edition {
+        self.opts.debugging_opts.edition
     }
 }
 
@@ -1085,7 +1085,8 @@ pub fn build_session_(
     span_diagnostic: errors::Handler,
     codemap: Lrc<codemap::CodeMap>,
 ) -> Session {
-    let host = match Target::search(config::host_triple()) {
+    let host_triple = TargetTriple::from_triple(config::host_triple());
+    let host = match Target::search(&host_triple) {
         Ok(t) => t,
         Err(e) => {
             span_diagnostic

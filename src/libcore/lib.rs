@@ -78,7 +78,7 @@
 #![feature(doc_spotlight)]
 #![feature(fn_must_use)]
 #![feature(fundamental)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(intrinsics)]
 #![feature(iterator_flatten)]
@@ -86,6 +86,7 @@
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(exhaustive_patterns)]
+#![feature(macro_at_most_once_rep)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
@@ -184,6 +185,10 @@ pub mod str;
 pub mod hash;
 pub mod fmt;
 pub mod time;
+
+/* Heap memory allocator trait */
+#[allow(missing_docs)]
+pub mod heap;
 
 // note: does not need to be public
 mod char_private;

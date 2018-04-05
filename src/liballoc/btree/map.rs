@@ -13,12 +13,12 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{FromIterator, Peekable, FusedIterator};
 use core::marker::PhantomData;
+use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::Index;
+use core::ops::RangeBounds;
 use core::{fmt, intrinsics, mem, ptr};
 
 use borrow::Borrow;
-use Bound::{Excluded, Included, Unbounded};
-use range::RangeArgument;
 
 use super::node::{self, Handle, NodeRef, marker};
 use super::search;
@@ -576,6 +576,33 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+    /// Returns the key-value pair corresponding to the supplied key.
+    ///
+    /// The supplied key may be any borrowed form of the map's key type, but the ordering
+    /// on the borrowed form *must* match the ordering on the key type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_get_key_value)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
+    /// assert_eq!(map.get_key_value(&2), None);
+    /// ```
+    #[unstable(feature = "map_get_key_value", issue = "49347")]
+    pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
+        where K: Borrow<Q>,
+              Q: Ord
+    {
+        match search::search_tree(self.root.as_ref(), k) {
+            Found(handle) => Some(handle.into_kv()),
+            GoDown(_) => None,
+        }
+    }
+
     /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
@@ -777,7 +804,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// ```
     /// use std::collections::BTreeMap;
-    /// use std::collections::Bound::Included;
+    /// use std::ops::Bound::Included;
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(3, "a");
@@ -790,7 +817,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+        where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_ref();
         let root2 = self.root.as_ref();
@@ -830,7 +857,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
-        where T: Ord, K: Borrow<T>, R: RangeArgument<T>
+        where T: Ord, K: Borrow<T>, R: RangeBounds<T>
     {
         let root1 = self.root.as_mut();
         let root2 = unsafe { ptr::read(&root1) };
@@ -1785,7 +1812,7 @@ fn last_leaf_edge<BorrowType, K, V>
     }
 }
 
-fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeArgument<Q>>(
+fn range_search<BorrowType, K, V, Q: ?Sized, R: RangeBounds<Q>>(
     root1: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     root2: NodeRef<BorrowType, K, V, marker::LeafOrInternal>,
     range: R

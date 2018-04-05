@@ -33,6 +33,7 @@
 
 use infer::{InferCtxt, InferOk, InferResult, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::Idx;
+use serialize::UseSpecializedDecodable;
 use std::fmt::Debug;
 use std::ops::Index;
 use syntax::codemap::Span;
@@ -40,6 +41,7 @@ use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::{self, CanonicalVar, Lift, Region, Slice, Ty, TyCtxt, TypeFlags};
 use ty::subst::{Kind, UnpackedKind};
 use ty::fold::{TypeFoldable, TypeFolder};
+use util::captures::Captures;
 use util::common::CellUsizeExt;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -48,13 +50,15 @@ use rustc_data_structures::fx::FxHashMap;
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewriten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct Canonical<'gcx, V> {
     pub variables: CanonicalVarInfos<'gcx>,
     pub value: V,
 }
 
 pub type CanonicalVarInfos<'gcx> = &'gcx Slice<CanonicalVarInfo>;
+
+impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> { }
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
@@ -68,7 +72,7 @@ pub type CanonicalVarInfos<'gcx> = &'gcx Slice<CanonicalVarInfo>;
 /// You can also use `infcx.fresh_inference_vars_for_canonical_vars`
 /// to get back a `CanonicalVarValues` containing fresh inference
 /// variables.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<CanonicalVar, Kind<'tcx>>,
 }
@@ -77,7 +81,7 @@ pub struct CanonicalVarValues<'tcx> {
 /// canonical value. This is sufficient information for code to create
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct CanonicalVarInfo {
     pub kind: CanonicalVarKind,
 }
@@ -85,7 +89,7 @@ pub struct CanonicalVarInfo {
 /// Describes the "kind" of the canonical variable. This is a "kind"
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub enum CanonicalVarKind {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -99,7 +103,7 @@ pub enum CanonicalVarKind {
 /// 22.) can only be instantiated with integral/float types (e.g.,
 /// usize or f32). In order to faithfully reproduce a type, we need to
 /// know what set of types a given type variable can be unified with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub enum CanonicalTyVarKind {
     /// General type variable `?T` that can be unified with arbitrary types.
     General,
@@ -250,8 +254,6 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 let ty = match ty_kind {
                     CanonicalTyVarKind::General => {
                         self.next_ty_var(
-                            // FIXME(#48696) this handling of universes is not right.
-                            ty::UniverseIndex::ROOT,
                             TypeVariableOrigin::MiscVariable(span),
                         )
                     }
@@ -382,7 +384,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unsubstituted_region_constraints: &'a QueryRegionConstraints<'tcx>,
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a {
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + Captures<'gcx> + 'a {
         let QueryRegionConstraints {
             region_outlives,
             ty_outlives,
@@ -854,11 +856,14 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'g
 }
 
 CloneTypeFoldableAndLiftImpls! {
+    ::infer::canonical::Certainty,
+    ::infer::canonical::CanonicalVarInfo,
+    ::infer::canonical::CanonicalVarKind,
+}
+
+CloneTypeFoldableImpls! {
     for <'tcx> {
-        ::infer::canonical::Certainty,
-        ::infer::canonical::CanonicalVarInfo,
         ::infer::canonical::CanonicalVarInfos<'tcx>,
-        ::infer::canonical::CanonicalVarKind,
     }
 }
 
@@ -867,6 +872,13 @@ BraceStructTypeFoldableImpl! {
         variables,
         value,
     } where C: TypeFoldable<'tcx>
+}
+
+BraceStructLiftImpl! {
+    impl<'a, 'tcx, T> Lift<'tcx> for Canonical<'a, T> {
+        type Lifted = Canonical<'tcx, T::Lifted>;
+        variables, value
+    } where T: Lift<'tcx>
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {

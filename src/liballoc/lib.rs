@@ -76,11 +76,11 @@
 #![deny(missing_debug_implementations)]
 
 #![cfg_attr(test, allow(deprecated))] // rand
-#![cfg_attr(test, feature(placement_in))]
 #![cfg_attr(not(test), feature(core_float))]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(rand, test))]
+#![feature(allocator_api)]
 #![feature(allow_internal_unstable)]
 #![feature(ascii_ctype)]
 #![feature(box_into_raw_non_null)]
@@ -88,6 +88,7 @@
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(coerce_unsized)]
+#![feature(collections_range)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(custom_attribute)]
@@ -96,9 +97,8 @@
 #![feature(fmt_internals)]
 #![feature(from_ref)]
 #![feature(fundamental)]
-#![feature(generic_param_attrs)]
-#![feature(i128_type)]
-#![feature(iter_rfold)]
+#![cfg_attr(stage0, feature(generic_param_attrs))]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
@@ -106,8 +106,6 @@
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
 #![feature(pin)]
-#![feature(placement_in_syntax)]
-#![feature(placement_new_protocol)]
 #![feature(ptr_internals)]
 #![feature(rustc_attrs)]
 #![feature(slice_get_slice)]
@@ -126,8 +124,8 @@
 #![feature(pointer_methods)]
 #![feature(inclusive_range_fields)]
 
-#![cfg_attr(not(test), feature(fn_traits, placement_new_protocol, swap_with_slice, i128))]
-#![cfg_attr(test, feature(test, box_heap))]
+#![cfg_attr(not(test), feature(fn_traits, swap_with_slice, i128))]
+#![cfg_attr(test, feature(test))]
 
 // Allow testing this library
 
@@ -145,9 +143,9 @@ extern crate std_unicode;
 #[macro_use]
 mod macros;
 
-// Allocator trait and helper struct definitions
-
-pub mod allocator;
+#[rustc_deprecated(since = "1.27.0", reason = "use the heap module in core, alloc, or std instead")]
+#[unstable(feature = "allocator_api", issue = "32838")]
+pub use core::heap as allocator;
 
 // Heaps provided for low-level allocation strategies
 
@@ -157,13 +155,12 @@ pub mod heap;
 
 // Need to conditionally define the mod from `boxed.rs` to avoid
 // duplicating the lang-items when building in test cfg; but also need
-// to allow code to have `use boxed::HEAP;`
-// and `use boxed::Box;` declarations.
+// to allow code to have `use boxed::Box;` declarations.
 #[cfg(not(test))]
 pub mod boxed;
 #[cfg(test)]
 mod boxed {
-    pub use std::boxed::{Box, IntermediateBox, HEAP};
+    pub use std::boxed::Box;
 }
 #[cfg(test)]
 mod boxed_test;
@@ -178,7 +175,6 @@ mod btree;
 pub mod borrow;
 pub mod fmt;
 pub mod linked_list;
-pub mod range;
 pub mod slice;
 pub mod str;
 pub mod string;
@@ -202,57 +198,6 @@ pub mod btree_set {
 #[cfg(not(test))]
 mod std {
     pub use core::ops;      // RangeFull
-}
-
-/// An endpoint of a range of keys.
-///
-/// # Examples
-///
-/// `Bound`s are range endpoints:
-///
-/// ```
-/// #![feature(collections_range)]
-///
-/// use std::collections::range::RangeArgument;
-/// use std::collections::Bound::*;
-///
-/// assert_eq!((..100).start(), Unbounded);
-/// assert_eq!((1..12).start(), Included(&1));
-/// assert_eq!((1..12).end(), Excluded(&12));
-/// ```
-///
-/// Using a tuple of `Bound`s as an argument to [`BTreeMap::range`].
-/// Note that in most cases, it's better to use range syntax (`1..5`) instead.
-///
-/// ```
-/// use std::collections::BTreeMap;
-/// use std::collections::Bound::{Excluded, Included, Unbounded};
-///
-/// let mut map = BTreeMap::new();
-/// map.insert(3, "a");
-/// map.insert(5, "b");
-/// map.insert(8, "c");
-///
-/// for (key, value) in map.range((Excluded(3), Included(8))) {
-///     println!("{}: {}", key, value);
-/// }
-///
-/// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
-/// ```
-///
-/// [`BTreeMap::range`]: btree_map/struct.BTreeMap.html#method.range
-#[stable(feature = "collections_bound", since = "1.17.0")]
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub enum Bound<T> {
-    /// An inclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Included(#[stable(feature = "collections_bound", since = "1.17.0")] T),
-    /// An exclusive bound.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Excluded(#[stable(feature = "collections_bound", since = "1.17.0")] T),
-    /// An infinite endpoint. Indicates that there is no bound in this direction.
-    #[stable(feature = "collections_bound", since = "1.17.0")]
-    Unbounded,
 }
 
 /// An intermediate trait for specialization of `Extend`.

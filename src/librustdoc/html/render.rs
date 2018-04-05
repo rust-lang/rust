@@ -129,8 +129,8 @@ pub struct SharedContext {
     pub sort_modules_alphabetically: bool,
     /// Additional themes to be added to the generated docs.
     pub themes: Vec<PathBuf>,
-    /// Suffix to be added on resource files (if suffix is "-v2" then "main.css" becomes
-    /// "main-v2.css").
+    /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
+    /// "light-v2.css").
     pub resource_suffix: String,
 }
 
@@ -743,7 +743,7 @@ fn write_shared(cx: &Context,
     write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/rustdoc.css"))?;
 
-    // To avoid "main.css" to be overwritten, we'll first run over the received themes and only
+    // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
     let mut themes: HashSet<String> = HashSet::new();
 
@@ -761,9 +761,9 @@ fn write_shared(cx: &Context,
 
     write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/brush.svg"))?;
-    write(cx.dst.join(&format!("main{}.css", cx.shared.resource_suffix)),
-          include_bytes!("static/themes/main.css"))?;
-    themes.insert("main".to_owned());
+    write(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
+          include_bytes!("static/themes/light.css"))?;
+    themes.insert("light".to_owned());
     write(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/dark.css"))?;
     themes.insert("dark".to_owned());
@@ -1067,7 +1067,7 @@ impl<'a> SourceCollector<'a> {
             return Ok(());
         }
 
-        let contents = fs::read_string(&p)?;
+        let contents = fs::read_to_string(&p)?;
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\u{feff}") {
@@ -1675,11 +1675,19 @@ impl<'a> Item<'a> {
     }
 }
 
+fn wrap_into_docblock<F>(w: &mut fmt::Formatter,
+                         f: F) -> fmt::Result
+where F: Fn(&mut fmt::Formatter) -> fmt::Result {
+    write!(w, "<div class=\"docblock type-decl\">")?;
+    f(w)?;
+    write!(w, "</div>")
+}
+
 impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         debug_assert!(!self.item.is_stripped());
         // Write the breadcrumb trail header for the top
-        write!(fmt, "\n<h1 class='fqn'><span class='in-band'>")?;
+        write!(fmt, "<h1 class='fqn'><span class='in-band'>")?;
         match self.item.inner {
             clean::ModuleItem(ref m) => if m.is_crate {
                     write!(fmt, "Crate ")?;
@@ -1741,14 +1749,11 @@ impl<'a> fmt::Display for Item<'a> {
             }
         }
 
-        write!(fmt, "</span>")?; // out-of-band
-
-        write!(fmt, "</h1>\n")?;
+        write!(fmt, "</span></h1>")?; // out-of-band
 
         match self.item.inner {
-            clean::ModuleItem(ref m) => {
-                item_module(fmt, self.cx, self.item, &m.items)
-            }
+            clean::ModuleItem(ref m) =>
+                item_module(fmt, self.cx, self.item, &m.items),
             clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
                 item_function(fmt, self.cx, self.item, f),
             clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
@@ -2108,9 +2113,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}",
-                               since,
-                               MarkdownHtml(&deprecated_reason));
+            let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
+                format!("Deprecated{}{}",
+                        since,
+                        MarkdownHtml(&deprecated_reason))
+            } else {
+                format!("Deprecating in {}{}",
+                        Escape(&stab.deprecated_since),
+                        MarkdownHtml(&deprecated_reason))
+            };
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -2160,7 +2171,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
+        let text = if stability::deprecation_in_effect(&depr.since) {
+            format!("Deprecated{}{}",
+                    since,
+                    MarkdownHtml(&note))
+        } else {
+            format!("Deprecating in {}{}",
+                    Escape(&depr.since),
+                    MarkdownHtml(&note))
+        };
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
@@ -2243,14 +2262,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
                       implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> Result<(), fmt::Error> {
-    write!(w, "<li>")?;
-    if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
-        write!(w, "<div class='out-of-band'>")?;
-        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
-                    l, "goto source code")?;
-        write!(w, "</div>")?;
-    }
-    write!(w, "<code>")?;
+    write!(w, "<li><table class='table-display'><tbody><tr><td><code>")?;
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
@@ -2269,7 +2281,14 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
             write!(w, ";</span>")?;
         }
     }
-    writeln!(w, "</code></li>")?;
+    write!(w, "</code><td>")?;
+    if let Some(l) = (Item { cx, item: &implementor.impl_item }).src_href() {
+        write!(w, "<div class='out-of-band'>")?;
+        write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
+                    l, "goto source code")?;
+        write!(w, "</div>")?;
+    }
+    writeln!(w, "</td></tr></tbody></table></li>")?;
     Ok(())
 }
 
@@ -2306,79 +2325,81 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
     }
 
-    // Output the trait definition
-    write!(w, "<pre class='rust trait'>")?;
-    render_attributes(w, it)?;
-    write!(w, "{}{}{}trait {}{}{}",
-           VisSpace(&it.visibility),
-           UnsafetySpace(t.unsafety),
-           if t.is_auto { "auto " } else { "" },
-           it.name.as_ref().unwrap(),
-           t.generics,
-           bounds)?;
-
-    if !t.generics.where_predicates.is_empty() {
-        write!(w, "{}", WhereClause { gens: &t.generics, indent: 0, end_newline: true })?;
-    } else {
-        write!(w, " ")?;
-    }
-
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
     let required = t.items.iter().filter(|m| m.is_ty_method()).collect::<Vec<_>>();
     let provided = t.items.iter().filter(|m| m.is_method()).collect::<Vec<_>>();
 
-    if t.items.is_empty() {
-        write!(w, "{{ }}")?;
-    } else {
-        // FIXME: we should be using a derived_id for the Anchors here
-        write!(w, "{{\n")?;
-        for t in &types {
-            write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
-            write!(w, ";\n")?;
-        }
-        if !types.is_empty() && !consts.is_empty() {
-            w.write_str("\n")?;
-        }
-        for t in &consts {
-            write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
-            write!(w, ";\n")?;
-        }
-        if !consts.is_empty() && !required.is_empty() {
-            w.write_str("\n")?;
-        }
-        for (pos, m) in required.iter().enumerate() {
-            write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
-            write!(w, ";\n")?;
+    // Output the trait definition
+    wrap_into_docblock(w, |w| {
+        write!(w, "<pre class='rust trait'>")?;
+        render_attributes(w, it)?;
+        write!(w, "{}{}{}trait {}{}{}",
+               VisSpace(&it.visibility),
+               UnsafetySpace(t.unsafety),
+               if t.is_auto { "auto " } else { "" },
+               it.name.as_ref().unwrap(),
+               t.generics,
+               bounds)?;
 
-            if pos < required.len() - 1 {
-               write!(w, "<div class='item-spacer'></div>")?;
-            }
+        if !t.generics.where_predicates.is_empty() {
+            write!(w, "{}", WhereClause { gens: &t.generics, indent: 0, end_newline: true })?;
+        } else {
+            write!(w, " ")?;
         }
-        if !required.is_empty() && !provided.is_empty() {
-            w.write_str("\n")?;
-        }
-        for (pos, m) in provided.iter().enumerate() {
-            write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
-            match m.inner {
-                clean::MethodItem(ref inner) if !inner.generics.where_predicates.is_empty() => {
-                    write!(w, ",\n    {{ ... }}\n")?;
-                },
-                _ => {
-                    write!(w, " {{ ... }}\n")?;
-                },
+
+        if t.items.is_empty() {
+            write!(w, "{{ }}")?;
+        } else {
+            // FIXME: we should be using a derived_id for the Anchors here
+            write!(w, "{{\n")?;
+            for t in &types {
+                write!(w, "    ")?;
+                render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
+                write!(w, ";\n")?;
             }
-            if pos < provided.len() - 1 {
-               write!(w, "<div class='item-spacer'></div>")?;
+            if !types.is_empty() && !consts.is_empty() {
+                w.write_str("\n")?;
             }
+            for t in &consts {
+                write!(w, "    ")?;
+                render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
+                write!(w, ";\n")?;
+            }
+            if !consts.is_empty() && !required.is_empty() {
+                w.write_str("\n")?;
+            }
+            for (pos, m) in required.iter().enumerate() {
+                write!(w, "    ")?;
+                render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
+                write!(w, ";\n")?;
+
+                if pos < required.len() - 1 {
+                   write!(w, "<div class='item-spacer'></div>")?;
+                }
+            }
+            if !required.is_empty() && !provided.is_empty() {
+                w.write_str("\n")?;
+            }
+            for (pos, m) in provided.iter().enumerate() {
+                write!(w, "    ")?;
+                render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
+                match m.inner {
+                    clean::MethodItem(ref inner) if !inner.generics.where_predicates.is_empty() => {
+                        write!(w, ",\n    {{ ... }}\n")?;
+                    },
+                    _ => {
+                        write!(w, " {{ ... }}\n")?;
+                    },
+                }
+                if pos < provided.len() - 1 {
+                   write!(w, "<div class='item-spacer'></div>")?;
+                }
+            }
+            write!(w, "}}")?;
         }
-        write!(w, "}}")?;
-    }
-    write!(w, "</pre>")?;
+        write!(w, "</pre>")
+    })?;
 
     // Trait documentation
     document(w, cx, it)?;
@@ -2717,16 +2738,18 @@ fn render_assoc_item(w: &mut fmt::Formatter,
 
 fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
-    write!(w, "<pre class='rust struct'>")?;
-    render_attributes(w, it)?;
-    render_struct(w,
-                  it,
-                  Some(&s.generics),
-                  s.struct_type,
-                  &s.fields,
-                  "",
-                  true)?;
-    write!(w, "</pre>")?;
+    wrap_into_docblock(w, |w| {
+        write!(w, "<pre class='rust struct'>")?;
+        render_attributes(w, it)?;
+        render_struct(w,
+                      it,
+                      Some(&s.generics),
+                      s.struct_type,
+                      &s.fields,
+                      "",
+                      true)?;
+        write!(w, "</pre>")
+    })?;
 
     document(w, cx, it)?;
     let mut fields = s.fields.iter().filter_map(|f| {
@@ -2769,15 +2792,17 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                s: &clean::Union) -> fmt::Result {
-    write!(w, "<pre class='rust union'>")?;
-    render_attributes(w, it)?;
-    render_union(w,
-                 it,
-                 Some(&s.generics),
-                 &s.fields,
-                 "",
-                 true)?;
-    write!(w, "</pre>")?;
+    wrap_into_docblock(w, |w| {
+        write!(w, "<pre class='rust union'>")?;
+        render_attributes(w, it)?;
+        render_union(w,
+                     it,
+                     Some(&s.generics),
+                     &s.fields,
+                     "",
+                     true)?;
+        write!(w, "</pre>")
+    })?;
 
     document(w, cx, it)?;
     let mut fields = s.fields.iter().filter_map(|f| {
@@ -2790,10 +2815,15 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "<h2 id='fields' class='fields small-section-header'>
                    Fields<a href='#fields' class='anchor'></a></h2>")?;
         for (field, ty) in fields {
-            write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
+            let name = field.name.as_ref().expect("union field name");
+            let id = format!("{}.{}", ItemType::StructField, name);
+            write!(w, "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
+                           <a href=\"#{id}\" class=\"anchor field\"></a>\
+                           <span class='invisible'><code>{name}: {ty}</code></span>\
                        </span>",
+                   id = id,
+                   name = name,
                    shortty = ItemType::StructField,
-                   name = field.name.as_ref().unwrap(),
                    ty = ty)?;
             if let Some(stability_class) = field.stability_class() {
                 write!(w, "<span class='stab {stab}'></span>",
@@ -2807,56 +2837,58 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
-    write!(w, "<pre class='rust enum'>")?;
-    render_attributes(w, it)?;
-    write!(w, "{}enum {}{}{}",
-           VisSpace(&it.visibility),
-           it.name.as_ref().unwrap(),
-           e.generics,
-           WhereClause { gens: &e.generics, indent: 0, end_newline: true })?;
-    if e.variants.is_empty() && !e.variants_stripped {
-        write!(w, " {{}}")?;
-    } else {
-        write!(w, " {{\n")?;
-        for v in &e.variants {
-            write!(w, "    ")?;
-            let name = v.name.as_ref().unwrap();
-            match v.inner {
-                clean::VariantItem(ref var) => {
-                    match var.kind {
-                        clean::VariantKind::CLike => write!(w, "{}", name)?,
-                        clean::VariantKind::Tuple(ref tys) => {
-                            write!(w, "{}(", name)?;
-                            for (i, ty) in tys.iter().enumerate() {
-                                if i > 0 {
-                                    write!(w, ",&nbsp;")?
+    wrap_into_docblock(w, |w| {
+        write!(w, "<pre class='rust enum'>")?;
+        render_attributes(w, it)?;
+        write!(w, "{}enum {}{}{}",
+               VisSpace(&it.visibility),
+               it.name.as_ref().unwrap(),
+               e.generics,
+               WhereClause { gens: &e.generics, indent: 0, end_newline: true })?;
+        if e.variants.is_empty() && !e.variants_stripped {
+            write!(w, " {{}}")?;
+        } else {
+            write!(w, " {{\n")?;
+            for v in &e.variants {
+                write!(w, "    ")?;
+                let name = v.name.as_ref().unwrap();
+                match v.inner {
+                    clean::VariantItem(ref var) => {
+                        match var.kind {
+                            clean::VariantKind::CLike => write!(w, "{}", name)?,
+                            clean::VariantKind::Tuple(ref tys) => {
+                                write!(w, "{}(", name)?;
+                                for (i, ty) in tys.iter().enumerate() {
+                                    if i > 0 {
+                                        write!(w, ",&nbsp;")?
+                                    }
+                                    write!(w, "{}", *ty)?;
                                 }
-                                write!(w, "{}", *ty)?;
+                                write!(w, ")")?;
                             }
-                            write!(w, ")")?;
-                        }
-                        clean::VariantKind::Struct(ref s) => {
-                            render_struct(w,
-                                          v,
-                                          None,
-                                          s.struct_type,
-                                          &s.fields,
-                                          "    ",
-                                          false)?;
+                            clean::VariantKind::Struct(ref s) => {
+                                render_struct(w,
+                                              v,
+                                              None,
+                                              s.struct_type,
+                                              &s.fields,
+                                              "    ",
+                                              false)?;
+                            }
                         }
                     }
+                    _ => unreachable!()
                 }
-                _ => unreachable!()
+                write!(w, ",\n")?;
             }
-            write!(w, ",\n")?;
-        }
 
-        if e.variants_stripped {
-            write!(w, "    // some variants omitted\n")?;
+            if e.variants_stripped {
+                write!(w, "    // some variants omitted\n")?;
+            }
+            write!(w, "}}")?;
         }
-        write!(w, "}}")?;
-    }
-    write!(w, "</pre>")?;
+        write!(w, "</pre>")
+    })?;
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
@@ -3314,10 +3346,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
             None => "impl".to_string(),
         });
-        write!(w, "<h3 id='{}' class='impl'><span class='in-band'><code>{}</code>",
+        write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
+                   <tbody><tr><td><code>{}</code>",
                id, i.inner_impl())?;
         write!(w, "<a href='#{}' class='anchor'></a>", id)?;
-        write!(w, "</span><span class='out-of-band'>")?;
+        write!(w, "</span></td><td><span class='out-of-band'>")?;
         let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
         if let Some(l) = (Item { item: &i.impl_item, cx: cx }).src_href() {
             write!(w, "<div class='ghost'></div>")?;
@@ -3327,8 +3360,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         } else {
             render_stability_since_raw(w, since, outer_version)?;
         }
-        write!(w, "</span>")?;
-        write!(w, "</h3>\n")?;
+        write!(w, "</span></td></tr></tbody></table></h3>")?;
         if let Some(ref dox) = cx.shared.maybe_collapsed_doc_value(&i.impl_item) {
             write!(w, "<div class='docblock'>{}</div>",
                    Markdown(&*dox, &i.impl_item.links()))?;
@@ -3357,19 +3389,20 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                     write!(w, "{}", spotlight_decl(decl)?)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
-                    write!(w, "<code>")?;
+                    write!(w, "<table class='table-display'><tbody><tr><td><code>")?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
                     write!(w, "</code>")?;
                     if let Some(l) = (Item { cx, item }).src_href() {
-                        write!(w, "</span><span class='out-of-band'>")?;
+                        write!(w, "</span></td><td><span class='out-of-band'>")?;
                         write!(w, "<div class='ghost'></div>")?;
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                         write!(w, "<a class='srclink' href='{}' title='{}'>[src]</a>",
                                l, "goto source code")?;
                     } else {
+                        write!(w, "</td><td>")?;
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     }
-                    write!(w, "</span></h4>\n")?;
+                    write!(w, "</td></tr></tbody></table></span></h4>")?;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
@@ -4043,11 +4076,13 @@ impl<'a> fmt::Display for Source<'a> {
 
 fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    w.write_str(&highlight::render_with_highlighting(&t.source,
-                                                     Some("macro"),
-                                                     None,
-                                                     None,
-                                                     None))?;
+    wrap_into_docblock(w, |w| {
+        w.write_str(&highlight::render_with_highlighting(&t.source,
+                                                         Some("macro"),
+                                                         None,
+                                                         None,
+                                                         None))
+    })?;
     document(w, cx, it)
 }
 

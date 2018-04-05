@@ -1,0 +1,8 @@
+error: `r#_` is not currently supported.
+  --> $DIR/raw-literal-underscore.rs:13:20
+   |
+LL | fn underscore_test(r#_: u32) {
+   |                    ^^^
+
+error: aborting due to previous error
+

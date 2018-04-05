@@ -364,8 +364,8 @@ pub fn parse_failure_msg(tok: Token) -> String {
 
 /// Perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
-    if let (Some(id1), Some(id2)) = (t1.ident(), t2.ident()) {
-        id1.name == id2.name
+    if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
+        id1.name == id2.name && is_raw1 == is_raw2
     } else if let (&token::Lifetime(id1), &token::Lifetime(id2)) = (t1, t2) {
         id1.name == id2.name
     } else {
@@ -711,9 +711,10 @@ pub fn parse(
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<Ident> {
+fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
     match *token {
-        token::Ident(ident) if ident.name != keywords::Underscore.name() => Some(ident),
+        token::Ident(ident, is_raw) if ident.name != keywords::Underscore.name() =>
+            Some((ident, is_raw)),
         _ => None,
     }
 }
@@ -737,7 +738,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         "ident" => get_macro_ident(token).is_some(),
         "vis" => match *token {
             // The follow-set of :vis + "priv" keyword + interpolated
-            Token::Comma | Token::Ident(_) | Token::Interpolated(_) => true,
+            Token::Comma | Token::Ident(..) | Token::Interpolated(_) => true,
             _ => token.can_begin_type(),
         },
         "block" => match *token {
@@ -746,7 +747,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
                 token::NtItem(_)
                 | token::NtPat(_)
                 | token::NtTy(_)
-                | token::NtIdent(_)
+                | token::NtIdent(..)
                 | token::NtMeta(_)
                 | token::NtPath(_)
                 | token::NtVis(_) => false, // none of these may start with '{'.
@@ -755,7 +756,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             _ => false,
         },
         "path" | "meta" => match *token {
-            Token::ModSep | Token::Ident(_) => true,
+            Token::ModSep | Token::Ident(..) => true,
             Token::Interpolated(ref nt) => match nt.0 {
                 token::NtPath(_) | token::NtMeta(_) => true,
                 _ => may_be_ident(&nt.0),
@@ -763,7 +764,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
             _ => false,
         },
         "pat" => match *token {
-            Token::Ident(_) |               // box, ref, mut, and other identifiers (can stricten)
+            Token::Ident(..) |               // box, ref, mut, and other identifiers (can stricten)
             Token::OpenDelim(token::Paren) |    // tuple pattern
             Token::OpenDelim(token::Bracket) |  // slice pattern
             Token::BinOp(token::And) |          // reference
@@ -823,9 +824,9 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
-        "ident" => if let Some(ident) = get_macro_ident(&p.token) {
+        "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
             p.bump();
-            token::NtIdent(respan(p.prev_span, ident))
+            token::NtIdent(respan(p.prev_span, ident), is_raw)
         } else {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal(&format!("expected ident, found {}", &token_str)).emit();

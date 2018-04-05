@@ -57,7 +57,7 @@ use syntax::ast::{FnDecl, ForeignItem, ForeignItemKind, GenericParam, Generics};
 use syntax::ast::{Item, ItemKind, ImplItem, ImplItemKind};
 use syntax::ast::{Label, Local, Mutability, Pat, PatKind, Path};
 use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
-use syntax::feature_gate::{feature_err, emit_feature_err, GateIssue};
+use syntax::feature_gate::{feature_err, GateIssue};
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -162,6 +162,10 @@ enum ResolutionError<'a> {
     ForwardDeclaredTyParam,
 }
 
+/// Combines an error with provided span and emits it
+///
+/// This takes the error provided, combines it with the span and any additional spans inside the
+/// error and emits it.
 fn resolve_error<'sess, 'a>(resolver: &'sess Resolver,
                             span: Span,
                             resolution_error: ResolutionError<'a>) {
@@ -423,14 +427,14 @@ fn generate_fn_name_span(cm: &CodeMap, span: Span) -> Option<Span> {
 /// a new local type parameter.
 ///
 /// For instance:
-/// ```
+/// ```rust,ignore (pseudo-Rust)
 /// // Given span
 /// fn my_function(param: T)
-///                       ^ Original span
+/// //                    ^ Original span
 ///
 /// // Result
 /// fn my_function(param: T)
-///    ^^^^^^^^^^^ Generated span with snippet `my_function<T>`
+/// // ^^^^^^^^^^^ Generated span with snippet `my_function<T>`
 /// ```
 ///
 /// Attention: The method used is very fragile since it essentially duplicates the work of the
@@ -486,7 +490,7 @@ struct BindingInfo {
     binding_mode: BindingMode,
 }
 
-// Map from the name in a pattern to its binding mode.
+/// Map from the name in a pattern to its binding mode.
 type BindingMap = FxHashMap<Ident, BindingInfo>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -681,6 +685,9 @@ impl<'a> PathSource<'a> {
     }
 }
 
+/// Different kinds of symbols don't influence each other.
+///
+/// Therefore, they have a separate universe (namespace).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Namespace {
     TypeNS,
@@ -688,6 +695,7 @@ pub enum Namespace {
     MacroNS,
 }
 
+/// Just a helper ‒ separate structure for each namespace.
 #[derive(Clone, Default, Debug)]
 pub struct PerNS<T> {
     value_ns: T,
@@ -784,6 +792,7 @@ impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
     }
 }
 
+/// This thing walks the whole crate in DFS manner, visiting each item, resolving names as it goes.
 impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_item(&mut self, item: &'tcx Item) {
         self.resolve_item(item);
@@ -910,7 +919,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
     fn visit_generics(&mut self, generics: &'tcx Generics) {
         // For type parameter defaults, we have to ban access
         // to following type parameters, as the Substs can only
-        // provide previous type parameters as they're built.
+        // provide previous type parameters as they're built. We
+        // put all the parameters on the ban list and then remove
+        // them one by one as they are processed and become available.
         let mut default_ban_rib = Rib::new(ForwardTyParamBanRibKind);
         default_ban_rib.bindings.extend(generics.params.iter()
             .filter_map(|p| if let GenericParam::Type(ref tp) = *p { Some(tp) } else { None })
@@ -986,6 +997,17 @@ enum RibKind<'a> {
 }
 
 /// One local scope.
+///
+/// A rib represents a scope names can live in. Note that these appear in many places, not just
+/// around braces. At any place where the list of accessible names (of the given namespace)
+/// changes or a new restrictions on the name accessibility are introduced, a new rib is put onto a
+/// stack. This may be, for example, a `let` statement (because it introduces variables), a macro,
+/// etc.
+///
+/// Different [rib kinds](enum.RibKind) are transparent for different names.
+///
+/// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
+/// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 struct Rib<'a> {
     bindings: FxHashMap<Ident, Def>,
@@ -1001,6 +1023,11 @@ impl<'a> Rib<'a> {
     }
 }
 
+/// An intermediate resolution result.
+///
+/// This refers to the thing referred by a name. The difference between `Def` and `Item` is that
+/// items are visible in their whole block, while defs only from the place they are defined
+/// forward.
 enum LexicalScopeBinding<'a> {
     Item(&'a NameBinding<'a>),
     Def(Def),
@@ -1031,7 +1058,26 @@ enum PathResult<'a> {
 }
 
 enum ModuleKind {
+    /// An anonymous module, eg. just a block.
+    ///
+    /// ```
+    /// fn main() {
+    ///     fn f() {} // (1)
+    ///     { // This is an anonymous module
+    ///         f(); // This resolves to (2) as we are inside the block.
+    ///         fn f() {} // (2)
+    ///     }
+    ///     f(); // Resolves to (1)
+    /// }
+    /// ```
     Block(NodeId),
+    /// Any module with a name.
+    ///
+    /// This could be:
+    ///
+    /// * A normal module ‒ either `mod from_file;` or `mod from_block { }`.
+    /// * A trait or an enum (it implicitly contains associated types, methods and variant
+    ///   constructors).
     Def(Def, Name),
 }
 
@@ -1316,6 +1362,9 @@ impl<'a> NameBinding<'a> {
 }
 
 /// Interns the names of the primitive types.
+///
+/// All other types are defined somewhere and possibly imported, but the primitive ones need
+/// special handling, since they have no place of origin.
 struct PrimitiveTypeTable {
     primitive_types: FxHashMap<Name, PrimTy>,
 }
@@ -1350,6 +1399,8 @@ impl PrimitiveTypeTable {
 }
 
 /// The main resolver class.
+///
+/// This is the visitor that walks the whole crate.
 pub struct Resolver<'a> {
     session: &'a Session,
     cstore: &'a CrateStore,
@@ -1481,6 +1532,7 @@ pub struct Resolver<'a> {
     injected_crate: Option<Module<'a>>,
 }
 
+/// Nothing really interesting here, it just provides memory for the rest of the crate.
 pub struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleData<'a>>,
     local_modules: RefCell<Vec<Module<'a>>>,
@@ -1526,10 +1578,12 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
         match id.krate {
             LOCAL_CRATE => self.definitions.def_key(id.index).parent,
             _ => self.cstore.def_key(id).parent,
-        }.map(|index| DefId { index: index, ..id })
+        }.map(|index| DefId { index, ..id })
     }
 }
 
+/// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
+/// the resolver is no longer needed as all the relevant information is inline.
 impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
         self.resolve_hir_path_cb(path, is_value,
@@ -1752,6 +1806,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// Runs the function on each namespace.
     fn per_ns<T, F: FnMut(&mut Self, Namespace) -> T>(&mut self, mut f: F) -> PerNS<T> {
         PerNS {
             type_ns: f(self, TypeNS),
@@ -3117,17 +3172,6 @@ impl<'a> Resolver<'a> {
                        self.primitive_type_table.primitive_types
                            .contains_key(&path[0].node.name) => {
                 let prim = self.primitive_type_table.primitive_types[&path[0].node.name];
-                match prim {
-                    TyUint(UintTy::U128) | TyInt(IntTy::I128) => {
-                        if !self.session.features_untracked().i128_type {
-                            emit_feature_err(&self.session.parse_sess,
-                                                "i128_type", span, GateIssue::Language,
-                                                "128-bit type is unstable");
-
-                        }
-                    }
-                    _ => {}
-                }
                 PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(module) => PathResolution::new(module.def().unwrap()),
@@ -3206,7 +3250,7 @@ impl<'a> Resolver<'a> {
                     // `$crate::a::b`
                     module = Some(self.resolve_crate_root(ident.node.ctxt, true));
                     continue
-                } else if i == 1 && !token::Ident(ident.node).is_path_segment_keyword() {
+                } else if i == 1 && !token::is_path_segment_keyword(ident.node) {
                     let prev_name = path[0].node.name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&

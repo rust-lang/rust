@@ -84,6 +84,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 sub,
                 point,
                 span,
+                next: _,
             } = constraint;
             with_msg(&format!(
                 "{:?}: {:?} @ {:?} due to {:?}",

@@ -23,12 +23,12 @@ fn main() {
         yield;
     };
 
-    match foo.resume() {
+    match unsafe { foo.resume() } {
         GeneratorState::Complete(()) => {}
         s => panic!("bad state: {:?}", s),
     }
 
-    match panic::catch_unwind(move || foo.resume()) {
+    match panic::catch_unwind(move || unsafe { foo.resume() }) {
         Ok(_) => panic!("generator successfully resumed"),
         Err(_) => {}
     }

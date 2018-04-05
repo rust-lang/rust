@@ -17,7 +17,7 @@ use std::slice::SliceConcatExt;
 use Mode;
 use Compiler;
 use builder::{Step, RunConfig, ShouldRun, Builder};
-use util::{copy, exe, add_lib_path};
+use util::{exe, add_lib_path};
 use compile::{self, libtest_stamp, libstd_stamp, librustc_stamp};
 use native;
 use channel::GitInfo;
@@ -112,12 +112,85 @@ impl Step for ToolBuild {
             Mode::Tool => panic!("unexpected Mode::Tool for tool build")
         }
 
-        let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
-        println!("Building stage{} tool {} ({})", compiler.stage, tool, target);
-
         let mut cargo = prepare_tool_cargo(builder, compiler, target, "build", path);
         cargo.arg("--features").arg(self.extra_features.join(" "));
-        let is_expected = build.try_run(&mut cargo);
+
+        let _folder = build.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
+        build.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
+        let mut duplicates = Vec::new();
+        let is_expected = compile::stream_cargo(build, &mut cargo, &mut |msg| {
+            // Only care about big things like the RLS/Cargo for now
+            if tool != "rls" && tool != "cargo" {
+                return
+            }
+            let (id, features, filenames) = match msg {
+                compile::CargoMessage::CompilerArtifact {
+                    package_id,
+                    features,
+                    filenames
+                } => {
+                    (package_id, features, filenames)
+                }
+                _ => return,
+            };
+            let features = features.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+
+            for path in filenames {
+                let val = (tool, PathBuf::from(&*path), features.clone());
+                // we're only interested in deduplicating rlibs for now
+                if val.1.extension().and_then(|s| s.to_str()) != Some("rlib") {
+                    continue
+                }
+
+                // Don't worry about libs that turn out to be host dependencies
+                // or build scripts, we only care about target dependencies that
+                // are in `deps`.
+                if let Some(maybe_target) = val.1
+                    .parent()                   // chop off file name
+                    .and_then(|p| p.parent())   // chop off `deps`
+                    .and_then(|p| p.parent())   // chop off `release`
+                    .and_then(|p| p.file_name())
+                    .and_then(|p| p.to_str())
+                {
+                    if maybe_target != &*target {
+                        continue
+                    }
+                }
+
+                let mut artifacts = build.tool_artifacts.borrow_mut();
+                let prev_artifacts = artifacts
+                    .entry(target)
+                    .or_insert_with(Default::default);
+                if let Some(prev) = prev_artifacts.get(&*id) {
+                    if prev.1 != val.1 {
+                        duplicates.push((
+                            id.to_string(),
+                            val,
+                            prev.clone(),
+                        ));
+                    }
+                    return
+                }
+                prev_artifacts.insert(id.to_string(), val);
+            }
+        });
+
+        if is_expected && duplicates.len() != 0 {
+            println!("duplicate artfacts found when compiling a tool, this \
+                      typically means that something was recompiled because \
+                      a transitive dependency has different features activated \
+                      than in a previous build:\n");
+            for (id, cur, prev) in duplicates {
+                println!("  {}", id);
+                println!("    `{}` enabled features {:?} at {:?}",
+                         cur.0, cur.2, cur.1);
+                println!("    `{}` enabled features {:?} at {:?}",
+                         prev.0, prev.2, prev.1);
+            }
+            println!("");
+            panic!("tools should not compile multiple copies of the same crate");
+        }
+
         build.save_toolstate(tool, if is_expected {
             ToolState::TestFail
         } else {
@@ -134,7 +207,7 @@ impl Step for ToolBuild {
             let cargo_out = build.cargo_out(compiler, Mode::Tool, target)
                 .join(exe(tool, &compiler.host));
             let bin = build.tools_dir(compiler).join(exe(tool, &compiler.host));
-            copy(&cargo_out, &bin);
+            build.copy(&cargo_out, &bin);
             Some(bin)
         }
     }
@@ -338,9 +411,10 @@ impl Step for Rustdoc {
         };
 
         builder.ensure(compile::Rustc { compiler: build_compiler, target });
-
-        let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
-        println!("Building rustdoc for stage{} ({})", target_compiler.stage, target_compiler.host);
+        builder.ensure(compile::Rustc {
+            compiler: build_compiler,
+            target: builder.build.build,
+        });
 
         let mut cargo = prepare_tool_cargo(builder,
                                            build_compiler,
@@ -352,7 +426,11 @@ impl Step for Rustdoc {
         cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())
              .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
 
+        let _folder = build.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));
+        build.info(&format!("Building rustdoc for stage{} ({})",
+            target_compiler.stage, target_compiler.host));
         build.run(&mut cargo);
+
         // Cargo adds a number of paths to the dylib search path on windows, which results in
         // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
         // rustdoc a different name.
@@ -366,7 +444,7 @@ impl Step for Rustdoc {
             t!(fs::create_dir_all(&bindir));
             let bin_rustdoc = bindir.join(exe("rustdoc", &*target_compiler.host));
             let _ = fs::remove_file(&bin_rustdoc);
-            copy(&tool_rustdoc, &bin_rustdoc);
+            build.copy(&tool_rustdoc, &bin_rustdoc);
             bin_rustdoc
         } else {
             tool_rustdoc

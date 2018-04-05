@@ -184,6 +184,10 @@ impl Command {
         let maybe_env = self.env.capture_if_changed();
         maybe_env.map(|env| construct_envp(env, &mut self.saw_nul))
     }
+    #[allow(dead_code)]
+    pub fn env_saw_path(&self) -> bool {
+        self.env.have_changed_path()
+    }
 
     pub fn setup_io(&self, default: Stdio, needs_stdin: bool)
                 -> io::Result<(StdioPipes, ChildPipes)> {

@@ -46,6 +46,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_anon_types();
         wbcx.visit_cast_types();
         wbcx.visit_free_region_map();
+        wbcx.visit_user_provided_tys();
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
@@ -339,6 +340,33 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             .lift_to_global(&self.fcx.tables.borrow().free_region_map);
         let free_region_map = free_region_map.expect("all regions in free-region-map are global");
         self.tables.free_region_map = free_region_map;
+    }
+
+    fn visit_user_provided_tys(&mut self) {
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+        let common_local_id_root = fcx_tables.local_id_root.unwrap();
+
+        for (&local_id, c_ty) in fcx_tables.user_provided_tys().iter() {
+            let hir_id = hir::HirId {
+                owner: common_local_id_root.index,
+                local_id,
+            };
+
+            let c_ty = if let Some(c_ty) = self.tcx().lift_to_global(c_ty) {
+                c_ty
+            } else {
+                span_bug!(
+                    hir_id.to_span(&self.fcx.tcx),
+                    "writeback: `{:?}` missing from the global type context",
+                    c_ty
+                );
+            };
+
+            self.tables
+                .user_provided_tys_mut()
+                .insert(hir_id, c_ty.clone());
+        }
     }
 
     fn visit_anon_types(&mut self) {

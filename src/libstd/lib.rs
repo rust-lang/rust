@@ -266,11 +266,10 @@
 #![feature(float_from_str_radix)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
-#![feature(generic_param_attrs)]
+#![cfg_attr(stage0, feature(generic_param_attrs))]
 #![feature(hashmap_internals)]
 #![feature(heap_api)]
-#![feature(i128)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type, i128))]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -282,6 +281,7 @@
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
 #![feature(exhaustive_patterns)]
+#![feature(nonzero)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
@@ -290,7 +290,6 @@
 #![feature(panic_internals)]
 #![feature(panic_unwind)]
 #![feature(peek)]
-#![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(prelude_import)]
 #![feature(ptr_internals)]
@@ -298,6 +297,7 @@
 #![feature(raw)]
 #![feature(rustc_attrs)]
 #![feature(stdsimd)]
+#![feature(shrink_to)]
 #![feature(slice_bytes)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
@@ -307,11 +307,9 @@
 #![feature(str_char)]
 #![feature(str_internals)]
 #![feature(str_utf16)]
-#![feature(termination_trait)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
-#![feature(try_from)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -324,6 +322,7 @@
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
 #![cfg_attr(stage0, feature(never_type))]
+#![cfg_attr(stage0, feature(termination_trait))]
 
 #![default_lib_allocator]
 
@@ -434,7 +433,7 @@ pub use core::i16;
 pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
@@ -464,7 +463,7 @@ pub use alloc::string;
 pub use alloc::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
-#[unstable(feature = "i128", issue = "35118")]
+#[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
 
 pub mod f32;

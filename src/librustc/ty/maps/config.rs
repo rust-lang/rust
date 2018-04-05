@@ -430,6 +430,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::native_libraries<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::foreign_modules<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the foreign modules of a linked crate")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::plugin_registrar_fn<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the plugin registrar for a crate")
@@ -457,6 +463,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::crate_hash<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::original_crate_name<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("looking up the original name a crate")
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::extra_filename<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("looking up the extra filename for a crate")
     }
 }
 
@@ -604,21 +616,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::output_filenames<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::has_clone_closures<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("seeing if the crate has enabled `Clone` closures")
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::vtable_methods<'tcx> {
     fn describe(tcx: TyCtxt, key: ty::PolyTraitRef<'tcx> ) -> String {
         format!("finding all methods for trait {}", tcx.item_path_str(key.def_id()))
-    }
-}
-
-impl<'tcx> QueryDescription<'tcx> for queries::has_copy_closures<'tcx> {
-    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("seeing if the crate has enabled `Copy` closures")
     }
 }
 
@@ -678,6 +678,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::instance_def_size_estimate<'tcx> 
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::wasm_custom_sections<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("custom wasm sections for a crate")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
     #[inline]
     fn cache_on_disk(def_id: Self::Key) -> bool {
@@ -696,6 +702,18 @@ impl<'tcx> QueryDescription<'tcx> for queries::generics_of<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
     fn describe(_tcx: TyCtxt, _: DefId) -> String {
         format!("generating chalk-style clauses")
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::wasm_import_module_map<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("wasm import module map")
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::dllimport_foreign_items<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("wasm import module map")
     }
 }
 

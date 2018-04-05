@@ -19,7 +19,7 @@ use graphviz::IntoCow;
 use syntax_pos::Span;
 
 use std::borrow::Cow;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
 
@@ -52,7 +52,7 @@ impl<'tcx> ConstVal<'tcx> {
 #[derive(Clone, Debug)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub kind: Rc<ErrKind<'tcx>>,
+    pub kind: Lrc<ErrKind<'tcx>>,
 }
 
 #[derive(Clone, Debug)]

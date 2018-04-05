@@ -48,6 +48,7 @@ use ty::layout::{LayoutDetails, TargetDataLayout};
 use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
+use ty::CanonicalTy;
 use util::nodemap::{NodeMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -161,12 +162,12 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                  -> Ty<'tcx> {
         let ty = {
             let mut interner = self.type_.borrow_mut();
-            let global_interner = global_interners.map(|interners| {
-                interners.type_.borrow_mut()
-            });
             if let Some(&Interned(ty)) = interner.get(&st) {
                 return ty;
             }
+            let global_interner = global_interners.map(|interners| {
+                interners.type_.borrow_mut()
+            });
             if let Some(ref interner) = global_interner {
                 if let Some(&Interned(ty)) = interner.get(&st) {
                     return ty;
@@ -344,6 +345,10 @@ pub struct TypeckTables<'tcx> {
     /// method calls, including those of overloaded operators.
     type_dependent_defs: ItemLocalMap<Def>,
 
+    /// Stores the canonicalized types provided by the user. See also `UserAssertTy` statement in
+    /// MIR.
+    user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
+
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
     /// typeck::check::fn_ctxt for details.
@@ -420,6 +425,7 @@ impl<'tcx> TypeckTables<'tcx> {
         TypeckTables {
             local_id_root,
             type_dependent_defs: ItemLocalMap(),
+            user_provided_tys: ItemLocalMap(),
             node_types: ItemLocalMap(),
             node_substs: ItemLocalMap(),
             adjustments: ItemLocalMap(),
@@ -458,6 +464,20 @@ impl<'tcx> TypeckTables<'tcx> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.type_dependent_defs
+        }
+    }
+
+    pub fn user_provided_tys(&self) -> LocalTableInContext<CanonicalTy<'tcx>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.user_provided_tys
+        }
+    }
+
+    pub fn user_provided_tys_mut(&mut self) -> LocalTableInContextMut<CanonicalTy<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.user_provided_tys
         }
     }
 
@@ -685,6 +705,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
         let ty::TypeckTables {
             local_id_root,
             ref type_dependent_defs,
+            ref user_provided_tys,
             ref node_types,
             ref node_substs,
             ref adjustments,
@@ -704,6 +725,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             type_dependent_defs.hash_stable(hcx, hasher);
+            user_provided_tys.hash_stable(hcx, hasher);
             node_types.hash_stable(hcx, hasher);
             node_substs.hash_stable(hcx, hasher);
             adjustments.hash_stable(hcx, hasher);
@@ -1010,17 +1032,16 @@ impl<'tcx> InterpretInterner<'tcx> {
     }
 }
 
-impl<'tcx> GlobalCtxt<'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Get the global TyCtxt.
-    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    #[inline]
+    pub fn global_tcx(self) -> TyCtxt<'a, 'gcx, 'gcx> {
         TyCtxt {
-            gcx: self,
-            interners: &self.global_interners
+            gcx: self.gcx,
+            interners: &self.gcx.global_interners,
         }
     }
-}
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {
         self.global_arenas.generics.alloc(generics)
     }
@@ -1081,12 +1102,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         alloc: interpret::Allocation,
     ) -> &'gcx interpret::Allocation {
-        if let Some(alloc) = self.interpret_interner.inner.borrow().allocs.get(&alloc) {
+        let allocs = &mut self.interpret_interner.inner.borrow_mut().allocs;
+        if let Some(alloc) = allocs.get(&alloc) {
             return alloc;
         }
 
         let interned = self.global_arenas.const_allocs.alloc(alloc);
-        if let Some(prev) = self.interpret_interner.inner.borrow_mut().allocs.replace(interned) {
+        if let Some(prev) = allocs.replace(interned) {
             bug!("Tried to overwrite interned Allocation: {:#?}", prev)
         }
         interned
@@ -1113,24 +1135,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {
-        if let Some(st) = self.stability_interner.borrow().get(&stab) {
+        let mut stability_interner = self.stability_interner.borrow_mut();
+        if let Some(st) = stability_interner.get(&stab) {
             return st;
         }
 
         let interned = self.global_interners.arena.alloc(stab);
-        if let Some(prev) = self.stability_interner.borrow_mut().replace(interned) {
+        if let Some(prev) = stability_interner.replace(interned) {
             bug!("Tried to overwrite interned Stability: {:?}", prev)
         }
         interned
     }
 
     pub fn intern_layout(self, layout: LayoutDetails) -> &'gcx LayoutDetails {
-        if let Some(layout) = self.layout_interner.borrow().get(&layout) {
+        let mut layout_interner = self.layout_interner.borrow_mut();
+        if let Some(layout) = layout_interner.get(&layout) {
             return layout;
         }
 
         let interned = self.global_arenas.layout.alloc(layout);
-        if let Some(prev) = self.layout_interner.borrow_mut().replace(interned) {
+        if let Some(prev) = layout_interner.replace(interned) {
             bug!("Tried to overwrite interned Layout: {:?}", prev)
         }
         interned
@@ -1220,7 +1244,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                     Lrc::new(StableVec::new(v)));
         }
 
-        tls::enter_global(GlobalCtxt {
+        let gcx = &GlobalCtxt {
             sess: s,
             cstore,
             global_arenas: &arenas.global,
@@ -1261,7 +1285,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             all_traits: RefCell::new(None),
             tx_to_llvm_workers: tx,
             output_filenames: Arc::new(output_filenames.clone()),
-       }, f)
+        };
+
+        tls::enter_global(gcx, f)
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
@@ -1485,11 +1511,28 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
-    pub fn enter_local<F, R>(&self, arena: &'tcx DroplessArena, f: F) -> R
-        where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+    pub fn enter_local<F, R>(
+        &self,
+        arena: &'tcx DroplessArena,
+        f: F
+    ) -> R
+    where
+        F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
     {
         let interners = CtxtInterners::new(arena);
-        tls::enter(self, &interners, f)
+        let tcx = TyCtxt {
+            gcx: self,
+            interners: &interners,
+        };
+        ty::tls::with_related_context(tcx.global_tcx(), |icx| {
+            let new_icx = ty::tls::ImplicitCtxt {
+                tcx,
+                query: icx.query.clone(),
+            };
+            ty::tls::enter_context(&new_icx, |new_icx| {
+                f(new_icx.tcx)
+            })
+        })
     }
 }
 
@@ -1635,83 +1678,214 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<Predicate<'a>> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a Slice<CanonicalVarInfo> {
+    type Lifted = &'tcx Slice<CanonicalVarInfo>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        if self.len() == 0 {
+            return Some(Slice::empty());
+        }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 pub mod tls {
-    use super::{CtxtInterners, GlobalCtxt, TyCtxt};
+    use super::{GlobalCtxt, TyCtxt};
 
     use std::cell::Cell;
     use std::fmt;
+    use std::mem;
     use syntax_pos;
+    use ty::maps;
+    use errors::{Diagnostic, TRACK_DIAGNOSTICS};
+    use rustc_data_structures::OnDrop;
+    use rustc_data_structures::sync::Lrc;
 
-    /// Marker types used for the scoped TLS slot.
-    /// The type context cannot be used directly because the scoped TLS
-    /// in libstd doesn't allow types generic over lifetimes.
-    enum ThreadLocalGlobalCtxt {}
-    enum ThreadLocalInterners {}
+    /// This is the implicit state of rustc. It contains the current
+    /// TyCtxt and query. It is updated when creating a local interner or
+    /// executing a new query. Whenever there's a TyCtxt value available
+    /// you should also have access to an ImplicitCtxt through the functions
+    /// in this module.
+    #[derive(Clone)]
+    pub struct ImplicitCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+        /// The current TyCtxt. Initially created by `enter_global` and updated
+        /// by `enter_local` with a new local interner
+        pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
-    thread_local! {
-        static TLS_TCX: Cell<Option<(*const ThreadLocalGlobalCtxt,
-                                     *const ThreadLocalInterners)>> = Cell::new(None)
+        /// The current query job, if any. This is updated by start_job in
+        /// ty::maps::plumbing when executing a query
+        pub query: Option<Lrc<maps::QueryJob<'gcx>>>,
     }
 
+    // A thread local value which stores a pointer to the current ImplicitCtxt
+    thread_local!(static TLV: Cell<usize> = Cell::new(0));
+
+    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+        let old = get_tlv();
+        let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
+        TLV.with(|tlv| tlv.set(value));
+        f()
+    }
+
+    fn get_tlv() -> usize {
+        TLV.with(|tlv| tlv.get())
+    }
+
+    /// This is a callback from libsyntax as it cannot access the implicit state
+    /// in librustc otherwise
     fn span_debug(span: syntax_pos::Span, f: &mut fmt::Formatter) -> fmt::Result {
         with(|tcx| {
             write!(f, "{}", tcx.sess.codemap().span_to_string(span))
         })
     }
 
-    pub fn enter_global<'gcx, F, R>(gcx: GlobalCtxt<'gcx>, f: F) -> R
-        where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
+    /// This is a callback from libsyntax as it cannot access the implicit state
+    /// in librustc otherwise. It is used to when diagnostic messages are
+    /// emitted and stores them in the current query, if there is one.
+    fn track_diagnostic(diagnostic: &Diagnostic) {
+        with_context(|context| {
+            if let Some(ref query) = context.query {
+                query.diagnostics.lock().push(diagnostic.clone());
+            }
+        })
+    }
+
+    /// Sets up the callbacks from libsyntax on the current thread
+    pub fn with_thread_locals<F, R>(f: F) -> R
+        where F: FnOnce() -> R
     {
         syntax_pos::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
-            let result = enter(&gcx, &gcx.global_interners, f);
-            span_dbg.set(original_span_debug);
-            result
-        })
-    }
 
-    pub fn enter<'a, 'gcx: 'tcx, 'tcx, F, R>(gcx: &'a GlobalCtxt<'gcx>,
-                                             interners: &'a CtxtInterners<'tcx>,
-                                             f: F) -> R
-        where F: FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
-    {
-        let gcx_ptr = gcx as *const _ as *const ThreadLocalGlobalCtxt;
-        let interners_ptr = interners as *const _ as *const ThreadLocalInterners;
-        TLS_TCX.with(|tls| {
-            let prev = tls.get();
-            tls.set(Some((gcx_ptr, interners_ptr)));
-            let ret = f(TyCtxt {
-                gcx,
-                interners,
+            let _on_drop = OnDrop(move || {
+                span_dbg.set(original_span_debug);
             });
-            tls.set(prev);
-            ret
-        })
-    }
 
-    pub fn with<F, R>(f: F) -> R
-        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
-    {
-        TLS_TCX.with(|tcx| {
-            let (gcx, interners) = tcx.get().unwrap();
-            let gcx = unsafe { &*(gcx as *const GlobalCtxt) };
-            let interners = unsafe { &*(interners as *const CtxtInterners) };
-            f(TyCtxt {
-                gcx,
-                interners,
+            TRACK_DIAGNOSTICS.with(|current| {
+                let original = current.get();
+                current.set(track_diagnostic);
+
+                let _on_drop = OnDrop(move || {
+                    current.set(original);
+                });
+
+                f()
             })
         })
     }
 
+    /// Sets `context` as the new current ImplicitCtxt for the duration of the function `f`
+    pub fn enter_context<'a, 'gcx: 'tcx, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'gcx, 'tcx>,
+                                                     f: F) -> R
+        where F: FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        set_tlv(context as *const _ as usize, || {
+            f(&context)
+        })
+    }
+
+    /// Enters GlobalCtxt by setting up libsyntax callbacks and
+    /// creating a initial TyCtxt and ImplicitCtxt.
+    /// This happens once per rustc session and TyCtxts only exists
+    /// inside the `f` function.
+    pub fn enter_global<'gcx, F, R>(gcx: &GlobalCtxt<'gcx>, f: F) -> R
+        where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
+    {
+        with_thread_locals(|| {
+            let tcx = TyCtxt {
+                gcx,
+                interners: &gcx.global_interners,
+            };
+            let icx = ImplicitCtxt {
+                tcx,
+                query: None,
+            };
+            enter_context(&icx, |_| {
+                f(tcx)
+            })
+        })
+    }
+
+    /// Allows access to the current ImplicitCtxt in a closure if one is available
+    pub fn with_context_opt<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'gcx, 'tcx>>) -> R
+    {
+        let context = get_tlv();
+        if context == 0 {
+            f(None)
+        } else {
+            unsafe { f(Some(&*(context as *const ImplicitCtxt))) }
+        }
+    }
+
+    /// Allows access to the current ImplicitCtxt.
+    /// Panics if there is no ImplicitCtxt available
+    pub fn with_context<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(&ImplicitCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        with_context_opt(|opt_context| f(opt_context.expect("no ImplicitCtxt stored in tls")))
+    }
+
+    /// Allows access to the current ImplicitCtxt whose tcx field has the same global
+    /// interner as the tcx argument passed in. This means the closure is given an ImplicitCtxt
+    /// with the same 'gcx lifetime as the TyCtxt passed in.
+    /// This will panic if you pass it a TyCtxt which has a different global interner from
+    /// the current ImplicitCtxt's tcx field.
+    pub fn with_related_context<'a, 'gcx, 'tcx1, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx1>, f: F) -> R
+        where F: for<'b, 'tcx2> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx2>) -> R
+    {
+        with_context(|context| {
+            unsafe {
+                let gcx = tcx.gcx as *const _ as usize;
+                assert!(context.tcx.gcx as *const _ as usize == gcx);
+                let context: &ImplicitCtxt = mem::transmute(context);
+                f(context)
+            }
+        })
+    }
+
+    /// Allows access to the current ImplicitCtxt whose tcx field has the same global
+    /// interner and local interner as the tcx argument passed in. This means the closure
+    /// is given an ImplicitCtxt with the same 'tcx and 'gcx lifetimes as the TyCtxt passed in.
+    /// This will panic if you pass it a TyCtxt which has a different global interner or
+    /// a different local interner from the current ImplicitCtxt's tcx field.
+    pub fn with_fully_related_context<'a, 'gcx, 'tcx, F, R>(tcx: TyCtxt<'a, 'gcx, 'tcx>, f: F) -> R
+        where F: for<'b> FnOnce(&ImplicitCtxt<'b, 'gcx, 'tcx>) -> R
+    {
+        with_context(|context| {
+            unsafe {
+                let gcx = tcx.gcx as *const _ as usize;
+                let interners = tcx.interners as *const _ as usize;
+                assert!(context.tcx.gcx as *const _ as usize == gcx);
+                assert!(context.tcx.interners as *const _ as usize == interners);
+                let context: &ImplicitCtxt = mem::transmute(context);
+                f(context)
+            }
+        })
+    }
+
+    /// Allows access to the TyCtxt in the current ImplicitCtxt.
+    /// Panics if there is no ImplicitCtxt available
+    pub fn with<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        with_context(|context| f(context.tcx))
+    }
+
+    /// Allows access to the TyCtxt in the current ImplicitCtxt.
+    /// The closure is passed None if there is no ImplicitCtxt available
     pub fn with_opt<F, R>(f: F) -> R
         where F: for<'a, 'gcx, 'tcx> FnOnce(Option<TyCtxt<'a, 'gcx, 'tcx>>) -> R
     {
-        if TLS_TCX.with(|tcx| tcx.get().is_some()) {
-            with(|v| f(Some(v)))
-        } else {
-            f(None)
-        }
+        with_context_opt(|opt_context| f(opt_context.map(|context| context.tcx)))
     }
 }
 
@@ -2519,14 +2693,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
     providers.output_filenames = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.output_filenames.clone()
-    };
-    providers.has_copy_closures = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.features().copy_closures
-    };
-    providers.has_clone_closures = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.features().clone_closures
     };
     providers.features_query = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

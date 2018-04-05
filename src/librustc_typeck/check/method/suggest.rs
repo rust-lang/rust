@@ -22,12 +22,14 @@ use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::FxHashSet;
 
 use syntax::ast;
+use syntax::util::lev_distance::find_best_match_for_name;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
 use rustc::hir;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::ty::TyAdt;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -54,8 +56,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.autoderef(span, ty).any(|(ty, _)| {
                     self.probe(|_| {
                         let fn_once_substs = tcx.mk_substs_trait(ty,
-                            &[self.next_ty_var(ty::UniverseIndex::ROOT,
-                                               TypeVariableOrigin::MiscVariable(span))]);
+                            &[self.next_ty_var(TypeVariableOrigin::MiscVariable(span))]);
                         let trait_ref = ty::TraitRef::new(fn_once, fn_once_substs);
                         let poly_trait_ref = trait_ref.to_poly_trait_ref();
                         let obligation =
@@ -179,9 +180,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
                 let ty_string = self.ty_to_string(actual);
                 let is_method = mode == Mode::MethodCall;
+                let mut suggestion = None;
                 let type_str = if is_method {
                     "method"
                 } else if actual.is_enum() {
+                    if let TyAdt(ref adt_def, _) = actual.sty {
+                        let names = adt_def.variants.iter().map(|s| &s.name);
+                        suggestion = find_best_match_for_name(names,
+                                                              &item_name.as_str(),
+                                                              None);
+                    }
                     "variant"
                 } else {
                     match (item_name.as_str().chars().next(), actual.is_fresh_ty()) {
@@ -256,7 +264,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         err.emit();
                         return;
                     } else {
-                        struct_span_err!(
+                        let mut err = struct_span_err!(
                             tcx.sess,
                             span,
                             E0599,
@@ -264,7 +272,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             type_str,
                             item_name,
                             ty_string
-                        )
+                        );
+                        if let Some(suggestion) = suggestion {
+                            err.note(&format!("did you mean `{}::{}`?", type_str, suggestion));
+                        }
+                        err
                     }
                 } else {
                     tcx.sess.diagnostic().struct_dummy()
@@ -718,7 +730,14 @@ impl<'a> Iterator for AllTraits<'a> {
             TraitInfo::new(*info)
         })
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.borrow.as_ref().unwrap().len() - self.idx;
+        (len, Some(len))
+    }
 }
+
+impl<'a> ExactSizeIterator for AllTraits<'a> {}
 
 
 struct UsePlacementFinder<'a, 'tcx: 'a, 'gcx: 'tcx> {

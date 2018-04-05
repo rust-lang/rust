@@ -974,13 +974,13 @@ pub trait Iterator {
     ///     // each iteration, we'll multiply the state by the element
     ///     *state = *state * x;
     ///
-    ///     // the value passed on to the next iteration
-    ///     Some(*state)
+    ///     // then, we'll yield the negation of the state
+    ///     Some(-*state)
     /// });
     ///
-    /// assert_eq!(iter.next(), Some(1));
-    /// assert_eq!(iter.next(), Some(2));
-    /// assert_eq!(iter.next(), Some(6));
+    /// assert_eq!(iter.next(), Some(-1));
+    /// assert_eq!(iter.next(), Some(-2));
+    /// assert_eq!(iter.next(), Some(-6));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
@@ -1368,6 +1368,7 @@ pub trait Iterator {
     /// [`Result`]: ../../std/result/enum.Result.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
     fn collect<B: FromIterator<Self::Item>>(self) -> B where Self: Sized {
         FromIterator::from_iter(self)
     }
@@ -1446,7 +1447,6 @@ pub trait Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = [1, 2, 3];
     ///
     /// // the checked sum of all of the elements of the array
@@ -1458,7 +1458,6 @@ pub trait Iterator {
     /// Short-circuiting:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = [10, 20, 30, 100, 40, 50];
     /// let mut it = a.iter();
     ///
@@ -1472,7 +1471,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(&40));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
@@ -1495,7 +1494,6 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// use std::fs::rename;
     /// use std::io::{stdout, Write};
     /// use std::path::Path;
@@ -1512,7 +1510,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some("stale_bread.json"));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_for_each<F, R>(&mut self, mut f: F) -> R where
         Self: Sized, F: FnMut(Self::Item) -> R, R: Try<Ok=()>
     {
@@ -1742,6 +1740,38 @@ pub trait Iterator {
         self.try_for_each(move |x| {
             if predicate(&x) { LoopState::Break(x) }
             else { LoopState::Continue(()) }
+        }).break_value()
+    }
+
+    /// Applies function to the elements of iterator and returns
+    /// the first non-none result.
+    ///
+    /// `iter.find_map(f)` is equivalent to `iter.filter_map(f).next()`.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(iterator_find_map)]
+    /// let a = ["lol", "NaN", "2", "5"];
+    ///
+    /// let mut first_number = a.iter().find_map(|s| s.parse().ok());
+    ///
+    /// assert_eq!(first_number, Some(2));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_find_map",
+               reason = "unstable new API",
+               issue = "49602")]
+    fn find_map<B, F>(&mut self, mut f: F) -> Option<B> where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Option<B>,
+    {
+        self.try_for_each(move |x| {
+            match f(x) {
+                Some(x) => LoopState::Break(x),
+                None => LoopState::Continue(()),
+            }
         }).break_value()
     }
 

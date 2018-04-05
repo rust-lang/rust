@@ -50,6 +50,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::EndRegion(_) |
+                StatementKind::UserAssertTy(..) |
                 StatementKind::Nop => {
                     // These are all nops in a landing pad (there's some
                     // borrowck interaction between EndRegion and storage

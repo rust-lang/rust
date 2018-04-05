@@ -15,8 +15,6 @@
 // ignore-windows
 // ignore-32bit
 
-#![feature(i128_type)]
-
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
     fn identity(f: u128) -> u128;

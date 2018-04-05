@@ -77,7 +77,17 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
         None
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // All the blocks, minus the number of blocks we've visited.
+        let remaining = self.mir.basic_blocks().len() - self.visited.count();
+
+        // We will visit all remaining blocks exactly once.
+        (remaining, Some(remaining))
+    }
 }
+
+impl<'a, 'tcx> ExactSizeIterator for Preorder<'a, 'tcx> {}
 
 /// Postorder traversal of a graph.
 ///
@@ -210,7 +220,17 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 
         next.map(|(bb, _)| (bb, &self.mir[bb]))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // All the blocks, minus the number of blocks we've visited.
+        let remaining = self.mir.basic_blocks().len() - self.visited.count();
+
+        // We will visit all remaining blocks exactly once.
+        (remaining, Some(remaining))
+    }
 }
+
+impl<'a, 'tcx> ExactSizeIterator for Postorder<'a, 'tcx> {}
 
 /// Reverse postorder traversal of a graph
 ///
@@ -276,4 +296,10 @@ impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
 
         self.blocks.get(self.idx).map(|&bb| (bb, &self.mir[bb]))
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.idx, Some(self.idx))
+    }
 }
+
+impl<'a, 'tcx> ExactSizeIterator for ReversePostorder<'a, 'tcx> {}

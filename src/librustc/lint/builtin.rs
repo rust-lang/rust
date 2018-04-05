@@ -260,6 +260,12 @@ declare_lint! {
     "floating-point literals cannot be used in patterns"
 }
 
+declare_lint! {
+    pub UNSTABLE_NAME_COLLISION,
+    Warn,
+    "detects name collision with an existing but unstable method"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -307,7 +313,8 @@ impl LintPass for HardwiredLints {
             SINGLE_USE_LIFETIME,
             TYVAR_BEHIND_RAW_POINTER,
             ELIDED_LIFETIME_IN_PATH,
-            BARE_TRAIT_OBJECT
+            BARE_TRAIT_OBJECT,
+            UNSTABLE_NAME_COLLISION,
         )
     }
 }

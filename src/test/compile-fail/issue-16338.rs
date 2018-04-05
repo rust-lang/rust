@@ -17,5 +17,4 @@ fn main() {
     let Slice { data: data, len: len } = "foo";
     //~^ ERROR mismatched types
     //~| found type `Slice<_>`
-    //~| ERROR non-reference pattern used to match a reference
 }

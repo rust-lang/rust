@@ -228,13 +228,13 @@ fn encodable_substructure(cx: &mut ExtCtxt,
             }
 
             // unit structs have no fields and need to return Ok()
-            if stmts.is_empty() {
+            let blk = if stmts.is_empty() {
                 let ok = cx.expr_ok(trait_span, cx.expr_tuple(trait_span, vec![]));
-                let ret_ok = cx.expr(trait_span, ExprKind::Ret(Some(ok)));
-                stmts.push(cx.stmt_expr(ret_ok));
-            }
+                cx.lambda1(trait_span, ok, blkarg)
+            } else {
+                cx.lambda_stmts_1(trait_span, stmts, blkarg)
+            };
 
-            let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
             cx.expr_method_call(trait_span,
                                 encoder,
                                 cx.ident_of("emit_struct"),

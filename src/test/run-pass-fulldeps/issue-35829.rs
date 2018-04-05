@@ -20,8 +20,7 @@ use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
 use syntax::codemap::{FilePathMapping, dummy_spanned};
 use syntax::print::pprust::expr_to_string;
-use syntax::ast::{Expr, ExprKind, LitKind, StrStyle, RangeLimits};
-use syntax::symbol::Symbol;
+use syntax::ast::{ExprKind, LitKind, RangeLimits};
 use syntax::ptr::P;
 
 use rustc_data_structures::sync::Lrc;

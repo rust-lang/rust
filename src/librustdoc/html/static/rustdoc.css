@@ -109,7 +109,6 @@ h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	position: relative;
 }
 h3.impl, h3.method, h3.type {
-	margin-top: 15px;
 	padding-left: 15px;
 }
 
@@ -296,6 +295,11 @@ nav.sub {
 	overflow: auto;
 }
 
+#results > table {
+	width: 100%;
+	table-layout: fixed;
+}
+
 .content pre.line-numbers {
 	float: left;
 	border: none;
@@ -387,8 +391,6 @@ h4 > code, h3 > code, .invisible > code {
 .content .in-band {
 	margin: 0px;
 	padding: 0px;
-	display: inline-block;
-	max-width: calc(100% - 43px);
 }
 
 .in-band > code {
@@ -403,7 +405,7 @@ h4 > code, h3 > code, .invisible > code {
 	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-.content table {
+.content table:not(.table-display) {
 	border-spacing: 0 5px;
 	border-collapse: separate;
 }
@@ -467,10 +469,12 @@ h4 > code, h3 > code, .invisible > code {
 	font-size: 0.8em;
 }
 
-.content .methods > div:not(.important-traits) { margin-left: 40px; }
+.content .methods > div:not(.important-traits) {
+	margin-left: 40px;
+	margin-bottom: 15px;
+}
 
 .content .impl-items .docblock, .content .impl-items .stability {
-	margin-left: 40px;
 	margin-bottom: .6em;
 }
 .content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
@@ -577,8 +581,16 @@ a {
 	display: block;
 }
 
-.content .search-results td:first-child { padding-right: 0; }
-.content .search-results td:first-child a { padding-right: 10px; }
+.content .search-results td:first-child {
+	padding-right: 0;
+	width: 75%;
+}
+.content .search-results td:first-child a {
+	padding-right: 10px;
+}
+.content .search-results td:first-child a span {
+	float: left;
+}
 
 tr.result span.primitive::after {
 	content: ' (primitive type)';
@@ -1253,4 +1265,29 @@ kbd {
 .hidden-by-usual-hider {
 	/* important because of conflicting rule for small screens */
 	display: none !important;
+}
+
+#implementations-list > h3 > span.in-band {
+	width: 100%;
+}
+
+.table-display {
+	width: 100%;
+	border: 0;
+	border-collapse: collapse;
+	border-spacing: 0;
+	font-size: 16px;
+}
+
+.table-display tr td:first-child {
+	padding-right: 0;
+}
+
+.table-display tr td:last-child {
+	float: right;
+}
+.table-display .out-of-band {
+	position: relative;
+	font-size: 19px;
+	display: block;
 }

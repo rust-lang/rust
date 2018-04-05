@@ -12,6 +12,7 @@ use cstore;
 use encoder;
 use link_args;
 use native_libs;
+use foreign_modules;
 use schema;
 
 use rustc::ty::maps::QueryConfig;
@@ -197,6 +198,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         Lrc::new(reachable_non_generics)
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
+    foreign_modules => { Lrc::new(cdata.get_foreign_modules(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -211,6 +213,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     crate_hash => { cdata.hash() }
     original_crate_name => { cdata.name() }
 
+    extra_filename => { cdata.root.extra_filename.clone() }
+
+
     implementations_of_trait => {
         let mut result = vec![];
         let filter = Some(other);
@@ -224,9 +229,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         Lrc::new(result)
     }
 
-    is_dllimport_foreign_item => {
-        cdata.is_dllimport_foreign_item(def_id.index)
-    }
     visibility => { cdata.get_visibility(def_id.index) }
     dep_kind => {
         let r = *cdata.dep_kind.lock();
@@ -256,9 +258,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
 
-    has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
-    has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
-
     exported_symbols => {
         let cnum = cdata.cnum;
         assert!(cnum != LOCAL_CRATE);
@@ -271,6 +270,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         Arc::new(cdata.exported_symbols())
     }
+
+    wasm_custom_sections => { Lrc::new(cdata.wasm_custom_sections()) }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
@@ -304,12 +305,27 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
-                .find(|l| l.foreign_items.contains(&id))
+                .find(|lib| {
+                    let fm_id = match lib.foreign_module {
+                        Some(id) => id,
+                        None => return false,
+                    };
+                    tcx.foreign_modules(id.krate)
+                        .iter()
+                        .find(|m| m.def_id == fm_id)
+                        .expect("failed to find foreign module")
+                        .foreign_items
+                        .contains(&id)
+                })
                 .map(|l| l.kind)
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             Lrc::new(native_libs::collect(tcx))
+        },
+        foreign_modules: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Lrc::new(foreign_modules::collect(tcx))
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);

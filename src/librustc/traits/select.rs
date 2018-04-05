@@ -362,7 +362,9 @@ enum EvaluationResult {
     /// When checking `foo`, we have to prove `T: Trait`. This basically
     /// translates into this:
     ///
+    /// ```plain,ignore
     ///     (T: Trait + Sized →_\impl T: Trait), T: Trait ⊢ T: Trait
+    /// ```
     ///
     /// When we try to prove it, we first go the first option, which
     /// recurses. This shows us that the impl is "useless" - it won't
@@ -2061,11 +2063,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match self_ty.sty {
             ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
-            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
-            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
-            ty::TyRawPtr(..) | ty::TyError | ty::TyNever |
-            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyError => {
                 Where(ty::Binder(Vec::new()))
+            }
+
+            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::TyChar | ty::TyRawPtr(..) | ty::TyNever |
+            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+                // Implementations provided in libcore
+                None
             }
 
             ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
@@ -2086,14 +2092,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyClosure(def_id, substs) => {
                 let trait_id = obligation.predicate.def_id();
-                let copy_closures =
-                    Some(trait_id) == self.tcx().lang_items().copy_trait() &&
-                    self.tcx().has_copy_closures(def_id.krate);
-                let clone_closures =
-                    Some(trait_id) == self.tcx().lang_items().clone_trait() &&
-                    self.tcx().has_clone_closures(def_id.krate);
-
-                if copy_closures || clone_closures {
+                let is_copy_trait = Some(trait_id) == self.tcx().lang_items().copy_trait();
+                let is_clone_trait = Some(trait_id) == self.tcx().lang_items().clone_trait();
+                if is_copy_trait || is_clone_trait {
                     Where(ty::Binder(substs.upvar_tys(def_id, self.tcx()).collect()))
                 } else {
                     Never
@@ -3045,8 +3046,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             snapshot);
         let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
-        let impl_substs = self.infcx.fresh_substs_for_item(obligation.param_env.universe,
-                                                           obligation.cause.span,
+        let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span,
                                                            impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),

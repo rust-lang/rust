@@ -16,7 +16,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, TokenTree, TokenNode, Delimiter, Literal};
+use proc_macro::{TokenStream, TokenTree, TokenNode, Delimiter, Literal, Spacing};
 
 #[proc_macro_attribute]
 pub fn foo(attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -65,10 +65,34 @@ fn assert_inline(slice: &mut &[TokenTree]) {
 
 fn assert_doc(slice: &mut &[TokenTree]) {
     match slice[0].kind {
-        TokenNode::Literal(_) => {}
-        _ => panic!("expected literal doc comment got other"),
+        TokenNode::Op('#', Spacing::Alone) => {}
+        _ => panic!("expected #"),
     }
-    *slice = &slice[1..];
+    let inner = match slice[1].kind {
+        TokenNode::Group(Delimiter::Bracket, ref s) => s.clone(),
+        _ => panic!("expected brackets"),
+    };
+    let tokens = inner.into_iter().collect::<Vec<_>>();
+    let tokens = &tokens[..];
+
+    if tokens.len() != 3 {
+        panic!("expected three tokens in doc")
+    }
+
+    match tokens[0].kind {
+        TokenNode::Term(ref t) => assert_eq!("doc", t.as_str()),
+        _ => panic!("expected `doc`"),
+    }
+    match tokens[1].kind {
+        TokenNode::Op('=', Spacing::Alone) => {}
+        _ => panic!("expected equals"),
+    }
+    match tokens[2].kind {
+        TokenNode::Literal(_) => {}
+        _ => panic!("expected literal"),
+    }
+
+    *slice = &slice[2..];
 }
 
 fn assert_invoc(slice: &mut &[TokenTree]) {

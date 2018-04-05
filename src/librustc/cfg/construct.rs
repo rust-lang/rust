@@ -473,8 +473,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
         // Keep track of the previous guard expressions
         let mut prev_guards = Vec::new();
-        // Track if the previous pattern contained bindings or wildcards
-        let mut prev_has_bindings = false;
 
         for arm in arms {
             // Add an exit node for when we've visited all the
@@ -493,39 +491,15 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     // Visit the guard expression
                     let guard_exit = self.expr(&guard, guard_start);
 
-                    let this_has_bindings = pat.contains_bindings_or_wild();
-
-                    // If both this pattern and the previous pattern
-                    // were free of bindings, they must consist only
-                    // of "constant" patterns. Note we cannot match an
-                    // all-constant pattern, fail the guard, and then
-                    // match *another* all-constant pattern. This is
-                    // because if the previous pattern matches, then
-                    // we *cannot* match this one, unless all the
-                    // constants are the same (which is rejected by
-                    // `check_match`).
-                    //
-                    // We can use this to be smarter about the flow
-                    // along guards. If the previous pattern matched,
-                    // then we know we will not visit the guard in
-                    // this one (whether or not the guard succeeded),
-                    // if the previous pattern failed, then we know
-                    // the guard for that pattern will not have been
-                    // visited. Thus, it is not possible to visit both
-                    // the previous guard and the current one when
-                    // both patterns consist only of constant
-                    // sub-patterns.
-                    //
-                    // However, if the above does not hold, then all
-                    // previous guards need to be wired to visit the
-                    // current guard pattern.
-                    if prev_has_bindings || this_has_bindings {
-                        while let Some(prev) = prev_guards.pop() {
-                            self.add_contained_edge(prev, guard_start);
-                        }
+                    // #47295: We used to have very special case code
+                    // here for when a pair of arms are both formed
+                    // solely from constants, and if so, not add these
+                    // edges.  But this was not actually sound without
+                    // other constraints that we stopped enforcing at
+                    // some point.
+                    while let Some(prev) = prev_guards.pop() {
+                        self.add_contained_edge(prev, guard_start);
                     }
-
-                    prev_has_bindings = this_has_bindings;
 
                     // Push the guard onto the list of previous guards
                     prev_guards.push(guard_exit);

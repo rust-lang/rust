@@ -21,6 +21,7 @@ use std::mem;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
+use std::cmp::{PartialOrd, Ord, Ordering};
 
 use builder::Step;
 
@@ -154,6 +155,19 @@ impl AsRef<OsStr> for Interned<String> {
     }
 }
 
+impl PartialOrd<Interned<String>> for Interned<String> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let l = INTERNER.strs.lock().unwrap();
+        l.get(*self).partial_cmp(l.get(*other))
+    }
+}
+
+impl Ord for Interned<String> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let l = INTERNER.strs.lock().unwrap();
+        l.get(*self).cmp(l.get(*other))
+    }
+}
 
 struct TyIntern<T> {
     items: Vec<T>,
@@ -263,5 +277,17 @@ impl Cache {
                         .downcast_mut::<HashMap<S, S::Output>>()
                         .expect("invalid type mapped");
         stepcache.get(step).cloned()
+    }
+
+    #[cfg(test)]
+    pub fn all<S: Ord + Copy + Step>(&mut self) -> Vec<(S, S::Output)> {
+        let cache = self.0.get_mut();
+        let type_id = TypeId::of::<S>();
+        let mut v = cache.remove(&type_id)
+            .map(|b| b.downcast::<HashMap<S, S::Output>>().expect("correct type"))
+            .map(|m| m.into_iter().collect::<Vec<_>>())
+            .unwrap_or_default();
+        v.sort_by_key(|&(a, _)| a);
+        v
     }
 }

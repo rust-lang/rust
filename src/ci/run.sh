@@ -25,6 +25,8 @@ source "$ci_dir/shared.sh"
 
 if [ "$TRAVIS" == "true" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
+else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings"
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
@@ -71,6 +73,13 @@ fi
 # hasn't finished yet. Try to solve that problem by starting a very long-lived
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
+
+if [ "$PARALLEL_CHECK" != "" ]; then
+  $SRC/configure --enable-experimental-parallel-queries
+  python2.7 ../x.py check
+  rm -f config.toml
+  rm -rf build
+fi
 
 travis_fold start configure
 travis_time_start

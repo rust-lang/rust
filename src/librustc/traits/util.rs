@@ -347,6 +347,11 @@ impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.base_iterator.size_hint();
+        (0, upper)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

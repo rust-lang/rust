@@ -721,16 +721,6 @@ fn main() {
 ```
 "##,
 
-E0066: r##"
-Box placement expressions (like C++'s "placement new") do not yet support any
-place expression except the exchange heap (i.e. `std::boxed::HEAP`).
-Furthermore, the syntax is changing to use `in` instead of `box`. See [RFC 470]
-and [RFC 809] for more details.
-
-[RFC 470]: https://github.com/rust-lang/rfcs/pull/470
-[RFC 809]: https://github.com/rust-lang/rfcs/blob/master/text/0809-box-and-in-for-stdlib.md
-"##,
-
 E0067: r##"
 The left-hand side of a compound assignment expression must be a place
 expression. A place expression represents a memory location and includes
@@ -1918,16 +1908,16 @@ differs from the behavior for `&T`, which is always `Copy`).
 
 E0206: r##"
 You can only implement `Copy` for a struct or enum. Both of the following
-examples will fail, because neither `i32` (primitive type) nor `&'static Bar`
-(reference to `Bar`) is a struct or enum:
+examples will fail, because neither `[u8; 256]` nor `&'static mut Bar`
+(mutable reference to `Bar`) is a struct or enum:
 
 ```compile_fail,E0206
-type Foo = i32;
+type Foo = [u8; 256];
 impl Copy for Foo { } // error
 
 #[derive(Copy, Clone)]
 struct Bar;
-impl Copy for &'static Bar { } // error
+impl Copy for &'static mut Bar { } // error
 ```
 "##,
 
@@ -3794,7 +3784,6 @@ that impl must be declared as an `unsafe impl.
 Erroneous code example:
 
 ```compile_fail,E0569
-#![feature(generic_param_attrs)]
 #![feature(dropck_eyepatch)]
 
 struct Foo<X>(X);
@@ -4600,7 +4589,6 @@ This error indicates that there is a mismatch between generic parameters and
 impl Trait parameters in a trait declaration versus its impl.
 
 ```compile_fail,E0643
-#![feature(universal_impl_trait)]
 trait Foo {
     fn foo(&self, _: &impl Iterator);
 }

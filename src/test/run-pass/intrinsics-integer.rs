@@ -10,7 +10,7 @@
 
 // ignore-emscripten no i128 support
 
-#![feature(intrinsics, i128_type)]
+#![feature(intrinsics)]
 
 mod rusti {
     extern "rust-intrinsic" {

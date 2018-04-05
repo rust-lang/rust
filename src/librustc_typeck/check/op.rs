@@ -14,7 +14,7 @@ use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable, TypeVariants};
 use rustc::ty::TypeVariants::{TyStr, TyRef, TyAdt};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors;
 use syntax_pos::Span;
@@ -174,10 +174,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // trait matching creating lifetime constraints that are too strict.
         // E.g. adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
         // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-        let lhs_ty = self.check_expr_coercable_to_type_with_needs(
-            lhs_expr,
-            self.next_ty_var(ty::UniverseIndex::ROOT,
-                             TypeVariableOrigin::MiscVariable(lhs_expr.span)),
+        let lhs_ty = self.check_expr_coercable_to_type_with_needs(lhs_expr,
+            self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span)),
             lhs_needs);
         let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
@@ -187,8 +185,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // using this variable as the expected type, which sometimes lets
         // us do better coercions than we would be able to do otherwise,
         // particularly for things like `String + &String`.
-        let rhs_ty_var = self.next_ty_var(ty::UniverseIndex::ROOT,
-                         TypeVariableOrigin::MiscVariable(rhs_expr.span));
+        let rhs_ty_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(rhs_expr.span));
 
         let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
 
@@ -206,7 +203,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             hir::MutMutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
-                                allow_two_phase_borrow: true,
+                                allow_two_phase_borrow: AllowTwoPhase::Yes,
                             }
                         };
                         let autoref = Adjustment {
@@ -223,7 +220,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             hir::MutMutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
-                                allow_two_phase_borrow: true,
+                                allow_two_phase_borrow: AllowTwoPhase::Yes,
                             }
                         };
                         let autoref = Adjustment {

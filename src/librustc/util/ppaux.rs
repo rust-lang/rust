@@ -793,7 +793,7 @@ define_print! {
                 }
 
                 ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({:?}, {:?})", id, bound_region)
+                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
@@ -1177,8 +1177,8 @@ define_print! {
                         ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
                             write!(f, "{}", sz)?;
                         }
-                        ConstVal::Unevaluated(_def_id, substs) => {
-                            write!(f, "<unevaluated{:?}>", &substs[..])?;
+                        ConstVal::Unevaluated(_def_id, _substs) => {
+                            write!(f, "_")?;
                         }
                         _ => {
                             write!(f, "{:?}", sz)?;

@@ -14,21 +14,25 @@ use common::Config;
 /// Conversion table from triple OS name to Rust SYSNAME
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("android", "android"),
+    ("androideabi", "android"),
     ("bitrig", "bitrig"),
     ("cloudabi", "cloudabi"),
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
+    ("emscripten", "emscripten"),
     ("freebsd", "freebsd"),
+    ("fuchsia", "fuchsia"),
     ("haiku", "haiku"),
     ("ios", "ios"),
+    ("l4re", "l4re"),
     ("linux", "linux"),
     ("mingw32", "windows"),
     ("netbsd", "netbsd"),
     ("openbsd", "openbsd"),
+    ("redox", "redox"),
+    ("solaris", "solaris"),
     ("win32", "windows"),
     ("windows", "windows"),
-    ("solaris", "solaris"),
-    ("emscripten", "emscripten"),
 ];
 
 const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
@@ -36,20 +40,33 @@ const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
     ("amd64", "x86_64"),
     ("arm", "arm"),
     ("arm64", "aarch64"),
+    ("armv4t", "arm"),
+    ("armv5te", "arm"),
+    ("armv7", "arm"),
+    ("armv7s", "arm"),
+    ("asmjs", "asmjs"),
     ("hexagon", "hexagon"),
     ("i386", "x86"),
     ("i586", "x86"),
     ("i686", "x86"),
-    ("mips64", "mips64"),
     ("mips", "mips"),
+    ("mips64", "mips64"),
+    ("mips64el", "mips64"),
+    ("mipsel", "mips"),
     ("msp430", "msp430"),
     ("powerpc", "powerpc"),
+    ("powerpc64", "powerpc64"),
+    ("powerpc64le", "powerpc64"),
     ("s390x", "s390x"),
     ("sparc", "sparc"),
+    ("sparc64", "sparc64"),
+    ("sparcv9", "sparc64"),
+    ("thumbv6m", "thumb"),
+    ("thumbv7em", "thumb"),
+    ("thumbv7m", "thumb"),
+    ("wasm32", "wasm32"),
     ("x86_64", "x86_64"),
     ("xcore", "xcore"),
-    ("asmjs", "asmjs"),
-    ("wasm32", "wasm32"),
 ];
 
 pub fn matches_os(triple: &str, name: &str) -> bool {
@@ -58,16 +75,18 @@ pub fn matches_os(triple: &str, name: &str) -> bool {
     if triple == "wasm32-unknown-unknown" {
         return name == "emscripten" || name == "wasm32-bare"
     }
+    let triple: Vec<_> = triple.split('-').collect();
     for &(triple_os, os) in OS_TABLE {
-        if triple.contains(triple_os) {
+        if triple.contains(&triple_os) {
             return os == name;
         }
     }
     panic!("Cannot determine OS from triple");
 }
 pub fn get_arch(triple: &str) -> &'static str {
+    let triple: Vec<_> = triple.split('-').collect();
     for &(triple_arch, arch) in ARCH_TABLE {
-        if triple.contains(triple_arch) {
+        if triple.contains(&triple_arch) {
             return arch;
         }
     }

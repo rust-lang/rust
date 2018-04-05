@@ -21,10 +21,10 @@
 #![feature(box_syntax)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
 
 extern crate ar;
 extern crate flate2;

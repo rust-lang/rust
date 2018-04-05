@@ -27,6 +27,7 @@ fn main() {
                                    "InstrProfilingFile.c",
                                    "InstrProfilingMerge.c",
                                    "InstrProfilingMergeFile.c",
+                                   "InstrProfilingNameVar.c",
                                    "InstrProfilingPlatformDarwin.c",
                                    "InstrProfilingPlatformLinux.c",
                                    "InstrProfilingPlatformOther.c",
@@ -42,6 +43,8 @@ fn main() {
         cfg.define("strdup", Some("_strdup"));
         cfg.define("open", Some("_open"));
         cfg.define("fdopen", Some("_fdopen"));
+        cfg.define("getpid", Some("_getpid"));
+        cfg.define("fileno", Some("_fileno"));
     } else {
         // Turn off various features of gcc and such, mostly copying
         // compiler-rt's build system already
@@ -50,6 +53,7 @@ fn main() {
         cfg.flag("-fomit-frame-pointer");
         cfg.flag("-ffreestanding");
         cfg.define("VISIBILITY_HIDDEN", None);
+        cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
     }
 
     for src in profile_sources {

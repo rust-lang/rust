@@ -5,6 +5,7 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::ty::subst::Subst;
+use rustc::util::nodemap::FxHashSet;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -14,7 +15,7 @@ use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory};
 
 use std::fmt;
 use std::error::Error;
-use std::rc::Rc;
+use rustc_data_structures::sync::Lrc;
 
 pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -339,6 +340,14 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
+        let alloc = ecx
+                    .tcx
+                    .interpret_interner
+                    .get_cached(cid.instance.def_id());
+        // Don't evaluate when already cached to prevent cycles
+        if let Some(alloc) = alloc {
+            return Ok(alloc)
+        }
         // ensure the static is computed
         ecx.const_eval(cid)?;
         Ok(ecx
@@ -477,7 +486,7 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do match-check before building MIR
         if tcx.check_match(def_id).is_err() {
             return Err(ConstEvalErr {
-                kind: Rc::new(CheckMatchError),
+                kind: Lrc::new(CheckMatchError),
                 span,
             });
         }
@@ -489,14 +498,20 @@ pub fn const_eval_provider<'a, 'tcx>(
         // Do not continue into miri if typeck errors occurred; it will fail horribly
         if tables.tainted_by_errors {
             return Err(ConstEvalErr {
-                kind: Rc::new(TypeckError),
+                kind: Lrc::new(TypeckError),
                 span,
             });
         }
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.map(|(miri_value, _, miri_ty)| {
+    res.map(|(miri_value, ptr, miri_ty)| {
+        if tcx.is_static(def_id).is_some() {
+            if let Ok(ptr) = ptr.primval.to_ptr() {
+                let mut seen = FxHashSet::default();
+                create_depgraph_edges(tcx, ptr.alloc_id, &mut seen);
+            }
+        }
         tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
             ty: miri_ty,
@@ -512,4 +527,36 @@ pub fn const_eval_provider<'a, 'tcx>(
             span,
         }
     })
+}
+
+// This function creates dep graph edges from statics to all referred to statics.
+// This is necessary, because the `const_eval` query cannot directly call itself
+// for other statics, because we cannot prevent recursion in queries.
+//
+// see test/incremental/static_refering_to_other_static2/issue.rs for an example
+// where not creating those edges would cause static A, which refers to static B
+// to point to the old allocation of static B, even though B has changed.
+//
+// In the future we will want to remove this funcion in favour of a system that
+// makes sure that statics don't need to have edges to other statics as long as
+// they are only referring by reference and not inspecting the other static's body.
+fn create_depgraph_edges<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    alloc_id: AllocId,
+    seen: &mut FxHashSet<AllocId>,
+) {
+    trace!("create_depgraph_edges: {:?}, {:?}", alloc_id, seen);
+    if seen.insert(alloc_id) {
+        trace!("seen: {:?}, {:?}", alloc_id, seen);
+        if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
+            trace!("get_alloc: {:?}, {:?}, {:?}", alloc_id, seen, alloc);
+            for (_, &reloc) in &alloc.relocations {
+                if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(reloc) {
+                    trace!("get_corresponding: {:?}, {:?}, {:?}, {:?}, {:?}", alloc_id, seen, alloc, did, reloc);
+                    let _ = tcx.maybe_optimized_mir(did);
+                }
+                create_depgraph_edges(tcx, reloc, seen);
+            }
+        }
+    }
 }

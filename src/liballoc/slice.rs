@@ -102,6 +102,7 @@ use core::mem::size_of;
 use core::mem;
 use core::ptr;
 use core::slice as core_slice;
+use core::{u8, u16, u32};
 
 use borrow::{Borrow, BorrowMut, ToOwned};
 use boxed::Box;
@@ -1302,7 +1303,8 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n log(m n))`
+    /// worst-case, where the key function is `O(m)`.
     ///
     /// When applicable, unstable sorting is preferred because it is generally faster than stable
     /// sorting and it doesn't allocate auxiliary memory.
@@ -1328,10 +1330,80 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
-    pub fn sort_by_key<B, F>(&mut self, mut f: F)
-        where F: FnMut(&T) -> B, B: Ord
+    pub fn sort_by_key<K, F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> K, K: Ord
     {
         merge_sort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    /// Sorts the slice with a key extraction function.
+    ///
+    /// During sorting, the key function is called only once per element.
+    ///
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(m n + n log n)`
+    /// worst-case, where the key function is `O(m)`.
+    ///
+    /// For simple key functions (e.g. functions that are property accesses or
+    /// basic operations), [`sort_by_key`](#method.sort_by_key) is likely to be
+    /// faster.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on [pattern-defeating quicksort][pdqsort] by Orson Peters,
+    /// which combines the fast average case of randomized quicksort with the fast worst case of
+    /// heapsort, while achieving linear time on slices with certain patterns. It uses some
+    /// randomization to avoid degenerate cases, but with a fixed seed to always provide
+    /// deterministic behavior.
+    ///
+    /// In the worst case, the algorithm allocates temporary storage in a `Vec<(K, usize)>` the
+    /// length of the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_sort_by_cached_key)]
+    /// let mut v = [-5i32, 4, 32, -3, 2];
+    ///
+    /// v.sort_by_cached_key(|k| k.to_string());
+    /// assert!(v == [-3, -5, 2, 32, 4]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    #[unstable(feature = "slice_sort_by_cached_key", issue = "34447")]
+    #[inline]
+    pub fn sort_by_cached_key<K, F>(&mut self, f: F)
+        where F: FnMut(&T) -> K, K: Ord
+    {
+        // Helper macro for indexing our vector by the smallest possible type, to reduce allocation.
+        macro_rules! sort_by_key {
+            ($t:ty, $slice:ident, $f:ident) => ({
+                let mut indices: Vec<_> =
+                    $slice.iter().map($f).enumerate().map(|(i, k)| (k, i as $t)).collect();
+                // The elements of `indices` are unique, as they are indexed, so any sort will be
+                // stable with respect to the original slice. We use `sort_unstable` here because
+                // it requires less memory allocation.
+                indices.sort_unstable();
+                for i in 0..$slice.len() {
+                    let mut index = indices[i].1;
+                    while (index as usize) < i {
+                        index = indices[index as usize].1;
+                    }
+                    indices[i].1 = index;
+                    $slice.swap(i, index as usize);
+                }
+            })
+        }
+
+        let sz_u8    = mem::size_of::<(K, u8)>();
+        let sz_u16   = mem::size_of::<(K, u16)>();
+        let sz_u32   = mem::size_of::<(K, u32)>();
+        let sz_usize = mem::size_of::<(K, usize)>();
+
+        let len = self.len();
+        if sz_u8  < sz_u16   && len <= ( u8::MAX as usize) { return sort_by_key!( u8, self, f) }
+        if sz_u16 < sz_u32   && len <= (u16::MAX as usize) { return sort_by_key!(u16, self, f) }
+        if sz_u32 < sz_usize && len <= (u32::MAX as usize) { return sort_by_key!(u32, self, f) }
+        sort_by_key!(usize, self, f)
     }
 
     /// Sorts the slice, but may not preserve the order of equal elements.
@@ -1410,7 +1482,7 @@ impl<T> [T] {
     /// elements.
     ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
-    /// and `O(n log n)` worst-case.
+    /// and `O(m n log(m n))` worst-case, where the key function is `O(m)`.
     ///
     /// # Current implementation
     ///
@@ -1419,9 +1491,6 @@ impl<T> [T] {
     /// heapsort, while achieving linear time on slices with certain patterns. It uses some
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
-    ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
-    /// slice consists of several concatenated sorted sequences.
     ///
     /// # Examples
     ///
@@ -1435,9 +1504,8 @@ impl<T> [T] {
     /// [pdqsort]: https://github.com/orlp/pdqsort
     #[stable(feature = "sort_unstable", since = "1.20.0")]
     #[inline]
-    pub fn sort_unstable_by_key<B, F>(&mut self, f: F)
-        where F: FnMut(&T) -> B,
-              B: Ord
+    pub fn sort_unstable_by_key<K, F>(&mut self, f: F)
+        where F: FnMut(&T) -> K, K: Ord
     {
         core_slice::SliceExt::sort_unstable_by_key(self, f);
     }

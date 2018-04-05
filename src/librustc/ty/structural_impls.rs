@@ -18,6 +18,7 @@ use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::sync::Lrc;
 use mir::interpret;
 
 use std::rc::Rc;
@@ -279,7 +280,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
         tcx.lift(&self.caller_bounds).map(|caller_bounds| {
             ty::ParamEnv {
                 reveal: self.reveal,
-                universe: self.universe,
                 caller_bounds,
             }
         })
@@ -465,7 +465,7 @@ impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
         tcx.lift(&*self.kind).map(|kind| {
             ConstEvalErr {
                 span: self.span,
-                kind: Rc::new(kind),
+                kind: Lrc::new(kind),
             }
         })
     }
@@ -737,29 +737,8 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::ParamEnv<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ty::ParamEnv {
-            reveal: self.reveal,
-            caller_bounds: self.caller_bounds.fold_with(folder),
-            universe: self.universe.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        let &ty::ParamEnv { reveal: _, ref universe, ref caller_bounds } = self;
-        universe.super_visit_with(visitor) || caller_bounds.super_visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::UniverseIndex {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
-        *self
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
-        false
-    }
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ty::ParamEnv<'tcx> { reveal, caller_bounds }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {

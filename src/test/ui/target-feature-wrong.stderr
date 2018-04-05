@@ -37,5 +37,11 @@ LL | //~^ ERROR: should be applied to a function
 LL | mod another {}
    | -------------- not a function
 
-error: aborting due to 5 previous errors
+error: cannot use #[inline(always)] with #[target_feature]
+  --> $DIR/target-feature-wrong.rs:36:1
+   |
+LL | #[inline(always)]
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
 

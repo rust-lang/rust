@@ -427,7 +427,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = ["1", "2", "3"];
     /// let sum = a.iter()
     ///     .map(|&s| s.parse::<i32>())
@@ -438,7 +437,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Short-circuiting:
     ///
     /// ```
-    /// #![feature(iterator_try_fold)]
     /// let a = ["1", "rust", "3"];
     /// let mut it = a.iter();
     /// let sum = it
@@ -452,7 +450,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(it.next_back(), Some(&"1"));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold", issue = "45594")]
+    #[stable(feature = "iterator_try_fold", since = "1.27.0")]
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R where
         Self: Sized, F: FnMut(B, Self::Item) -> R, R: Try<Ok=B>
     {
@@ -491,7 +489,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_rfold)]
     /// let a = [1, 2, 3];
     ///
     /// // the sum of all of the elements of a
@@ -505,7 +502,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// and continuing with each element from the back until the front:
     ///
     /// ```
-    /// #![feature(iter_rfold)]
     /// let numbers = [1, 2, 3, 4, 5];
     ///
     /// let zero = "0".to_string();
@@ -517,14 +513,14 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");
     /// ```
     #[inline]
-    #[unstable(feature = "iter_rfold", issue = "44705")]
+    #[stable(feature = "iter_rfold", since = "1.27.0")]
     fn rfold<B, F>(mut self, accum: B, mut f: F) -> B where
         Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
         self.try_rfold(accum, move |acc, x| AlwaysOk(f(acc, x))).0
     }
 
-    /// Searches for an element of an iterator from the right that satisfies a predicate.
+    /// Searches for an element of an iterator from the back that satisfies a predicate.
     ///
     /// `rfind()` takes a closure that returns `true` or `false`. It applies
     /// this closure to each element of the iterator, starting at the end, and if any
@@ -547,8 +543,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(iter_rfind)]
-    ///
     /// let a = [1, 2, 3];
     ///
     /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
@@ -559,8 +553,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// #![feature(iter_rfind)]
-    ///
     /// let a = [1, 2, 3];
     ///
     /// let mut iter = a.iter();
@@ -571,7 +563,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// assert_eq!(iter.next_back(), Some(&1));
     /// ```
     #[inline]
-    #[unstable(feature = "iter_rfind", issue = "39480")]
+    #[stable(feature = "iter_rfind", since = "1.27.0")]
     fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool
@@ -899,6 +891,15 @@ impl<I, T, E> Iterator for ResultShunt<I, E>
                 None
             }
             None => None,
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.error.is_some() {
+            (0, Some(0))
+        } else {
+            let (_, upper) = self.iter.size_hint();
+            (0, upper)
         }
     }
 }

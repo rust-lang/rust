@@ -19,6 +19,7 @@
 // ignore-mips
 // ignore-mips64
 // ignore-powerpc
+// ignore-powerpc64
 // ignore-s390x
 // ignore-sparc
 // ignore-wasm32

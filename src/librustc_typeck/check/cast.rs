@@ -47,6 +47,7 @@ use rustc::hir;
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::adjustment::AllowTwoPhase;
 use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::subst::Substs;
 use rustc::middle::lang_items;
@@ -434,7 +435,8 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     let f = self.expr_ty.fn_sig(fcx.tcx);
                     let res = fcx.try_coerce(self.expr,
                                              self.expr_ty,
-                                             fcx.tcx.mk_fn_ptr(f));
+                                             fcx.tcx.mk_fn_ptr(f),
+                                             AllowTwoPhase::No);
                     if !res.is_ok() {
                         return Err(CastError::NonScalar);
                     }
@@ -616,7 +618,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
-        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty).is_ok()
+        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No).is_ok()
     }
 }
 

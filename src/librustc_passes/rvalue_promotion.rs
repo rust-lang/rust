@@ -373,10 +373,14 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node
             }
         }
         hir::ExprMethodCall(..) => {
-            let def_id = v.tables.type_dependent_defs()[e.hir_id].def_id();
-            match v.tcx.associated_item(def_id).container {
-                ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty),
-                ty::TraitContainer(_) => v.promotable = false
+            if let Some(def) = v.tables.type_dependent_defs().get(e.hir_id) {
+                let def_id = def.def_id();
+                match v.tcx.associated_item(def_id).container {
+                    ty::ImplContainer(_) => v.handle_const_fn_call(def_id, node_ty),
+                    ty::TraitContainer(_) => v.promotable = false
+                }
+            } else {
+                v.tcx.sess.delay_span_bug(e.span, "no type-dependent def for method call");
             }
         }
         hir::ExprStruct(..) => {

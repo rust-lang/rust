@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 
 #[macro_use]
 extern crate rustc_apfloat;

@@ -26,15 +26,14 @@
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
 #![feature(unsize)]
-#![feature(i128_type)]
-#![feature(i128)]
-#![feature(conservative_impl_trait)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
+#![cfg_attr(stage0, feature(i128_type, i128))]
 #![feature(specialization)]
 #![feature(optin_builtin_traits)]
-#![feature(underscore_lifetimes)]
+#![cfg_attr(stage0, feature(underscore_lifetimes))]
 #![feature(macro_vis_matcher)]
 #![feature(allow_internal_unstable)]
-#![feature(universal_impl_trait)]
+#![cfg_attr(stage0, feature(universal_impl_trait))]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -75,6 +74,14 @@ pub mod control_flow_graph;
 pub mod flock;
 pub mod sync;
 pub mod owning_ref;
+
+pub struct OnDrop<F: Fn()>(pub F);
+
+impl<F: Fn()> Drop for OnDrop<F> {
+      fn drop(&mut self) {
+            (self.0)();
+      }
+}
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]

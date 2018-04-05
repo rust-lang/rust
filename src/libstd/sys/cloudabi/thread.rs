@@ -118,6 +118,7 @@ pub mod guard {
     pub unsafe fn init() -> Option<Guard> {
         None
     }
+    pub unsafe fn deinit() {}
 }
 
 fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {

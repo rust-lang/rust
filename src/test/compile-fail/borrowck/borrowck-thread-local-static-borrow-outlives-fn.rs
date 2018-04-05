@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test will be fixed later
 // revisions: ast mir
 //[mir]compile-flags: -Z borrowck=mir
 

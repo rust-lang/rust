@@ -186,6 +186,10 @@
 # essentially skipping stage0 as the local compiler is recompiling itself again.
 #local-rebuild = false
 
+# Print out how long each rustbuild step took (mostly intended for CI and
+# tracking over time)
+#print-step-timings = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -266,6 +270,9 @@
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
+
+# Build rustc with experimental parallelization
+#experimental-parallel-queries = false
 
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.

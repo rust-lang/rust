@@ -155,7 +155,7 @@
 #![allow(missing_docs)]
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::ops::{Deref, DerefMut, Place, Placer, InPlace};
+use core::ops::{Deref, DerefMut};
 use core::iter::{FromIterator, FusedIterator};
 use core::mem::{swap, size_of};
 use core::ptr;
@@ -507,6 +507,31 @@ impl<T: Ord> BinaryHeap<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
+    }
+
+    /// Discards capacity with a lower bound.
+    ///
+    /// The capacity will remain at least as large as both the length
+    /// and the supplied value.
+    ///
+    /// Panics if the current capacity is smaller than the supplied
+    /// minimum capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(shrink_to)]
+    /// use std::collections::BinaryHeap;
+    /// let mut heap: BinaryHeap<i32> = BinaryHeap::with_capacity(100);
+    ///
+    /// assert!(heap.capacity() >= 100);
+    /// heap.shrink_to(10);
+    /// assert!(heap.capacity() >= 10);
+    /// ```
+    #[inline]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    pub fn shrink_to(&mut self, min_capacity: usize) {
+        self.data.shrink_to(min_capacity)
     }
 
     /// Removes the greatest item from the binary heap and returns it, or `None` if it
@@ -1168,69 +1193,5 @@ impl<T: Ord> BinaryHeap<T> {
 impl<'a, T: 'a + Ord + Copy> Extend<&'a T> for BinaryHeap<T> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
-    }
-}
-
-#[unstable(feature = "collection_placement",
-           reason = "placement protocol is subject to change",
-           issue = "30172")]
-pub struct BinaryHeapPlace<'a, T: 'a>
-where T: Clone + Ord {
-    heap: *mut BinaryHeap<T>,
-    place: vec::PlaceBack<'a, T>,
-}
-
-#[unstable(feature = "collection_placement",
-           reason = "placement protocol is subject to change",
-           issue = "30172")]
-impl<'a, T: Clone + Ord + fmt::Debug> fmt::Debug for BinaryHeapPlace<'a, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("BinaryHeapPlace")
-         .field(&self.place)
-         .finish()
-    }
-}
-
-#[unstable(feature = "collection_placement",
-           reason = "placement protocol is subject to change",
-           issue = "30172")]
-impl<'a, T: 'a> Placer<T> for &'a mut BinaryHeap<T>
-where T: Clone + Ord {
-    type Place = BinaryHeapPlace<'a, T>;
-
-    fn make_place(self) -> Self::Place {
-        let ptr = self as *mut BinaryHeap<T>;
-        let place = Placer::make_place(self.data.place_back());
-        BinaryHeapPlace {
-            heap: ptr,
-            place,
-        }
-    }
-}
-
-#[unstable(feature = "collection_placement",
-           reason = "placement protocol is subject to change",
-           issue = "30172")]
-unsafe impl<'a, T> Place<T> for BinaryHeapPlace<'a, T>
-where T: Clone + Ord {
-    fn pointer(&mut self) -> *mut T {
-        self.place.pointer()
-    }
-}
-
-#[unstable(feature = "collection_placement",
-           reason = "placement protocol is subject to change",
-           issue = "30172")]
-impl<'a, T> InPlace<T> for BinaryHeapPlace<'a, T>
-where T: Clone + Ord {
-    type Owner = &'a T;
-
-    unsafe fn finalize(self) -> &'a T {
-        self.place.finalize();
-
-        let heap: &mut BinaryHeap<T> = &mut *self.heap;
-        let len = heap.len();
-        let i = heap.sift_up(0, len - 1);
-        heap.data.get_unchecked(i)
     }
 }

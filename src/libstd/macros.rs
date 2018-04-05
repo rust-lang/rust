@@ -335,6 +335,18 @@ pub mod builtin {
     /// proxied through this one.  `format_args!`, unlike its derived macros, avoids
     /// heap allocations.
     ///
+    /// You can use the [`fmt::Arguments`] value that `format_args!` returns
+    /// in `Debug` and `Display` contexts as seen below. The example also shows
+    /// that `Debug` and `Display` format to the same thing: the interpolated
+    /// format string in `format_args!`.
+    ///
+    /// ```rust
+    /// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
+    /// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
+    /// assert_eq!("1 foo 2", display);
+    /// assert_eq!(display, debug);
+    /// ```
+    ///
     /// For more information, see the documentation in [`std::fmt`].
     ///
     /// [`Display`]: ../std/fmt/trait.Display.html
