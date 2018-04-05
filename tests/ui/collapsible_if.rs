@@ -41,7 +41,7 @@ fn main() {
         }
     }
 
-    // Collaspe `else { if .. }` to `else if ..`
+    // Collapse `else { if .. }` to `else if ..`
     if x == "hello" {
         print!("Hello ");
     } else {
