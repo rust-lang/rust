@@ -16,7 +16,7 @@
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
-use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause, Reveal};
+use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
 use traits::IntercrateMode;
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, Ty, TyCtxt};
@@ -92,9 +92,7 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
                                        -> ty::ImplHeader<'tcx>
 {
     let tcx = selcx.tcx();
-    let impl_substs = selcx.infcx().fresh_substs_for_item(param_env.universe,
-                                                          DUMMY_SP,
-                                                          impl_def_id);
+    let impl_substs = selcx.infcx().fresh_substs_for_item(DUMMY_SP, impl_def_id);
 
     let header = ty::ImplHeader {
         impl_def_id,
@@ -125,7 +123,7 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
     // empty environment.
-    let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
+    let param_env = ty::ParamEnv::empty();
 
     let a_impl_header = with_fresh_ty_vars(selcx, param_env, a_def_id);
     let b_impl_header = with_fresh_ty_vars(selcx, param_env, b_def_id);

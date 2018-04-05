@@ -1420,14 +1420,13 @@ pub fn abort() -> ! {
 /// Basic usage:
 ///
 /// ```no_run
-/// #![feature(getpid)]
 /// use std::process;
 ///
 /// println!("My pid is {}", process::id());
 /// ```
 ///
 ///
-#[unstable(feature = "getpid", issue = "44971", reason = "recently added")]
+#[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
     ::sys::os::getpid()
 }
@@ -1442,8 +1441,9 @@ pub fn id() -> u32 {
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
 #[cfg_attr(not(test), lang = "termination")]
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
-#[rustc_on_unimplemented =
-  "`main` can only return types that implement {Termination}, not `{Self}`"]
+#[rustc_on_unimplemented(
+  message="`main` has invalid return type `{Self}`",
+  label="`main` can only return types that implement `{Termination}`")]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.

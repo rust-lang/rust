@@ -53,7 +53,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             push_item_name(cx, def.did, qualified, output);
             push_type_params(cx, substs, output);
         },
-        ty::TyTuple(component_types, _) => {
+        ty::TyTuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
@@ -117,8 +117,10 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         },
         ty::TyDynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
-                let principal = cx.tcx.erase_late_bound_regions_and_normalize(
-                    &principal);
+                let principal = cx.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &principal,
+                );
                 push_item_name(cx, principal.def_id, false, output);
                 push_type_params(cx, principal.substs, output);
             }
@@ -138,7 +140,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+            let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
                     push_debuginfo_type_name(cx, parameter_type, true, output);

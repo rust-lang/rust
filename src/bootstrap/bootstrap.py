@@ -314,7 +314,7 @@ class RustBuild(object):
         self.build_dir = os.path.join(os.getcwd(), "build")
         self.clean = False
         self.config_toml = ''
-        self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+        self.rust_root = ''
         self.use_locked_deps = ''
         self.use_vendored_sources = ''
         self.verbose = False
@@ -597,10 +597,8 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        if self.verbose:
+        for _ in range(1, self.verbose):
             args.append("--verbose")
-            if self.verbose > 1:
-                args.append("--verbose")
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -614,20 +612,55 @@ class RustBuild(object):
             return config
         return default_build_triple()
 
+    def check_submodule(self, module, slow_submodules):
+        if not slow_submodules:
+            checked_out = subprocess.Popen(["git", "rev-parse", "HEAD"],
+                                           cwd=os.path.join(self.rust_root, module),
+                                           stdout=subprocess.PIPE)
+            return checked_out
+        else:
+            return None
+
+    def update_submodule(self, module, checked_out, recorded_submodules):
+        module_path = os.path.join(self.rust_root, module)
+
+        if checked_out != None:
+            default_encoding = sys.getdefaultencoding()
+            checked_out = checked_out.communicate()[0].decode(default_encoding).strip()
+            if recorded_submodules[module] == checked_out:
+                return
+
+        print("Updating submodule", module)
+
+        run(["git", "submodule", "-q", "sync", module],
+            cwd=self.rust_root, verbose=self.verbose)
+        run(["git", "submodule", "update",
+            "--init", "--recursive", module],
+            cwd=self.rust_root, verbose=self.verbose)
+        run(["git", "reset", "-q", "--hard"],
+            cwd=module_path, verbose=self.verbose)
+        run(["git", "clean", "-qdfx"],
+            cwd=module_path, verbose=self.verbose)
+
     def update_submodules(self):
         """Update submodules"""
         if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
                 self.get_toml('submodules') == "false":
             return
-        print('Updating submodules')
+        slow_submodules = self.get_toml('fast-submodules') == "false"
+        start_time = time()
+        if slow_submodules:
+            print('Unconditionally updating all submodules')
+        else:
+            print('Updating only changed submodules')
         default_encoding = sys.getdefaultencoding()
-        run(["git", "submodule", "-q", "sync"], cwd=self.rust_root, verbose=self.verbose)
         submodules = [s.split(' ', 1)[1] for s in subprocess.check_output(
             ["git", "config", "--file",
              os.path.join(self.rust_root, ".gitmodules"),
              "--get-regexp", "path"]
         ).decode(default_encoding).splitlines()]
         filtered_submodules = []
+        submodules_names = []
         for module in submodules:
             if module.endswith("llvm"):
                 if self.get_toml('llvm-config'):
@@ -645,16 +678,19 @@ class RustBuild(object):
                 config = self.get_toml('lld')
                 if config is None or config == 'false':
                     continue
-            filtered_submodules.append(module)
-        run(["git", "submodule", "update",
-             "--init", "--recursive"] + filtered_submodules,
-            cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "-q", "foreach", "git",
-             "reset", "-q", "--hard"],
-            cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "-q", "foreach", "git",
-             "clean", "-qdfx"],
-            cwd=self.rust_root, verbose=self.verbose)
+            check = self.check_submodule(module, slow_submodules)
+            filtered_submodules.append((module, check))
+            submodules_names.append(module)
+        recorded = subprocess.Popen(["git", "ls-tree", "HEAD"] + submodules_names,
+                                    cwd=self.rust_root, stdout=subprocess.PIPE)
+        recorded = recorded.communicate()[0].decode(default_encoding).strip().splitlines()
+        recorded_submodules = {}
+        for data in recorded:
+            data = data.split()
+            recorded_submodules[data[3]] = data[2]
+        for module in filtered_submodules:
+            self.update_submodule(module[0], module[1], recorded_submodules)
+        print("Submodules updated in %.2f seconds" % (time() - start_time))
 
     def set_dev_environment(self):
         """Set download URL for development environment"""
@@ -674,14 +710,16 @@ def bootstrap(help_triggered):
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--build')
+    parser.add_argument('--src')
     parser.add_argument('--clean', action='store_true')
-    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-v', '--verbose', action='count', default=0)
 
     args = [a for a in sys.argv if a != '-h' and a != '--help']
     args, _ = parser.parse_known_args(args)
 
     # Configure initial bootstrap
     build = RustBuild()
+    build.rust_root = args.src or os.path.abspath(os.path.join(__file__, '../../..'))
     build.verbose = args.verbose
     build.clean = args.clean
 
@@ -691,10 +729,9 @@ def bootstrap(help_triggered):
     except (OSError, IOError):
         pass
 
-    if '\nverbose = 2' in build.config_toml:
-        build.verbose = 2
-    elif '\nverbose = 1' in build.config_toml:
-        build.verbose = 1
+    match = re.search(r'\nverbose = (\d+)', build.config_toml)
+    if match is not None:
+        build.verbose = max(build.verbose, int(match.group(1)))
 
     build.use_vendored_sources = '\nvendor = true' in build.config_toml
 
@@ -753,6 +790,7 @@ def bootstrap(help_triggered):
     env["SRC"] = build.rust_root
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
+    env["BUILD_DIR"] = build.build_dir
     run(args, env=env, verbose=build.verbose)
 
 

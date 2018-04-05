@@ -18,9 +18,9 @@ use std::hash::{Hash, Hasher};
 use std::slice;
 use std::fmt;
 use std::mem;
-use std::collections::range::RangeArgument;
-use std::collections::Bound::{Excluded, Included, Unbounded};
 use std::mem::ManuallyDrop;
+use std::ops::Bound::{Excluded, Included, Unbounded};
+use std::ops::RangeBounds;
 
 pub unsafe trait Array {
     type Element;
@@ -106,7 +106,7 @@ impl<A: Array> ArrayVec<A> {
     }
 
     pub fn drain<R>(&mut self, range: R) -> Drain<A>
-        where R: RangeArgument<usize>
+        where R: RangeBounds<usize>
     {
         // Memory safety
         //

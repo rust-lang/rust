@@ -625,7 +625,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         } else {
                             Some(self.resolve_crate_root(source.ctxt.modern(), false))
                         }
-                    } else if is_extern && !token::Ident(source).is_path_segment_keyword() {
+                    } else if is_extern && !token::is_path_segment_keyword(source) {
                         let crate_id =
                             self.crate_loader.resolve_crate_from_path(source.name, directive.span);
                         let crate_root =
@@ -667,11 +667,10 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
             PathResult::Failed(span, msg, true) => {
                 let (mut self_path, mut self_result) = (module_path.clone(), None);
-                if !self_path.is_empty() &&
-                    !token::Ident(self_path[0].node).is_path_segment_keyword() &&
-                    !(self_path.len() > 1 &&
-                      token::Ident(self_path[1].node).is_path_segment_keyword())
-                {
+                let is_special = |ident| token::is_path_segment_keyword(ident) &&
+                                         ident.name != keywords::CrateRoot.name();
+                if !self_path.is_empty() && !is_special(self_path[0].node) &&
+                   !(self_path.len() > 1 && is_special(self_path[1].node)) {
                     self_path[0].node.name = keywords::SelfValue.name();
                     self_result = Some(self.resolve_path(&self_path, None, false, span));
                 }
@@ -1026,28 +1025,9 @@ fn import_path_to_string(names: &[SpannedIdent],
         if names.is_empty() {
             import_directive_subclass_to_string(subclass)
         } else {
-            // FIXME: Remove this entire logic after #48116 is fixed.
-            //
-            // Note that this code looks a little wonky, it's currently here to
-            // hopefully help debug #48116, but otherwise isn't intended to
-            // cause any problems.
-            let x = format!(
-                "{}::{}",
-                names_to_string(names),
-                import_directive_subclass_to_string(subclass),
-            );
-            if names.is_empty() || x.starts_with("::") {
-                span_bug!(
-                    span,
-                    "invalid name `{}` at {:?}; global = {}, names = {:?}, subclass = {:?}",
-                    x,
-                    span,
-                    global,
-                    names,
-                    subclass
-                );
-            }
-            return x
+            format!("{}::{}",
+                    names_to_string(names),
+                    import_directive_subclass_to_string(subclass))
         }
     }
 }

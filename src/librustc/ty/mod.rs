@@ -21,6 +21,7 @@ use hir::map::DefPathData;
 use hir::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
+use infer::canonical::{Canonical, Canonicalize};
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -29,20 +30,19 @@ use mir::Mir;
 use mir::interpret::{GlobalId, Value, PrimVal};
 use mir::GeneratorLayout;
 use session::CrateDisambiguator;
-use traits;
+use traits::{self, Reveal};
 use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
-use util::common::ErrorReported;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
+use util::captures::Captures;
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 use std::ops::Deref;
 use rustc_data_structures::sync::Lrc;
 use std::slice;
@@ -60,7 +60,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 
 use hir;
 
-pub use self::sty::{Binder, DebruijnIndex};
+pub use self::sty::{Binder, CanonicalVar, DebruijnIndex};
 pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
@@ -69,7 +69,7 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
+pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
@@ -452,6 +452,10 @@ bitflags! {
         // Currently we can't normalize projections w/ bound regions.
         const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
 
+        // Set if this includes a "canonical" type or region var --
+        // ought to be true only for the results of canonicalization.
+        const HAS_CANONICAL_VARS = 1 << 13;
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -470,7 +474,8 @@ bitflags! {
                                   TypeFlags::HAS_PROJECTION.bits |
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_LOCAL_NAMES.bits |
-                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits;
+                                  TypeFlags::KEEP_IN_LOCAL_TCX.bits |
+                                  TypeFlags::HAS_CANONICAL_VARS.bits;
     }
 }
 
@@ -549,6 +554,17 @@ pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
+
+pub type CanonicalTy<'gcx> = Canonical<'gcx, Ty<'gcx>>;
+
+impl <'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for Ty<'tcx> {
+    type Canonicalized = CanonicalTy<'gcx>;
+
+    fn intern(_gcx: TyCtxt<'_, 'gcx, 'gcx>,
+              value: Canonical<'gcx, Self::Lifted>) -> Self::Canonicalized {
+        value
+    }
+}
 
 /// A wrapper for slices with the additional invariant
 /// that the slice is interned and no other slice with
@@ -1070,9 +1086,12 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
-pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<ty::Region<'tcx>,
-                                                                   ty::Region<'tcx>>;
-pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>;
+pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>,
+                                                           ty::Region<'tcx>>;
+pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>,
+                                                         ty::Region<'tcx>>;
+pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
+pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<TypeOutlivesPredicate<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct SubtypePredicate<'tcx> {
@@ -1325,13 +1344,15 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// type name in a non-zero universe is a skolemized type -- an
 /// idealized representative of "types in general" that we use for
 /// checking generic functions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct UniverseIndex(u32);
 
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
-    pub const ROOT: UniverseIndex = UniverseIndex(0);
+    pub fn root() -> UniverseIndex {
+        UniverseIndex(0)
+    }
 
     /// A "subuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
@@ -1345,26 +1366,7 @@ impl UniverseIndex {
     /// region `'a`, but that region was not nameable from `U` because
     /// it was not in scope there.
     pub fn subuniverse(self) -> UniverseIndex {
-        UniverseIndex(self.0.checked_add(1).unwrap())
-    }
-
-    pub fn from(v: u32) -> UniverseIndex {
-        UniverseIndex(v)
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    /// Gets the "depth" of this universe in the universe tree. This
-    /// is not really useful except for e.g. the `HashStable`
-    /// implementation
-    pub fn depth(&self) -> u32 {
-        self.0
+        UniverseIndex(self.0 + 1)
     }
 }
 
@@ -1382,46 +1384,83 @@ pub struct ParamEnv<'tcx> {
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
-
-    /// What is the innermost universe we have created? Starts out as
-    /// `UniverseIndex::root()` but grows from there as we enter
-    /// universal quantifiers.
-    ///
-    /// NB: At present, we exclude the universal quantifiers on the
-    /// item we are type-checking, and just consider those names as
-    /// part of the root universe. So this would only get incremented
-    /// when we enter into a higher-ranked (`for<..>`) type or trait
-    /// bound.
-    pub universe: UniverseIndex,
 }
 
 impl<'tcx> ParamEnv<'tcx> {
-    /// Creates a suitable environment in which to perform trait
-    /// queries on the given value. This will either be `self` *or*
-    /// the empty environment, depending on whether `value` references
-    /// type parameters that are in scope. (If it doesn't, then any
-    /// judgements should be completely independent of the context,
-    /// and hence we can safely use the empty environment so as to
-    /// enable more sharing across functions.)
+    /// Construct a trait environment suitable for contexts where
+    /// there are no where clauses in scope. Hidden types (like `impl
+    /// Trait`) are left hidden, so this is suitable for ordinary
+    /// type-checking.
+    pub fn empty() -> Self {
+        Self::new(ty::Slice::empty(), Reveal::UserFacing)
+    }
+
+    /// Construct a trait environment with no where clauses in scope
+    /// where the values of all `impl Trait` and other hidden types
+    /// are revealed. This is suitable for monomorphized, post-typeck
+    /// environments like trans or doing optimizations.
     ///
-    /// NB: This is a mildly dubious thing to do, in that a function
-    /// (or other environment) might have wacky where-clauses like
+    /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
+    /// or invoke `param_env.with_reveal_all()`.
+    pub fn reveal_all() -> Self {
+        Self::new(ty::Slice::empty(), Reveal::All)
+    }
+
+    /// Construct a trait environment with the given set of predicates.
+    pub fn new(caller_bounds: &'tcx ty::Slice<ty::Predicate<'tcx>>,
+               reveal: Reveal)
+               -> Self {
+        ty::ParamEnv { caller_bounds, reveal }
+    }
+
+    /// Returns a new parameter environment with the same clauses, but
+    /// which "reveals" the true results of projections in all cases
+    /// (even for associated types that are specializable).  This is
+    /// the desired behavior during trans and certain other special
+    /// contexts; normally though we want to use `Reveal::UserFacing`,
+    /// which is the default.
+    pub fn with_reveal_all(self) -> Self {
+        ty::ParamEnv { reveal: Reveal::All, ..self }
+    }
+
+    /// Returns this same environment but with no caller bounds.
+    pub fn without_caller_bounds(self) -> Self {
+        ty::ParamEnv { caller_bounds: ty::Slice::empty(), ..self }
+    }
+
+    /// Creates a suitable environment in which to perform trait
+    /// queries on the given value. When type-checking, this is simply
+    /// the pair of the environment plus value. But when reveal is set to
+    /// All, then if `value` does not reference any type parameters, we will
+    /// pair it with the empty environment. This improves caching and is generally
+    /// invisible.
+    ///
+    /// NB: We preserve the environment when type-checking because it
+    /// is possible for the user to have wacky where-clauses like
     /// `where Box<u32>: Copy`, which are clearly never
-    /// satisfiable. The code will at present ignore these,
-    /// effectively, when type-checking the body of said
-    /// function. This preserves existing behavior in any
-    /// case. --nmatsakis
+    /// satisfiable. We generally want to behave as if they were true,
+    /// although the surrounding function is never reachable.
     pub fn and<T: TypeFoldable<'tcx>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
-        assert!(!value.needs_infer());
-        if value.has_param_types() || value.has_self_ty() {
-            ParamEnvAnd {
-                param_env: self,
-                value,
+        match self.reveal {
+            Reveal::UserFacing => {
+                ParamEnvAnd {
+                    param_env: self,
+                    value,
+                }
             }
-        } else {
-            ParamEnvAnd {
-                param_env: ParamEnv::empty(self.reveal),
-                value,
+
+            Reveal::All => {
+                if value.needs_infer() || value.has_param_types() || value.has_self_ty() {
+                    ParamEnvAnd {
+                        param_env: self,
+                        value,
+                    }
+                } else {
+                    ParamEnvAnd {
+                        param_env: self.without_caller_bounds(),
+                        value,
+                    }
+                }
             }
         }
     }
@@ -1829,9 +1868,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         expr_did: DefId,
     ) -> Option<Discr<'tcx>> {
-        let param_env = ParamEnv::empty(traits::Reveal::UserFacing);
+        let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
-        let bit_size = layout::Integer::from_attr(tcx, repr_type).size().bits();
         let substs = Substs::identity_for_item(tcx.global_tcx(), expr_did);
         let instance = ty::Instance::new(expr_did, substs);
         let cid = GlobalId {
@@ -1841,25 +1879,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         match tcx.const_eval(param_env.and(cid)) {
             Ok(&ty::Const {
                 val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                ..
+                ty,
             }) => {
                 trace!("discriminants: {} ({:?})", b, repr_type);
-                let ty = repr_type.to_ty(tcx);
-                if repr_type.is_signed() {
-                    let val = b as i128;
-                    // sign extend to i128
-                    let amt = 128 - bit_size;
-                    let val = (val << amt) >> amt;
-                    Some(Discr {
-                        val: val as u128,
-                        ty,
-                    })
-                } else {
-                    Some(Discr {
-                        val: b,
-                        ty,
-                    })
-                }
+                Some(Discr {
+                    val: b,
+                    ty,
+                })
             },
             Ok(&ty::Const {
                 val: ConstVal::Value(other),
@@ -1887,8 +1913,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                         -> impl Iterator<Item=Discr<'tcx>> + 'a {
+    pub fn discriminants(
+        &'a self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> impl Iterator<Item=Discr<'tcx>> + Captures<'gcx> + 'a {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;
@@ -1994,7 +2022,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 vec![ty]
             }
 
-            TyTuple(ref tys, _) => {
+            TyTuple(ref tys) => {
                 match tys.last() {
                     None => vec![],
                     Some(ty) => self.sized_constraint_for_ty(tcx, ty)
@@ -2235,7 +2263,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns an iterator of the def-ids for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir.krate().body_ids.iter()`.
-    pub fn body_owners(self) -> impl Iterator<Item = DefId> + 'a {
+    pub fn body_owners(
+        self,
+    ) -> impl Iterator<Item = DefId> + Captures<'tcx> + Captures<'gcx> + 'a {
         self.hir.krate()
                 .body_ids
                 .iter()
@@ -2339,11 +2369,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
-    pub fn associated_items(self, def_id: DefId)
-                            -> impl Iterator<Item = ty::AssociatedItem> + 'a {
+    pub fn associated_items(
+        self,
+        def_id: DefId,
+    ) -> impl Iterator<Item = ty::AssociatedItem> + 'a {
         let def_ids = self.associated_item_def_ids(def_id);
-        (0..def_ids.len()).map(move |i| self.associated_item(def_ids[i]))
+        Box::new((0..def_ids.len()).map(move |i| self.associated_item(def_ids[i])))
+            as Box<dyn Iterator<Item = ty::AssociatedItem> + 'a>
     }
 
     /// Returns true if the impls are the same polarity and are implementing
@@ -2607,38 +2639,6 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
-/// Calculates the dtorck constraint for a type.
-fn adt_dtorck_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   def_id: DefId)
-                                   -> DtorckConstraint<'tcx> {
-    let def = tcx.adt_def(def_id);
-    let span = tcx.def_span(def_id);
-    debug!("dtorck_constraint: {:?}", def);
-
-    if def.is_phantom_data() {
-        let result = DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![
-                tcx.mk_param_from_def(&tcx.generics_of(def_id).types[0])
-           ]
-        };
-        debug!("dtorck_constraint: {:?} => {:?}", def, result);
-        return result;
-    }
-
-    let mut result = def.all_fields()
-        .map(|field| tcx.type_of(field.did))
-        .map(|fty| tcx.dtorck_constraint_for_ty(span, fty, 0, fty))
-        .collect::<Result<DtorckConstraint, ErrorReported>>()
-        .unwrap_or(DtorckConstraint::empty());
-    result.outlives.extend(tcx.destructor_constraints(def));
-    result.dedup();
-
-    debug!("dtorck_constraint: {:?} => {:?}", def, result);
-
-    result
-}
-
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
                                      -> Lrc<Vec<DefId>> {
@@ -2702,8 +2702,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // sure that this will succeed without errors anyway.
 
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                             traits::Reveal::UserFacing,
-                                             ty::UniverseIndex::ROOT);
+                                             traits::Reveal::UserFacing);
 
     let body_id = tcx.hir.as_local_node_id(def_id).map_or(DUMMY_NODE_ID, |id| {
         tcx.hir.maybe_body_owned_by(id).map_or(id, |body| body.node_id)
@@ -2754,7 +2753,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
-        adt_dtorck_constraint,
         def_span,
         param_env,
         trait_of_item,
@@ -2775,49 +2773,6 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 #[derive(Clone, Debug)]
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
-}
-
-/// A set of constraints that need to be satisfied in order for
-/// a type to be valid for destruction.
-#[derive(Clone, Debug)]
-pub struct DtorckConstraint<'tcx> {
-    /// Types that are required to be alive in order for this
-    /// type to be valid for destruction.
-    pub outlives: Vec<ty::subst::Kind<'tcx>>,
-    /// Types that could not be resolved: projections and params.
-    pub dtorck_types: Vec<Ty<'tcx>>,
-}
-
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx>
-{
-    fn from_iter<I: IntoIterator<Item=DtorckConstraint<'tcx>>>(iter: I) -> Self {
-        let mut result = Self::empty();
-
-        for constraint in iter {
-            result.outlives.extend(constraint.outlives);
-            result.dtorck_types.extend(constraint.dtorck_types);
-        }
-
-        result
-    }
-}
-
-
-impl<'tcx> DtorckConstraint<'tcx> {
-    fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint {
-            outlives: vec![],
-            dtorck_types: vec![]
-        }
-    }
-
-    fn dedup<'a>(&mut self) {
-        let mut outlives = FxHashSet();
-        let mut dtorck_types = FxHashSet();
-
-        self.outlives.retain(|&val| outlives.replace(val).is_none());
-        self.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]

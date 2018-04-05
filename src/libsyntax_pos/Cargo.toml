@@ -11,4 +11,5 @@ crate-type = ["dylib"]
 [dependencies]
 serialize = { path = "../libserialize" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+scoped-tls = { version = "0.1.1", features = ["nightly"] }
 unicode-width = "0.1.4"

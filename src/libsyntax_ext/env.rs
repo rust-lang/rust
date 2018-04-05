@@ -17,7 +17,7 @@ use syntax::ast::{self, Ident};
 use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
-use syntax::symbol::Symbol;
+use syntax::symbol::{keywords, Symbol};
 use syntax_pos::Span;
 use syntax::tokenstream;
 
@@ -35,14 +35,14 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
     let sp = sp.with_ctxt(sp.ctxt().apply_mark(cx.current_expansion.mark));
     let e = match env::var(&*var.as_str()) {
         Err(..) => {
+            let lt = cx.lifetime(sp, keywords::StaticLifetime.ident());
             cx.expr_path(cx.path_all(sp,
                                      true,
                                      cx.std_path(&["option", "Option", "None"]),
                                      Vec::new(),
                                      vec![cx.ty_rptr(sp,
                                                      cx.ty_ident(sp, Ident::from_str("str")),
-                                                     Some(cx.lifetime(sp,
-                                                                      Ident::from_str("'static"))),
+                                                     Some(lt),
                                                      ast::Mutability::Immutable)],
                                      Vec::new()))
         }

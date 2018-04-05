@@ -15,7 +15,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -45,6 +45,7 @@ pub struct Config {
     pub ninja: bool,
     pub verbose: usize,
     pub submodules: bool,
+    pub fast_submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
     pub locked_deps: bool,
@@ -68,6 +69,7 @@ pub struct Config {
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
+    pub dry_run: bool,
 
     // llvm codegen options
     pub llvm_enabled: bool,
@@ -86,7 +88,6 @@ pub struct Config {
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
-    pub rust_thinlto: bool,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
@@ -122,11 +123,13 @@ pub struct Config {
     pub quiet_tests: bool,
     pub test_miri: bool,
     pub save_toolstates: Option<PathBuf>,
+    pub print_step_timings: bool,
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
     pub prefix: Option<PathBuf>,
     pub sysconfdir: Option<PathBuf>,
+    pub datadir: Option<PathBuf>,
     pub docdir: Option<PathBuf>,
     pub bindir: Option<PathBuf>,
     pub libdir: Option<PathBuf>,
@@ -141,6 +144,7 @@ pub struct Config {
     // These are either the stage0 downloaded binaries or the locally installed ones.
     pub initial_cargo: PathBuf,
     pub initial_rustc: PathBuf,
+    pub out: PathBuf,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -157,6 +161,7 @@ pub struct Target {
     pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
+    pub no_std: bool,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.
@@ -190,6 +195,7 @@ struct Build {
     compiler_docs: Option<bool>,
     docs: Option<bool>,
     submodules: Option<bool>,
+    fast_submodules: Option<bool>,
     gdb: Option<String>,
     locked_deps: Option<bool>,
     vendor: Option<bool>,
@@ -204,6 +210,7 @@ struct Build {
     openssl_static: Option<bool>,
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
+    print_step_timings: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -212,13 +219,13 @@ struct Build {
 struct Install {
     prefix: Option<String>,
     sysconfdir: Option<String>,
+    datadir: Option<String>,
     docdir: Option<String>,
     bindir: Option<String>,
     libdir: Option<String>,
     mandir: Option<String>,
 
     // standard paths, currently unused
-    datadir: Option<String>,
     infodir: Option<String>,
     localstatedir: Option<String>,
 }
@@ -269,7 +276,6 @@ impl Default for StringOrBool {
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
-    thinlto: Option<bool>,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
@@ -314,11 +320,8 @@ struct TomlTarget {
 }
 
 impl Config {
-    pub fn parse(args: &[String]) -> Config {
-        let flags = Flags::parse(&args);
-        let file = flags.config.clone();
+    pub fn default_opts() -> Config {
         let mut config = Config::default();
-        config.exclude = flags.exclude;
         config.llvm_enabled = true;
         config.llvm_optimize = true;
         config.llvm_version_check = true;
@@ -327,6 +330,7 @@ impl Config {
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
         config.submodules = true;
+        config.fast_submodules = true;
         config.docs = true;
         config.rust_rpath = true;
         config.channel = "dev".to_string();
@@ -337,17 +341,40 @@ impl Config {
         config.rust_codegen_backends = vec![INTERNER.intern_str("llvm")];
         config.rust_codegen_backends_dir = "codegen-backends".to_owned();
 
+        // set by bootstrap.py
+        config.src = env::var_os("SRC").map(PathBuf::from).expect("'SRC' to be set");
+        config.build = INTERNER.intern_str(&env::var("BUILD").expect("'BUILD' to be set"));
+        config.out = env::var_os("BUILD_DIR").map(PathBuf::from).expect("'BUILD_DIR' set");
+
+        let stage0_root = config.out.join(&config.build).join("stage0/bin");
+        config.initial_rustc = stage0_root.join(exe("rustc", &config.build));
+        config.initial_cargo = stage0_root.join(exe("cargo", &config.build));
+
+        config
+    }
+
+    pub fn parse(args: &[String]) -> Config {
+        let flags = Flags::parse(&args);
+        let file = flags.config.clone();
+        let mut config = Config::default_opts();
+        config.exclude = flags.exclude;
         config.rustc_error_format = flags.rustc_error_format;
         config.on_fail = flags.on_fail;
         config.stage = flags.stage;
-        config.src = flags.src;
         config.jobs = flags.jobs;
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
+        config.dry_run = flags.dry_run;
         config.keep_stage = flags.keep_stage;
 
+        if config.dry_run {
+            let dir = config.out.join("tmp-dry-run");
+            t!(fs::create_dir_all(&dir));
+            config.out = dir;
+        }
+
         // If --target was specified but --host wasn't specified, don't run any host-only tests.
-        config.run_host_only = flags.host.is_empty() && !flags.target.is_empty();
+        config.run_host_only = !(flags.host.is_empty() && !flags.target.is_empty());
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));
@@ -364,12 +391,7 @@ impl Config {
         }).unwrap_or_else(|| TomlConfig::default());
 
         let build = toml.build.clone().unwrap_or(Build::default());
-        set(&mut config.build, build.build.clone().map(|x| INTERNER.intern_string(x)));
-        set(&mut config.build, flags.build);
-        if config.build.is_empty() {
-            // set by bootstrap.py
-            config.build = INTERNER.intern_str(&env::var("BUILD").unwrap());
-        }
+        // set by bootstrap.py
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
             let host = INTERNER.intern_str(host);
@@ -403,6 +425,7 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
+        set(&mut config.fast_submodules, build.fast_submodules);
         set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
@@ -414,11 +437,13 @@ impl Config {
         set(&mut config.openssl_static, build.openssl_static);
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
+        set(&mut config.print_step_timings, build.print_step_timings);
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
             config.sysconfdir = install.sysconfdir.clone().map(PathBuf::from);
+            config.datadir = install.datadir.clone().map(PathBuf::from);
             config.docdir = install.docdir.clone().map(PathBuf::from);
             config.bindir = install.bindir.clone().map(PathBuf::from);
             config.libdir = install.libdir.clone().map(PathBuf::from);
@@ -427,7 +452,6 @@ impl Config {
 
         // Store off these values as options because if they're not provided
         // we'll infer default values for them later
-        let mut thinlto = None;
         let mut llvm_assertions = None;
         let mut debuginfo_lines = None;
         let mut debuginfo_only_std = None;
@@ -471,7 +495,6 @@ impl Config {
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             debug_jemalloc = rust.debug_jemalloc;
-            thinlto = rust.thinlto;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
@@ -509,13 +532,13 @@ impl Config {
                 let mut target = Target::default();
 
                 if let Some(ref s) = cfg.llvm_config {
-                    target.llvm_config = Some(env::current_dir().unwrap().join(s));
+                    target.llvm_config = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.jemalloc {
-                    target.jemalloc = Some(env::current_dir().unwrap().join(s));
+                    target.jemalloc = Some(config.src.join(s));
                 }
                 if let Some(ref s) = cfg.android_ndk {
-                    target.ndk = Some(env::current_dir().unwrap().join(s));
+                    target.ndk = Some(config.src.join(s));
                 }
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
@@ -536,21 +559,11 @@ impl Config {
             set(&mut config.rust_dist_src, t.src_tarball);
         }
 
-        let cwd = t!(env::current_dir());
-        let out = cwd.join("build");
-
-        let stage0_root = out.join(&config.build).join("stage0/bin");
-        config.initial_rustc = match build.rustc {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("rustc", &config.build)),
-        };
-        config.initial_cargo = match build.cargo {
-            Some(s) => PathBuf::from(s),
-            None => stage0_root.join(exe("cargo", &config.build)),
-        };
-
         // Now that we've reached the end of our configuration, infer the
         // default values for all options that we haven't otherwise stored yet.
+
+        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
+        set(&mut config.initial_rustc, build.cargo.map(PathBuf::from));
 
         let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);
@@ -559,7 +572,6 @@ impl Config {
             "stable" | "beta" | "nightly" => true,
             _ => false,
         };
-        config.rust_thinlto = thinlto.unwrap_or(true);
         config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
         config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
 

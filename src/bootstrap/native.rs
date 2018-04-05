@@ -106,8 +106,8 @@ impl Step for Llvm {
 
         let _folder = build.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
-        println!("Building {}LLVM for {}", descriptor, target);
-        let _time = util::timeit();
+        build.info(&format!("Building {}LLVM for {}", descriptor, target));
+        let _time = util::timeit(&build);
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
@@ -217,6 +217,11 @@ impl Step for Llvm {
         //        libraries here, e.g. we just want a few components and a few
         //        tools. Figure out how to filter them down and only build the right
         //        tools and libs on all platforms.
+
+        if builder.config.dry_run {
+            return build_llvm_config;
+        }
+
         cfg.build();
 
         t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
@@ -228,6 +233,10 @@ impl Step for Llvm {
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
     if !build.config.llvm_version_check {
         return
+    }
+
+    if build.config.dry_run {
+        return;
     }
 
     let mut cmd = Command::new(llvm_config);
@@ -336,6 +345,9 @@ impl Step for Lld {
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) -> PathBuf {
+        if builder.config.dry_run {
+            return PathBuf::from("lld-out-dir-test-gen");
+        }
         let target = self.target;
         let build = builder.build;
 
@@ -351,8 +363,8 @@ impl Step for Lld {
         }
 
         let _folder = build.fold_output(|| "lld");
-        println!("Building LLD for {}", target);
-        let _time = util::timeit();
+        build.info(&format!("Building LLD for {}", target));
+        let _time = util::timeit(&build);
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(build.src.join("src/tools/lld"));
@@ -389,6 +401,9 @@ impl Step for TestHelpers {
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` test suites for ABI testing.
     fn run(self, builder: &Builder) {
+        if builder.config.dry_run {
+            return;
+        }
         let build = builder.build;
         let target = self.target;
         let dst = build.test_helpers_out(target);
@@ -398,7 +413,7 @@ impl Step for TestHelpers {
         }
 
         let _folder = build.fold_output(|| "build_test_helpers");
-        println!("Building test helpers");
+        build.info(&format!("Building test helpers"));
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
 
@@ -441,6 +456,9 @@ impl Step for Openssl {
     }
 
     fn run(self, builder: &Builder) {
+        if builder.config.dry_run {
+            return;
+        }
         let build = builder.build;
         let target = self.target;
         let out = match build.openssl_dir(target) {
@@ -591,11 +609,11 @@ impl Step for Openssl {
             configure.arg("no-asm");
         }
         configure.current_dir(&obj);
-        println!("Configuring openssl for {}", target);
+        build.info(&format!("Configuring openssl for {}", target));
         build.run_quiet(&mut configure);
-        println!("Building openssl for {}", target);
+        build.info(&format!("Building openssl for {}", target));
         build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
-        println!("Installing openssl for {}", target);
+        build.info(&format!("Installing openssl for {}", target));
         build.run_quiet(Command::new("make").arg("install").arg("-j1").current_dir(&obj));
 
         let mut f = t!(File::create(&stamp));

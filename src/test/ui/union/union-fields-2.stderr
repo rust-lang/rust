@@ -52,7 +52,7 @@ error[E0026]: union `U` does not have a field named `c`
   --> $DIR/union-fields-2.rs:28:19
    |
 LL |     let U { a, b, c } = u; //~ ERROR union patterns should have exactly one field
-   |                   ^ union `U` does not have field `c`
+   |                   ^ union `U` does not have this field
 
 error: union patterns should have exactly one field
   --> $DIR/union-fields-2.rs:28:9
@@ -80,5 +80,5 @@ LL |     let U { a, .. } = u; //~ ERROR `..` cannot be used in union patterns
 
 error: aborting due to 13 previous errors
 
-You've got a few errors: E0026, E0436, E0560
-If you want more information on an error, try using "rustc --explain E0026"
+Some errors occurred: E0026, E0436, E0560.
+For more information about an error, try `rustc --explain E0026`.

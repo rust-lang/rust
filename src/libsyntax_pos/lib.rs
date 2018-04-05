@@ -21,13 +21,13 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
 
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hasher, Hash};
@@ -35,9 +35,12 @@ use std::ops::{Add, Sub};
 use std::path::PathBuf;
 
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock};
 
 extern crate rustc_data_structures;
+
+#[macro_use]
+extern crate scoped_tls;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -53,6 +56,24 @@ mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
+
+pub struct Globals {
+    symbol_interner: Lock<symbol::Interner>,
+    span_interner: Lock<span_encoding::SpanInterner>,
+    hygiene_data: Lock<hygiene::HygieneData>,
+}
+
+impl Globals {
+    pub fn new() -> Globals {
+        Globals {
+            symbol_interner: Lock::new(symbol::Interner::fresh()),
+            span_interner: Lock::new(span_encoding::SpanInterner::default()),
+            hygiene_data: Lock::new(hygiene::HygieneData::new()),
+        }
+    }
+}
+
+scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
@@ -163,8 +184,12 @@ impl SpanData {
     }
 }
 
-// The interner in thread-local, so `Span` shouldn't move between threads.
+// The interner is pointed to by a thread local value which is only set on the main thread
+// with parallelization is disabled. So we don't allow Span to transfer between threads
+// to avoid panics and other errors, even though it would be memory safe to do so.
+#[cfg(not(parallel_queries))]
 impl !Send for Span {}
+#[cfg(not(parallel_queries))]
 impl !Sync for Span {}
 
 impl PartialOrd for Span {
@@ -218,8 +243,15 @@ impl Span {
 
     /// Returns a new span representing an empty span at the beginning of this span
     #[inline]
-    pub fn empty(self) -> Span {
-        self.with_hi(self.lo())
+    pub fn shrink_to_lo(self) -> Span {
+        let span = self.data();
+        span.with_hi(span.lo)
+    }
+    /// Returns a new span representing an empty span at the end of this span
+    #[inline]
+    pub fn shrink_to_hi(self) -> Span {
+        let span = self.data();
+        span.with_lo(span.hi)
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
@@ -678,17 +710,17 @@ pub struct FileMap {
     pub src_hash: u128,
     /// The external source code (used for external crates, which will have a `None`
     /// value as `self.src`.
-    pub external_src: RefCell<ExternalSource>,
+    pub external_src: Lock<ExternalSource>,
     /// The start position of this source in the CodeMap
     pub start_pos: BytePos,
     /// The end position of this source in the CodeMap
     pub end_pos: BytePos,
     /// Locations of lines beginnings in the source code
-    pub lines: RefCell<Vec<BytePos>>,
+    pub lines: Lock<Vec<BytePos>>,
     /// Locations of multi-byte characters in the source code
-    pub multibyte_chars: RefCell<Vec<MultiByteChar>>,
+    pub multibyte_chars: Lock<Vec<MultiByteChar>>,
     /// Width of characters that are not narrow in the source code
-    pub non_narrow_chars: RefCell<Vec<NonNarrowChar>>,
+    pub non_narrow_chars: Lock<Vec<NonNarrowChar>>,
     /// A hash of the filename, used for speeding up the incr. comp. hashing.
     pub name_hash: u128,
 }
@@ -818,10 +850,10 @@ impl Decodable for FileMap {
                 end_pos,
                 src: None,
                 src_hash,
-                external_src: RefCell::new(ExternalSource::AbsentOk),
-                lines: RefCell::new(lines),
-                multibyte_chars: RefCell::new(multibyte_chars),
-                non_narrow_chars: RefCell::new(non_narrow_chars),
+                external_src: Lock::new(ExternalSource::AbsentOk),
+                lines: Lock::new(lines),
+                multibyte_chars: Lock::new(multibyte_chars),
+                non_narrow_chars: Lock::new(non_narrow_chars),
                 name_hash,
             })
         })
@@ -861,12 +893,12 @@ impl FileMap {
             crate_of_origin: 0,
             src: Some(Lrc::new(src)),
             src_hash,
-            external_src: RefCell::new(ExternalSource::Unneeded),
+            external_src: Lock::new(ExternalSource::Unneeded),
             start_pos,
             end_pos: Pos::from_usize(end_pos),
-            lines: RefCell::new(Vec::new()),
-            multibyte_chars: RefCell::new(Vec::new()),
-            non_narrow_chars: RefCell::new(Vec::new()),
+            lines: Lock::new(Vec::new()),
+            multibyte_chars: Lock::new(Vec::new()),
+            non_narrow_chars: Lock::new(Vec::new()),
             name_hash,
         }
     }
@@ -898,19 +930,24 @@ impl FileMap {
         if *self.external_src.borrow() == ExternalSource::AbsentOk {
             let src = get_src();
             let mut external_src = self.external_src.borrow_mut();
-            if let Some(src) = src {
-                let mut hasher: StableHasher<u128> = StableHasher::new();
-                hasher.write(src.as_bytes());
+            // Check that no-one else have provided the source while we were getting it
+            if *external_src == ExternalSource::AbsentOk {
+                if let Some(src) = src {
+                    let mut hasher: StableHasher<u128> = StableHasher::new();
+                    hasher.write(src.as_bytes());
 
-                if hasher.finish() == self.src_hash {
-                    *external_src = ExternalSource::Present(src);
-                    return true;
+                    if hasher.finish() == self.src_hash {
+                        *external_src = ExternalSource::Present(src);
+                        return true;
+                    }
+                } else {
+                    *external_src = ExternalSource::AbsentErr;
                 }
-            } else {
-                *external_src = ExternalSource::AbsentErr;
-            }
 
-            false
+                false
+            } else {
+                self.src.is_some() || external_src.get_source().is_some()
+            }
         } else {
             self.src.is_some() || self.external_src.borrow().get_source().is_some()
         }
@@ -930,14 +967,16 @@ impl FileMap {
             }
         }
 
-        let lines = self.lines.borrow();
-        let line = if let Some(line) = lines.get(line_number) {
-            line
-        } else {
-            return None;
+        let begin = {
+            let lines = self.lines.borrow();
+            let line = if let Some(line) = lines.get(line_number) {
+                line
+            } else {
+                return None;
+            };
+            let begin: BytePos = *line - self.start_pos;
+            begin.to_usize()
         };
-        let begin: BytePos = *line - self.start_pos;
-        let begin = begin.to_usize();
 
         if let Some(ref src) = self.src {
             Some(Cow::from(get_until_newline(src, begin)))

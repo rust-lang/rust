@@ -13,7 +13,7 @@ use feature_gate::{feature_err, EXPLAIN_STMT_ATTR_SYNTAX, Features, get_features
 use {fold, attr};
 use ast;
 use codemap::Spanned;
-use epoch::Epoch;
+use edition::Edition;
 use parse::{token, ParseSess};
 
 use ptr::P;
@@ -27,7 +27,7 @@ pub struct StripUnconfigured<'a> {
 }
 
 // `cfg_attr`-process the crate's attributes and compute the crate's features.
-pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, epoch: Epoch)
+pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, edition: Edition)
                 -> (ast::Crate, Features) {
     let features;
     {
@@ -47,7 +47,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, should_test: bool, epoc
             return (krate, Features::new());
         }
 
-        features = get_features(&sess.span_diagnostic, &krate.attrs, epoch);
+        features = get_features(&sess.span_diagnostic, &krate.attrs, edition);
 
         // Avoid reconfiguring malformed `cfg_attr`s
         if err_count == sess.span_diagnostic.err_count() {
@@ -149,17 +149,24 @@ impl<'a> StripUnconfigured<'a> {
     fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
-            if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
-                let mut err = feature_err(self.sess,
-                                          "stmt_expr_attributes",
-                                          attr.span,
-                                          GateIssue::Language,
-                                          EXPLAIN_STMT_ATTR_SYNTAX);
-                if attr.is_sugared_doc {
-                    err.help("`///` is for documentation comments. For a plain comment, use `//`.");
-                }
-                err.emit();
+            self.maybe_emit_expr_attr_err(attr);
+        }
+    }
+
+    /// If attributes are not allowed on expressions, emit an error for `attr`
+    pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
+        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+            let mut err = feature_err(self.sess,
+                                      "stmt_expr_attributes",
+                                      attr.span,
+                                      GateIssue::Language,
+                                      EXPLAIN_STMT_ATTR_SYNTAX);
+
+            if attr.is_sugared_doc {
+                err.help("`///` is for documentation comments. For a plain comment, use `//`.");
             }
+
+            err.emit();
         }
     }
 

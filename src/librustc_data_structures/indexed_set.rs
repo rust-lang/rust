@@ -121,7 +121,9 @@ impl<T: Idx> IdxSetBuf<T> {
 
     /// Creates set holding every element whose index falls in range 0..universe_size.
     pub fn new_filled(universe_size: usize) -> Self {
-        Self::new(!0, universe_size)
+        let mut result = Self::new(!0, universe_size);
+        result.trim_to(universe_size);
+        result
     }
 
     /// Creates set holding no elements.
@@ -165,6 +167,36 @@ impl<T: Idx> IdxSet<T> {
     pub fn clear(&mut self) {
         for b in &mut self.bits {
             *b = 0;
+        }
+    }
+
+    /// Sets all elements up to `universe_size`
+    pub fn set_up_to(&mut self, universe_size: usize) {
+        for b in &mut self.bits {
+            *b = !0;
+        }
+        self.trim_to(universe_size);
+    }
+
+    /// Clear all elements above `universe_size`.
+    fn trim_to(&mut self, universe_size: usize) {
+        let word_bits = mem::size_of::<Word>() * 8;
+
+        // `trim_block` is the first block where some bits have
+        // to be cleared.
+        let trim_block = universe_size / word_bits;
+
+        // all the blocks above it have to be completely cleared.
+        if trim_block < self.bits.len() {
+            for b in &mut self.bits[trim_block+1..] {
+                *b = 0;
+            }
+
+            // at that block, the `universe_size % word_bits` lsbs
+            // should remain.
+            let remaining_bits = universe_size % word_bits;
+            let mask = (1<<remaining_bits)-1;
+            self.bits[trim_block] &= mask;
         }
     }
 
@@ -224,70 +256,6 @@ impl<T: Idx> IdxSet<T> {
             _pd: PhantomData,
         }
     }
-
-    /// Calls `f` on each index value held in this set, up to the
-    /// bound `max_bits` on the size of universe of indexes.
-    pub fn each_bit<F>(&self, max_bits: usize, f: F) where F: FnMut(T) {
-        each_bit(self, max_bits, f)
-    }
-
-    /// Removes all elements from this set.
-    pub fn reset_to_empty(&mut self) {
-        for word in self.words_mut() { *word = 0; }
-    }
-
-    pub fn elems(&self, universe_size: usize) -> Elems<T> {
-        Elems { i: 0, set: self, universe_size: universe_size }
-    }
-}
-
-pub struct Elems<'a, T: Idx> { i: usize, set: &'a IdxSet<T>, universe_size: usize }
-
-impl<'a, T: Idx> Iterator for Elems<'a, T> {
-    type Item = T;
-    fn next(&mut self) -> Option<T> {
-        if self.i >= self.universe_size { return None; }
-        let mut i = self.i;
-        loop {
-            if i >= self.universe_size {
-                self.i = i; // (mark iteration as complete.)
-                return None;
-            }
-            if self.set.contains(&T::new(i)) {
-                self.i = i + 1; // (next element to start at.)
-                return Some(T::new(i));
-            }
-            i = i + 1;
-        }
-    }
-}
-
-fn each_bit<T: Idx, F>(words: &IdxSet<T>, max_bits: usize, mut f: F) where F: FnMut(T) {
-    let usize_bits: usize = mem::size_of::<usize>() * 8;
-
-    for (word_index, &word) in words.words().iter().enumerate() {
-        if word != 0 {
-            let base_index = word_index * usize_bits;
-            for offset in 0..usize_bits {
-                let bit = 1 << offset;
-                if (word & bit) != 0 {
-                    // NB: we round up the total number of bits
-                    // that we store in any given bit set so that
-                    // it is an even multiple of usize::BITS. This
-                    // means that there may be some stray bits at
-                    // the end that do not correspond to any
-                    // actual value; that's why we first check
-                    // that we are in range of bits_per_block.
-                    let bit_index = base_index + offset as usize;
-                    if bit_index >= max_bits {
-                        return;
-                    } else {
-                        f(Idx::new(bit_index));
-                    }
-                }
-            }
-        }
-    }
 }
 
 pub struct Iter<'a, T: Idx> {
@@ -314,5 +282,45 @@ impl<'a, T: Idx> Iterator for Iter<'a, T> {
             let (i, word) = self.iter.next()?;
             self.cur = Some((*word, word_bits * i));
         }
+    }
+}
+
+#[test]
+fn test_trim_to() {
+    use std::cmp;
+
+    for i in 0..256 {
+        let mut idx_buf: IdxSetBuf<usize> = IdxSetBuf::new_filled(128);
+        idx_buf.trim_to(i);
+
+        let elems: Vec<usize> = idx_buf.iter().collect();
+        let expected: Vec<usize> = (0..cmp::min(i, 128)).collect();
+        assert_eq!(elems, expected);
+    }
+}
+
+#[test]
+fn test_set_up_to() {
+    for i in 0..128 {
+        for mut idx_buf in
+            vec![IdxSetBuf::new_empty(128), IdxSetBuf::new_filled(128)]
+            .into_iter()
+        {
+            idx_buf.set_up_to(i);
+
+            let elems: Vec<usize> = idx_buf.iter().collect();
+            let expected: Vec<usize> = (0..i).collect();
+            assert_eq!(elems, expected);
+        }
+    }
+}
+
+#[test]
+fn test_new_filled() {
+    for i in 0..128 {
+        let mut idx_buf = IdxSetBuf::new_filled(i);
+        let elems: Vec<usize> = idx_buf.iter().collect();
+        let expected: Vec<usize> = (0..i).collect();
+        assert_eq!(elems, expected);
     }
 }

@@ -13,4 +13,4 @@ LL | extern crate m2 as m1; //~ ERROR is defined multiple times
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0259"
+For more information about this error, try `rustc --explain E0259`.

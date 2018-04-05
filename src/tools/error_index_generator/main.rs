@@ -61,8 +61,8 @@ impl Formatter for HTMLFormatter {
 <head>
 <title>Rust Compiler Error Index</title>
 <meta charset="utf-8">
-<!-- Include rust.css after main.css so its rules take priority. -->
-<link rel="stylesheet" type="text/css" href="main.css"/>
+<!-- Include rust.css after light.css so its rules take priority. -->
+<link rel="stylesheet" type="text/css" href="light.css"/>
 <link rel="stylesheet" type="text/css" href="rust.css"/>
 <style>
 .error-undescribed {{
@@ -263,7 +263,10 @@ fn main() {
         *slot.borrow_mut() = Some((None, String::from("https://play.rust-lang.org/")));
     });
     let (format, dst) = parse_args();
-    if let Err(e) = main_with_result(format, &dst) {
+    let result = syntax::with_globals(move || {
+        main_with_result(format, &dst)
+    });
+    if let Err(e) = result {
         panic!("{}", e.description());
     }
 }

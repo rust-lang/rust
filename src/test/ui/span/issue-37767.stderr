@@ -57,4 +57,4 @@ LL |     fn foo(self) {}
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0034"
+For more information about this error, try `rustc --explain E0034`.

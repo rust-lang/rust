@@ -253,28 +253,28 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     used_mut_nodes: RefCell<FxHashSet<HirId>>,
 }
 
-impl<'b, 'tcx: 'b> BorrowckErrors for BorrowckCtxt<'b, 'tcx> {
-    fn struct_span_err_with_code<'a, S: Into<MultiSpan>>(&'a self,
-                                                         sp: S,
-                                                         msg: &str,
-                                                         code: DiagnosticId)
-                                                         -> DiagnosticBuilder<'a>
+impl<'a, 'b, 'tcx: 'b> BorrowckErrors<'a> for &'a BorrowckCtxt<'b, 'tcx> {
+    fn struct_span_err_with_code<S: Into<MultiSpan>>(self,
+                                                     sp: S,
+                                                     msg: &str,
+                                                     code: DiagnosticId)
+                                                     -> DiagnosticBuilder<'a>
     {
         self.tcx.sess.struct_span_err_with_code(sp, msg, code)
     }
 
-    fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
-                                               sp: S,
-                                               msg: &str)
-                                               -> DiagnosticBuilder<'a>
+    fn struct_span_err<S: Into<MultiSpan>>(self,
+                                           sp: S,
+                                           msg: &str)
+                                           -> DiagnosticBuilder<'a>
     {
         self.tcx.sess.struct_span_err(sp, msg)
     }
 
-    fn cancel_if_wrong_origin<'a>(&'a self,
-                                mut diag: DiagnosticBuilder<'a>,
-                                o: Origin)
-                                -> DiagnosticBuilder<'a>
+    fn cancel_if_wrong_origin(self,
+                              mut diag: DiagnosticBuilder<'a>,
+                              o: Origin)
+                              -> DiagnosticBuilder<'a>
     {
         if !o.should_emit_errors(self.tcx.borrowck_mode()) {
             self.tcx.sess.diagnostic().cancel(&mut diag);

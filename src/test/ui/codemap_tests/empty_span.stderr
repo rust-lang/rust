@@ -2,8 +2,8 @@ error[E0321]: cross-crate traits with a default impl, like `std::marker::Send`, 
   --> $DIR/empty_span.rs:17:5
    |
 LL |     unsafe impl Send for &'static Foo { } //~ ERROR cross-crate traits with a default impl
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0321"
+For more information about this error, try `rustc --explain E0321`.

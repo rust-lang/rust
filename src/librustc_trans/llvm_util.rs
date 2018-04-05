@@ -61,6 +61,9 @@ unsafe fn configure_llvm(sess: &Session) {
         add("rustc"); // fake program name
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
+        if sess.opts.debugging_opts.disable_instrumentation_preinliner {
+            add("-disable-preinline");
+        }
 
         for arg in &sess.opts.cg.llvm_args {
             add(&(*arg));
@@ -92,6 +95,7 @@ const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw
                                                  "bmi1", "bmi2", "fma", "fxsr",
                                                  "lzcnt", "mmx", "pclmulqdq",
                                                  "popcnt", "rdrand", "rdseed",
+                                                 "sha",
                                                  "sse", "sse2", "sse3", "sse4.1",
                                                  "sse4.2", "sse4a", "ssse3",
                                                  "tbm", "xsave", "xsavec",
@@ -104,7 +108,21 @@ const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
                                                      "power8-vector", "power9-vector",
                                                      "vsx"];
 
-const MIPS_WHITELIST: &'static [&'static str] = &["msa"];
+const MIPS_WHITELIST: &'static [&'static str] = &["fp64", "msa"];
+
+/// When rustdoc is running, provide a list of all known features so that all their respective
+/// primtives may be documented.
+///
+/// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
+/// iterator!
+pub fn all_known_features() -> impl Iterator<Item=&'static str> {
+    ARM_WHITELIST.iter().cloned()
+        .chain(AARCH64_WHITELIST.iter().cloned())
+        .chain(X86_WHITELIST.iter().cloned())
+        .chain(HEXAGON_WHITELIST.iter().cloned())
+        .chain(POWERPC_WHITELIST.iter().cloned())
+        .chain(MIPS_WHITELIST.iter().cloned())
+}
 
 pub fn to_llvm_feature<'a>(sess: &Session, s: &'a str) -> &'a str {
     let arch = if sess.target.target.arch == "x86_64" {

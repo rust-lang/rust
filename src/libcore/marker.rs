@@ -260,6 +260,21 @@ pub trait Unsize<T: ?Sized> {
 /// non-`Copy` in the future, it could be prudent to omit the `Copy` implementation now, to
 /// avoid a breaking API change.
 ///
+/// ## Additional implementors
+///
+/// In addition to the [implementors listed below][impls],
+/// the following types also implement `Copy`:
+///
+/// * Function item types (i.e. the distinct types defined for each function)
+/// * Function pointer types (e.g. `fn() -> i32`)
+/// * Array types, for all sizes, if the item type also implements `Copy` (e.g. `[i32; 123456]`)
+/// * Tuple types, if each component also implements `Copy` (e.g. `()`, `(i32, bool)`)
+/// * Closure types, if they capture no value from the environment
+///   or if all such captured values implement `Copy` themselves.
+///   Note that variables captured by shared reference always implement `Copy`
+///   (even if the referent doesn't),
+///   while variables captured by mutable reference never implement `Copy`.
+///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Drop`]: ../../std/ops/trait.Drop.html
@@ -267,6 +282,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`Clone`]: ../clone/trait.Clone.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`i32`]: ../../std/primitive.i32.html
+/// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
 pub trait Copy : Clone {
@@ -343,8 +359,21 @@ pub trait Copy : Clone {
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]
-#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
+#[rustc_on_unimplemented(
+    message="`{Self}` cannot be shared between threads safely",
+    label="`{Self}` cannot be shared between threads safely"
+)]
 pub unsafe auto trait Sync {
+    // FIXME(estebank): once support to add notes in `rustc_on_unimplemented`
+    // lands in beta, and it has been extended to check whether a closure is
+    // anywhere in the requirement chain, extend it as such (#48534):
+    // ```
+    // on(
+    //     closure,
+    //     note="`{Self}` cannot be shared safely, consider marking the closure `move`"
+    // ),
+    // ```
+
     // Empty
 }
 
@@ -565,3 +594,53 @@ unsafe impl<T: ?Sized> Freeze for *const T {}
 unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
 unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
+
+/// Types which can be moved out of a `Pin`.
+///
+/// The `Unpin` trait is used to control the behavior of the [`Pin`] type. If a
+/// type implements `Unpin`, it is safe to move a value of that type out of the
+/// `Pin` pointer.
+///
+/// This trait is automatically implemented for almost every type.
+#[unstable(feature = "pin", issue = "49150")]
+pub unsafe auto trait Unpin {}
+
+/// Implementations of `Copy` for primitive types.
+///
+/// Implementations that cannot be described in Rust
+/// are implemented in `SelectionContext::copy_clone_conditions()` in librustc.
+#[cfg(not(stage0))]
+mod copy_impls {
+
+    use super::Copy;
+
+    macro_rules! impl_copy {
+        ($($t:ty)*) => {
+            $(
+                #[stable(feature = "rust1", since = "1.0.0")]
+                impl Copy for $t {}
+            )*
+        }
+    }
+
+    impl_copy! {
+        usize u8 u16 u32 u64 u128
+        isize i8 i16 i32 i64 i128
+        f32 f64
+        bool char
+    }
+
+    #[stable(feature = "never_type", since = "1.26.0")]
+    impl Copy for ! {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Copy for *const T {}
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<T: ?Sized> Copy for *mut T {}
+
+    // Shared references can be copied, but mutable references *cannot*!
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, T: ?Sized> Copy for &'a T {}
+
+}

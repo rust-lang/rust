@@ -55,53 +55,20 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use heap::{Heap, Layout, Alloc};
 use raw_vec::RawVec;
 
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
 use core::fmt;
-use core::hash::{self, Hash, Hasher};
+use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
-use core::marker::{self, Unsize};
-use core::mem;
+use core::marker::{Unpin, Unsize};
+use core::mem::{self, Pin};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
-use core::ops::{BoxPlace, Boxed, InPlace, Place, Placer};
 use core::ptr::{self, NonNull, Unique};
 use core::convert::From;
 use str::from_boxed_utf8_unchecked;
-
-/// A value that represents the heap. This is the default place that the `box`
-/// keyword allocates into when no place is supplied.
-///
-/// The following two examples are equivalent:
-///
-/// ```
-/// #![feature(box_heap)]
-///
-/// #![feature(box_syntax, placement_in_syntax)]
-/// use std::boxed::HEAP;
-///
-/// fn main() {
-///     let foo: Box<i32> = in HEAP { 5 };
-///     let foo = box 5;
-/// }
-/// ```
-#[unstable(feature = "box_heap",
-           reason = "may be renamed; uncertain about custom allocator design",
-           issue = "27779")]
-pub const HEAP: ExchangeHeapSingleton = ExchangeHeapSingleton { _force_singleton: () };
-
-/// This the singleton type used solely for `boxed::HEAP`.
-#[unstable(feature = "box_heap",
-           reason = "may be renamed; uncertain about custom allocator design",
-           issue = "27779")]
-#[allow(missing_debug_implementations)]
-#[derive(Copy, Clone)]
-pub struct ExchangeHeapSingleton {
-    _force_singleton: (),
-}
 
 /// A pointer type for heap allocation.
 ///
@@ -110,121 +77,6 @@ pub struct ExchangeHeapSingleton {
 #[fundamental]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T: ?Sized>(Unique<T>);
-
-/// `IntermediateBox` represents uninitialized backing storage for `Box`.
-///
-/// FIXME (pnkfelix): Ideally we would just reuse `Box<T>` instead of
-/// introducing a separate `IntermediateBox<T>`; but then you hit
-/// issues when you e.g. attempt to destructure an instance of `Box`,
-/// since it is a lang item and so it gets special handling by the
-/// compiler.  Easier just to make this parallel type for now.
-///
-/// FIXME (pnkfelix): Currently the `box` protocol only supports
-/// creating instances of sized types. This IntermediateBox is
-/// designed to be forward-compatible with a future protocol that
-/// supports creating instances of unsized types; that is why the type
-/// parameter has the `?Sized` generalization marker, and is also why
-/// this carries an explicit size. However, it probably does not need
-/// to carry the explicit alignment; that is just a work-around for
-/// the fact that the `align_of` intrinsic currently requires the
-/// input type to be Sized (which I do not think is strictly
-/// necessary).
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-#[allow(missing_debug_implementations)]
-pub struct IntermediateBox<T: ?Sized> {
-    ptr: *mut u8,
-    layout: Layout,
-    marker: marker::PhantomData<*mut T>,
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-unsafe impl<T> Place<T> for IntermediateBox<T> {
-    fn pointer(&mut self) -> *mut T {
-        self.ptr as *mut T
-    }
-}
-
-unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
-    let p = b.ptr as *mut T;
-    mem::forget(b);
-    Box::from_raw(p)
-}
-
-fn make_place<T>() -> IntermediateBox<T> {
-    let layout = Layout::new::<T>();
-
-    let p = if layout.size() == 0 {
-        mem::align_of::<T>() as *mut u8
-    } else {
-        unsafe {
-            Heap.alloc(layout.clone()).unwrap_or_else(|err| {
-                Heap.oom(err)
-            })
-        }
-    };
-
-    IntermediateBox {
-        ptr: p,
-        layout,
-        marker: marker::PhantomData,
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> BoxPlace<T> for IntermediateBox<T> {
-    fn make_place() -> IntermediateBox<T> {
-        make_place()
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> InPlace<T> for IntermediateBox<T> {
-    type Owner = Box<T>;
-    unsafe fn finalize(self) -> Box<T> {
-        finalize(self)
-    }
-}
-
-#[unstable(feature = "placement_new_protocol", issue = "27779")]
-impl<T> Boxed for Box<T> {
-    type Data = T;
-    type Place = IntermediateBox<T>;
-    unsafe fn finalize(b: IntermediateBox<T>) -> Box<T> {
-        finalize(b)
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T> Placer<T> for ExchangeHeapSingleton {
-    type Place = IntermediateBox<T>;
-
-    fn make_place(self) -> IntermediateBox<T> {
-        make_place()
-    }
-}
-
-#[unstable(feature = "placement_in",
-           reason = "placement box design is still being worked out.",
-           issue = "27779")]
-impl<T: ?Sized> Drop for IntermediateBox<T> {
-    fn drop(&mut self) {
-        if self.layout.size() > 0 {
-            unsafe {
-                Heap.dealloc(self.ptr, self.layout.clone())
-            }
-        }
-    }
-}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -508,7 +360,7 @@ impl<T: ?Sized + Eq> Eq for Box<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Box<T> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }
@@ -892,7 +744,104 @@ impl<T> Generator for Box<T>
 {
     type Yield = T::Yield;
     type Return = T::Return;
-    fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
+    unsafe fn resume(&mut self) -> GeneratorState<Self::Yield, Self::Return> {
         (**self).resume()
     }
 }
+
+/// A pinned, heap allocated reference.
+#[unstable(feature = "pin", issue = "49150")]
+#[fundamental]
+pub struct PinBox<T: ?Sized> {
+    inner: Box<T>,
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T> PinBox<T> {
+    /// Allocate memory on the heap, move the data into it and pin it.
+    #[unstable(feature = "pin", issue = "49150")]
+    pub fn new(data: T) -> PinBox<T> {
+        PinBox { inner: Box::new(data) }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> PinBox<T> {
+    /// Get a pinned reference to the data in this PinBox.
+    pub fn as_pin<'a>(&'a mut self) -> Pin<'a, T> {
+        unsafe { Pin::new_unchecked(&mut *self.inner) }
+    }
+
+    /// Get a mutable reference to the data inside this PinBox.
+    ///
+    /// This function is unsafe. Users must guarantee that the data is never
+    /// moved out of this reference.
+    pub unsafe fn get_mut<'a>(this: &'a mut PinBox<T>) -> &'a mut T {
+        &mut *this.inner
+    }
+
+    /// Convert this PinBox into an unpinned Box.
+    ///
+    /// This function is unsafe. Users must guarantee that the data is never
+    /// moved out of the box.
+    pub unsafe fn unpin(this: PinBox<T>) -> Box<T> {
+        this.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> From<Box<T>> for PinBox<T> {
+    fn from(boxed: Box<T>) -> PinBox<T> {
+        PinBox { inner: boxed }
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> From<PinBox<T>> for Box<T> {
+    fn from(pinned: PinBox<T>) -> Box<T> {
+        pinned.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> Deref for PinBox<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: Unpin + ?Sized> DerefMut for PinBox<T> {
+    fn deref_mut(&mut self) -> &mut T {
+        &mut *self.inner
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: fmt::Display + ?Sized> fmt::Display for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&*self.inner, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: fmt::Debug + ?Sized> fmt::Debug for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&*self.inner, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized> fmt::Pointer for PinBox<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // It's not possible to extract the inner Uniq directly from the Box,
+        // instead we cast it to a *const which aliases the Unique
+        let ptr: *const T = &*self.inner;
+        fmt::Pointer::fmt(&ptr, f)
+    }
+}
+
+#[unstable(feature = "pin", issue = "49150")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<PinBox<U>> for PinBox<T> {}

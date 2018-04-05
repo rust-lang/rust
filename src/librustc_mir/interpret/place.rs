@@ -197,29 +197,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             },
 
             Static(ref static_) => {
-                let alloc = self
-                    .tcx
-                    .interpret_interner
-                    .get_cached(static_.def_id);
                 let layout = self.layout_of(self.place_ty(mir_place))?;
-                if let Some(alloc) = alloc {
-                    Place::Ptr {
-                        ptr: MemoryPointer::new(alloc, 0).into(),
-                        align: layout.align,
-                        extra: PlaceExtra::None,
-                    }
-                } else {
-                    let instance = ty::Instance::mono(*self.tcx, static_.def_id);
-                    let cid = GlobalId {
-                        instance,
-                        promoted: None
-                    };
-                    let alloc = Machine::init_static(self, cid)?;
-                    Place::Ptr {
-                        ptr: MemoryPointer::new(alloc, 0).into(),
-                        align: layout.align,
-                        extra: PlaceExtra::None,
-                    }
+                let instance = ty::Instance::mono(*self.tcx, static_.def_id);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None
+                };
+                let alloc = Machine::init_static(self, cid)?;
+                Place::Ptr {
+                    ptr: MemoryPointer::new(alloc, 0).into(),
+                    align: layout.align,
+                    extra: PlaceExtra::None,
                 }
             }
 

@@ -13,8 +13,6 @@
 
 // Test that immutable pattern bindings cannot be reassigned.
 
-#![feature(slice_patterns)]
-
 enum E {
     Foo(isize)
 }

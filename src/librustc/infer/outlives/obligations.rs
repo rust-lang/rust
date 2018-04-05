@@ -99,6 +99,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             .push((body_id, obligation));
     }
 
+    /// Trait queries just want to pass back type obligations "as is"
+    pub fn take_registered_region_obligations(
+        &self,
+    ) -> Vec<(ast::NodeId, RegionObligation<'tcx>)> {
+        ::std::mem::replace(
+            &mut *self.region_obligations.borrow_mut(),
+            vec![],
+        )
+    }
+
     /// Process the region obligations that must be proven (during
     /// `regionck`) for the given `body_id`, given information about
     /// the region bounds in scope and so forth. This function must be

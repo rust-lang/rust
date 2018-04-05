@@ -12,4 +12,4 @@ LL |     let f = Bar::Foo{ a: 0, b: 0 }; //~ ERROR E0451
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0451"
+For more information about this error, try `rustc --explain E0451`.

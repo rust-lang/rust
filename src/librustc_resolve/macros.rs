@@ -268,7 +268,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                                 if k > 0 {
                                     tokens.push(TokenTree::Token(path.span, Token::ModSep).into());
                                 }
-                                let tok = Token::Ident(segment.identifier);
+                                let tok = Token::from_ast_ident(segment.identifier);
                                 tokens.push(TokenTree::Token(path.span, tok).into());
                             }
                         }

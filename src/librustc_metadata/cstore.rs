@@ -20,10 +20,9 @@ use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
 use rustc::session::{Session, CrateDisambiguator};
 use rustc_back::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::util::nodemap::{FxHashMap, FxHashSet, NodeMap};
+use rustc::util::nodemap::{FxHashMap, NodeMap};
 
-use std::cell::{RefCell, Cell};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 use syntax::{ast, attr};
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
@@ -31,7 +30,7 @@ use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
 pub use rustc::middle::cstore::NativeLibraryKind::*;
-pub use rustc::middle::cstore::{CrateSource, LibSource};
+pub use rustc::middle::cstore::{CrateSource, LibSource, ForeignModule};
 
 pub use cstore_impl::{provide, provide_extern};
 
@@ -62,13 +61,13 @@ pub struct CrateMetadata {
     /// Information about the extern crate that caused this crate to
     /// be loaded. If this is `None`, then the crate was injected
     /// (e.g., by the allocator)
-    pub extern_crate: Cell<Option<ExternCrate>>,
+    pub extern_crate: Lock<Option<ExternCrate>>,
 
     pub blob: MetadataBlob,
-    pub cnum_map: RefCell<CrateNumMap>,
+    pub cnum_map: Lock<CrateNumMap>,
     pub cnum: CrateNum,
-    pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
-    pub attribute_cache: RefCell<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
+    pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
+    pub attribute_cache: Lock<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
 
     pub root: schema::CrateRoot,
 
@@ -81,30 +80,30 @@ pub struct CrateMetadata {
 
     pub trait_impls: FxHashMap<(u32, DefIndex), schema::LazySeq<DefIndex>>,
 
-    pub dep_kind: Cell<DepKind>,
+    pub dep_kind: Lock<DepKind>,
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
-    // Foreign items imported from a dylib (Windows only)
-    pub dllimport_foreign_items: FxHashSet<DefIndex>,
 }
 
 pub struct CStore {
-    metas: RefCell<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
+    metas: RwLock<IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
-    extern_mod_crate_map: RefCell<NodeMap<CrateNum>>,
-    pub metadata_loader: Box<MetadataLoader>,
+    extern_mod_crate_map: Lock<NodeMap<CrateNum>>,
+    pub metadata_loader: Box<MetadataLoader + Sync>,
 }
 
 impl CStore {
-    pub fn new(metadata_loader: Box<MetadataLoader>) -> CStore {
+    pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
-            metas: RefCell::new(IndexVec::new()),
-            extern_mod_crate_map: RefCell::new(FxHashMap()),
+            metas: RwLock::new(IndexVec::new()),
+            extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
         }
     }
 
+    /// You cannot use this function to allocate a CrateNum in a thread-safe manner.
+    /// It is currently only used in CrateLoader which is single-threaded code.
     pub fn next_crate_num(&self) -> CrateNum {
         CrateNum::new(self.metas.borrow().len() + 1)
     }
@@ -225,16 +224,6 @@ impl CrateMetadata {
     pub fn is_no_builtins(&self, sess: &Session) -> bool {
         let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
         attr::contains_name(&attrs, "no_builtins")
-    }
-
-     pub fn has_copy_closures(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_feature_attr(&attrs, "copy_closures")
-    }
-
-    pub fn has_clone_closures(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_feature_attr(&attrs, "clone_closures")
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {

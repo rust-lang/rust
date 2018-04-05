@@ -14,7 +14,6 @@ fn main() {
     match s {
         "hello" ... "world" => {}
         //~^ ERROR only char and numeric types are allowed in range patterns
-        //~| ERROR non-reference pattern used to match a reference
         _ => {}
     }
 }

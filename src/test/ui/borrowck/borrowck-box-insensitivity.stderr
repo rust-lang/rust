@@ -161,5 +161,5 @@ LL | }
 
 error: aborting due to 16 previous errors
 
-You've got a few errors: E0382, E0502, E0503, E0505
-If you want more information on an error, try using "rustc --explain E0382"
+Some errors occurred: E0382, E0502, E0503, E0505.
+For more information about an error, try `rustc --explain E0382`.

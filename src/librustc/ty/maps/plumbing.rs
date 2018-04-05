@@ -164,8 +164,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 macro_rules! profq_msg {
     ($tcx:expr, $msg:expr) => {
         if cfg!(debug_assertions) {
-            if  $tcx.sess.profile_queries() {
-                profq_msg($msg)
+            if $tcx.sess.profile_queries() {
+                profq_msg($tcx.sess, $msg)
             }
         }
     }
@@ -772,7 +772,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::FulfillObligation |
         DepKind::VtableMethods |
         DepKind::EraseRegionsTy |
-        DepKind::NormalizeTy |
+        DepKind::NormalizeProjectionTy |
+        DepKind::NormalizeTyAfterErasingRegions |
+        DepKind::DropckOutlives |
         DepKind::SubstituteNormalizeAndTestPredicates |
         DepKind::InstanceDefSizeEstimate |
 
@@ -869,6 +871,9 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::GetPanicStrategy => { force!(panic_strategy, krate!()); }
         DepKind::IsNoBuiltins => { force!(is_no_builtins, krate!()); }
         DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
+        DepKind::CheckItemWellFormed => { force!(check_item_well_formed, def_id!()); }
+        DepKind::CheckTraitItemWellFormed => { force!(check_trait_item_well_formed, def_id!()); }
+        DepKind::CheckImplItemWellFormed => { force!(check_impl_item_well_formed, def_id!()); }
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
@@ -876,11 +881,15 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CrateDisambiguator => { force!(crate_disambiguator, krate!()); }
         DepKind::CrateHash => { force!(crate_hash, krate!()); }
         DepKind::OriginalCrateName => { force!(original_crate_name, krate!()); }
+        DepKind::ExtraFileName => { force!(extra_filename, krate!()); }
 
         DepKind::AllTraitImplementations => {
             force!(all_trait_implementations, krate!());
         }
 
+        DepKind::DllimportForeignItems => {
+            force!(dllimport_foreign_items, krate!());
+        }
         DepKind::IsDllimportForeignItem => {
             force!(is_dllimport_foreign_item, def_id!());
         }
@@ -912,8 +921,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         }
         DepKind::UsedCrateSource => { force!(used_crate_source, krate!()); }
         DepKind::PostorderCnums => { force!(postorder_cnums, LOCAL_CRATE); }
-        DepKind::HasCloneClosures => { force!(has_clone_closures, krate!()); }
-        DepKind::HasCopyClosures => { force!(has_copy_closures, krate!()); }
 
         DepKind::Freevars => { force!(freevars, def_id!()); }
         DepKind::MaybeUnusedTraitImport => {
@@ -933,6 +940,11 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
 
         DepKind::GetSymbolExportLevel => { force!(symbol_export_level, def_id!()); }
         DepKind::Features => { force!(features_query, LOCAL_CRATE); }
+
+        DepKind::ProgramClausesFor => { force!(program_clauses_for, def_id!()); }
+        DepKind::WasmCustomSections => { force!(wasm_custom_sections, krate!()); }
+        DepKind::WasmImportModuleMap => { force!(wasm_import_module_map, krate!()); }
+        DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
     }
 
     true
@@ -999,4 +1011,5 @@ impl_load_from_cache!(
     PredicatesOfItem => predicates_of,
     UsedTraitImports => used_trait_imports,
     TransFnAttrs => trans_fn_attrs,
+    SpecializationGraph => specialization_graph_of,
 );

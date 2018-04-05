@@ -40,29 +40,36 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                        self.tcx.hir.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
                 let trait_def_id = trait_ref.def_id;
+                let cm = self.tcx.sess.codemap();
+                let sp = cm.def_span(item.span);
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => {}
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
                         struct_span_err!(self.tcx.sess,
-                                         item.span,
+                                         sp,
                                          E0117,
                                          "only traits defined in the current crate can be \
                                           implemented for arbitrary types")
-                            .span_label(item.span, "impl doesn't use types inside crate")
-                            .note(&format!("the impl does not reference any types defined in \
-                                            this crate"))
+                            .span_label(sp, "impl doesn't use types inside crate")
+                            .note("the impl does not reference any types defined in this crate")
                             .note("define and implement a trait or new type instead")
                             .emit();
                         return;
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
-                        span_err!(self.tcx.sess,
-                                  item.span,
-                                  E0210,
-                                  "type parameter `{}` must be used as the type parameter for \
-                                   some local type (e.g. `MyStruct<T>`); only traits defined in \
-                                   the current crate can be implemented for a type parameter",
-                                  param_ty);
+                        struct_span_err!(self.tcx.sess,
+                                         sp,
+                                         E0210,
+                                         "type parameter `{}` must be used as the type parameter \
+                                          for some local type (e.g. `MyStruct<{}>`)",
+                                         param_ty,
+                                         param_ty)
+                            .span_label(sp,
+                                        format!("type parameter `{}` must be used as the type \
+                                                 parameter for some local type", param_ty))
+                            .note("only traits defined in the current crate can be implemented \
+                                   for a type parameter")
+                            .emit();
                         return;
                     }
                 }
@@ -121,22 +128,29 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                             if self_def_id.is_local() {
                                 None
                             } else {
-                                Some(format!("cross-crate traits with a default impl, like `{}`, \
-                                              can only be implemented for a struct/enum type \
-                                              defined in the current crate",
-                                             self.tcx.item_path_str(trait_def_id)))
+                                Some((
+                                    format!("cross-crate traits with a default impl, like `{}`, \
+                                             can only be implemented for a struct/enum type \
+                                             defined in the current crate",
+                                            self.tcx.item_path_str(trait_def_id)),
+                                    "can't implement cross-crate trait for type in another crate"
+                                ))
                             }
                         }
                         _ => {
-                            Some(format!("cross-crate traits with a default impl, like `{}`, can \
-                                          only be implemented for a struct/enum type, not `{}`",
-                                         self.tcx.item_path_str(trait_def_id),
-                                         self_ty))
+                            Some((format!("cross-crate traits with a default impl, like `{}`, can \
+                                           only be implemented for a struct/enum type, not `{}`",
+                                          self.tcx.item_path_str(trait_def_id),
+                                          self_ty),
+                                  "can't implement cross-crate trait with a default impl for \
+                                   non-struct/enum type"))
                         }
                     };
 
-                    if let Some(msg) = msg {
-                        span_err!(self.tcx.sess, item.span, E0321, "{}", msg);
+                    if let Some((msg, label)) = msg {
+                        struct_span_err!(self.tcx.sess, sp, E0321, "{}", msg)
+                            .span_label(sp, label)
+                            .emit();
                         return;
                     }
                 }

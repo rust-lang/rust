@@ -1,17 +1,24 @@
 # Region constraint collection
 
+> WARNING: This README is obsolete and will be removed soon! For
+> more info on how the current borrowck works, see the [rustc guide].
+
+[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir-borrowck.html
+
 ## Terminology
 
 Note that we use the terms region and lifetime interchangeably.
 
 ## Introduction
 
-As described in the [inference README](../README.md), and unlike
+As described in the rustc guide [chapter on type inference][ti], and unlike
 normal type inference, which is similar in spirit to H-M and thus
 works progressively, the region type inference works by accumulating
 constraints over the course of a function.  Finally, at the end of
 processing a function, we process and solve the constraints all at
 once.
+
+[ti]: https://rust-lang-nursery.github.io/rustc-guide/type-inference.html
 
 The constraints are always of one of three possible forms:
 

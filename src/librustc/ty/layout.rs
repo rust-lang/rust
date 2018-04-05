@@ -1213,7 +1213,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     data_ptr.valid_range.start = 1;
                 }
 
-                let pointee = tcx.normalize_associated_type_in_env(&pointee, param_env);
+                let pointee = tcx.normalize_erasing_regions(param_env, pointee);
                 if pointee.is_sized(tcx.at(DUMMY_SP), param_env) {
                     return Ok(tcx.intern_layout(LayoutDetails::scalar(self, data_ptr)));
                 }
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             // Arrays and slices.
             ty::TyArray(element, mut count) => {
                 if count.has_projections() {
-                    count = tcx.normalize_associated_type_in_env(&count, param_env);
+                    count = tcx.normalize_erasing_regions(param_env, count);
                     if count.has_projections() {
                         return Err(LayoutError::Unknown(ty));
                     }
@@ -1318,7 +1318,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     StructKind::AlwaysSized)?
             }
 
-            ty::TyTuple(tys, _) => {
+            ty::TyTuple(tys) => {
                 let kind = if tys.len() == 0 {
                     StructKind::AlwaysSized
                 } else {
@@ -1517,10 +1517,21 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             let offset = st[i].fields.offset(field_index) + offset;
                             let size = st[i].size;
 
-                            let abi = if offset.bytes() == 0 && niche.value.size(dl) == size {
-                                Abi::Scalar(niche.clone())
-                            } else {
-                                Abi::Aggregate { sized: true }
+                            let abi = match st[i].abi {
+                                Abi::Scalar(_) => Abi::Scalar(niche.clone()),
+                                Abi::ScalarPair(ref first, ref second) => {
+                                    // We need to use scalar_unit to reset the
+                                    // valid range to the maximal one for that
+                                    // primitive, because only the niche is
+                                    // guaranteed to be initialised, not the
+                                    // other primitive.
+                                    if offset.bytes() == 0 {
+                                        Abi::ScalarPair(niche.clone(), scalar_unit(second.value))
+                                    } else {
+                                        Abi::ScalarPair(scalar_unit(first.value), niche.clone())
+                                    }
+                                }
+                                _ => Abi::Aggregate { sized: true },
                             };
 
                             return Ok(tcx.intern_layout(LayoutDetails {
@@ -1544,11 +1555,17 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 let (mut min, mut max) = (i128::max_value(), i128::min_value());
+                let discr_type = def.repr.discr_type();
+                let bits = Integer::from_attr(tcx, discr_type).size().bits();
                 for (i, discr) in def.discriminants(tcx).enumerate() {
                     if variants[i].iter().any(|f| f.abi == Abi::Uninhabited) {
                         continue;
                     }
-                    let x = discr.val as i128;
+                    let mut x = discr.val as i128;
+                    if discr_type.is_signed() {
+                        // sign extend the raw representation to be an i128
+                        x = (x << (128 - bits)) >> (128 - bits);
+                    }
                     if x < min { min = x; }
                     if x > max { max = x; }
                 }
@@ -1686,7 +1703,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             // Types with no meaningful known layout.
             ty::TyProjection(_) | ty::TyAnon(..) => {
-                let normalized = tcx.normalize_associated_type_in_env(&ty, param_env);
+                let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
                 }
@@ -1953,7 +1970,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) => {
-                let normalized = tcx.normalize_associated_type_in_env(&ty, param_env);
+                let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
                 } else {
@@ -2058,8 +2075,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = self.param_env.reveal_all();
-        let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env);
+        let param_env = self.param_env.with_reveal_all();
+        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
         let details = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyLayout {
             ty,
@@ -2084,9 +2101,9 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        let param_env = self.param_env.reveal_all();
-        let ty = self.tcx.normalize_associated_type_in_env(&ty, param_env.reveal_all());
-        let details = self.tcx.layout_raw(param_env.reveal_all().and(ty))?;
+        let param_env = self.param_env.with_reveal_all();
+        let ty = self.tcx.normalize_erasing_regions(param_env, ty);
+        let details = self.tcx.layout_raw(param_env.and(ty))?;
         let layout = TyLayout {
             ty,
             details
@@ -2243,7 +2260,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 substs.field_tys(def_id, tcx).nth(i).unwrap()
             }
 
-            ty::TyTuple(tys, _) => tys[i],
+            ty::TyTuple(tys) => tys[i],
 
             // SIMD vector types.
             ty::TyAdt(def, ..) if def.repr.simd() => {

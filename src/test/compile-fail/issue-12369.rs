@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(slice_patterns)]
-#![allow(unused_variables)]
 #![deny(unreachable_patterns)]
 
 fn main() {

@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to immutable borrowed content `*n`
-  --> $DIR/explicit-mut.rs:19:13
+  --> $DIR/explicit-mut.rs:17:13
    |
 LL |         Some(n) => {
    |              - consider changing this to `n`
@@ -7,7 +7,7 @@ LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
-  --> $DIR/explicit-mut.rs:27:13
+  --> $DIR/explicit-mut.rs:25:13
    |
 LL |         Some(n) => {
    |              - consider changing this to `n`
@@ -15,7 +15,7 @@ LL |             *n += 1; //~ ERROR cannot assign to immutable
    |             ^^^^^^^ cannot borrow as mutable
 
 error[E0594]: cannot assign to immutable borrowed content `*n`
-  --> $DIR/explicit-mut.rs:35:13
+  --> $DIR/explicit-mut.rs:33:13
    |
 LL |         Some(n) => {
    |              - consider changing this to `n`
@@ -24,4 +24,4 @@ LL |             *n += 1; //~ ERROR cannot assign to immutable
 
 error: aborting due to 3 previous errors
 
-If you want more information on this error, try using "rustc --explain E0594"
+For more information about this error, try `rustc --explain E0594`.

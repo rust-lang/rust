@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slice_patterns)]
-
 fn main() {
     let r: f32 = 1.0;
     match r {

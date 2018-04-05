@@ -411,8 +411,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             self.type_of_node_must_outlive(origin, hir_id, var_region);
 
             let typ = self.resolve_node_type(hir_id);
+            let body_id = self.body_id;
             let _ = dropck::check_safety_of_destructor_if_necessary(
-                self, typ, span, var_scope);
+                self, typ, span, body_id, var_scope);
         })
     }
 }
@@ -884,8 +885,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 match *region {
                     ty::ReScope(rvalue_scope) => {
                         let typ = self.resolve_type(cmt.ty);
+                        let body_id = self.body_id;
                         let _ = dropck::check_safety_of_destructor_if_necessary(
-                            self, typ, span, rvalue_scope);
+                            self, typ, span, body_id, rvalue_scope);
                     }
                     ty::ReStatic => {}
                     _ => {
@@ -1162,10 +1164,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// constraint that `'z <= 'a`. Given this setup, let's clarify the
     /// parameters in (roughly) terms of the example:
     ///
+    /// ```plain,ignore (pseudo-Rust)
     ///     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
     ///     borrow_region   ^~                 ref_region    ^~
     ///     borrow_kind        ^~               ref_kind        ^~
     ///     ref_cmt                 ^
+    /// ```
     ///
     /// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
     ///

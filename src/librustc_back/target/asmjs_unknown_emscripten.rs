@@ -15,7 +15,9 @@ pub fn target() -> Result<Target, String> {
     let mut args = LinkArgs::new();
     args.insert(LinkerFlavor::Em,
                 vec!["-s".to_string(),
-                     "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string()]);
+                     "ERROR_ON_UNDEFINED_SYMBOLS=1".to_string(),
+                     "-s".to_string(),
+                     "ABORTING_MALLOC=0".to_string()]);
 
     let opts = TargetOptions {
         dynamic_linking: false,

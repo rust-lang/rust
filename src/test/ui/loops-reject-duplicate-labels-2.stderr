@@ -70,3 +70,5 @@ LL | |     foo();
 LL | | }
    | |_^
 
+error: aborting due to previous error
+

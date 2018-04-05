@@ -25,26 +25,32 @@ use memchr;
 /// results in a system call. A `BufReader` performs large, infrequent reads on
 /// the underlying [`Read`] and maintains an in-memory buffer of the results.
 ///
+/// `BufReader` can improve the speed of programs that make *small* and
+/// *repeated* read calls to the same file or network socket.  It does not
+/// help when reading very large amounts at once, or reading just one or a few
+/// times.  It also provides no advantage when reading from a source that is
+/// already in memory, like a `Vec<u8>`.
+///
 /// [`Read`]: ../../std/io/trait.Read.html
 /// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::io::prelude::*;
 /// use std::io::BufReader;
 /// use std::fs::File;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let f = File::open("log.txt")?;
-/// let mut reader = BufReader::new(f);
+/// fn main() -> std::io::Result<()> {
+///     let f = File::open("log.txt")?;
+///     let mut reader = BufReader::new(f);
 ///
-/// let mut line = String::new();
-/// let len = reader.read_line(&mut line)?;
-/// println!("First line is {} bytes long", len);
-/// # Ok(())
-/// # }
+///     let mut line = String::new();
+///     let len = reader.read_line(&mut line)?;
+///     println!("First line is {} bytes long", len);
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufReader<R> {
@@ -59,15 +65,15 @@ impl<R: Read> BufReader<R> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::BufReader;
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f = File::open("log.txt")?;
-    /// let reader = BufReader::new(f);
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("log.txt")?;
+    ///     let reader = BufReader::new(f);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: R) -> BufReader<R> {
@@ -80,15 +86,15 @@ impl<R: Read> BufReader<R> {
     ///
     /// Creating a buffer with ten bytes of capacity:
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::BufReader;
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f = File::open("log.txt")?;
-    /// let reader = BufReader::with_capacity(10, f);
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("log.txt")?;
+    ///     let reader = BufReader::with_capacity(10, f);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
@@ -111,17 +117,17 @@ impl<R: Read> BufReader<R> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::BufReader;
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f1 = File::open("log.txt")?;
-    /// let reader = BufReader::new(f1);
+    /// fn main() -> std::io::Result<()> {
+    ///     let f1 = File::open("log.txt")?;
+    ///     let reader = BufReader::new(f1);
     ///
-    /// let f2 = reader.get_ref();
-    /// # Ok(())
-    /// # }
+    ///     let f2 = reader.get_ref();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &R { &self.inner }
@@ -132,17 +138,17 @@ impl<R: Read> BufReader<R> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::BufReader;
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f1 = File::open("log.txt")?;
-    /// let mut reader = BufReader::new(f1);
+    /// fn main() -> std::io::Result<()> {
+    ///     let f1 = File::open("log.txt")?;
+    ///     let mut reader = BufReader::new(f1);
     ///
-    /// let f2 = reader.get_mut();
-    /// # Ok(())
-    /// # }
+    ///     let f2 = reader.get_mut();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
@@ -150,26 +156,55 @@ impl<R: Read> BufReader<R> {
     /// Returns `true` if there are no bytes in the internal buffer.
     ///
     /// # Examples
-    /// ```
+    //
+    /// ```no_run
     /// # #![feature(bufreader_is_empty)]
     /// use std::io::BufReader;
     /// use std::io::BufRead;
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f1 = File::open("log.txt")?;
-    /// let mut reader = BufReader::new(f1);
-    /// assert!(reader.is_empty());
+    /// fn main() -> std::io::Result<()> {
+    ///     let f1 = File::open("log.txt")?;
+    ///     let mut reader = BufReader::new(f1);
+    ///     assert!(reader.is_empty());
     ///
-    /// if reader.fill_buf()?.len() > 0 {
-    ///     assert!(!reader.is_empty());
+    ///     if reader.fill_buf()?.len() > 0 {
+    ///         assert!(!reader.is_empty());
+    ///     }
+    ///     Ok(())
     /// }
-    /// # Ok(())
-    /// # }
     /// ```
     #[unstable(feature = "bufreader_is_empty", issue = "45323", reason = "recently added")]
+    #[rustc_deprecated(since = "1.26.0", reason = "use .buffer().is_empty() instead")]
     pub fn is_empty(&self) -> bool {
-        self.pos == self.cap
+        self.buffer().is_empty()
+    }
+
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// Unlike `fill_buf`, this will not attempt to fill the buffer if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(bufreader_buffer)]
+    /// use std::io::{BufReader, BufRead};
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let f = File::open("log.txt")?;
+    ///     let mut reader = BufReader::new(f);
+    ///     assert!(reader.buffer().is_empty());
+    ///
+    ///     if reader.fill_buf()?.len() > 0 {
+    ///         assert!(!reader.buffer().is_empty());
+    ///     }
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    pub fn buffer(&self) -> &[u8] {
+        &self.buf[self.pos..self.cap]
     }
 
     /// Unwraps this `BufReader`, returning the underlying reader.
@@ -178,17 +213,17 @@ impl<R: Read> BufReader<R> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::io::BufReader;
     /// use std::fs::File;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let f1 = File::open("log.txt")?;
-    /// let reader = BufReader::new(f1);
+    /// fn main() -> std::io::Result<()> {
+    ///     let f1 = File::open("log.txt")?;
+    ///     let reader = BufReader::new(f1);
     ///
-    /// let f2 = reader.into_inner();
-    /// # Ok(())
-    /// # }
+    ///     let f2 = reader.into_inner();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> R { self.inner }
@@ -329,6 +364,12 @@ impl<R: Seek> Seek for BufReader<R> {
 /// [`write`][`Tcpstream::write`] on [`TcpStream`] results in a system call. A
 /// `BufWriter` keeps an in-memory buffer of data and writes it to an underlying
 /// writer in large, infrequent batches.
+///
+/// `BufWriter` can improve the speed of programs that make *small* and
+/// *repeated* write calls to the same file or network socket.  It does not
+/// help when writing very large amounts at once, or writing just one or a few
+/// times.  It also provides no advantage when writing to a destination that is
+/// in memory, like a `Vec<u8>`.
 ///
 /// When the `BufWriter` is dropped, the contents of its buffer will be written
 /// out. However, any errors that happen in the process of flushing the buffer
@@ -696,34 +737,34 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// We can use `LineWriter` to write one line at a time, significantly
 /// reducing the number of actual writes to the file.
 ///
-/// ```
+/// ```no_run
 /// use std::fs::File;
 /// use std::io::prelude::*;
 /// use std::io::LineWriter;
 ///
-/// # fn foo() -> std::io::Result<()> {
-/// let road_not_taken = b"I shall be telling this with a sigh
+/// fn main() -> std::io::Result<()> {
+///     let road_not_taken = b"I shall be telling this with a sigh
 /// Somewhere ages and ages hence:
 /// Two roads diverged in a wood, and I -
 /// I took the one less traveled by,
 /// And that has made all the difference.";
 ///
-/// let file = File::create("poem.txt")?;
-/// let mut file = LineWriter::new(file);
+///     let file = File::create("poem.txt")?;
+///     let mut file = LineWriter::new(file);
 ///
-/// for &byte in road_not_taken.iter() {
-///    file.write(&[byte]).unwrap();
+///     for &byte in road_not_taken.iter() {
+///        file.write(&[byte]).unwrap();
+///     }
+///
+///     // let's check we did the right thing.
+///     let mut file = File::open("poem.txt")?;
+///     let mut contents = String::new();
+///
+///     file.read_to_string(&mut contents)?;
+///
+///     assert_eq!(contents.as_bytes(), &road_not_taken[..]);
+///     Ok(())
 /// }
-///
-/// // let's check we did the right thing.
-/// let mut file = File::open("poem.txt")?;
-/// let mut contents = String::new();
-///
-/// file.read_to_string(&mut contents)?;
-///
-/// assert_eq!(contents.as_bytes(), &road_not_taken[..]);
-/// # Ok(())
-/// # }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LineWriter<W: Write> {
@@ -736,15 +777,15 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     /// use std::io::LineWriter;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
-    /// let file = LineWriter::new(file);
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::create("poem.txt")?;
+    ///     let file = LineWriter::new(file);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> LineWriter<W> {
@@ -757,15 +798,15 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     /// use std::io::LineWriter;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
-    /// let file = LineWriter::with_capacity(100, file);
-    /// # Ok(())
-    /// # }
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::create("poem.txt")?;
+    ///     let file = LineWriter::with_capacity(100, file);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: W) -> LineWriter<W> {
@@ -779,17 +820,17 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     /// use std::io::LineWriter;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
-    /// let file = LineWriter::new(file);
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::create("poem.txt")?;
+    ///     let file = LineWriter::new(file);
     ///
-    /// let reference = file.get_ref();
-    /// # Ok(())
-    /// # }
+    ///     let reference = file.get_ref();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &W { self.inner.get_ref() }
@@ -801,18 +842,18 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     /// use std::io::LineWriter;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
-    /// let mut file = LineWriter::new(file);
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::create("poem.txt")?;
+    ///     let mut file = LineWriter::new(file);
     ///
-    /// // we can use reference just like file
-    /// let reference = file.get_mut();
-    /// # Ok(())
-    /// # }
+    ///     // we can use reference just like file
+    ///     let reference = file.get_mut();
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.get_mut() }
@@ -827,18 +868,18 @@ impl<W: Write> LineWriter<W> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use std::fs::File;
     /// use std::io::LineWriter;
     ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let file = File::create("poem.txt")?;
+    /// fn main() -> std::io::Result<()> {
+    ///     let file = File::create("poem.txt")?;
     ///
-    /// let writer: LineWriter<File> = LineWriter::new(file);
+    ///     let writer: LineWriter<File> = LineWriter::new(file);
     ///
-    /// let file: File = writer.into_inner()?;
-    /// # Ok(())
-    /// # }
+    ///     let file: File = writer.into_inner()?;
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<W, IntoInnerError<LineWriter<W>>> {

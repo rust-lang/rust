@@ -17,8 +17,8 @@
 #![allow(unused_attributes)]
 #![feature(range_contains)]
 #![cfg_attr(unix, feature(libc))]
-#![feature(conservative_impl_trait)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
+#![cfg_attr(stage0, feature(i128_type))]
 #![feature(optin_builtin_traits)]
 
 extern crate atty;
@@ -36,7 +36,7 @@ use self::Level::*;
 
 use emitter::{Emitter, EmitterWriter};
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 
@@ -106,6 +106,8 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
+pub type CodeMapperDyn = CodeMapper + sync::Send + sync::Sync;
+
 pub trait CodeMapper {
     fn lookup_char_pos(&self, pos: BytePos) -> Loc;
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
@@ -119,7 +121,8 @@ pub trait CodeMapper {
 
 impl CodeSuggestion {
     /// Returns the assembled code suggestions and whether they should be shown with an underline.
-    pub fn splice_lines(&self, cm: &CodeMapper) -> Vec<(String, Vec<SubstitutionPart>)> {
+    pub fn splice_lines(&self, cm: &CodeMapperDyn)
+                        -> Vec<(String, Vec<SubstitutionPart>)> {
         use syntax_pos::{CharPos, Loc, Pos};
 
         fn push_trailing(buf: &mut String,
@@ -290,7 +293,7 @@ impl Handler {
     pub fn with_tty_emitter(color_config: ColorConfig,
                             can_emit_warnings: bool,
                             treat_err_as_bug: bool,
-                            cm: Option<Lrc<CodeMapper>>)
+                            cm: Option<Lrc<CodeMapperDyn>>)
                             -> Handler {
         Handler::with_tty_emitter_and_flags(
             color_config,
@@ -303,7 +306,7 @@ impl Handler {
     }
 
     pub fn with_tty_emitter_and_flags(color_config: ColorConfig,
-                                      cm: Option<Lrc<CodeMapper>>,
+                                      cm: Option<Lrc<CodeMapperDyn>>,
                                       flags: HandlerFlags)
                                       -> Handler {
         let emitter = Box::new(EmitterWriter::stderr(color_config, cm, false, false));
@@ -509,12 +512,14 @@ impl Handler {
     pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
         self.span_bug(sp, &format!("unimplemented {}", msg));
     }
+    pub fn failure(&self, msg: &str) {
+        DiagnosticBuilder::new(self, FailureNote, msg).emit()
+    }
     pub fn fatal(&self, msg: &str) -> FatalError {
         if self.flags.treat_err_as_bug {
             self.bug(msg);
         }
-        let mut db = DiagnosticBuilder::new(self, Fatal, msg);
-        db.emit();
+        DiagnosticBuilder::new(self, Fatal, msg).emit();
         FatalError
     }
     pub fn err(&self, msg: &str) {
@@ -553,22 +558,55 @@ impl Handler {
     pub fn has_errors(&self) -> bool {
         self.err_count() > 0
     }
-    pub fn abort_if_errors(&self) {
-        let s;
-        match self.err_count() {
-            0 => {
-                if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
-                    DiagnosticBuilder::new_diagnostic(self, bug).emit();
+
+    pub fn print_error_count(&self) {
+        let s = match self.err_count() {
+            0 => return,
+            1 => "aborting due to previous error".to_string(),
+            _ => format!("aborting due to {} previous errors", self.err_count())
+        };
+
+        let _ = self.fatal(&s);
+
+        let can_show_explain = self.emitter.borrow().should_show_explain();
+        let are_there_diagnostics = !self.tracked_diagnostic_codes.borrow().is_empty();
+        if can_show_explain && are_there_diagnostics {
+            let mut error_codes =
+                self.tracked_diagnostic_codes.borrow()
+                                             .clone()
+                                             .into_iter()
+                                             .filter_map(|x| match x {
+                                                 DiagnosticId::Error(ref s) => Some(s.clone()),
+                                                 _ => None,
+                                             })
+                                             .collect::<Vec<_>>();
+            if !error_codes.is_empty() {
+                error_codes.sort();
+                if error_codes.len() > 1 {
+                    let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
+                    self.failure(&format!("Some errors occurred: {}{}",
+                                          error_codes[..limit].join(", "),
+                                          if error_codes.len() > 9 { "..." } else { "." }));
+                    self.failure(&format!("For more information about an error, try \
+                                           `rustc --explain {}`.",
+                                          &error_codes[0]));
+                } else {
+                    self.failure(&format!("For more information about this error, try \
+                                           `rustc --explain {}`.",
+                                          &error_codes[0]));
                 }
-                return;
-            }
-            1 => s = "aborting due to previous error".to_string(),
-            _ => {
-                s = format!("aborting due to {} previous errors", self.err_count());
             }
         }
+    }
 
-        self.fatal(&s).raise();
+    pub fn abort_if_errors(&self) {
+        if self.err_count() == 0 {
+            if let Some(bug) = self.delayed_span_bug.borrow_mut().take() {
+                DiagnosticBuilder::new_diagnostic(self, bug).emit();
+            }
+            return;
+        }
+        FatalError.raise();
     }
     pub fn emit(&self, msp: &MultiSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.flags.can_emit_warnings {
@@ -654,6 +692,7 @@ pub enum Level {
     Note,
     Help,
     Cancelled,
+    FailureNote,
 }
 
 impl fmt::Display for Level {
@@ -682,9 +721,10 @@ impl Level {
                 spec.set_fg(Some(Color::Cyan))
                     .set_intense(true);
             }
+            FailureNote => {}
             Cancelled => unreachable!(),
         }
-        return spec
+        spec
     }
 
     pub fn to_str(self) -> &'static str {
@@ -694,7 +734,15 @@ impl Level {
             Warning => "warning",
             Note => "note",
             Help => "help",
+            FailureNote => "",
             Cancelled => panic!("Shouldn't call on cancelled error"),
+        }
+    }
+
+    pub fn is_failure_note(&self) -> bool {
+        match *self {
+            FailureNote => true,
+            _ => false,
         }
     }
 }

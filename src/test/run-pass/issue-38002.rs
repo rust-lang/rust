@@ -10,8 +10,6 @@
 
 // Check that constant ADTs are translated OK, part k of N.
 
-#![feature(slice_patterns)]
-
 enum Bar {
     C
 }

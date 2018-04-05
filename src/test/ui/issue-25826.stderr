@@ -6,4 +6,4 @@ LL |     const A: bool = id::<u8> as *const () < id::<u16> as *const ();
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0395"
+For more information about this error, try `rustc --explain E0395`.

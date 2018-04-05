@@ -10,14 +10,11 @@
 
 #![deny(warnings)]
 
-extern crate filetime;
-
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::{fs, env};
-
-use filetime::FileTime;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
@@ -137,10 +134,8 @@ pub fn rerun_if_changed_anything_in_dir(dir: &Path) {
 }
 
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
-pub fn mtime(path: &Path) -> FileTime {
-    fs::metadata(path).map(|f| {
-        FileTime::from_last_modification_time(&f)
-    }).unwrap_or(FileTime::zero())
+pub fn mtime(path: &Path) -> SystemTime {
+    fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)
 }
 
 /// Returns whether `dst` is up to date given that the file or files in `src`
@@ -157,9 +152,9 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
         Err(e) => panic!("source {:?} failed to get metadata: {}", src, e),
     };
     if meta.is_dir() {
-        dir_up_to_date(src, &threshold)
+        dir_up_to_date(src, threshold)
     } else {
-        FileTime::from_last_modification_time(&meta) <= threshold
+        meta.modified().unwrap_or(UNIX_EPOCH) <= threshold
     }
 }
 
@@ -226,13 +221,13 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str) -> Result<NativeLibBoiler
                            search_path)
 }
 
-fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {
+fn dir_up_to_date(src: &Path, threshold: SystemTime) -> bool {
     t!(fs::read_dir(src)).map(|e| t!(e)).all(|e| {
         let meta = t!(e.metadata());
         if meta.is_dir() {
             dir_up_to_date(&e.path(), threshold)
         } else {
-            FileTime::from_last_modification_time(&meta) < *threshold
+            meta.modified().unwrap_or(UNIX_EPOCH) < threshold
         }
     })
 }

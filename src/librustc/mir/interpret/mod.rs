@@ -15,11 +15,13 @@ pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 use std::collections::BTreeMap;
 use std::fmt;
 use mir;
-use ty;
+use hir::def_id::DefId;
+use ty::{self, TyCtxt};
 use ty::layout::{self, Align, HasDataLayout};
 use middle::region;
 use std::iter;
 use syntax::ast::Mutability;
+use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Lock {
@@ -151,6 +153,98 @@ pub struct AllocId(pub u64);
 
 impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
 impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
+
+pub const ALLOC_DISCRIMINANT: usize = 0;
+pub const FN_DISCRIMINANT: usize = 1;
+pub const EXTERN_STATIC_DISCRIMINANT: usize = 2;
+pub const SHORTHAND_START: usize = 3;
+
+pub fn specialized_encode_alloc_id<
+    'a, 'tcx,
+    E: Encoder,
+>(
+    encoder: &mut E,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    alloc_id: AllocId,
+    shorthand: Option<usize>,
+) -> Result<(), E::Error> {
+    if let Some(shorthand) = shorthand {
+        return shorthand.encode(encoder);
+    }
+    if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
+        trace!("encoding {:?} with {:#?}", alloc_id, alloc);
+        ALLOC_DISCRIMINANT.encode(encoder)?;
+        alloc.encode(encoder)?;
+        // encode whether this allocation is the root allocation of a static
+        tcx.interpret_interner
+            .get_corresponding_static_def_id(alloc_id)
+            .encode(encoder)?;
+    } else if let Some(fn_instance) = tcx.interpret_interner.get_fn(alloc_id) {
+        trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
+        FN_DISCRIMINANT.encode(encoder)?;
+        fn_instance.encode(encoder)?;
+    } else if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(alloc_id) {
+        // extern "C" statics don't have allocations, just encode its def_id
+        EXTERN_STATIC_DISCRIMINANT.encode(encoder)?;
+        did.encode(encoder)?;
+    } else {
+        bug!("alloc id without corresponding allocation: {}", alloc_id);
+    }
+    Ok(())
+}
+
+pub fn specialized_decode_alloc_id<
+    'a, 'tcx,
+    D: Decoder,
+    CACHE: FnOnce(&mut D, usize, AllocId),
+    SHORT: FnOnce(&mut D, usize) -> Result<AllocId, D::Error>
+>(
+    decoder: &mut D,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pos: usize,
+    cache: CACHE,
+    short: SHORT,
+) -> Result<AllocId, D::Error> {
+    match usize::decode(decoder)? {
+        ALLOC_DISCRIMINANT => {
+            let alloc_id = tcx.interpret_interner.reserve();
+            trace!("creating alloc id {:?} at {}", alloc_id, pos);
+            // insert early to allow recursive allocs
+            cache(decoder, pos, alloc_id);
+
+            let allocation = Allocation::decode(decoder)?;
+            trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
+            let allocation = tcx.intern_const_alloc(allocation);
+            tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
+
+            if let Some(glob) = Option::<DefId>::decode(decoder)? {
+                tcx.interpret_interner.cache(glob, alloc_id);
+            }
+
+            Ok(alloc_id)
+        },
+        FN_DISCRIMINANT => {
+            trace!("creating fn alloc id at {}", pos);
+            let instance = ty::Instance::decode(decoder)?;
+            trace!("decoded fn alloc instance: {:?}", instance);
+            let id = tcx.interpret_interner.create_fn_alloc(instance);
+            trace!("created fn alloc id: {:?}", id);
+            cache(decoder, pos, id);
+            Ok(id)
+        },
+        EXTERN_STATIC_DISCRIMINANT => {
+            trace!("creating extern static alloc id at {}", pos);
+            let did = DefId::decode(decoder)?;
+            let alloc_id = tcx.interpret_interner.reserve();
+            tcx.interpret_interner.cache(did, alloc_id);
+            Ok(alloc_id)
+        },
+        shorthand => {
+            trace!("loading shorthand {}", shorthand);
+            short(decoder, shorthand)
+        },
+    }
+}
 
 impl fmt::Display for AllocId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

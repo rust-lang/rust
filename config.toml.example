@@ -118,6 +118,10 @@
 # Indicate whether submodules are managed and updated automatically.
 #submodules = true
 
+# Update submodules only when the checked out commit in the submodules differs
+# from what is committed in the main rustc repo.
+#fast-submodules = true
+
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
 #gdb = "gdb"
@@ -182,6 +186,10 @@
 # essentially skipping stage0 as the local compiler is recompiling itself again.
 #local-rebuild = false
 
+# Print out how long each rustbuild step took (mostly intended for CI and
+# tracking over time)
+#print-step-timings = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -239,11 +247,6 @@
 # compiler.
 #codegen-units = 1
 
-# Whether to enable ThinLTO (and increase the codegen units to either a default
-# or the configured value). On by default. If we want the fastest possible
-# compiler, we should disable this.
-#thinlto = true
-
 # Whether or not debug assertions are enabled for the compiler and standard
 # library. Also enables compilation of debug! and trace! logging macros.
 #debug-assertions = false
@@ -267,6 +270,9 @@
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true
+
+# Build rustc with experimental parallelization
+#experimental-parallel-queries = false
 
 # The default linker that will be hard-coded into the generated compiler for
 # targets that don't specify linker explicitly in their target specifications.

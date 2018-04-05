@@ -530,7 +530,7 @@ impl<'a> TraitDef<'a> {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident,
-                vis: respan(self.span.empty(), ast::VisibilityKind::Inherited),
+                vis: respan(self.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
                 defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 generics: Generics::default(),
@@ -962,7 +962,7 @@ impl<'a> MethodDef<'a> {
         let ret_type = self.get_ret_ty(cx, trait_, generics, type_ident);
 
         let method_ident = cx.ident_of(self.name);
-        let fn_decl = cx.fn_decl(args, ret_type);
+        let fn_decl = cx.fn_decl(args, ast::FunctionRetTy::Ty(ret_type));
         let body_block = cx.block_expr(body);
 
         let unsafety = if self.is_unsafe {
@@ -977,7 +977,7 @@ impl<'a> MethodDef<'a> {
             attrs: self.attributes.clone(),
             generics: fn_generics,
             span: trait_.span,
-            vis: respan(trait_.span.empty(), ast::VisibilityKind::Inherited),
+            vis: respan(trait_.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {

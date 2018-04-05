@@ -44,5 +44,5 @@ LL |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mis
 
 error: aborting due to 5 previous errors
 
-You've got a few errors: E0308, E0425
-If you want more information on an error, try using "rustc --explain E0308"
+Some errors occurred: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.

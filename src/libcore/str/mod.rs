@@ -165,6 +165,37 @@ Section: Creating a string
 ///
 /// [`String`]: ../../std/string/struct.String.html#method.from_utf8
 /// [`&str`]: ../../std/str/fn.from_utf8.html
+///
+/// # Examples
+///
+/// This error type’s methods can be used to create functionality
+/// similar to `String::from_utf8_lossy` without allocating heap memory:
+///
+/// ```
+/// fn from_utf8_lossy<F>(mut input: &[u8], mut push: F) where F: FnMut(&str) {
+///     loop {
+///         match ::std::str::from_utf8(input) {
+///             Ok(valid) => {
+///                 push(valid);
+///                 break
+///             }
+///             Err(error) => {
+///                 let (valid, after_valid) = input.split_at(error.valid_up_to());
+///                 unsafe {
+///                     push(::std::str::from_utf8_unchecked(valid))
+///                 }
+///                 push("\u{FFFD}");
+///
+///                 if let Some(invalid_sequence_length) = error.error_len() {
+///                     input = &after_valid[invalid_sequence_length..]
+///                 } else {
+///                     break
+///                 }
+///             }
+///         }
+///     }
+/// }
+/// ```
 #[derive(Copy, Eq, PartialEq, Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
@@ -1779,9 +1810,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::Index<ops::RangeInclusive<usize>> for str {
         type Output = str;
 
@@ -1791,9 +1820,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::Index<ops::RangeToInclusive<usize>> for str {
         type Output = str;
 
@@ -1803,18 +1830,14 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::IndexMut<ops::RangeInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
             index.index_mut(self)
         }
     }
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl ops::IndexMut<ops::RangeToInclusive<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
@@ -1997,9 +2020,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl SliceIndex<str> for ops::RangeInclusive<usize> {
         type Output = str;
         #[inline]
@@ -2042,9 +2063,7 @@ mod traits {
 
 
 
-    #[unstable(feature = "inclusive_range",
-               reason = "recently added, follows RFC",
-               issue = "28237")]
+    #[stable(feature = "inclusive_range", since = "1.26.0")]
     impl SliceIndex<str> for ops::RangeToInclusive<usize> {
         type Output = str;
         #[inline]

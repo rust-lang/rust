@@ -283,11 +283,22 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
     if body.legacy {
         let allow_internal_unstable = attr::contains_name(&def.attrs, "allow_internal_unstable");
         let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+
+        let unstable_feature = attr::find_stability(&sess.span_diagnostic,
+                                                    &def.attrs, def.span).and_then(|stability| {
+            if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
+                Some((stability.feature, issue))
+            } else {
+                None
+            }
+        });
+
         NormalTT {
             expander,
             def_info: Some((def.id, def.span)),
             allow_internal_unstable,
-            allow_internal_unsafe
+            allow_internal_unsafe,
+            unstable_feature
         }
     } else {
         SyntaxExtension::DeclMacro(expander, Some((def.id, def.span)))
@@ -820,7 +831,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             "pat" => match *tok {
                 TokenTree::Token(_, ref tok) => match *tok {
                     FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
-                    Ident(i) if i.name == "if" || i.name == "in" => Ok(true),
+                    Ident(i, false) if i.name == "if" || i.name == "in" => Ok(true),
                     _ => Ok(false)
                 },
                 _ => Ok(false),
@@ -829,7 +840,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 TokenTree::Token(_, ref tok) => match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
-                    Ident(i) if i.name == "as" || i.name == "where" => Ok(true),
+                    Ident(i, false) if i.name == "as" || i.name == "where" => Ok(true),
                     _ => Ok(false)
                 },
                 TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => Ok(true),
@@ -849,7 +860,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         Comma => Ok(true),
-                        Ident(i) if i.name != "priv" => Ok(true),
+                        Ident(i, is_raw) if is_raw || i.name != "priv" => Ok(true),
                         ref tok => Ok(tok.can_begin_type())
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == "ident"

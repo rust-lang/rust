@@ -17,7 +17,8 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, OverloadedDeref};
+use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
+use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
 use syntax_pos::Span;
@@ -170,7 +171,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 hir::MutMutable => AutoBorrowMutability::Mutable {
                     // Method call receivers are the primary use case
                     // for two-phase borrows.
-                    allow_two_phase_borrow: true,
+                    allow_two_phase_borrow: AllowTwoPhase::Yes,
                 }
             };
             adjustments.push(Adjustment {
@@ -259,7 +260,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 // the process we will unify the transformed-self-type
                 // of the method with the actual type in order to
                 // unify some of these variables.
-                self.fresh_substs_for_item(ty::UniverseIndex::ROOT, self.span, trait_def_id)
+                self.fresh_substs_for_item(self.span, trait_def_id)
             }
 
             probe::WhereClausePick(ref poly_trait_ref) => {
@@ -309,7 +310,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // variables.
         let method_generics = self.tcx.generics_of(pick.item.def_id);
         let mut fn_segment = Some((segment, method_generics));
-        self.fcx.check_path_parameter_count(self.span, &mut fn_segment, true);
+        self.fcx.check_path_parameter_count(self.span, &mut fn_segment, true, false);
 
         // Create subst for early-bound lifetime parameters, combining
         // parameters from the type and those from the method.
@@ -336,7 +337,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             {
                 self.to_ty(ast_ty)
             } else {
-                self.type_var_for_def(ty::UniverseIndex::ROOT, self.span, def)
+                self.type_var_for_def(self.span, def)
             }
         })
     }
@@ -544,7 +545,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                             // For initial two-phase borrow
                             // deployment, conservatively omit
                             // overloaded operators.
-                            allow_two_phase_borrow: false,
+                            allow_two_phase_borrow: AllowTwoPhase::No,
                         }
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));

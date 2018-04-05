@@ -1,0 +1,14 @@
+error[E0597]: borrowed value does not live long enough
+  --> $DIR/issue-47184.rs:14:44
+   |
+LL |     let _vec: Vec<&'static String> = vec![&String::new()];
+   |                                            ^^^^^^^^^^^^^ temporary value does not live long enough
+LL |     //~^ ERROR borrowed value does not live long enough [E0597]
+LL | }
+   | - temporary value only lives until here
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

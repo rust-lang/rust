@@ -36,7 +36,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //    let _2: &'21_1rs D;
 //    ...
 //    let mut _3: ();
-//    let mut _4: [closure@NodeId(22) r:&'21_1rs D];
+//    let mut _4: [closure@NodeId(22) r:&'19s D];
 //    let mut _5: &'21_1rs D;
 //    bb0: {
 //        StorageLive(_1);
@@ -54,6 +54,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //        resume;
 //    }
 //    bb2: {
+//        EndRegion('19s);
 //        StorageDead(_4);
 //        _0 = ();
 //        EndRegion('21_1rs);
@@ -61,6 +62,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //        drop(_1) -> [return: bb4, unwind: bb1];
 //    }
 //    bb3: {
+//        EndRegion('19s);
 //        EndRegion('21_1rs);
 //        drop(_1) -> bb1;
 //    }
@@ -72,7 +74,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir
 
 // START rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir
-// fn main::{{closure}}(_1: [closure@NodeId(22) r:&'21_1rs D]) -> i32 {
+// fn main::{{closure}}(_1: [closure@NodeId(22) r:&'19s D]) -> i32 {
 //     let mut _0: i32;
 //     let mut _2: i32;
 //

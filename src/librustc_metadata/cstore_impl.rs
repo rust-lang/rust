@@ -12,6 +12,7 @@ use cstore;
 use encoder;
 use link_args;
 use native_libs;
+use foreign_modules;
 use schema;
 
 use rustc::ty::maps::QueryConfig;
@@ -175,7 +176,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_sanitizer_runtime => { cdata.is_sanitizer_runtime(tcx.sess) }
     is_profiler_runtime => { cdata.is_profiler_runtime(tcx.sess) }
     panic_strategy => { cdata.panic_strategy() }
-    extern_crate => { Lrc::new(cdata.extern_crate.get()) }
+    extern_crate => {
+        let r = Lrc::new(*cdata.extern_crate.lock());
+        r
+    }
     is_no_builtins => { cdata.is_no_builtins(tcx.sess) }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
@@ -194,6 +198,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         Lrc::new(reachable_non_generics)
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
+    foreign_modules => { Lrc::new(cdata.get_foreign_modules(tcx.sess)) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -208,6 +213,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     crate_hash => { cdata.hash() }
     original_crate_name => { cdata.name() }
 
+    extra_filename => { cdata.root.extra_filename.clone() }
+
+
     implementations_of_trait => {
         let mut result = vec![];
         let filter = Some(other);
@@ -221,11 +229,11 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         Lrc::new(result)
     }
 
-    is_dllimport_foreign_item => {
-        cdata.is_dllimport_foreign_item(def_id.index)
-    }
     visibility => { cdata.get_visibility(def_id.index) }
-    dep_kind => { cdata.dep_kind.get() }
+    dep_kind => {
+        let r = *cdata.dep_kind.lock();
+        r
+    }
     crate_name => { cdata.name }
     item_children => {
         let mut result = vec![];
@@ -241,16 +249,14 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
 
     missing_extern_crate_item => {
-        match cdata.extern_crate.get() {
+        let r = match *cdata.extern_crate.borrow() {
             Some(extern_crate) if !extern_crate.direct => true,
             _ => false,
-        }
+        };
+        r
     }
 
     used_crate_source => { Lrc::new(cdata.source.clone()) }
-
-    has_copy_closures => { cdata.has_copy_closures(tcx.sess) }
-    has_clone_closures => { cdata.has_clone_closures(tcx.sess) }
 
     exported_symbols => {
         let cnum = cdata.cnum;
@@ -264,6 +270,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         Arc::new(cdata.exported_symbols())
     }
+
+    wasm_custom_sections => { Lrc::new(cdata.wasm_custom_sections()) }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
@@ -297,12 +305,27 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
-                .find(|l| l.foreign_items.contains(&id))
+                .find(|lib| {
+                    let fm_id = match lib.foreign_module {
+                        Some(id) => id,
+                        None => return false,
+                    };
+                    tcx.foreign_modules(id.krate)
+                        .iter()
+                        .find(|m| m.def_id == fm_id)
+                        .expect("failed to find foreign module")
+                        .foreign_items
+                        .contains(&id)
+                })
                 .map(|l| l.kind)
         },
         native_libraries: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             Lrc::new(native_libs::collect(tcx))
+        },
+        foreign_modules: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            Lrc::new(foreign_modules::collect(tcx))
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
@@ -419,13 +442,16 @@ impl CrateStore for cstore::CStore {
 
     fn dep_kind_untracked(&self, cnum: CrateNum) -> DepKind
     {
-        self.get_crate_data(cnum).dep_kind.get()
+        let data = self.get_crate_data(cnum);
+        let r = *data.dep_kind.lock();
+        r
     }
 
     fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
-        if data.dep_kind.get() == DepKind::UnexportedMacrosOnly {
-            data.dep_kind.set(DepKind::MacrosOnly)
+        let mut dep_kind = data.dep_kind.lock();
+        if *dep_kind == DepKind::UnexportedMacrosOnly {
+            *dep_kind = DepKind::MacrosOnly;
         }
     }
 
@@ -523,7 +549,7 @@ impl CrateStore for cstore::CStore {
                 tokens: body.into(),
                 legacy: def.legacy,
             }),
-            vis: codemap::respan(local_span.empty(), ast::VisibilityKind::Inherited),
+            vis: codemap::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
             tokens: None,
         })
     }

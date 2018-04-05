@@ -13,7 +13,8 @@
 
 // ignore-wasm32-bare compiled with panic=abort by default
 
-#![feature(generators, generator_trait, untagged_unions, slice_patterns, advanced_slice_patterns)]
+#![feature(generators, generator_trait, untagged_unions)]
+#![feature(slice_patterns)]
 
 use std::cell::{Cell, RefCell};
 use std::ops::Generator;
@@ -178,7 +179,7 @@ fn generator(a: &Allocator, run_count: usize) {
          );
     };
     for _ in 0..run_count {
-        gen.resume();
+        unsafe { gen.resume(); }
     }
 }
 

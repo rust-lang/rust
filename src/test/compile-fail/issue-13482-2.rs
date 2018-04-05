@@ -10,8 +10,6 @@
 
 // compile-flags:-Z verbose
 
-#![feature(slice_patterns)]
-
 fn main() {
     let x = [1,2];
     let y = match x {

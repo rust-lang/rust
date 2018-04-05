@@ -26,7 +26,8 @@ ENV RUST_CONFIGURE_ARGS \
       --armv7-linux-androideabi-ndk=/android/ndk/arm-14 \
       --i686-linux-android-ndk=/android/ndk/x86-14 \
       --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
-      --x86_64-linux-android-ndk=/android/ndk/x86_64-21
+      --x86_64-linux-android-ndk=/android/ndk/x86_64-21 \
+      --disable-docs
 
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
 

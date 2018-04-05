@@ -19,7 +19,7 @@ use core::intrinsics::{min_align_of_val, size_of_val};
 use core::mem::{self, ManuallyDrop};
 use core::usize;
 
-pub use allocator::*;
+pub use core::heap::*;
 #[doc(hidden)]
 pub mod __core {
     pub use core::*;
@@ -227,14 +227,6 @@ unsafe impl Alloc for Heap {
         }
     }
 }
-
-/// An arbitrary non-null address to represent zero-size allocations.
-///
-/// This preserves the non-null invariant for types like `Box<T>`. The address
-/// may overlap with non-zero-size memory allocations.
-#[rustc_deprecated(since = "1.19.0", reason = "Use Unique/NonNull::empty() instead")]
-#[unstable(feature = "heap_api", issue = "27700")]
-pub const EMPTY: *mut () = 1 as *mut ();
 
 /// The allocator for unique pointers.
 // This function must not unwind. If it does, MIR trans will fail.

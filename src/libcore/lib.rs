@@ -74,16 +74,19 @@
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(doc_cfg)]
 #![feature(doc_spotlight)]
+#![feature(fn_must_use)]
 #![feature(fundamental)]
-#![feature(i128_type)]
-#![feature(inclusive_range_syntax)]
+#![cfg_attr(stage0, feature(i128_type))]
+#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(intrinsics)]
 #![feature(iterator_flatten)]
 #![feature(iterator_repeat_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
-#![feature(never_type)]
+#![feature(exhaustive_patterns)]
+#![feature(macro_at_most_once_rep)]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]
@@ -101,6 +104,7 @@
 #![feature(unwind_attributes)]
 
 #![cfg_attr(stage0, allow(unused_attributes))]
+#![cfg_attr(stage0, feature(never_type))]
 
 #[prelude_import]
 #[allow(unused)]
@@ -165,6 +169,7 @@ pub mod borrow;
 
 pub mod any;
 pub mod array;
+pub mod ascii;
 pub mod sync;
 pub mod cell;
 pub mod char;
@@ -180,6 +185,10 @@ pub mod str;
 pub mod hash;
 pub mod fmt;
 pub mod time;
+
+/* Heap memory allocator trait */
+#[allow(missing_docs)]
+pub mod heap;
 
 // note: does not need to be public
 mod char_private;

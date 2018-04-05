@@ -16,3 +16,6 @@ path = "../libcore/tests/lib.rs"
 [[bench]]
 name = "corebenches"
 path = "../libcore/benches/lib.rs"
+
+[dev-dependencies]
+rand = "0.4"

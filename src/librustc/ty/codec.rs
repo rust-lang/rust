@@ -17,6 +17,7 @@
 // persisting to incr. comp. caches.
 
 use hir::def_id::{DefId, CrateNum};
+use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
@@ -240,6 +241,19 @@ pub fn decode_existential_predicate_slice<'a, 'tcx, D>(decoder: &mut D)
 }
 
 #[inline]
+pub fn decode_canonical_var_infos<'a, 'tcx, D>(decoder: &mut D)
+    -> Result<CanonicalVarInfos<'tcx>, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    let len = decoder.read_usize()?;
+    let interned: Result<Vec<CanonicalVarInfo>, _> = (0..len).map(|_| Decodable::decode(decoder))
+                                                             .collect();
+    Ok(decoder.tcx()
+              .intern_canonical_var_infos(interned?.as_slice()))
+}
+
+#[inline]
 pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
                                  -> Result<&'tcx ty::Const<'tcx>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
@@ -262,6 +276,7 @@ macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
             use super::$DecoderName;
+            use $crate::infer::canonical::CanonicalVarInfos;
             use $crate::ty;
             use $crate::ty::codec::*;
             use $crate::ty::subst::Substs;
@@ -361,6 +376,14 @@ macro_rules! implement_ty_decoder {
                 fn specialized_decode(&mut self)
                     -> Result<&'tcx ty::Slice<ty::ExistentialPredicate<'tcx>>, Self::Error> {
                     decode_existential_predicate_slice(self)
+                }
+            }
+
+            impl<$($typaram),*> SpecializedDecoder<CanonicalVarInfos<'tcx>>
+                for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self)
+                    -> Result<CanonicalVarInfos<'tcx>, Self::Error> {
+                    decode_canonical_var_infos(self)
                 }
             }
 

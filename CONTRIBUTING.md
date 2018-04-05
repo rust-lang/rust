@@ -26,10 +26,10 @@ As a reminder, all contributors are expected to follow our [Code of Conduct][coc
 ## Feature Requests
 [feature-requests]: #feature-requests
 
-To request a change to the way that the Rust language works, please open an
-issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
-rather than this one. New features and other significant language changes
-must go through the RFC process.
+To request a change to the way the Rust language works, please head over
+to the [RFCs repository](https://github.com/rust-lang/rfcs) and view the 
+[README](https://github.com/rust-lang/rfcs/blob/master/README.md)
+for instructions.
 
 ## Bug Reports
 [bug-reports]: #bug-reports
@@ -594,7 +594,7 @@ If you're looking for somewhere to start, check out the [E-easy][eeasy] tag.
 [inom]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AI-nominated
 [eeasy]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AE-easy
 [lru]: https://github.com/rust-lang/rust/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-asc
-[rfcbot]: https://github.com/dikaiosune/rust-dashboard/blob/master/RFCBOT.md
+[rfcbot]: https://github.com/anp/rfcbot-rs/
 
 ## Out-of-tree Contributions
 [out-of-tree-contributions]: #out-of-tree-contributions

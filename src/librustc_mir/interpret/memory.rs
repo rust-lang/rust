@@ -1,5 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
-use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{btree_map, BTreeMap, VecDeque};
 use std::{ptr, io};
 
 use rustc::ty::Instance;
@@ -7,6 +7,7 @@ use rustc::ty::maps::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
 
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, Value, Pointer,
                             EvalResult, PrimVal, EvalErrorKind};
 
@@ -33,15 +34,15 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     pub data: M::MemoryData,
 
     /// Helps guarantee that stack allocations aren't deallocated via `rust_deallocate`
-    alloc_kind: HashMap<AllocId, MemoryKind<M::MemoryKinds>>,
+    alloc_kind: FxHashMap<AllocId, MemoryKind<M::MemoryKinds>>,
 
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
-    alloc_map: HashMap<AllocId, Allocation>,
+    alloc_map: FxHashMap<AllocId, Allocation>,
 
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
     ///
     /// Stores statics while they are being processed, before they are interned and thus frozen
-    uninitialized_statics: HashMap<AllocId, Allocation>,
+    uninitialized_statics: FxHashMap<AllocId, Allocation>,
 
     /// The current stack frame.  Used to check accesses against locks.
     pub cur_frame: usize,
@@ -53,9 +54,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
         Memory {
             data,
-            alloc_kind: HashMap::new(),
-            alloc_map: HashMap::new(),
-            uninitialized_statics: HashMap::new(),
+            alloc_kind: FxHashMap::default(),
+            alloc_map: FxHashMap::default(),
+            uninitialized_statics: FxHashMap::default(),
             tcx,
             cur_frame: usize::max_value(),
         }
@@ -327,6 +328,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             .ok_or(EvalErrorKind::ExecuteMemory.into())
     }
 
+    pub fn get_alloc_kind(&self, id: AllocId) -> Option<MemoryKind<M::MemoryKinds>> {
+        self.alloc_kind.get(&id).cloned()
+    }
+
     /// For debugging, print an allocation and all allocations it points to, recursively.
     pub fn dump_alloc(&self, id: AllocId) {
         self.dump_allocs(vec![id]);
@@ -338,7 +343,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         allocs.sort();
         allocs.dedup();
         let mut allocs_to_print = VecDeque::from(allocs);
-        let mut allocs_seen = HashSet::new();
+        let mut allocs_seen = FxHashSet::default();
 
         while let Some(id) = allocs_to_print.pop_front() {
             let mut msg = format!("Alloc {:<5} ", format!("{}:", id));

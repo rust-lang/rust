@@ -15,8 +15,6 @@
 
 // error-pattern:overflow evaluating the requirement `impl Quux`
 
-#![feature(conservative_impl_trait)]
-
 trait Quux {}
 
 fn foo() -> impl Quux {

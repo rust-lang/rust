@@ -323,12 +323,12 @@ impl<'a> Classifier<'a> {
             }
 
             // Keywords are also included in the identifier set.
-            token::Ident(ident) => {
+            token::Ident(ident, is_raw) => {
                 match &*ident.name.as_str() {
-                    "ref" | "mut" => Class::RefKeyWord,
+                    "ref" | "mut" if !is_raw => Class::RefKeyWord,
 
-                    "self" |"Self" => Class::Self_,
-                    "false" | "true" => Class::Bool,
+                    "self" | "Self" => Class::Self_,
+                    "false" | "true" if !is_raw => Class::Bool,
 
                     "Option" | "Result" => Class::PreludeTy,
                     "Some" | "None" | "Ok" | "Err" => Class::PreludeVal,
@@ -352,7 +352,7 @@ impl<'a> Classifier<'a> {
 
             token::Lifetime(..) => Class::Lifetime,
 
-            token::Underscore | token::Eof | token::Interpolated(..) |
+            token::Eof | token::Interpolated(..) |
             token::Tilde | token::At | token::DotEq => Class::None,
         };
 

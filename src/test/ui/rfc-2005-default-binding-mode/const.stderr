@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/const.rs:26:9
+  --> $DIR/const.rs:24:9
    |
 LL |         FOO => {}, //~ ERROR mismatched types
    |         ^^^ expected &Foo, found struct `Foo`
@@ -9,4 +9,4 @@ LL |         FOO => {}, //~ ERROR mismatched types
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0308"
+For more information about this error, try `rustc --explain E0308`.

@@ -43,3 +43,5 @@ LL |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved k
 LL |     m!();
    |     ----- in this macro invocation
 
+error: aborting due to 4 previous errors
+

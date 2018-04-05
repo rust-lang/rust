@@ -120,4 +120,4 @@ LL |     a >= a; //~ ERROR binary operation `>=` cannot be applied to type `A`
 
 error: aborting due to 15 previous errors
 
-If you want more information on this error, try using "rustc --explain E0369"
+For more information about this error, try `rustc --explain E0369`.

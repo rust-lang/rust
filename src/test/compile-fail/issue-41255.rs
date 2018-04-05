@@ -10,7 +10,6 @@
 
 // Matching against float literals should result in a linter error
 
-#![feature(slice_patterns)]
 #![feature(exclusive_range_pattern)]
 #![allow(unused)]
 #![forbid(illegal_floating_point_literal_pattern)]

@@ -30,14 +30,9 @@ use ptr::P;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::ThinVec;
+use GLOBALS;
 
-use std::cell::RefCell;
 use std::iter;
-
-thread_local! {
-    static USED_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
-    static KNOWN_ATTRS: RefCell<Vec<u64>> = RefCell::new(Vec::new());
-}
 
 enum AttrError {
     MultipleItem(Name),
@@ -65,22 +60,24 @@ fn handle_errors(diag: &Handler, span: Span, error: AttrError) {
 pub fn mark_used(attr: &Attribute) {
     debug!("Marking {:?} as used.", attr);
     let AttrId(id) = attr.id;
-    USED_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let mut slot = globals.used_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        if slot.borrow().len() <= idx {
-            slot.borrow_mut().resize(idx + 1, 0);
+        if slot.len() <= idx {
+            slot.resize(idx + 1, 0);
         }
-        slot.borrow_mut()[idx] |= 1 << shift;
+        slot[idx] |= 1 << shift;
     });
 }
 
 pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
-    USED_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let slot = globals.used_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
     })
 }
@@ -88,22 +85,24 @@ pub fn is_used(attr: &Attribute) -> bool {
 pub fn mark_known(attr: &Attribute) {
     debug!("Marking {:?} as known.", attr);
     let AttrId(id) = attr.id;
-    KNOWN_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let mut slot = globals.known_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        if slot.borrow().len() <= idx {
-            slot.borrow_mut().resize(idx + 1, 0);
+        if slot.len() <= idx {
+            slot.resize(idx + 1, 0);
         }
-        slot.borrow_mut()[idx] |= 1 << shift;
+        slot[idx] |= 1 << shift;
     });
 }
 
 pub fn is_known(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
-    KNOWN_ATTRS.with(|slot| {
+    GLOBALS.with(|globals| {
+        let slot = globals.known_attrs.lock();
         let idx = (id / 64) as usize;
         let shift = id % 64;
-        slot.borrow().get(idx).map(|bits| bits & (1 << shift) != 0)
+        slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
     })
 }
@@ -1107,7 +1106,8 @@ impl IntType {
 
 impl MetaItem {
     fn tokens(&self) -> TokenStream {
-        let ident = TokenTree::Token(self.span, Token::Ident(Ident::with_empty_ctxt(self.name)));
+        let ident = TokenTree::Token(self.span,
+                                     Token::from_ast_ident(Ident::with_empty_ctxt(self.name)));
         TokenStream::concat(vec![ident.into(), self.node.tokens(self.span)])
     }
 
@@ -1115,9 +1115,9 @@ impl MetaItem {
         where I: Iterator<Item = TokenTree>,
     {
         let (span, name) = match tokens.next() {
-            Some(TokenTree::Token(span, Token::Ident(ident))) => (span, ident.name),
+            Some(TokenTree::Token(span, Token::Ident(ident, _))) => (span, ident.name),
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident) => (ident.span, ident.node.name),
+                token::Nonterminal::NtIdent(ident, _) => (ident.span, ident.node.name),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 _ => return None,
             },
@@ -1270,14 +1270,14 @@ impl LitKind {
                 "true"
             } else {
                 "false"
-            }))),
+            })), false),
         }
     }
 
     fn from_token(token: Token) -> Option<LitKind> {
         match token {
-            Token::Ident(ident) if ident.name == "true" => Some(LitKind::Bool(true)),
-            Token::Ident(ident) if ident.name == "false" => Some(LitKind::Bool(false)),
+            Token::Ident(ident, false) if ident.name == "true" => Some(LitKind::Bool(true)),
+            Token::Ident(ident, false) if ident.name == "false" => Some(LitKind::Bool(false)),
             Token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => Some(lit.node.clone()),

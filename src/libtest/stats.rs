@@ -279,7 +279,6 @@ impl Stats for [f64] {
     }
 }
 
-
 // Helper function: extract a value representing the `pct` percentile of a sorted sample-set, using
 // linear interpolation. If samples are not sorted, return nonsensical value.
 fn percentile_of_sorted(sorted_samples: &[f64], pct: f64) -> f64 {
@@ -303,7 +302,6 @@ fn percentile_of_sorted(sorted_samples: &[f64], pct: f64) -> f64 {
     let hi = sorted_samples[n + 1];
     lo + (hi - lo) * d
 }
-
 
 /// Winsorize a set of samples, replacing values above the `100-pct` percentile
 /// and below the `pct` percentile with those percentiles themselves. This is a
@@ -338,15 +336,18 @@ mod tests {
     use std::io;
 
     macro_rules! assert_approx_eq {
-        ($a:expr, $b:expr) => ({
+        ($a: expr, $b: expr) => {{
             let (a, b) = (&$a, &$b);
-            assert!((*a - *b).abs() < 1.0e-6,
-                    "{} is not approximately equal to {}", *a, *b);
-        })
+            assert!(
+                (*a - *b).abs() < 1.0e-6,
+                "{} is not approximately equal to {}",
+                *a,
+                *b
+            );
+        }};
     }
 
     fn check(samples: &[f64], summ: &Summary) {
-
         let summ2 = Summary::new(samples);
 
         let mut w = io::sink();
@@ -911,14 +912,18 @@ mod bench {
 
     #[bench]
     pub fn sum_three_items(b: &mut Bencher) {
-        b.iter(|| { [1e20f64, 1.5f64, -1e20f64].sum(); })
+        b.iter(|| {
+            [1e20f64, 1.5f64, -1e20f64].sum();
+        })
     }
     #[bench]
     pub fn sum_many_f64(b: &mut Bencher) {
         let nums = [-1e30f64, 1e60, 1e30, 1.0, -1e60];
         let v = (0..500).map(|i| nums[i % 5]).collect::<Vec<_>>();
 
-        b.iter(|| { v.sum(); })
+        b.iter(|| {
+            v.sum();
+        })
     }
 
     #[bench]

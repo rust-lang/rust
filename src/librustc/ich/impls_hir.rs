@@ -145,6 +145,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
 impl_stable_hash_for!(enum hir::LifetimeName {
     Implicit,
     Underscore,
+    Fresh(index),
     Static,
     Name(name)
 });
@@ -203,7 +204,8 @@ impl_stable_hash_for!(struct hir::TyParam {
     default,
     span,
     pure_wrt_drop,
-    synthetic
+    synthetic,
+    attrs
 });
 
 impl_stable_hash_for!(enum hir::GenericParam {
@@ -851,7 +853,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
 }
 
 impl_stable_hash_for!(enum hir::Item_ {
-    ItemExternCrate(name),
+    ItemExternCrate(orig_name),
     ItemUse(path, use_kind),
     ItemStatic(ty, mutability, body_id),
     ItemConst(ty, body_id),

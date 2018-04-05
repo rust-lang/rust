@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(advanced_slice_patterns, slice_patterns)]
-
 fn main() {
     let buf = &[0, 1, 2, 3];
 

@@ -887,65 +887,6 @@ foo(3_i8);
 // therefore the type-checker complains with this error code.
 ```
 
-Here is a more subtle instance of the same problem, that can
-arise with for-loops in Rust:
-
-```compile_fail
-let vs: Vec<i32> = vec![1, 2, 3, 4];
-for v in &vs {
-    match v {
-        1 => {},
-        _ => {},
-    }
-}
-```
-
-The above fails because of an analogous type mismatch,
-though may be harder to see. Again, here are some
-explanatory comments for the same example:
-
-```compile_fail
-{
-    let vs = vec![1, 2, 3, 4];
-
-    // `for`-loops use a protocol based on the `Iterator`
-    // trait. Each item yielded in a `for` loop has the
-    // type `Iterator::Item` -- that is, `Item` is the
-    // associated type of the concrete iterator impl.
-    for v in &vs {
-//      ~    ~~~
-//      |     |
-//      |    We borrow `vs`, iterating over a sequence of
-//      |    *references* of type `&Elem` (where `Elem` is
-//      |    vector's element type). Thus, the associated
-//      |    type `Item` must be a reference `&`-type ...
-//      |
-//  ... and `v` has the type `Iterator::Item`, as dictated by
-//  the `for`-loop protocol ...
-
-        match v {
-            1 => {}
-//          ~
-//          |
-// ... but *here*, `v` is forced to have some integral type;
-// only types like `u8`,`i8`,`u16`,`i16`, et cetera can
-// match the pattern `1` ...
-
-            _ => {}
-        }
-
-// ... therefore, the compiler complains, because it sees
-// an attempt to solve the equations
-// `some integral-type` = type-of-`v`
-//                      = `Iterator::Item`
-//                      = `&Elem` (i.e. `some reference type`)
-//
-// which cannot possibly all be true.
-
-    }
-}
-```
-
 To avoid those issues, you have to make the types match correctly.
 So we can fix the previous examples like this:
 
@@ -1764,12 +1705,12 @@ The `main` function was incorrectly declared.
 Erroneous code example:
 
 ```compile_fail,E0580
-fn main() -> i32 { // error: main function has wrong type
-    0
+fn main(x: i32) { // error: main function has wrong type
+    println!("{}", x);
 }
 ```
 
-The `main` function prototype should never take arguments or return type.
+The `main` function prototype should never take arguments.
 Example:
 
 ```
@@ -1789,8 +1730,6 @@ allowed as function return types.
 Erroneous code example:
 
 ```compile_fail,E0562
-#![feature(conservative_impl_trait)]
-
 fn main() {
     let count_to_ten: impl Iterator<Item=usize> = 0..10;
     // error: `impl Trait` not allowed outside of function and inherent method
@@ -1804,8 +1743,6 @@ fn main() {
 Make sure `impl Trait` only appears in return-type position.
 
 ```
-#![feature(conservative_impl_trait)]
-
 fn count_to_n(n: usize) -> impl Iterator<Item=usize> {
     0..n
 }
@@ -2072,6 +2009,81 @@ struct Grams2(Float); // this is not equivalent to `Grams` above
 Here, `Grams2` is a not equivalent to `Grams` -- the former transparently wraps
 a (non-transparent) struct containing a single float, while `Grams` is a
 transparent wrapper around a float. This can make a difference for the ABI.
+"##,
+
+E0909: r##"
+The `impl Trait` return type captures lifetime parameters that do not
+appear within the `impl Trait` itself.
+
+Erroneous code example:
+
+```compile-fail,E0909
+use std::cell::Cell;
+
+trait Trait<'a> { }
+
+impl<'a, 'b> Trait<'b> for Cell<&'a u32> { }
+
+fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y>
+where 'x: 'y
+{
+    x
+}
+```
+
+Here, the function `foo` returns a value of type `Cell<&'x u32>`,
+which references the lifetime `'x`. However, the return type is
+declared as `impl Trait<'y>` -- this indicates that `foo` returns
+"some type that implements `Trait<'y>`", but it also indicates that
+the return type **only captures data referencing the lifetime `'y`**.
+In this case, though, we are referencing data with lifetime `'x`, so
+this function is in error.
+
+To fix this, you must reference the lifetime `'x` from the return
+type. For example, changing the return type to `impl Trait<'y> + 'x`
+would work:
+
+```
+use std::cell::Cell;
+
+trait Trait<'a> { }
+
+impl<'a,'b> Trait<'b> for Cell<&'a u32> { }
+
+fn foo<'x, 'y>(x: Cell<&'x u32>) -> impl Trait<'y> + 'x
+where 'x: 'y
+{
+    x
+}
+```
+"##,
+
+E0910: r##"
+This error indicates that a `#[non_exhaustive]` attribute was incorrectly placed
+on something other than a struct or enum.
+
+Examples of erroneous code:
+
+```compile_fail,E0910
+# #![feature(non_exhaustive)]
+
+#[non_exhaustive]
+trait Foo { }
+```
+"##,
+
+E0911: r##"
+This error indicates that a `#[non_exhaustive]` attribute had a value. The
+`#[non_exhaustive]` should be empty.
+
+Examples of erroneous code:
+
+```compile_fail,E0911
+# #![feature(non_exhaustive)]
+
+#[non_exhaustive(anything)]
+struct Foo;
+```
 "##,
 
 }

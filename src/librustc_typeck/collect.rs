@@ -35,8 +35,9 @@ use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
-use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::ty::util::Discr;
+use rustc::util::captures::Captures;
+use rustc::util::nodemap::{FxHashSet, FxHashMap};
 
 use syntax::{abi, ast};
 use syntax::ast::MetaItemKind;
@@ -1281,7 +1282,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
 fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ast_generics: &'a hir::Generics)
-    -> impl Iterator<Item=&'a hir::LifetimeDef>
+    -> impl Iterator<Item=&'a hir::LifetimeDef> + Captures<'tcx>
 {
     ast_generics
         .lifetimes()
@@ -1768,6 +1769,7 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
 
     let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
 
+    let mut inline_span = None;
     for attr in attrs.iter() {
         if attr.check_name("cold") {
             trans_fn_attrs.flags |= TransFnAttrFlags::COLD;
@@ -1799,6 +1801,7 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                     }
                     MetaItemKind::List(ref items) => {
                         mark_used(attr);
+                        inline_span = Some(attr.span);
                         if items.len() != 1 {
                             span_err!(tcx.sess.diagnostic(), attr.span, E0534,
                                         "expected one argument");
@@ -1850,6 +1853,19 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
         } else if attr.check_name("linkage") {
             if let Some(val) = attr.value_str() {
                 trans_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
+            }
+        }
+    }
+
+    // If a function uses #[target_feature] it can't be inlined into general
+    // purpose functions as they wouldn't have the right target features
+    // enabled. For that reason we also forbid #[inline(always)] as it can't be
+    // respected.
+    if trans_fn_attrs.target_features.len() > 0 {
+        if trans_fn_attrs.inline == InlineAttr::Always {
+            if let Some(span) = inline_span {
+                tcx.sess.span_err(span, "cannot use #[inline(always)] with \
+                                         #[target_feature]");
             }
         }
     }

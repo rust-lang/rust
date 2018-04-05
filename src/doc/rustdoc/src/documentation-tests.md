@@ -19,17 +19,37 @@ running `rustdoc --test foo.rs` will extract this example, and then run it as a 
 Please note that by default, if no language is set for the block code, `rustdoc`
 assumes it is `Rust` code. So the following:
 
+``````markdown
 ```rust
 let x = 5;
 ```
+``````
 
 is strictly equivalent to:
 
+``````markdown
 ```
 let x = 5;
 ```
+``````
 
 There's some subtlety though! Read on for more details.
+
+## Passing or failing a doctest
+
+Like regular unit tests, regular doctests are considered to "pass"
+if they compile and run without panicking.
+So if you want to demonstrate that some computation gives a certain result,
+the `assert!` family of macros works the same as other Rust code:
+
+```rust
+let foo = "foo";
+
+assert_eq!(foo, "foo");
+```
+
+This way, if the computation ever returns something different,
+the code panics and the doctest fails.
 
 ## Pre-processing examples
 

@@ -24,6 +24,7 @@ struct Diagnostic {
     level: String,
     spans: Vec<DiagnosticSpan>,
     children: Vec<Diagnostic>,
+    rendered: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -54,6 +55,25 @@ struct DiagnosticCode {
     code: String,
     /// An explanation for the code.
     explanation: Option<String>,
+}
+
+pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
+    output.lines()
+        .filter_map(|line| if line.starts_with('{') {
+            match serde_json::from_str::<Diagnostic>(line) {
+                Ok(diagnostic) => diagnostic.rendered,
+                Err(error) => {
+                    proc_res.fatal(Some(&format!("failed to decode compiler output as json: \
+                                                  `{}`\noutput: {}\nline: {}",
+                                                 error,
+                                                 line,
+                                                 output)));
+                }
+            }
+        } else {
+            None
+        })
+        .collect()
 }
 
 pub fn parse_output(file_name: &str, output: &str, proc_res: &ProcRes) -> Vec<Error> {

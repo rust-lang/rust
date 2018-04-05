@@ -219,7 +219,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().never_type {
+        if self.tcx.features().exhaustive_patterns {
             self.tcx.is_ty_uninhabited_from(self.module, ty)
         } else {
             false
@@ -245,7 +245,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                               substs: &'tcx ty::subst::Substs<'tcx>)
                               -> bool
     {
-        if self.tcx.features().never_type {
+        if self.tcx.features().exhaustive_patterns {
             self.tcx.is_enum_variant_uninhabited_from(self.module, variant, substs)
         } else {
             false
@@ -694,7 +694,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // test for details.
         //
         // FIXME: currently the only way I know of something can
-        // be a privately-empty enum is when the never_type
+        // be a privately-empty enum is when the exhaustive_patterns
         // feature flag is not present, so this is only
         // needed for that case.
 
@@ -877,7 +877,7 @@ fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
 fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> u64 {
     debug!("constructor_arity({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs, _) => fs.len() as u64,
+        ty::TyTuple(ref fs) => fs.len() as u64,
         ty::TySlice(..) | ty::TyArray(..) => match *ctor {
             Slice(length) => length,
             ConstantValue(_) => 0,
@@ -901,7 +901,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs, _) => fs.into_iter().map(|t| *t).collect(),
+        ty::TyTuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
         ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
             Slice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(_) => vec![],

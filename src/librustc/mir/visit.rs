@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use ty::subst::Substs;
-use ty::{ClosureSubsts, Region, Ty, GeneratorInterior};
+use ty::{CanonicalTy, ClosureSubsts, Region, Ty, GeneratorInterior};
 use mir::*;
 use syntax_pos::Span;
 
@@ -142,6 +142,13 @@ macro_rules! make_mir_visitor {
                              operand: & $($mutability)* Operand<'tcx>,
                              location: Location) {
                 self.super_operand(operand, location);
+            }
+
+            fn visit_user_assert_ty(&mut self,
+                                    c_ty: & $($mutability)* CanonicalTy<'tcx>,
+                                    local: & $($mutability)* Local,
+                                    location: Location) {
+                self.super_user_assert_ty(c_ty, local, location);
             }
 
             fn visit_place(&mut self,
@@ -375,6 +382,10 @@ macro_rules! make_mir_visitor {
                         for input in & $($mutability)* inputs[..] {
                             self.visit_operand(input, location);
                         }
+                    }
+                    StatementKind::UserAssertTy(ref $($mutability)* c_ty,
+                                                ref $($mutability)* local) => {
+                        self.visit_user_assert_ty(c_ty, local, location);
                     }
                     StatementKind::Nop => {}
                 }
@@ -617,6 +628,13 @@ macro_rules! make_mir_visitor {
                         self.visit_constant(constant, location);
                     }
                 }
+            }
+
+            fn super_user_assert_ty(&mut self,
+                                    _c_ty: & $($mutability)* CanonicalTy<'tcx>,
+                                    local: & $($mutability)* Local,
+                                    location: Location) {
+                self.visit_local(local, PlaceContext::Validate, location);
             }
 
             fn super_place(&mut self,

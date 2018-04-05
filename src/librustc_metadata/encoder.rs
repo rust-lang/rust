@@ -14,7 +14,7 @@ use isolated_encoder::IsolatedEncoder;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
-                            EncodedMetadata};
+                            EncodedMetadata, ForeignModule};
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
@@ -196,30 +196,26 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        trace!("encoding {:?} at {}", alloc_id, self.position());
-        if let Some(shorthand) = self.interpret_alloc_shorthands.get(alloc_id).cloned() {
-            trace!("encoding {:?} as shorthand to {}", alloc_id, shorthand);
-            return shorthand.encode(self);
-        }
-        let start = self.position();
-        // cache the allocation shorthand now, because the allocation itself might recursively
-        // point to itself.
-        self.interpret_alloc_shorthands.insert(*alloc_id, start);
-        if let Some(alloc) = self.tcx.interpret_interner.get_alloc(*alloc_id) {
-            trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            usize::max_value().encode(self)?;
-            alloc.encode(self)?;
-            self.tcx.interpret_interner
-                .get_corresponding_static_def_id(*alloc_id)
-                .encode(self)?;
-        } else if let Some(fn_instance) = self.tcx.interpret_interner.get_fn(*alloc_id) {
-            trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            (usize::max_value() - 1).encode(self)?;
-            fn_instance.encode(self)?;
-        } else {
-            bug!("alloc id without corresponding allocation: {}", alloc_id);
-        }
-        Ok(())
+        use std::collections::hash_map::Entry;
+        let tcx = self.tcx;
+        let pos = self.position();
+        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
+            Entry::Occupied(entry) => Some(entry.get().clone()),
+            Entry::Vacant(entry) => {
+                // ensure that we don't place any AllocIds at the very beginning
+                // of the metadata file, because that would end up making our indices
+                // not special. This is essentially impossible, but let's make sure
+                assert!(pos >= interpret::SHORTHAND_START);
+                entry.insert(pos);
+                None
+            },
+        };
+        interpret::specialized_encode_alloc_id(
+            self,
+            tcx,
+            *alloc_id,
+            shorthand,
+        )
     }
 }
 
@@ -416,6 +412,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             ());
         let native_lib_bytes = self.position() - i;
 
+        let foreign_modules = self.tracked(
+            IsolatedEncoder::encode_foreign_modules,
+            ());
+
         // Encode codemap
         i = self.position();
         let codemap = self.encode_codemap();
@@ -439,6 +439,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             &exported_symbols);
         let exported_symbols_bytes = self.position() - i;
 
+        // encode wasm custom sections
+        let wasm_custom_sections = self.tcx.wasm_custom_sections(LOCAL_CRATE);
+        let wasm_custom_sections = self.tracked(
+            IsolatedEncoder::encode_wasm_custom_sections,
+            &wasm_custom_sections);
+
         // Encode and index the items.
         i = self.position();
         let items = self.encode_info_for_items();
@@ -456,6 +462,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let has_global_allocator = tcx.sess.has_global_allocator.get();
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
+            extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
@@ -478,10 +485,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             lang_items,
             lang_items_missing,
             native_libraries,
+            foreign_modules,
             codemap,
             def_path_table,
             impls,
             exported_symbols,
+            wasm_custom_sections,
             index,
         });
 
@@ -1334,6 +1343,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         self.lazy_seq(used_libraries.iter().cloned())
     }
 
+    fn encode_foreign_modules(&mut self, _: ()) -> LazySeq<ForeignModule> {
+        let foreign_modules = self.tcx.foreign_modules(LOCAL_CRATE);
+        self.lazy_seq(foreign_modules.iter().cloned())
+    }
+
     fn encode_crate_deps(&mut self, _: ()) -> LazySeq<CrateDep> {
         let crates = self.tcx.crates();
 
@@ -1344,6 +1358,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     name: self.tcx.original_crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),
+                    extra_filename: self.tcx.extra_filename(cnum),
                 };
                 (cnum, dep)
             })
@@ -1446,6 +1461,11 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 }
             })
             .cloned())
+    }
+
+    fn encode_wasm_custom_sections(&mut self, statics: &[DefId]) -> LazySeq<DefIndex> {
+        info!("encoding custom wasm section constants {:?}", statics);
+        self.lazy_seq(statics.iter().map(|id| id.index))
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {

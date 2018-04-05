@@ -51,9 +51,6 @@ LL |     use two_macros::m;
    |         ^^^^^^^^^^^^^
    = note: macro-expanded macro imports do not shadow
 
-error[E0601]: main function not found
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-You've got a few errors: E0601, E0659
-If you want more information on an error, try using "rustc --explain E0601"
+For more information about this error, try `rustc --explain E0659`.

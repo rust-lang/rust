@@ -10,7 +10,6 @@
 
 // Matching against NaN should result in a warning
 
-#![feature(slice_patterns)]
 #![allow(unused)]
 #![deny(illegal_floating_point_literal_pattern)]
 

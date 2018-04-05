@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Method lookup: the secret sauce of Rust. See `README.md`.
+//! Method lookup: the secret sauce of Rust. See the [rustc guide] chapter.
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/method-lookup.html
 
 use check::FnCtxt;
 use hir::def::Def;
@@ -169,7 +171,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         .unwrap().insert(import_def_id);
         }
 
-        self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
+        self.tcx.check_stability(pick.item.def_id, Some(call_expr.id), span);
 
         let result = self.confirm_method(span,
                                          self_expr,
@@ -255,7 +257,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else if let Some(ref input_types) = opt_input_types {
                 input_types[def.index as usize - 1]
             } else {
-                self.type_var_for_def(ty::UniverseIndex::ROOT, span, def)
+                self.type_var_for_def(span, def)
             }
         });
 
@@ -369,7 +371,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         let def = pick.item.def();
-        self.tcx.check_stability(def.def_id(), expr_id, span);
+        self.tcx.check_stability(def.def_id(), Some(expr_id), span);
 
         Ok(def)
     }

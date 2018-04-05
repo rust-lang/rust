@@ -11,8 +11,10 @@
 //! This file builds up the `ScopeTree`, which describes
 //! the parent links in the region hierarchy.
 //!
-//! Most of the documentation on regions can be found in
-//! `middle/infer/region_constraints/README.md`
+//! For more information about how MIR-based region-checking works,
+//! see the [rustc guide].
+//!
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir-borrowck.html
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -351,8 +353,8 @@ pub struct ScopeTree {
     /// the result of `g()` occurs after the yield (and therefore
     /// doesn't). If we want to infer that, we can look at the
     /// postorder traversal:
-    /// ```
-    /// `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
+    /// ```plain,ignore
+    ///     `foo` `f` Call#1 `y` Yield `bar` `g` Call#3 Call#2 Call#0
     /// ```
     ///
     /// In which we can easily see that `Call#1` occurs before the yield,

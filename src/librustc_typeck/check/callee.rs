@@ -16,7 +16,7 @@ use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use syntax::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     // For initial two-phase borrow
                                     // deployment, conservatively omit
                                     // overloaded function call ops.
-                                    allow_two_phase_borrow: false,
+                                    allow_two_phase_borrow: AllowTwoPhase::No,
                                 }
                             };
                             autoref = Some(Adjustment {

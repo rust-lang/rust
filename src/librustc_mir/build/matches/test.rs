@@ -196,15 +196,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let mut values = Vec::with_capacity(used_variants);
                 let tcx = self.hir.tcx();
                 for (idx, discr) in adt_def.discriminants(tcx).enumerate() {
-                    target_blocks.place_back() <- if variants.contains(idx) {
+                    target_blocks.push(if variants.contains(idx) {
                         values.push(discr.val);
-                        *(targets.place_back() <- self.cfg.start_new_block())
+                        targets.push(self.cfg.start_new_block());
+                        *targets.last().unwrap()
                     } else {
                         if otherwise_block.is_none() {
                             otherwise_block = Some(self.cfg.start_new_block());
                         }
                         otherwise_block.unwrap()
-                    };
+                    });
                 }
                 if let Some(otherwise_block) = otherwise_block {
                     targets.push(otherwise_block);

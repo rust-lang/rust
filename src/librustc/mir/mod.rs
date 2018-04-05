@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! MIR datatypes and passes. See the module-level [README] for details.
+//! MIR datatypes and passes. See the [rustc guide] for more info.
 //!
-//! [README]: https://github.com/rust-lang/rust/blob/master/src/librustc/mir/README.md
+//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir.html
 
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
@@ -27,7 +27,7 @@ use hir::def_id::DefId;
 use mir::visit::MirVisitable;
 use mir::interpret::{Value, PrimVal};
 use ty::subst::{Subst, Substs};
-use ty::{self, AdtDef, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
+use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::TypeAndMut;
 use util::ppaux;
@@ -1253,6 +1253,23 @@ pub enum StatementKind<'tcx> {
     /// (The starting point(s) arise implicitly from borrows.)
     EndRegion(region::Scope),
 
+    /// Encodes a user's type assertion. These need to be preserved intact so that NLL can respect
+    /// them. For example:
+    ///
+    ///     let (a, b): (T, U) = y;
+    ///
+    /// Here we would insert a `UserAssertTy<(T, U)>(y)` instruction to check that the type of `y`
+    /// is the right thing.
+    ///
+    /// `CanonicalTy` is used to capture "inference variables" from the user's types. For example:
+    ///
+    ///     let x: Vec<_> = ...;
+    ///     let y: &u32 = ...;
+    ///
+    /// would result in `Vec<?0>` and `&'?0 u32` respectively (where `?0` is a canonicalized
+    /// variable).
+    UserAssertTy(CanonicalTy<'tcx>, Local),
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -1324,6 +1341,8 @@ impl<'tcx> Debug for Statement<'tcx> {
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
             },
+            UserAssertTy(ref c_ty, ref local) => write!(fmt, "UserAssertTy({:?}, {:?})",
+                                                        c_ty, local),
             Nop => write!(fmt, "nop"),
         }
     }
@@ -2109,148 +2128,91 @@ pub enum ClosureOutlivesSubject<'tcx> {
  * TypeFoldable implementations for MIR types
  */
 
-impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        Mir {
-            basic_blocks: self.basic_blocks.fold_with(folder),
-            visibility_scopes: self.visibility_scopes.clone(),
-            visibility_scope_info: self.visibility_scope_info.clone(),
-            promoted: self.promoted.fold_with(folder),
-            yield_ty: self.yield_ty.fold_with(folder),
-            generator_drop: self.generator_drop.fold_with(folder),
-            generator_layout: self.generator_layout.fold_with(folder),
-            local_decls: self.local_decls.fold_with(folder),
-            arg_count: self.arg_count,
-            upvar_decls: self.upvar_decls.clone(),
-            spread_arg: self.spread_arg,
-            span: self.span,
-            cache: cache::Cache::new()
-        }
-    }
+CloneTypeFoldableAndLiftImpls! {
+    Mutability,
+    SourceInfo,
+    UpvarDecl,
+    ValidationOp,
+    VisibilityScopeData,
+    VisibilityScope,
+    VisibilityScopeInfo,
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.basic_blocks.visit_with(visitor) ||
-        self.generator_drop.visit_with(visitor) ||
-        self.generator_layout.visit_with(visitor) ||
-        self.yield_ty.visit_with(visitor) ||
-        self.promoted.visit_with(visitor)     ||
-        self.local_decls.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
+        basic_blocks,
+        visibility_scopes,
+        visibility_scope_info,
+        promoted,
+        yield_ty,
+        generator_drop,
+        generator_layout,
+        local_decls,
+        arg_count,
+        upvar_decls,
+        spread_arg,
+        span,
+        cache,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for GeneratorLayout<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        GeneratorLayout {
-            fields: self.fields.fold_with(folder),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.fields.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for GeneratorLayout<'tcx> {
+        fields
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        LocalDecl {
-            ty: self.ty.fold_with(folder),
-            ..self.clone()
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.ty.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        BasicBlockData {
-            statements: self.statements.fold_with(folder),
-            terminator: self.terminator.fold_with(folder),
-            is_cleanup: self.is_cleanup
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.statements.visit_with(visitor) || self.terminator.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
+        mutability,
+        is_user_variable,
+        internal,
+        ty,
+        name,
+        source_info,
+        syntactic_scope,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Place<'tcx>> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        ValidationOperand {
-            place: self.place.fold_with(folder),
-            ty: self.ty.fold_with(folder),
-            re: self.re,
-            mutbl: self.mutbl,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.place.visit_with(visitor) || self.ty.visit_with(visitor)
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
+        statements,
+        terminator,
+        is_cleanup,
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        use mir::StatementKind::*;
-
-        let kind = match self.kind {
-            Assign(ref place, ref rval) => Assign(place.fold_with(folder), rval.fold_with(folder)),
-            SetDiscriminant { ref place, variant_index } => SetDiscriminant {
-                place: place.fold_with(folder),
-                variant_index,
-            },
-            StorageLive(ref local) => StorageLive(local.fold_with(folder)),
-            StorageDead(ref local) => StorageDead(local.fold_with(folder)),
-            InlineAsm { ref asm, ref outputs, ref inputs } => InlineAsm {
-                asm: asm.clone(),
-                outputs: outputs.fold_with(folder),
-                inputs: inputs.fold_with(folder)
-            },
-
-            // Note for future: If we want to expose the region scopes
-            // during the fold, we need to either generalize EndRegion
-            // to carry `[ty::Region]`, or extend the `TypeFolder`
-            // trait with a `fn fold_scope`.
-            EndRegion(ref region_scope) => EndRegion(region_scope.clone()),
-
-            Validate(ref op, ref places) =>
-                Validate(op.clone(),
-                         places.iter().map(|operand| operand.fold_with(folder)).collect()),
-
-            Nop => Nop,
-        };
-        Statement {
-            source_info: self.source_info,
-            kind,
-        }
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Place<'tcx>> {
+        place, ty, re, mutbl
     }
+}
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        use mir::StatementKind::*;
-
-        match self.kind {
-            Assign(ref place, ref rval) => { place.visit_with(visitor) || rval.visit_with(visitor) }
-            SetDiscriminant { ref place, .. } => place.visit_with(visitor),
-            StorageLive(ref local) |
-            StorageDead(ref local) => local.visit_with(visitor),
-            InlineAsm { ref outputs, ref inputs, .. } =>
-                outputs.visit_with(visitor) || inputs.visit_with(visitor),
-
-            // Note for future: If we want to expose the region scopes
-            // during the visit, we need to either generalize EndRegion
-            // to carry `[ty::Region]`, or extend the `TypeVisitor`
-            // trait with a `fn visit_scope`.
-            EndRegion(ref _scope) => false,
-
-            Validate(ref _op, ref places) =>
-                places.iter().any(|ty_and_place| ty_and_place.visit_with(visitor)),
-
-            Nop => false,
-        }
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
+        source_info, kind
     }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
+        (StatementKind::Assign)(a, b),
+        (StatementKind::SetDiscriminant) { place, variant_index },
+        (StatementKind::StorageLive)(a),
+        (StatementKind::StorageDead)(a),
+        (StatementKind::InlineAsm) { asm, outputs, inputs },
+        (StatementKind::Validate)(a, b),
+        (StatementKind::EndRegion)(a),
+        (StatementKind::UserAssertTy)(a, b),
+        (StatementKind::Nop),
+    }
+}
+
+EnumTypeFoldableImpl! {
+    impl<'tcx, T> TypeFoldable<'tcx> for ClearCrossCrate<T> {
+        (ClearCrossCrate::Clear),
+        (ClearCrossCrate::Set)(a),
+    } where T: TypeFoldable<'tcx>
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {

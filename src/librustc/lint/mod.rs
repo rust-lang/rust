@@ -42,7 +42,7 @@ use session::{Session, DiagnosticMessageId};
 use std::hash;
 use syntax::ast;
 use syntax::codemap::MultiSpan;
-use syntax::epoch::Epoch;
+use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
 use syntax_pos::Span;
@@ -77,8 +77,8 @@ pub struct Lint {
     /// e.g. "imports that are never used"
     pub desc: &'static str,
 
-    /// Deny lint after this epoch
-    pub epoch_deny: Option<Epoch>,
+    /// Deny lint after this edition
+    pub edition_deny: Option<Edition>,
 }
 
 impl Lint {
@@ -88,8 +88,8 @@ impl Lint {
     }
 
     pub fn default_level(&self, session: &Session) -> Level {
-        if let Some(epoch_deny) = self.epoch_deny {
-            if session.epoch() >= epoch_deny {
+        if let Some(edition_deny) = self.edition_deny {
+            if session.edition() >= edition_deny {
                 return Level::Deny
             }
         }
@@ -100,12 +100,12 @@ impl Lint {
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $epoch: expr) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $edition: expr) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
             desc: $desc,
-            epoch_deny: Some($epoch)
+            edition_deny: Some($edition)
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
@@ -113,7 +113,7 @@ macro_rules! declare_lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
             desc: $desc,
-            epoch_deny: None,
+            edition_deny: None,
         };
     );
 }
@@ -498,15 +498,21 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
-    if let Some(future_incompatible) = lints.future_incompatible(LintId::of(lint)) {
-        let future = if let Some(epoch) = future_incompatible.epoch {
-            format!("the {} epoch", epoch)
+    let lint_id = LintId::of(lint);
+    if let Some(future_incompatible) = lints.future_incompatible(lint_id) {
+        const STANDARD_MESSAGE: &str =
+            "this was previously accepted by the compiler but is being phased out; \
+             it will become a hard error";
+
+        let explanation = if lint_id == LintId::of(::lint::builtin::UNSTABLE_NAME_COLLISION) {
+            "once this method is added to the standard library, \
+             there will be ambiguity here, which will cause a hard error!"
+                .to_owned()
+        } else if let Some(edition) = future_incompatible.edition {
+            format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
         } else {
-            "a future release".to_owned()
+            format!("{} in a future release!", STANDARD_MESSAGE)
         };
-        let explanation = format!("this was previously accepted by the compiler \
-                                   but is being phased out; \
-                                   it will become a hard error in {}!", future);
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
         err.warn(&explanation);

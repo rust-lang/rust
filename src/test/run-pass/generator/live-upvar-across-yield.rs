@@ -17,5 +17,5 @@ fn main() {
     let mut a = || {
         b(yield);
     };
-    a.resume();
+    unsafe { a.resume() };
 }

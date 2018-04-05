@@ -13,9 +13,9 @@
 //! type, and vice versa.
 
 use hygiene::SyntaxContext;
+use GLOBALS;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 
@@ -83,8 +83,12 @@ impl Decodable for Ident {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(u32);
 
-// The interner in thread-local, so `Symbol` shouldn't move between threads.
+// The interner is pointed to by a thread local value which is only set on the main thread
+// with parallelization is disabled. So we don't allow Symbol to transfer between threads
+// to avoid panics and other errors, even though it would be memory safe to do so.
+#[cfg(not(parallel_queries))]
 impl !Send for Symbol { }
+#[cfg(not(parallel_queries))]
 impl !Sync for Symbol { }
 
 impl Symbol {
@@ -247,7 +251,7 @@ macro_rules! declare_keywords {(
     }
 
     impl Interner {
-        fn fresh() -> Self {
+        pub fn fresh() -> Self {
             Interner::prefill(&[$($string,)*])
         }
     }
@@ -261,81 +265,83 @@ macro_rules! declare_keywords {(
 declare_keywords! {
     // Special reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
-    (0,  Invalid,        "")
-    (1,  CrateRoot,      "{{root}}")
-    (2,  DollarCrate,    "$crate")
+    (0,  Invalid,            "")
+    (1,  CrateRoot,          "{{root}}")
+    (2,  DollarCrate,        "$crate")
+    (3,  Underscore,         "_")
 
     // Keywords used in the language.
-    (3,  As,             "as")
-    (4,  Box,            "box")
-    (5,  Break,          "break")
-    (6,  Const,          "const")
-    (7,  Continue,       "continue")
-    (8,  Crate,          "crate")
-    (9,  Else,           "else")
-    (10, Enum,           "enum")
-    (11, Extern,         "extern")
-    (12, False,          "false")
-    (13, Fn,             "fn")
-    (14, For,            "for")
-    (15, If,             "if")
-    (16, Impl,           "impl")
-    (17, In,             "in")
-    (18, Let,            "let")
-    (19, Loop,           "loop")
-    (20, Match,          "match")
-    (21, Mod,            "mod")
-    (22, Move,           "move")
-    (23, Mut,            "mut")
-    (24, Pub,            "pub")
-    (25, Ref,            "ref")
-    (26, Return,         "return")
-    (27, SelfValue,      "self")
-    (28, SelfType,       "Self")
-    (29, Static,         "static")
-    (30, Struct,         "struct")
-    (31, Super,          "super")
-    (32, Trait,          "trait")
-    (33, True,           "true")
-    (34, Type,           "type")
-    (35, Unsafe,         "unsafe")
-    (36, Use,            "use")
-    (37, Where,          "where")
-    (38, While,          "while")
+    (4,  As,                 "as")
+    (5,  Box,                "box")
+    (6,  Break,              "break")
+    (7,  Const,              "const")
+    (8,  Continue,           "continue")
+    (9,  Crate,              "crate")
+    (10, Else,               "else")
+    (11, Enum,               "enum")
+    (12, Extern,             "extern")
+    (13, False,              "false")
+    (14, Fn,                 "fn")
+    (15, For,                "for")
+    (16, If,                 "if")
+    (17, Impl,               "impl")
+    (18, In,                 "in")
+    (19, Let,                "let")
+    (20, Loop,               "loop")
+    (21, Match,              "match")
+    (22, Mod,                "mod")
+    (23, Move,               "move")
+    (24, Mut,                "mut")
+    (25, Pub,                "pub")
+    (26, Ref,                "ref")
+    (27, Return,             "return")
+    (28, SelfValue,          "self")
+    (29, SelfType,           "Self")
+    (30, Static,             "static")
+    (31, Struct,             "struct")
+    (32, Super,              "super")
+    (33, Trait,              "trait")
+    (34, True,               "true")
+    (35, Type,               "type")
+    (36, Unsafe,             "unsafe")
+    (37, Use,                "use")
+    (38, Where,              "where")
+    (39, While,              "while")
 
     // Keywords reserved for future use.
-    (39, Abstract,       "abstract")
-    (40, Alignof,        "alignof")
-    (41, Become,         "become")
-    (42, Do,             "do")
-    (43, Final,          "final")
-    (44, Macro,          "macro")
-    (45, Offsetof,       "offsetof")
-    (46, Override,       "override")
-    (47, Priv,           "priv")
-    (48, Proc,           "proc")
-    (49, Pure,           "pure")
-    (50, Sizeof,         "sizeof")
-    (51, Typeof,         "typeof")
-    (52, Unsized,        "unsized")
-    (53, Virtual,        "virtual")
-    (54, Yield,          "yield")
+    (40, Abstract,           "abstract")
+    (41, Alignof,            "alignof")
+    (42, Become,             "become")
+    (43, Do,                 "do")
+    (44, Final,              "final")
+    (45, Macro,              "macro")
+    (46, Offsetof,           "offsetof")
+    (47, Override,           "override")
+    (48, Priv,               "priv")
+    (49, Proc,               "proc")
+    (50, Pure,               "pure")
+    (51, Sizeof,             "sizeof")
+    (52, Typeof,             "typeof")
+    (53, Unsized,            "unsized")
+    (54, Virtual,            "virtual")
+    (55, Yield,              "yield")
+
+    // Special lifetime names
+    (56, UnderscoreLifetime, "'_")
+    (57, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (55, Auto,           "auto")
-    (56, Catch,          "catch")
-    (57, Default,        "default")
-    (58, Dyn,            "dyn")
-    (59, StaticLifetime, "'static")
-    (60, Union,          "union")
+    (58, Auto,               "auto")
+    (59, Catch,              "catch")
+    (60, Default,            "default")
+    (61, Dyn,                "dyn")
+    (62, Union,              "union")
 }
 
-// If an interner exists in TLS, return it. Otherwise, prepare a fresh one.
+// If an interner exists, return it. Otherwise, prepare a fresh one.
+#[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
-    thread_local!(static INTERNER: RefCell<Interner> = {
-        RefCell::new(Interner::fresh())
-    });
-    INTERNER.with(|interner| f(&mut *interner.borrow_mut()))
+    GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
 /// Represents a string stored in the thread-local interner. Because the
@@ -422,6 +428,7 @@ impl Encodable for InternedString {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use Globals;
 
     #[test]
     fn interner_tests() {
@@ -444,7 +451,9 @@ mod tests {
 
     #[test]
     fn without_first_quote_test() {
-        let i = Ident::from_str("'break");
-        assert_eq!(i.without_first_quote().name, keywords::Break.name());
+        GLOBALS.set(&Globals::new(), || {
+            let i = Ident::from_str("'break");
+            assert_eq!(i.without_first_quote().name, keywords::Break.name());
+        });
     }
 }

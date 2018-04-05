@@ -317,7 +317,7 @@ newtype_index!(ScopeId);
 /// macro (and methods below) makes working with `BlockAnd` much more
 /// convenient.
 
-#[must_use] // if you don't use one of these results, you're leaving a dangling edge
+#[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
 trait BlockAndExtension {
@@ -422,7 +422,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             builder.args_and_body(block, &arguments, arg_scope, &body.value)
         }));
         // Attribute epilogue to function's closing brace
-        let fn_end = span.with_lo(span.hi());
+        let fn_end = span.shrink_to_hi();
         let source_info = builder.source_info(fn_end);
         let return_block = builder.return_block();
         builder.cfg.terminate(block, source_info,

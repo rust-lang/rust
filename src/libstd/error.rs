@@ -56,7 +56,6 @@ use any::TypeId;
 use borrow::Cow;
 use cell;
 use char;
-use convert;
 use core::array;
 use fmt::{self, Debug, Display};
 use mem::transmute;
@@ -234,7 +233,7 @@ impl<'a> From<Cow<'a, str>> for Box<Error> {
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.26.0")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }
@@ -276,14 +275,14 @@ impl Error for num::ParseIntError {
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl Error for num::TryFromIntError {
     fn description(&self) -> &str {
         self.__description()
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl Error for array::TryFromSliceError {
     fn description(&self) -> &str {
         self.__description()
@@ -357,7 +356,7 @@ impl Error for cell::BorrowMutError {
     }
 }
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.26.0")]
 impl Error for char::CharTryFromError {
     fn description(&self) -> &str {
         "converted integer out of range for `char`"
@@ -368,14 +367,6 @@ impl Error for char::CharTryFromError {
 impl Error for char::ParseCharError {
     fn description(&self) -> &str {
         self.__description()
-    }
-}
-
-#[unstable(feature = "try_from", issue = "33417")]
-impl Error for convert::Infallible {
-    fn description(&self) -> &str {
-        match *self {
-        }
     }
 }
 

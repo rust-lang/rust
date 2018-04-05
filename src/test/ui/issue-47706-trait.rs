@@ -14,3 +14,5 @@ trait T {
     }
     //~^^ ERROR function is expected to take a single 0-tuple as argument
 }
+
+fn main() {}

@@ -37,15 +37,17 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_lifetime(&self, lifetime: &Lifetime) {
-        let valid_names = [keywords::StaticLifetime.name(), keywords::Invalid.name()];
+        let valid_names = [keywords::UnderscoreLifetime.name(),
+                           keywords::StaticLifetime.name(),
+                           keywords::Invalid.name()];
         if !valid_names.contains(&lifetime.ident.name) &&
-            token::Ident(lifetime.ident.without_first_quote()).is_reserved_ident() {
+            token::is_reserved_ident(lifetime.ident.without_first_quote()) {
             self.err_handler().span_err(lifetime.span, "lifetimes cannot use keyword names");
         }
     }
 
     fn check_label(&self, label: Ident, span: Span) {
-        if token::Ident(label.without_first_quote()).is_reserved_ident() || label.name == "'_" {
+        if token::is_reserved_ident(label.without_first_quote()) {
             self.err_handler().span_err(span, &format!("invalid label name `{}`", label.name));
         }
     }
@@ -65,7 +67,7 @@ impl<'a> AstValidator<'a> {
                                            E0449,
                                            "unnecessary visibility qualifier");
             if vis.node == VisibilityKind::Public {
-                err.span_label(vis.span, "`pub` not needed here");
+                err.span_label(vis.span, "`pub` not permitted here because it's implied");
             }
             if let Some(note) = note {
                 err.note(note);

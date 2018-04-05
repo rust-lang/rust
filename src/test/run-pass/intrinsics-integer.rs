@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(intrinsics, i128_type)]
+// ignore-emscripten no i128 support
+
+#![feature(intrinsics)]
 
 mod rusti {
     extern "rust-intrinsic" {

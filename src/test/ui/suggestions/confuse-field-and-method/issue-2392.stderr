@@ -121,4 +121,4 @@ LL |             (*self.container).f3(1); //~ ERROR no method named `f3` found
 
 error: aborting due to 11 previous errors
 
-If you want more information on this error, try using "rustc --explain E0599"
+For more information about this error, try `rustc --explain E0599`.

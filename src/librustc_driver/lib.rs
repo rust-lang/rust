@@ -24,6 +24,7 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(set_stdio)]
+#![feature(rustc_stack_internals)]
 
 extern crate arena;
 extern crate getopts;
@@ -46,6 +47,7 @@ extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
 extern crate rustc_save_analysis;
+extern crate rustc_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -62,6 +64,7 @@ use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::OnDrop;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
 use rustc::session::config::{Input, PrintRequest, ErrorOutputType};
@@ -443,9 +446,20 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
-                        file_loader: Option<Box<FileLoader + 'static>>,
+                        file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
+{
+    syntax::with_globals(|| {
+        run_compiler_impl(args, callbacks, file_loader, emitter_dest)
+    })
+}
+
+fn run_compiler_impl<'a>(args: &[String],
+                         callbacks: &mut CompilerCalls<'a>,
+                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
+                         emitter_dest: Option<Box<Write + Send>>)
+                         -> (CompileResult, Option<Session>)
 {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
@@ -503,30 +517,35 @@ pub fn run_compiler<'a>(args: &[String],
     target_features::add_configuration(&mut cfg, &sess, &*trans);
     sess.parse_sess.config = cfg;
 
-    let plugins = sess.opts.debugging_opts.extra_plugins.clone();
+    let result = {
+        let plugins = sess.opts.debugging_opts.extra_plugins.clone();
 
-    let cstore = CStore::new(trans.metadata_loader());
+        let cstore = CStore::new(trans.metadata_loader());
 
-    do_or_return!(callbacks.late_callback(&*trans,
-                                          &matches,
-                                          &sess,
-                                          &cstore,
-                                          &input,
-                                          &odir,
-                                          &ofile), Some(sess));
+        do_or_return!(callbacks.late_callback(&*trans,
+                                              &matches,
+                                              &sess,
+                                              &cstore,
+                                              &input,
+                                              &odir,
+                                              &ofile), Some(sess));
 
-    let control = callbacks.build_controller(&sess, &matches);
+        let _sess_abort_error = OnDrop(|| sess.diagnostic().print_error_count());
 
-    (driver::compile_input(trans,
-                           &sess,
-                           &cstore,
-                           &input_file_path,
-                           &input,
-                           &odir,
-                           &ofile,
-                           Some(plugins),
-                           &control),
-     Some(sess))
+        let control = callbacks.build_controller(&sess, &matches);
+
+        driver::compile_input(trans,
+                              &sess,
+                              &cstore,
+                              &input_file_path,
+                              &input,
+                              &odir,
+                              &ofile,
+                              Some(plugins),
+                              &control)
+    };
+
+    (result, Some(sess))
 }
 
 // Extract output directory and file from matches.
@@ -914,7 +933,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 pub fn enable_save_analysis(control: &mut CompileController) {
     control.keep_ast = true;
     control.after_analysis.callback = box |state| {
-        time(state.session.time_passes(), "save analysis", || {
+        time(state.session, "save analysis", || {
             save::process_crate(state.tcx.unwrap(),
                                 state.expanded_crate.unwrap(),
                                 state.analysis.unwrap(),
@@ -1133,6 +1152,15 @@ fn usage(verbose: bool, include_unstable_options: bool) {
              options.usage(&message),
              nightly_help,
              verbose_help);
+}
+
+fn print_wall_help() {
+    println!("
+The flag `-Wall` does not exist in `rustc`. Most useful lints are enabled by
+default. Use `rustc -W help` to see all available lints. It's more common to put
+warning settings in the crate root using `#![warn(LINT_NAME)]` instead of using
+the command line flag directly.
+");
 }
 
 fn describe_lints(sess: &Session, lint_store: &lint::LintStore, loaded_plugins: bool) {
@@ -1379,6 +1407,13 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         return None;
     }
 
+    // Handle the special case of -Wall.
+    let wall = matches.opt_strs("W");
+    if wall.iter().any(|x| *x == "all") {
+        print_wall_help();
+        return None;
+    }
+
     // Don't handle -W help here, because we might first load plugins.
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| *x == "help") {
@@ -1433,16 +1468,56 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
     // Temporarily have stack size set to 16MB to deal with nom-using crates failing
     const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
 
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
+    #[cfg(unix)]
+    let spawn_thread = unsafe {
+        // Fetch the current resource limits
+        let mut rlim = libc::rlimit {
+            rlim_cur: 0,
+            rlim_max: 0,
+        };
+        if libc::getrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
+            let err = io::Error::last_os_error();
+            error!("in_rustc_thread: error calling getrlimit: {}", err);
+            true
+        } else if rlim.rlim_max < STACK_SIZE as libc::rlim_t {
+            true
+        } else {
+            std::rt::deinit_stack_guard();
+            rlim.rlim_cur = STACK_SIZE as libc::rlim_t;
+            if libc::setrlimit(libc::RLIMIT_STACK, &mut rlim) != 0 {
+                let err = io::Error::last_os_error();
+                error!("in_rustc_thread: error calling setrlimit: {}", err);
+                std::rt::update_stack_guard();
+                true
+            } else {
+                std::rt::update_stack_guard();
+                false
+            }
+        }
+    };
 
-    // FIXME: Hacks on hacks. If the env is trying to override the stack size
-    // then *don't* set it explicitly.
-    if env::var_os("RUST_MIN_STACK").is_none() {
-        cfg = cfg.stack_size(STACK_SIZE);
+    // We set the stack size at link time. See src/rustc/rustc.rs.
+    #[cfg(windows)]
+    let spawn_thread = false;
+
+    #[cfg(not(any(windows,unix)))]
+    let spawn_thread = true;
+
+    // The or condition is added from backward compatibility.
+    if spawn_thread || env::var_os("RUST_MIN_STACK").is_some() {
+        let mut cfg = thread::Builder::new().name("rustc".to_string());
+
+        // FIXME: Hacks on hacks. If the env is trying to override the stack size
+        // then *don't* set it explicitly.
+        if env::var_os("RUST_MIN_STACK").is_none() {
+            cfg = cfg.stack_size(STACK_SIZE);
+        }
+
+        let thread = cfg.spawn(f);
+        thread.unwrap().join()
+    } else {
+        Ok(f())
     }
-
-    let thread = cfg.spawn(f);
-    thread.unwrap().join()
 }
 
 /// Get a list of extra command-line flags provided by the user, as strings.
@@ -1454,6 +1529,12 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     let mut args = Vec::new();
     for arg in env::args_os() {
         args.push(arg.to_string_lossy().to_string());
+    }
+
+    // Avoid printing help because of empty args. This can suggest the compiler
+    // itself is not the program root (consider RLS).
+    if args.len() < 2 {
+        return None;
     }
 
     let matches = if let Some(matches) = handle_options(&args) {

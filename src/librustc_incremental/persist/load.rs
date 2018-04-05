@@ -14,7 +14,7 @@ use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::OnDiskCache;
-use rustc::util::common::time;
+use rustc::util::common::time_ext;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
 use std::path::Path;
@@ -89,7 +89,8 @@ impl LoadResult<PreviousDepGraph> {
     pub fn open(self, sess: &Session) -> PreviousDepGraph {
         match self {
             LoadResult::Error { message } => {
-                sess.fatal(&message) /* never returns */
+                sess.warn(&message);
+                PreviousDepGraph::new(SerializedDepGraph::new())
             },
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
@@ -147,11 +148,13 @@ impl<T> MaybeAsync<T> {
 }
 
 /// Launch a thread and load the dependency graph in the background.
-pub fn load_dep_graph(sess: &Session, time_passes: bool) ->
+pub fn load_dep_graph(sess: &Session) ->
     MaybeAsync<LoadResult<PreviousDepGraph>>
 {
     // Since `sess` isn't `Sync`, we perform all accesses to `sess`
     // before we fire the background thread.
+
+    let time_passes = sess.time_passes();
 
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
@@ -167,7 +170,7 @@ pub fn load_dep_graph(sess: &Session, time_passes: bool) ->
     let expected_hash = sess.opts.dep_tracking_hash();
 
     MaybeAsync::Async(std::thread::spawn(move || {
-        time(time_passes, "background load prev dep-graph", move || {
+        time_ext(time_passes, None, "background load prev dep-graph", move || {
             match load_data(report_incremental_info, &path) {
                 LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
                 LoadResult::Error { message } => LoadResult::Error { message },

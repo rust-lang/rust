@@ -75,8 +75,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         match instance_ty.sty {
                             ty::TyFnDef(..) => {
                                 let real_sig = instance_ty.fn_sig(*self.tcx);
-                                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
-                                let real_sig = self.tcx.erase_late_bound_regions_and_normalize(&real_sig);
+                                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                                    ty::ParamEnv::reveal_all(),
+                                    &sig,
+                                );
+                                let real_sig = self.tcx.normalize_erasing_late_bound_regions(
+                                    ty::ParamEnv::reveal_all(),
+                                    &real_sig,
+                                );
                                 if !self.check_sig_compat(sig, real_sig)? {
                                     return err!(FunctionPointerTyMismatch(real_sig, sig));
                                 }
@@ -95,7 +101,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     }
                 };
                 let args = self.operands_to_args(args)?;
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
+                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
                 self.eval_fn_call(
                     fn_def,
                     destination,
@@ -113,7 +122,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
                 let ty = self.place_ty(location);
-                let ty = self.tcx.trans_apply_param_substs(self.substs(), &ty);
+                let ty = self.tcx.subst_and_normalize_erasing_regions(
+                    self.substs(),
+                    ty::ParamEnv::reveal_all(),
+                    &ty,
+                );
                 trace!("TerminatorKind::drop: {:?}, type {}", location, ty);
 
                 let instance = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
@@ -221,7 +234,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     // Second argument must be a tuple matching the argument list of sig
                     let snd_ty = real_sig.inputs_and_output[1];
                     match snd_ty.sty {
-                        ty::TyTuple(tys, _) if sig.inputs().len() == tys.len() =>
+                        ty::TyTuple(tys) if sig.inputs().len() == tys.len() =>
                             if sig.inputs().iter().zip(tys).all(|(ty, real_ty)| check_ty_compat(ty, real_ty)) {
                                 return Ok(true)
                             },

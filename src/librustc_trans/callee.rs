@@ -25,7 +25,6 @@ use type_of::LayoutLlvmExt;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::LayoutOf;
-use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc_back::PanicStrategy;
 
@@ -185,7 +184,7 @@ pub fn resolve_and_get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         cx,
         ty::Instance::resolve(
             cx.tcx,
-            ty::ParamEnv::empty(traits::Reveal::All),
+            ty::ParamEnv::reveal_all(),
             def_id,
             substs
         ).unwrap()

@@ -8,4 +8,4 @@ LL |         0 .. 3 => {} //~ ERROR exclusive range pattern syntax is experiment
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0658"
+For more information about this error, try `rustc --explain E0658`.

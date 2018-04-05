@@ -10,7 +10,6 @@
 
 // must-compile-successfully
 
-#![feature(underscore_lifetimes)]
 #![allow(warnings)]
 
 type Different<'a, 'b> = &'a mut (&'a (), &'b ());

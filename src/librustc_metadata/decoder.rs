@@ -10,11 +10,12 @@
 
 // Decoding metadata from a single crate's metadata
 
-use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary};
+use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use schema::*;
 
-use rustc_data_structures::sync::Lrc;
-use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc_data_structures::sync::{Lrc, ReadGuard};
+use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash,
+                      DisambiguatedDefPathData};
 use rustc::hir;
 use rustc::middle::cstore::{LinkagePreference, ExternConstBody,
                             ExternBodyNestedBodies};
@@ -29,9 +30,9 @@ use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
 use rustc::mir::Mir;
+use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
 
-use std::cell::Ref;
 use std::collections::BTreeMap;
 use std::io;
 use std::mem;
@@ -58,6 +59,9 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
 
     // interpreter allocation cache
     interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
+    // a cache for sizes of interpreter allocations
+    // needed to skip already deserialized allocations
+    interpret_alloc_size: FxHashMap<usize, usize>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -77,6 +81,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
             interpret_alloc_cache: FxHashMap::default(),
+            interpret_alloc_size: FxHashMap::default(),
         }
     }
 }
@@ -143,7 +148,10 @@ impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
 }
 
 impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
-    pub fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> impl Iterator<Item = T> + 'a {
+    pub fn decode<M: Metadata<'a, 'tcx>>(
+        self,
+        meta: M,
+    ) -> impl Iterator<Item = T> + Captures<'tcx> + 'a {
         let mut dcx = meta.decoder(self.position);
         dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.len).map(move |_| T::decode(&mut dcx).unwrap())
@@ -282,46 +290,34 @@ impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
-        const MAX1: usize = usize::max_value() - 1;
-        let tcx = self.tcx.unwrap();
+        let tcx = self.tcx.expect("need tcx for AllocId decoding");
         let pos = self.position();
-        match usize::decode(self)? {
-            ::std::usize::MAX => {
-                let alloc_id = tcx.interpret_interner.reserve();
-                trace!("creating alloc id {:?} at {}", alloc_id, pos);
-                // insert early to allow recursive allocs
-                self.interpret_alloc_cache.insert(pos, alloc_id);
-
-                let allocation = interpret::Allocation::decode(self)?;
-                trace!("decoded alloc {:?} {:#?}", alloc_id, allocation);
-                let allocation = self.tcx.unwrap().intern_const_alloc(allocation);
-                tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
-
-                if let Some(glob) = Option::<DefId>::decode(self)? {
-                    tcx.interpret_interner.cache(glob, alloc_id);
-                }
-
-                Ok(alloc_id)
-            },
-            MAX1 => {
-                trace!("creating fn alloc id at {}", pos);
-                let instance = ty::Instance::decode(self)?;
-                trace!("decoded fn alloc instance: {:?}", instance);
-                let id = tcx.interpret_interner.create_fn_alloc(instance);
-                trace!("created fn alloc id: {:?}", id);
-                self.interpret_alloc_cache.insert(pos, id);
-                Ok(id)
-            },
-            shorthand => {
-                trace!("loading shorthand {}", shorthand);
-                if let Some(&alloc_id) = self.interpret_alloc_cache.get(&shorthand) {
-                    return Ok(alloc_id);
-                }
-                trace!("shorthand {} not cached, loading entire allocation", shorthand);
-                // need to load allocation
-                self.with_position(shorthand, |this| interpret::AllocId::decode(this))
-            },
+        if let Some(cached) = self.interpret_alloc_cache.get(&pos).cloned() {
+            // if there's no end position we are currently deserializing a recursive
+            // allocation
+            if let Some(end) = self.interpret_alloc_size.get(&pos).cloned() {
+                trace!("{} already cached as {:?}", pos, cached);
+                // skip ahead
+                self.opaque.set_position(end);
+                return Ok(cached)
+            }
         }
+        let id = interpret::specialized_decode_alloc_id(
+            self,
+            tcx,
+            pos,
+            |this, pos, alloc_id| { this.interpret_alloc_cache.insert(pos, alloc_id); },
+            |this, shorthand| {
+                // need to load allocation
+                this.with_position(shorthand, |this| interpret::AllocId::decode(this))
+            }
+        )?;
+        let end_pos = self.position();
+        assert!(self
+            .interpret_alloc_size
+            .insert(pos, end_pos)
+            .is_none());
+        Ok(id)
     }
 }
 
@@ -714,7 +710,7 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         // Iterate over all children.
-        let macros_only = self.dep_kind.get().macros_only();
+        let macros_only = self.dep_kind.lock().macros_only();
         for child_index in item.children.decode((self, sess)) {
             if macros_only {
                 continue
@@ -950,6 +946,8 @@ impl<'a, 'tcx> CrateMetadata {
         if vec_.len() < node_index + 1 {
             vec_.resize(node_index + 1, None);
         }
+        // This can overwrite the result produced by another thread, but the value
+        // written should be the same
         vec_[node_index] = Some(result.clone());
         result
     }
@@ -1034,6 +1032,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.root.native_libraries.decode((self, sess)).collect()
     }
 
+    pub fn get_foreign_modules(&self, sess: &Session) -> Vec<ForeignModule> {
+        self.root.foreign_modules.decode((self, sess)).collect()
+    }
+
     pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
         self.root
             .dylib_dependency_formats
@@ -1070,6 +1072,16 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
+    pub fn wasm_custom_sections(&self) -> Vec<DefId> {
+        let sections = self.root
+            .wasm_custom_sections
+            .decode(self)
+            .map(|def_index| self.local_def_id(def_index))
+            .collect::<Vec<_>>();
+        info!("loaded wasm sections {:?}", sections);
+        return sections
+    }
+
     pub fn get_macro(&self, id: DefIndex) -> (InternedString, MacroDef) {
         let entry = self.entry(id);
         match entry.kind {
@@ -1096,10 +1108,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
-        self.dllimport_foreign_items.contains(&id)
-    }
-
     pub fn fn_sig(&self,
                   id: DefIndex,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -1118,7 +1126,23 @@ impl<'a, 'tcx> CrateMetadata {
 
     #[inline]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.def_path_table.def_key(index)
+        if !self.is_proc_macro(index) {
+            self.def_path_table.def_key(index)
+        } else {
+            // FIXME(#49271) - It would be better if the DefIds were consistent
+            //                 with the DefPathTable, but for proc-macro crates
+            //                 they aren't.
+            let name = self.proc_macros
+                           .as_ref()
+                           .unwrap()[index.to_proc_macro_index()].0;
+            DefKey {
+                parent: Some(CRATE_DEF_INDEX),
+                disambiguated_data: DisambiguatedDefPathData {
+                    data: DefPathData::MacroDef(name.as_str()),
+                    disambiguator: 0,
+                }
+            }
+        }
     }
 
     // Returns the path leading to the thing with this `id`.
@@ -1156,12 +1180,20 @@ impl<'a, 'tcx> CrateMetadata {
     /// for items inlined from other crates.
     pub fn imported_filemaps(&'a self,
                              local_codemap: &codemap::CodeMap)
-                             -> Ref<'a, Vec<cstore::ImportedFileMap>> {
+                             -> ReadGuard<'a, Vec<cstore::ImportedFileMap>> {
         {
             let filemaps = self.codemap_import_info.borrow();
             if !filemaps.is_empty() {
                 return filemaps;
             }
+        }
+
+        // Lock the codemap_import_info to ensure this only happens once
+        let mut codemap_import_info = self.codemap_import_info.borrow_mut();
+
+        if !codemap_import_info.is_empty() {
+            drop(codemap_import_info);
+            return self.codemap_import_info.borrow();
         }
 
         let external_codemap = self.root.codemap.decode(self);
@@ -1222,8 +1254,10 @@ impl<'a, 'tcx> CrateMetadata {
             }
         }).collect();
 
+        *codemap_import_info = imported_filemaps;
+        drop(codemap_import_info);
+
         // This shouldn't borrow twice, but there is no way to downgrade RefMut to Ref.
-        *self.codemap_import_info.borrow_mut() = imported_filemaps;
         self.codemap_import_info.borrow()
     }
 }

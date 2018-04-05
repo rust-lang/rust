@@ -11,7 +11,7 @@
 use infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::Span;
-use traits::FulfillmentContext;
+use traits::{FulfillmentContext, TraitEngine};
 use ty::{self, Ty, TypeFoldable};
 use ty::outlives::Component;
 use ty::wf;
@@ -151,7 +151,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // get solved *here*.
         match fulfill_cx.select_all_or_error(self) {
             Ok(()) => (),
-            Err(errors) => self.report_fulfillment_errors(&errors, None),
+            Err(errors) => self.report_fulfillment_errors(&errors, None, false),
         }
 
         implied_bounds

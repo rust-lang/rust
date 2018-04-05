@@ -15,6 +15,6 @@ fn main() {
     // `Cell` is not `Sync`, so `&Cell` is neither `Sync` nor `Send`,
     // `std::fmt::Arguments` used to forget this...
     let c = std::cell::Cell::new(42);
-    send(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
-    sync(format_args!("{:?}", c)); //~ ERROR Sync` is not satisfied
+    send(format_args!("{:?}", c)); //~ ERROR E0277
+    sync(format_args!("{:?}", c)); //~ ERROR E0277
 }

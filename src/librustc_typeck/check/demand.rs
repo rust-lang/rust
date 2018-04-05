@@ -16,11 +16,13 @@ use rustc::traits::ObligationCause;
 
 use syntax::ast;
 use syntax::util::parser::PREC_POSTFIX;
-use syntax_pos::{self, Span};
+use syntax_pos::Span;
 use rustc::hir;
-use rustc::hir::print;
 use rustc::hir::def::Def;
+use rustc::hir::map::NodeItem;
+use rustc::hir::{Item, ItemConst, print};
 use rustc::ty::{self, Ty, AssociatedItem};
+use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{DiagnosticBuilder, CodeMapper};
 
 use super::method::probe;
@@ -79,9 +81,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce(&self,
                          expr: &hir::Expr,
                          checked_ty: Ty<'tcx>,
-                         expected: Ty<'tcx>)
+                         expected: Ty<'tcx>,
+                         allow_two_phase: AllowTwoPhase)
                          -> Ty<'tcx> {
-        let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected);
+        let (ty, err) = self.demand_coerce_diag(expr, checked_ty, expected, allow_two_phase);
         if let Some(mut err) = err {
             err.emit();
         }
@@ -96,11 +99,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn demand_coerce_diag(&self,
                               expr: &hir::Expr,
                               checked_ty: Ty<'tcx>,
-                              expected: Ty<'tcx>)
+                              expected: Ty<'tcx>,
+                              allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
-        let e = match self.try_coerce(expr, checked_ty, self.diverges.get(), expected) {
+        let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
             Ok(ty) => return (ty, None),
             Err(e) => e
         };
@@ -139,7 +143,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some((msg, suggestion)) = self.check_ref(expr, checked_ty, expected) {
             err.span_suggestion(expr.span, msg, suggestion);
         } else if !self.check_for_cast(&mut err, expr, expr_ty, expected) {
-            let methods = self.get_conversion_methods(expected, checked_ty);
+            let methods = self.get_conversion_methods(expr.span, expected, checked_ty);
             if let Ok(expr_text) = self.tcx.sess.codemap().span_to_snippet(expr.span) {
                 let suggestions = iter::repeat(expr_text).zip(methods.iter())
                     .map(|(receiver, method)| format!("{}.{}()", receiver, method.name))
@@ -154,9 +158,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         (expected, Some(err))
     }
 
-    fn get_conversion_methods(&self, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
+    fn get_conversion_methods(&self, span: Span, expected: Ty<'tcx>, checked_ty: Ty<'tcx>)
                               -> Vec<AssociatedItem> {
-        let mut methods = self.probe_for_return_type(syntax_pos::DUMMY_SP,
+        let mut methods = self.probe_for_return_type(span,
                                                      probe::Mode::MethodCall,
                                                      expected,
                                                      checked_ty,
@@ -318,6 +322,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                       checked_ty: Ty<'tcx>,
                       expected_ty: Ty<'tcx>)
                       -> bool {
+        let parent_id = self.tcx.hir.get_parent_node(expr.id);
+        match self.tcx.hir.find(parent_id) {
+            Some(parent) => {
+                // Shouldn't suggest `.into()` on `const`s.
+                if let NodeItem(Item { node: ItemConst(_, _), .. }) = parent {
+                    // FIXME(estebank): modify once we decide to suggest `as` casts
+                    return false;
+                }
+            }
+            None => {}
+        };
+
         let will_truncate = "will truncate the source value";
         let depending_on_isize = "will truncate or zero-extend depending on the bit width of \
                                   `isize`";

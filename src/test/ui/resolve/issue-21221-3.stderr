@@ -8,6 +8,6 @@ help: possible candidate is found in another module, you can import it into scop
 LL | use issue_21221_3::outer::OuterTrait;
    |
 
-error: cannot continue compilation due to previous error
+error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0405"
+For more information about this error, try `rustc --explain E0405`.

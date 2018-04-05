@@ -55,5 +55,5 @@ ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
 
-ENV RUST_CONFIGURE_ARGS --enable-extended
+ENV RUST_CONFIGURE_ARGS --enable-extended --disable-docs
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS

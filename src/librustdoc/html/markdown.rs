@@ -21,12 +21,13 @@
 //! use rustdoc::html::markdown::Markdown;
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s));
+//! let html = format!("{}", Markdown(s, &[]));
 //! // ... something using html
 //! ```
 
 #![allow(non_camel_case_types)]
 
+use rustc::session;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
@@ -232,14 +233,14 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
 /// Make headings links with anchor ids and build up TOC.
 struct LinkReplacer<'a, 'b, I: Iterator<Item = Event<'a>>> {
     inner: I,
-    links: &'b [(String, String)]
+    links: &'b [(String, String)],
 }
 
 impl<'a, 'b, I: Iterator<Item = Event<'a>>> LinkReplacer<'a, 'b, I> {
     fn new(iter: I, links: &'b [(String, String)]) -> Self {
         LinkReplacer {
             inner: iter,
-            links
+            links,
         }
     }
 }
@@ -434,7 +435,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span) {
+pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span,
+                          sess: Option<&session::Session>) {
     tests.set_position(position);
 
     let mut parser = Parser::new(doc);
@@ -484,6 +486,9 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Sp
                                    line, filename, block_info.allow_fail);
                     prev_offset = offset;
                 } else {
+                    if let Some(ref sess) = sess {
+                        sess.span_warn(position, "invalid start of a new code block");
+                    }
                     break;
                 }
             }

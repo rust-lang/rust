@@ -5,7 +5,9 @@ LL | pub enum SomeEnum {
    | ----------------- variant `A` not found here
 LL |     B = SomeEnum::A,
    |         ^^^^^^^^^^^ variant not found in `SomeEnum`
+   |
+   = note: did you mean `variant::B`?
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0599"
+For more information about this error, try `rustc --explain E0599`.

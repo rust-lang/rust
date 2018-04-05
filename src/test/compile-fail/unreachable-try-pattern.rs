@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type, rustc_attrs)]
+#![feature(exhaustive_patterns, rustc_attrs)]
 #![warn(unreachable_code)]
 #![warn(unreachable_patterns)]
 

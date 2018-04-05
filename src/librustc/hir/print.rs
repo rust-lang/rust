@@ -13,7 +13,7 @@ pub use self::AnnNode::*;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
-use syntax::parse::ParseSess;
+use syntax::parse::{token, ParseSess};
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
@@ -524,15 +524,10 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs)?;
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
-            hir::ItemExternCrate(ref optional_path) => {
+            hir::ItemExternCrate(orig_name) => {
                 self.head(&visibility_qualified(&item.vis, "extern crate"))?;
-                if let Some(p) = *optional_path {
-                    let val = p.as_str();
-                    if val.contains("-") {
-                        self.print_string(&val, ast::StrStyle::Cooked)?;
-                    } else {
-                        self.print_name(p)?;
-                    }
+                if let Some(orig_name) = orig_name {
+                    self.print_name(orig_name)?;
                     self.s.space()?;
                     self.s.word("as")?;
                     self.s.space()?;
@@ -1566,7 +1561,11 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        self.s.word(&name.as_str())?;
+        if token::is_raw_guess(ast::Ident::with_empty_ctxt(name)) {
+            self.s.word(&format!("r#{}", name))?;
+        } else {
+            self.s.word(&name.as_str())?;
+        }
         self.ann.post(self, NodeName(&name))
     }
 
@@ -1810,15 +1809,35 @@ impl<'a> State<'a> {
                 self.pclose()?;
             }
             PatKind::Box(ref inner) => {
+                let is_range_inner = match inner.node {
+                    PatKind::Range(..) => true,
+                    _ => false,
+                };
                 self.s.word("box ")?;
+                if is_range_inner {
+                    self.popen()?;
+                }
                 self.print_pat(&inner)?;
+                if is_range_inner {
+                    self.pclose()?;
+                }
             }
             PatKind::Ref(ref inner, mutbl) => {
+                let is_range_inner = match inner.node {
+                    PatKind::Range(..) => true,
+                    _ => false,
+                };
                 self.s.word("&")?;
                 if mutbl == hir::MutMutable {
                     self.s.word("mut ")?;
                 }
+                if is_range_inner {
+                    self.popen()?;
+                }
                 self.print_pat(&inner)?;
+                if is_range_inner {
+                    self.pclose()?;
+                }
             }
             PatKind::Lit(ref e) => self.print_expr(&e)?,
             PatKind::Range(ref begin, ref end, ref end_kind) => {

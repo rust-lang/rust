@@ -635,7 +635,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                         let (&output, tuplized_inputs) = inputs_and_output.split_last().unwrap();
                         assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
                         let inputs = match tuplized_inputs[0].sty {
-                            ty::TyTuple(inputs, _) => inputs,
+                            ty::TyTuple(inputs) => inputs,
                             _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
                         };
 
@@ -777,6 +777,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        debug!(
+            "replace_bound_regions_with_nll_infer_vars(value={:?}, all_outlive_scope={:?})",
+            value,
+            all_outlive_scope,
+        );
         let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
             let liberated_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
                 scope: all_outlive_scope,
@@ -784,6 +789,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'gcx, 'tcx> {
             }));
             let region_vid = self.next_nll_region_var(origin);
             indices.insert_late_bound_region(liberated_region, region_vid.to_region_vid());
+            debug!("liberated_region={:?} => {:?}", liberated_region, region_vid);
             region_vid
         });
         value

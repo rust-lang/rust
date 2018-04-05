@@ -48,4 +48,4 @@ LL |     match Some(A) { //~ ERROR non-exhaustive
 
 error: aborting due to 8 previous errors
 
-If you want more information on this error, try using "rustc --explain E0004"
+For more information about this error, try `rustc --explain E0004`.

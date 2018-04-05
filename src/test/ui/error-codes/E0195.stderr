@@ -9,4 +9,4 @@ LL |     fn bar<'a,'b>(x: &'a str, y: &'b str) { //~ ERROR E0195
 
 error: aborting due to previous error
 
-If you want more information on this error, try using "rustc --explain E0195"
+For more information about this error, try `rustc --explain E0195`.

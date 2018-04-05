@@ -165,29 +165,6 @@ impl<W> Hasher for StableHasher<W> {
     }
 }
 
-
-/// Something that can provide a stable hashing context.
-pub trait StableHashingContextProvider {
-    type ContextType;
-    fn create_stable_hashing_context(&self) -> Self::ContextType;
-}
-
-impl<'a, T: StableHashingContextProvider> StableHashingContextProvider for &'a T {
-    type ContextType = T::ContextType;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-        (**self).create_stable_hashing_context()
-    }
-}
-
-impl<'a, T: StableHashingContextProvider> StableHashingContextProvider for &'a mut T {
-    type ContextType = T::ContextType;
-
-    fn create_stable_hashing_context(&self) -> Self::ContextType {
-        (**self).create_stable_hashing_context()
-    }
-}
-
 /// Something that implements `HashStable<CTX>` can be hashed in a way that is
 /// stable across multiple compilation sessions.
 pub trait HashStable<CTX> {

@@ -36,9 +36,6 @@ LL | | }
    | |_^
    = note: macro-expanded items do not shadow when used in a macro invocation path
 
-error[E0601]: main function not found
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-You've got a few errors: E0601, E0659
-If you want more information on an error, try using "rustc --explain E0601"
+For more information about this error, try `rustc --explain E0659`.

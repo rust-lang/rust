@@ -1,4 +1,4 @@
-error: expected expression, found `_`
+error: expected expression, found reserved identifier `_`
   --> $DIR/underscore.rs:18:9
    |
 LL |         _
@@ -8,4 +8,6 @@ LL |         _
    |
 LL |     underscore!();
    |     -------------- in this macro invocation
+
+error: aborting due to previous error
 

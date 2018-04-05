@@ -28,7 +28,7 @@ LL |     f.f.call_mut(())
    |     ^^^ cannot borrow as mutable
 
 error[E0504]: cannot move `f` into closure because it is borrowed
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:63:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
    |
 LL |     f(Box::new(|a| {
    |     - borrow of `f` occurs here
@@ -36,15 +36,15 @@ LL |         foo(f);
    |             ^ move into closure occurs here
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:63:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:66:13
    |
-LL |     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
+LL |     let mut f = move |g: Box<FnMut(isize)>, b: isize| {
    |         ----- captured outer variable
-LL |     f(Box::new(|a| {
+...
 LL |         foo(f);
    |             ^ cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to 5 previous errors
 
-You've got a few errors: E0499, E0504, E0507, E0596
-If you want more information on an error, try using "rustc --explain E0499"
+Some errors occurred: E0499, E0504, E0507, E0596.
+For more information about an error, try `rustc --explain E0499`.

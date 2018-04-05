@@ -17,19 +17,21 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
+use std::collections::HashSet;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
 use std::path::{PathBuf, Path};
 
-use Mode;
+use {Build, Mode};
 use build_helper::up_to_date;
 
-use util::{cp_r, symlink_dir};
+use util::symlink_dir;
 use builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use tool::Tool;
 use compile;
 use cache::{INTERNER, Interned};
+use config::Config;
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr;)+) => {
@@ -167,7 +169,7 @@ impl Step for CargoBook {
 
         let out = out.join(name);
 
-        println!("Cargo Book ({}) - {}", target, name);
+        build.info(&format!("Cargo Book ({}) - {}", target, name));
 
         let _ = fs::remove_dir_all(&out);
 
@@ -209,12 +211,13 @@ impl Step for RustbookSrc {
         let src = src.join(name);
         let index = out.join("index.html");
         let rustbook = builder.tool_exe(Tool::Rustbook);
+        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
         if up_to_date(&src, &index) && up_to_date(&rustbook, &index) {
             return
         }
-        println!("Rustbook ({}) - {}", target, name);
+        build.info(&format!("Rustbook ({}) - {}", target, name));
         let _ = fs::remove_dir_all(&out);
-        build.run(builder.tool_cmd(Tool::Rustbook)
+        build.run(rustbook_cmd
                        .arg("build")
                        .arg(&src)
                        .arg("-d")
@@ -280,11 +283,11 @@ impl Step for TheBook {
 
         // build the index page
         let index = format!("{}/index.md", name);
-        println!("Documenting book index ({})", target);
+        build.info(&format!("Documenting book index ({})", target));
         invoke_rustdoc(builder, compiler, target, &index);
 
         // build the redirect pages
-        println!("Documenting book redirect pages ({})", target);
+        build.info(&format!("Documenting book redirect pages ({})", target));
         for file in t!(fs::read_dir(build.src.join("src/doc/book/redirects"))) {
             let file = t!(file);
             let path = file.path();
@@ -357,7 +360,7 @@ impl Step for Standalone {
         let build = builder.build;
         let target = self.target;
         let compiler = self.compiler;
-        println!("Documenting standalone ({})", target);
+        build.info(&format!("Documenting standalone ({})", target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
 
@@ -369,7 +372,7 @@ impl Step for Standalone {
         let version_input = build.src.join("src/doc/version_info.html.template");
         let version_info = out.join("version_info.html");
 
-        if !up_to_date(&version_input, &version_info) {
+        if !build.config.dry_run && !up_to_date(&version_input, &version_info) {
             let mut info = String::new();
             t!(t!(File::open(&version_input)).read_to_string(&mut info));
             let info = info.replace("VERSION", &build.rust_release())
@@ -393,7 +396,7 @@ impl Step for Standalone {
                up_to_date(&favicon, &html) &&
                up_to_date(&full_toc, &html) &&
                up_to_date(&version_info, &html) &&
-               up_to_date(&rustdoc, &html) {
+               (build.config.dry_run || up_to_date(&rustdoc, &html)) {
                 continue
             }
 
@@ -448,7 +451,7 @@ impl Step for Std {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} std ({})", stage, target);
+        build.info(&format!("Documenting stage{} std ({})", stage, target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -478,28 +481,24 @@ impl Step for Std {
         // will also directly handle merging.
         let my_out = build.crate_doc_out(target);
         build.clear_if_dirty(&my_out, &rustdoc);
-        t!(symlink_dir_force(&my_out, &out_dir));
+        t!(symlink_dir_force(&build.config, &my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "doc");
         compile::std_cargo(builder, &compiler, target, &mut cargo);
 
-        // We don't want to build docs for internal std dependencies unless
-        // in compiler-docs mode. When not in that mode, we whitelist the crates
-        // for which docs must be built.
-        if !build.config.compiler_docs {
-            cargo.arg("--no-deps");
-            for krate in &["alloc", "core", "std", "std_unicode"] {
-                cargo.arg("-p").arg(krate);
-                // Create all crate output directories first to make sure rustdoc uses
-                // relative links.
-                // FIXME: Cargo should probably do this itself.
-                t!(fs::create_dir_all(out_dir.join(krate)));
-            }
+        // Keep a whitelist so we do not build internal stdlib crates, these will be
+        // build by the rustc step later if enabled.
+        cargo.arg("--no-deps");
+        for krate in &["alloc", "core", "std", "std_unicode"] {
+            cargo.arg("-p").arg(krate);
+            // Create all crate output directories first to make sure rustdoc uses
+            // relative links.
+            // FIXME: Cargo should probably do this itself.
+            t!(fs::create_dir_all(out_dir.join(krate)));
         }
 
-
         build.run(&mut cargo);
-        cp_r(&my_out, &out);
+        build.cp_r(&my_out, &out);
     }
 }
 
@@ -533,7 +532,7 @@ impl Step for Test {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} test ({})", stage, target);
+        build.info(&format!("Documenting stage{} test ({})", stage, target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
@@ -554,12 +553,87 @@ impl Step for Test {
         // See docs in std above for why we symlink
         let my_out = build.crate_doc_out(target);
         build.clear_if_dirty(&my_out, &rustdoc);
-        t!(symlink_dir_force(&my_out, &out_dir));
+        t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "doc");
         compile::test_cargo(build, &compiler, target, &mut cargo);
         build.run(&mut cargo);
-        cp_r(&my_out, &out);
+        build.cp_r(&my_out, &out);
+    }
+}
+
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct WhitelistedRustc {
+    stage: u32,
+    target: Interned<String>,
+}
+
+impl Step for WhitelistedRustc {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        let builder = run.builder;
+        run.krate("rustc-main").default_condition(builder.build.config.docs)
+    }
+
+    fn make_run(run: RunConfig) {
+        run.builder.ensure(WhitelistedRustc {
+            stage: run.builder.top_stage,
+            target: run.target,
+        });
+    }
+
+    /// Generate whitelisted compiler crate documentation.
+    ///
+    /// This will generate all documentation for crates that are whitelisted
+    /// to be included in the standard documentation. This documentation is
+    /// included in the standard Rust documentation, so we should always
+    /// document it and symlink to merge with the rest of the std and test
+    /// documentation. We don't build other compiler documentation
+    /// here as we want to be able to keep it separate from the standard
+    /// documentation. This is largely just a wrapper around `cargo doc`.
+    fn run(self, builder: &Builder) {
+        let build = builder.build;
+        let stage = self.stage;
+        let target = self.target;
+        build.info(&format!("Documenting stage{} whitelisted compiler ({})", stage, target));
+        let out = build.doc_out(target);
+        t!(fs::create_dir_all(&out));
+        let compiler = builder.compiler(stage, build.build);
+        let rustdoc = builder.rustdoc(compiler.host);
+        let compiler = if build.force_use_stage1(compiler, target) {
+            builder.compiler(1, compiler.host)
+        } else {
+            compiler
+        };
+
+        // Build libstd docs so that we generate relative links
+        builder.ensure(Std { stage, target });
+
+        builder.ensure(compile::Rustc { compiler, target });
+        let out_dir = build.stage_out(compiler, Mode::Librustc)
+                           .join(target).join("doc");
+
+        // See docs in std above for why we symlink
+        let my_out = build.crate_doc_out(target);
+        build.clear_if_dirty(&my_out, &rustdoc);
+        t!(symlink_dir_force(&builder.config, &my_out, &out_dir));
+
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
+        compile::rustc_cargo(build, &mut cargo);
+
+        // We don't want to build docs for internal compiler dependencies in this
+        // step (there is another step for that). Therefore, we whitelist the crates
+        // for which docs must be built.
+        cargo.arg("--no-deps");
+        for krate in &["proc_macro"] {
+            cargo.arg("-p").arg(krate);
+        }
+
+        build.run(&mut cargo);
+        build.cp_r(&my_out, &out);
     }
 }
 
@@ -586,16 +660,18 @@ impl Step for Rustc {
         });
     }
 
-    /// Generate all compiler documentation.
+    /// Generate compiler documentation.
     ///
-    /// This will generate all documentation for the compiler libraries and their
-    /// dependencies. This is largely just a wrapper around `cargo doc`.
+    /// This will generate all documentation for compiler and dependencies.
+    /// Compiler documentation is distributed separately, so we make sure
+    /// we do not merge it with the other documentation from std, test and
+    /// proc_macros. This is largely just a wrapper around `cargo doc`.
     fn run(self, builder: &Builder) {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
-        println!("Documenting stage{} compiler ({})", stage, target);
-        let out = build.doc_out(target);
+        build.info(&format!("Documenting stage{} compiler ({})", stage, target));
+        let out = build.compiler_doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, build.build);
         let rustdoc = builder.rustdoc(compiler.host);
@@ -605,36 +681,57 @@ impl Step for Rustc {
             compiler
         };
 
+        if !build.config.compiler_docs {
+            build.info(&format!("\tskipping - compiler docs disabled"));
+            return;
+        }
+
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Rustc { compiler, target });
         let out_dir = build.stage_out(compiler, Mode::Librustc)
                            .join(target).join("doc");
-
-        // See docs in std above for why we symlink
-        let my_out = build.crate_doc_out(target);
-        build.clear_if_dirty(&my_out, &rustdoc);
-        t!(symlink_dir_force(&my_out, &out_dir));
+        // We do not symlink to the same shared folder that already contains std library
+        // documentation from previous steps as we do not want to include that.
+        build.clear_if_dirty(&out, &rustdoc);
+        t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "doc");
+        cargo.env("RUSTDOCFLAGS", "--document-private-items");
         compile::rustc_cargo(build, &mut cargo);
 
-        if build.config.compiler_docs {
-            // src/rustc/Cargo.toml contains a bin crate called rustc which
-            // would otherwise overwrite the docs for the real rustc lib crate.
-            cargo.arg("-p").arg("rustc_driver");
-        } else {
-            // Like with libstd above if compiler docs aren't enabled then we're not
-            // documenting internal dependencies, so we have a whitelist.
-            cargo.arg("--no-deps");
-            for krate in &["proc_macro"] {
-                cargo.arg("-p").arg(krate);
-            }
+        // Only include compiler crates, no dependencies of those, such as `libc`.
+        cargo.arg("--no-deps");
+
+        // Find dependencies for top level crates.
+        let mut compiler_crates = HashSet::new();
+        for root_crate in &["rustc", "rustc_driver"] {
+            let interned_root_crate = INTERNER.intern_str(root_crate);
+            find_compiler_crates(&build, &interned_root_crate, &mut compiler_crates);
+        }
+
+        for krate in &compiler_crates {
+            cargo.arg("-p").arg(krate);
         }
 
         build.run(&mut cargo);
-        cp_r(&my_out, &out);
+    }
+}
+
+fn find_compiler_crates(
+    build: &Build,
+    name: &Interned<String>,
+    crates: &mut HashSet<Interned<String>>
+) {
+    // Add current crate.
+    crates.insert(*name);
+
+    // Look for dependencies.
+    for dep in build.crates.get(name).unwrap().deps.iter() {
+        if build.crates.get(dep).unwrap().is_local(build) {
+            find_compiler_crates(build, dep, crates);
+        }
     }
 }
 
@@ -665,7 +762,7 @@ impl Step for ErrorIndex {
         let build = builder.build;
         let target = self.target;
 
-        println!("Documenting error index ({})", target);
+        build.info(&format!("Documenting error index ({})", target));
         let out = build.doc_out(target);
         t!(fs::create_dir_all(&out));
         let mut index = builder.tool_cmd(Tool::ErrorIndex);
@@ -710,10 +807,10 @@ impl Step for UnstableBookGen {
             target,
         });
 
-        println!("Generating unstable book md files ({})", target);
+        build.info(&format!("Generating unstable book md files ({})", target));
         let out = build.md_doc_out(target).join("unstable-book");
-        t!(fs::create_dir_all(&out));
-        t!(fs::remove_dir_all(&out));
+        build.create_dir(&out);
+        build.remove_dir(&out);
         let mut cmd = builder.tool_cmd(Tool::UnstableBookGen);
         cmd.arg(build.src.join("src"));
         cmd.arg(out);
@@ -722,7 +819,10 @@ impl Step for UnstableBookGen {
     }
 }
 
-fn symlink_dir_force(src: &Path, dst: &Path) -> io::Result<()> {
+fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> {
+    if config.dry_run {
+        return Ok(());
+    }
     if let Ok(m) = fs::symlink_metadata(dst) {
         if m.file_type().is_dir() {
             try!(fs::remove_dir_all(dst));
@@ -735,5 +835,5 @@ fn symlink_dir_force(src: &Path, dst: &Path) -> io::Result<()> {
         }
     }
 
-    symlink_dir(src, dst)
+    symlink_dir(config, src, dst)
 }

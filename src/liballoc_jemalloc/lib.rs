@@ -15,7 +15,6 @@
                       form or name",
             issue = "27783")]
 #![deny(warnings)]
-#![feature(alloc)]
 #![feature(alloc_system)]
 #![feature(libc)]
 #![feature(linkage)]
@@ -25,7 +24,6 @@
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 #![rustc_alloc_kind = "exe"]
 
-extern crate alloc;
 extern crate alloc_system;
 extern crate libc;
 
@@ -35,7 +33,7 @@ pub use contents::*;
 mod contents {
     use core::ptr;
 
-    use alloc::heap::{Alloc, AllocErr, Layout};
+    use core::heap::{Alloc, AllocErr, Layout};
     use alloc_system::System;
     use libc::{c_int, c_void, size_t};
 

@@ -35,12 +35,6 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
-    fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
-        Self::empty()
-    }
-}
-
 impl<'tcx> Value<'tcx> for ty::SymbolName {
     fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         ty::SymbolName { name: Symbol::intern("<error>").as_str() }

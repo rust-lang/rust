@@ -10,6 +10,10 @@
 
 // ignore-arm
 // ignore-aarch64
+// ignore-mips
+// ignore-mips64
+// ignore-powerpc
+// ignore-s390x
 // ignore-wasm
 // ignore-cloudabi no processes
 // ignore-emscripten no processes

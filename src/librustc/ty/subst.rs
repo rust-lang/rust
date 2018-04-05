@@ -11,7 +11,7 @@
 // Type substitutions.
 
 use hir::def_id::DefId;
-use ty::{self, Slice, Region, Ty, TyCtxt};
+use ty::{self, Lift, Slice, Region, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -19,11 +19,11 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 
 use core::intrinsics;
-use core::nonzero::NonZero;
 use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
 use std::mem;
+use std::num::NonZeroUsize;
 
 /// An entity in the Rust typesystem, which can be one of
 /// several kinds (only types and lifetimes for now).
@@ -32,7 +32,7 @@ use std::mem;
 /// indicate the type (`Ty` or `Region`) it points to.
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Kind<'tcx> {
-    ptr: NonZero<usize>,
+    ptr: NonZeroUsize,
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>)>
 }
 
@@ -40,6 +40,7 @@ const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 
+#[derive(Debug)]
 pub enum UnpackedKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
@@ -62,7 +63,7 @@ impl<'tcx> UnpackedKind<'tcx> {
 
         Kind {
             ptr: unsafe {
-                NonZero::new_unchecked(ptr | tag)
+                NonZeroUsize::new_unchecked(ptr | tag)
             },
             marker: PhantomData
         }
@@ -109,6 +110,17 @@ impl<'tcx> fmt::Display for Kind<'tcx> {
         match self.unpack() {
             UnpackedKind::Lifetime(lt) => write!(f, "{}", lt),
             UnpackedKind::Type(ty) => write!(f, "{}", ty),
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
+    type Lifted = Kind<'tcx>;
+
+    fn lift_to_tcx<'cx, 'gcx>(&self, tcx: TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match self.unpack() {
+            UnpackedKind::Lifetime(a) => a.lift_to_tcx(tcx).map(|a| a.into()),
+            UnpackedKind::Type(a) => a.lift_to_tcx(tcx).map(|a| a.into()),
         }
     }
 }

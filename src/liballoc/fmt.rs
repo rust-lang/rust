@@ -113,6 +113,8 @@
 //!
 //! * *nothing* ⇒ [`Display`]
 //! * `?` ⇒ [`Debug`]
+//! * `x?` ⇒ [`Debug`] with lower-case hexadecimal integers
+//! * `X?` ⇒ [`Debug`] with upper-case hexadecimal integers
 //! * `o` ⇒ [`Octal`](trait.Octal.html)
 //! * `x` ⇒ [`LowerHex`](trait.LowerHex.html)
 //! * `X` ⇒ [`UpperHex`](trait.UpperHex.html)
@@ -324,7 +326,7 @@
 //! sign := '+' | '-'
 //! width := count
 //! precision := count | '*'
-//! type := identifier | ''
+//! type := identifier | '?' | ''
 //! count := parameter | integer
 //! parameter := argument '$'
 //! ```
@@ -514,17 +516,17 @@ pub use core::fmt::rt;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{Formatter, Result, Write};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Octal, Binary};
+pub use core::fmt::{Binary, Octal};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{Display, Debug};
+pub use core::fmt::{Debug, Display};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{LowerHex, UpperHex, Pointer};
+pub use core::fmt::{LowerHex, Pointer, UpperHex};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{LowerExp, UpperExp};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::Error;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::fmt::{ArgumentV1, Arguments, write};
+pub use core::fmt::{write, ArgumentV1, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
@@ -561,7 +563,8 @@ use string;
 pub fn format(args: Arguments) -> string::String {
     let capacity = args.estimated_capacity();
     let mut output = string::String::with_capacity(capacity);
-    output.write_fmt(args)
-          .expect("a formatting trait implementation returned an error");
+    output
+        .write_fmt(args)
+        .expect("a formatting trait implementation returned an error");
     output
 }

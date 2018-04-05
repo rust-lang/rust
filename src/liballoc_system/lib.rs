@@ -17,7 +17,6 @@
             issue = "32838")]
 #![feature(global_allocator)]
 #![feature(allocator_api)]
-#![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
@@ -43,9 +42,7 @@ const MIN_ALIGN: usize = 8;
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
 
-extern crate alloc;
-
-use self::alloc::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+use core::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub struct System;
@@ -125,7 +122,7 @@ mod platform {
 
     use MIN_ALIGN;
     use System;
-    use alloc::heap::{Alloc, AllocErr, Layout};
+    use core::heap::{Alloc, AllocErr, Layout};
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl<'a> Alloc for &'a System {
@@ -134,6 +131,14 @@ mod platform {
             let ptr = if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
                 libc::malloc(layout.size()) as *mut u8
             } else {
+                #[cfg(target_os = "macos")]
+                {
+                    if layout.align() > (1 << 31) {
+                        return Err(AllocErr::Unsupported {
+                            details: "requested alignment too large"
+                        })
+                    }
+                }
                 aligned_malloc(&layout)
             };
             if !ptr.is_null() {
@@ -279,7 +284,7 @@ mod platform {
 
     use MIN_ALIGN;
     use System;
-    use alloc::heap::{Alloc, AllocErr, Layout, CannotReallocInPlace};
+    use core::heap::{Alloc, AllocErr, Layout, CannotReallocInPlace};
 
     type LPVOID = *mut u8;
     type HANDLE = LPVOID;
@@ -491,7 +496,7 @@ mod platform {
 mod platform {
     extern crate dlmalloc;
 
-    use alloc::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+    use core::heap::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
     use System;
     use self::dlmalloc::GlobalDlmalloc;
 

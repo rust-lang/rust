@@ -196,8 +196,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
 
         self.write_plain(&format!(
             "test {} has been running for over {} seconds\n",
-            desc.name,
-            TEST_WARN_TIMEOUT_S
+            desc.name, TEST_WARN_TIMEOUT_S
         ))
     }
 
@@ -232,11 +231,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         } else {
             format!(
                 ". {} passed; {} failed; {} ignored; {} measured; {} filtered out\n\n",
-                state.passed,
-                state.failed,
-                state.ignored,
-                state.measured,
-                state.filtered_out
+                state.passed, state.failed, state.ignored, state.measured, state.filtered_out
             )
         };
 

@@ -30,7 +30,6 @@ matrix:
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
@@ -50,13 +49,12 @@ matrix:
         RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     - env: >
@@ -64,13 +62,12 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
       os: osx
-      osx_image: xcode9.2
+      osx_image: xcode9.3-moar
       if: branch = auto
 
     # OSX builders producing releases. These do not run the full test suite and
@@ -85,7 +82,6 @@ matrix:
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
@@ -99,7 +95,6 @@ matrix:
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
         MACOSX_DEPLOYMENT_TARGET=10.7
         NO_LLVM_ASSERTIONS=1
         NO_DEBUG_ASSERTIONS=1
@@ -176,14 +171,11 @@ matrix:
       if: branch = auto
     - env: IMAGE=x86_64-gnu-distcheck
       if: branch = auto
-    - env: IMAGE=x86_64-gnu-incremental
-      if: branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push
       before_install: []
       install: []
-      cache: false
       sudo: false
       script:
         MESSAGE_FILE=$(mktemp -t msg.XXXXXX);
@@ -201,7 +193,12 @@ env:
     - secure: "cFh8thThqEJLC98XKI5pfqflUzOlxsYPRW20AWRaYOOgYHPTiGWypTXiPbGSKaeAXTZoOA+DpQtEmefc0U6lt9dHc7a/MIaK6isFurjlnKYiLOeTruzyu1z7PWCeZ/jKXsU2RK/88DBtlNwfMdaMIeuKj14IVfpepPPL71ETbuk="
 
 before_install:
-  - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
+  # We'll use the AWS cli to download/upload cached docker layers, so install
+  # that here.
+  - if [ "$TRAVIS_OS_NAME" = linux ]; then
+      pip install --user awscli;
+      export PATH=$PATH:$HOME/.local/bin;
+    fi
   - mkdir -p $HOME/rustsrc
   # FIXME(#46924): these two commands are required to enable IPv6,
   # they shouldn't exist, please revert once more official solutions appeared.
@@ -223,7 +220,7 @@ install:
             travis_retry brew update &&
             travis_retry brew install xz;
           fi &&
-          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-12-sccache-x86_64-apple-darwin &&
+          travis_retry curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/sccache &&
           travis_retry curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
             chmod +x /usr/local/bin/stamp
@@ -264,43 +261,24 @@ after_failure:
       df -h;
       du . | sort -nr | head -n100
 
-  # One of these is the linux sccache log, one is the OSX sccache log. Instead
-  # of worrying about what system we are just cat both. One of these commands
-  # will fail but that's ok, they'll both get executed.
-  - cat obj/tmp/sccache.log
-  - cat /tmp/sccache.log
-
   # Random attempt at debugging currently. Just poking around in here to see if
   # anything shows up.
   - ls -lat $HOME/Library/Logs/DiagnosticReports/
   - find $HOME/Library/Logs/DiagnosticReports
       -type f
+      -name '*.crash'
       -not -name '*.stage2-*.crash'
       -not -name 'com.apple.CoreSimulator.CoreSimulatorService-*.crash'
       -exec printf travis_fold":start:crashlog\n\033[31;1m%s\033[0m\n" {} \;
       -exec head -750 {} \;
-      -exec echo travis_fold":"end:crashlog \;
+      -exec echo travis_fold":"end:crashlog \; || true
 
   # attempt to debug anything killed by the oom killer on linux, just to see if
   # it happened
   - dmesg | grep -i kill
 
-# Save tagged docker images we created and load them if they're available
-# Travis saves caches whether the build failed or not, nuke rustsrc if
-# the failure was while updating it (as it may be in a bad state)
-# https://github.com/travis-ci/travis-ci/issues/4472
-before_cache:
-  - docker history -q rust-ci |
-    grep -v missing |
-    xargs docker save |
-    gzip > $HOME/docker/rust-ci.tar.gz
-
 notifications:
   email: false
-
-cache:
-  directories:
-    - $HOME/docker
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT

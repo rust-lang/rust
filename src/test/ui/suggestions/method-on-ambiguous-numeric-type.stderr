@@ -20,4 +20,4 @@ LL |     let y: f32 = 2.0;
 
 error: aborting due to 2 previous errors
 
-If you want more information on this error, try using "rustc --explain E0689"
+For more information about this error, try `rustc --explain E0689`.

@@ -79,7 +79,6 @@ mod prim_bool { }
 /// write:
 ///
 /// ```
-/// #![feature(never_type)]
 /// # fn foo() -> u32 {
 /// let x: ! = {
 ///     return 123
@@ -131,13 +130,15 @@ mod prim_bool { }
 /// [`Result<String, !>`] which we can unpack like this:
 ///
 /// ```ignore (string-from-str-error-type-is-not-never-yet)
+/// #[feature(exhaustive_patterns)]
 /// // NOTE: This does not work today!
 /// let Ok(s) = String::from_str("hello");
 /// ```
 ///
-/// Since the [`Err`] variant contains a `!`, it can never occur. So we can exhaustively match on
-/// [`Result<T, !>`] by just taking the [`Ok`] variant. This illustrates another behaviour of `!` -
-/// it can be used to "delete" certain enum variants from generic types like `Result`.
+/// Since the [`Err`] variant contains a `!`, it can never occur. If the `exhaustive_patterns`
+/// feature is present this means we can exhaustively match on [`Result<T, !>`] by just taking the
+/// [`Ok`] variant. This illustrates another behaviour of `!` - it can be used to "delete" certain
+/// enum variants from generic types like `Result`.
 ///
 /// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
 /// [`Result<String, !>`]: result/enum.Result.html
@@ -154,7 +155,6 @@ mod prim_bool { }
 /// for example:
 ///
 /// ```
-/// # #![feature(never_type)]
 /// # use std::fmt;
 /// # trait Debug {
 /// # fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result;
@@ -192,7 +192,6 @@ mod prim_bool { }
 /// [`Default`]: default/trait.Default.html
 /// [`default()`]: default/trait.Default.html#tymethod.default
 ///
-#[unstable(feature = "never_type", issue = "35121")]
 mod prim_never { }
 
 #[doc(primitive = "char")]
@@ -752,7 +751,7 @@ mod prim_i64 { }
 /// The 128-bit signed integer type.
 ///
 /// *[See also the `std::i128` module](i128/index.html).*
-#[unstable(feature = "i128", issue="35118")]
+#[stable(feature = "i128", since="1.26.0")]
 mod prim_i128 { }
 
 #[doc(primitive = "u8")]
@@ -792,7 +791,7 @@ mod prim_u64 { }
 /// The 128-bit unsigned integer type.
 ///
 /// *[See also the `std::u128` module](u128/index.html).*
-#[unstable(feature = "i128", issue="35118")]
+#[stable(feature = "i128", since="1.26.0")]
 mod prim_u128 { }
 
 #[doc(primitive = "isize")]

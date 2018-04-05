@@ -227,7 +227,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 let arg_tys = args.iter().map(|e| cx.tables().expr_ty_adjusted(e));
                 let tupled_args = Expr {
-                    ty: cx.tcx.mk_tup(arg_tys, false),
+                    ty: cx.tcx.mk_tup(arg_tys),
                     temp_lifetime,
                     span: expr.span,
                     kind: ExprKind::Tuple { fields: args.iter().map(ToRef::to_ref).collect() },
@@ -662,9 +662,13 @@ trait ToBorrowKind { fn to_borrow_kind(&self) -> BorrowKind; }
 
 impl ToBorrowKind for AutoBorrowMutability {
     fn to_borrow_kind(&self) -> BorrowKind {
+        use rustc::ty::adjustment::AllowTwoPhase;
         match *self {
             AutoBorrowMutability::Mutable { allow_two_phase_borrow } =>
-                BorrowKind::Mut { allow_two_phase_borrow },
+                BorrowKind::Mut { allow_two_phase_borrow: match allow_two_phase_borrow {
+                    AllowTwoPhase::Yes => true,
+                    AllowTwoPhase::No => false
+                }},
             AutoBorrowMutability::Immutable =>
                 BorrowKind::Shared,
         }

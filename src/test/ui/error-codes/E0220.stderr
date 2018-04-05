@@ -12,5 +12,5 @@ LL | type Foo = Trait<F=i32>; //~ ERROR E0220
 
 error: aborting due to 2 previous errors
 
-You've got a few errors: E0191, E0220
-If you want more information on an error, try using "rustc --explain E0191"
+Some errors occurred: E0191, E0220.
+For more information about an error, try `rustc --explain E0191`.

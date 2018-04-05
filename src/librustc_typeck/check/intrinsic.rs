@@ -87,7 +87,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "cxchg" | "cxchgweak" => (1, vec![tcx.mk_mut_ptr(param(0)),
                                               param(0),
                                               param(0)],
-                                      tcx.intern_tup(&[param(0), tcx.types.bool], false)),
+                                      tcx.intern_tup(&[param(0), tcx.types.bool])),
             "load" => (1, vec![tcx.mk_imm_ptr(param(0))],
                        param(0)),
             "store" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)],
@@ -281,9 +281,9 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
                 (1, vec![param(0), param(0)],
-                tcx.intern_tup(&[param(0), tcx.types.bool], false)),
+                tcx.intern_tup(&[param(0), tcx.types.bool])),
 
-            "unchecked_div" | "unchecked_rem" =>
+            "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
             "unchecked_shl" | "unchecked_shr" =>
                 (1, vec![param(0), param(0)], param(0)),
@@ -355,12 +355,22 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         "simd_add" | "simd_sub" | "simd_mul" | "simd_rem" |
         "simd_div" | "simd_shl" | "simd_shr" |
-        "simd_and" | "simd_or" | "simd_xor" => {
+        "simd_and" | "simd_or" | "simd_xor" |
+        "simd_fmin" | "simd_fmax" => {
             (1, vec![param(0), param(0)], param(0))
         }
         "simd_insert" => (2, vec![param(0), tcx.types.u32, param(1)], param(0)),
         "simd_extract" => (2, vec![param(0), tcx.types.u32], param(1)),
         "simd_cast" => (2, vec![param(0)], param(1)),
+        "simd_select" => (2, vec![param(0), param(1), param(1)], param(1)),
+        "simd_reduce_all" | "simd_reduce_any" => (1, vec![param(0)], tcx.types.bool),
+        "simd_reduce_add_ordered" | "simd_reduce_mul_ordered"
+            => (2, vec![param(0), param(1)], param(1)),
+        "simd_reduce_add_unordered" | "simd_reduce_mul_unordered" |
+        "simd_reduce_and" | "simd_reduce_or"  | "simd_reduce_xor" |
+        "simd_reduce_min" | "simd_reduce_max" |
+        "simd_reduce_min_nanless" | "simd_reduce_max_nanless"
+            => (2, vec![param(0)], param(1)),
         name if name.starts_with("simd_shuffle") => {
             match name["simd_shuffle".len()..].parse() {
                 Ok(n) => {
@@ -441,7 +451,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
 
     match *expected {
         Void => match t.sty {
-            ty::TyTuple(ref v, _) if v.is_empty() => {},
+            ty::TyTuple(ref v) if v.is_empty() => {},
             _ => simple_error(&format!("`{}`", t), "()"),
         },
         // (The width we pass to LLVM doesn't concern the type checker.)
@@ -515,7 +525,7 @@ fn match_intrinsic_type_to_type<'a, 'tcx>(
         }
         Aggregate(_flatten, ref expected_contents) => {
             match t.sty {
-                ty::TyTuple(contents, _) => {
+                ty::TyTuple(contents) => {
                     if contents.len() != expected_contents.len() {
                         simple_error(&format!("tuple with length {}", contents.len()),
                                      &format!("tuple with length {}", expected_contents.len()));

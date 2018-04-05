@@ -281,7 +281,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_def_path(adt_def.did, output);
                 self.push_type_params(substs, iter::empty(), output);
             },
-            ty::TyTuple(component_types, _) => {
+            ty::TyTuple(component_types) => {
                 output.push('(');
                 for &component_type in component_types {
                     self.push_type_name(component_type, output);
@@ -347,7 +347,10 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
+                let sig = self.tcx.normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &sig,
+                );
 
                 if !sig.inputs().is_empty() {
                     for &parameter_type in sig.inputs() {

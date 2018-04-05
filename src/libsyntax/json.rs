@@ -26,7 +26,7 @@ use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
 use errors::DiagnosticId;
 use errors::emitter::{Emitter, EmitterWriter};
 
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use std::io::{self, Write};
 use std::vec;
 use std::sync::{Arc, Mutex};
@@ -36,7 +36,7 @@ use rustc_serialize::json::{as_json, as_pretty_json};
 pub struct JsonEmitter {
     dst: Box<Write + Send>,
     registry: Option<Registry>,
-    cm: Lrc<CodeMapper + 'static>,
+    cm: Lrc<CodeMapper + sync::Send + sync::Sync>,
     pretty: bool,
     /// Whether "approximate suggestions" are enabled in the config
     approximate_suggestions: bool,

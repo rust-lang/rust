@@ -72,21 +72,23 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
-#![feature(advanced_slice_patterns)]
+#![cfg_attr(stage0, feature(advanced_slice_patterns))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(conservative_impl_trait)]
-#![feature(copy_closures, clone_closures)]
+#![cfg_attr(stage0, feature(conservative_impl_trait))]
+#![cfg_attr(stage0, feature(copy_closures, clone_closures))]
 #![feature(crate_visibility_modifier)]
 #![feature(from_ref)]
-#![feature(match_default_bindings)]
-#![feature(never_type)]
+#![cfg_attr(stage0, feature(match_default_bindings))]
+#![feature(exhaustive_patterns)]
 #![feature(option_filter)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
-#![feature(i128_type)]
+#![cfg_attr(stage0, feature(i128_type))]
+#![cfg_attr(stage0, feature(never_type))]
+#![feature(dyn_trait)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -110,7 +112,7 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::traits::{FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
+use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine};
 use session::{CompileIncomplete, config};
 use util::common::time;
 
@@ -158,8 +160,8 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
     tcx.infer_ctxt().enter(|ref infcx| {
-        let param_env = ty::ParamEnv::empty(Reveal::UserFacing);
-        let mut fulfill_cx = FulfillmentContext::new();
+        let param_env = ty::ParamEnv::empty();
+        let mut fulfill_cx = TraitEngine::new(infcx.tcx);
         match infcx.at(&cause, param_env).eq(expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 fulfill_cx.register_predicate_obligations(infcx, obligations);
@@ -173,7 +175,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         match fulfill_cx.select_all_or_error(infcx) {
             Ok(()) => true,
             Err(errors) => {
-                infcx.report_fulfillment_errors(&errors, None);
+                infcx.report_fulfillment_errors(&errors, None, false);
                 false
             }
         }
@@ -207,8 +209,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             let actual = tcx.fn_sig(main_def_id);
-            let expected_return_type = if tcx.lang_items().termination().is_some()
-                && tcx.features().termination_trait {
+            let expected_return_type = if tcx.lang_items().termination().is_some() {
                 // we take the return type of the given main function, the real check is done
                 // in `check_fn`
                 actual.output().skip_binder()
@@ -315,41 +316,39 @@ pub fn provide(providers: &mut Providers) {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
                              -> Result<(), CompileIncomplete>
 {
-    let time_passes = tcx.sess.time_passes();
-
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.track_errors(|| {
-        time(time_passes, "type collecting", ||
+        time(tcx.sess, "type collecting", ||
              collect::collect_item_types(tcx));
 
     })?;
 
     tcx.sess.track_errors(|| {
-        time(time_passes, "outlives testing", ||
+        time(tcx.sess, "outlives testing", ||
             outlives::test::test_inferred_outlives(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        time(time_passes, "impl wf inference", ||
+        time(tcx.sess, "impl wf inference", ||
              impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-      time(time_passes, "coherence checking", ||
+      time(tcx.sess, "coherence checking", ||
           coherence::check_coherence(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
-        time(time_passes, "variance testing", ||
+        time(tcx.sess, "variance testing", ||
              variance::test::test_variance(tcx));
     })?;
 
-    time(time_passes, "wf checking", || check::check_wf_new(tcx))?;
+    time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
 
-    time(time_passes, "item-types checking", || check::check_item_types(tcx))?;
+    time(tcx.sess, "item-types checking", || check::check_item_types(tcx))?;
 
-    time(time_passes, "item-bodies checking", || check::check_item_bodies(tcx))?;
+    time(tcx.sess, "item-bodies checking", || check::check_item_bodies(tcx))?;
 
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);

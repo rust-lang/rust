@@ -12,7 +12,6 @@ use llvm::{self, ValueRef};
 use rustc::middle::const_val::{ConstVal, ConstEvalErr};
 use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
-use rustc::traits;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{Allocation, GlobalId, MemoryPointer, PrimVal, Value as MiriValue};
@@ -126,7 +125,7 @@ pub fn trans_static_initializer<'a, 'tcx>(
         instance,
         promoted: None
     };
-    let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+    let param_env = ty::ParamEnv::reveal_all();
     cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc_id = cx
@@ -152,7 +151,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         match constant.val {
             ConstVal::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
-                let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+                let param_env = ty::ParamEnv::reveal_all();
                 let instance = ty::Instance::resolve(tcx, param_env, def_id, substs).unwrap();
                 let cid = GlobalId {
                     instance,
@@ -172,7 +171,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     ) -> Result<MiriValue, ConstEvalErr<'tcx>> {
         match constant.literal {
             mir::Literal::Promoted { index } => {
-                let param_env = ty::ParamEnv::empty(traits::Reveal::All);
+                let param_env = ty::ParamEnv::reveal_all();
                 let cid = mir::interpret::GlobalId {
                     instance: self.instance,
                     promoted: Some(index),
@@ -201,7 +200,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 let values: Result<Vec<ValueRef>, _> = (0..fields).map(|field| {
                     let field = const_val_field(
                         bx.tcx(),
-                        ty::ParamEnv::empty(traits::Reveal::All),
+                        ty::ParamEnv::reveal_all(),
                         self.instance,
                         None,
                         mir::Field::new(field as usize),

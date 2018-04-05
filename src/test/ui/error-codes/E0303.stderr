@@ -15,5 +15,5 @@ LL |         ref op_string_ref @ Some(s) => {},
 
 error: aborting due to 2 previous errors
 
-You've got a few errors: E0009, E0303
-If you want more information on an error, try using "rustc --explain E0009"
+Some errors occurred: E0009, E0303.
+For more information about an error, try `rustc --explain E0009`.

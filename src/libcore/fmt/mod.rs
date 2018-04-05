@@ -333,7 +333,7 @@ impl<'a> ArgumentV1<'a> {
 
 // flags available in the v1 format of format_args
 #[derive(Copy, Clone)]
-enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
+enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, DebugLowerHex, DebugUpperHex }
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
@@ -401,10 +401,21 @@ impl<'a> Arguments<'a> {
 /// safely be done, so no constructors are given and the fields are private
 /// to prevent modification.
 ///
-/// The [`format_args!`] macro will safely create an instance of this structure
-/// and pass it to a function or closure, passed as the first argument. The
-/// macro validates the format string at compile-time so usage of the [`write`]
-/// and [`format`] functions can be safely performed.
+/// The [`format_args!`] macro will safely create an instance of this structure.
+/// The macro validates the format string at compile-time so usage of the
+/// [`write`] and [`format`] functions can be safely performed.
+///
+/// You can use the `Arguments<'a>` that [`format_args!`] returns in `Debug`
+/// and `Display` contexts as seen below. The example also shows that `Debug`
+/// and `Display` format to the same thing: the interpolated format string
+/// in `format_args!`.
+///
+/// ```rust
+/// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
+/// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
+/// assert_eq!("1 foo 2", display);
+/// assert_eq!(display, debug);
+/// ```
 ///
 /// [`format_args!`]: ../../std/macro.format_args.html
 /// [`format`]: ../../std/fmt/fn.format.html
@@ -684,18 +695,16 @@ pub trait Octal {
 ///
 /// The `Binary` trait should format its output as a number in binary.
 ///
-/// For primitive signed integers (`i8` to `i128`, and `isize`),
+/// For primitive signed integers ([`i8`] to [`i128`], and [`isize`]),
 /// negative values are formatted as the two’s complement representation.
 ///
 /// The alternate flag, `#`, adds a `0b` in front of the output.
 ///
 /// For more information on formatters, see [the module-level documentation][module].
 ///
-/// [module]: ../../std/fmt/index.html
-///
 /// # Examples
 ///
-/// Basic usage with `i32`:
+/// Basic usage with [`i32`]:
 ///
 /// ```
 /// let x = 42; // 42 is '101010' in binary
@@ -725,6 +734,12 @@ pub trait Octal {
 ///
 /// println!("l as binary is: {:b}", l);
 /// ```
+///
+/// [module]: ../../std/fmt/index.html
+/// [`i8`]: ../../std/primitive.i8.html
+/// [`i128`]: ../../std/primitive.i128.html
+/// [`isize`]: ../../std/primitive.isize.html
+/// [`i32`]: ../../std/primitive.i32.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Binary {
     /// Formats the value using the given formatter.
@@ -1375,31 +1390,169 @@ impl<'a> Formatter<'a> {
         }
     }
 
-    /// Optionally specified integer width that the output should be
+    /// Optionally specified integer width that the output should be.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if let Some(width) = formatter.width() {
+    ///             // If we received a width, we use it
+    ///             write!(formatter, "{:width$}", &format!("Foo({})", self.0), width = width)
+    ///         } else {
+    ///             // Otherwise we do nothing special
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:10}", Foo(23)), "Foo(23)   ");
+    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> { self.width }
 
-    /// Optionally specified precision for numeric types
+    /// Optionally specified precision for numeric types.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(f32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if let Some(precision) = formatter.precision() {
+    ///             // If we received a precision, we use it.
+    ///             write!(formatter, "Foo({1:.*})", precision, self.0)
+    ///         } else {
+    ///             // Otherwise we default to 2.
+    ///             write!(formatter, "Foo({:.2})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:.4}", Foo(23.2)), "Foo(23.2000)");
+    /// assert_eq!(&format!("{}", Foo(23.2)), "Foo(23.20)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> { self.precision }
 
     /// Determines if the `+` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if formatter.sign_plus() {
+    ///             write!(formatter,
+    ///                    "Foo({}{})",
+    ///                    if self.0 < 0 { '-' } else { '+' },
+    ///                    self.0)
+    ///         } else {
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:+}", Foo(23)), "Foo(+23)");
+    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
 
     /// Determines if the `-` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if formatter.sign_minus() {
+    ///             // You want a minus sign? Have one!
+    ///             write!(formatter, "-Foo({})", self.0)
+    ///         } else {
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:-}", Foo(23)), "-Foo(23)");
+    /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
 
     /// Determines if the `#` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         if formatter.alternate() {
+    ///             write!(formatter, "Foo({})", self.0)
+    ///         } else {
+    ///             write!(formatter, "{}", self.0)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:#}", Foo(23)), "Foo(23)");
+    /// assert_eq!(&format!("{}", Foo(23)), "23");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
 
     /// Determines if the `0` flag was specified.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32);
+    ///
+    /// impl fmt::Display for Foo {
+    ///     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    ///         assert!(formatter.sign_aware_zero_pad());
+    ///         assert_eq!(formatter.width(), Some(4));
+    ///         // We ignore the formatter's options.
+    ///         write!(formatter, "{}", self.0)
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(&format!("{:04}", Foo(23)), "23");
+    /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
+
+    // FIXME: Decide what public API we want for these two flags.
+    // https://github.com/rust-lang/rust/issues/48584
+    fn debug_lower_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0 }
+
+    fn debug_upper_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0 }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
@@ -1411,10 +1564,12 @@ impl<'a> Formatter<'a> {
     ///
     /// ```rust
     /// use std::fmt;
+    /// use std::net::Ipv4Addr;
     ///
     /// struct Foo {
     ///     bar: i32,
     ///     baz: String,
+    ///     addr: Ipv4Addr,
     /// }
     ///
     /// impl fmt::Debug for Foo {
@@ -1422,12 +1577,19 @@ impl<'a> Formatter<'a> {
     ///         fmt.debug_struct("Foo")
     ///             .field("bar", &self.bar)
     ///             .field("baz", &self.baz)
+    ///             .field("addr", &format_args!("{}", self.addr))
     ///             .finish()
     ///     }
     /// }
     ///
-    /// // prints "Foo { bar: 10, baz: "Hello World" }"
-    /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
+    /// assert_eq!(
+    ///     "Foo { bar: 10, baz: \"Hello World\", addr: 127.0.0.1 }",
+    ///     format!("{:?}", Foo {
+    ///         bar: 10,
+    ///         baz: "Hello World".to_string(),
+    ///         addr: Ipv4Addr::new(127, 0, 0, 1),
+    ///     })
+    /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
@@ -1441,20 +1603,24 @@ impl<'a> Formatter<'a> {
     ///
     /// ```rust
     /// use std::fmt;
+    /// use std::marker::PhantomData;
     ///
-    /// struct Foo(i32, String);
+    /// struct Foo<T>(i32, String, PhantomData<T>);
     ///
-    /// impl fmt::Debug for Foo {
+    /// impl<T> fmt::Debug for Foo<T> {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
     ///         fmt.debug_tuple("Foo")
     ///             .field(&self.0)
     ///             .field(&self.1)
+    ///             .field(&format_args!("_"))
     ///             .finish()
     ///     }
     /// }
     ///
-    /// // prints "Foo(10, "Hello World")"
-    /// println!("{:?}", Foo(10, "Hello World".to_string()));
+    /// assert_eq!(
+    ///     "Foo(10, \"Hello\", _)",
+    ///     format!("{:?}", Foo(10, "Hello".to_string(), PhantomData::<u8>))
+    /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
@@ -1503,6 +1669,41 @@ impl<'a> Formatter<'a> {
     ///
     /// // prints "{10, 11}"
     /// println!("{:?}", Foo(vec![10, 11]));
+    /// ```
+    ///
+    /// [`format_args!`]: ../../std/macro.format_args.html
+    ///
+    /// In this more complex example, we use [`format_args!`] and `.debug_set()`
+    /// to build a list of match arms:
+    ///
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// struct Arm<'a, L: 'a, R: 'a>(&'a (L, R));
+    /// struct Table<'a, K: 'a, V: 'a>(&'a [(K, V)], V);
+    ///
+    /// impl<'a, L, R> fmt::Debug for Arm<'a, L, R>
+    /// where
+    ///     L: 'a + fmt::Debug, R: 'a + fmt::Debug
+    /// {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         L::fmt(&(self.0).0, fmt)?;
+    ///         fmt.write_str(" => ")?;
+    ///         R::fmt(&(self.0).1, fmt)
+    ///     }
+    /// }
+    ///
+    /// impl<'a, K, V> fmt::Debug for Table<'a, K, V>
+    /// where
+    ///     K: 'a + fmt::Debug, V: 'a + fmt::Debug
+    /// {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         fmt.debug_set()
+    ///         .entries(self.0.iter().map(Arm))
+    ///         .entry(&Arm(&(format_args!("_"), &self.1)))
+    ///         .finish()
+    ///     }
+    /// }
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
@@ -1575,14 +1776,14 @@ macro_rules! fmt_refs {
 
 fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.26.0")]
 impl Debug for ! {
     fn fmt(&self, _: &mut Formatter) -> Result {
         *self
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.26.0")]
 impl Display for ! {
     fn fmt(&self, _: &mut Formatter) -> Result {
         *self

@@ -584,6 +584,13 @@ impl<'a, 'hir> Iterator for NodesMatchingUII<'a, 'hir> {
             &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            &NodesMatchingDirect(ref iter) => iter.size_hint(),
+            &NodesMatchingSuffix(ref iter) => iter.size_hint(),
+        }
+    }
 }
 
 impl UserIdentifiedItem {

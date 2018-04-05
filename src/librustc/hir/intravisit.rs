@@ -420,7 +420,10 @@ pub fn walk_lifetime<'v, V: Visitor<'v>>(visitor: &mut V, lifetime: &'v Lifetime
         LifetimeName::Name(name) => {
             visitor.visit_name(lifetime.span, name);
         }
-        LifetimeName::Static | LifetimeName::Implicit | LifetimeName::Underscore => {}
+        LifetimeName::Fresh(_) |
+        LifetimeName::Static |
+        LifetimeName::Implicit |
+        LifetimeName::Underscore => {}
     }
 }
 
@@ -444,10 +447,10 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
     visitor.visit_vis(&item.vis);
     visitor.visit_name(item.span, item.name);
     match item.node {
-        ItemExternCrate(opt_name) => {
+        ItemExternCrate(orig_name) => {
             visitor.visit_id(item.id);
-            if let Some(name) = opt_name {
-                visitor.visit_name(item.span, name);
+            if let Some(orig_name) = orig_name {
+                visitor.visit_name(item.span, orig_name);
             }
         }
         ItemUse(ref path, _) => {

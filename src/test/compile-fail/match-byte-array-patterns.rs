@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(advanced_slice_patterns, slice_patterns)]
+#![feature(slice_patterns)]
 #![deny(unreachable_patterns)]
 
 fn main() {

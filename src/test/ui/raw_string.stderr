@@ -6,3 +6,5 @@ LL |     let x = r##"lol"#;
    |
    = note: this raw string should be terminated with `"##`
 
+error: aborting due to previous error
+

@@ -14,10 +14,11 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
+use infer::canonical::{Canonical, QueryResult};
 use lint;
 use middle::borrowck::BorrowCheckResult;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
-                     ExternBodyNestedBodies};
+                     ExternBodyNestedBodies, ForeignModule};
 use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
 use middle::privacy::AccessLevels;
 use middle::reachable::ReachableSet;
@@ -33,8 +34,12 @@ use mir::interpret::{GlobalId};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::Vtable;
+use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal, NoSolution};
+use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
+use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
-use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use traits::Clause;
+use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
@@ -82,7 +87,7 @@ pub use self::on_disk_cache::OnDiskCache;
 // the driver creates (using several `rustc_*` crates).
 //
 // The result of query must implement Clone. They must also implement ty::maps::values::Value
-// which produces an appropiate error value if the query resulted in a query cycle.
+// which produces an appropriate error value if the query resulted in a query cycle.
 // Queries marked with `fatal_cycle` do not need that implementation
 // as they will raise an fatal error on query cycles instead.
 define_maps! { <'tcx>
@@ -111,7 +116,9 @@ define_maps! { <'tcx>
     [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
-    [] fn adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+    [] fn adt_dtorck_constraint: DtorckConstraint(
+        DefId
+    ) -> Result<DtorckConstraint<'tcx>, NoSolution>,
 
     /// True if this is a const fn
     [] fn is_const_fn: IsConstFn(DefId) -> bool,
@@ -292,6 +299,10 @@ define_maps! { <'tcx>
 
     [] fn impl_defaultness: ImplDefaultness(DefId) -> hir::Defaultness,
 
+    [] fn check_item_well_formed: CheckItemWellFormed(DefId) -> (),
+    [] fn check_trait_item_well_formed: CheckTraitItemWellFormed(DefId) -> (),
+    [] fn check_impl_item_well_formed: CheckImplItemWellFormed(DefId) -> (),
+
     // The DefIds of all non-generic functions and statics in the given crate
     // that can be reached from outside the crate.
     //
@@ -309,17 +320,23 @@ define_maps! { <'tcx>
 
 
     [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
+
+    [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
+
     [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
     [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
+    [] fn extra_filename: ExtraFileName(CrateNum) -> String,
 
     [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
         -> Lrc<Vec<DefId>>,
     [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
         -> Lrc<Vec<DefId>>,
 
+    [] fn dllimport_foreign_items: DllimportForeignItems(CrateNum)
+        -> Lrc<FxHashSet<DefId>>,
     [] fn is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
     [] fn is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
     [] fn native_library_kind: NativeLibraryKind(DefId)
@@ -371,14 +388,31 @@ define_maps! { <'tcx>
     [] fn output_filenames: output_filenames_node(CrateNum)
         -> Arc<OutputFilenames>,
 
-    [] fn has_copy_closures: HasCopyClosures(CrateNum) -> bool,
-    [] fn has_clone_closures: HasCloneClosures(CrateNum) -> bool,
-
     // Erases regions from `ty` to yield a new type.
     // Normally you would just use `tcx.erase_regions(&value)`,
     // however, which uses this query as a kind of cache.
     [] fn erase_regions_ty: erase_regions_ty(Ty<'tcx>) -> Ty<'tcx>,
-    [] fn fully_normalize_monormophic_ty: normalize_ty_node(Ty<'tcx>) -> Ty<'tcx>,
+
+    /// Do not call this query directly: invoke `normalize` instead.
+    [] fn normalize_projection_ty: NormalizeProjectionTy(
+        CanonicalProjectionGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+        NoSolution,
+    >,
+
+    /// Do not call this query directly: invoke `normalize_erasing_regions` instead.
+    [] fn normalize_ty_after_erasing_regions: NormalizeTyAfterErasingRegions(
+        ParamEnvAnd<'tcx, Ty<'tcx>>
+    ) -> Ty<'tcx>,
+
+    /// Do not call this query directly: invoke `infcx.at().dropck_outlives()` instead.
+    [] fn dropck_outlives: DropckOutlives(
+        CanonicalTyGoal<'tcx>
+    ) -> Result<
+        Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
+        NoSolution,
+    >,
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
@@ -391,6 +425,12 @@ define_maps! { <'tcx>
         -> usize,
 
     [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
+
+    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<Clause<'tcx>>>,
+
+    [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
+    [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
+        -> Lrc<FxHashMap<DefId, String>>,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -536,9 +576,6 @@ fn output_filenames_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn vtable_methods_node<'tcx>(trait_ref: ty::PolyTraitRef<'tcx>) -> DepConstructor<'tcx> {
     DepConstructor::VtableMethods{ trait_ref }
-}
-fn normalize_ty_node<'tcx>(_: Ty<'tcx>) -> DepConstructor<'tcx> {
-    DepConstructor::NormalizeTy
 }
 
 fn substitute_normalize_and_test_predicates_node<'tcx>(key: (DefId, &'tcx Substs<'tcx>))

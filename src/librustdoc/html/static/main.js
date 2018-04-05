@@ -49,6 +49,13 @@
 
     var themesWidth = null;
 
+    if (!String.prototype.startsWith) {
+        String.prototype.startsWith = function(searchString, position) {
+            position = position || 0;
+            return this.indexOf(searchString, position) === position;
+        };
+    }
+
     function hasClass(elem, className) {
         if (elem && className && elem.className) {
             var elemClass = elem.className;
@@ -239,52 +246,59 @@
         }
     }
 
-    function handleShortcut(ev) {
-        if (document.activeElement.tagName === "INPUT" &&
-                hasClass(document.getElementById('main'), "hidden")) {
-            return;
+    function handleEscape(ev, help) {
+        hideModal();
+        var search = document.getElementById("search");
+        if (!hasClass(help, "hidden")) {
+            displayHelp(false, ev);
+        } else if (!hasClass(search, "hidden")) {
+            ev.preventDefault();
+            addClass(search, "hidden");
+            removeClass(document.getElementById("main"), "hidden");
         }
+        defocusSearchBar();
+    }
 
+    function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
         if (ev.ctrlKey || ev.altKey || ev.metaKey) {
             return;
         }
 
         var help = document.getElementById("help");
-        switch (getVirtualKey(ev)) {
-        case "Escape":
-            hideModal();
-            var search = document.getElementById("search");
-            if (!hasClass(help, "hidden")) {
+        if (document.activeElement.tagName === "INPUT") {
+            switch (getVirtualKey(ev)) {
+            case "Escape":
+                handleEscape(ev, help);
+                break;
+            }
+        } else {
+            switch (getVirtualKey(ev)) {
+            case "Escape":
+                handleEscape(ev, help);
+                break;
+
+            case "s":
+            case "S":
                 displayHelp(false, ev);
-            } else if (!hasClass(search, "hidden")) {
-                ev.preventDefault();
-                addClass(search, "hidden");
-                removeClass(document.getElementById("main"), "hidden");
-            }
-            defocusSearchBar();
-            break;
-
-        case "s":
-        case "S":
-            displayHelp(false, ev);
-            hideModal();
-            ev.preventDefault();
-            focusSearchBar();
-            break;
-
-        case "+":
-        case "-":
-            ev.preventDefault();
-            toggleAllDocs();
-            break;
-
-        case "?":
-            if (ev.shiftKey) {
                 hideModal();
-                displayHelp(true, ev);
+                ev.preventDefault();
+                focusSearchBar();
+                break;
+
+            case "+":
+            case "-":
+                ev.preventDefault();
+                toggleAllDocs();
+                break;
+
+            case "?":
+                if (ev.shiftKey) {
+                    hideModal();
+                    displayHelp(true, ev);
+                }
+                break;
             }
-            break;
         }
     }
 
@@ -1157,6 +1171,10 @@
             return h1.innerHTML;
         }
 
+        function pathSplitter(path) {
+            return '<span>' + path.replace(/::/g, '::</span><span>');
+        }
+
         function addTab(array, query, display) {
             var extraStyle = '';
             if (display === false) {
@@ -1211,7 +1229,7 @@
 
                     output += '<tr class="' + type + ' result"><td>' +
                               '<a href="' + href + '">' +
-                              displayPath + '<span class="' + type + '">' +
+                              pathSplitter(displayPath) + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
                               '<a href="' + href + '">' +
                               '<span class="desc">' + escape(item.desc) +
@@ -1628,6 +1646,7 @@
     function toggleAllDocs() {
         var toggle = document.getElementById("toggle-all-docs");
         if (hasClass(toggle, "will-expand")) {
+            updateLocalStorage("rustdoc-collapse", "false");
             removeClass(toggle, "will-expand");
             onEveryMatchingChild(toggle, "inner", function(e) {
                 e.innerHTML = labelForToggleButton(false);
@@ -1637,6 +1656,7 @@
                 collapseDocs(e, "show");
             });
         } else {
+            updateLocalStorage("rustdoc-collapse", "true");
             addClass(toggle, "will-expand");
             onEveryMatchingChild(toggle, "inner", function(e) {
                 e.innerHTML = labelForToggleButton(true);
@@ -1697,19 +1717,20 @@
             // we are collapsing the impl block
             function implHider(addOrRemove) {
                 return function(n) {
-                    if (hasClass(n, "method")) {
-                        if (addOrRemove) {
-                            addClass(n, "hidden-by-impl-hider");
-                        } else {
-                            removeClass(n, "hidden-by-impl-hider");
+                    var is_method = hasClass(n, "method");
+                    if (is_method || hasClass(n, "type")) {
+                        if (is_method === true) {
+                            if (addOrRemove) {
+                                addClass(n, "hidden-by-impl-hider");
+                            } else {
+                                removeClass(n, "hidden-by-impl-hider");
+                            }
                         }
                         var ns = n.nextElementSibling;
                         while (true) {
                             if (ns && (
                                     hasClass(ns, "docblock") ||
-                                    hasClass(ns, "stability") ||
-                                    false
-                                    )) {
+                                    hasClass(ns, "stability"))) {
                                 if (addOrRemove) {
                                     addClass(ns, "hidden-by-impl-hider");
                                 } else {
@@ -1725,12 +1746,13 @@
             }
 
             var relatedDoc = toggle.parentNode;
+            var docblock = relatedDoc.nextElementSibling;
 
             while (!hasClass(relatedDoc, "impl-items")) {
                 relatedDoc = relatedDoc.nextElementSibling;
             }
 
-            if (!relatedDoc) {
+            if (!relatedDoc && !hasClass(docblock, "docblock")) {
                 return;
             }
 
@@ -1738,7 +1760,8 @@
 
             var action = mode;
             if (action === "toggle") {
-                if (hasClass(relatedDoc, "fns-now-collapsed")) {
+                if (hasClass(relatedDoc, "fns-now-collapsed") ||
+                    hasClass(docblock,  "hidden-by-impl-hider")) {
                     action = "show";
                 } else {
                     action = "hide";
@@ -1747,10 +1770,12 @@
 
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
+                removeClass(docblock, "hidden-by-usual-hider");
                 onEach(toggle.childNodes, adjustToggle(false));
                 onEach(relatedDoc.childNodes, implHider(false));
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
+                addClass(docblock, "hidden-by-usual-hider");
                 onEach(toggle.childNodes, adjustToggle(true));
                 onEach(relatedDoc.childNodes, implHider(true));
             }
@@ -1800,6 +1825,9 @@
 
     var func = function(e) {
         var next = e.nextElementSibling;
+        if (hasClass(e, 'impl') && next && hasClass(next, 'docblock')) {
+            next = next.nextElementSibling;
+        }
         if (!next) {
             return;
         }
@@ -1817,11 +1845,16 @@
         onEach(e.getElementsByClassName('associatedconstant'), func);
     });
 
-    function createToggle() {
+    function createToggle(otherMessage) {
         var span = document.createElement('span');
         span.className = 'toggle-label';
         span.style.display = 'none';
-        span.innerHTML = '&nbsp;Expand&nbsp;description';
+        if (!otherMessage) {
+            span.innerHTML = '&nbsp;Expand&nbsp;description';
+        } else {
+            span.innerHTML = otherMessage;
+            span.style.fontSize = '20px';
+        }
 
         var mainToggle = toggle.cloneNode(true);
         mainToggle.appendChild(span);
@@ -1834,7 +1867,14 @@
 
     onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
         if (e.parentNode.id === "main") {
-            e.parentNode.insertBefore(createToggle(), e);
+            var otherMessage;
+            if (hasClass(e, "type-decl")) {
+                otherMessage = '&nbsp;Show&nbsp;type&nbsp;declaration';
+            }
+            e.parentNode.insertBefore(createToggle(otherMessage), e);
+            if (otherMessage) {
+                collapseDocs(e.previousSibling.childNodes[0], "toggle");
+            }
         }
     });
 
@@ -1988,6 +2028,10 @@
     window.onresize = function() {
         hideSidebar();
     };
+
+    if (getCurrentValue("rustdoc-collapse") === "true") {
+        toggleAllDocs();
+    }
 }());
 
 // Sets the focus on the search bar at the top of the page

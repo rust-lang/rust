@@ -18,7 +18,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir, BasicBlock, BasicBlockData, Location, Statement, Terminator};
 use rustc::session::Session;
 
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 use std::fmt;
 use std::io;
 use std::mem;
@@ -31,7 +31,7 @@ pub use self::impls::{DefinitelyInitializedPlaces, MovingOutStatements};
 pub use self::impls::EverInitializedPlaces;
 pub use self::impls::borrows::{Borrows, BorrowData};
 pub use self::impls::HaveBeenBorrowedLocals;
-pub(crate) use self::impls::borrows::{ActiveBorrows, Reservations, ReserveOrActivateIndex};
+pub(crate) use self::impls::borrows::{ReserveOrActivateIndex};
 pub use self::at_location::{FlowAtLocation, FlowsAtLocation};
 pub(crate) use self::drop_flag_effects::*;
 
@@ -444,8 +444,7 @@ pub struct DataflowState<O: BitDenotation>
 impl<O: BitDenotation> DataflowState<O> {
     pub fn each_bit<F>(&self, words: &IdxSet<O::Idx>, f: F) where F: FnMut(O::Idx)
     {
-        let bits_per_block = self.operator.bits_per_block();
-        words.each_bit(bits_per_block, f)
+        words.iter().for_each(f)
     }
 
     pub(crate) fn interpret_set<'c, P>(&self,
@@ -583,9 +582,6 @@ impl<E:Idx> AllSets<E> {
     }
     pub fn on_entry_set_for(&self, block_idx: usize) -> &IdxSet<E> {
         self.lookup_set_for(&self.on_entry_sets, block_idx)
-    }
-    pub(crate) fn entry_set_state(&self) -> &Bits<E> {
-        &self.on_entry_sets
     }
 }
 
@@ -739,27 +735,17 @@ impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                dead_unwinds: &'a IdxSet<mir::BasicBlock>,
                denotation: D) -> Self where D: InitialFlow {
         let bits_per_block = denotation.bits_per_block();
+        let usize_bits = mem::size_of::<usize>() * 8;
+        let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;
         let num_overall = Self::num_bits_overall(mir, bits_per_block);
+
+        let zeroes = Bits::new(IdxSetBuf::new_empty(num_overall));
         let on_entry = Bits::new(if D::bottom_value() {
             IdxSetBuf::new_filled(num_overall)
         } else {
             IdxSetBuf::new_empty(num_overall)
         });
 
-        Self::new_with_entry_sets(mir, dead_unwinds, Cow::Owned(on_entry), denotation)
-    }
-
-    pub(crate) fn new_with_entry_sets(mir: &'a Mir<'tcx>,
-                                      dead_unwinds: &'a IdxSet<mir::BasicBlock>,
-                                      on_entry: Cow<Bits<D::Idx>>,
-                                      denotation: D)
-                                      -> Self {
-        let bits_per_block = denotation.bits_per_block();
-        let usize_bits = mem::size_of::<usize>() * 8;
-        let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;
-        let num_overall = Self::num_bits_overall(mir, bits_per_block);
-        assert_eq!(num_overall, on_entry.bits.words().len() * usize_bits);
-        let zeroes = Bits::new(IdxSetBuf::new_empty(num_overall));
         DataflowAnalysis {
             mir,
             dead_unwinds,
@@ -769,8 +755,22 @@ impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                     words_per_block,
                     gen_sets: zeroes.clone(),
                     kill_sets: zeroes,
-                    on_entry_sets: on_entry.into_owned(),
+                    on_entry_sets: on_entry,
                 },
+                operator: denotation,
+            }
+        }
+    }
+
+    pub fn new_from_sets(mir: &'a Mir<'tcx>,
+                         dead_unwinds: &'a IdxSet<mir::BasicBlock>,
+                         sets: AllSets<D::Idx>,
+                         denotation: D) -> Self {
+        DataflowAnalysis {
+            mir,
+            dead_unwinds,
+            flow_state: DataflowState {
+                sets: sets,
                 operator: denotation,
             }
         }

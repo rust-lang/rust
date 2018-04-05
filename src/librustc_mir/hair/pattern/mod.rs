@@ -449,7 +449,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Tuple(ref subpatterns, ddpos) => {
                 let ty = self.tables.node_id_to_type(pat.hir_id);
                 match ty.sty {
-                    ty::TyTuple(ref tys, _) => {
+                    ty::TyTuple(ref tys) => {
                         let subpatterns =
                             subpatterns.iter()
                                        .enumerate_and_adjust(tys.len(), ddpos)
@@ -851,13 +851,38 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
                 match cv.val {
                     ConstVal::Value(val) => {
-                        let discr = const_discr(
+                        let discr_val = const_discr(
                             self.tcx, self.param_env, instance, val, cv.ty
-                        ).unwrap();
-                        let variant_index = adt_def
-                            .discriminants(self.tcx)
-                            .position(|var| var.val == discr)
-                            .unwrap();
+                        ).expect("const_discr failed");
+                        let layout = self
+                            .tcx
+                            .layout_of(self.param_env.and(cv.ty))
+                            .expect("layout of enum not available");
+                        let variant_index = match layout.variants {
+                            ty::layout::Variants::Single { index } => index,
+                            ty::layout::Variants::Tagged { ref discr, .. } => {
+                                // raw discriminants for enums are isize or bigger during
+                                // their computation, but later shrunk to the smallest possible
+                                // representation
+                                let size = discr.value.size(self.tcx).bits();
+                                let amt = 128 - size;
+                                adt_def
+                                    .discriminants(self.tcx)
+                                    .position(|var| ((var.val << amt) >> amt) == discr_val)
+                                    .unwrap_or_else(|| {
+                                        bug!("discriminant {} not found in {:#?}",
+                                            discr_val,
+                                            adt_def
+                                                .discriminants(self.tcx)
+                                                .collect::<Vec<_>>(),
+                                            );
+                                    })
+                            }
+                            ty::layout::Variants::NicheFilling { .. } => {
+                                assert_eq!(discr_val as usize as u128, discr_val);
+                                discr_val as usize
+                            },
+                        };
                         let subpatterns = adt_subpatterns(
                             adt_def.variants[variant_index].fields.len(),
                             Some(variant_index),
@@ -879,7 +904,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     subpatterns: adt_subpatterns(struct_var.fields.len(), None),
                 }
             }
-            ty::TyTuple(fields, _) => {
+            ty::TyTuple(fields) => {
                 PatternKind::Leaf {
                     subpatterns: adt_subpatterns(fields.len(), None),
                 }

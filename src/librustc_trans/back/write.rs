@@ -31,7 +31,8 @@ use {CrateTranslation, ModuleSource, ModuleTranslation, CompiledModule, ModuleKi
 use CrateInfo;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
-use rustc::util::common::{time, time_depth, set_time_depth, path2cstr, print_time_passes_entry};
+use rustc::util::common::{time_ext, time_depth, set_time_depth, print_time_passes_entry};
+use rustc::util::common::path2cstr;
 use rustc::util::fs::{link_or_copy};
 use errors::{self, Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
 use errors::emitter::{Emitter};
@@ -41,6 +42,7 @@ use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use type_::Type;
 use context::{is_pie_binary, get_reloc_model};
+use common::{C_bytes_in_context, val_ty};
 use jobserver::{Client, Acquired};
 use rustc_demangle;
 
@@ -238,6 +240,9 @@ pub struct ModuleConfig {
     /// Some(level) to optimize binary size, or None to not affect program size.
     opt_size: Option<llvm::CodeGenOptSize>,
 
+    pgo_gen: Option<String>,
+    pgo_use: String,
+
     // Flags indicating which outputs to produce.
     emit_no_opt_bc: bool,
     emit_bc: bool,
@@ -261,6 +266,8 @@ pub struct ModuleConfig {
     // emscripten's ecc compiler, when used as the linker.
     obj_is_bitcode: bool,
     no_integrated_as: bool,
+    embed_bitcode: bool,
+    embed_bitcode_marker: bool,
 }
 
 impl ModuleConfig {
@@ -270,6 +277,9 @@ impl ModuleConfig {
             opt_level: None,
             opt_size: None,
 
+            pgo_gen: None,
+            pgo_use: String::new(),
+
             emit_no_opt_bc: false,
             emit_bc: false,
             emit_bc_compressed: false,
@@ -278,6 +288,8 @@ impl ModuleConfig {
             emit_asm: false,
             emit_obj: false,
             obj_is_bitcode: false,
+            embed_bitcode: false,
+            embed_bitcode_marker: false,
             no_integrated_as: false,
 
             no_verify: false,
@@ -298,6 +310,17 @@ impl ModuleConfig {
         self.time_passes = sess.time_passes();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
+        let embed_bitcode = sess.target.target.options.embed_bitcode ||
+            sess.opts.debugging_opts.embed_bitcode;
+        if embed_bitcode {
+            match sess.opts.optimize {
+                config::OptLevel::No |
+                config::OptLevel::Less => {
+                    self.embed_bitcode_marker = embed_bitcode;
+                }
+                _ => self.embed_bitcode = embed_bitcode,
+            }
+        }
 
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
@@ -475,8 +498,13 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
                                                 opt.message));
             }
         }
-
-        _ => (),
+        llvm::diagnostic::PGO(diagnostic_ref) => {
+            let msg = llvm::build_string(|s| {
+                llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
+            }).expect("non-UTF8 PGO diagnostic");
+            diag_handler.warn(&msg);
+        }
+        llvm::diagnostic::UnknownDiagnostic(..) => {},
     }
 }
 
@@ -563,11 +591,19 @@ unsafe fn optimize(cgcx: &CodegenContext,
         diag_handler.abort_if_errors();
 
         // Finally, run the actual optimization passes
-        time(config.time_passes, &format!("llvm function passes [{}]", module_name.unwrap()), ||
-             llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+        time_ext(config.time_passes,
+                 None,
+                 &format!("llvm function passes [{}]", module_name.unwrap()),
+                 || {
+            llvm::LLVMRustRunFunctionPassManager(fpm, llmod)
+        });
         timeline.record("fpm");
-        time(config.time_passes, &format!("llvm module passes [{}]", module_name.unwrap()), ||
-             llvm::LLVMRunPassManager(mpm, llmod));
+        time_ext(config.time_passes,
+                 None,
+                 &format!("llvm module passes [{}]", module_name.unwrap()),
+                 || {
+            llvm::LLVMRunPassManager(mpm, llmod)
+        });
 
         // Deallocate managers that we're now done with
         llvm::LLVMDisposePassManager(fpm);
@@ -653,7 +689,7 @@ unsafe fn codegen(cgcx: &CodegenContext,
     let obj_out = cgcx.output_filenames.temp_path(OutputType::Object, module_name);
 
 
-    if write_bc || config.emit_bc_compressed {
+    if write_bc || config.emit_bc_compressed || config.embed_bitcode {
         let thin;
         let old;
         let data = if llvm::LLVMRustThinLTOAvailable() {
@@ -672,6 +708,11 @@ unsafe fn codegen(cgcx: &CodegenContext,
             timeline.record("write-bc");
         }
 
+        if config.embed_bitcode {
+            embed_bitcode(cgcx, llcx, llmod, Some(data));
+            timeline.record("embed-bc");
+        }
+
         if config.emit_bc_compressed {
             let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
             let data = bytecode::encode(&mtrans.llmod_id, data);
@@ -680,9 +721,11 @@ unsafe fn codegen(cgcx: &CodegenContext,
             }
             timeline.record("compress-bc");
         }
+    } else if config.embed_bitcode_marker {
+        embed_bitcode(cgcx, llcx, llmod, None);
     }
 
-    time(config.time_passes, &format!("codegen passes [{}]", module_name.unwrap()),
+    time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
          || -> Result<(), FatalError> {
         if config.emit_ir {
             let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
@@ -787,6 +830,59 @@ unsafe fn codegen(cgcx: &CodegenContext,
                                    &cgcx.output_filenames))
 }
 
+/// Embed the bitcode of an LLVM module in the LLVM module itself.
+///
+/// This is done primarily for iOS where it appears to be standard to compile C
+/// code at least with `-fembed-bitcode` which creates two sections in the
+/// executable:
+///
+/// * __LLVM,__bitcode
+/// * __LLVM,__cmdline
+///
+/// It appears *both* of these sections are necessary to get the linker to
+/// recognize what's going on. For us though we just always throw in an empty
+/// cmdline section.
+///
+/// Furthermore debug/O1 builds don't actually embed bitcode but rather just
+/// embed an empty section.
+///
+/// Basically all of this is us attempting to follow in the footsteps of clang
+/// on iOS. See #35968 for lots more info.
+unsafe fn embed_bitcode(cgcx: &CodegenContext,
+                        llcx: ContextRef,
+                        llmod: ModuleRef,
+                        bitcode: Option<&[u8]>) {
+    let llconst = C_bytes_in_context(llcx, bitcode.unwrap_or(&[]));
+    let llglobal = llvm::LLVMAddGlobal(
+        llmod,
+        val_ty(llconst).to_ref(),
+        "rustc.embedded.module\0".as_ptr() as *const _,
+    );
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    let section = if cgcx.opts.target_triple.triple().contains("-ios") {
+        "__LLVM,__bitcode\0"
+    } else {
+        ".llvmbc\0"
+    };
+    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+
+    let llconst = C_bytes_in_context(llcx, &[]);
+    let llglobal = llvm::LLVMAddGlobal(
+        llmod,
+        val_ty(llconst).to_ref(),
+        "rustc.embedded.cmdline\0".as_ptr() as *const _,
+    );
+    llvm::LLVMSetInitializer(llglobal, llconst);
+    let section = if cgcx.opts.target_triple.triple().contains("-ios") {
+        "__LLVM,__cmdline\0"
+    } else {
+        ".llvmcmd\0"
+    };
+    llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
+    llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+}
+
 pub(crate) struct CompiledModules {
     pub modules: Vec<CompiledModule>,
     pub metadata_module: CompiledModule,
@@ -846,6 +942,9 @@ pub fn start_async_translation(tcx: TyCtxt,
     if sess.opts.debugging_opts.profile {
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
+
+    modules_config.pgo_gen = sess.opts.debugging_opts.pgo_gen.clone();
+    modules_config.pgo_use = sess.opts.debugging_opts.pgo_use.clone();
 
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
@@ -1961,6 +2060,8 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
                             config: &ModuleConfig,
                             opt_level: llvm::CodeGenOptLevel,
                             f: &mut FnMut(llvm::PassManagerBuilderRef)) {
+    use std::ptr;
+
     // Create the PassManagerBuilder for LLVM. We configure it with
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
@@ -1968,11 +2069,27 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
-    llvm::LLVMRustConfigurePassManagerBuilder(builder,
-                                              opt_level,
-                                              config.merge_functions,
-                                              config.vectorize_slp,
-                                              config.vectorize_loop);
+    let pgo_gen_path = config.pgo_gen.as_ref().map(|s| {
+        let s = if s.is_empty() { "default_%m.profraw" } else { s };
+        CString::new(s.as_bytes()).unwrap()
+    });
+
+    let pgo_use_path = if config.pgo_use.is_empty() {
+        None
+    } else {
+        Some(CString::new(config.pgo_use.as_bytes()).unwrap())
+    };
+
+    llvm::LLVMRustConfigurePassManagerBuilder(
+        builder,
+        opt_level,
+        config.merge_functions,
+        config.vectorize_slp,
+        config.vectorize_loop,
+        pgo_gen_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+        pgo_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
+    );
+
     llvm::LLVMPassManagerBuilderSetSizeLevel(builder, opt_size as u32);
 
     if opt_size != llvm::CodeGenOptSizeNone {

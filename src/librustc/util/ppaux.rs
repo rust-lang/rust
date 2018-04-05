@@ -340,7 +340,7 @@ impl PrintContext {
 
         if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
             let projection_ty = projections[0].ty;
-            if let TyTuple(ref args, _) = substs.type_at(1).sty {
+            if let TyTuple(ref args) = substs.type_at(1).sty {
                 return self.fn_sig(f, args, false, projection_ty);
             }
         }
@@ -721,6 +721,9 @@ define_print! {
                 ty::ReEarlyBound(ref data) => {
                     write!(f, "{}", data.name)
                 }
+                ty::ReCanonical(_) => {
+                    write!(f, "'_")
+                }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
                 ty::ReSkolemized(_, br) => {
@@ -785,8 +788,12 @@ define_print! {
                     write!(f, "{:?}", vid)
                 }
 
+                ty::ReCanonical(c) => {
+                    write!(f, "'?{}", c.index())
+                }
+
                 ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({:?}, {:?})", id, bound_region)
+                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),
@@ -888,6 +895,7 @@ define_print! {
                     ty::TyVar(_) => write!(f, "_"),
                     ty::IntVar(_) => write!(f, "{}", "{integer}"),
                     ty::FloatVar(_) => write!(f, "{}", "{float}"),
+                    ty::CanonicalTy(_) => write!(f, "_"),
                     ty::FreshTy(v) => write!(f, "FreshTy({})", v),
                     ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
                     ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
@@ -899,6 +907,7 @@ define_print! {
                 ty::TyVar(ref v) => write!(f, "{:?}", v),
                 ty::IntVar(ref v) => write!(f, "{:?}", v),
                 ty::FloatVar(ref v) => write!(f, "{:?}", v),
+                ty::CanonicalTy(v) => write!(f, "?{:?}", v.index()),
                 ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
                 ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
                 ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
@@ -1004,7 +1013,7 @@ define_print! {
                     tm.print(f, cx)
                 }
                 TyNever => write!(f, "!"),
-                TyTuple(ref tys, _) => {
+                TyTuple(ref tys) => {
                     write!(f, "(")?;
                     let mut tys = tys.iter();
                     if let Some(&ty) = tys.next() {
@@ -1168,8 +1177,8 @@ define_print! {
                         ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
                             write!(f, "{}", sz)?;
                         }
-                        ConstVal::Unevaluated(_def_id, substs) => {
-                            write!(f, "<unevaluated{:?}>", &substs[..])?;
+                        ConstVal::Unevaluated(_def_id, _substs) => {
+                            write!(f, "_")?;
                         }
                         _ => {
                             write!(f, "{:?}", sz)?;

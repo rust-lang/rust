@@ -1,0 +1,20 @@
+error: must be an array of bytes like `[u8; N]`
+  --> $DIR/not-slice.rs:14:1
+   |
+LL | const A: u8 = 0; //~ ERROR: must be an array of bytes
+   | ^^^^^^^^^^^^^^^^
+
+error: must be an array of bytes like `[u8; N]`
+  --> $DIR/not-slice.rs:17:1
+   |
+LL | const B: &[u8] = &[0]; //~ ERROR: must be an array of bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: must be an array of bytes like `[u8; N]`
+  --> $DIR/not-slice.rs:20:1
+   |
+LL | const C: &[u8; 1] = &[0]; //~ ERROR: must be an array of bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

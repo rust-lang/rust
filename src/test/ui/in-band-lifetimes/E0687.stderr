@@ -24,4 +24,4 @@ LL |     fn bar(&self, x: fn(&'a u32)) {} //~ ERROR must be explicitly
 
 error: aborting due to 4 previous errors
 
-If you want more information on this error, try using "rustc --explain E0687"
+For more information about this error, try `rustc --explain E0687`.

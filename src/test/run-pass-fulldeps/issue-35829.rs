@@ -20,13 +20,16 @@ use syntax::ext::expand::ExpansionConfig;
 use syntax::parse::ParseSess;
 use syntax::codemap::{FilePathMapping, dummy_spanned};
 use syntax::print::pprust::expr_to_string;
-use syntax::ast::{Expr, ExprKind, LitKind, StrStyle, RangeLimits};
-use syntax::symbol::Symbol;
+use syntax::ast::{ExprKind, LitKind, RangeLimits};
 use syntax::ptr::P;
 
 use rustc_data_structures::sync::Lrc;
 
 fn main() {
+    syntax::with_globals(|| run());
+}
+
+fn run() {
     let parse_sess = ParseSess::new(FilePathMapping::empty());
     let exp_cfg = ExpansionConfig::default("issue_35829".to_owned());
     let mut resolver = DummyResolver;

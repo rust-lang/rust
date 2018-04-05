@@ -34,7 +34,6 @@ use lint::levels::{LintLevelSets, LintLevelsBuilder};
 use middle::privacy::AccessLevels;
 use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use session::{config, early_error, Session};
-use traits::Reveal;
 use ty::{self, TyCtxt, Ty};
 use ty::layout::{LayoutError, LayoutOf, TyLayout};
 use util::nodemap::FxHashMap;
@@ -42,7 +41,7 @@ use util::nodemap::FxHashMap;
 use std::default::Default as StdDefault;
 use std::cell::{Ref, RefCell};
 use syntax::ast;
-use syntax::epoch;
+use syntax::edition;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 use hir;
@@ -104,9 +103,9 @@ pub struct FutureIncompatibleInfo {
     pub id: LintId,
     /// e.g., a URL for an issue/PR/RFC or error code
     pub reference: &'static str,
-    /// If this is an epoch fixing lint, the epoch in which
+    /// If this is an edition fixing lint, the edition in which
     /// this lint becomes obsolete
-    pub epoch: Option<epoch::Epoch>,
+    pub edition: Option<edition::Edition>,
 }
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
@@ -202,11 +201,11 @@ impl LintStore {
                                         sess: Option<&Session>,
                                         lints: Vec<FutureIncompatibleInfo>) {
 
-        for epoch in epoch::ALL_EPOCHS {
-            let lints = lints.iter().filter(|f| f.epoch == Some(*epoch)).map(|f| f.id)
+        for edition in edition::ALL_EDITIONS {
+            let lints = lints.iter().filter(|f| f.edition == Some(*edition)).map(|f| f.id)
                              .collect::<Vec<_>>();
             if !lints.is_empty() {
-                self.register_group(sess, false, epoch.lint_name(), lints)
+                self.register_group(sess, false, edition.lint_name(), lints)
             }
         }
 
@@ -1055,7 +1054,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut cx = LateContext {
         tcx,
         tables: &ty::TypeckTables::empty(None),
-        param_env: ty::ParamEnv::empty(Reveal::UserFacing),
+        param_env: ty::ParamEnv::empty(),
         access_levels,
         lint_sess: LintSession::new(&tcx.sess.lint_store),
         last_ast_node_with_lint_attrs: ast::CRATE_NODE_ID,

@@ -51,6 +51,7 @@ pub mod features;
 pub mod cargo;
 pub mod pal;
 pub mod deps;
+pub mod ui_tests;
 pub mod unstable_book;
 
 fn filter_dirs(path: &Path) -> bool {

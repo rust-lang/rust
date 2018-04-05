@@ -20,7 +20,7 @@
        any(from_method="from_error", from_method="from_ok"),
        from_desugaring="?"),
       message="the `?` operator can only be used in a \
-               function that returns `Result` \
+               function that returns `Result` or `Option` \
                (or another type that implements `{Try}`)",
       label="cannot use the `?` operator in a function that returns `{Self}`"),
    on(all(from_method="into_result", from_desugaring="?"),

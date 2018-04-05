@@ -645,7 +645,11 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = tcx.trans_impl_self_ty(impl_def_id, instance.substs);
+                let impl_self_ty = tcx.subst_and_normalize_erasing_regions(
+                    instance.substs,
+                    ty::ParamEnv::reveal_all(),
+                    &tcx.type_of(impl_def_id),
+                );
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }

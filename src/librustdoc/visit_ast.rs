@@ -406,13 +406,13 @@ impl<'a, 'tcx, 'rcx> RustdocVisitor<'a, 'tcx, 'rcx> {
             // If we're inlining, skip private items.
             _ if self.inlining && item.vis != hir::Public => {}
             hir::ItemGlobalAsm(..) => {}
-            hir::ItemExternCrate(ref p) => {
+            hir::ItemExternCrate(orig_name) => {
                 let def_id = self.cx.tcx.hir.local_def_id(item.id);
                 om.extern_crates.push(ExternCrate {
                     cnum: self.cx.tcx.extern_mod_stmt_cnum(def_id)
                                 .unwrap_or(LOCAL_CRATE),
                     name,
-                    path: p.map(|x|x.to_string()),
+                    path: orig_name.map(|x|x.to_string()),
                     vis: item.vis.clone(),
                     attrs: item.attrs.clone(),
                     whence: item.span,

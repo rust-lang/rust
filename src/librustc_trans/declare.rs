@@ -22,7 +22,7 @@
 
 use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
-use rustc::ty::Ty;
+use rustc::ty::{self, Ty};
 use rustc::session::config::Sanitizer;
 use rustc_back::PanicStrategy;
 use abi::{Abi, FnType};
@@ -127,7 +127,7 @@ pub fn declare_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, name: &str,
                             fn_type: Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
     let sig = common::ty_fn_sig(cx, fn_type);
-    let sig = cx.tcx.erase_late_bound_regions_and_normalize(&sig);
+    let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(cx, sig, &[]);

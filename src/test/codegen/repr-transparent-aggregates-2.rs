@@ -12,6 +12,7 @@
 
 // ignore-aarch64
 // ignore-asmjs
+// ignore-mips64
 // ignore-s390x
 // ignore-wasm
 // ignore-x86

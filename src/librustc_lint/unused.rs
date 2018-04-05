@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let t = cx.tables.expr_ty(&expr);
         let ty_warned = match t.sty {
-            ty::TyTuple(ref tys, _) if tys.is_empty() => return,
+            ty::TyTuple(ref tys) if tys.is_empty() => return,
             ty::TyNever => return,
             ty::TyAdt(def, _) => {
                 if def.variants.is_empty() {
@@ -301,7 +301,6 @@ impl EarlyLintPass for UnusedParens {
             Ret(Some(ref value)) => (value, "`return` value", false),
             Assign(_, ref value) => (value, "assigned value", false),
             AssignOp(.., ref value) => (value, "assigned value", false),
-            InPlace(_, ref value) => (value, "emplacement value", false),
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
                 let args_to_check;
@@ -377,11 +376,12 @@ impl UnusedImportBraces {
             // Trigger the lint if the nested item is a non-self single item
             let node_ident;
             match items[0].0.kind {
-                ast::UseTreeKind::Simple(ident) => {
-                    if ident.name == keywords::SelfValue.name() {
+                ast::UseTreeKind::Simple(rename) => {
+                    let orig_ident = items[0].0.prefix.segments.last().unwrap().identifier;
+                    if orig_ident.name == keywords::SelfValue.name() {
                         return;
                     } else {
-                        node_ident = ident;
+                        node_ident = rename.unwrap_or(orig_ident);
                     }
                 }
                 ast::UseTreeKind::Glob => {

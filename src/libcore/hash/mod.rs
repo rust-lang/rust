@@ -99,9 +99,10 @@ use mem;
 #[allow(deprecated)]
 pub use self::sip::SipHasher;
 
-#[unstable(feature = "sip_hash_13", issue = "34767")]
+#[unstable(feature = "hashmap_internals", issue = "0")]
 #[allow(deprecated)]
-pub use self::sip::{SipHasher13, SipHasher24};
+#[doc(hidden)]
+pub use self::sip::SipHasher13;
 
 mod sip;
 
@@ -307,7 +308,7 @@ pub trait Hasher {
     }
     /// Writes a single `u128` into this hasher.
     #[inline]
-    #[unstable(feature = "i128", issue = "35118")]
+    #[stable(feature = "i128", since = "1.26.0")]
     fn write_u128(&mut self, i: u128) {
         self.write(&unsafe { mem::transmute::<_, [u8; 16]>(i) })
     }
@@ -347,7 +348,7 @@ pub trait Hasher {
     }
     /// Writes a single `i128` into this hasher.
     #[inline]
-    #[unstable(feature = "i128", issue = "35118")]
+    #[stable(feature = "i128", since = "1.26.0")]
     fn write_i128(&mut self, i: i128) {
         self.write_u128(i as u128)
     }

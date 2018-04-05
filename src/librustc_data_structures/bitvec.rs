@@ -132,6 +132,11 @@ impl<'a> Iterator for BitVectorIter<'a> {
         self.idx += offset + 1;
         return Some(self.idx - 1);
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
+    }
 }
 
 impl FromIterator<bool> for BitVector {
