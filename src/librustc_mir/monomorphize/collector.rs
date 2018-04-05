@@ -212,8 +212,6 @@ use monomorphize::item::{MonoItemExt, DefPathBasedNames, InstantiationMode};
 
 use rustc_data_structures::bitvec::BitVector;
 
-use std::iter;
-
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum MonoItemCollectionMode {
     Eager,
@@ -1030,13 +1028,15 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
+        let main_ret_ty = self.tcx.erase_regions(
+            &main_ret_ty.no_late_bound_regions().unwrap(),
+        );
 
         let start_instance = Instance::resolve(
             self.tcx,
             ty::ParamEnv::reveal_all(),
             start_def_id,
-            self.tcx.mk_substs(iter::once(Kind::from(main_ret_ty)))
+            self.tcx.intern_substs(&[Kind::from(main_ret_ty)])
         ).unwrap();
 
         self.output.push(create_fn_mono_item(start_instance));
