@@ -354,7 +354,6 @@ extern crate core as __core;
 #[macro_reexport(vec, format)]
 extern crate alloc;
 extern crate alloc_system;
-extern crate std_unicode;
 #[doc(masked)]
 extern crate libc;
 
@@ -455,7 +454,7 @@ pub use alloc::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use std_unicode::char;
+pub use core::unicode::char;
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
 

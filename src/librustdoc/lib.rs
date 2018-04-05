@@ -41,7 +41,6 @@ extern crate serialize;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate test as testing;
-extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
 extern crate pulldown_cmark;

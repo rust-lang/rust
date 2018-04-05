@@ -29,7 +29,7 @@
 #![feature(inclusive_range_fields)]
 
 extern crate alloc_system;
-extern crate std_unicode;
+extern crate core;
 extern crate rand;
 
 use std::hash::{Hash, Hasher};

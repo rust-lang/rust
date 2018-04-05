@@ -135,8 +135,6 @@ extern crate test;
 #[cfg(test)]
 extern crate rand;
 
-extern crate std_unicode;
-
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]
 mod macros;

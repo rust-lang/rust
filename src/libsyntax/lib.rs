@@ -32,9 +32,9 @@
 extern crate rustc_cratesio_shim;
 
 #[macro_use] extern crate bitflags;
+extern crate core;
 extern crate serialize;
 #[macro_use] extern crate log;
-extern crate std_unicode;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
