@@ -14,7 +14,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
-use infer::canonical::{Canonical, QueryResult};
+use infer::canonical::{self, Canonical};
 use lint;
 use middle::borrowck::BorrowCheckResult;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
@@ -65,6 +65,10 @@ use syntax::symbol::Symbol;
 mod plumbing;
 use self::plumbing::*;
 pub use self::plumbing::force_from_dep_node;
+
+mod job;
+pub use self::job::{QueryJob, QueryInfo};
+use self::job::QueryResult;
 
 mod keys;
 pub use self::keys::Key;
@@ -397,7 +401,7 @@ define_maps! { <'tcx>
     [] fn normalize_projection_ty: NormalizeProjectionTy(
         CanonicalProjectionGoal<'tcx>
     ) -> Result<
-        Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, NormalizationResult<'tcx>>>>,
         NoSolution,
     >,
 
@@ -410,7 +414,7 @@ define_maps! { <'tcx>
     [] fn dropck_outlives: DropckOutlives(
         CanonicalTyGoal<'tcx>
     ) -> Result<
-        Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
         NoSolution,
     >,
 
