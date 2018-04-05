@@ -76,5 +76,11 @@ help: change `y.as_str()` to
 62 |     let c = y;
    |             ^
 
-error: aborting due to 6 previous errors
+error: using a reference to `Cow` is not recommended.
+  --> $DIR/ptr_arg.rs:71:25
+   |
+71 | fn test_cow_with_ref(c: &Cow<[i32]>) {
+   |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
+
+error: aborting due to 7 previous errors
 

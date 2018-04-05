@@ -1,7 +1,7 @@
-
-
 #![allow(unused, many_single_char_names)]
 #![warn(ptr_arg)]
+
+use std::borrow::Cow;
 
 fn do_vec(x: &Vec<i64>) {
     //Nothing here
@@ -67,3 +67,11 @@ fn false_positive_capacity_too(x: &String) -> String {
     x.clone()
 }
 
+#[allow(dead_code)]
+fn test_cow_with_ref(c: &Cow<[i32]>) {
+}
+
+#[allow(dead_code)]
+fn test_cow(c: Cow<[i32]>) {
+    let _c = c;
+}

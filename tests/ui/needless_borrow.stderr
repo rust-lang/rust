@@ -38,13 +38,5 @@ error: this pattern creates a reference to a reference
 50 |     let _ = v.iter().filter(|&ref a| a.is_empty());
    |                               ^^^^^ help: change this to: `a`
 
-error: using a reference to `Cow` is not recommended.
-  --> $DIR/needless_borrow.rs:56:25
-   |
-56 | fn test_cow_with_ref(c: &Cow<[i32]>) {
-   |                         ^^^^^^^^^^^ help: change this to: `&[i32]`
-   |
-   = note: `-D ptr-arg` implied by `-D warnings`
-
-error: aborting due to 7 previous errors
+error: aborting due to 6 previous errors
 
