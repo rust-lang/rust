@@ -13,152 +13,8 @@
 use slice;
 use str::from_utf8_unchecked_mut;
 use super::*;
-use super::CharExt as C;
 use super::printable::is_printable;
 use unicode::tables::{conversions, derived_property, general_category, property};
-
-#[stable(feature = "core", since = "1.6.0")]
-impl CharExt for char {
-    #[inline]
-    fn is_digit(self, radix: u32) -> bool {
-        self.to_digit(radix).is_some()
-    }
-
-    #[inline]
-    fn to_digit(self, radix: u32) -> Option<u32> {
-        if radix > 36 {
-            panic!("to_digit: radix is too high (maximum 36)");
-        }
-        let val = match self {
-          '0' ... '9' => self as u32 - '0' as u32,
-          'a' ... 'z' => self as u32 - 'a' as u32 + 10,
-          'A' ... 'Z' => self as u32 - 'A' as u32 + 10,
-          _ => return None,
-        };
-        if val < radix { Some(val) }
-        else { None }
-    }
-
-    #[inline]
-    fn escape_unicode(self) -> EscapeUnicode {
-        let c = self as u32;
-
-        // or-ing 1 ensures that for c==0 the code computes that one
-        // digit should be printed and (which is the same) avoids the
-        // (31 - 32) underflow
-        let msb = 31 - (c | 1).leading_zeros();
-
-        // the index of the most significant hex digit
-        let ms_hex_digit = msb / 4;
-        EscapeUnicode {
-            c: self,
-            state: EscapeUnicodeState::Backslash,
-            hex_digit_idx: ms_hex_digit as usize,
-        }
-    }
-
-    #[inline]
-    fn escape_default(self) -> EscapeDefault {
-        let init_state = match self {
-            '\t' => EscapeDefaultState::Backslash('t'),
-            '\r' => EscapeDefaultState::Backslash('r'),
-            '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
-            _ => EscapeDefaultState::Unicode(self.escape_unicode())
-        };
-        EscapeDefault { state: init_state }
-    }
-
-    #[inline]
-    fn escape_debug(self) -> EscapeDebug {
-        let init_state = match self {
-            '\t' => EscapeDefaultState::Backslash('t'),
-            '\r' => EscapeDefaultState::Backslash('r'),
-            '\n' => EscapeDefaultState::Backslash('n'),
-            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            c if is_printable(c) => EscapeDefaultState::Char(c),
-            c => EscapeDefaultState::Unicode(c.escape_unicode()),
-        };
-        EscapeDebug(EscapeDefault { state: init_state })
-    }
-
-    #[inline]
-    fn len_utf8(self) -> usize {
-        let code = self as u32;
-        if code < MAX_ONE_B {
-            1
-        } else if code < MAX_TWO_B {
-            2
-        } else if code < MAX_THREE_B {
-            3
-        } else {
-            4
-        }
-    }
-
-    #[inline]
-    fn len_utf16(self) -> usize {
-        let ch = self as u32;
-        if (ch & 0xFFFF) == ch { 1 } else { 2 }
-    }
-
-    #[inline]
-    fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        let code = self as u32;
-        unsafe {
-            let len =
-            if code < MAX_ONE_B && !dst.is_empty() {
-                *dst.get_unchecked_mut(0) = code as u8;
-                1
-            } else if code < MAX_TWO_B && dst.len() >= 2 {
-                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
-                2
-            } else if code < MAX_THREE_B && dst.len() >= 3  {
-                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
-                3
-            } else if dst.len() >= 4 {
-                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
-                4
-            } else {
-                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf8(),
-                    code,
-                    dst.len())
-            };
-            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
-        }
-    }
-
-    #[inline]
-    fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
-        let mut code = self as u32;
-        unsafe {
-            if (code & 0xFFFF) == code && !dst.is_empty() {
-                // The BMP falls through (assuming non-surrogate, as it should)
-                *dst.get_unchecked_mut(0) = code as u16;
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
-            } else if dst.len() >= 2 {
-                // Supplementary planes break into surrogates.
-                code -= 0x1_0000;
-                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
-                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
-                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
-            } else {
-                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
-                    from_u32_unchecked(code).len_utf16(),
-                    code,
-                    dst.len())
-            }
-        }
-    }
-}
 
 #[lang = "char"]
 impl char {
@@ -211,7 +67,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_digit(self, radix: u32) -> bool {
-        C::is_digit(self, radix)
+        self.to_digit(radix).is_some()
     }
 
     /// Converts a `char` to a digit in the given radix.
@@ -265,7 +121,17 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
-        C::to_digit(self, radix)
+        if radix > 36 {
+            panic!("to_digit: radix is too high (maximum 36)");
+        }
+        let val = match self {
+          '0' ... '9' => self as u32 - '0' as u32,
+          'a' ... 'z' => self as u32 - 'a' as u32 + 10,
+          'A' ... 'Z' => self as u32 - 'A' as u32 + 10,
+          _ => return None,
+        };
+        if val < radix { Some(val) }
+        else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -305,7 +171,20 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode {
-        C::escape_unicode(self)
+        let c = self as u32;
+
+        // or-ing 1 ensures that for c==0 the code computes that one
+        // digit should be printed and (which is the same) avoids the
+        // (31 - 32) underflow
+        let msb = 31 - (c | 1).leading_zeros();
+
+        // the index of the most significant hex digit
+        let ms_hex_digit = msb / 4;
+        EscapeUnicode {
+            c: self,
+            state: EscapeUnicodeState::Backslash,
+            hex_digit_idx: ms_hex_digit as usize,
+        }
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -345,7 +224,15 @@ impl char {
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
-        C::escape_debug(self)
+        let init_state = match self {
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            c if is_printable(c) => EscapeDefaultState::Char(c),
+            c => EscapeDefaultState::Unicode(c.escape_unicode()),
+        };
+        EscapeDebug(EscapeDefault { state: init_state })
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -400,7 +287,15 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_default(self) -> EscapeDefault {
-        C::escape_default(self)
+        let init_state = match self {
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode())
+        };
+        EscapeDefault { state: init_state }
     }
 
     /// Returns the number of bytes this `char` would need if encoded in UTF-8.
@@ -451,7 +346,16 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len_utf8(self) -> usize {
-        C::len_utf8(self)
+        let code = self as u32;
+        if code < MAX_ONE_B {
+            1
+        } else if code < MAX_TWO_B {
+            2
+        } else if code < MAX_THREE_B {
+            3
+        } else {
+            4
+        }
     }
 
     /// Returns the number of 16-bit code units this `char` would need if
@@ -476,7 +380,8 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len_utf16(self) -> usize {
-        C::len_utf16(self)
+        let ch = self as u32;
+        if (ch & 0xFFFF) == ch { 1 } else { 2 }
     }
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -518,7 +423,35 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        C::encode_utf8(self, dst)
+        let code = self as u32;
+        unsafe {
+            let len =
+            if code < MAX_ONE_B && !dst.is_empty() {
+                *dst.get_unchecked_mut(0) = code as u8;
+                1
+            } else if code < MAX_TWO_B && dst.len() >= 2 {
+                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
+                2
+            } else if code < MAX_THREE_B && dst.len() >= 3  {
+                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
+                3
+            } else if dst.len() >= 4 {
+                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
+                4
+            } else {
+                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                    from_u32_unchecked(code).len_utf8(),
+                    code,
+                    dst.len())
+            };
+            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
+        }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -558,7 +491,25 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
-        C::encode_utf16(self, dst)
+        let mut code = self as u32;
+        unsafe {
+            if (code & 0xFFFF) == code && !dst.is_empty() {
+                // The BMP falls through (assuming non-surrogate, as it should)
+                *dst.get_unchecked_mut(0) = code as u16;
+                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
+            } else if dst.len() >= 2 {
+                // Supplementary planes break into surrogates.
+                code -= 0x1_0000;
+                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
+                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
+                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
+            } else {
+                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                    from_u32_unchecked(code).len_utf16(),
+                    code,
+                    dst.len())
+            }
+        }
     }
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.

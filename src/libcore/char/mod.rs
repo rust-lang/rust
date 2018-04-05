@@ -119,34 +119,6 @@ pub const MAX: char = '\u{10ffff}';
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';
 
-// NB: the stabilization and documentation for this trait is in
-// unicode/char.rs, not here
-#[allow(missing_docs)] // docs in libunicode/u_char.rs
-#[doc(hidden)]
-#[unstable(feature = "core_char_ext",
-           reason = "the stable interface is `impl char` in later crate",
-           issue = "32110")]
-pub trait CharExt {
-    #[stable(feature = "core", since = "1.6.0")]
-    fn is_digit(self, radix: u32) -> bool;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn to_digit(self, radix: u32) -> Option<u32>;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn escape_unicode(self) -> EscapeUnicode;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn escape_default(self) -> EscapeDefault;
-    #[stable(feature = "char_escape_debug", since = "1.20.0")]
-    fn escape_debug(self) -> EscapeDebug;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn len_utf8(self) -> usize;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn len_utf16(self) -> usize;
-    #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    fn encode_utf8(self, dst: &mut [u8]) -> &mut str;
-    #[stable(feature = "unicode_encode_char", since = "1.15.0")]
-    fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16];
-}
-
 /// Returns an iterator that yields the hexadecimal Unicode escape of a
 /// character, as `char`s.
 ///

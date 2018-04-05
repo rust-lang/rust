@@ -470,7 +470,7 @@ if __name__ == "__main__":
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
-/// `CharExt` and `UnicodeStrPrelude` traits are based on.
+/// `char` and `str` methods are based on.
 pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     major: %s,
     minor: %s,
