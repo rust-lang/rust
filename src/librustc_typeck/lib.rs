@@ -81,7 +81,6 @@ This API is completely unstable and subject to change.
 #![feature(from_ref)]
 #![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(exhaustive_patterns)]
-#![feature(option_filter)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
