@@ -281,6 +281,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtArg(ref e)          => arg_to_string(e),
             token::NtVis(ref e)          => vis_to_string(e),
             token::NtLifetime(ref e)     => lifetime_to_string(e),
+            token::NtForeignItem(ref ni) => foreign_item_to_string(ni),
         }
     }
 }
@@ -420,6 +421,10 @@ pub fn arg_to_string(arg: &ast::Arg) -> String {
 
 pub fn mac_to_string(arg: &ast::Mac) -> String {
     to_string(|s| s.print_mac(arg, ::parse::token::Paren))
+}
+
+pub fn foreign_item_to_string(arg: &ast::ForeignItem) -> String {
+    to_string(|s| s.print_foreign_item(arg))
 }
 
 pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
@@ -1126,6 +1131,10 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
+            }
+            ast::ForeignItemKind::Macro(ref m) => {
+                self.print_mac(m, token::Paren)?;
+                self.s.word(";")
             }
         }
     }
