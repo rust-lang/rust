@@ -1812,6 +1812,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     self.dumper.dump_def(&access, var_data);
                 }
             }
+            ast::ForeignItemKind::Macro(..) => {}
         }
     }
 }

@@ -456,6 +456,7 @@ impl<'a> Resolver<'a> {
             ForeignItemKind::Ty => {
                 (Def::TyForeign(self.definitions.local_def_id(item.id)), TypeNS)
             }
+            ForeignItemKind::Macro(_) => unreachable!(),
         };
         let parent = self.current_module;
         let vis = self.resolve_visibility(&item.vis);
@@ -816,6 +817,11 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
+        if let ForeignItemKind::Macro(_) = foreign_item.node {
+            self.visit_invoc(foreign_item.id);
+            return;
+        }
+
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item, self.expansion);
         visit::walk_foreign_item(self, foreign_item);
     }

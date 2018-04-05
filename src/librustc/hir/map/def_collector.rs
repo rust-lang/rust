@@ -181,6 +181,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
+        if let ForeignItemKind::Macro(_) = foreign_item.node {
+            return self.visit_macro_invoc(foreign_item.id, false);
+        }
+
         let def = self.create_def(foreign_item.id,
                                   DefPathData::ValueNs(foreign_item.ident.name.as_str()),
                                   REGULAR_SPACE,

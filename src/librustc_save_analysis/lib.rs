@@ -182,6 +182,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             // FIXME(plietar): needs a new DefKind in rls-data
             ast::ForeignItemKind::Ty => None,
+            ast::ForeignItemKind::Macro(..) => None,
         }
     }
 

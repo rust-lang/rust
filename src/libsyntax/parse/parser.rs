@@ -26,7 +26,7 @@ use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
-use ast::Mac_;
+use ast::{Mac, Mac_};
 use ast::{MutTy, Mutability};
 use ast::{Pat, PatKind, PathSegment};
 use ast::{PolyTraitRef, QSelf};
@@ -1417,28 +1417,8 @@ impl<'a> Parser<'a> {
                 None
             };
             (ident, TraitItemKind::Const(ty, default), ast::Generics::default())
-        } else if self.token.is_path_start() && !self.is_extern_non_path() {
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
             // trait item macro.
-            // code copied from parse_macro_use_or_failure... abstraction!
-            let prev_span = self.prev_span;
-            let lo = self.span;
-            let pth = self.parse_path(PathStyle::Mod)?;
-
-            if pth.segments.len() == 1 {
-                if !self.eat(&token::Not) {
-                    return Err(self.missing_assoc_item_kind_err("trait", prev_span));
-                }
-            } else {
-                self.expect(&token::Not)?;
-            }
-
-            // eat a matched-delimiter token tree:
-            let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != token::Brace {
-                self.expect(&token::Semi)?
-            }
-
-            let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
             (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac), ast::Generics::default())
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
@@ -5393,6 +5373,12 @@ impl<'a> Parser<'a> {
     fn missing_assoc_item_kind_err(&mut self, item_type: &str, prev_span: Span)
                                    -> DiagnosticBuilder<'a>
     {
+        let expected_kinds = if item_type == "extern" {
+            "missing `fn`, `type`, or `static`"
+        } else {
+            "missing `fn`, `type`, or `const`"
+        };
+
         // Given this code `path(`, it seems like this is not
         // setting the visibility of a macro invocation, but rather
         // a mistyped method declaration.
@@ -5405,9 +5391,9 @@ impl<'a> Parser<'a> {
         let sp = prev_span.between(self.prev_span);
         let mut err = self.diagnostic().struct_span_err(
             sp,
-            &format!("missing `fn`, `type`, or `const` for {}-item declaration",
-                     item_type));
-        err.span_label(sp, "missing `fn`, `type`, or `const`");
+            &format!("{} for {}-item declaration",
+                     expected_kinds, item_type));
+        err.span_label(sp, expected_kinds);
         err
     }
 
@@ -5416,31 +5402,8 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, (Ident, Vec<Attribute>, ast::Generics,
                              ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
-        if self.token.is_path_start() && !self.is_extern_non_path() {
+        if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(vis), at_end)? {
             // Method macro.
-
-            let prev_span = self.prev_span;
-
-            let lo = self.span;
-            let pth = self.parse_path(PathStyle::Mod)?;
-            if pth.segments.len() == 1 {
-                if !self.eat(&token::Not) {
-                    return Err(self.missing_assoc_item_kind_err("impl", prev_span));
-                }
-            } else {
-                self.expect(&token::Not)?;
-            }
-
-            self.complain_if_pub_macro(&vis.node, prev_span);
-
-            // eat a matched-delimiter token tree:
-            *at_end = true;
-            let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != token::Brace {
-                self.expect(&token::Semi)?
-            }
-
-            let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
             Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(),
                 ast::ImplItemKind::Macro(mac)))
         } else {
@@ -6786,7 +6749,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a foreign item.
-    fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
+    pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
+        maybe_whole!(self, NtForeignItem, |ni| Some(ni));
+
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
         let visibility = self.parse_visibility(false)?;
@@ -6812,12 +6777,26 @@ impl<'a> Parser<'a> {
             return Ok(Some(self.parse_item_foreign_type(visibility, lo, attrs)?));
         }
 
-        // FIXME #5668: this will occur for a macro invocation:
-        match self.parse_macro_use_or_failure(attrs, true, false, lo, visibility)? {
-            Some(item) => {
-                return Err(self.span_fatal(item.span, "macros cannot expand to foreign items"));
+        match self.parse_assoc_macro_invoc("extern", Some(&visibility), &mut false)? {
+            Some(mac) => {
+                Ok(Some(
+                    ForeignItem {
+                        ident: keywords::Invalid.ident(),
+                        span: lo.to(self.prev_span),
+                        id: ast::DUMMY_NODE_ID,
+                        attrs,
+                        vis: visibility,
+                        node: ForeignItemKind::Macro(mac),
+                    }
+                ))
             }
-            None => Ok(None)
+            None => {
+                if !attrs.is_empty() {
+                    self.expected_item_err(&attrs);
+                }
+
+                Ok(None)
+            }
         }
     }
 
@@ -6879,6 +6858,41 @@ impl<'a> Parser<'a> {
             self.expected_item_err(&attrs);
         }
         Ok(None)
+    }
+
+    /// Parse a macro invocation inside a `trait`, `impl` or `extern` block
+    fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
+                               at_end: &mut bool) -> PResult<'a, Option<Mac>>
+    {
+        if self.token.is_path_start() && !self.is_extern_non_path() {
+            let prev_span = self.prev_span;
+            let lo = self.span;
+            let pth = self.parse_path(PathStyle::Mod)?;
+
+            if pth.segments.len() == 1 {
+                if !self.eat(&token::Not) {
+                    return Err(self.missing_assoc_item_kind_err(item_kind, prev_span));
+                }
+            } else {
+                self.expect(&token::Not)?;
+            }
+
+            if let Some(vis) = vis {
+                self.complain_if_pub_macro(&vis.node, prev_span);
+            }
+
+            *at_end = true;
+
+            // eat a matched-delimiter token tree:
+            let (delim, tts) = self.expect_delimited_token_tree()?;
+            if delim != token::Brace {
+                self.expect(&token::Semi)?
+            }
+
+            Ok(Some(respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts })))
+        } else {
+            Ok(None)
+        }
     }
 
     fn collect_tokens<F, R>(&mut self, f: F) -> PResult<'a, (R, TokenStream)>

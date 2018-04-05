@@ -38,6 +38,7 @@ pub enum Annotatable {
     Item(P<ast::Item>),
     TraitItem(P<ast::TraitItem>),
     ImplItem(P<ast::ImplItem>),
+    ForeignItem(P<ast::ForeignItem>),
     Stmt(P<ast::Stmt>),
     Expr(P<ast::Expr>),
 }
@@ -48,6 +49,7 @@ impl HasAttrs for Annotatable {
             Annotatable::Item(ref item) => &item.attrs,
             Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
             Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
+            Annotatable::ForeignItem(ref foreign_item) => &foreign_item.attrs,
             Annotatable::Stmt(ref stmt) => stmt.attrs(),
             Annotatable::Expr(ref expr) => &expr.attrs,
         }
@@ -58,6 +60,8 @@ impl HasAttrs for Annotatable {
             Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
             Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
             Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
+            Annotatable::ForeignItem(foreign_item) =>
+                Annotatable::ForeignItem(foreign_item.map_attrs(f)),
             Annotatable::Stmt(stmt) => Annotatable::Stmt(stmt.map_attrs(f)),
             Annotatable::Expr(expr) => Annotatable::Expr(expr.map_attrs(f)),
         }
@@ -70,6 +74,7 @@ impl Annotatable {
             Annotatable::Item(ref item) => item.span,
             Annotatable::TraitItem(ref trait_item) => trait_item.span,
             Annotatable::ImplItem(ref impl_item) => impl_item.span,
+            Annotatable::ForeignItem(ref foreign_item) => foreign_item.span,
             Annotatable::Stmt(ref stmt) => stmt.span,
             Annotatable::Expr(ref expr) => expr.span,
         }
@@ -103,6 +108,13 @@ impl Annotatable {
         match self {
             Annotatable::ImplItem(i) => i.into_inner(),
             _ => panic!("expected Item")
+        }
+    }
+
+    pub fn expect_foreign_item(self) -> ast::ForeignItem {
+        match self {
+            Annotatable::ForeignItem(i) => i.into_inner(),
+            _ => panic!("expected foreign item")
         }
     }
 
@@ -317,6 +329,9 @@ pub trait MacResult {
         None
     }
 
+    /// Create zero or more items in an `extern {}` block
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVector<ast::ForeignItem>> { None }
+
     /// Create a pattern.
     fn make_pat(self: Box<Self>) -> Option<P<ast::Pat>> {
         None
@@ -365,6 +380,7 @@ make_MacEager! {
     items: SmallVector<P<ast::Item>>,
     impl_items: SmallVector<ast::ImplItem>,
     trait_items: SmallVector<ast::TraitItem>,
+    foreign_items: SmallVector<ast::ForeignItem>,
     stmts: SmallVector<ast::Stmt>,
     ty: P<ast::Ty>,
 }
@@ -384,6 +400,10 @@ impl MacResult for MacEager {
 
     fn make_trait_items(self: Box<Self>) -> Option<SmallVector<ast::TraitItem>> {
         self.trait_items
+    }
+
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVector<ast::ForeignItem>> {
+        self.foreign_items
     }
 
     fn make_stmts(self: Box<Self>) -> Option<SmallVector<ast::Stmt>> {
@@ -495,6 +515,14 @@ impl MacResult for DummyResult {
     }
 
     fn make_trait_items(self: Box<DummyResult>) -> Option<SmallVector<ast::TraitItem>> {
+        if self.expr_only {
+            None
+        } else {
+            Some(SmallVector::new())
+        }
+    }
+
+    fn make_foreign_items(self: Box<Self>) -> Option<SmallVector<ast::ForeignItem>> {
         if self.expr_only {
             None
         } else {

@@ -822,6 +822,7 @@ impl Sig for ast::ForeignItem {
                     refs: vec![],
                 })
             }
+            ast::ForeignItemKind::Macro(..) => Err("macro"),
         }
     }
 }

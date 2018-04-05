@@ -10,19 +10,27 @@
 
 // no-prefer-dynamic
 
-#![feature(proc_macro)]
 #![crate_type = "proc-macro"]
+#![feature(proc_macro)]
 
 extern crate proc_macro;
 
-use proc_macro::*;
+use proc_macro::TokenStream;
 
-#[proc_macro]
-pub fn neg_one(_input: TokenStream) -> TokenStream {
-    TokenTree::Literal(Literal::i32_suffixed(-1)).into()
+#[proc_macro_attribute]
+pub fn nop_attr(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    assert!(_attr.to_string().is_empty());
+    input
+}
+
+#[proc_macro_attribute]
+pub fn no_output(_attr: TokenStream, _input: TokenStream) -> TokenStream {
+    assert!(_attr.to_string().is_empty());
+    assert!(!_input.to_string().is_empty());
+    "".parse().unwrap()
 }
 
 #[proc_macro]
-pub fn neg_one_float(_input: TokenStream) -> TokenStream {
-    TokenTree::Literal(Literal::f32_suffixed(-1.0)).into()
+pub fn emit_input(input: TokenStream) -> TokenStream {
+    input
 }
