@@ -34,7 +34,7 @@ use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
 use comment::{contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented,
-              FullCodeCharKind};
+              FullCodeCharKind, LineClasses};
 use expr::rewrite_array;
 use lists::{itemize_list, write_list, ListFormatting};
 use overflow;
@@ -1054,18 +1054,27 @@ fn indent_macro_snippet(
     macro_str: &str,
     indent: Indent,
 ) -> Option<String> {
-    let mut lines = macro_str.lines();
-    let first_line = lines.next().map(|s| s.trim_right())?;
+    let mut lines = LineClasses::new(macro_str);
+    let first_line = lines.next().map(|(_, s)| s.trim_right().to_owned())?;
     let mut trimmed_lines = Vec::with_capacity(16);
 
+    let mut veto_trim = false;
     let min_prefix_space_width = lines
-        .filter_map(|line| {
-            let prefix_space_width = if is_empty_line(line) {
+        .filter_map(|(kind, line)| {
+            let mut trimmed = true;
+            let prefix_space_width = if is_empty_line(&line) {
                 None
             } else {
-                Some(get_prefix_space_width(context, line))
+                Some(get_prefix_space_width(context, &line))
             };
-            trimmed_lines.push((line.trim(), prefix_space_width));
+            let line = if veto_trim || (kind.is_string() && !line.ends_with('\\')) {
+                veto_trim = kind.is_string() && !line.ends_with('\\');
+                trimmed = false;
+                line
+            } else {
+                line.trim().to_owned()
+            };
+            trimmed_lines.push((trimmed, line, prefix_space_width));
             prefix_space_width
         })
         .min()?;
@@ -1074,17 +1083,20 @@ fn indent_macro_snippet(
         String::from(first_line) + "\n"
             + &trimmed_lines
                 .iter()
-                .map(|&(line, prefix_space_width)| match prefix_space_width {
-                    Some(original_indent_width) => {
-                        let new_indent_width = indent.width()
-                            + original_indent_width
-                                .checked_sub(min_prefix_space_width)
-                                .unwrap_or(0);
-                        let new_indent = Indent::from_width(context.config, new_indent_width);
-                        format!("{}{}", new_indent.to_string(context.config), line.trim())
-                    }
-                    None => String::new(),
-                })
+                .map(
+                    |&(trimmed, ref line, prefix_space_width)| match prefix_space_width {
+                        _ if !trimmed => line.to_owned(),
+                        Some(original_indent_width) => {
+                            let new_indent_width = indent.width()
+                                + original_indent_width
+                                    .checked_sub(min_prefix_space_width)
+                                    .unwrap_or(0);
+                            let new_indent = Indent::from_width(context.config, new_indent_width);
+                            format!("{}{}", new_indent.to_string(context.config), line.trim())
+                        }
+                        None => String::new(),
+                    },
+                )
                 .collect::<Vec<_>>()
                 .join("\n"),
     )
@@ -1231,15 +1243,17 @@ impl MacroBranch {
 
         // Indent the body since it is in a block.
         let indent_str = body_indent.to_string(&config);
-        let mut new_body = new_body
-            .trim_right()
-            .lines()
-            .fold(String::new(), |mut s, l| {
-                if !l.is_empty() {
-                    s += &indent_str;
-                }
-                s + l + "\n"
-            });
+        let mut new_body = LineClasses::new(new_body.trim_right())
+            .fold(
+                (String::new(), true),
+                |(mut s, need_indent), (kind, ref l)| {
+                    if !l.is_empty() && need_indent {
+                        s += &indent_str;
+                    }
+                    (s + l + "\n", !(kind.is_string() && !l.ends_with('\\')))
+                },
+            )
+            .0;
 
         // Undo our replacement of macro variables.
         // FIXME: this could be *much* more efficient.
