@@ -122,7 +122,7 @@
 #![feature(on_unimplemented)]
 #![feature(exact_chunks)]
 #![feature(pointer_methods)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 #![cfg_attr(stage0, feature(generic_param_attrs))]
 
 #![cfg_attr(not(test), feature(fn_traits, i128))]

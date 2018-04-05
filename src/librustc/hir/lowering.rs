@@ -3119,6 +3119,20 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Index(ref el, ref er) => {
                 hir::ExprIndex(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
+            // Desugar `<start>..=<end>` to `std::ops::RangeInclusive::new(<start>, <end>)`
+            ExprKind::Range(Some(ref e1), Some(ref e2), RangeLimits::Closed) => {
+                // FIXME: Use head_sp directly after RangeInclusive::new() is stabilized in stage0.
+                let span = self.allow_internal_unstable(CompilerDesugaringKind::DotFill, e.span);
+                let id = self.lower_node_id(e.id);
+                let e1 = self.lower_expr(e1);
+                let e2 = self.lower_expr(e2);
+                let ty_path = P(self.std_path(span, &["ops", "RangeInclusive"], false));
+                let ty = self.ty_path(id, span, hir::QPath::Resolved(None, ty_path));
+                let new_seg = P(hir::PathSegment::from_name(Symbol::intern("new")));
+                let new_path = hir::QPath::TypeRelative(ty, new_seg);
+                let new = P(self.expr(span, hir::ExprPath(new_path), ThinVec::new()));
+                hir::ExprCall(new, hir_vec![e1, e2])
+            }
             ExprKind::Range(ref e1, ref e2, lims) => {
                 use syntax::ast::RangeLimits::*;
 
@@ -3128,7 +3142,7 @@ impl<'a> LoweringContext<'a> {
                     (&None, &Some(..), HalfOpen) => "RangeTo",
                     (&Some(..), &Some(..), HalfOpen) => "Range",
                     (&None, &Some(..), Closed) => "RangeToInclusive",
-                    (&Some(..), &Some(..), Closed) => "RangeInclusive",
+                    (&Some(..), &Some(..), Closed) => unreachable!(),
                     (_, &None, Closed) => self.diagnostic()
                         .span_fatal(e.span, "inclusive range with no end")
                         .raise(),

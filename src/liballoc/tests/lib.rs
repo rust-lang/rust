@@ -25,7 +25,7 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(exact_chunks)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 
 extern crate alloc_system;
 extern crate core;

@@ -44,7 +44,7 @@
 #![feature(exact_chunks)]
 #![cfg_attr(stage0, feature(atomic_nand))]
 #![feature(reverse_bits)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 #![feature(iterator_find_map)]
 
 extern crate core;
