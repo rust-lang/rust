@@ -478,6 +478,32 @@ However, `trap` is used as an error handler in at least one langauge.
 It also does not have the familiarity that `try` does have and is entirely
 inconsistent wrt. naming in the standard library.
 
+## Alternative: reserving `wrap`
+
+1. **Fidelity to the construct's actual behavior:** Somewhat good
+2. **Precedent from existing languages:** None
+3. **Brevity / Length:** 4
+4. **Consistency with the naming of the trait used for `?`:** Inconsistent
+5. **Consistency with related libstd fn conventions:** Inconsistent
+6. **Risk of breakage:** Very low
+    - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=wrap)
+    - **Used as crate?** [*Yes*](https://crates.io/crates/wrap), no reverse dependencies.
+    - **Usage (sourcegraph):** **37+** regex:
+    ```
+    repogroup:crates case:yes max:400
+    \b((let|const|type|)\s+wrap\s+=|(fn|impl|mod|struct|enum|union|trait)\s+wrap)\b
+    ```
+7. **Consistency with old learning material:** Untaught
+
+### Review
+
+With `wrap { .. }` we can say that it "wraps" the result of the block as a
+`Result` / `Option`, etc. and it is logically related to `.unwrap()`,
+which is however a partial function, wherefore the connotation might be bad.
+
+Also, `wrap` could be considered too generic as with `do` in that it could
+fit for any monad.
+
 ## Alternative: reserving `result`
 
 1. **Fidelity to the construct's actual behavior:** Somewhat good
