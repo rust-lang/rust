@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.192
+* Rustup to *rustc 1.27.0-nightly (fb44b4c0e 2018-04-04)*
+* New lint: [`print_literal`]
+
 ## 0.0.191
 * Rustup to *rustc 1.26.0-nightly (ae544ee1c 2018-03-29)*
 * Lint audit; categorize lints as style, correctness, complexity, pedantic, nursery, restriction.
@@ -711,6 +715,7 @@ All notable changes to this project will be documented in this file.
 [`partialeq_ne_impl`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#partialeq_ne_impl
 [`possible_missing_comma`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#precedence
+[`print_literal`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#print_literal
 [`print_stdout`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#print_stdout
 [`print_with_newline`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#print_with_newline
 [`println_empty_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#println_empty_string
