@@ -40,17 +40,13 @@ use rustc::hir::{self, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::def_id::DefIndexAddressSpace;
-use rustc::traits;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
-use rustc::infer::{InferCtxt, RegionObligation};
 use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
-use rustc::traits::*;
 use std::collections::hash_map::Entry;
-use std::collections::VecDeque;
 use std::fmt;
 
 use std::default::Default;
@@ -3524,14 +3520,12 @@ pub struct Impl {
 }
 
 pub fn get_auto_traits_with_node_id(cx: &DocContext, id: ast::NodeId, name: String) -> Vec<Item> {
-    let finder = AutoTraitFinder { cx };
+    let finder = AutoTraitFinder::new(cx);
     finder.get_with_node_id(id, name)
 }
 
 pub fn get_auto_traits_with_def_id(cx: &DocContext, id: DefId) -> Vec<Item> {
-    let finder = AutoTraitFinder {
-        cx,
-    };
+    let finder = AutoTraitFinder::new(cx);
 
     finder.get_with_def_id(id)
 }

@@ -15,8 +15,6 @@ use std::collections::hash_map::Entry;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use hir::WherePredicate;
-
 use infer::{InferCtxt, RegionObligation};
 use infer::region_constraints::{Constraint, RegionConstraintData};
 
@@ -36,19 +34,26 @@ pub struct RegionDeps<'tcx> {
     smaller: FxHashSet<RegionTarget<'tcx>>
 }
 
-pub enum AutoTraitResult {
+pub enum AutoTraitResult<A> {
     ExplicitImpl,
-    PositiveImpl, /*(ty::Generics), TODO(twk)*/
+    PositiveImpl(A),
     NegativeImpl,
 }
 
-impl AutoTraitResult {
+impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
         match *self {
-            AutoTraitResult::PositiveImpl | AutoTraitResult::NegativeImpl => true,
+            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
             _ => false,
         }
     }
+}
+
+pub struct AutoTraitInfo<'cx> {
+    pub full_user_env: ty::ParamEnv<'cx>,
+    pub region_data: RegionConstraintData<'cx>,
+    pub names_map: FxHashMap<String, String>,
+    pub vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
 pub struct AutoTraitFinder<'a, 'tcx: 'a> {
@@ -56,12 +61,15 @@ pub struct AutoTraitFinder<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn find_auto_trait_generics(
+    pub fn find_auto_trait_generics<A, F>(
         &self,
         did: DefId,
         trait_did: DefId,
         generics: &ty::Generics,
-    ) -> AutoTraitResult {
+        auto_trait_callback: F)
+        -> AutoTraitResult<A>
+        where F: for<'b, 'cx, 'cx2> Fn(&InferCtxt<'b, 'cx, 'cx2>, AutoTraitInfo<'cx2>) -> A
+    {
         let tcx = self.tcx;
         let ty = self.tcx.type_of(did);
 
@@ -72,7 +80,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             substs: tcx.mk_substs_trait(ty, &[]),
         };
 
-        let trait_pred = ty::Binder(trait_ref);
+        let trait_pred = ty::Binder::bind(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::with_negative(&infcx, true);
@@ -149,7 +157,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 None => return AutoTraitResult::NegativeImpl,
             };
 
-            let (full_env, _full_user_env) = self.evaluate_predicates(
+            let (full_env, full_user_env) = self.evaluate_predicates(
                 &mut infcx,
                 did,
                 trait_did,
@@ -193,8 +201,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             let names_map: FxHashMap<String, String> = generics
                 .regions
                 .iter()
-                .map(|l| (l.name.as_str().to_string(), l.name.to_string()))
-                // TODO(twk): Lifetime branding
+                .map(|l| (l.name.to_string(), l.name.to_string()))
+                // TODO(twk): Lifetime branding and why is this map a set?!
+                //     l.clean(self.cx) was present in the original code
                 .collect();
 
             let body_ids: FxHashSet<_> = infcx
@@ -213,33 +222,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .region_constraint_data()
                 .clone();
 
-            let lifetime_predicates = self.handle_lifetimes(&region_data, &names_map);
             let vid_to_region = self.map_vid_to_region(&region_data);
 
-            debug!(
-                "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): computed \
-                 lifetime information '{:?}' '{:?}'",
-                did, trait_did, generics, lifetime_predicates, vid_to_region
-            );
+            let info = AutoTraitInfo { full_user_env, region_data, names_map, vid_to_region };
 
-            /* let new_generics = self.param_env_to_generics(
-                infcx.tcx,
-                did,
-                full_user_env,
-                generics.clone(),
-                lifetime_predicates,
-                vid_to_region,
-            ); */
-
-            debug!(
-                "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): finished with \
-                 <generics placeholder here>",
-                did, trait_did, generics /* , new_generics */
-            );
-            return AutoTraitResult::PositiveImpl;
+            return AutoTraitResult::PositiveImpl(auto_trait_callback(&infcx, info));
         });
     }
+}
 
+impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // The core logic responsible for computing the bounds for our synthesized impl.
     //
     // To calculate the bounds, we call SelectionContext.select in a loop. Like FulfillmentContext,
@@ -294,7 +286,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
         let mut already_visited = FxHashSet();
         let mut predicates = VecDeque::new();
-        predicates.push_back(ty::Binder(ty::TraitPredicate {
+        predicates.push_back(ty::Binder::bind(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
                 substs: infcx.tcx.mk_substs_trait(ty, &[]),
@@ -359,14 +351,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             new_env = ty::ParamEnv::new(
                 tcx.mk_predicates(normalized_preds),
                 param_env.reveal,
-                ty::UniverseIndex::ROOT,
             );
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
             user_env.reveal,
-            ty::UniverseIndex::ROOT,
         );
         debug!(
             "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
@@ -377,165 +367,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         return Some((new_env, final_user_env));
     }
 
-    // This method calculates two things: Lifetime constraints of the form 'a: 'b,
-    // and region constraints of the form ReVar: 'a
-    //
-    // This is essentially a simplified version of lexical_region_resolve. However,
-    // handle_lifetimes determines what *needs be* true in order for an impl to hold.
-    // lexical_region_resolve, along with much of the rest of the compiler, is concerned
-    // with determining if a given set up constraints/predicates *are* met, given some
-    // starting conditions (e.g. user-provided code). For this reason, it's easier
-    // to perform the calculations we need on our own, rather than trying to make
-    // existing inference/solver code do what we want.
-    pub fn handle_lifetimes<'cx>(
-        &self,
-        regions: &RegionConstraintData<'cx>,
-        names_map: &FxHashMap<String, String>, // TODO(twk): lifetime branding
-    ) -> Vec<WherePredicate> {
-        // Our goal is to 'flatten' the list of constraints by eliminating
-        // all intermediate RegionVids. At the end, all constraints should
-        // be between Regions (aka region variables). This gives us the information
-        // we need to create the Generics.
-        let mut finished = FxHashMap();
-
-        let mut vid_map: FxHashMap<RegionTarget, RegionDeps> = FxHashMap();
-
-        // Flattening is done in two parts. First, we insert all of the constraints
-        // into a map. Each RegionTarget (either a RegionVid or a Region) maps
-        // to its smaller and larger regions. Note that 'larger' regions correspond
-        // to sub-regions in Rust code (e.g. in 'a: 'b, 'a is the larger region).
-        for constraint in regions.constraints.keys() {
-            match constraint {
-                &Constraint::VarSubVar(r1, r2) => {
-                    {
-                        let deps1 = vid_map
-                            .entry(RegionTarget::RegionVid(r1))
-                            .or_insert_with(|| Default::default());
-                        deps1.larger.insert(RegionTarget::RegionVid(r2));
-                    }
-
-                    let deps2 = vid_map
-                        .entry(RegionTarget::RegionVid(r2))
-                        .or_insert_with(|| Default::default());
-                    deps2.smaller.insert(RegionTarget::RegionVid(r1));
-                }
-                &Constraint::RegSubVar(region, vid) => {
-                    let deps = vid_map
-                        .entry(RegionTarget::RegionVid(vid))
-                        .or_insert_with(|| Default::default());
-                    deps.smaller.insert(RegionTarget::Region(region));
-                }
-                &Constraint::VarSubReg(vid, region) => {
-                    let deps = vid_map
-                        .entry(RegionTarget::RegionVid(vid))
-                        .or_insert_with(|| Default::default());
-                    deps.larger.insert(RegionTarget::Region(region));
-                }
-                &Constraint::RegSubReg(r1, r2) => {
-                    // The constraint is already in the form that we want, so we're done with it
-                    // Desired order is 'larger, smaller', so flip then
-                    if self.region_name(r1) != self.region_name(r2) {
-                        finished
-                            .entry(self.region_name(r2).unwrap())
-                            .or_insert_with(|| Vec::new())
-                            .push(r1);
-                    }
-                }
-            }
-        }
-
-        // Here, we 'flatten' the map one element at a time.
-        // All of the element's sub and super regions are connected
-        // to each other. For example, if we have a graph that looks like this:
-        //
-        // (A, B) - C - (D, E)
-        // Where (A, B) are subregions, and (D,E) are super-regions
-        //
-        // then after deleting 'C', the graph will look like this:
-        //  ... - A - (D, E ...)
-        //  ... - B - (D, E, ...)
-        //  (A, B, ...) - D - ...
-        //  (A, B, ...) - E - ...
-        //
-        //  where '...' signifies the existing sub and super regions of an entry
-        //  When two adjacent ty::Regions are encountered, we've computed a final
-        //  constraint, and add it to our list. Since we make sure to never re-add
-        //  deleted items, this process will always finish.
-        while !vid_map.is_empty() {
-            let target = vid_map.keys().next().expect("Keys somehow empty").clone();
-            let deps = vid_map.remove(&target).expect("Entry somehow missing");
-
-            for smaller in deps.smaller.iter() {
-                for larger in deps.larger.iter() {
-                    match (smaller, larger) {
-                        (&RegionTarget::Region(r1), &RegionTarget::Region(r2)) => {
-                            if self.region_name(r1) != self.region_name(r2) {
-                                finished
-                                    .entry(self.region_name(r2).unwrap())
-                                    .or_insert_with(|| Vec::new())
-                                    .push(r1) // Larger, smaller
-                            }
-                        }
-                        (&RegionTarget::RegionVid(_), &RegionTarget::Region(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*smaller) {
-                                let smaller_deps = v.into_mut();
-                                smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
-                            }
-                        }
-                        (&RegionTarget::Region(_), &RegionTarget::RegionVid(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*larger) {
-                                let deps = v.into_mut();
-                                deps.smaller.insert(*smaller);
-                                deps.smaller.remove(&target);
-                            }
-                        }
-                        (&RegionTarget::RegionVid(_), &RegionTarget::RegionVid(_)) => {
-                            if let Entry::Occupied(v) = vid_map.entry(*smaller) {
-                                let smaller_deps = v.into_mut();
-                                smaller_deps.larger.insert(*larger);
-                                smaller_deps.larger.remove(&target);
-                            }
-
-                            if let Entry::Occupied(v) = vid_map.entry(*larger) {
-                                let larger_deps = v.into_mut();
-                                larger_deps.smaller.insert(*smaller);
-                                larger_deps.smaller.remove(&target);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        let lifetime_predicates = names_map
-            .iter()
-            .flat_map(|(name, _lifetime)| {
-                let empty = Vec::new();
-                let bounds: FxHashSet<String> = finished // TODO(twk): lifetime branding
-                    .get(name)
-                    .unwrap_or(&empty)
-                    .iter()
-                    .map(|region| self.get_lifetime(region, names_map))
-                    .collect();
-
-                if bounds.is_empty() {
-                    return None;
-                }
-                /* Some(WherePredicate::RegionPredicate {
-                    lifetime: lifetime.clone(),
-                    bounds: bounds.into_iter().collect(),
-                }) */
-                None // TODO(twk): use the correct WherePredicate and rebuild the code above
-            })
-            .collect();
-
-        lifetime_predicates
-    }
-
     pub fn region_name(&self, region: Region) -> Option<String> {
         match region {
-            &ty::ReEarlyBound(r) => Some(r.name.as_str().to_string()),
+            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
             _ => None,
         }
     }
