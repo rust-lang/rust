@@ -358,8 +358,7 @@ pub fn paren_overhead(context: &RewriteContext) -> usize {
 
 pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
     match e.node {
-        ast::ExprKind::InPlace(ref e, _)
-        | ast::ExprKind::Call(ref e, _)
+        ast::ExprKind::Call(ref e, _)
         | ast::ExprKind::Binary(_, ref e, _)
         | ast::ExprKind::Cast(ref e, _)
         | ast::ExprKind::Type(ref e, _)

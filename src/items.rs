@@ -26,6 +26,7 @@ use config::{BraceStyle, Config, Density, IndentStyle};
 use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
            rewrite_assign_rhs_with, ExprType, RhsTactics};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
+use macros::{rewrite_macro, MacroPosition};
 use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
@@ -2731,6 +2732,9 @@ impl Rewrite for ast::ForeignItem {
             ast::ForeignItemKind::Ty => {
                 let vis = format_visibility(&self.vis);
                 Some(format!("{}type {};", vis, self.ident))
+            }
+            ast::ForeignItemKind::Macro(ref mac) => {
+                rewrite_macro(mac, None, context, shape, MacroPosition::Item)
             }
         }?;
 
