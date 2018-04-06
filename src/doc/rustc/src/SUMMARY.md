@@ -10,4 +10,7 @@
         - [Warn-by-default lints](lints/listing/warn-by-default.md)
         - [Deny-by-default lints](lints/listing/deny-by-default.md)
 - [Codegen options](codegen-options/index.md)
+- [Targets](targets/index.md)
+    - [Built-in Targets](targets/built-in.md)
+    - [Custom Targets](targets/custom.md)
 - [Contributing to `rustc`](contributing.md)
