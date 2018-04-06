@@ -460,7 +460,7 @@ fn rewrite_nested_use_tree(
         list_item.item = use_tree.rewrite(context, nested_shape);
         list_items.push(list_item);
     }
-    let tactic = if use_tree_list.iter().any(|use_segment| {
+    let (tactic, remaining_width) = if use_tree_list.iter().any(|use_segment| {
         use_segment
             .path
             .last()
@@ -469,14 +469,16 @@ fn rewrite_nested_use_tree(
                 _ => false,
             })
     }) {
-        DefinitiveListTactic::Vertical
+        (DefinitiveListTactic::Vertical, 0)
     } else {
-        definitive_tactic(
+        let remaining_width = shape.width.checked_sub(2).unwrap_or(0);
+        let tactic = definitive_tactic(
             &list_items,
             context.config.imports_layout(),
             Separator::Comma,
-            shape.width.checked_sub(2).unwrap_or(0),
-        )
+            remaining_width,
+        );
+        (tactic, remaining_width)
     };
     let ends_with_newline = context.config.imports_indent() == IndentStyle::Block
         && tactic != DefinitiveListTactic::Horizontal;
