@@ -336,7 +336,7 @@ This lint is deprecated and no longer used.
 This lint guards against `extern crate` items that are never used. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 extern crate semver;
 ```
 
@@ -359,9 +359,10 @@ code that triggers this lint:
 ```rust
 use test::{A};
 
-mod test {
-    struct A;
+pub mod test {
+    pub struct A;
 }
+# fn main() {}
 ```
 
 When set to 'deny', this will produce:
@@ -410,7 +411,7 @@ You can call `bar()` directly, without the `foo::`.
 This lint checks for the unused result of an expression in a statement. Some
 example code that triggers this lint:
 
-```rust
+```rust,no_run
 fn foo<T>() -> T { panic!() }
 
 fn main() {

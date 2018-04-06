@@ -7,7 +7,7 @@ depending on how you've configured things.
 
 Here's a small example:
 
-```rust
+```bash
 $ cat main.rs
 fn main() {
     let x = 5;

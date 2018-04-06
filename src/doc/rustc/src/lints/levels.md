@@ -22,7 +22,7 @@ pub fn foo() {}
 
 Compiling this file produces no warnings:
 
-```rust
+```bash
 $ rustc lib.rs --crate-type=lib
 $
 ```
@@ -62,7 +62,7 @@ warning: unused variable: `x`
 A 'deny' lint produces an error if you violate it. For example, this code
 runs into the `exceeding_bitshifts` lint.
 
-```rust
+```rust,ignore
 fn main() {
     100u8 << 10;
 }
@@ -215,7 +215,7 @@ pub fn foo() {}
 This is the maximum level for all lints. So for example, if we take our
 code sample from the "deny" lint level above:
 
-```rust
+```rust,ignore
 fn main() {
     100u8 << 10;
 }

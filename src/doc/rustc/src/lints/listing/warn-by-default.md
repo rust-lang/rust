@@ -7,7 +7,7 @@ These lints are all set to the 'warn' level by default.
 This lint detects an erroneous expression while doing constant evaluation. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 let b = 200u8 + 200u8;
 ```
 
@@ -413,7 +413,7 @@ impl Trait for i32 {
 This lint detects when compiler plugins are used as ordinary library in
 non-plugin crate. Some example code that triggers this lint:
 
-```rust
+```rust,ignore
 #![feature(plugin)]
 #![plugin(macro_crate_test)]
 
@@ -425,7 +425,7 @@ extern crate macro_crate_test;
 This lint detects detect private items in public interfaces not caught by the old implementation. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 pub trait Trait {
     type A;
 }
@@ -439,6 +439,7 @@ mod foo {
         type A = Z;
     }
 }
+# fn main() {}
 ```
 
 This will produce:
@@ -682,7 +683,7 @@ warning: union contains a field with possibly non-trivial drop code, drop code o
 This lint detects unrecognized lint attribute. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 #[allow(not_a_real_lint)]
 ```
 
@@ -702,7 +703,7 @@ warning: unknown lint: `not_a_real_lint`
 This lint detects detects unreachable code paths. Some example code that
 triggers this lint:
 
-```rust
+```rust,no_run
 panic!("we never go past here!");
 
 let x = 5;
@@ -1020,7 +1021,7 @@ As such, you won't ever trigger this lint in your code directly.
 This lint detects `while true { }`. Some example code that triggers this
 lint:
 
-```rust
+```rust,no_run
 while true {
 
 }

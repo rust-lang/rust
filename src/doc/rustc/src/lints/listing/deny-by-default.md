@@ -7,7 +7,7 @@ These lints are all set to the 'deny' level by default.
 This lint detects that a shift exceeds the type's number of bits. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 1_i32 << 32;
 ```
 
@@ -27,7 +27,7 @@ error: bitshift exceeds the type's number of bits
 This lint detects type parameter default erroneously allowed in invalid location. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 fn foo<T=i32>(t: T) {}
 ```
 
@@ -51,7 +51,7 @@ error: defaults for type parameters are only allowed in `struct`, `enum`, `type`
 visibility rules, and changed the visibility of struct constructors. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 mod m {
     pub struct S(u8);
     
@@ -96,7 +96,7 @@ it into its own directory if appropriate.
 This lint detects names that resolve to ambiguous glob imports. Some example
 code that triggers this lint:
 
-```rust
+```rust,ignore
 pub struct Foo;
 
 mod bar {
@@ -143,7 +143,7 @@ This warning can always be fixed by removing the unused pattern in the
 This lint catches transmuting from `&T` to `&mut T` becuase it is undefined
 behavior. Some example code that triggers this lint:
 
-```rust
+```rust,ignore
 unsafe {
     let y = std::mem::transmute::<&i32, &mut i32>(&5);
 }
@@ -168,7 +168,7 @@ Constants do not have their symbols exported, and therefore, this probably
 means you meant to use a `static`, not a `const. Some example code that
 triggers this lint:
 
-```rust
+```rust,ignore
 #[no_mangle]
 const FOO: i32 = 5;
 ```
@@ -191,7 +191,7 @@ error: const items should never be #[no_mangle]
 This lint detects incorrect parentheses. Some example code that triggers this
 lint:
 
-```rust
+```rust,ignore
 let x = 5 as usize();
 ```
 
@@ -225,7 +225,7 @@ to be accessed in safe code. This lint now catches and denies this kind of code.
 This lint detects an unknown crate type found in a `#[crate_type]` directive. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 #![crate_type="lol"]
 ```
 
