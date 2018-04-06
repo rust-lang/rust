@@ -26,7 +26,7 @@ Unit tests are located in [`src/test/ui/chalkify`][chalkify]. A good
 example test is [the `lower_impl` test][lower_impl]. At the time of
 this writing, it looked like this:
 
-```rust
+```rust,ignore
 #![feature(rustc_attrs)]
 
 trait Foo { }
