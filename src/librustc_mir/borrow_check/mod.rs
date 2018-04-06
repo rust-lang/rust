@@ -843,6 +843,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         rw: ReadOrWrite,
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) -> bool {
+        debug!(
+            "check_access_for_conflict(context={:?}, place_span={:?}, sd={:?}, rw={:?})",
+            context,
+            place_span,
+            sd,
+            rw,
+        );
+
         let mut error_reported = false;
         self.each_borrow_involving_path(
             context,
