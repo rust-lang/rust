@@ -359,6 +359,16 @@ impl Token {
         false
     }
 
+    /// Returns `true` if the token is an interpolated type.
+    pub fn is_ty(&self) -> bool {
+        if let Interpolated(ref nt) = *self {
+            if let NtTy(..) = nt.0 {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Returns a lifetime with the span and a dummy id if it is a lifetime,
     /// or the original lifetime if it is an interpolated lifetime, ignoring
     /// the span.

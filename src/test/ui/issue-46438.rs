@@ -10,7 +10,7 @@
 
 macro_rules! m {
     ($my_type: ty) => {
-        impl $my_type for u8 {}
+        impl $my_type for u8 {} //~ WARN expected a trait, found type
     }
 }
 

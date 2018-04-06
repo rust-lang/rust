@@ -5533,6 +5533,7 @@ impl<'a> Parser<'a> {
         };
 
         // Parse both types and traits as a type, then reinterpret if necessary.
+        let ty_first_interpolated = if self.token.is_ty() { Some(self.span) } else { None };
         let ty_first = self.parse_ty()?;
 
         // If `for` is missing we try to recover.
@@ -5562,8 +5563,16 @@ impl<'a> Parser<'a> {
 
                 let ty_first = ty_first.into_inner();
                 let path = match ty_first.node {
-                    // This notably includes paths passed through `ty` macro fragments (#46438).
-                    TyKind::Path(None, path) => path,
+                    TyKind::Path(None, path) => {
+                        if let Some(span) = ty_first_interpolated {
+                            self.diagnostic()
+                                .struct_span_warn(span, "expected a trait, found type")
+                                .note("this warning will become a hard error in a future release")
+                                .span_label(span, "try using `path` instead of `ty` \
+                                                   for this macro fragment").emit();
+                        }
+                        path
+                    }
                     _ => {
                         self.span_err(ty_first.span, "expected a trait, found type");
                         ast::Path::from_ident(ty_first.span, keywords::Invalid.ident())

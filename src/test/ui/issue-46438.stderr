@@ -1,0 +1,19 @@
+warning: expected a trait, found type
+  --> $DIR/issue-46438.rs:13:14
+   |
+LL |         impl $my_type for u8 {} //~ WARN expected a trait, found type
+   |              ^^^^^^^^ try using `path` instead of `ty` for this macro fragment
+...
+LL | m!(Tr);
+   | ------- in this macro invocation
+   |
+   = note: this warning will become a hard error in a future release
+
+error: expected a trait, found type
+  --> $DIR/issue-46438.rs:21:4
+   |
+LL | m!(&'static u8); //~ ERROR expected a trait, found type
+   |    ^^^^^^^^^^^
+
+error: aborting due to previous error
+
