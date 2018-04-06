@@ -13,7 +13,7 @@
 use slice;
 use str::from_utf8_unchecked_mut;
 use super::*;
-use super::printable::is_printable;
+use unicode::printable::is_printable;
 use unicode::tables::{conversions, derived_property, general_category, property};
 
 #[lang = "char"]
