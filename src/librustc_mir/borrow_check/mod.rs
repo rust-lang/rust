@@ -37,7 +37,7 @@ use dataflow::MoveDataParamEnv;
 use dataflow::{DataflowResultsConsumer};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
-use dataflow::{Borrows, ReserveOrActivateIndex};
+use dataflow::Borrows;
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
@@ -65,6 +65,8 @@ pub fn provide(providers: &mut Providers) {
         ..*providers
     };
 }
+
+struct IsActive(bool);
 
 fn mir_borrowck<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -846,22 +848,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             (sd, place_span.0),
             flow_state,
-            |this, index, borrow| match (rw, borrow.kind) {
+            |this, borrow_index, is_active, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same
                 // borrow); so don't check if they interfere.
                 //
                 // NOTE: *reservations* do conflict with themselves;
                 // thus aren't injecting unsoundenss w/ this check.)
-                (Activation(_, activating), _) if activating == index.borrow_index() => {
+                (Activation(_, activating), _) if activating == borrow_index => {
                     debug!(
                         "check_access_for_conflict place_span: {:?} sd: {:?} rw: {:?} \
-                         skipping {:?} b/c activation of same borrow_index: {:?}",
+                         skipping {:?} b/c activation of same borrow_index",
                         place_span,
                         sd,
                         rw,
-                        (index, borrow),
-                        index.borrow_index()
+                        (borrow_index, borrow),
                     );
                     Control::Continue
                 }
@@ -872,7 +873,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
-                    if this.allow_two_phase_borrow(borrow.kind) && index.is_reservation() {
+                    if this.allow_two_phase_borrow(borrow.kind) && !is_active.0 {
                         return Control::Continue;
                     }
 
@@ -2216,10 +2217,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// "Current borrow" here means a borrow that reaches the point in
     /// the control-flow where the access occurs.
     ///
-    /// The borrow's phase is represented by the ReserveOrActivateIndex
-    /// passed to the callback: one can call `is_reservation()` and
-    /// `is_activation()` to determine what phase the borrow is
-    /// currently in, when such distinction matters.
+    /// The borrow's phase is represented by the IsActive parameter
+    /// passed to the callback.
     fn each_borrow_involving_path<F>(
         &mut self,
         _context: Context,
@@ -2227,7 +2226,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
         mut op: F,
     ) where
-        F: FnMut(&mut Self, ReserveOrActivateIndex, &BorrowData<'tcx>) -> Control,
+        F: FnMut(&mut Self, BorrowIndex, IsActive, &BorrowData<'tcx>) -> Control,
     {
         let (access, place) = access_place;
 
@@ -2247,7 +2246,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                     i, borrowed, place, access
                 );
-                let ctrl = op(self, i, borrowed);
+                let is_active = IsActive(i.is_activation());
+                let ctrl = op(self, i.borrow_index(), is_active, borrowed);
                 if ctrl == Control::Break {
                     return;
                 }
