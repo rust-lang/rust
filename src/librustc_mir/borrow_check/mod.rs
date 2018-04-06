@@ -1150,13 +1150,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // in order to populate our used_mut set.
                 if let AggregateKind::Closure(def_id, _) = &**aggregate_kind {
                     let BorrowCheckResult { used_mut_upvars, .. } = self.tcx.mir_borrowck(*def_id);
+                    debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                     for field in used_mut_upvars {
                         match operands[field.index()] {
                             Operand::Move(Place::Local(local)) => {
                                 self.used_mut.insert(local);
                             }
-                            Operand::Move(Place::Projection(ref proj)) => {
-                                if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                            Operand::Move(ref place @ Place::Projection(_)) => {
+                                if let Some(field) = self.is_upvar_field_projection(place) {
                                     self.used_mut_upvars.push(field);
                                 }
                             }
@@ -1697,8 +1698,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                         }
                     }
-                    Ok((Place::Projection(ref proj), _mut_allowed)) => {
-                        if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                    Ok((Place::Projection(_), _mut_allowed)) => {
+                        if let Some(field) = self.is_upvar_field_projection(&place) {
                             self.used_mut_upvars.push(field);
                         }
                     }
@@ -1734,8 +1735,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             }
                         }
                     }
-                    Ok((Place::Projection(ref proj), _mut_allowed)) => {
-                        if let Some(field) = self.is_upvar_field_projection(&proj.base) {
+                    Ok((Place::Projection(_), _mut_allowed)) => {
+                        if let Some(field) = self.is_upvar_field_projection(&place) {
                             self.used_mut_upvars.push(field);
                         }
                     }
@@ -1930,7 +1931,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 }
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
-                                    self.is_mutable(&proj.base, is_local_mutation_allowed)
+                                    // Subtle: this is an upvar
+                                    // reference, so it looks like
+                                    // `self.foo` -- we want to double
+                                    // check that the context `*self`
+                                    // is mutable (i.e., this is not a
+                                    // `Fn` closure).  But if that
+                                    // check succeeds, we want to
+                                    // *blame* the mutability on
+                                    // `place` (that is,
+                                    // `self.foo`). This is used to
+                                    // propagate the info about
+                                    // whether mutability declarations
+                                    // are used outwards, so that we register
+                                    // the outer variable as mutable. Otherwise a
+                                    // test like this fails to record the `mut`
+                                    // as needed:
+                                    //
+                                    // ```
+                                    // fn foo<F: FnOnce()>(_f: F) { }
+                                    // fn main() {
+                                    //     let var = Vec::new();
+                                    //     foo(move || {
+                                    //         var.push(1);
+                                    //     });
+                                    // }
+                                    // ```
+                                    let _ = self.is_mutable(&proj.base, is_local_mutation_allowed)?;
+                                    Ok((place, is_local_mutation_allowed))
                                 }
                             }
                         } else {
