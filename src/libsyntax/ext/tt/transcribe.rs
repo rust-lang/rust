@@ -182,19 +182,19 @@ pub fn transcribe(cx: &ExtCtxt,
                 let sp = sp.with_ctxt(sp_ctxt.apply_mark(cx.current_expansion.mark));
 
                 let update_ident_ctxt = |ident: Ident| {
-                    let ident_ctxt = if escape_hygiene {
-                        cx.call_site().ctxt()
+                    let new_span = if escape_hygiene {
+                        cx.call_site()
                     } else {
-                        ident.ctxt.apply_mark(cx.current_expansion.mark)
+                        ident.span.apply_mark(cx.current_expansion.mark)
                     };
-                    Ident { ctxt: ident_ctxt, ..ident }
+                    Ident::new(ident.name, new_span)
                 };
 
                 let result_tok = match tok {
                     token::Ident(ident, is_raw) =>
                         TokenTree::Token(sp, token::Ident(update_ident_ctxt(ident), is_raw)),
                     token::Lifetime(ident) =>
-                        TokenTree::Token(sp, token::Lifetime(ident)),
+                        TokenTree::Token(sp, token::Lifetime()),
                     _ => {
                         let mut marker = Marker(cx.current_expansion.mark);
                         noop_fold_tt(TokenTree::Token(sp, tok), &mut marker)
