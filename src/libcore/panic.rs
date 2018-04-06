@@ -49,11 +49,17 @@ impl<'a> PanicInfo<'a> {
                           and related macros",
                 issue = "0")]
     #[doc(hidden)]
-    pub fn internal_constructor(payload: &'a (Any + Send),
-                                message: Option<&'a fmt::Arguments<'a>>,
+    #[inline]
+    pub fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
                                 location: Location<'a>)
                                 -> Self {
-        PanicInfo { payload, location, message }
+        PanicInfo { payload: &(), location, message }
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn set_payload(&mut self, info: &'a (Any + Send)) {
+        self.payload = info;
     }
 
     /// Returns the payload associated with the panic.
@@ -259,5 +265,5 @@ impl<'a> fmt::Display for Location<'a> {
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
     fn box_me_up(&mut self) -> *mut (Any + Send);
-    fn get(&self) -> &(Any + Send);
+    fn get(&mut self) -> &(Any + Send);
 }
