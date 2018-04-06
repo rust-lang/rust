@@ -18,24 +18,29 @@ impl_from_bits_!(
     float64x1_t: u32x2,
     i32x2,
     f32x2,
+    m32x2,
     u16x4,
     i16x4,
+    m16x4,
     u8x8,
     i8x8,
-    b8x8
+    m8x8
 );
 impl_from_bits_!(
     float64x2_t: u64x2,
     i64x2,
     f64x2,
+    m64x2,
     u32x4,
     i32x4,
     f32x4,
+    m32x4,
     u16x8,
     i16x8,
+    m16x8,
     u8x16,
     i8x16,
-    b8x16
+    m8x16
 );
 
 /// Vector add.

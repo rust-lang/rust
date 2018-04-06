@@ -1,9 +1,12 @@
 //! Minimal boolean vector implementation
 #![allow(unused)]
 
-/// Minimal interface: all packed SIMD boolean vector types implement this.
-macro_rules! impl_bool_minimal {
+/// Minimal interface: all packed SIMD mask types implement this.
+macro_rules! impl_mask_minimal {
     ($id:ident, $elem_ty:ident, $elem_count:expr, $($elem_name:ident),+) => {
+
+        impl super::api::Lanes<[u32; $elem_count]> for $id {}
+
         impl $id {
             /// Creates a new instance with each vector elements initialized
             /// with the provided values.
@@ -88,7 +91,7 @@ macro_rules! impl_bool_minimal {
 }
 
 #[cfg(test)]
-macro_rules! test_bool_minimal {
+macro_rules! test_mask_minimal {
     ($id:ident, $elem_count:expr) => {
         #[test]
         fn minimal() {

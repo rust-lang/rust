@@ -1,4 +1,4 @@
-//! Implements portable bitwise vector reductions.
+//! Implements portable horizontal bitwise vector reductions.
 #![allow(unused)]
 
 macro_rules! impl_bitwise_reductions {
@@ -67,7 +67,7 @@ macro_rules! impl_bitwise_reductions {
     };
 }
 
-macro_rules! impl_bool_bitwise_reductions {
+macro_rules! impl_mask_bitwise_reductions {
     ($id:ident, $elem_ty:ident, $internal_ty:ident) => {
         impl $id {
             /// Lane-wise bitwise `and` of the vector elements.

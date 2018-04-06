@@ -45,4 +45,6 @@ extern "platform-intrinsic" {
     pub fn simd_reduce_xor<T, U>(x: T) -> U;
     pub fn simd_reduce_all<T>(x: T) -> bool;
     pub fn simd_reduce_any<T>(x: T) -> bool;
+
+    pub fn simd_select<M, T>(m: M, a: T, b: T) -> T;
 }

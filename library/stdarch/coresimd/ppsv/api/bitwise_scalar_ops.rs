@@ -1,4 +1,4 @@
-//! Lane-wise bitwise operations for integer and boolean vectors.
+//! Lane-wise bitwise operations for integer vectors and vector masks.
 #![allow(unused)]
 
 macro_rules! impl_bitwise_scalar_ops {
@@ -156,7 +156,7 @@ macro_rules! test_int_bitwise_scalar_ops {
 }
 
 #[cfg(test)]
-macro_rules! test_bool_bitwise_scalar_ops {
+macro_rules! test_mask_bitwise_scalar_ops {
     ($id:ident) => {
         #[test]
         fn bool_scalar_arithmetic() {

@@ -1,4 +1,4 @@
-//! Implements portable arithmetic vector reductions.
+//! Implements portable horizontal arithmetic reductions.
 #![allow(unused)]
 
 macro_rules! impl_minmax_reductions {

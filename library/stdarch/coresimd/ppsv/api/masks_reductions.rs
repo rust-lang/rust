@@ -1,7 +1,7 @@
-//! Lane-wise boolean vector reductions.
+//! Horizontal mask reductions.
 #![allow(unused)]
 
-macro_rules! impl_bool_reductions {
+macro_rules! impl_mask_reductions {
     ($id:ident) => {
         impl $id {
             /// Are `all` vector lanes `true`?
@@ -46,7 +46,7 @@ macro_rules! impl_bool_reductions {
 }
 
 #[cfg(test)]
-macro_rules! test_bool_reductions {
+macro_rules! test_mask_reductions {
     ($id:ident) => {
         #[test]
         fn all() {

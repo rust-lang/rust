@@ -1,4 +1,4 @@
-//! Lane-wise vector comparisons returning boolean vectors.
+//! Lane-wise vector comparisons returning vector masks.
 #![allow(unused)]
 
 macro_rules! impl_cmp {
@@ -49,7 +49,7 @@ macro_rules! impl_cmp {
     };
 }
 
-macro_rules! impl_bool_cmp {
+macro_rules! impl_mask_cmp {
     ($id:ident, $bool_ty:ident) => {
         impl $id {
             /// Lane-wise equality comparison.

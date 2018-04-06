@@ -123,10 +123,10 @@ macro_rules! test_int_bitwise_ops {
 }
 
 #[cfg(test)]
-macro_rules! test_bool_bitwise_ops {
+macro_rules! test_mask_bitwise_ops {
     ($id:ident) => {
         #[test]
-        fn bool_arithmetic() {
+        fn mask_bitwise_ops() {
             use coresimd::simd::*;
 
             let t = $id::splat(true);

@@ -19,10 +19,11 @@
 //! `{t}{l_w}x{l_n}`:
 //!
 //! * `t`: type - single letter corresponding to the following Rust literal
-//! types:   * `i`: signed integer
+//! types:
+//!   * `i`: signed integer
 //!   * `u`: unsigned integer
 //!   * `f`: floating point
-//!   * `b`: boolean
+//!   * `m`: vector mask
 //! * `l_w`: lane width in bits
 //! * `l_n`: number of lanes
 //!

@@ -4,6 +4,8 @@
 /// Minimal interface: all packed SIMD vector types implement this.
 macro_rules! impl_minimal {
     ($id:ident, $elem_ty:ident, $elem_count:expr, $($elem_name:ident),+) => {
+        impl super::api::Lanes<[u32; $elem_count]> for $id {}
+
         impl $id {
             /// Creates a new instance with each vector elements initialized
             /// with the provided values.
