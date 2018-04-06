@@ -47,6 +47,7 @@ pub fn opts() -> TargetOptions {
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
         abi_return_struct_as_int: true,
+        emit_debug_gdb_scripts: false,
         .. Default::default()
     }
 }
