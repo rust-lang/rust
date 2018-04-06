@@ -256,6 +256,30 @@ impl<T:Copy> Cell<T> {
     pub fn get(&self) -> T {
         unsafe{ *self.value.get() }
     }
+
+    /// Applies a function to the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// c.update(|x| x + 1);
+    ///
+    /// assert_eq!(c.get(), 6);
+    /// ```
+    #[inline]
+    #[unstable(feature = "cell_update", issue = "0")] // TODO: issue
+    pub fn update<F>(&self, f: F) -> T
+    where
+        F: FnOnce(T) -> T,
+    {
+        let old = self.get();
+        let new = f(old);
+        self.set(new);
+        new
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
