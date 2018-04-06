@@ -689,7 +689,7 @@ mod tests {
     }
 
     fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
-        ast::PathSegment::from_ident(Ident::from_str(s), sp(lo, hi))
+        ast::PathSegment::from_ident(Ident::new(Symbol::intern(s), sp(lo, hi)))
     }
 
     #[test] fn path_exprs_1() {
@@ -873,10 +873,8 @@ mod tests {
                     == P(ast::Pat{
                     id: ast::DUMMY_NODE_ID,
                     node: PatKind::Ident(ast::BindingMode::ByValue(ast::Mutability::Immutable),
-                                        Spanned{ span:sp(0, 1),
-                                                node: Ident::from_str("b")
-                        },
-                                        None),
+                                         Ident::new(Symbol::intern("b"), sp(0, 1)),
+                                         None),
                     span: sp(0,1)}));
             parser_done(parser);
         })
@@ -912,9 +910,7 @@ mod tests {
                                             node: PatKind::Ident(
                                                 ast::BindingMode::ByValue(
                                                     ast::Mutability::Immutable),
-                                                Spanned{
-                                                    span: sp(6,7),
-                                                    node: Ident::from_str("b")},
+                                                Ident::new(Symbol::intern("b"), sp(6, 7)),
                                                 None
                                             ),
                                             span: sp(6,7)

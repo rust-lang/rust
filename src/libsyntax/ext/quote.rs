@@ -75,7 +75,7 @@ pub mod rt {
 
     impl ToTokens for ast::Ident {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, Token::from_ast_ident(*self))]
+            vec![TokenTree::Token(self.span, Token::from_ast_ident(*self))]
         }
     }
 
@@ -193,7 +193,7 @@ pub mod rt {
 
     impl ToTokens for ast::Lifetime {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, token::Lifetime(self.ident))]
+            vec![TokenTree::Token(self.ident.span, token::Lifetime(self.ident))]
         }
     }
 
@@ -239,7 +239,7 @@ pub mod rt {
                     inner.push(TokenTree::Token(self.span, token::Colon).into());
                 }
                 inner.push(TokenTree::Token(
-                    self.span, token::Token::from_ast_ident(segment.identifier)
+                    self.span, token::Token::from_ast_ident(segment.ident)
                 ).into());
             }
             inner.push(self.tokens.clone());

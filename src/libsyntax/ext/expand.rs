@@ -168,10 +168,10 @@ fn macro_bang_format(path: &ast::Path) -> ExpnFormat {
             path_str.push_str("::");
         }
 
-        if segment.identifier.name != keywords::CrateRoot.name() &&
-            segment.identifier.name != keywords::DollarCrate.name()
+        if segment.ident.name != keywords::CrateRoot.name() &&
+            segment.ident.name != keywords::DollarCrate.name()
         {
-            path_str.push_str(&segment.identifier.name.as_str())
+            path_str.push_str(&segment.ident.name.as_str())
         }
     }
 
@@ -688,7 +688,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             opt_expanded
         } else {
             let msg = format!("non-{kind} macro in {kind} position: {name}",
-                              name = path.segments[0].identifier.name, kind = kind.name());
+                              name = path.segments[0].ident.name, kind = kind.name());
             self.cx.span_err(path.span, &msg);
             self.cx.trace_macros_diag();
             kind.dummy(span)
@@ -733,7 +733,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    name: keywords::Invalid.name(),
+                    ident: keywords::Invalid.ident(),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
@@ -1279,15 +1279,16 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str("file".into(),
-                                                                     file))),
+                                        attr::mk_name_value_item_str(Ident::from_str("file"),
+                                                                     dummy_spanned(file)))),
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str("contents".into(),
-                                                                     (&*src).into()))),
+                                        attr::mk_name_value_item_str(Ident::from_str("contents"),
+                                                            dummy_spanned(Symbol::intern(&src))))),
                             ];
 
-                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_list_item("include".into(), include_info))));
+                            let include_ident = Ident::from_str("include");
+                            let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
+                            items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
                         }
                         Err(_) => {
                             self.cx.span_err(at.span,
@@ -1300,7 +1301,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 }
             }
 
-            let meta = attr::mk_list_item("doc".into(), items);
+            let meta = attr::mk_list_item(DUMMY_SP, Ident::from_str("doc"), items);
             match at.style {
                 ast::AttrStyle::Inner =>
                     Some(attr::mk_spanned_attr_inner(at.span, at.id, meta)),
@@ -1378,12 +1379,12 @@ pub struct Marker(pub Mark);
 
 impl Folder for Marker {
     fn fold_ident(&mut self, mut ident: Ident) -> Ident {
-        ident.ctxt = ident.ctxt.apply_mark(self.0);
+        ident.span = ident.span.apply_mark(self.0);
         ident
     }
 
     fn new_span(&mut self, span: Span) -> Span {
-        span.with_ctxt(span.ctxt().apply_mark(self.0))
+        span.apply_mark(self.0)
     }
 
     fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {

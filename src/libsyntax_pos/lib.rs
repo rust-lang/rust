@@ -50,7 +50,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 extern crate unicode_width;
 
 pub mod hygiene;
-pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
+pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -421,6 +421,52 @@ impl Span {
             end.lo,
             if end.ctxt == SyntaxContext::empty() { end.ctxt } else { span.ctxt },
         )
+    }
+
+    #[inline]
+    pub fn apply_mark(self, mark: Mark) -> Span {
+        let span = self.data();
+        span.with_ctxt(span.ctxt.apply_mark(mark))
+    }
+
+    #[inline]
+    pub fn remove_mark(&mut self) -> Mark {
+        let mut span = self.data();
+        let mark = span.ctxt.remove_mark();
+        *self = Span::new(span.lo, span.hi, span.ctxt);
+        mark
+    }
+
+    #[inline]
+    pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
+        let mut span = self.data();
+        let mark = span.ctxt.adjust(expansion);
+        *self = Span::new(span.lo, span.hi, span.ctxt);
+        mark
+    }
+
+    #[inline]
+    pub fn glob_adjust(&mut self, expansion: Mark, glob_ctxt: SyntaxContext)
+                       -> Option<Option<Mark>> {
+        let mut span = self.data();
+        let mark = span.ctxt.glob_adjust(expansion, glob_ctxt);
+        *self = Span::new(span.lo, span.hi, span.ctxt);
+        mark
+    }
+
+    #[inline]
+    pub fn reverse_glob_adjust(&mut self, expansion: Mark, glob_ctxt: SyntaxContext)
+                               -> Option<Option<Mark>> {
+        let mut span = self.data();
+        let mark = span.ctxt.reverse_glob_adjust(expansion, glob_ctxt);
+        *self = Span::new(span.lo, span.hi, span.ctxt);
+        mark
+    }
+
+    #[inline]
+    pub fn modern(self) -> Span {
+        let span = self.data();
+        span.with_ctxt(span.ctxt.modern())
     }
 }
 

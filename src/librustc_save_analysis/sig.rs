@@ -671,7 +671,7 @@ impl Sig for ast::StructField {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
         let mut text = String::new();
         let mut defs = None;
-        if let Some(ref ident) = self.ident {
+        if let Some(ident) = self.ident {
             text.push_str(&ident.to_string());
             defs = Some(SigElement {
                 id: id_from_node_id(self.id, scx),
@@ -692,7 +692,7 @@ impl Sig for ast::StructField {
 
 impl Sig for ast::Variant_ {
     fn make(&self, offset: usize, _parent_id: Option<NodeId>, scx: &SaveContext) -> Result {
-        let mut text = self.name.to_string();
+        let mut text = self.ident.to_string();
         match self.data {
             ast::VariantData::Struct(ref fields, id) => {
                 let name_def = SigElement {

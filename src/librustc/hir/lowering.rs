@@ -909,7 +909,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_ident(&mut self, ident: Ident) -> Name {
         let ident = ident.modern();
-        if ident.ctxt == SyntaxContext::empty() {
+        if ident.span.ctxt() == SyntaxContext::empty() {
             return ident.name;
         }
         *self.name_map
@@ -920,7 +920,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_label(&mut self, label: Option<Label>) -> Option<hir::Label> {
         label.map(|label| hir::Label {
             name: label.ident.name,
-            span: label.span,
+            span: label.ident.span,
         })
     }
 
@@ -1358,7 +1358,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
         Spanned {
             node: hir::Variant_ {
-                name: v.node.name.name,
+                name: v.node.ident.name,
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
                 disr_expr: v.node
@@ -1607,7 +1607,7 @@ impl<'a> LoweringContext<'a> {
         }
 
         hir::PathSegment::new(
-            self.lower_ident(segment.identifier),
+            self.lower_ident(segment.ident),
             parameters,
             infer_types,
         )
@@ -1720,7 +1720,7 @@ impl<'a> LoweringContext<'a> {
         decl.inputs
             .iter()
             .map(|arg| match arg.pat.node {
-                PatKind::Ident(_, ident, None) => respan(ident.span, ident.node.name),
+                PatKind::Ident(_, ident, None) => respan(ident.span, ident.name),
                 _ => respan(arg.pat.span, keywords::Invalid.name()),
             })
             .collect()
@@ -1810,7 +1810,7 @@ impl<'a> LoweringContext<'a> {
             default: tp.default
                 .as_ref()
                 .map(|x| self.lower_ty(x, ImplTraitContext::Disallowed)),
-            span: tp.span,
+            span: tp.ident.span,
             pure_wrt_drop: attr::contains_name(&tp.attrs, "may_dangle"),
             synthetic: tp.attrs
                 .iter()
@@ -1822,21 +1822,22 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
+        let span = l.ident.span;
         match self.lower_ident(l.ident) {
-            x if x == "'static" => self.new_named_lifetime(l.id, l.span, hir::LifetimeName::Static),
+            x if x == "'static" => self.new_named_lifetime(l.id, span, hir::LifetimeName::Static),
             x if x == "'_" => match self.anonymous_lifetime_mode {
                 AnonymousLifetimeMode::CreateParameter => {
-                    let fresh_name = self.collect_fresh_in_band_lifetime(l.span);
-                    self.new_named_lifetime(l.id, l.span, fresh_name)
+                    let fresh_name = self.collect_fresh_in_band_lifetime(span);
+                    self.new_named_lifetime(l.id, span, fresh_name)
                 }
 
                 AnonymousLifetimeMode::PassThrough => {
-                    self.new_named_lifetime(l.id, l.span, hir::LifetimeName::Underscore)
+                    self.new_named_lifetime(l.id, span, hir::LifetimeName::Underscore)
                 }
             },
             name => {
-                self.maybe_collect_in_band_lifetime(l.span, name);
-                self.new_named_lifetime(l.id, l.span, hir::LifetimeName::Name(name))
+                self.maybe_collect_in_band_lifetime(span, name);
+                self.new_named_lifetime(l.id, span, hir::LifetimeName::Name(name))
             }
         }
     }
@@ -2089,10 +2090,7 @@ impl<'a> LoweringContext<'a> {
             name: self.lower_ident(match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried) positional field hygiene
-                None => Ident {
-                    name: Symbol::intern(&index.to_string()),
-                    ctxt: f.span.ctxt(),
-                },
+                None => Ident::new(Symbol::intern(&index.to_string()), f.span),
             }),
             vis: self.lower_visibility(&f.vis, None),
             ty: self.lower_ty(&f.ty, ImplTraitContext::Disallowed),
@@ -2102,7 +2100,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_field(&mut self, f: &Field) -> hir::Field {
         hir::Field {
-            name: respan(f.ident.span, self.lower_ident(f.ident.node)),
+            name: respan(f.ident.span, self.lower_ident(f.ident)),
             expr: P(self.lower_expr(&f.expr)),
             span: f.span,
             is_shorthand: f.is_shorthand,
@@ -2359,11 +2357,11 @@ impl<'a> LoweringContext<'a> {
 
                 // Correctly resolve `self` imports
                 if path.segments.len() > 1
-                    && path.segments.last().unwrap().identifier.name == keywords::SelfValue.name()
+                    && path.segments.last().unwrap().ident.name == keywords::SelfValue.name()
                 {
                     let _ = path.segments.pop();
                     if rename.is_none() {
-                        *name = path.segments.last().unwrap().identifier.name;
+                        *name = path.segments.last().unwrap().ident.name;
                     }
                 }
 
@@ -2804,7 +2802,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
-            PatKind::Ident(ref binding_mode, pth1, ref sub) => {
+            PatKind::Ident(ref binding_mode, ident, ref sub) => {
                 match self.resolver.get_resolution(p.id).map(|d| d.base_def()) {
                     // `None` can occur in body-less function signatures
                     def @ None | def @ Some(Def::Local(_)) => {
@@ -2815,16 +2813,16 @@ impl<'a> LoweringContext<'a> {
                         hir::PatKind::Binding(
                             self.lower_binding_mode(binding_mode),
                             canonical_id,
-                            respan(pth1.span, pth1.node.name),
+                            respan(ident.span, ident.name),
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
                     }
                     Some(def) => hir::PatKind::Path(hir::QPath::Resolved(
                         None,
                         P(hir::Path {
-                            span: pth1.span,
+                            span: ident.span,
                             def,
-                            segments: hir_vec![hir::PathSegment::from_name(pth1.node.name)],
+                            segments: hir_vec![hir::PathSegment::from_name(ident.name)],
                         }),
                     )),
                 }
@@ -2939,7 +2937,7 @@ impl<'a> LoweringContext<'a> {
                     ImplTraitContext::Disallowed,
                 );
                 let args = args.iter().map(|x| self.lower_expr(x)).collect();
-                hir::ExprMethodCall(hir_seg, seg.span, args)
+                hir::ExprMethodCall(hir_seg, seg.ident.span, args)
             }
             ExprKind::Binary(binop, ref lhs, ref rhs) => {
                 let binop = self.lower_binop(binop);
@@ -3074,7 +3072,7 @@ impl<'a> LoweringContext<'a> {
             ),
             ExprKind::Field(ref el, ident) => hir::ExprField(
                 P(self.lower_expr(el)),
-                respan(ident.span, self.lower_ident(ident.node)),
+                respan(ident.span, self.lower_ident(ident)),
             ),
             ExprKind::TupField(ref el, ident) => hir::ExprTupField(P(self.lower_expr(el)), ident),
             ExprKind::Index(ref el, ref er) => {
@@ -3505,12 +3503,10 @@ impl<'a> LoweringContext<'a> {
                 let attr = {
                     // allow(unreachable_code)
                     let allow = {
-                        let allow_ident = self.str_to_ident("allow");
-                        let uc_ident = self.str_to_ident("unreachable_code");
-                        let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
-                        let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
-                        let uc_spanned = respan(e.span, uc_nested);
-                        attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
+                        let allow_ident = Ident::from_str("allow").with_span_pos(e.span);
+                        let uc_ident = Ident::from_str("unreachable_code").with_span_pos(e.span);
+                        let uc_nested = attr::mk_nested_word_item(uc_ident);
+                        attr::mk_list_item(e.span, allow_ident, vec![uc_nested])
                     };
                     attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
                 };

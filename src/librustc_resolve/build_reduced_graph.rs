@@ -34,7 +34,6 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
-use syntax::codemap::respan;
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -115,13 +114,13 @@ impl<'a> Resolver<'a> {
 
         let mut module_path: Vec<_> = prefix.segments.iter()
             .chain(path.segments.iter())
-            .map(|seg| respan(seg.span, seg.identifier))
+            .map(|seg| seg.ident)
             .collect();
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename) => {
                 let mut ident = use_tree.ident();
-                let mut source = module_path.pop().unwrap().node;
+                let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
 
                 if nested {
@@ -130,7 +129,7 @@ impl<'a> Resolver<'a> {
                         type_ns_only = true;
 
                         let last_segment = *module_path.last().unwrap();
-                        if last_segment.node.name == keywords::CrateRoot.name() {
+                        if last_segment.name == keywords::CrateRoot.name() {
                             resolve_error(
                                 self,
                                 use_tree.span,
@@ -142,9 +141,9 @@ impl<'a> Resolver<'a> {
 
                         // Replace `use foo::self;` with `use foo;`
                         let _ = module_path.pop();
-                        source = last_segment.node;
+                        source = last_segment;
                         if rename.is_none() {
-                            ident = last_segment.node;
+                            ident = last_segment;
                         }
                     }
                 } else {
@@ -157,7 +156,7 @@ impl<'a> Resolver<'a> {
 
                     // Disallow `use $crate;`
                     if source.name == keywords::DollarCrate.name() && path.segments.len() == 1 {
-                        let crate_root = self.resolve_crate_root(source.ctxt, true);
+                        let crate_root = self.resolve_crate_root(source.span.ctxt(), true);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
@@ -195,12 +194,8 @@ impl<'a> Resolver<'a> {
             }
             ast::UseTreeKind::Nested(ref items) => {
                 let prefix = ast::Path {
-                    segments: module_path.iter()
-                        .map(|s| ast::PathSegment {
-                            identifier: s.node,
-                            span: s.span,
-                            parameters: None,
-                        })
+                    segments: module_path.into_iter()
+                        .map(|ident| ast::PathSegment::from_ident(ident))
                         .collect(),
                     span: path.span,
                 };
@@ -428,7 +423,7 @@ impl<'a> Resolver<'a> {
                                        parent: Module<'a>,
                                        vis: ty::Visibility,
                                        expansion: Mark) {
-        let ident = variant.node.name;
+        let ident = variant.node.ident;
         let def_id = self.definitions.local_def_id(variant.node.data.id());
 
         // Define a name in the type namespace.
@@ -722,7 +717,7 @@ impl<'a> Resolver<'a> {
                 match attr.meta_item_list() {
                     Some(names) => for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.imports.push((word.name(), attr.span()));
+                            imports.imports.push((word.ident.name, attr.span()));
                         } else {
                             span_err!(self.session, attr.span(), E0466, "bad macro import");
                         }
@@ -736,7 +731,7 @@ impl<'a> Resolver<'a> {
                 if let Some(names) = attr.meta_item_list() {
                     for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.reexports.push((word.name(), attr.span()));
+                            imports.reexports.push((word.ident.name, attr.span()));
                         } else {
                             bad_macro_reexport(self, attr.span());
                         }

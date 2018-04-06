@@ -251,7 +251,7 @@ impl<F> TTMacroExpander for F
                 if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
                     if let token::NtIdent(ident, is_raw) = nt.0 {
                         return tokenstream::TokenTree::Token(ident.span,
-                                                             token::Ident(ident.node, is_raw));
+                                                             token::Ident(ident, is_raw));
                     }
                 }
                 fold::noop_fold_tt(tt, self)
@@ -876,8 +876,8 @@ impl<'a> ExtCtxt<'a> {
         ast::Ident::from_str(st)
     }
     pub fn std_path(&self, components: &[&str]) -> Vec<ast::Ident> {
-        let def_site = SyntaxContext::empty().apply_mark(self.current_expansion.mark);
-        iter::once(Ident { ctxt: def_site, ..keywords::DollarCrate.ident() })
+        let def_site = DUMMY_SP.apply_mark(self.current_expansion.mark);
+        iter::once(Ident::new(keywords::DollarCrate.name(), def_site))
             .chain(components.iter().map(|s| self.ident_of(s)))
             .collect()
     }
@@ -897,7 +897,7 @@ pub fn expr_to_spanned_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &st
                               -> Option<Spanned<(Symbol, ast::StrStyle)>> {
     // Update `expr.span`'s ctxt now in case expr is an `include!` macro invocation.
     let expr = expr.map(|mut expr| {
-        expr.span = expr.span.with_ctxt(expr.span.ctxt().apply_mark(cx.current_expansion.mark));
+        expr.span = expr.span.apply_mark(cx.current_expansion.mark);
         expr
     });
 

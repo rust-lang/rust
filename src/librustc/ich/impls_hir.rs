@@ -654,11 +654,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Ident {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let ast::Ident {
-            ref name,
-            ctxt: _ // Ignore this
+            name,
+            span,
         } = *self;
 
         name.hash_stable(hcx, hasher);
+        span.hash_stable(hcx, hasher);
     }
 }
 

@@ -1683,12 +1683,12 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
             } else if meta_item.is_meta_item_list() {
                 let msg = format!(
                     "invalid predicate in --cfg command line argument: `{}`",
-                    meta_item.name()
+                    meta_item.ident
                 );
                 early_error(ErrorOutputType::default(), &msg)
             }
 
-            (meta_item.name(), meta_item.value_str())
+            (meta_item.ident.name, meta_item.value_str())
         })
         .collect::<ast::CrateConfig>()
 }

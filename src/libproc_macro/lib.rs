@@ -1097,15 +1097,17 @@ impl TokenTree {
                 }).into();
             },
             self::TokenTree::Term(tt) => {
-                let ident = ast::Ident { name: tt.sym, ctxt: tt.span.0.ctxt() };
+                let ident = ast::Ident::new(tt.sym, tt.span.0);
                 let sym_str = tt.sym.as_str();
-                let token =
-                    if sym_str.starts_with("'") { Lifetime(ident) }
-                    else if sym_str.starts_with("r#") {
-                        let name = Symbol::intern(&sym_str[2..]);
-                        let ident = ast::Ident { name, ctxt: tt.span.0.ctxt() };
-                        Ident(ident, true)
-                    } else { Ident(ident, false) };
+                let token = if sym_str.starts_with("'") {
+                    Lifetime(ident)
+                } else if sym_str.starts_with("r#") {
+                    let name = Symbol::intern(&sym_str[2..]);
+                    let ident = ast::Ident::new(name, ident.span);
+                    Ident(ident, true)
+                } else {
+                    Ident(ident, false)
+                };
                 return TokenTree::Token(tt.span.0, token).into();
             }
             self::TokenTree::Literal(self::Literal {

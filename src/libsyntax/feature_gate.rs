@@ -1054,7 +1054,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.name().as_str();
+        let name = cfg.ident.name.as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -1766,11 +1766,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_path(&mut self, path: &'a ast::Path, _id: NodeId) {
         for segment in &path.segments {
-            if segment.identifier.name == keywords::Crate.name() {
-                gate_feature_post!(&self, crate_in_paths, segment.span,
+            // Identifiers we are going to check could come from a legacy macro (e.g. `#[test]`).
+            // For such macros identifiers must have empty context, because this context is
+            // used during name resolution and produced names must be unhygienic for compatibility.
+            // On the other hand, we need the actual non-empty context for feature gate checking
+            // because it's hygienic even for legacy macros. As previously stated, such context
+            // cannot be kept in identifiers, so it's kept in paths instead and we take it from
+            // there while keeping location info from the ident span.
+            let span = segment.ident.span.with_ctxt(path.span.ctxt());
+            if segment.ident.name == keywords::Crate.name() {
+                gate_feature_post!(&self, crate_in_paths, span,
                                    "`crate` in paths is experimental");
-            } else if segment.identifier.name == keywords::Extern.name() {
-                gate_feature_post!(&self, extern_in_paths, segment.span,
+            } else if segment.ident.name == keywords::Extern.name() {
+                gate_feature_post!(&self, extern_in_paths, span,
                                    "`extern` in paths is experimental");
             }
         }
@@ -1811,7 +1819,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 for mi in list {
 
                     let name = if let Some(word) = mi.word() {
-                        word.name()
+                        word.ident.name
                     } else {
                         span_err!(span_handler, mi.span, E0556,
                                   "malformed feature, expected just one word");

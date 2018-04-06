@@ -297,7 +297,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 filter!(self.span_utils, sub_span, item.span, None);
                 let variants_str = def.variants
                     .iter()
-                    .map(|v| v.node.name.to_string())
+                    .map(|v| v.node.ident.to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
                 let value = format!("{}::{{{}}}", name, variants_str);
@@ -554,7 +554,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 };
                 match self.tables.expr_ty_adjusted(&hir_node).sty {
                     ty::TyAdt(def, _) if !def.is_enum() => {
-                        let f = def.non_enum_variant().field_named(ident.node.name);
+                        let f = def.non_enum_variant().field_named(ident.name);
                         let sub_span = self.span_utils.span_for_last_ident(expr.span);
                         filter!(self.span_utils, sub_span, expr.span, None);
                         let span = self.span_from_span(sub_span.unwrap());
@@ -603,7 +603,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ty::ImplContainer(_) => (Some(method_id), None),
                     ty::TraitContainer(_) => (None, Some(method_id)),
                 };
-                let sub_span = seg.span;
+                let sub_span = seg.ident.span;
                 filter!(self.span_utils, Some(sub_span), expr.span, None);
                 let span = self.span_from_span(sub_span);
                 Some(Data::RefData(Ref {
@@ -707,7 +707,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         let def = self.get_path_def(id);
         let last_seg = &path.segments[path.segments.len() - 1];
-        let sub_span = last_seg.span;
+        let sub_span = last_seg.ident.span;
         filter!(self.span_utils, Some(sub_span), path.span, None);
         match def {
             HirDef::Upvar(id, ..) | HirDef::Local(id) => {
@@ -817,7 +817,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         field_ref: &ast::Field,
         variant: &ty::VariantDef,
     ) -> Option<Ref> {
-        let f = variant.find_field_named(field_ref.ident.node.name)?;
+        let f = variant.find_field_named(field_ref.ident.name)?;
         // We don't really need a sub-span here, but no harm done
         let sub_span = self.span_utils.span_for_last_ident(field_ref.ident.span);
         filter!(self.span_utils, sub_span, field_ref.ident.span, None);
@@ -961,7 +961,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
 // variables (idents) from patterns.
 struct PathCollector<'l> {
     collected_paths: Vec<(NodeId, &'l ast::Path)>,
-    collected_idents: Vec<(NodeId, ast::Ident, Span, ast::Mutability)>,
+    collected_idents: Vec<(NodeId, ast::Ident, ast::Mutability)>,
 }
 
 impl<'l> PathCollector<'l> {
@@ -982,12 +982,12 @@ impl<'l, 'a: 'l> Visitor<'a> for PathCollector<'l> {
             PatKind::TupleStruct(ref path, ..) | PatKind::Path(_, ref path) => {
                 self.collected_paths.push((p.id, path));
             }
-            PatKind::Ident(bm, ref path1, _) => {
+            PatKind::Ident(bm, ident, _) => {
                 debug!(
                     "PathCollector, visit ident in pat {}: {:?} {:?}",
-                    path1.node,
+                    ident,
                     p.span,
-                    path1.span
+                    ident.span
                 );
                 let immut = match bm {
                     // Even if the ref is mut, you can't change the ref, only
@@ -997,7 +997,7 @@ impl<'l, 'a: 'l> Visitor<'a> for PathCollector<'l> {
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 self.collected_idents
-                    .push((p.id, path1.node, path1.span, immut));
+                    .push((p.id, ident, immut));
             }
             _ => {}
         }

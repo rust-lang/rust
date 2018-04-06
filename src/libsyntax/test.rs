@@ -195,10 +195,10 @@ impl fold::Folder for EntryPointCleaner {
             EntryPointType::MainAttr |
             EntryPointType::Start =>
                 folded.map(|ast::Item {id, ident, attrs, node, vis, span, tokens}| {
-                    let allow_str = Symbol::intern("allow");
-                    let dead_code_str = Symbol::intern("dead_code");
-                    let word_vec = vec![attr::mk_list_word_item(dead_code_str)];
-                    let allow_dead_code_item = attr::mk_list_item(allow_str, word_vec);
+                    let allow_ident = Ident::from_str("allow");
+                    let dc_nested = attr::mk_nested_word_item(Ident::from_str("dead_code"));
+                    let allow_dead_code_item = attr::mk_list_item(DUMMY_SP, allow_ident,
+                                                                  vec![dc_nested]);
                     let allow_dead_code = attr::mk_attr_outer(DUMMY_SP,
                                                               attr::mk_attr_id(),
                                                               allow_dead_code_item);
@@ -623,7 +623,7 @@ fn nospan<T>(t: T) -> codemap::Spanned<T> {
 fn path_node(ids: Vec<Ident>) -> ast::Path {
     ast::Path {
         span: DUMMY_SP,
-        segments: ids.into_iter().map(|id| ast::PathSegment::from_ident(id, DUMMY_SP)).collect(),
+        segments: ids.into_iter().map(|id| ast::PathSegment::from_ident(id)).collect(),
     }
 }
 
