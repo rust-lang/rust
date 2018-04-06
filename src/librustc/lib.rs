@@ -67,6 +67,7 @@
 #![feature(unboxed_closures)]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
+#![feature(vec_remove_item)]
 #![feature(catch_expr)]
 #![feature(integer_atomics)]
 #![feature(test)]
@@ -83,13 +84,17 @@ extern crate fmt_macros;
 extern crate getopts;
 extern crate graphviz;
 #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate scoped_tls;
 #[cfg(windows)]
 extern crate libc;
 extern crate polonius_engine;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
+extern crate parking_lot;
 extern crate rustc_errors as errors;
+extern crate rustc_rayon as rayon;
+extern crate rustc_rayon_core as rayon_core;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;

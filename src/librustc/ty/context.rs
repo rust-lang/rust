@@ -1699,15 +1699,20 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<CanonicalVarInfo> {
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
 
-    use std::cell::Cell;
     use std::fmt;
     use std::mem;
     use syntax_pos;
     use ty::maps;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::{self, Lrc};
+    use rustc_data_structures::sync::{self, Lrc, Lock};
     use dep_graph::OpenTask;
+
+    #[cfg(not(parallel_queries))]
+    use std::cell::Cell;
+
+    #[cfg(parallel_queries)]
+    use rayon_core;
 
     /// This is the implicit state of rustc. It contains the current
     /// TyCtxt and query. It is updated when creating a local interner or
@@ -1732,9 +1737,21 @@ pub mod tls {
         pub task: &'a OpenTask,
     }
 
+    #[cfg(parallel_queries)]
+    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+        rayon_core::tlv::with(value, f)
+    }
+
+    #[cfg(parallel_queries)]
+    fn get_tlv() -> usize {
+        rayon_core::tlv::get()
+    }
+
     // A thread local value which stores a pointer to the current ImplicitCtxt
+    #[cfg(not(parallel_queries))]
     thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
+    #[cfg(not(parallel_queries))]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
         let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
@@ -1742,6 +1759,7 @@ pub mod tls {
         f()
     }
 
+    #[cfg(not(parallel_queries))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }
@@ -1810,6 +1828,13 @@ pub mod tls {
         where F: for<'a> FnOnce(TyCtxt<'a, 'gcx, 'gcx>) -> R
     {
         with_thread_locals(|| {
+            GCX_PTR.with(|lock| {
+                *lock.lock() = gcx as *const _ as usize;
+            });
+            let _on_drop = OnDrop(move || {
+                GCX_PTR.with(|lock| *lock.lock() = 0);
+            });
+
             let tcx = TyCtxt {
                 gcx,
                 interners: &gcx.global_interners,
@@ -1824,6 +1849,27 @@ pub mod tls {
                 f(tcx)
             })
         })
+    }
+
+    scoped_thread_local!(pub static GCX_PTR: Lock<usize>);
+
+    pub unsafe fn with_global<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        let gcx = GCX_PTR.with(|lock| *lock.lock());
+        assert!(gcx != 0);
+        let gcx = &*(gcx as *const GlobalCtxt<'_>);
+        let tcx = TyCtxt {
+            gcx,
+            interners: &gcx.global_interners,
+        };
+        let icx = ImplicitCtxt {
+            query: None,
+            tcx,
+            layout_depth: 0,
+            task: &OpenTask::Ignore,
+        };
+        enter_context(&icx, |_| f(tcx))
     }
 
     /// Allows access to the current ImplicitCtxt in a closure if one is available
