@@ -12,7 +12,7 @@ use std::cmp::Ordering;
 
 use config::lists::*;
 use syntax::ast::{self, UseTreeKind};
-use syntax::codemap::{BytePos, Span};
+use syntax::codemap::{self, BytePos, Span, DUMMY_SP};
 
 use codemap::SpanUtils;
 use config::IndentStyle;
@@ -24,6 +24,7 @@ use utils::mk_sp;
 use visitor::FmtVisitor;
 
 use std::borrow::Cow;
+use std::fmt;
 
 /// Returns a name imported by a `use` declaration. e.g. returns `Ordering`
 /// for `std::cmp::Ordering` and `self` for `std::cmp::self`.
@@ -89,7 +90,7 @@ impl<'a> FmtVisitor<'a> {
 // sorting.
 
 // FIXME we do a lot of allocation to make our own representation.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum UseSegment {
     Ident(String, Option<String>),
     Slf(Option<String>),
@@ -98,12 +99,12 @@ pub enum UseSegment {
     List(Vec<UseTree>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct UseTree {
     pub path: Vec<UseSegment>,
     pub span: Span,
     // Comment information within nested use tree.
-    list_item: Option<ListItem>,
+    pub list_item: Option<ListItem>,
     // Additional fields for top level use items.
     // Should we have another struct for top-level use items rather than reusing this?
     visibility: Option<ast::Visibility>,
@@ -143,12 +144,84 @@ impl UseSegment {
     }
 }
 
+pub fn merge_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
+    let mut result = Vec::with_capacity(use_trees.len());
+    for use_tree in use_trees {
+        if use_tree.has_comment() || use_tree.attrs.is_some() {
+            result.push(use_tree);
+            continue;
+        }
+
+        for flattened in use_tree.flatten() {
+            merge_use_trees_inner(&mut result, flattened);
+        }
+    }
+    result
+}
+
+fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree) {
+    for tree in trees.iter_mut() {
+        if tree.share_prefix(&use_tree) {
+            tree.merge(use_tree);
+            return;
+        }
+    }
+
+    trees.push(use_tree);
+}
+
+impl fmt::Debug for UseTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl fmt::Debug for UseSegment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl fmt::Display for UseSegment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            UseSegment::Glob => write!(f, "*"),
+            UseSegment::Ident(ref s, _) => write!(f, "{}", s),
+            UseSegment::Slf(..) => write!(f, "self"),
+            UseSegment::Super(..) => write!(f, "super"),
+            UseSegment::List(ref list) => {
+                write!(f, "{{")?;
+                for (i, item) in list.iter().enumerate() {
+                    let is_last = i == list.len() - 1;
+                    write!(f, "{}", item)?;
+                    if !is_last {
+                        write!(f, ", ")?;
+                    }
+                }
+                write!(f, "}}")
+            }
+        }
+    }
+}
+impl fmt::Display for UseTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, segment) in self.path.iter().enumerate() {
+            let is_last = i == self.path.len() - 1;
+            write!(f, "{}", segment)?;
+            if !is_last {
+                write!(f, "::")?;
+            }
+        }
+        write!(f, "")
+    }
+}
+
 impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
     pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(256);
         if let Some(ref attrs) = self.attrs {
-            result.push_str(&attrs.rewrite(context, shape)?);
+            result.push_str(&attrs.rewrite(context, shape).expect("rewrite attr"));
             if !result.is_empty() {
                 result.push_str(&shape.indent.to_string_with_newline(context.config));
             }
@@ -166,6 +239,17 @@ impl UseTree {
                 }
             })?);
         Some(result)
+    }
+
+    // FIXME: Use correct span?
+    fn from_path(path: Vec<UseSegment>, span: Span) -> UseTree {
+        UseTree {
+            path,
+            span,
+            list_item: None,
+            visibility: None,
+            attrs: None,
+        }
     }
 
     pub fn from_ast_with_normalization(
@@ -360,6 +444,131 @@ impl UseTree {
         self.path.push(last);
         self
     }
+
+    fn has_comment(&self) -> bool {
+        self.list_item.as_ref().map_or(false, |list_item| {
+            list_item.pre_comment.is_some() || list_item.post_comment.is_some()
+        })
+    }
+
+    fn same_visibility(&self, other: &UseTree) -> bool {
+        match (&self.visibility, &other.visibility) {
+            (
+                Some(codemap::Spanned {
+                    node: ast::VisibilityKind::Inherited,
+                    ..
+                }),
+                None,
+            )
+            | (
+                None,
+                Some(codemap::Spanned {
+                    node: ast::VisibilityKind::Inherited,
+                    ..
+                }),
+            )
+            | (None, None) => true,
+            (
+                Some(codemap::Spanned { node: lnode, .. }),
+                Some(codemap::Spanned { node: rnode, .. }),
+            ) => lnode == rnode,
+            _ => false,
+        }
+    }
+
+    fn share_prefix(&self, other: &UseTree) -> bool {
+        if self.path.is_empty() || other.path.is_empty() || self.attrs.is_some()
+            || !self.same_visibility(other)
+        {
+            false
+        } else {
+            self.path[0] == other.path[0]
+        }
+    }
+
+    fn flatten(self) -> Vec<UseTree> {
+        if self.path.is_empty() {
+            return vec![self];
+        }
+        match self.path.clone().last().unwrap() {
+            UseSegment::List(list) => {
+                let prefix = &self.path[..self.path.len() - 1];
+                let mut result = vec![];
+                for nested_use_tree in list.into_iter() {
+                    for mut flattend in nested_use_tree.clone().flatten().iter_mut() {
+                        let mut new_path = prefix.to_vec();
+                        new_path.append(&mut flattend.path);
+                        result.push(UseTree {
+                            path: new_path,
+                            span: self.span,
+                            list_item: None,
+                            visibility: self.visibility.clone(),
+                            attrs: None,
+                        });
+                    }
+                }
+
+                result
+            }
+            _ => vec![self],
+        }
+    }
+
+    fn merge(&mut self, other: UseTree) {
+        let mut new_path = vec![];
+        let mut len = 0;
+        for (i, (mut a, b)) in self.path
+            .clone()
+            .iter_mut()
+            .zip(other.path.clone().into_iter())
+            .enumerate()
+        {
+            if *a == b {
+                len = i + 1;
+                new_path.push(b);
+                continue;
+            } else {
+                len = i;
+                break;
+            }
+        }
+        if let Some(merged) = merge_rest(&self.path, &other.path, len) {
+            new_path.push(merged);
+            self.span = self.span.to(other.span);
+        }
+        self.path = new_path;
+    }
+}
+
+fn merge_rest(a: &[UseSegment], b: &[UseSegment], len: usize) -> Option<UseSegment> {
+    let a_rest = &a[len..];
+    let b_rest = &b[len..];
+    if a_rest.is_empty() && b_rest.is_empty() {
+        return None;
+    }
+    if a_rest.is_empty() {
+        return Some(UseSegment::List(vec![
+            UseTree::from_path(vec![UseSegment::Slf(None)], DUMMY_SP),
+            UseTree::from_path(b_rest.to_vec(), DUMMY_SP),
+        ]));
+    }
+    if b_rest.is_empty() {
+        return Some(UseSegment::List(vec![
+            UseTree::from_path(vec![UseSegment::Slf(None)], DUMMY_SP),
+            UseTree::from_path(a_rest.to_vec(), DUMMY_SP),
+        ]));
+    }
+    if let UseSegment::List(mut list) = a_rest[0].clone() {
+        merge_use_trees_inner(&mut list, UseTree::from_path(b_rest.to_vec(), DUMMY_SP));
+        list.sort();
+        return Some(UseSegment::List(list.clone()));
+    }
+    let mut list = vec![
+        UseTree::from_path(a_rest.to_vec(), DUMMY_SP),
+        UseTree::from_path(b_rest.to_vec(), DUMMY_SP),
+    ];
+    list.sort();
+    Some(UseSegment::List(list))
 }
 
 impl PartialOrd for UseSegment {
@@ -461,9 +670,12 @@ fn rewrite_nested_use_tree(
         IndentStyle::Visual => shape.visual_indent(0),
     };
     for use_tree in use_tree_list {
-        let mut list_item = use_tree.list_item.clone()?;
-        list_item.item = use_tree.rewrite(context, nested_shape);
-        list_items.push(list_item);
+        if let Some(mut list_item) = use_tree.list_item.clone() {
+            list_item.item = use_tree.rewrite(context, nested_shape);
+            list_items.push(list_item);
+        } else {
+            list_items.push(ListItem::from_str(use_tree.rewrite(context, nested_shape)?));
+        }
     }
     let (tactic, remaining_width) = if use_tree_list.iter().any(|use_segment| {
         use_segment
@@ -681,6 +893,60 @@ mod test {
             input: s.chars().peekable(),
         };
         parser.parse_in_list()
+    }
+
+    macro parse_use_trees($($s:expr),* $(,)*) {
+        vec![
+            $(parse_use_tree($s),)*
+        ]
+    }
+
+    #[test]
+    fn test_use_tree_merge() {
+        macro test_merge([$($input:expr),* $(,)*], [$($output:expr),* $(,)*]) {
+            assert_eq!(
+                merge_use_trees(parse_use_trees!($($input,)*)),
+                parse_use_trees!($($output,)*),
+            );
+        }
+
+        test_merge!(["a::b::{c, d}", "a::b::{e, f}"], ["a::b::{c, d, e, f}"]);
+        test_merge!(["a::b::c", "a::b"], ["a::b::{self, c}"]);
+        test_merge!(["a::b", "a::b"], ["a::b"]);
+        test_merge!(["a", "a::b", "a::b::c"], ["a::{self, b::{self, c}}"]);
+        test_merge!(
+            ["a::{b::{self, c}, d::e}", "a::d::f"],
+            ["a::{b::{self, c}, d::{e, f}}"]
+        );
+        test_merge!(
+            ["a::d::f", "a::{b::{self, c}, d::e}"],
+            ["a::{b::{self, c}, d::{e, f}}"]
+        );
+        test_merge!(
+            ["a::{c, d, b}", "a::{d, e, b, a, f}", "a::{f, g, c}"],
+            ["a::{a, b, c, d, e, f, g}"]
+        );
+    }
+
+    #[test]
+    fn test_use_tree_flatten() {
+        assert_eq!(
+            parse_use_tree("a::b::{c, d, e, f}").flatten(),
+            parse_use_trees!("a::b::c", "a::b::d", "a::b::e", "a::b::f",)
+        );
+
+        assert_eq!(
+            parse_use_tree("a::b::{c::{d, e, f}, g, h::{i, j, k}}").flatten(),
+            parse_use_trees![
+                "a::b::c::d",
+                "a::b::c::e",
+                "a::b::c::f",
+                "a::b::g",
+                "a::b::h::i",
+                "a::b::h::j",
+                "a::b::h::k",
+            ]
+        );
     }
 
     #[test]

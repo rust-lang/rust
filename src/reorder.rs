@@ -22,7 +22,7 @@ use syntax::{ast, attr, codemap::Span};
 use attr::filter_inline_attrs;
 use codemap::LineRangeUtils;
 use comment::combine_strs_with_missing_comments;
-use imports::UseTree;
+use imports::{merge_use_trees, UseTree};
 use items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use lists::{itemize_list, write_list, ListFormatting, ListItem};
 use rewrite::{Rewrite, RewriteContext};
@@ -117,29 +117,41 @@ fn rewrite_reorderable_items(
     match reorderable_items[0].node {
         // FIXME: Remove duplicated code.
         ast::ItemKind::Use(..) => {
-            let normalized_items: Vec<_> = reorderable_items
+            let mut normalized_items: Vec<_> = reorderable_items
                 .iter()
                 .filter_map(|item| UseTree::from_ast_with_normalization(context, item))
                 .collect();
-
-            // 4 = "use ", 1 = ";"
-            let nested_shape = shape.offset_left(4)?.sub_width(1)?;
+            let cloned = normalized_items.clone();
+            // Add comments before merging.
             let list_items = itemize_list(
                 context.snippet_provider,
-                normalized_items.iter(),
+                cloned.iter(),
                 "",
                 ";",
                 |item| item.span.lo(),
                 |item| item.span.hi(),
-                |item| item.rewrite_top_level(context, nested_shape),
+                |_item| Some("".to_owned()),
                 span.lo(),
                 span.hi(),
                 false,
             );
+            for (item, list_item) in normalized_items.iter_mut().zip(list_items) {
+                item.list_item = Some(list_item.clone());
+            }
+            if context.config.merge_imports() {
+                normalized_items = merge_use_trees(normalized_items);
+            }
+            normalized_items.sort();
 
-            let mut item_pair_vec: Vec<_> = list_items.zip(&normalized_items).collect();
-            item_pair_vec.sort_by(|a, b| a.1.cmp(b.1));
-            let item_vec: Vec<_> = item_pair_vec.into_iter().map(|pair| pair.0).collect();
+            // 4 = "use ", 1 = ";"
+            let nested_shape = shape.offset_left(4)?.sub_width(1)?;
+            let item_vec: Vec<_> = normalized_items
+                .into_iter()
+                .map(|use_tree| ListItem {
+                    item: use_tree.rewrite_top_level(context, nested_shape),
+                    ..use_tree.list_item.unwrap_or_else(|| ListItem::empty())
+                })
+                .collect();
 
             wrap_reorderable_items(context, &item_vec, nested_shape)
         }
