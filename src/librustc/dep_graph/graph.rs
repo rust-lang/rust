@@ -12,11 +12,10 @@ use errors::DiagnosticBuilder;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_data_structures::sync::Lrc;
-use std::cell::{Ref, RefCell};
+use rustc_data_structures::sync::{Lrc, RwLock, ReadGuard, Lock};
 use std::env;
 use std::hash::Hash;
-use ty::TyCtxt;
+use ty::{self, TyCtxt};
 use util::common::{ProfileQueriesMsg, profq_msg};
 
 use ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
@@ -24,7 +23,6 @@ use ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
 use super::debug::EdgeFilter;
 use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
-use super::raii;
 use super::safe::DepGraphSafe;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 use super::prev::PreviousDepGraph;
@@ -37,7 +35,7 @@ pub struct DepGraph {
     // result value fingerprints. Do not rely on the length of this vector
     // being the same as the number of nodes in the graph. The vector can
     // contain an arbitrary number of zero-entries at the end.
-    fingerprints: Lrc<RefCell<IndexVec<DepNodeIndex, Fingerprint>>>
+    fingerprints: Lrc<Lock<IndexVec<DepNodeIndex, Fingerprint>>>
 }
 
 
@@ -67,27 +65,27 @@ struct DepGraphData {
     /// tracking. The `current` field is the dependency graph of only the
     /// current compilation session: We don't merge the previous dep-graph into
     /// current one anymore.
-    current: RefCell<CurrentDepGraph>,
+    current: Lock<CurrentDepGraph>,
 
     /// The dep-graph from the previous compilation session. It contains all
     /// nodes and edges as well as all fingerprints of nodes that have them.
     previous: PreviousDepGraph,
 
-    colors: RefCell<DepNodeColorMap>,
+    colors: Lock<DepNodeColorMap>,
 
     /// When we load, there may be `.o` files, cached mir, or other such
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
+    previous_work_products: RwLock<FxHashMap<WorkProductId, WorkProduct>>,
 
     /// Work-products that we generate in this run.
-    work_products: RefCell<FxHashMap<WorkProductId, WorkProduct>>,
+    work_products: RwLock<FxHashMap<WorkProductId, WorkProduct>>,
 
-    dep_node_debug: RefCell<FxHashMap<DepNode, String>>,
+    dep_node_debug: Lock<FxHashMap<DepNode, String>>,
 
     // Used for testing, only populated when -Zquery-dep-graph is specified.
-    loaded_from_cache: RefCell<FxHashMap<DepNodeIndex, bool>>,
+    loaded_from_cache: Lock<FxHashMap<DepNodeIndex, bool>>,
 }
 
 impl DepGraph {
@@ -102,22 +100,22 @@ impl DepGraph {
                                                  (prev_graph_node_count * 115) / 100);
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
-                previous_work_products: RefCell::new(FxHashMap()),
-                work_products: RefCell::new(FxHashMap()),
-                dep_node_debug: RefCell::new(FxHashMap()),
-                current: RefCell::new(CurrentDepGraph::new()),
+                previous_work_products: RwLock::new(FxHashMap()),
+                work_products: RwLock::new(FxHashMap()),
+                dep_node_debug: Lock::new(FxHashMap()),
+                current: Lock::new(CurrentDepGraph::new()),
                 previous: prev_graph,
-                colors: RefCell::new(DepNodeColorMap::new(prev_graph_node_count)),
-                loaded_from_cache: RefCell::new(FxHashMap()),
+                colors: Lock::new(DepNodeColorMap::new(prev_graph_node_count)),
+                loaded_from_cache: Lock::new(FxHashMap()),
             })),
-            fingerprints: Lrc::new(RefCell::new(fingerprints)),
+            fingerprints: Lrc::new(Lock::new(fingerprints)),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
         DepGraph {
             data: None,
-            fingerprints: Lrc::new(RefCell::new(IndexVec::new())),
+            fingerprints: Lrc::new(Lock::new(IndexVec::new())),
         }
     }
 
@@ -144,21 +142,32 @@ impl DepGraph {
 
     pub fn assert_ignored(&self)
     {
-        if let Some(ref data) = self.data {
-            match data.current.borrow().task_stack.last() {
-                Some(&OpenTask::Ignore) | None => {
-                    // ignored
+        if let Some(..) = self.data {
+            ty::tls::with_context_opt(|icx| {
+                let icx = if let Some(icx) = icx { icx } else { return };
+                match *icx.task.lock() {
+                    OpenTask::Ignore => {
+                        // ignored
+                    }
+                    _ => panic!("expected an ignore context")
                 }
-                _ => panic!("expected an ignore context")
-            }
+            })
         }
     }
 
     pub fn with_ignore<OP,R>(&self, op: OP) -> R
         where OP: FnOnce() -> R
     {
-        let _task = self.data.as_ref().map(|data| raii::IgnoreTask::new(&data.current));
-        op()
+        ty::tls::with_context(|icx| {
+            let icx = ty::tls::ImplicitCtxt {
+                task: &Lock::new(OpenTask::Ignore),
+                ..icx.clone()
+            };
+
+            ty::tls::enter_context(&icx, |_| {
+                op()
+            })
+        })
     }
 
     /// Starts a new dep-graph task. Dep-graph tasks are specified
@@ -197,24 +206,49 @@ impl DepGraph {
         where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
               R: HashStable<StableHashingContext<'gcx>>,
     {
-        self.with_task_impl(key, cx, arg, task,
-            |data, key| data.borrow_mut().push_task(key),
-            |data, key| data.borrow_mut().pop_task(key))
+        self.with_task_impl(key, cx, arg, false, task,
+            |key| OpenTask::Regular {
+                node: key,
+                reads: Vec::new(),
+                read_set: FxHashSet(),
+            },
+            |data, key, task| data.borrow_mut().complete_task(key, task))
+    }
+
+    /// Creates a new dep-graph input with value `input`
+    pub fn input_task<'gcx, C, R>(&self,
+                                   key: DepNode,
+                                   cx: C,
+                                   input: R)
+                                   -> (R, DepNodeIndex)
+        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
+              R: HashStable<StableHashingContext<'gcx>>,
+    {
+        fn identity_fn<C, A>(_: C, arg: A) -> A {
+            arg
+        }
+
+        self.with_task_impl(key, cx, input, true, identity_fn,
+            |_| OpenTask::Ignore,
+            |data, key, _| data.borrow_mut().alloc_node(key, Vec::new()))
     }
 
     fn with_task_impl<'gcx, C, A, R>(&self,
-                                    key: DepNode,
-                                    cx: C,
-                                    arg: A,
-                                    task: fn(C, A) -> R,
-                                    push: fn(&RefCell<CurrentDepGraph>, DepNode),
-                                    pop: fn(&RefCell<CurrentDepGraph>, DepNode) -> DepNodeIndex)
-                                    -> (R, DepNodeIndex)
+                                     key: DepNode,
+                                     cx: C,
+                                     arg: A,
+                                     no_tcx: bool,
+                                     task: fn(C, A) -> R,
+                                     get_task: fn(DepNode) -> OpenTask,
+                                     get_index: fn(&Lock<CurrentDepGraph>,
+                                                   DepNode,
+                                                   OpenTask) -> DepNodeIndex)
+                                     -> (R, DepNodeIndex)
         where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
               R: HashStable<StableHashingContext<'gcx>>,
     {
         if let Some(ref data) = self.data {
-            push(&data.current, key);
+            let open_task = get_task(key);
 
             // In incremental mode, hash the result of the task. We don't
             // do anything with the hash yet, but we are computing it
@@ -227,13 +261,32 @@ impl DepGraph {
                 profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
             };
 
-            let result = task(cx, arg);
+            let (result, open_task) = if no_tcx {
+                (task(cx, arg), open_task)
+            } else {
+                ty::tls::with_context(|icx| {
+                    let open_task = Lock::new(open_task);
+
+                    let r = {
+                        let icx = ty::tls::ImplicitCtxt {
+                            task: &open_task,
+                            ..icx.clone()
+                        };
+
+                        ty::tls::enter_context(&icx, |_| {
+                            task(cx, arg)
+                        })
+                    };
+
+                    (r, open_task.into_inner())
+                })
+            };
 
             if cfg!(debug_assertions) {
                 profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
-            let dep_node_index = pop(&data.current, key);
+            let dep_node_index = get_index(&data.current, key, open_task);
 
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
@@ -302,11 +355,28 @@ impl DepGraph {
         where OP: FnOnce() -> R
     {
         if let Some(ref data) = self.data {
-            data.current.borrow_mut().push_anon_task();
-            let result = op();
+            let (result, open_task) = ty::tls::with_context(|icx| {
+                let task = Lock::new(OpenTask::Anon {
+                    reads: Vec::new(),
+                    read_set: FxHashSet(),
+                });
+
+                let r = {
+                    let icx = ty::tls::ImplicitCtxt {
+                        task: &task,
+                        ..icx.clone()
+                    };
+
+                    ty::tls::enter_context(&icx, |_| {
+                        op()
+                    })
+                };
+
+                (r, task.into_inner())
+            });
             let dep_node_index = data.current
                                      .borrow_mut()
-                                     .pop_anon_task(dep_kind);
+                                     .pop_anon_task(dep_kind, open_task);
             (result, dep_node_index)
         } else {
             (op(), DepNodeIndex::INVALID)
@@ -324,9 +394,9 @@ impl DepGraph {
         where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
               R: HashStable<StableHashingContext<'gcx>>,
     {
-        self.with_task_impl(key, cx, arg, task,
-            |data, key| data.borrow_mut().push_eval_always_task(key),
-            |data, key| data.borrow_mut().pop_eval_always_task(key))
+        self.with_task_impl(key, cx, arg, false, task,
+            |key| OpenTask::EvalAlways { node: key },
+            |data, key, task| data.borrow_mut().complete_eval_always_task(key, task))
     }
 
     #[inline]
@@ -432,13 +502,13 @@ impl DepGraph {
 
     /// Access the map of work-products created during this run. Only
     /// used during saving of the dep-graph.
-    pub fn work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
+    pub fn work_products(&self) -> ReadGuard<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.as_ref().unwrap().work_products.borrow()
     }
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> Ref<FxHashMap<WorkProductId, WorkProduct>> {
+    pub fn previous_work_products(&self) -> ReadGuard<FxHashMap<WorkProductId, WorkProduct>> {
         self.data.as_ref().unwrap().previous_work_products.borrow()
     }
 
@@ -528,6 +598,7 @@ impl DepGraph {
         debug!("try_mark_green({:?}) - BEGIN", dep_node);
         let data = self.data.as_ref().unwrap();
 
+        #[cfg(not(parallel_queries))]
         debug_assert!(!data.current.borrow().node_to_node_index.contains_key(dep_node));
 
         if dep_node.kind.is_input() {
@@ -668,16 +739,24 @@ impl DepGraph {
             }
         }
 
-
         // If we got here without hitting a `return` that means that all
         // dependencies of this DepNode could be marked as green. Therefore we
-        // can also mark this DepNode as green. We do so by...
+        // can also mark this DepNode as green.
 
-        // ... allocating an entry for it in the current dependency graph and
-        // adding all the appropriate edges imported from the previous graph ...
-        let dep_node_index = data.current
-                                 .borrow_mut()
-                                 .alloc_node(*dep_node, current_deps);
+        // There may be multiple threads trying to mark the same dep node green concurrently
+
+        let (dep_node_index, did_allocation) = {
+            let mut current = data.current.borrow_mut();
+
+            if let Some(&dep_node_index) = current.node_to_node_index.get(&dep_node) {
+                // Someone else allocated it before us
+                (dep_node_index, false)
+            } else {
+                // We allocating an entry for the node in the current dependency graph and
+                // adding all the appropriate edges imported from the previous graph
+                (current.alloc_node(*dep_node, current_deps), true)
+            }
+        };
 
         // ... copying the fingerprint from the previous graph too, so we don't
         // have to recompute it ...
@@ -689,6 +768,8 @@ impl DepGraph {
                 fingerprints.resize(dep_node_index.index() + 1, Fingerprint::ZERO);
             }
 
+            // Multiple threads can all write the same fingerprint here
+            #[cfg(not(parallel_queries))]
             debug_assert!(fingerprints[dep_node_index] == Fingerprint::ZERO,
                 "DepGraph::try_mark_green() - Duplicate fingerprint \
                 insertion for {:?}", dep_node);
@@ -697,7 +778,14 @@ impl DepGraph {
         }
 
         // ... emitting any stored diagnostic ...
-        {
+        if did_allocation {
+            // Only the thread which did the allocation emits the error messages
+
+            // FIXME: Ensure that these are printed before returning for all threads.
+            // Currently threads where did_allocation = false can continue on
+            // and emit other diagnostics before these diagnostics are emitted.
+            // Such diagnostics should be emitted after these.
+            // See https://github.com/rust-lang/rust/issues/48685
             let diagnostics = tcx.on_disk_query_result_cache
                                  .load_diagnostics(tcx, prev_dep_node_index);
 
@@ -716,6 +804,8 @@ impl DepGraph {
 
         // ... and finally storing a "Green" entry in the color map.
         let mut colors = data.colors.borrow_mut();
+        // Multiple threads can all write the same color here
+        #[cfg(not(parallel_queries))]
         debug_assert!(colors.get(prev_dep_node_index).is_none(),
                       "DepGraph::try_mark_green() - Duplicate DepNodeColor \
                       insertion for {:?}", dep_node);
@@ -839,7 +929,6 @@ pub(super) struct CurrentDepGraph {
     nodes: IndexVec<DepNodeIndex, DepNode>,
     edges: IndexVec<DepNodeIndex, Vec<DepNodeIndex>>,
     node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
-    task_stack: Vec<OpenTask>,
     forbidden_edge: Option<EdgeFilter>,
 
     // Anonymous DepNodes are nodes the ID of which we compute from the list of
@@ -888,38 +977,18 @@ impl CurrentDepGraph {
             edges: IndexVec::new(),
             node_to_node_index: FxHashMap(),
             anon_id_seed: stable_hasher.finish(),
-            task_stack: Vec::new(),
             forbidden_edge,
             total_read_count: 0,
             total_duplicate_read_count: 0,
         }
     }
 
-    pub(super) fn push_ignore(&mut self) {
-        self.task_stack.push(OpenTask::Ignore);
-    }
-
-    pub(super) fn pop_ignore(&mut self) {
-        let popped_node = self.task_stack.pop().unwrap();
-        debug_assert_eq!(popped_node, OpenTask::Ignore);
-    }
-
-    pub(super) fn push_task(&mut self, key: DepNode) {
-        self.task_stack.push(OpenTask::Regular {
-            node: key,
-            reads: Vec::new(),
-            read_set: FxHashSet(),
-        });
-    }
-
-    pub(super) fn pop_task(&mut self, key: DepNode) -> DepNodeIndex {
-        let popped_node = self.task_stack.pop().unwrap();
-
+    pub(super) fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::Regular {
             node,
             read_set: _,
             reads
-        } = popped_node {
+        } = task {
             assert_eq!(node, key);
 
             // If this is an input node, we expect that it either has no
@@ -946,24 +1015,15 @@ impl CurrentDepGraph {
 
             self.alloc_node(node, reads)
         } else {
-            bug!("pop_task() - Expected regular task to be popped")
+            bug!("complete_task() - Expected regular task to be popped")
         }
     }
 
-    fn push_anon_task(&mut self) {
-        self.task_stack.push(OpenTask::Anon {
-            reads: Vec::new(),
-            read_set: FxHashSet(),
-        });
-    }
-
-    fn pop_anon_task(&mut self, kind: DepKind) -> DepNodeIndex {
-        let popped_node = self.task_stack.pop().unwrap();
-
+    fn pop_anon_task(&mut self, kind: DepKind, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::Anon {
             read_set: _,
             reads
-        } = popped_node {
+        } = task {
             debug_assert!(!kind.is_input());
 
             let mut fingerprint = self.anon_id_seed;
@@ -997,62 +1057,58 @@ impl CurrentDepGraph {
         }
     }
 
-    fn push_eval_always_task(&mut self, key: DepNode) {
-        self.task_stack.push(OpenTask::EvalAlways { node: key });
-    }
-
-    fn pop_eval_always_task(&mut self, key: DepNode) -> DepNodeIndex {
-        let popped_node = self.task_stack.pop().unwrap();
-
+    fn complete_eval_always_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::EvalAlways {
             node,
-        } = popped_node {
+        } = task {
             debug_assert_eq!(node, key);
             let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
             self.alloc_node(node, vec![krate_idx])
         } else {
-            bug!("pop_eval_always_task() - Expected eval always task to be popped");
+            bug!("complete_eval_always_task() - Expected eval always task to be popped");
         }
     }
 
     fn read_index(&mut self, source: DepNodeIndex) {
-        match self.task_stack.last_mut() {
-            Some(&mut OpenTask::Regular {
-                ref mut reads,
-                ref mut read_set,
-                node: ref target,
-            }) => {
-                self.total_read_count += 1;
-                if read_set.insert(source) {
-                    reads.push(source);
+        ty::tls::with_context_opt(|icx| {
+            let icx = if let Some(icx) = icx { icx } else { return };
+            match *icx.task.lock() {
+                OpenTask::Regular {
+                    ref mut reads,
+                    ref mut read_set,
+                    node: ref target,
+                } => {
+                    self.total_read_count += 1;
+                    if read_set.insert(source) {
+                        reads.push(source);
 
-                    if cfg!(debug_assertions) {
-                        if let Some(ref forbidden_edge) = self.forbidden_edge {
-                            let source = self.nodes[source];
-                            if forbidden_edge.test(&source, &target) {
-                                bug!("forbidden edge {:?} -> {:?} created",
-                                     source,
-                                     target)
+                        if cfg!(debug_assertions) {
+                            if let Some(ref forbidden_edge) = self.forbidden_edge {
+                                let source = self.nodes[source];
+                                if forbidden_edge.test(&source, &target) {
+                                    bug!("forbidden edge {:?} -> {:?} created",
+                                        source,
+                                        target)
+                                }
                             }
                         }
+                    } else {
+                        self.total_duplicate_read_count += 1;
                     }
-                } else {
-                    self.total_duplicate_read_count += 1;
+                }
+                OpenTask::Anon {
+                    ref mut reads,
+                    ref mut read_set,
+                } => {
+                    if read_set.insert(source) {
+                        reads.push(source);
+                    }
+                }
+                OpenTask::Ignore | OpenTask::EvalAlways { .. } => {
+                    // ignore
                 }
             }
-            Some(&mut OpenTask::Anon {
-                ref mut reads,
-                ref mut read_set,
-            }) => {
-                if read_set.insert(source) {
-                    reads.push(source);
-                }
-            }
-            Some(&mut OpenTask::Ignore) |
-            Some(&mut OpenTask::EvalAlways { .. }) | None => {
-                // ignore
-            }
-        }
+        })
     }
 
     fn alloc_node(&mut self,
@@ -1071,7 +1127,7 @@ impl CurrentDepGraph {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-enum OpenTask {
+pub enum OpenTask {
     Regular {
         node: DepNode,
         reads: Vec<DepNodeIndex>,

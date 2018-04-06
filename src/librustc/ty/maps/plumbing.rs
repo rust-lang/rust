@@ -530,6 +530,7 @@ macro_rules! define_maps {
                             tcx,
                             query: Some(job.clone()),
                             layout_depth: icx.layout_depth,
+                            task: icx.task,
                         };
 
                         // Use the ImplicitCtxt while we execute the query
