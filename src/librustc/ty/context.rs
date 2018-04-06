@@ -62,7 +62,6 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::any::Any;
 use std::borrow::Borrow;
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
@@ -915,9 +914,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
-    /// Used to prevent layout from recursing too deeply.
-    pub layout_depth: Cell<usize>,
-
     stability_interner: Lock<FxHashSet<&'tcx attr::Stability>>,
 
     pub interpret_interner: InterpretInterner<'tcx>,
@@ -1292,7 +1288,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             crate_name: Symbol::intern(crate_name),
             data_layout,
             layout_interner: Lock::new(FxHashSet()),
-            layout_depth: Cell::new(0),
             stability_interner: Lock::new(FxHashSet()),
             interpret_interner: Default::default(),
             tx_to_llvm_workers: Lock::new(tx),
@@ -1574,6 +1569,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
                 query: icx.query.clone(),
+                layout_depth: icx.layout_depth,
             };
             ty::tls::enter_context(&new_icx, |new_icx| {
                 f(new_icx.tcx)
@@ -1768,6 +1764,9 @@ pub mod tls {
         /// The current query job, if any. This is updated by start_job in
         /// ty::maps::plumbing when executing a query
         pub query: Option<Lrc<maps::QueryJob<'gcx>>>,
+
+        /// Used to prevent layout from recursing too deeply.
+        pub layout_depth: usize,
     }
 
     // A thread local value which stores a pointer to the current ImplicitCtxt
@@ -1853,6 +1852,7 @@ pub mod tls {
             let icx = ImplicitCtxt {
                 tcx,
                 query: None,
+                layout_depth: 0,
             };
             enter_context(&icx, |_| {
                 f(tcx)

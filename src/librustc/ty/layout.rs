@@ -896,21 +896,26 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                         -> Result<&'tcx LayoutDetails, LayoutError<'tcx>>
 {
-    let (param_env, ty) = query.into_parts();
+    ty::tls::with_related_context(tcx, move |icx| {
+        let rec_limit = *tcx.sess.recursion_limit.get();
+        let (param_env, ty) = query.into_parts();
 
-    let rec_limit = *tcx.sess.recursion_limit.get();
-    let depth = tcx.layout_depth.get();
-    if depth > rec_limit {
-        tcx.sess.fatal(
-            &format!("overflow representing the type `{}`", ty));
-    }
+        if icx.layout_depth > rec_limit {
+            tcx.sess.fatal(
+                &format!("overflow representing the type `{}`", ty));
+        }
 
-    tcx.layout_depth.set(depth+1);
-    let cx = LayoutCx { tcx, param_env };
-    let layout = cx.layout_raw_uncached(ty);
-    tcx.layout_depth.set(depth);
+        // Update the ImplicitCtxt to increase the layout_depth
+        let icx = ty::tls::ImplicitCtxt {
+            layout_depth: icx.layout_depth + 1,
+            ..icx.clone()
+        };
 
-    layout
+        ty::tls::enter_context(&icx, |_| {
+            let cx = LayoutCx { tcx, param_env };
+            cx.layout_raw_uncached(ty)
+        })
+    })
 }
 
 pub fn provide(providers: &mut ty::maps::Providers) {
