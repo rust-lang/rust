@@ -37,6 +37,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             .collect::<Vec<_>>();
 
         if mois.is_empty() {
+            let root_place = self.prefixes(&place, PrefixSet::All)
+                .last()
+                .unwrap();
+
+            if self.moved_error_reported
+                .contains(&root_place.clone())
+            {
+                debug!(
+                    "report_use_of_moved_or_uninitialized place: error about {:?} suppressed",
+                    root_place
+                );
+                return;
+            }
+
+            self.moved_error_reported
+                .insert(root_place.clone());
+
             let item_msg = match self.describe_place(place) {
                 Some(name) => format!("`{}`", name),
                 None => "value".to_owned(),
