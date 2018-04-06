@@ -436,7 +436,7 @@ This lint detects enums with widely varying variant sizes. Some example code tha
 ```rust
 enum En {
     V0(u8),
-    VBig([u8; 1024]),   //~ ERROR variant is more than three times larger
+    VBig([u8; 1024]),
 }
 ```
 
