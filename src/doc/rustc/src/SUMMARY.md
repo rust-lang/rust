@@ -1,7 +1,7 @@
 # The Rustc Book
 
 - [What is rustc?](what-is-rustc.md)
-- [Command-line arguments](command-line-arguments/index.md)
+- [Command-line arguments](command-line-arguments.md)
 - [Lints](lints/index.md)
     - [Lint levels](lints/levels.md)
     - [Lint Groups](lints/groups.md)
