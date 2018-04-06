@@ -21,7 +21,7 @@ pub struct AutoTraitFinder<'a, 'tcx: 'a, 'rcx: 'a> {
 
 impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     pub fn new(cx: &'a core::DocContext<'a, 'tcx, 'rcx>) -> Self {
-        let f = auto::AutoTraitFinder { tcx: &cx.tcx };
+        let f = auto::AutoTraitFinder::new(&cx.tcx);
 
         AutoTraitFinder { cx, f }
     }

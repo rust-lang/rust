@@ -57,18 +57,21 @@ pub struct AutoTraitInfo<'cx> {
 }
 
 pub struct AutoTraitFinder<'a, 'tcx: 'a> {
-    pub tcx: &'a TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: &'a TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn find_auto_trait_generics<A, F>(
+    pub fn new(tcx: &'a TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+        AutoTraitFinder { tcx }
+    }
+
+    pub fn find_auto_trait_generics<A>(
         &self,
         did: DefId,
         trait_did: DefId,
         generics: &ty::Generics,
-        auto_trait_callback: F)
+        auto_trait_callback: impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>, AutoTraitInfo<'i>) -> A)
         -> AutoTraitResult<A>
-        where F: for<'b, 'cx, 'cx2> Fn(&InferCtxt<'b, 'cx, 'cx2>, AutoTraitInfo<'cx2>) -> A
     {
         let tcx = self.tcx;
         let ty = self.tcx.type_of(did);
