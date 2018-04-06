@@ -270,7 +270,7 @@ impl<T:Copy> Cell<T> {
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
-    #[unstable(feature = "cell_update", issue = "0")] // TODO: issue
+    #[unstable(feature = "cell_update", issue = "0")] // FIXME: issue
     pub fn update<F>(&self, f: F) -> T
     where
         F: FnOnce(T) -> T,
