@@ -1565,37 +1565,69 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     error_reported = true;
 
                     let mut err_info = None;
+
                     match *place_err {
-                        Place::Projection(ref proj) => {
-                            match proj.elem {
-                                ProjectionElem::Deref => {
-                                    match proj.base {
-                                        Place::Local(local) => {
-                                            let locations = self.mir.find_assignments(local);
-                                            if locations.len() > 0 {
-                                                let item_msg = if error_reported {
-                                                    match self.specialized_description(&proj.base){
-                                                        Some(msg) => msg,
-                                                        None => self.get_main_error_message(place)
-                                                    }
-                                                } else {
-                                                    self.get_main_error_message(place)
-                                                };
-                                                err_info = Some((
-                                                    self.mir.source_info(locations[0]).span,
-                                                      "consider changing this to be a \
-                                                       mutable reference: `&mut`", item_msg,
-                                                       "cannot assign through `&`-reference"));
-                                            }
+
+                        Place::Projection(box Projection {
+                        ref base, elem:ProjectionElem::Deref}) => {
+
+                            match *base {
+                                Place::Local(local) => {
+                                    let locations = self.mir.find_assignments(local);
+                                        if locations.len() > 0 {
+                                            let item_msg = if error_reported {
+                                                match self.specialized_description(base){
+                                                    Some(msg) => msg,
+                                                    None => self.get_main_error_message(place)
+                                                }
+                                            } else {
+                                                self.get_main_error_message(place)
+                                            };
+                                            err_info = Some((
+                                                self.mir.source_info(locations[0]).span,
+                                                    "consider changing this to be a \
+                                                    mutable reference: `&mut`", item_msg,
+                                                    "cannot assign through `&`-reference"));
                                         }
-                                        _ => {},
-                                    }
-                                }
-                                _ => {}
+                                },
+                            _ => {},
                             }
-                        }
-                        _ => {}
+                        }, 
+                        _ => {},
                     }
+
+
+                    // match *place_err {
+                    //     Place::Projection(ref proj) => {
+                    //         match proj.elem {
+                    //             ProjectionElem::Deref => {
+                    //                 match proj.base {
+                    //                     Place::Local(local) => {
+                    //                         let locations = self.mir.find_assignments(local);
+                    //                         if locations.len() > 0 {
+                    //                             let item_msg = if error_reported {
+                    //                                 match self.specialized_description(base){
+                    //                                     Some(msg) => msg,
+                    //                                     None => self.get_main_error_message(place)
+                    //                                 }
+                    //                             } else {
+                    //                                 self.get_main_error_message(place)
+                    //                             };
+                    //                             err_info = Some((
+                    //                                 self.mir.source_info(locations[0]).span,
+                    //                                   "consider changing this to be a \
+                    //                                    mutable reference: `&mut`", item_msg,
+                    //                                    "cannot assign through `&`-reference"));
+                    //                         }
+                    //                     }
+                    //                     _ => {},
+                    //                 }
+                    //             }
+                    //             _ => {}
+                    //         }
+                    //     }
+                    //     _ => {}
+                    // }
 
                     if let Some((err_help_span, err_help_stmt, item_msg, sec_span)) = err_info {
                         let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir, true);

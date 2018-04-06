@@ -284,8 +284,8 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign(&self, span: Span, desc: &str, o: Origin, is_reference:bool)
-                     -> DiagnosticBuilder
+    fn cannot_assign(self, span: Span, desc: &str, o: Origin, is_reference: bool)
+                     -> DiagnosticBuilder<'cx>
     {
         let msg = if is_reference {
             "through"
