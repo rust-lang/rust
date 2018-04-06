@@ -3,7 +3,7 @@ error[E0594]: cannot assign through `&`-reference `fancy_ref`
    |
 LL |     let fancy_ref = &(&mut fancy);
    |                     ------------- help: consider changing this to be a mutable reference: `&mut`
-LL |     fancy_ref.num = 6; //~^ ERROR E0594
+LL |     fancy_ref.num = 6; //~ ERROR E0594
    |     ^^^^^^^^^^^^^^^^^ cannot assign through `&`-reference
 
 error: aborting due to previous error
