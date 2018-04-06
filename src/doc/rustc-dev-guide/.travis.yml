@@ -9,6 +9,7 @@ install:
 - bash ci/install.sh
 script:
 - mdbook build
+- mdbook test
 notifications:
   email:
     on_success: never
