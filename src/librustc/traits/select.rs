@@ -959,11 +959,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         if self.can_use_global_caches(param_env) {
             let mut cache = self.tcx().evaluation_cache.hashmap.borrow_mut();
             if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
+                debug!(
+                    "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
+                    trait_ref,
+                    result,
+                );
                 cache.insert(trait_ref, WithDepNode::new(dep_node, result));
                 return;
             }
         }
 
+        debug!(
+            "insert_evaluation_cache(trait_ref={:?}, candidate={:?})",
+            trait_ref,
+            result,
+        );
         self.infcx.evaluation_cache.hashmap
                                    .borrow_mut()
                                    .insert(trait_ref, WithDepNode::new(dep_node, result));
@@ -1067,25 +1077,29 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 if self.intercrate_ambiguity_causes.is_some() {
                     debug!("evaluate_stack: intercrate_ambiguity_causes is some");
                     // Heuristics: show the diagnostics when there are no candidates in crate.
-                    let candidate_set = self.assemble_candidates(stack)?;
-                    if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
-                        !self.evaluate_candidate(stack, &c).may_apply()
-                    }) {
-                        let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
-                        let self_ty = trait_ref.self_ty();
-                        let trait_desc = trait_ref.to_string();
-                        let self_desc = if self_ty.has_concrete_skeleton() {
-                            Some(self_ty.to_string())
-                        } else {
-                            None
-                        };
-                        let cause = if let Conflict::Upstream = conflict {
-                            IntercrateAmbiguityCause::UpstreamCrateUpdate { trait_desc, self_desc }
-                        } else {
-                            IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
-                        };
-                        debug!("evaluate_stack: pushing cause = {:?}", cause);
-                        self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                    if let Ok(candidate_set) = self.assemble_candidates(stack) {
+                        if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
+                            !self.evaluate_candidate(stack, &c).may_apply()
+                        }) {
+                            let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
+                            let self_ty = trait_ref.self_ty();
+                            let trait_desc = trait_ref.to_string();
+                            let self_desc = if self_ty.has_concrete_skeleton() {
+                                Some(self_ty.to_string())
+                            } else {
+                                None
+                            };
+                            let cause = if let Conflict::Upstream = conflict {
+                                IntercrateAmbiguityCause::UpstreamCrateUpdate {
+                                    trait_desc,
+                                    self_desc,
+                                }
+                            } else {
+                                IntercrateAmbiguityCause::DownstreamCrate { trait_desc, self_desc }
+                            };
+                            debug!("evaluate_stack: pushing cause = {:?}", cause);
+                            self.intercrate_ambiguity_causes.as_mut().unwrap().push(cause);
+                        }
                     }
                 }
                 return Ok(None);
@@ -1283,12 +1297,22 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let mut cache = tcx.selection_cache.hashmap.borrow_mut();
             if let Some(trait_ref) = tcx.lift_to_global(&trait_ref) {
                 if let Some(candidate) = tcx.lift_to_global(&candidate) {
+                    debug!(
+                        "insert_candidate_cache(trait_ref={:?}, candidate={:?}) global",
+                        trait_ref,
+                        candidate,
+                    );
                     cache.insert(trait_ref, WithDepNode::new(dep_node, candidate));
                     return;
                 }
             }
         }
 
+        debug!(
+            "insert_candidate_cache(trait_ref={:?}, candidate={:?}) local",
+            trait_ref,
+            candidate,
+        );
         self.infcx.selection_cache.hashmap
                                   .borrow_mut()
                                   .insert(trait_ref, WithDepNode::new(dep_node, candidate));
