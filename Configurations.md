@@ -1084,6 +1084,28 @@ use foo::{aaa,
           fff};
 ```
 
+## `merge_imports`
+
+Merge multiple imports into a single nested import.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+
+```rust
+use foo::{a, c, d};
+use foo::{b, g};
+use foo::{e, f};
+```
+
+#### `true`:
+
+```rust
+use foo::{a, b, c, d, e, f, g};
+```
+
 
 ## `match_block_trailing_comma`
 
