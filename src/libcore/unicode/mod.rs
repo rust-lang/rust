@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "unicode", issue = "27783")]
+#![unstable(feature = "unicode_internals", issue = "0")]
 #![allow(missing_docs)]
 
 mod bool_trie;
