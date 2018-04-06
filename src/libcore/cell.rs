@@ -262,6 +262,8 @@ impl<T:Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(cell_update)]
+    ///
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
