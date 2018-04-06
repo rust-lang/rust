@@ -45,7 +45,6 @@ use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
-use core::unicode::Utf16Encoder;
 
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
@@ -146,7 +145,8 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 #[derive(Clone)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
-    encoder: Utf16Encoder<Chars<'a>>,
+    chars: Chars<'a>,
+    extra: u16,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -162,12 +162,29 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<u16> {
-        self.encoder.next()
+        if self.extra != 0 {
+            let tmp = self.extra;
+            self.extra = 0;
+            return Some(tmp);
+        }
+
+        let mut buf = [0; 2];
+        self.chars.next().map(|ch| {
+            let n = ch.encode_utf16(&mut buf).len();
+            if n == 2 {
+                self.extra = buf[1];
+            }
+            buf[0]
+        })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.encoder.size_hint()
+        let (low, high) = self.chars.size_hint();
+        // every char gets either one u16 or two u16,
+        // so this iterator is between 1 or 2 times as
+        // long as the underlying iterator.
+        (low, high.and_then(|n| n.checked_mul(2)))
     }
 }
 
@@ -870,7 +887,7 @@ impl str {
     /// ```
     #[stable(feature = "encode_utf16", since = "1.8.0")]
     pub fn encode_utf16(&self) -> EncodeUtf16 {
-        EncodeUtf16 { encoder: Utf16Encoder::new(self[..].chars()) }
+        EncodeUtf16 { chars: self[..].chars(), extra: 0 }
     }
 
     /// Returns `true` if the given pattern matches a sub-slice of
