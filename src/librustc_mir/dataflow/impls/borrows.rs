@@ -58,11 +58,6 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     /// corresponding `BorrowIndex`.
     location_map: FxHashMap<Location, BorrowIndex>,
 
-    /// Every borrow in MIR is immediately stored into a place via an
-    /// assignment statement. This maps each such assigned place back
-    /// to its borrow-indexes.
-    assigned_map: FxHashMap<Place<'tcx>, FxHashSet<BorrowIndex>>,
-
     /// Locations which activate borrows.
     activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
 
@@ -144,7 +139,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             mir,
             idx_vec: IndexVec::new(),
             location_map: FxHashMap(),
-            assigned_map: FxHashMap(),
             activation_map: FxHashMap(),
             region_map: FxHashMap(),
             local_map: FxHashMap(),
@@ -158,7 +152,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                          scope_tree,
                          root_scope,
                          location_map: visitor.location_map,
-                         assigned_map: visitor.assigned_map,
                          activation_map: visitor.activation_map,
                          region_map: visitor.region_map,
                          local_map: visitor.local_map,
@@ -170,7 +163,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             mir: &'a Mir<'tcx>,
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
-            assigned_map: FxHashMap<Place<'tcx>, FxHashSet<BorrowIndex>>,
             activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
             local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
@@ -209,7 +201,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     self.location_map.insert(location, idx);
 
                     insert(&mut self.activation_map, &activate_location, idx);
-                    insert(&mut self.assigned_map, assigned_place, idx);
                     insert(&mut self.region_map, &region, idx);
                     if let Some(local) = root_local(borrowed_place) {
                         insert(&mut self.local_map, &local, idx);
