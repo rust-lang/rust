@@ -163,8 +163,8 @@ QR = {
     var_values: [Vec<?E>, '?D, ?E] // this is S
     region_constraints: [?E: '?D], // from the impl
     value: (),                     // for our purposes, just (), but
-                                    // in some cases this might have
-                                    // a type or other info
+                                   // in some cases this might have
+                                   // a type or other info
 }
 ```
 

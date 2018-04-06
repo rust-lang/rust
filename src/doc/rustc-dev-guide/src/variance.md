@@ -75,10 +75,10 @@ variance of C must be at most covariant *and* contravariant. All of these
 results are based on a variance lattice defined as follows:
 
 ```text
-    *      Top (bivariant)
+   *      Top (bivariant)
 -     +
-    o      Bottom (invariant)
-```text
+   o      Bottom (invariant)
+```
 
 Based on this lattice, the solution `V(A)=+`, `V(B)=-`, `V(C)=o` is the
 optimal solution. Note that there is always a naive solution which
