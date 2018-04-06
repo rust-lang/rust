@@ -20,7 +20,7 @@
        test(attr(deny(warnings))))]
 #![deny(warnings)]
 
-#![feature(unicode)]
+#![feature(unicode_internals)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(non_exhaustive)]
 #![feature(const_atomic_usize_new)]

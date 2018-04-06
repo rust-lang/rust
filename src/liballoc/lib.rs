@@ -114,7 +114,7 @@
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unicode)]
+#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]

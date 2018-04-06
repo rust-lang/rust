@@ -29,7 +29,7 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 #![no_std]
 
-#![feature(unicode)]
+#![feature(unicode_internals)]
 #![feature(staged_api)]
 #![rustc_deprecated(since = "1.27.0", reason = "moved into libcore")]
 
