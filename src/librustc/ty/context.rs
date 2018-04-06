@@ -69,6 +69,7 @@ use std::ops::Deref;
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
+use std::sync::Mutex;
 use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
@@ -1477,6 +1478,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
                 query: icx.query.clone(),
                 layout_depth: icx.layout_depth,
                 task: icx.task,
+                waiter_cycle: None,
             };
             ty::tls::enter_context(&new_icx, |new_icx| {
                 f(new_icx.tcx)
@@ -1699,15 +1701,21 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<CanonicalVarInfo> {
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
 
+    #[cfg(not(parallel_queries))]
     use std::cell::Cell;
     use std::fmt;
     use std::mem;
     use syntax_pos;
+    use syntax_pos::Span;
     use ty::maps;
+    use ty::maps::CycleError;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::{self, Lrc};
+    use rayon_core;
     use dep_graph::OpenTask;
+    use rustc_data_structures::sync::{self, Lrc, Lock};
+    use std::sync::Arc;
+    use std::sync::Mutex;
 
     /// This is the implicit state of rustc. It contains the current
     /// TyCtxt and query. It is updated when creating a local interner or
@@ -1730,11 +1738,25 @@ pub mod tls {
         /// The current dep graph task. This is used to add dependencies to queries
         /// when executing them
         pub task: &'a OpenTask,
+
+        pub waiter_cycle: Option<&'a (Span, Lock<Option<CycleError<'gcx>>>)>,
+    }
+
+    #[cfg(parallel_queries)]
+    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+        rayon_core::fiber::tlv::set(value, f)
+    }
+
+    #[cfg(parallel_queries)]
+    fn get_tlv() -> usize {
+        rayon_core::fiber::tlv::get()
     }
 
     // A thread local value which stores a pointer to the current ImplicitCtxt
+    #[cfg(not(parallel_queries))]
     thread_local!(static TLV: Cell<usize> = Cell::new(0));
 
+    #[cfg(not(parallel_queries))]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
         let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
@@ -1742,6 +1764,7 @@ pub mod tls {
         f()
     }
 
+    #[cfg(not(parallel_queries))]
     fn get_tlv() -> usize {
         TLV.with(|tlv| tlv.get())
     }
@@ -1819,11 +1842,30 @@ pub mod tls {
                 query: None,
                 layout_depth: 0,
                 task: &OpenTask::Ignore,
+                waiter_cycle: None,
             };
             enter_context(&icx, |_| {
                 f(tcx)
             })
         })
+    }
+
+    pub unsafe fn with_global_query<F, R>(f: F) -> R
+        where F: for<'a, 'gcx, 'tcx> FnOnce(TyCtxt<'a, 'gcx, 'tcx>) -> R
+    {
+        let gcx = &*(gcx_ptr as *const GlobalCtxt<'static>);
+        let tcx = TyCtxt {
+            gcx,
+            interners: &gcx.global_interners,
+        };
+        let icx = ImplicitCtxt {
+            query: None,
+            tcx,
+            layout_depth: 0,
+            task: &OpenTask::Ignore,
+            waiter_cycle: None,
+        };
+        enter_context(&icx, |_| f(tcx))
     }
 
     /// Allows access to the current ImplicitCtxt in a closure if one is available

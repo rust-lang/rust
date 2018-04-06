@@ -16,6 +16,8 @@ use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor};
 use errors::DiagnosticBuilder;
 use errors::Level;
 use errors::Diagnostic;
+
+#[cfg(not(parallel_queries))]
 use errors::FatalError;
 use ty::tls;
 use ty::{TyCtxt};
@@ -34,6 +36,15 @@ use std::ptr;
 use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 use syntax::codemap::DUMMY_SP;
+
+#[cfg(parallel_queries)]
+use {
+    rayon_core,
+    std::panic,
+};
+
+#[cfg(not(parallel_queries))]
+use errors::FatalError;
 
 pub struct QueryMap<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
@@ -126,7 +137,16 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 Entry::Occupied(entry) => {
                     match *entry.get() {
                         QueryResult::Started(ref job) => job.clone(),
-                        QueryResult::Poisoned => FatalError.raise(),
+                        QueryResult::Poisoned => {
+                                #[cfg(not(parallel_queries))]
+                                {
+                                    FatalError.raise();
+                                }
+                                #[cfg(parallel_queries)]
+                                {
+                                    panic::resume_unwind(Box::new(rayon_core::PoisonedJob))
+                                }
+                            },
                     }
                 }
                 Entry::Vacant(entry) => {
@@ -197,6 +217,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                 query: Some(self.job.clone()),
                 layout_depth: current_icx.layout_depth,
                 task: current_icx.task,
+                waiter_cycle: None,
             };
 
             // Use the ImplicitCtxt while we execute the query
@@ -223,7 +244,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
 }
 
 #[derive(Clone)]
-pub(super) struct CycleError<'tcx> {
+pub struct CycleError<'tcx> {
     /// The query and related span which uses the cycle
     pub(super) usage: Option<(Span, Query<'tcx>)>,
     pub(super) cycle: Vec<QueryInfo<'tcx>>,
@@ -632,7 +653,15 @@ macro_rules! define_maps {
      $($(#[$attr:meta])*
        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
+        use std::mem;
+        use ty::maps::job::QueryResult;
         use rustc_data_structures::sync::Lock;
+        use {
+            rustc_data_structures::stable_hasher::HashStable,
+            rustc_data_structures::stable_hasher::StableHasherResult,
+            rustc_data_structures::stable_hasher::StableHasher,
+            ich::StableHashingContext
+        };
 
         define_map_struct! {
             tcx: $tcx,
@@ -647,10 +676,23 @@ macro_rules! define_maps {
                     $($name: Lock::new(QueryMap::new())),*
                 }
             }
+
+            pub fn collect_active_jobs(&self) -> Vec<Lrc<QueryJob<$tcx>>> {
+                let mut jobs = Vec::new();
+
+                $(for v in self.$name.lock().active.values() {
+                    match *v {
+                        QueryResult::Started(ref job) => jobs.push(job.clone()),
+                        _ => (),
+                    }
+                })*
+
+                return jobs;
+            }
         }
 
         #[allow(bad_style)]
-        #[derive(Copy, Clone, Debug, PartialEq, Eq)]
+        #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
         }
@@ -688,6 +730,17 @@ macro_rules! define_maps {
                 }
                 match *self {
                     $(Query::$name(key) => key.default_span(tcx),)*
+                }
+            }
+        }
+
+        impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
+            fn hash_stable<W: StableHasherResult>(&self,
+                                                hcx: &mut StableHashingContext<'a>,
+                                                hasher: &mut StableHasher<W>) {
+                mem::discriminant(self).hash_stable(hcx, hasher);
+                match *self {
+                    $(Query::$name(key) => key.hash_stable(hcx, hasher),)*
                 }
             }
         }
@@ -929,7 +982,8 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
                         profq_query_msg!(::ty::maps::queries::$query::NAME, tcx, $key),
                     )
                 );
-
+                // Forcing doesn't add a read edge, but executing the query may add read edges.
+                // Could this add a `read edge too?
                 match tcx.force_query::<::ty::maps::queries::$query>($key, DUMMY_SP, *dep_node) {
                     Ok(_) => {},
                     Err(e) => {
