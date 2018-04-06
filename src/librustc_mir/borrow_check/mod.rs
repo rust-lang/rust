@@ -54,6 +54,7 @@ use self::MutateMode::{JustWrite, WriteAndRead};
 crate mod borrow_set;
 mod error_reporting;
 mod flows;
+crate mod place_ext;
 mod prefixes;
 
 pub(crate) mod nll;
