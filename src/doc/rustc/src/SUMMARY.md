@@ -1,3 +1,13 @@
-# Summary
+# The Rustc Book
 
-- [Chapter 1](./chapter_1.md)
+- [What is rustc?](what-is-rustc.md)
+- [Command-line arguments](command-line-arguments/index.md)
+- [Lints](lints/index.md)
+    - [Lint levels](lints/levels.md)
+    - [Lint Groups](lints/groups.md)
+    - [Lint listing](lints/listing/index.md)
+        - [Allowed-by-default lints](lints/listing/allowed-by-default.md)
+        - [Warn-by-default lints](lints/listing/warn-by-default.md)
+        - [Deny-by-default lints](lints/listing/deny-by-default.md)
+- [Codegen options](codegen-options/index.md)
+- [Contributing to `rustc`](contributing.md)
