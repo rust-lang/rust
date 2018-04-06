@@ -770,10 +770,7 @@ def bootstrap(help_triggered):
     if 'dev' in data:
         build.set_dev_environment()
 
-    # No help text depends on submodules. This check saves ~1 minute of git commands, even if
-    # all the submodules are present and downloaded!
-    if not help_triggered:
-        build.update_submodules()
+    build.update_submodules()
 
     # Fetch/build the bootstrap
     build.build = args.build or build.build_triple()
