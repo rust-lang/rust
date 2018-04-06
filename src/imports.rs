@@ -446,9 +446,7 @@ impl UseTree {
     }
 
     fn has_comment(&self) -> bool {
-        self.list_item.as_ref().map_or(false, |list_item| {
-            list_item.pre_comment.is_some() || list_item.post_comment.is_some()
-        })
+        self.list_item.as_ref().map_or(false, ListItem::has_comment)
     }
 
     fn same_visibility(&self, other: &UseTree) -> bool {
@@ -526,7 +524,6 @@ impl UseTree {
             if *a == b {
                 len = i + 1;
                 new_path.push(b);
-                continue;
             } else {
                 len = i;
                 break;
