@@ -1772,42 +1772,41 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         // Second, if there was exactly one lifetime (either a substitution or a
         // reference) in the arguments, then any anonymous regions in the output
         // have that lifetime.
-        let mut possible_implied_output_region = None;
-        let mut lifetime_count = 0;
-        let arg_lifetimes = inputs
-            .iter()
-            .enumerate()
-            .skip(has_self as usize)
-            .map(|(i, input)| {
-                let mut gather = GatherLifetimes {
-                    map: self.map,
-                    binder_depth: 1,
-                    have_bound_regions: false,
-                    lifetimes: FxHashSet(),
-                };
+        let lifetimes = {
+            let mut gather = GatherLifetimes {
+                map: self.map,
+                binder_depth: 1,
+                have_bound_regions: false,
+                lifetimes: FxHashSet(),
+            };
+            for input in inputs.iter().skip(has_self as usize) {
                 gather.visit_ty(input);
+            }
+            gather.lifetimes
+        };
 
-                lifetime_count += gather.lifetimes.len();
-
-                if lifetime_count == 1 && gather.lifetimes.len() == 1 {
-                    // there's a chance that the unique lifetime of this
-                    // iteration will be the appropriate lifetime for output
-                    // parameters, so lets store it.
-                    possible_implied_output_region = gather.lifetimes.iter().cloned().next();
-                }
-
-                ElisionFailureInfo {
-                    parent: body,
-                    index: i,
-                    lifetime_count: gather.lifetimes.len(),
-                    have_bound_regions: gather.have_bound_regions,
-                }
-            })
-            .collect();
-
-        let elide = if lifetime_count == 1 {
-            Elide::Exact(possible_implied_output_region.unwrap())
+        let elide = if lifetimes.len() == 1 {
+            Elide::Exact(lifetimes.into_iter()
+                                  .next().expect("Should have one element"))
         } else {
+            let arg_lifetimes = inputs.iter()
+                                      .enumerate()
+                                      .skip(has_self as usize)
+                                      .map(|(i, input)| {
+            let mut gather = GatherLifetimes {
+                map: self.map,
+                binder_depth: 1,
+                have_bound_regions: false,
+                lifetimes: FxHashSet(),
+            };
+            gather.visit_ty(input);
+
+            ElisionFailureInfo {
+                parent: body,
+                index: i,
+                lifetime_count: gather.lifetimes.len(),
+                have_bound_regions: gather.have_bound_regions,
+            }}).collect();
             Elide::Error(arg_lifetimes)
         };
 
