@@ -69,17 +69,18 @@ impl ReserveOrActivateIndex {
 }
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-               mir: &'a Mir<'tcx>,
-               nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
-               def_id: DefId,
-               body_id: Option<hir::BodyId>)
-               -> Self {
+    crate fn new(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        mir: &'a Mir<'tcx>,
+        nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
+        def_id: DefId,
+        body_id: Option<hir::BodyId>,
+        borrow_set: BorrowSet<'tcx>
+    ) -> Self {
         let scope_tree = tcx.region_scope_tree(def_id);
         let root_scope = body_id.map(|body_id| {
             region::Scope::CallSite(tcx.hir.body(body_id).value.hir_id.local_id)
         });
-        let borrow_set = BorrowSet::build(tcx, mir);
 
         Borrows {
             tcx: tcx,

@@ -38,7 +38,6 @@ mod borrowed_locals;
 
 pub use self::borrowed_locals::*;
 
-#[allow(dead_code)]
 pub(super) mod borrows;
 
 /// `MaybeInitializedPlaces` tracks all places that might be
