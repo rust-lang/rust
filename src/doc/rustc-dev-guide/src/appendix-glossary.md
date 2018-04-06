@@ -16,7 +16,8 @@ cx                      |  we tend to use "cx" as an abbrevation for context. Se
 DAG                     |  a directed acyclic graph is used during compilation to keep track of dependencies between queries. ([see more](incremental-compilation.html))
 data-flow analysis      |  a static analysis that figures out what properties are true at each point in the control-flow of a program; see [the background chapter for more](./appendix-background.html#dataflow)  
 DefId                   |  an index identifying a definition (see `librustc/hir/def_id.rs`). Uniquely identifies a `DefPath`.
-Fat pointer             |  a two word value carrying the address of some value, along with some further information necessary to put the value to use. For example: a reference to a slice is a fat pointer, carrying the starting address of the slice and its length.
+Double pointer          |  a pointer with additional metadata. See "fat pointer" for more.
+Fat pointer             |  a two word value carrying the address of some value, along with some further information necessary to put the value to use. Rust includes two kinds of "fat pointers": references to slices, and trait objects. A reference to a slice carries the starting address of the slice and its length. A trait object carries a value's address and a pointer to the trait's implementation appropriate to that value. "Fat pointers" are also known as "wide pointers", and "double pointers".
 free variable           |  a "free variable" is one that is not bound within an expression or term; see [the background chapter for more](./appendix-background.html#free-vs-bound)
 'gcx                    |  the lifetime of the global arena ([see more](ty.html))
 generics                |  the set of generic type parameters defined on a type or item
@@ -61,6 +62,7 @@ trait reference         |  a trait and values for its type parameters ([see more
 ty                      |  the internal representation of a type ([see more](ty.html)).
 UFCS                    |  Universal Function Call Syntax. An unambiguous syntax for calling a method ([see more](type-checking.html)).
 variance                |  variance determines how changes to a generic type/lifetime parameter affect subtyping; for example, if `T` is a subtype of `U`, then `Vec<T>` is a subtype `Vec<U>` because `Vec` is *covariant* in its generic parameter. See [the background chapter](./appendix-background.html#variance) for a more general explanation. See the [variance chapter](./variance.html) for an explanation of how type checking handles variance.
+Wide pointer            |  a pointer with additional metadata. See "fat pointer" for more.
 
 [LLVM]: https://llvm.org/
 [lto]: https://llvm.org/docs/LinkTimeOptimization.html
