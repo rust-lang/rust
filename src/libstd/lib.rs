@@ -296,6 +296,7 @@
 #![feature(rand)]
 #![feature(raw)]
 #![feature(rustc_attrs)]
+#![feature(std_internals)]
 #![feature(stdsimd)]
 #![feature(shrink_to)]
 #![feature(slice_bytes)]

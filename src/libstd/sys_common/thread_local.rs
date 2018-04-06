@@ -169,7 +169,7 @@ impl StaticKey {
                 self.key.store(key, Ordering::SeqCst);
             }
             INIT_LOCK.unlock();
-            assert!(key != 0);
+            rtassert!(key != 0);
             return key
         }
 
@@ -190,7 +190,7 @@ impl StaticKey {
             imp::destroy(key1);
             key2
         };
-        assert!(key != 0);
+        rtassert!(key != 0);
         match self.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
             0 => key as usize,
