@@ -46,9 +46,9 @@ pub use self::convert::CharTryFromError;
 pub use self::decode::{decode_utf16, DecodeUtf16, DecodeUtf16Error};
 
 // unstable re-exports
-#[unstable(feature = "unicode", issue = "27783")]
-pub use unicode::tables::{UNICODE_VERSION};
-#[unstable(feature = "unicode", issue = "27783")]
+#[unstable(feature = "unicode_version", issue = "49726")]
+pub use unicode::tables::UNICODE_VERSION;
+#[unstable(feature = "unicode_version", issue = "49726")]
 pub use unicode::version::UnicodeVersion;
 #[unstable(feature = "decode_utf8", issue = "33906")]
 pub use self::decode::{decode_utf8, DecodeUtf8, InvalidSequence};

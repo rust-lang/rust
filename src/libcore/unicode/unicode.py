@@ -471,6 +471,7 @@ if __name__ == "__main__":
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
+#[unstable(feature = "unicode_version", issue = "49726")]
 pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     major: %s,
     minor: %s,

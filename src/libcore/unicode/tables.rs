@@ -17,6 +17,7 @@ use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
+#[unstable(feature = "unicode_version", issue = "49726")]
 pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     major: 10,
     minor: 0,
