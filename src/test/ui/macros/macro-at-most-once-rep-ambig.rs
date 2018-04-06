@@ -44,6 +44,6 @@ pub fn main() {
     barstar!(a); //~ ERROR unexpected end of macro invocation
     barplus!(+); // ok
     barstar!(*); // ok
-    barplus!(a); // ok
+    barplus!(a+); // ok
     barstar!(a*); // ok
 }
