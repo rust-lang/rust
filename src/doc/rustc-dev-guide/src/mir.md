@@ -159,7 +159,7 @@ _3 = &mut _1;
 
 Assignments in general have the form:
 
-```txt
+```text
 <Place> = <Rvalue>
 ```
 
@@ -169,7 +169,7 @@ value: in this case, the rvalue is a mutable borrow expression, which
 looks like `&mut <Place>`. So we can kind of define a grammar for
 rvalues like so:
 
-```txt
+```text
 <Rvalue>  = & (mut)? <Place>
           | <Operand> + <Operand>
           | <Operand> - <Operand>

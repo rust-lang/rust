@@ -159,7 +159,7 @@ is to first "generalize" `&'a i32` into a type with a region variable:
 `&'?b i32`, and then unify `?T` with that (`?T = &'?b i32`). We then
 relate this new variable with the original bound:
 
-```txt
+```text
 &'?b i32 <: &'a i32
 ```
 
@@ -178,14 +178,14 @@ eagerly unifying things, we simply collect constraints as we go, but
 make (almost) no attempt to solve regions. These constraints have the
 form of an "outlives" constraint:
 
-```txt
+```text
 'a: 'b
 ```
 
 Actually the code tends to view them as a subregion relation, but it's the same
 idea:
 
-```txt
+```text
 'b <= 'a
 ```
 
@@ -195,7 +195,7 @@ the `region_constraints` module for details.)
 There is one case where we do some amount of eager unification. If you have an
 equality constraint between two regions
 
-```txt
+```text
 'a = 'b
 ```
 

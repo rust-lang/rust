@@ -49,7 +49,7 @@ standard [ui test] mechanisms to check them. In this case, there is a
 need only be a prefix of the error), but [the stderr file] contains
 the full details:
 
-```txt
+```text
 error: Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T \
 : 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized).
   --> $DIR/lower_impl.rs:15:1

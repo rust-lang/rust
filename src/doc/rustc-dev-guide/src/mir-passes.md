@@ -52,7 +52,7 @@ fn main() {
 The files have names like `rustc.main.000-000.CleanEndRegions.after.mir`. These
 names have a number of parts:
 
-```txt
+```text
 rustc.main.000-000.CleanEndRegions.after.mir
       ---- --- --- --------------- ----- either before or after
       |    |   |   name of the pass
@@ -159,7 +159,7 @@ ensuring that the reads have already happened (remember that
 [queries are memoized](./query.html), so executing a query twice
 simply loads from a cache the second time):
 
-```txt
+```text
 mir_const(D) --read-by--> mir_const_qualif(D)
      |                       ^
   stolen-by                  |

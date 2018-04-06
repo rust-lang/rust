@@ -19,7 +19,7 @@ compilation improves, that may change.)
 
 The dependency structure of these crates is roughly a diamond:
 
-```txt
+```text
                   rustc_driver
                 /      |       \
               /        |         \

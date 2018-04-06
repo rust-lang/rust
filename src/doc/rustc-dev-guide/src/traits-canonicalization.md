@@ -44,13 +44,13 @@ and treats them equally, so when canonicalizing, we will *also*
 replace any [free lifetime](./appendix-background.html#free-vs-bound) with a
 canonical variable. Therefore, we get the following result:
 
-```txt
+```text
 ?0: Foo<'?1, ?2>
 ```
 
 Sometimes we write this differently, like so:
 
-```txt
+```text
 for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
@@ -61,7 +61,7 @@ so `?0` and `?2` are types; the `L` indicates a lifetime varibale, so
 `CanonicalVarValues` array OV with the "original values" for each
 canonicalized variable:
 
-```txt
+```text
 [?A, 'static, ?B]
 ```
 
@@ -76,13 +76,13 @@ we create a substitution S from the canonical form containing a fresh
 inference variable (of suitable kind) for each canonical variable.
 So, for our example query:
 
-```txt
+```text
 for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
 the substitution S might be:
 
-```txt
+```text
 S = [?A, '?B, ?C]
 ```
 
@@ -90,7 +90,7 @@ We can then replace the bound canonical variables (`?0`, etc) with
 these inference variables, yielding the following fully instantiated
 query:
 
-```txt
+```text
 ?A: Foo<'?B, ?C>
 ```
 
@@ -135,20 +135,20 @@ result substitution `var_values`, and some region constraints. To
 create this, we wind up re-using the substitution S that we created
 when first instantiating our query. To refresh your memory, we had a query
 
-```txt
+```text
 for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
 for which we made a substutition S:
 
-```txt
+```text
 S = [?A, '?B, ?C]
 ```
 
 We then did some work which unified some of those variables with other things.
 If we "refresh" S with the latest results, we get:
 
-```txt
+```text
 S = [Vec<?E>, '?D, ?E]
 ```
 
@@ -157,7 +157,7 @@ our original query. Note though that they include some new variables
 (like `?E`). We can make those go away by canonicalizing again! We don't
 just canonicalize S, though, we canonicalize the whole query response QR:
 
-```txt
+```text
 QR = {
     certainty: Proven,             // or whatever
     var_values: [Vec<?E>, '?D, ?E] // this is S
@@ -170,7 +170,7 @@ QR = {
 
 The result would be as follows:
 
-```txt
+```text
 Canonical(QR) = for<T, L> {
     certainty: Proven,
     var_values: [Vec<?0>, '?1, ?2]
@@ -194,19 +194,19 @@ In the previous section we produced a canonical query result. We now have
 to apply that result in our original context. If you recall, way back in the
 beginning, we were trying to prove this query:
 
-```txt
+```text
 ?A: Foo<'static, ?B>
 ```
 
 We canonicalized that into this:
 
-```txt
+```text
 for<T,L,T> { ?0: Foo<'?1, ?2> }
 ```
 
 and now we got back a canonical response:
 
-```txt
+```text
 for<T, L> {
     certainty: Proven,
     var_values: [Vec<?0>, '?1, ?2]
@@ -221,7 +221,7 @@ the result with a fresh inference variable, (b) unify the values in
 the result with the original values, and then (c) record the region
 constraints for later. Doing step (a) would yield a result of
 
-```txt
+```text
 {
       certainty: Proven,
       var_values: [Vec<?C>, '?D, ?C]
@@ -233,7 +233,7 @@ constraints for later. Doing step (a) would yield a result of
 
 Step (b) would then unify:
 
-```txt
+```text
 ?A with Vec<?C>
 'static with '?D
 ?B with ?C

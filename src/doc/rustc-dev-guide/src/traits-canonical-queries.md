@@ -19,13 +19,13 @@ In a traditional Prolog system, when you start a query, the solver
 will run off and start supplying you with every possible answer it can
 find. So given something like this:
 
-```txt
+```text
 ?- Vec<i32>: AsRef<?U>
 ```
 
 The solver might answer:
 
-```txt
+```text
 Vec<i32>: AsRef<[i32]>
     continue? (y/n)
 ```
@@ -39,7 +39,7 @@ response with our original query -- Rust's solver gives back a
 substitution instead). If we were to hit `y`, the solver might then
 give us another possible answer:
 
-```txt
+```text
 Vec<i32>: AsRef<Vec<i32>>
     continue? (y/n)
 ```
@@ -48,14 +48,14 @@ This answer derives from the fact that there is a reflexive impl
 (`impl<T> AsRef<T> for T`) for `AsRef`. If were to hit `y` again,
 then we might get back a negative response:
 
-```txt
+```text
 no
 ```
 
 Naturally, in some cases, there may be no possible answers, and hence
 the solver will just give me back `no` right away:
 
-```txt
+```text
 ?- Box<i32>: Copy
     no
 ```
@@ -64,7 +64,7 @@ In some cases, there might be an infinite number of responses. So for
 example if I gave this query, and I kept hitting `y`, then the solver
 would never stop giving me back answers:
 
-```txt
+```text
 ?- Vec<?U>: Clone
     Vec<i32>: Clone
         continue? (y/n)
@@ -82,13 +82,13 @@ layer of `Box` until we ask it to stop, or it runs out of memory.
 Another interesting thing is that queries might still have variables
 in them. For example:
 
-```txt
+```text
 ?- Rc<?T>: Clone
 ```
 
 might produce the answer:
 
-```txt
+```text
 Rc<?T>: Clone
     continue? (y/n)
 ```
@@ -226,13 +226,13 @@ Let's suppose that the type checker decides to revisit the
 Borrow<?U>`. `?U` is no longer an unbound inference variable; it now
 has a value, `Vec<?V>`. So, if we "refresh" the query with that value, we get:
 
-```txt
+```text
 Vec<?T>: Borrow<Vec<?V>>
 ```
 
 This time, there is only one impl that applies, the reflexive impl:
 
-```txt
+```text
 impl<T> Borrow<T> for T where T: ?Sized
 ```
 

@@ -122,7 +122,7 @@ stack, for example). But *how* do we reject it and *why*?
 When we type-check `main`, and in particular the call `bar(foo)`, we
 are going to wind up with a subtyping relationship like this one:
 
-```txt
+```text
 fn(&'static u32) <: for<'a> fn(&'a u32)
 ----------------    -------------------
 the type of `foo`   the type `bar` expects
@@ -137,7 +137,7 @@ regions" -- they represent, basically, "some unknown region".
 
 Once we've done that replacement, we have the following relation:
 
-```txt
+```text
 fn(&'static u32) <: fn(&'!1 u32)
 ```
 
@@ -151,7 +151,7 @@ subtypes, we check if their arguments have the desired relationship
 (fn arguments are [contravariant](./appendix-background.html#variance), so
 we swap the left and right here):
 
-```txt
+```text
 &'!1 u32 <: &'static u32
 ```
 
@@ -201,7 +201,7 @@ Here, the name `'b` is not part of the root universe. Instead, when we
 "enter" into this `for<'b>` (e.g., by skolemizing it), we will create
 a child universe of the root, let's call it U1:
 
-```txt
+```text
 U0 (root universe)
 │
 └─ U1 (child universe)
@@ -224,7 +224,7 @@ When we enter *this* type, we will again create a new universe, which
 we'll call `U2`. Its parent will be the root universe, and U1 will be
 its sibling:
 
-```txt
+```text
 U0 (root universe)
 │
 ├─ U1 (child universe)
@@ -263,7 +263,7 @@ children, that inference variable X would have to be in U0. And since
 X is in U0, it cannot name anything from U1 (or U2). This is perhaps easiest
 to see by using a kind of generic "logic" example:
 
-```txt
+```text
 exists<X> {
    forall<Y> { ... /* Y is in U1 ... */ }
    forall<Z> { ... /* Z is in U2 ... */ }
@@ -296,7 +296,7 @@ does not say region elements **will** appear.
 
 In the region inference engine, outlives constraints have the form:
 
-```txt
+```text
 V1: V2 @ P
 ```
 
@@ -346,7 +346,7 @@ for universal regions from the fn signature.)
 Put another way, the "universal regions" check can be considered to be
 checking constraints like:
 
-```txt
+```text
 {skol(1)}: V1
 ```
 
@@ -358,13 +358,13 @@ made to represent the `!1` region.
 OK, so far so good. Now let's walk through what would happen with our
 first example:
 
-```txt
+```text
 fn(&'static u32) <: fn(&'!1 u32) @ P  // this point P is not imp't here
 ```
 
 The region inference engine will create a region element domain like this:
 
-```txt
+```text
 { CFG; end('static); skol(1) }
     ---  ------------  ------- from the universe `!1`
     |    'static is always in scope
@@ -375,20 +375,20 @@ It will always create two universal variables, one representing
 `'static` and one representing `'!1`. Let's call them Vs and V1. They
 will have initial values like so:
 
-```txt
+```text
 Vs = { CFG; end('static) } // it is in U0, so can't name anything else
 V1 = { skol(1) }
 ```
 
 From the subtyping constraint above, we would have an outlives constraint like
 
-```txt
+```text
 '!1: 'static @ P
 ```
 
 To process this, we would grow the value of V1 to include all of Vs:
 
-```txt
+```text
 Vs = { CFG; end('static) }
 V1 = { CFG; end('static), skol(1) }
 ```
@@ -405,7 +405,7 @@ In this case, `V1` *did* grow too large -- it is not known to outlive
 
 What about this subtyping relationship?
 
-```txt
+```text
 for<'a> fn(&'a u32, &'a u32)
     <:
 for<'b, 'c> fn(&'b u32, &'c u32)
@@ -413,7 +413,7 @@ for<'b, 'c> fn(&'b u32, &'c u32)
 
 Here we would skolemize the supertype, as before, yielding:
 
-```txt
+```text
 for<'a> fn(&'a u32, &'a u32)
     <:
 fn(&'!1 u32, &'!2 u32)
@@ -423,7 +423,7 @@ then we instantiate the variable on the left-hand side with an
 existential in universe U2, yielding the following (`?n` is a notation
 for an existential variable):
 
-```txt
+```text
 fn(&'?3 u32, &'?3 u32)
     <:
 fn(&'!1 u32, &'!2 u32)
@@ -431,14 +431,14 @@ fn(&'!1 u32, &'!2 u32)
 
 Then we break this down further:
 
-```txt
+```text
 &'!1 u32 <: &'?3 u32
 &'!2 u32 <: &'?3 u32
 ```
 
 and even further, yield up our region constraints:
 
-```txt
+```text
 '!1: '?3
 '!2: '?3
 ```
@@ -465,7 +465,7 @@ common lifetime of our arguments. -nmatsakis)
 Let's look at one last example. We'll extend the previous one to have
 a return type:
 
-```txt
+```text
 for<'a> fn(&'a u32, &'a u32) -> &'a u32
     <:
 for<'b, 'c> fn(&'b u32, &'c u32) -> &'b u32
@@ -478,7 +478,7 @@ first one. That is unsound. Let's see how it plays out.
 
 First, we skolemize the supertype:
 
-```txt
+```text
 for<'a> fn(&'a u32, &'a u32) -> &'a u32
     <:
 fn(&'!1 u32, &'!2 u32) -> &'!1 u32
@@ -486,7 +486,7 @@ fn(&'!1 u32, &'!2 u32) -> &'!1 u32
 
 Then we instantiate the subtype with existentials (in U2):
 
-```txt
+```text
 fn(&'?3 u32, &'?3 u32) -> &'?3 u32
     <:
 fn(&'!1 u32, &'!2 u32) -> &'!1 u32
@@ -494,7 +494,7 @@ fn(&'!1 u32, &'!2 u32) -> &'!1 u32
 
 And now we create the subtyping relationships:
 
-```txt
+```text
 &'!1 u32 <: &'?3 u32 // arg 1
 &'!2 u32 <: &'?3 u32 // arg 2
 &'?3 u32 <: &'!1 u32 // return type
@@ -503,7 +503,7 @@ And now we create the subtyping relationships:
 And finally the outlives relationships. Here, let V1, V2, and V3 be the
 variables we assign to `!1`, `!2`, and `?3` respectively:
 
-```txt
+```text
 V1: V3
 V2: V3
 V3: V1
@@ -511,7 +511,7 @@ V3: V1
 
 Those variables will have these initial values:
 
-```txt
+```text
 V1 in U1 = {skol(1)}
 V2 in U2 = {skol(2)}
 V3 in U2 = {}
@@ -520,14 +520,14 @@ V3 in U2 = {}
 Now because of the `V3: V1` constraint, we have to add `skol(1)` into `V3` (and
 indeed it is visible from `V3`), so we get:
 
-```txt
+```text
 V3 in U2 = {skol(1)}
 ```
 
 then we have this constraint `V2: V3`, so we wind up having to enlarge
 `V2` to include `skol(1)` (which it can also see):
 
-```txt
+```text
 V2 in U2 = {skol(1), skol(2)}
 ```
 

@@ -177,7 +177,7 @@ foo.rs` (assuming you have a Rust program called `foo.rs`. You can also pass any
 command line arguments that you would normally pass to rustc). When you run it
 you'll see output similar to
 
-```txt
+```text
 In crate: foo,
 
 Found 12 uses of `println!`;

@@ -12,7 +12,7 @@ a few new superpowers.
 In Rust's solver, **goals** and **clauses** have the following forms
 (note that the two definitions reference one another):
 
-```txt
+```text
 Goal = DomainGoal           // defined in the section below
         | Goal && Goal
         | Goal || Goal
@@ -49,7 +49,7 @@ To define the set of *domain goals* in our system, we need to first
 introduce a few simple formulations. A **trait reference** consists of
 the name of a trait along with a suitable set of inputs P0..Pn:
 
-```txt
+```text
 TraitRef = P0: TraitName<P1..Pn>
 ```
 
@@ -63,13 +63,13 @@ T>`), that are not part of a trait reference.
 A **projection** consists of an associated item reference along with
 its inputs P0..Pm:
 
-```txt
+```text
 Projection = <P0 as TraitName<P1..Pn>>::AssocItem<Pn+1..Pm>
 ```
 
 Given that, we can define a `DomainGoal` as follows:
 
-```txt
+```text
 DomainGoal = Implemented(TraitRef)
             | ProjectionEq(Projection = Type)
             | Normalize(Projection -> Type)
@@ -112,7 +112,7 @@ DomainGoal = Implemented(TraitRef)
 Most goals in our system are "inductive". In an inductive goal,
 circular reasoning is disallowed. Consider this example clause:
 
-```txt
+```text
     Implemented(Foo: Bar) :-
         Implemented(Foo: Bar).
 ```
@@ -140,7 +140,7 @@ struct Foo {
 The default rules for auto traits say that `Foo` is `Send` if the
 types of its fields are `Send`. Therefore, we would have a rule like
 
-```txt
+```text
 Implemented(Foo: Send) :-
     Implemented(Option<Box<Foo>>: Send).
 ```

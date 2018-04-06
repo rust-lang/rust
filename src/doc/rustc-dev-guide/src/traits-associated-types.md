@@ -51,7 +51,7 @@ In our logic, normalization is defined by a predicate
 impls. For example, the `impl` of `IntoIterator` for `Option<T>` that
 we saw above would be lowered to a program clause like so:
 
-```txt
+```text
 forall<T> {
     Normalize(<Option<T> as IntoIterator>::Item -> T)
 }
@@ -101,7 +101,7 @@ consider an associated type projection equal to another type?":
 We now introduce the `ProjectionEq` predicate to bring those two cases
 together. The `ProjectionEq` predicate looks like so:
 
-```txt
+```text
 ProjectionEq(<T as IntoIterator>::Item = U)
 ```
 
@@ -109,7 +109,7 @@ and we will see that it can be proven *either* via normalization or
 skolemization. As part of lowering an associated type declaration from
 some trait, we create two program clauses for `ProjectionEq`:
 
-```txt
+```text
 forall<T, U> {
     ProjectionEq(<T as IntoIterator>::Item = U) :-
         Normalize(<T as IntoIterator>::Item -> U)
@@ -130,7 +130,7 @@ with unification. As described in the
 [type inference](./type-inference.html) section, unification is
 basically a procedure with a signature like this:
 
-```txt
+```text
 Unify(A, B) = Result<(Subgoals, RegionConstraints), NoSolution>
 ```
 

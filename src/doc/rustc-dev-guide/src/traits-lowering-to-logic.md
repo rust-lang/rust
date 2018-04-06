@@ -30,7 +30,7 @@ impl<T> Clone for Vec<T> where T: Clone { }
 We could map these declarations to some Horn clauses, written in a
 Prolog-like notation, as follows:
 
-```txt
+```text
 Clone(usize).
 Clone(Vec<?T>) :- Clone(?T).
 
@@ -70,7 +70,7 @@ impl<T: Eq<U>> Eq<Vec<U>> for Vec<T> { }
 
 That could be mapped as follows:
 
-```txt
+```text
 Eq(usize, usize).
 Eq(Vec<?T>, Vec<?U>) :- Eq(?T, ?U).
 ```
@@ -105,7 +105,7 @@ If we wanted, we could write a Prolog predicate that defines the
 conditions under which `bar()` can be called. We'll say that those
 conditions are called being "well-formed":
 
-```txt
+```text
 barWellFormed(?U) :- Eq(?U, ?U).
 ```
 
@@ -113,7 +113,7 @@ Then we can say that `foo()` type-checks if the reference to
 `bar::<usize>` (that is, `bar()` applied to the type `usize`) is
 well-formed:
 
-```txt
+```text
 fooTypeChecks :- barWellFormed(usize).
 ```
 
@@ -144,7 +144,7 @@ To type-check the body of `foo`, we need to be able to hold the type
 type-safe *for all types `T`*, not just for some specific type. We might express
 this like so:
 
-```txt
+```text
 fooTypeChecks :-
   // for all types T...
   forall<T> {

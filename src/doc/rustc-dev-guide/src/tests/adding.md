@@ -298,7 +298,7 @@ default regex flavor provided by `regex` crate.
 The corresponding reference file will use the normalized output to test both
 32-bit and 64-bit platforms:
 
-```txt
+```text
 ...
    |
    = note: source type: fn() ($PTR bits)

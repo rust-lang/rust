@@ -62,7 +62,7 @@ enum OptionalMap<C> { Some(|C| -> C), None }
 
 Here, we will generate the constraints:
 
-```txt
+```text
 1. V(A) <= +
 2. V(B) <= -
 3. V(C) <= +
@@ -74,11 +74,11 @@ These indicate that (1) the variance of A must be at most covariant;
 variance of C must be at most covariant *and* contravariant. All of these
 results are based on a variance lattice defined as follows:
 
-```txt
+```text
     *      Top (bivariant)
 -     +
     o      Bottom (invariant)
-```txt
+```text
 
 Based on this lattice, the solution `V(A)=+`, `V(B)=-`, `V(C)=o` is the
 optimal solution. Note that there is always a naive solution which
@@ -89,7 +89,7 @@ is that the variance of a use site may itself be a function of the
 variance of other type parameters. In full generality, our constraints
 take the form:
 
-```txt
+```text
 V(X) <= Term
 Term := + | - | * | o | V(X) | Term x Term
 ```
@@ -248,13 +248,13 @@ Maybe it's helpful to think of a dictionary-passing implementation of
 type classes. In that case, `convertAll()` takes an implicit parameter
 representing the impl. In short, we *have* an impl of type:
 
-```txt
+```text
 V_O = ConvertTo<i32> for Object
 ```
 
 and the function prototype expects an impl of type:
 
-```txt
+```text
 V_S = ConvertTo<i32> for String
 ```
 
@@ -264,7 +264,7 @@ The answer will depend on the variance of the various parameters. In
 this case, because the `Self` parameter is contravariant and `A` is
 covariant, it means that:
 
-```txt
+```text
 V_O <: V_S iff
     i32 <: i32
     String <: Object
@@ -279,7 +279,7 @@ expressions -- must be invariant with respect to all of their
 inputs. To see why this makes sense, consider what subtyping for a
 trait reference means:
 
-```txt
+```text
 <T as Trait> <: <U as Trait>
 ```
 
@@ -305,7 +305,7 @@ impl<T> Identity for T { type Out = T; ... }
 Now if I have `<&'static () as Identity>::Out`, this can be
 validly derived as `&'a ()` for any `'a`:
 
-```txt
+```text
 <&'a () as Identity> <: <&'static () as Identity>
 if &'static () < : &'a ()   -- Identity is contravariant in Self
 if 'static : 'a             -- Subtyping rules for relations
