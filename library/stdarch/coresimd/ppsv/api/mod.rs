@@ -100,6 +100,8 @@ mod masks_reductions;
 #[macro_use]
 mod minimal;
 #[macro_use]
+mod minmax;
+#[macro_use]
 mod minmax_reductions;
 #[macro_use]
 mod neg;
@@ -139,7 +141,8 @@ macro_rules! simd_f_ty {
             [impl_minmax_reductions, $id, $elem_ty],
             [impl_neg_op, $id, $elem_ty],
             [impl_partial_eq, $id],
-            [impl_default, $id, $elem_ty]
+            [impl_default, $id, $elem_ty],
+            [impl_float_minmax_ops, $id]
         );
 
         $test_macro!(
@@ -156,6 +159,7 @@ macro_rules! simd_f_ty {
                 test_partial_eq!($id, 1. as $elem_ty, 0. as $elem_ty);
                 test_default!($id, $elem_ty);
                 test_mask_select!($mask_ty, $id, $elem_ty);
+                test_float_minmax_ops!($id, $elem_ty);
             }
         );
     }
@@ -184,7 +188,8 @@ macro_rules! simd_i_ty {
             [impl_hex_fmt, $id, $elem_ty],
             [impl_eq, $id],
             [impl_partial_eq, $id],
-            [impl_default, $id, $elem_ty]
+            [impl_default, $id, $elem_ty],
+            [impl_int_minmax_ops, $id]
         );
 
         $test_macro!(
@@ -208,6 +213,7 @@ macro_rules! simd_i_ty {
                 test_partial_eq!($id, 1 as $elem_ty, 0 as $elem_ty);
                 test_default!($id, $elem_ty);
                 test_mask_select!($mask_ty, $id, $elem_ty);
+                test_int_minmax_ops!($id, $elem_ty);
             }
         );
     }
@@ -235,7 +241,8 @@ macro_rules! simd_u_ty {
             [impl_hex_fmt, $id, $elem_ty],
             [impl_eq, $id],
             [impl_partial_eq, $id],
-            [impl_default, $id, $elem_ty]
+            [impl_default, $id, $elem_ty],
+            [impl_int_minmax_ops, $id]
         );
 
         $test_macro!(
@@ -258,6 +265,7 @@ macro_rules! simd_u_ty {
                 test_partial_eq!($id, 1 as $elem_ty, 0 as $elem_ty);
                 test_default!($id, $elem_ty);
                 test_mask_select!($mask_ty, $id, $elem_ty);
+                test_int_minmax_ops!($id, $elem_ty);
             }
         );
     }
