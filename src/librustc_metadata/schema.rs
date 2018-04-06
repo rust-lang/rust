@@ -15,7 +15,6 @@ use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId, CrateNum};
 use rustc::ich::StableHashingContext;
-use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary, ForeignModule};
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -206,7 +205,7 @@ pub struct CrateRoot {
     pub codemap: LazySeq<syntax_pos::FileMap>,
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
-    pub exported_symbols: LazySeq<(ExportedSymbol, SymbolExportLevel)>,
+    pub exported_symbols: EncodedExportedSymbols,
     pub wasm_custom_sections: LazySeq<DefIndex>,
 
     pub index: LazySeq<index::Index>,
@@ -531,3 +530,9 @@ impl_stable_hash_for!(struct GeneratorData<'tcx> { layout });
 // Tags used for encoding Spans:
 pub const TAG_VALID_SPAN: u8 = 0;
 pub const TAG_INVALID_SPAN: u8 = 1;
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct EncodedExportedSymbols {
+    pub position: usize,
+    pub len: usize,
+}

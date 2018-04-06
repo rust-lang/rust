@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags:-Zshare-generics=yes
+
 #![crate_type="rlib"]
 
-pub fn public_rust_function_from_rlib() {}
-
-#[no_mangle]
-pub extern "C" fn public_c_function_from_rlib() {
-    let _ = public_generic_function_from_rlib(0u64);
+pub fn generic_fn<T>(x: T, y: T) -> (T, T) {
+    (x, y)
 }
 
-pub fn public_generic_function_from_rlib<T>(x: T) -> T {
-    x
+pub fn use_generic_fn_f32() -> (f32, f32) {
+    generic_fn(0.0f32, 1.0f32)
 }

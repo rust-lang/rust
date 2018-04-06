@@ -1304,6 +1304,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "embed LLVM bitcode in object files"),
     strip_debuginfo_if_disabled: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "tell the linker to strip debuginfo when building without debuginfo enabled."),
+    share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
+          "make the current crate share its generic instantiations"),
 }
 
 pub fn default_lib_output() -> CrateType {

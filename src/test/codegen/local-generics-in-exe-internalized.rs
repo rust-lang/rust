@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type="rlib"]
+// compile-flags: -C no-prepopulate-passes -Zshare-generics=yes
 
-pub fn public_rust_function_from_rlib() {}
+// Check that local generics are internalized if they are in the same CGU
 
-#[no_mangle]
-pub extern "C" fn public_c_function_from_rlib() {
-    let _ = public_generic_function_from_rlib(0u64);
+// CHECK: define internal {{.*}} @_ZN34local_generics_in_exe_internalized3foo{{.*}}
+pub fn foo<T>(x: T, y: T) -> (T, T) {
+    (x, y)
 }
 
-pub fn public_generic_function_from_rlib<T>(x: T) -> T {
-    x
+fn main() {
+    let _ = foo(0u8, 1u8);
 }

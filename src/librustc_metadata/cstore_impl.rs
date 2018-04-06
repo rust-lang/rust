@@ -186,9 +186,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let reachable_non_generics = tcx
             .exported_symbols(cdata.cnum)
             .iter()
-            .filter_map(|&(exported_symbol, _)| {
+            .filter_map(|&(exported_symbol, export_level)| {
                 if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
-                    return Some(def_id)
+                    return Some((def_id, export_level))
                 } else {
                     None
                 }
@@ -268,7 +268,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             return Arc::new(Vec::new())
         }
 
-        Arc::new(cdata.exported_symbols())
+        Arc::new(cdata.exported_symbols(tcx))
     }
 
     wasm_custom_sections => { Lrc::new(cdata.wasm_custom_sections()) }

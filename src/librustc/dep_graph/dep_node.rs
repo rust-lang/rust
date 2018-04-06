@@ -561,6 +561,7 @@ define_dep_nodes!( <'tcx>
     [] ImplParent(DefId),
     [] TraitOfItem(DefId),
     [] IsReachableNonGeneric(DefId),
+    [] IsUnreachableLocalDefinition(DefId),
     [] IsMirAvailable(DefId),
     [] ItemAttrs(DefId),
     [] TransFnAttrs(DefId),
@@ -648,8 +649,6 @@ define_dep_nodes!( <'tcx>
 
     [] InstanceDefSizeEstimate { instance_def: InstanceDef<'tcx> },
 
-    [] GetSymbolExportLevel(DefId),
-
     [] WasmCustomSections(CrateNum),
 
     [input] Features,
@@ -657,6 +656,9 @@ define_dep_nodes!( <'tcx>
     [] ProgramClausesFor(DefId),
     [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
+
+    [] UpstreamMonomorphizations(CrateNum),
+    [] UpstreamMonomorphizationsFor(DefId),
 );
 
 trait DepNodeParams<'a, 'gcx: 'tcx + 'a, 'tcx: 'a> : fmt::Debug {
