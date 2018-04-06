@@ -12,6 +12,7 @@
 #![allow(missing_docs)]
 
 mod bool_trie;
+pub(crate) mod printable;
 pub(crate) mod tables;
 pub(crate) mod version;
 
