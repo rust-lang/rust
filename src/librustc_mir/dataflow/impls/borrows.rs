@@ -13,6 +13,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::{self, Location, Place, Mir};
+use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::ty::{self, Region, TyCtxt};
 use rustc::ty::RegionKind;
@@ -85,6 +86,9 @@ pub struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
     /// In many cases, this will be equal to the activation location but not always.
     pub(crate) reserve_location: Location,
+    /// Location where the borrow is activated. None if this is not a
+    /// 2-phase borrow.
+    pub(crate) activation_location: Option<Location>,
     /// What kind of borrow this is
     pub(crate) kind: mir::BorrowKind,
     /// The region for which this borrow is live
@@ -143,9 +147,26 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             region_map: FxHashMap(),
             local_map: FxHashMap(),
             region_span_map: FxHashMap(),
-            nonlexical_regioncx: nonlexical_regioncx.clone()
+            nonlexical_regioncx: nonlexical_regioncx.clone(),
+            pending_activations: FxHashMap(),
         };
-        visitor.visit_mir(mir);
+        for (block, block_data) in traversal::preorder(mir) {
+            visitor.visit_basic_block_data(block, block_data);
+        }
+
+        // Double check: We should have found an activation for every pending
+        // activation.
+        assert_eq!(
+            visitor
+                .pending_activations
+                .iter()
+                .find(|&(_local, &borrow_index)| {
+                    visitor.idx_vec[borrow_index].activation_location.is_none()
+                }),
+            None,
+            "never found an activation for this borrow!",
+        );
+
         return Borrows { tcx: tcx,
                          mir: mir,
                          borrows: visitor.idx_vec,
@@ -168,6 +189,16 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
             region_span_map: FxHashMap<RegionKind, Span>,
             nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
+
+            /// When we encounter a 2-phase borrow statement, it will always
+            /// be assigning into a temporary TEMP:
+            ///
+            ///    TEMP = &foo
+            ///
+            /// We add TEMP into this map with `b`, where `b` is the index of
+            /// the borrow. When we find a later use of this activation, we
+            /// remove from the map (and add to the "tombstone" set below).
+            pending_activations: FxHashMap<mir::Local, BorrowIndex>,
         }
 
         impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
@@ -187,20 +218,25 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                 if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
                     if is_unsafe_place(self.tcx, self.mir, borrowed_place) { return; }
 
-                    let activate_location = self.compute_activation_location(location,
-                                                                             &assigned_place,
-                                                                             region,
-                                                                             kind);
                     let borrow = BorrowData {
-                        kind, region,
+                        kind,
+                        region,
                         reserve_location: location,
+                        activation_location: None,
                         borrowed_place: borrowed_place.clone(),
                         assigned_place: assigned_place.clone(),
                     };
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);
 
-                    insert(&mut self.activation_map, &activate_location, idx);
+                    self.insert_as_pending_if_two_phase(
+                        location,
+                        &assigned_place,
+                        region,
+                        kind,
+                        idx,
+                    );
+
                     insert(&mut self.region_map, &region, idx);
                     if let Some(local) = root_local(borrowed_place) {
                         insert(&mut self.local_map, &local, idx);
@@ -220,25 +256,69 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                 }
             }
 
+            fn visit_place(
+                &mut self,
+                place: &mir::Place<'tcx>,
+                context: PlaceContext<'tcx>,
+                location: Location,
+            ) {
+                self.super_place(place, context, location);
+
+                // We found a use of some temporary TEMP...
+                if let Place::Local(temp) = place {
+                    // ... check whether we (earlier) saw a 2-phase borrow like
+                    //
+                    //     TMP = &mut place
+                    match self.pending_activations.get(temp) {
+                        Some(&borrow_index) => {
+                            let borrow_data = &mut self.idx_vec[borrow_index];
+
+                            // Watch out: the use of TMP in the borrow
+                            // itself doesn't count as an
+                            // activation. =)
+                            if borrow_data.reserve_location == location
+                                && context == PlaceContext::Store
+                            {
+                                return;
+                            }
+
+                            if let Some(other_activation) = borrow_data.activation_location {
+                                span_bug!(
+                                    self.mir.source_info(location).span,
+                                    "found two activations for 2-phase borrow temporary {:?}: \
+                                     {:?} and {:?}",
+                                    temp,
+                                    location,
+                                    other_activation,
+                                );
+                            }
+
+                            // Otherwise, this is the unique later use
+                            // that we expect.
+                            borrow_data.activation_location = Some(location);
+                            self.activation_map
+                                .entry(location)
+                                .or_insert(FxHashSet())
+                                .insert(borrow_index);
+                        }
+
+                        None => {}
+                    }
+                }
+            }
+
             fn visit_rvalue(&mut self,
                             rvalue: &mir::Rvalue<'tcx>,
                             location: mir::Location) {
                 if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
                     // double-check that we already registered a BorrowData for this
 
-                    let mut found_it = false;
-                    for idx in &self.region_map[region] {
-                        let bd = &self.idx_vec[*idx];
-                        if bd.reserve_location == location &&
-                            bd.kind == kind &&
-                            bd.region == region &&
-                            bd.borrowed_place == *place
-                        {
-                            found_it = true;
-                            break;
-                        }
-                    }
-                    assert!(found_it, "Ref {:?} at {:?} missing BorrowData", rvalue, location);
+                    let borrow_index = self.location_map[&location];
+                    let borrow_data = &self.idx_vec[borrow_index];
+                    assert_eq!(borrow_data.reserve_location, location);
+                    assert_eq!(borrow_data.kind, kind);
+                    assert_eq!(borrow_data.region, region);
+                    assert_eq!(borrow_data.borrowed_place, *place);
                 }
 
                 return self.super_rvalue(rvalue, location);
@@ -380,87 +460,48 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                 false
             }
 
-            /// Computes the activation location of a borrow.
-            /// The general idea is to start at the beginning of the region and perform a DFS
-            /// until we exit the region, either via an explicit EndRegion or because NLL tells
-            /// us so. If we find more than one valid activation point, we currently panic the
-            /// compiler since two-phase borrows are only currently supported for compiler-
-            /// generated code. More precisely, we only allow two-phase borrows for:
-            ///   - Function calls (fn some_func(&mut self, ....))
-            ///   - *Assign operators (a += b -> fn add_assign(&mut self, other: Self))
-            /// See
-            ///   - https://github.com/rust-lang/rust/issues/48431
-            /// for detailed design notes.
-            /// See the FIXME in the body of the function for notes on extending support to more
-            /// general two-phased borrows.
-            fn compute_activation_location(&self,
-                                           start_location: Location,
-                                           assigned_place: &mir::Place<'tcx>,
-                                           region: Region<'tcx>,
-                                           kind: mir::BorrowKind) -> Location {
-                debug!("Borrows::compute_activation_location({:?}, {:?}, {:?})",
-                       start_location,
-                       assigned_place,
-                       region);
+            /// If this is a two-phase borrow, then we will record it
+            /// as "pending" until we find the activating use.
+            fn insert_as_pending_if_two_phase(
+                &mut self,
+                start_location: Location,
+                assigned_place: &mir::Place<'tcx>,
+                region: Region<'tcx>,
+                kind: mir::BorrowKind,
+                borrow_index: BorrowIndex,
+            ) {
+                debug!(
+                    "Borrows::insert_as_pending_if_two_phase({:?}, {:?}, {:?}, {:?})",
+                    start_location, assigned_place, region, borrow_index,
+                );
+
                 if !self.allow_two_phase_borrow(kind) {
                     debug!("  -> {:?}", start_location);
-                    return start_location;
+                    return;
                 }
 
-                // Perform the DFS.
-                // `stack` is the stack of locations still under consideration
-                // `visited` is the set of points we have already visited
-                // `found_use` is an Option that becomes Some when we find a use
-                let mut stack = vec![start_location];
-                let mut visited = FxHashSet();
-                let mut found_use = None;
-                while let Some(curr_loc) = stack.pop() {
-                    let block_data = &self.mir.basic_blocks()
-                        .get(curr_loc.block)
-                        .unwrap_or_else(|| {
-                            panic!("could not find block at location {:?}", curr_loc);
-                        });
+                // When we encounter a 2-phase borrow statement, it will always
+                // be assigning into a temporary TEMP:
+                //
+                //    TEMP = &foo
+                //
+                // so extract `temp`.
+                let temp = if let &mir::Place::Local(temp) = assigned_place {
+                    temp
+                } else {
+                    span_bug!(
+                        self.mir.source_info(start_location).span,
+                        "expected 2-phase borrow to assign to a local, not `{:?}`",
+                        assigned_place,
+                    );
+                };
 
-                    if self.region_terminated_after(region, curr_loc) {
-                        // No need to process this statement.
-                        // It's either an EndRegion (and thus couldn't use assigned_place) or not
-                        // contained in the NLL region and thus a use would be invalid
-                        continue;
-                    }
-
-                    if !visited.insert(curr_loc) {
-                        debug!("  Already visited {:?}", curr_loc);
-                        continue;
-                    }
-
-                    if self.location_contains_use(curr_loc, assigned_place) {
-                        // FIXME: Handle this case a little more gracefully. Perhaps collect
-                        // all uses in a vector, and find the point in the CFG that dominates
-                        // all of them?
-                        // Right now this is sufficient though since there should only be exactly
-                        // one borrow-activating use of the borrow.
-                        assert!(found_use.is_none(), "Found secondary use of place");
-                        found_use = Some(curr_loc);
-                    }
-
-                    // Push the points we should consider next.
-                    if curr_loc.statement_index < block_data.statements.len() {
-                        stack.push(curr_loc.successor_within_block());
-                    } else {
-                        stack.extend(block_data.terminator().successors().iter().map(
-                            |&basic_block| {
-                                Location {
-                                    statement_index: 0,
-                                    block: basic_block
-                                }
-                            }
-                        ))
-                    }
-                }
-
-                let found_use = found_use.expect("Did not find use of two-phase place");
-                debug!("  -> {:?}", found_use);
-                found_use
+                // Insert `temp` into the list of pending activations. From
+                // now on, we'll be on the lookout for a use of it. Note that
+                // we are guaranteed that this use will come after the
+                // assignment.
+                let old_value = self.pending_activations.insert(temp, borrow_index);
+                assert!(old_value.is_none());
             }
         }
     }
