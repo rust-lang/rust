@@ -37,7 +37,7 @@ use dataflow::MoveDataParamEnv;
 use dataflow::{DataflowResultsConsumer};
 use dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use dataflow::{EverInitializedPlaces, MovingOutStatements};
-use dataflow::{BorrowData, Borrows, ReserveOrActivateIndex};
+use dataflow::{Borrows, ReserveOrActivateIndex};
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
@@ -46,10 +46,12 @@ use util::collect_writes::FindAssignments;
 
 use std::iter;
 
+use self::borrow_set::BorrowData;
 use self::flows::Flows;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
 
+crate mod borrow_set;
 mod error_reporting;
 mod flows;
 mod prefixes;

@@ -10,7 +10,7 @@
 
 use borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
 use borrow_check::{Context, MirBorrowckCtxt};
-use dataflow::BorrowData;
+use borrow_check::borrow_set::BorrowData;
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc::mir::{Local, Location, Mir};
 use rustc_data_structures::fx::FxHashSet;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::borrow_set::{BorrowSet, BorrowData};
+
 use rustc;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -32,7 +34,6 @@ use borrow_check::nll::ToRegionVid;
 
 use syntax_pos::Span;
 
-use std::fmt;
 use std::hash::Hash;
 use std::rc::Rc;
 
@@ -49,67 +50,10 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     scope_tree: Lrc<region::ScopeTree>,
     root_scope: Option<region::Scope>,
 
-    /// The fundamental map relating bitvector indexes to the borrows
-    /// in the MIR.
-    borrows: IndexVec<BorrowIndex, BorrowData<'tcx>>,
-
-    /// Each borrow is also uniquely identified in the MIR by the
-    /// `Location` of the assignment statement in which it appears on
-    /// the right hand side; we map each such location to the
-    /// corresponding `BorrowIndex`.
-    location_map: FxHashMap<Location, BorrowIndex>,
-
-    /// Locations which activate borrows.
-    activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
-
-    /// Every borrow has a region; this maps each such regions back to
-    /// its borrow-indexes.
-    region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
-
-    /// Map from local to all the borrows on that local
-    local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
-
-    /// Maps regions to their corresponding source spans
-    /// Only contains ReScope()s as keys
-    region_span_map: FxHashMap<RegionKind, Span>,
+    borrow_set: BorrowSet<'tcx>,
 
     /// NLL region inference context with which NLL queries should be resolved
     nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
-}
-
-// temporarily allow some dead fields: `kind` and `region` will be
-// needed by borrowck; `borrowed_place` will probably be a MovePathIndex when
-// that is extended to include borrowed data paths.
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct BorrowData<'tcx> {
-    /// Location where the borrow reservation starts.
-    /// In many cases, this will be equal to the activation location but not always.
-    pub(crate) reserve_location: Location,
-    /// Location where the borrow is activated. None if this is not a
-    /// 2-phase borrow.
-    pub(crate) activation_location: Option<Location>,
-    /// What kind of borrow this is
-    pub(crate) kind: mir::BorrowKind,
-    /// The region for which this borrow is live
-    pub(crate) region: Region<'tcx>,
-    /// Place from which we are borrowing
-    pub(crate) borrowed_place: mir::Place<'tcx>,
-    /// Place to which the borrow was stored
-    pub(crate) assigned_place: mir::Place<'tcx>,
-}
-
-impl<'tcx> fmt::Display for BorrowData<'tcx> {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        let kind = match self.kind {
-            mir::BorrowKind::Shared => "",
-            mir::BorrowKind::Unique => "uniq ",
-            mir::BorrowKind::Mut { .. } => "mut ",
-        };
-        let region = format!("{}", self.region);
-        let region = if region.len() > 0 { format!("{} ", region) } else { region };
-        write!(w, "&{}{}{:?}", region, kind, self.borrowed_place)
-    }
 }
 
 impl ReserveOrActivateIndex {
@@ -169,14 +113,16 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
 
         return Borrows { tcx: tcx,
                          mir: mir,
-                         borrows: visitor.idx_vec,
+                         borrow_set: BorrowSet {
+                             borrows: visitor.idx_vec,
+                             location_map: visitor.location_map,
+                             activation_map: visitor.activation_map,
+                             region_map: visitor.region_map,
+                             local_map: visitor.local_map,
+                             region_span_map: visitor.region_span_map,
+                         },
                          scope_tree,
                          root_scope,
-                         location_map: visitor.location_map,
-                         activation_map: visitor.activation_map,
-                         region_map: visitor.region_map,
-                         local_map: visitor.local_map,
-                         region_span_map: visitor.region_span_map,
                          nonlexical_regioncx };
 
         struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -514,7 +460,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         match self.nonlexical_regioncx {
             Some(_) => None,
             None => {
-                match self.region_span_map.get(region) {
+                match self.borrow_set.region_span_map.get(region) {
                     Some(span) => Some(self.tcx.sess.codemap().end_point(*span)),
                     None => Some(self.tcx.sess.codemap().end_point(self.mir.span))
                 }
@@ -522,12 +468,12 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrows }
+    crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrow_set.borrows }
 
     pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
-        &self.borrows[idx].reserve_location
+        &self.borrow_set.borrows[idx].reserve_location
     }
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
@@ -548,7 +494,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             // terminator *does* introduce a new loan of the same
             // region, then setting that gen-bit will override any
             // potential kill introduced here.
-            for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
+            for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
                 let borrow_region = borrow_data.region.to_region_vid();
                 if !regioncx.region_contains_point(borrow_region, location) {
                     sets.kill(&ReserveOrActivateIndex::reserved(borrow_index));
@@ -562,7 +508,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                              sets: &mut BlockSets<ReserveOrActivateIndex>,
                              local: &rustc::mir::Local)
     {
-        if let Some(borrow_indexes) = self.local_map.get(local) {
+        if let Some(borrow_indexes) = self.borrow_set.local_map.get(local) {
             sets.kill_all(borrow_indexes.iter()
                           .map(|b| ReserveOrActivateIndex::reserved(*b)));
             sets.kill_all(borrow_indexes.iter()
@@ -575,7 +521,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                                        sets: &mut BlockSets<ReserveOrActivateIndex>,
                                        location: Location) {
         // Handle activations
-        match self.activation_map.get(&location) {
+        match self.borrow_set.activation_map.get(&location) {
             Some(activations) => {
                 for activated in activations {
                     debug!("activating borrow {:?}", activated);
@@ -591,7 +537,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     type Idx = ReserveOrActivateIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
-        self.borrows.len() * 2
+        self.borrow_set.borrows.len() * 2
     }
 
     fn start_block_effect(&self, _entry_set: &mut IdxSet<ReserveOrActivateIndex>) {
@@ -623,7 +569,9 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         match stmt.kind {
             // EndRegion kills any borrows (reservations and active borrows both)
             mir::StatementKind::EndRegion(region_scope) => {
-                if let Some(borrow_indexes) = self.region_map.get(&ReScope(region_scope)) {
+                if let Some(borrow_indexes) =
+                    self.borrow_set.region_map.get(&ReScope(region_scope))
+                {
                     assert!(self.nonlexical_regioncx.is_none());
                     for idx in borrow_indexes {
                         sets.kill(&ReserveOrActivateIndex::reserved(*idx));
@@ -650,7 +598,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
 
                 if let mir::Rvalue::Ref(region, _, ref place) = *rhs {
                     if is_unsafe_place(self.tcx, self.mir, place) { return; }
-                    let index = self.location_map.get(&location).unwrap_or_else(|| {
+                    let index = self.borrow_set.location_map.get(&location).unwrap_or_else(|| {
                         panic!("could not find BorrowIndex for location {:?}", location);
                     });
 
@@ -661,7 +609,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                         return
                     }
 
-                    assert!(self.region_map.get(region).unwrap_or_else(|| {
+                    assert!(self.borrow_set.region_map.get(region).unwrap_or_else(|| {
                         panic!("could not find BorrowIndexs for region {:?}", region);
                     }).contains(&index));
                     sets.gen(&ReserveOrActivateIndex::reserved(*index));
@@ -739,7 +687,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 // and hence most of these loans will already be dead -- but, in some cases
                 // like unwind paths, we do not always emit `EndRegion` statements, so we
                 // add some kills here as a "backup" and to avoid spurious error messages.
-                for (borrow_index, borrow_data) in self.borrows.iter_enumerated() {
+                for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
                     if let ReScope(scope) = borrow_data.region {
                         // Check that the scope is not actually a scope from a function that is
                         // a parent of our closure. Note that the CallSite scope itself is

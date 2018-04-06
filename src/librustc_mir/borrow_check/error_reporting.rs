@@ -18,7 +18,9 @@ use rustc_data_structures::sync::Lrc;
 
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
-use dataflow::{Borrows, BorrowData, FlowAtLocation, MovingOutStatements};
+use super::borrow_set::BorrowData;
+
+use dataflow::{Borrows, FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -834,7 +836,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     // Retrieve span of given borrow from the current MIR representation
-    pub fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
+    crate fn retrieve_borrow_span(&self, borrow: &BorrowData) -> Span {
         self.mir.source_info(borrow.reserve_location).span
     }
 

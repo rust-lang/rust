@@ -19,6 +19,7 @@ use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
 
 use super::MoveDataParamEnv;
+
 use util::elaborate_drops::DropFlagState;
 
 use super::move_paths::{HasMoveData, MoveData, MoveOutIndex, MovePathIndex, InitIndex};
