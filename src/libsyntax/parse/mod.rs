@@ -230,7 +230,9 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 pub fn filemap_to_stream(sess: &ParseSess, filemap: Lrc<FileMap>, override_span: Option<Span>)
                          -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap);
-    srdr.override_span = override_span;
+    if let Some(sp) = override_span {
+        srdr.override_span(sp);
+    }
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }
