@@ -213,3 +213,87 @@ pub use coresimd::simd;
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(stage0))]
 pub use coresimd::arch;
+
+// FIXME: move to appropriate location
+#[doc(hidden)]
+#[allow(missing_docs)]
+#[unstable(feature = "generic_assert_internals", issue = "44838")]
+pub mod assert_helper {
+    use fmt::{self, Debug, Formatter};
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    #[allow(missing_debug_implementations)]
+    pub enum Captured<T> {
+        Value(T),
+        NotCopy,
+        Unevaluated,
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    pub struct DebugFallback<T> {
+        value: Captured<T>,
+        alt: &'static str,
+    }
+
+    impl<T> DebugFallback<T> {
+        #[inline]
+        #[unstable(feature = "generic_assert_internals", issue = "44838")]
+        pub fn new(value: Captured<T>, alt: &'static str) -> Self {
+            DebugFallback { value, alt }
+        }
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    impl<T> Debug for DebugFallback<T> {
+        default fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            f.write_str(match self.value {
+                Captured::Value(_) | Captured::NotCopy => self.alt,
+                Captured::Unevaluated => "(unevaluated)",
+            })
+        }
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    impl<T: Debug> Debug for DebugFallback<T> {
+        fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            match self.value {
+                Captured::Value(ref value) => Debug::fmt(value, f),
+                Captured::NotCopy => f.write_str(self.alt),
+                Captured::Unevaluated => f.write_str("(unevaluated)"),
+            }
+        }
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    pub trait TryCapture: Sized {
+        fn try_capture(&self, to: &mut Captured<Self>) -> &Self;
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    impl<T> TryCapture for T {
+        #[inline]
+        default fn try_capture(&self, to: &mut Captured<Self>) -> &Self {
+            *to = Captured::NotCopy;
+            self
+        }
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    impl<T: Copy> TryCapture for T {
+        #[inline]
+        fn try_capture(&self, to: &mut Captured<Self>) -> &Self {
+            *to = Captured::Value(*self);
+            self
+        }
+    }
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    pub struct Unevaluated;
+
+    #[unstable(feature = "generic_assert_internals", issue = "44838")]
+    impl Debug for Unevaluated {
+        default fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+            f.write_str("(unevaluated)")
+        }
+    }
+}
