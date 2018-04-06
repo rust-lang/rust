@@ -208,13 +208,15 @@ macro_rules! literals {
                 match self {
                     $(LiteralKind::$i => {
                         Literal {
-                            token: token::Literal(token::Lit::$i(sym), suffix),
+                            lit: token::Lit::$i(sym),
+                            suffix,
                             span: contents.span,
                         }
                     })*
                     $(LiteralKind::$raw(n) => {
                         Literal {
-                            token: token::Literal(token::Lit::$raw(sym, n), suffix),
+                            lit: token::Lit::$raw(sym, n),
+                            suffix,
                             span: contents.span,
                         }
                     })*
@@ -224,16 +226,11 @@ macro_rules! literals {
 
         impl Literal {
             fn kind_contents_and_suffix(self) -> (LiteralKind, Term, Option<Term>) {
-                let (lit, suffix) = match self.token {
-                    token::Literal(lit, suffix) => (lit, suffix),
-                    _ => panic!("unsupported literal {:?}", self.token),
-                };
-
-                let (kind, contents) = match lit {
+                let (kind, contents) = match self.lit {
                     $(token::Lit::$i(contents) => (LiteralKind::$i, contents),)*
                     $(token::Lit::$raw(contents, n) => (LiteralKind::$raw(n), contents),)*
                 };
-                let suffix = suffix.map(|sym| Term::new(&sym.as_str(), self.span()));
+                let suffix = self.suffix.map(|sym| Term::new(&sym.as_str(), self.span()));
                 (kind, Term::new(&contents.as_str(), self.span()), suffix)
             }
         }
