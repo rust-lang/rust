@@ -290,6 +290,7 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
         lang_items.str_impl(),
         lang_items.slice_impl(),
         lang_items.slice_u8_impl(),
+        lang_items.slice_alloc_impl(),
         lang_items.slice_u8_alloc_impl(),
         lang_items.const_ptr_impl(),
         lang_items.mut_ptr_impl(),

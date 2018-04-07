@@ -138,7 +138,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             ty::TySlice(_) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.slice_impl(),
-                                          None,
+                                          lang_items.slice_alloc_impl(),
                                           "slice",
                                           "[T]",
                                           item.span);

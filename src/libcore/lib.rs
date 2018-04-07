@@ -229,7 +229,7 @@ macro_rules! test_v512 { ($item:item) => {}; }
 #[allow(unused_macros)]
 macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
 #[path = "../stdsimd/coresimd/mod.rs"]
-#[allow(missing_docs, missing_debug_implementations, dead_code)]
+#[allow(missing_docs, missing_debug_implementations, dead_code, unused_imports)]
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(stage0))] // allow changes to how stdsimd works in stage0
 mod coresimd;

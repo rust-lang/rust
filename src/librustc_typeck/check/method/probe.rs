@@ -479,6 +479,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 let lang_def_id = lang_items.slice_u8_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
 
+                let lang_def_id = lang_items.slice_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
                 let lang_def_id = lang_items.slice_u8_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }

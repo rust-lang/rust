@@ -58,6 +58,7 @@ pub use result::Result::{self, Ok, Err};
 // Re-exported extension traits for primitive types
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
+#[cfg(stage0)]
 pub use slice::SliceExt;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
