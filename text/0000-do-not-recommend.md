@@ -20,7 +20,7 @@ When a type fails to implement a trait, Rust has the wonderful behavior of
 looking at possible *other* trait impls which might cause the trait in question
 to be implemented. This is usually a good thing. For example, when using Diesel,
 this is why instead of telling you `SelectStatement<{30 page long type}>:
-ExecuteDsl is not satisifed`, it instead tells you `posts::id:
+ExecuteDsl is not satisifed`, it tells you `posts::id:
 SelectableExpression<users::table> is not satisifed`.
 
 However, there are times where this behavior actually makes the resulting error
