@@ -2148,3 +2148,31 @@ fn test_monad_laws_associativity() {
     assert_eq!((0..10).flat_map(f).flat_map(g).sum::<usize>(),
                 (0..10).flat_map(|x| f(x).flat_map(g)).sum::<usize>());
 }
+
+#[test]
+fn test_collect_into_passed_by_value() {
+    let collection = vec![1, 2];
+
+    let result = (3..5).collect_into(collection);
+
+    assert_eq!(vec![1, 2, 3, 4], result);
+}
+
+#[test]
+fn test_collect_into_passed_by_mut_ref() {
+    let mut collection = vec![1, 2];
+
+    let result = (3..5).collect_into(&mut collection) as * const _;
+
+    assert_eq!(&collection as *const _, result);
+    assert_eq!(vec![1, 2, 3, 4], collection);
+}
+
+#[test]
+fn test_extend_impl_for_mut_ref_extend() {
+    let mut collection = vec![1, 2];
+
+    (&mut collection).extend(3..5);
+
+    assert_eq!(vec![1, 2, 3, 4], collection);
+}

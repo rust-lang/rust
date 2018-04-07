@@ -2484,6 +2484,61 @@ pub trait Iterator {
             }
         }
     }
+
+    /// Collects all items from iterator into a collection.
+    ///
+    /// This method consumes the iterator and includes all its items to the
+    /// passed collection. The collection is then returned, so the call chain
+    /// can be continued. Collections can be passed and returned either by
+    /// value or by mutable reference.
+    ///
+    /// This method is a counter-part of [Extend::extend](trait.Extend.html),
+    /// but instead of being called on collection, it's called on iterator.
+    ///
+    /// # Examples
+    /// Basic usage on collection passed by value
+    ///
+    /// ```
+    /// #![feature(collect_into)]
+    /// let result = (3..5).collect_into(vec![1, 2]);
+    /// assert_eq!(vec![1, 2, 3, 4], result);
+    /// ```
+    /// More complex usage on collection passed by mutable reference
+    ///
+    /// ```
+    /// #![feature(collect_into)]
+    /// let primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43];
+    /// let mut vec_3 = vec![33, 53];
+    /// let vec_103 = primes.into_iter()
+    ///     .cloned()
+    ///     .filter(|p| p % 10 == 3)
+    ///     .collect_into(&mut vec_3)
+    ///     .iter()
+    ///     .map(|i| i + 100)
+    ///     .collect::<Vec<_>>();
+    /// assert_eq!(vec![33, 53, 3, 13, 23, 43], vec_3);
+    /// assert_eq!(vec![133, 153, 103, 113, 123, 143], vec_103);
+    /// ```
+    /// Collecting part of iterator into a vector with manually set capacity
+    ///
+    /// ```
+    /// #![feature(collect_into)]
+    /// let mut iter = 1..5;
+    /// let first_2 = iter.by_ref()
+    ///     .take(2)
+    ///     .collect_into(Vec::with_capacity(2));
+    /// let the_rest = iter.collect::<Vec<_>>();
+    /// assert_eq!(vec![1, 2], first_2);
+    /// assert_eq!(vec![3, 4], the_rest);
+    /// ```
+    #[unstable(feature = "collect_into", issue = "0")]
+    fn collect_into<E>(self, mut collection: E) -> E where
+        E: Extend<Self::Item>,
+        Self: Sized
+    {
+        collection.extend(self);
+        collection
+    }
 }
 
 /// Select an element from an iterator based on the given "projection"
