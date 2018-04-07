@@ -112,8 +112,7 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[no_mangle]
-#[cfg_attr(stage0, unwind)]
-#[cfg_attr(not(stage0), unwind(allowed))]
+#[unwind(allowed)]
 pub unsafe extern "C" fn __rust_start_panic(data: usize, vtable: usize) -> u32 {
     imp::panic(mem::transmute(raw::TraitObject {
         data: data as *mut (),

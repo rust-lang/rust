@@ -114,8 +114,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(warnings)]
-#![feature(conservative_impl_trait, fs_read_write, core_intrinsics)]
-#![feature(slice_concat_ext)]
+#![feature(core_intrinsics)]
 
 #[macro_use]
 extern crate build_helper;
@@ -1155,7 +1154,7 @@ impl Build {
 
     fn read(&self, path: &Path) -> String {
         if self.config.dry_run { return String::new(); }
-        t!(fs::read_string(path))
+        t!(fs::read_to_string(path))
     }
 
     fn create_dir(&self, dir: &Path) {

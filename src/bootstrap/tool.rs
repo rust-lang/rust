@@ -12,7 +12,6 @@ use std::fs;
 use std::env;
 use std::path::PathBuf;
 use std::process::{Command, exit};
-use std::slice::SliceConcatExt;
 
 use Mode;
 use Compiler;

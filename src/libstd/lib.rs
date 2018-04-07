@@ -269,7 +269,6 @@
 #![cfg_attr(stage0, feature(generic_param_attrs))]
 #![feature(hashmap_internals)]
 #![feature(heap_api)]
-#![cfg_attr(stage0, feature(i128_type, i128))]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
 #![feature(into_cow)]
@@ -321,8 +320,6 @@
 #![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
-#![cfg_attr(stage0, feature(never_type))]
-#![cfg_attr(stage0, feature(termination_trait))]
 
 #![default_lib_allocator]
 
@@ -355,7 +352,6 @@ use prelude::v1::*;
 // add a new crate name so we can attach the re-exports to it.
 #[macro_reexport(assert_eq, assert_ne, debug_assert, debug_assert_eq,
                  debug_assert_ne, unreachable, unimplemented, write, writeln, try)]
-#[cfg_attr(stage0, macro_reexport(assert))]
 extern crate core as __core;
 
 #[macro_use]
