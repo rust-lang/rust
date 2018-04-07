@@ -466,7 +466,9 @@ pub trait LintContext<'tcx>: Sized {
 
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
-        self.lookup_and_emit(lint, Some(span), msg);
+        if !lint::in_external_macro(lint, span) {
+            self.lookup_and_emit(lint, Some(span), msg);
+        }
     }
 
     fn struct_span_lint<S: Into<MultiSpan>>(&self,
