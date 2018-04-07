@@ -1062,6 +1062,11 @@
                 type = matches[1].replace(/^const$/, 'constant');
                 query = query.substring(matches[0].length);
             }
+            // In case we just get a '!' as input, we can assume that the user is looking for the
+            // `Never` primitive type.
+            if (raw === '!') {
+                query = 'Never';
+            }
 
             return {
                 raw: raw,
@@ -1369,7 +1374,7 @@
 
         function search(e) {
             var params = getQueryStringParams();
-            var query = getQuery(document.getElementsByClassName('search-input')[0].value);
+            var query = getQuery(document.getElementsByClassName('search-input')[0].value.trim());
 
             if (e) {
                 e.preventDefault();
