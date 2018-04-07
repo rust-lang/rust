@@ -174,9 +174,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // trait matching creating lifetime constraints that are too strict.
         // E.g. adding `&'a T` and `&'b T`, given `&'x T: Add<&'x T>`, will result
         // in `&'a T <: &'x T` and `&'b T <: &'x T`, instead of `'a = 'b = 'x`.
-        let lhs_ty = self.check_expr_coercable_to_type_with_needs(lhs_expr,
-            self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span)),
-            lhs_needs);
+        let lhs_ty = self.check_expr_with_needs(lhs_expr, lhs_needs);
+        let fresh_var = self.next_ty_var(TypeVariableOrigin::MiscVariable(lhs_expr.span));
+        let lhs_ty = self.demand_coerce(lhs_expr, lhs_ty, fresh_var,  AllowTwoPhase::No);
         let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
 
         // NB: As we have not yet type-checked the RHS, we don't have the
