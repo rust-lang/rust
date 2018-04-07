@@ -113,7 +113,7 @@ between phases.
 `CompilerCalls` is a trait that you implement in your tool. It contains a fairly
 ad-hoc set of methods to hook in to the process of processing command line
 arguments and driving the compiler. For details, see the comments in
-[librustc_driver/lib.rs](https://github.com/rust-lang/rust/tree/master/src/librustc_driver/lib.rs).
+[librustc_driver/lib.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/index.html).
 I'll summarise the methods here.
 
 `early_callback` and `late_callback` let you call arbitrary code at different

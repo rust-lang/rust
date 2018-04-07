@@ -112,7 +112,7 @@ to a pointer to `b`.
 
 Although the main entry point to constant evaluation is the `tcx.const_eval`
 query, there are additional functions in
-[librustc_mir/interpret/const_eval.rs](https://github.com/rust-lang/rust/blob/master/src/librustc_mir/interpret/const_eval.rs)
+[librustc_mir/interpret/const_eval.rs](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/interpret/const_eval/)
 that allow accessing the fields of a `Value` (`ByRef` or otherwise). You should
 never have to access an `Allocation` directly except for translating it to the
 compilation target (at the moment just LLVM).

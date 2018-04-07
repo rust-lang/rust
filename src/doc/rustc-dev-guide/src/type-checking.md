@@ -39,6 +39,6 @@ type *checking*).
 For more details, see the [`collect`][collect] module.
 
 [queries]: query.html
-[collect]: https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/collect.rs
+[collect]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/collect/
 
 **TODO**: actually talk about type checking...

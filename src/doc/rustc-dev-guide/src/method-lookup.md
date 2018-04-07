@@ -38,8 +38,8 @@ cacheable across method-call sites. Therefore, it does not include
 inference variables or other information.
 
 [UFCS]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
-[probe]: https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/check/method/probe.rs
-[confirm]: https://github.com/rust-lang/rust/blob/master/src/librustc_typeck/check/method/confirm.rs
+[probe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/method/probe/
+[confirm]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/method/confirm/
 
 ## The Probe phase
 
