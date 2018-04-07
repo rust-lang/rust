@@ -4,7 +4,7 @@ use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
 use syntax::codemap::{dummy_spanned, Span, DUMMY_SP};
 use syntax::util::ThinVec;
-use utils::{in_macro, snippet_opt, span_lint_and_then, SpanlessEq};
+use utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq};
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.
@@ -185,6 +185,11 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                 }.and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
             },
             ExprMethodCall(ref path, _, ref args) if args.len() == 1 => {
+                let type_of_receiver = self.cx.tables.expr_ty(&args[0]);
+                if !match_type(self.cx, type_of_receiver, &paths::OPTION) &&
+                    !match_type(self.cx, type_of_receiver, &paths::RESULT) {
+                        return None;
+                }
                 METHODS_WITH_NEGATION
                     .iter().cloned()
                     .flat_map(|(a, b)| vec![(a, b), (b, a)])

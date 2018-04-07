@@ -175,5 +175,29 @@ error: this boolean expression can be simplified
 58 |     let _ = !c ^ c || !a.is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: try: `!c ^ c || a.is_none()`
 
-error: aborting due to 21 previous errors
+error: this boolean expression can be simplified
+   --> $DIR/booleans.rs:110:8
+    |
+110 |     if !res.is_ok() { }
+    |        ^^^^^^^^^^^^ help: try: `res.is_err()`
+
+error: this boolean expression can be simplified
+   --> $DIR/booleans.rs:111:8
+    |
+111 |     if !res.is_err() { }
+    |        ^^^^^^^^^^^^^ help: try: `res.is_ok()`
+
+error: this boolean expression can be simplified
+   --> $DIR/booleans.rs:114:8
+    |
+114 |     if !res.is_some() { }
+    |        ^^^^^^^^^^^^^^ help: try: `res.is_none()`
+
+error: this boolean expression can be simplified
+   --> $DIR/booleans.rs:115:8
+    |
+115 |     if !res.is_none() { }
+    |        ^^^^^^^^^^^^^^ help: try: `res.is_some()`
+
+error: aborting due to 25 previous errors
 
