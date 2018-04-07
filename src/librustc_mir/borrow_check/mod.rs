@@ -550,7 +550,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 if self.movable_generator {
                     // Look for any active borrows to locals
                     let borrow_set = self.borrow_set.clone();
-                    flow_state.borrows.with_iter_outgoing(|borrows| {
+                    flow_state.with_outgoing_borrows(|borrows| {
                         for i in borrows {
                             let borrow = &borrow_set[i];
                             self.check_for_local_borrow(borrow, span);
@@ -565,7 +565,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // StorageDead, but we don't always emit those (notably on unwind paths),
                 // so this "extra check" serves as a kind of backup.
                 let borrow_set = self.borrow_set.clone();
-                flow_state.borrows.with_iter_outgoing(|borrows| {
+                flow_state.with_outgoing_borrows(|borrows| {
                     for i in borrows {
                         let borrow = &borrow_set[i];
                         let context = ContextKind::StorageDead.new(loc);
@@ -2224,10 +2224,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         unreachable!("iter::repeat returned None")
     }
 
-    /// This function iterates over all of the current borrows
-    /// (represented by 1-bits in `flow_state.borrows`) that conflict
-    /// with an access to a place, invoking the `op` callback for each
-    /// one.
+    /// This function iterates over all of the in-scope borrows that
+    /// conflict with an access to a place, invoking the `op` callback
+    /// for each one.
     ///
     /// "Current borrow" here means a borrow that reaches the point in
     /// the control-flow where the access occurs.
@@ -2251,7 +2250,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
         let borrow_set = self.borrow_set.clone();
-        for i in flow_state.borrows.iter_incoming() {
+        for i in flow_state.borrows_in_scope() {
             let borrowed = &borrow_set[i];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
