@@ -193,7 +193,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
-    let borrow_set = BorrowSet::build(tcx, mir);
+    let borrow_set = Rc::new(BorrowSet::build(tcx, mir));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
     let (opt_regioncx, opt_closure_req) = if let Some(free_regions) = free_regions {
@@ -205,6 +205,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
             param_env,
             &mut flow_inits,
             &mdpe.move_data,
+            &borrow_set,
         );
         (Some(Rc::new(regioncx)), opt_closure_req)
     } else {
@@ -219,16 +220,16 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, mir, opt_regioncx.clone(), def_id, body_id, borrow_set),
+        Borrows::new(tcx, mir, opt_regioncx.clone(), def_id, body_id, &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
 
-    let movable_generator = !match tcx.hir.get(id) {
+    let movable_generator = match tcx.hir.get(id) {
         hir::map::Node::NodeExpr(&hir::Expr {
             node: hir::ExprClosure(.., Some(hir::GeneratorMovability::Static)),
             ..
-        }) => true,
-        _ => false,
+        }) => false,
+        _ => true,
     };
 
     let dominators = mir.dominators();

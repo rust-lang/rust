@@ -47,7 +47,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     scope_tree: Lrc<region::ScopeTree>,
     root_scope: Option<region::Scope>,
 
-    borrow_set: BorrowSet<'tcx>,
+    borrow_set: Rc<BorrowSet<'tcx>>,
 
     /// NLL region inference context with which NLL queries should be resolved
     nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
@@ -60,7 +60,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
         def_id: DefId,
         body_id: Option<hir::BodyId>,
-        borrow_set: BorrowSet<'tcx>
+        borrow_set: &Rc<BorrowSet<'tcx>>
     ) -> Self {
         let scope_tree = tcx.region_scope_tree(def_id);
         let root_scope = body_id.map(|body_id| {
@@ -70,7 +70,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         Borrows {
             tcx: tcx,
             mir: mir,
-            borrow_set,
+            borrow_set: borrow_set.clone(),
             scope_tree,
             root_scope,
             nonlexical_regioncx,
