@@ -122,7 +122,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             ty::TyStr => {
                 self.check_primitive_impl(def_id,
                                           lang_items.str_impl(),
-                                          None,
+                                          lang_items.str_alloc_impl(),
                                           "str",
                                           "str",
                                           item.span);

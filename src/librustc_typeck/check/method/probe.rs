@@ -471,6 +471,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyStr => {
                 let lang_def_id = lang_items.str_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.str_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TySlice(_) => {
                 let lang_def_id = lang_items.slice_impl();

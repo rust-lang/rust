@@ -15,7 +15,7 @@
 #![no_std]
 
 // OK
-#[lang = "str"]
+#[lang = "str_alloc"]
 impl str {}
 
 impl str {

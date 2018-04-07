@@ -214,6 +214,7 @@ language_item_table! {
     StrImplItem,                     "str",                     str_impl;
     SliceImplItem,                   "slice",                   slice_impl;
     SliceU8ImplItem,                 "slice_u8",                slice_u8_impl;
+    StrAllocImplItem,                "str_alloc",               str_alloc_impl;
     SliceAllocImplItem,              "slice_alloc",             slice_alloc_impl;
     SliceU8AllocImplItem,            "slice_u8_alloc",          slice_u8_alloc_impl;
     ConstPtrImplItem,                "const_ptr",               const_ptr_impl;

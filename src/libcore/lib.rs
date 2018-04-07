@@ -93,6 +93,7 @@
 #![feature(rustc_const_unstable)]
 #![feature(simd_ffi)]
 #![feature(core_slice_ext)]
+#![feature(core_str_ext)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]

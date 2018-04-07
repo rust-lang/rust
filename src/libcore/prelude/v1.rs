@@ -62,4 +62,5 @@ pub use result::Result::{self, Ok, Err};
 pub use slice::SliceExt;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
+#[cfg(stage0)]
 pub use str::StrExt;

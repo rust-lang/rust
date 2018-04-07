@@ -14,7 +14,7 @@
 pub mod str {
     #![doc(primitive = "str")]
 
-    #[lang = "str"]
+    #[lang = "str_alloc"]
     impl str {
         // @has search-index.js foo
         pub fn foo(&self) {}
