@@ -992,11 +992,11 @@ extern "rust-intrinsic" {
     ///
     /// * The two regions of memory must *not* overlap.
     ///
-    /// Additionally, if `T` is not [`Copy`](../marker/trait.Copy), only the region at `src` *or* the
-    /// region at `dst` can be used or dropped after calling
-    /// `copy_nonoverlapping`. `copy_nonoverlapping` creates bitwise copies of
-    /// `T`, regardless of whether `T: Copy`, which can result in undefined
-    /// behavior if both copies are used.
+    /// Additionally, if `T` is not [`Copy`](../marker/trait.Copy), only the
+    /// region at `src` *or* the region at `dst` can be used or dropped after
+    /// calling `copy_nonoverlapping`.  `copy_nonoverlapping` creates bitwise
+    /// copies of `T`, regardless of whether `T: Copy`, which can result in
+    /// undefined behavior if both copies are used.
     ///
     /// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
     ///
@@ -1149,7 +1149,7 @@ extern "rust-intrinsic" {
     ///
     /// Creating an invalid value:
     ///
-    /// ```ignore
+    /// ```no_run
     /// use std::{mem, ptr};
     ///
     /// let mut v = Box::new(0i32);
@@ -1161,6 +1161,7 @@ extern "rust-intrinsic" {
     /// }
     ///
     /// // At this point, using or dropping `v` results in undefined behavior.
+    /// // v = Box::new(0i32); // ERROR
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
