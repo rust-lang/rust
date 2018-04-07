@@ -563,7 +563,7 @@ impl Config {
         // default values for all options that we haven't otherwise stored yet.
 
         set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
-        set(&mut config.initial_rustc, build.cargo.map(PathBuf::from));
+        set(&mut config.initial_cargo, build.cargo.map(PathBuf::from));
 
         let default = false;
         config.llvm_assertions = llvm_assertions.unwrap_or(default);
