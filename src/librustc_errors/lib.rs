@@ -641,6 +641,11 @@ impl Handler {
         self.tracked_diagnostic_codes.borrow().contains(code)
     }
 
+    pub fn force_print_db(&self, mut db: DiagnosticBuilder) {
+        self.emitter.borrow_mut().emit(&db);
+        db.cancel();
+    }
+
     fn emit_db(&self, db: &DiagnosticBuilder) {
         let diagnostic = &**db;
 

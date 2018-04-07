@@ -17,12 +17,14 @@ use std::fmt::Debug;
 use std::hash::{Hash, BuildHasher};
 use std::iter::repeat;
 use std::panic;
+use std::env;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
 use ty::maps::{QueryMsg};
+use ty::TyCtxt;
 use dep_graph::{DepNode};
 use proc_macro;
 use lazy_static;
@@ -48,7 +50,13 @@ lazy_static! {
 
 fn panic_hook(info: &panic::PanicInfo) {
     if !proc_macro::__internal::in_sess() {
-        (*DEFAULT_HOOK)(info)
+        (*DEFAULT_HOOK)(info);
+
+        let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+
+        if backtrace {
+            TyCtxt::try_print_query_stack();
+        }
     }
 }
 
