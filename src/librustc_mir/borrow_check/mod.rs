@@ -29,7 +29,6 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use std::rc::Rc;
 
-use syntax::ast;
 use syntax_pos::Span;
 
 use dataflow::{do_dataflow, DebugFormatted};
@@ -237,7 +236,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
         mir: mir,
-        node_id: id,
+        mir_def_id: def_id,
         move_data: &mdpe.move_data,
         param_env: param_env,
         movable_generator,
@@ -250,6 +249,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         moved_error_reported: FxHashSet(),
         nonlexical_regioncx: opt_regioncx,
         nonlexical_cause_info: None,
+        borrow_set,
         dominators,
     };
 
@@ -270,7 +270,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     mir: &'cx Mir<'tcx>,
-    node_id: ast::NodeId,
+    mir_def_id: DefId,
     move_data: &'cx MoveData<'tcx>,
     param_env: ParamEnv<'gcx>,
     movable_generator: bool,
@@ -303,6 +303,11 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// find out which CFG points are contained in each borrow region.
     nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
     nonlexical_cause_info: Option<RegionCausalInfo>,
+
+    /// The set of borrows extracted from the MIR
+    borrow_set: Rc<BorrowSet<'tcx>>,
+
+    /// Dominators for MIR
     dominators: Dominators<BasicBlock>,
 }
 
@@ -544,11 +549,10 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
 
                 if self.movable_generator {
                     // Look for any active borrows to locals
-                    let domain = flow_state.borrows.operator();
-                    let data = domain.borrows();
+                    let borrow_set = self.borrow_set.clone();
                     flow_state.borrows.with_iter_outgoing(|borrows| {
                         for i in borrows {
-                            let borrow = &data[i];
+                            let borrow = &borrow_set[i];
                             self.check_for_local_borrow(borrow, span);
                         }
                     });
@@ -560,13 +564,12 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 // Often, the storage will already have been killed by an explicit
                 // StorageDead, but we don't always emit those (notably on unwind paths),
                 // so this "extra check" serves as a kind of backup.
-                let domain = flow_state.borrows.operator();
-                let data = domain.borrows();
+                let borrow_set = self.borrow_set.clone();
                 flow_state.borrows.with_iter_outgoing(|borrows| {
                     for i in borrows {
-                        let borrow = &data[i];
+                        let borrow = &borrow_set[i];
                         let context = ContextKind::StorageDead.new(loc);
-                        self.check_for_invalidation_at_exit(context, borrow, span, flow_state);
+                        self.check_for_invalidation_at_exit(context, borrow, span);
                     }
                 });
             }
@@ -894,10 +897,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
                         ReadKind::Borrow(bk) => {
-                            let end_issued_loan_span = flow_state
-                                .borrows
-                                .operator()
-                                .opt_region_end_span(&borrow.region);
+                            let end_issued_loan_span = this.opt_region_end_span(&borrow.region);
                             error_reported = true;
                             this.report_conflicting_borrow(
                                 context,
@@ -936,10 +936,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            let end_issued_loan_span = flow_state
-                                .borrows
-                                .operator()
-                                .opt_region_end_span(&borrow.region);
+                            let end_issued_loan_span = this.opt_region_end_span(&borrow.region);
 
                             error_reported = true;
                             this.report_conflicting_borrow(
@@ -956,7 +953,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 context,
                                 borrow,
                                 place_span.1,
-                                flow_state.borrows.operator(),
                             );
                         }
                         WriteKind::Mutate => {
@@ -1158,7 +1154,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         borrow: &BorrowData<'tcx>,
         span: Span,
-        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) {
         debug!("check_for_invalidation_at_exit({:?})", borrow);
         let place = &borrow.borrowed_place;
@@ -1211,7 +1206,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 context,
                 borrow,
                 span,
-                flow_state.borrows.operator(),
             )
         }
     }
@@ -1266,9 +1260,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
-        let borrows = flow_state.borrows.operator();
-        for &borrow_index in borrows.activations_at_location(location) {
-            let borrow = &borrows.borrows()[borrow_index];
+        let borrow_set = self.borrow_set.clone();
+        for &borrow_index in borrow_set.activations_at_location(location) {
+            let borrow = &borrow_set[borrow_index];
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
@@ -1838,6 +1832,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             _ => None,
         }
     }
+
+    /// Returns the span for the "end point" given region. This will
+    /// return `None` if NLL is enabled, since that concept has no
+    /// meaning there.  Otherwise, return region span if it exists and
+    /// span for end of the function if it doesn't exist.
+    pub(crate) fn opt_region_end_span(&self, region: &ty::Region<'tcx>) -> Option<Span> {
+        match self.nonlexical_regioncx {
+            Some(_) => None,
+            None => {
+                match self.borrow_set.region_span_map.get(region) {
+                    Some(span) => Some(self.tcx.sess.codemap().end_point(*span)),
+                    None => Some(self.tcx.sess.codemap().end_point(self.mir.span))
+                }
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -2238,13 +2248,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // FIXME: analogous code in check_loans first maps `place` to
         // its base_path.
 
-        let data = flow_state.borrows.operator().borrows();
-
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
         let mut iter_incoming = flow_state.borrows.iter_incoming();
+        let borrow_set = self.borrow_set.clone();
         while let Some(i) = iter_incoming.next() {
-            let borrowed = &data[i];
+            let borrowed = &borrow_set[i];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
                 debug!(

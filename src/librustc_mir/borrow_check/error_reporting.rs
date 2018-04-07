@@ -20,7 +20,7 @@ use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
 use super::borrow_set::BorrowData;
 
-use dataflow::{Borrows, FlowAtLocation, MovingOutStatements};
+use dataflow::{FlowAtLocation, MovingOutStatements};
 use dataflow::move_paths::MovePathIndex;
 use util::borrowck_errors::{BorrowckErrors, Origin};
 
@@ -391,10 +391,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         context: Context,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
-        borrows: &Borrows<'cx, 'gcx, 'tcx>
     ) {
-        let end_span = borrows.opt_region_end_span(&borrow.region);
-        let scope_tree = borrows.scope_tree();
+        let end_span = self.opt_region_end_span(&borrow.region);
+        let scope_tree = self.tcx.region_scope_tree(self.mir_def_id);
         let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
             .last()
             .unwrap();

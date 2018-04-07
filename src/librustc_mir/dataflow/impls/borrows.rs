@@ -16,7 +16,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::mir::{self, Location, Place, Mir};
-use rustc::ty::{Region, TyCtxt};
+use rustc::ty::TyCtxt;
 use rustc::ty::RegionKind;
 use rustc::ty::RegionKind::ReScope;
 
@@ -29,8 +29,6 @@ use dataflow::{BitDenotation, BlockSets, InitialFlow};
 pub use dataflow::indexes::BorrowIndex;
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
-
-use syntax_pos::Span;
 
 use std::rc::Rc;
 
@@ -77,22 +75,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns the span for the "end point" given region. This will
-    /// return `None` if NLL is enabled, since that concept has no
-    /// meaning there.  Otherwise, return region span if it exists and
-    /// span for end of the function if it doesn't exist.
-    pub(crate) fn opt_region_end_span(&self, region: &Region) -> Option<Span> {
-        match self.nonlexical_regioncx {
-            Some(_) => None,
-            None => {
-                match self.borrow_set.region_span_map.get(region) {
-                    Some(span) => Some(self.tcx.sess.codemap().end_point(*span)),
-                    None => Some(self.tcx.sess.codemap().end_point(self.mir.span))
-                }
-            }
-        }
-    }
-
     crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrow_set.borrows }
 
     pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
@@ -135,13 +117,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         if let Some(borrow_indexes) = self.borrow_set.local_map.get(local) {
             sets.kill_all(borrow_indexes);
         }
-    }
-
-    crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
-        self.borrow_set.activation_map
-            .get(&location)
-            .map(|activations| &activations[..])
-            .unwrap_or(&[])
     }
 }
 

@@ -18,6 +18,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt;
 use std::hash::Hash;
+use std::ops::Index;
 use syntax_pos::Span;
 
 crate struct BorrowSet<'tcx> {
@@ -47,6 +48,14 @@ crate struct BorrowSet<'tcx> {
     /// Maps regions to their corresponding source spans
     /// Only contains ReScope()s as keys
     crate region_span_map: FxHashMap<RegionKind, Span>,
+}
+
+impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
+    type Output = BorrowData<'tcx>;
+
+    fn index(&self, index: BorrowIndex) -> &BorrowData<'tcx> {
+        &self.borrows[index]
+    }
 }
 
 #[derive(Debug)]
@@ -123,6 +132,13 @@ impl<'tcx> BorrowSet<'tcx> {
             local_map: visitor.local_map,
             region_span_map: visitor.region_span_map,
         }
+    }
+
+    crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
+        self.activation_map
+            .get(&location)
+            .map(|activations| &activations[..])
+            .unwrap_or(&[])
     }
 }
 
