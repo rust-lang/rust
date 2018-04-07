@@ -36,6 +36,7 @@ use llvm;
 use metadata;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::middle::lang_items::StartFnLangItem;
+use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -1141,6 +1142,13 @@ impl CrateInfo {
                     info.lang_item_to_crate.insert(item, id.krate);
                 }
             }
+
+            // No need to look for lang items that are whitelisted and don't
+            // actually need to exist.
+            let missing = missing.iter()
+                .cloned()
+                .filter(|&l| !weak_lang_items::whitelisted(tcx, l))
+                .collect();
             info.missing_lang_items.insert(cnum, missing);
         }
 

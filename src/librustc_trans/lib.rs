@@ -404,7 +404,7 @@ struct CrateInfo {
     wasm_custom_sections: BTreeMap<String, Vec<u8>>,
     wasm_imports: FxHashMap<String, String>,
     lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Lrc<Vec<LangItem>>>,
+    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }
