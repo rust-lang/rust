@@ -309,17 +309,14 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let call_stackframe = ecx.stack().len();
         while ecx.step()? && ecx.stack().len() >= call_stackframe {
             if ecx.stack().len() == call_stackframe {
-                let frame = ecx.stack().last().unwrap();
+                let frame = ecx.frame_mut();
                 let bb = &frame.mir.basic_blocks()[frame.block];
                 if bb.statements.len() == frame.stmt && !bb.is_cleanup {
                     match bb.terminator().kind {
                         ::rustc::mir::TerminatorKind::Return => {
                             for (local, _local_decl) in mir.local_decls.iter_enumerated().skip(1) {
                                 // Don't deallocate locals, because the return value might reference them
-                                // ------------------------------------------------------------
-                                // ||||||||||||| TODO: remove this horrible hack ||||||||||||||
-                                // ------------------------------------------------------------
-                                unsafe { &mut *(frame as *const Frame as *mut Frame) }.storage_dead(local);
+                                frame.storage_dead(local);
                             }
                         }
                         _ => {}
