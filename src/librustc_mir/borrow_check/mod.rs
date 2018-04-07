@@ -1506,19 +1506,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     fn specialized_description(&self, place:&Place<'tcx>) -> Option<String>{
-        if let Some(name) = self.describe_place(place) {
-            Some(format!("`&`-reference `{}`", name))
+        if let Some(_name) = self.describe_place(place) {
+            Some(format!("data in a `&` reference"))
         } else {
             None
         }
     }
 
-    fn get_main_error_message(&self, place:&Place<'tcx>) -> String{
+    fn get_default_err_msg(&self, place:&Place<'tcx>) -> String{
         match self.describe_place(place) {
             Some(name) => format!("immutable item `{}`", name),
             None => "immutable item".to_owned(),
         }
     }
+
+    fn get_secondary_err_msg(&self, place:&Place<'tcx>) -> String{
+        match self.specialized_description(place) {
+            Some(_) => format!("data in a `&` reference"),
+            None => self.get_default_err_msg(place)
+        }
+    }
+
+    fn get_primary_err_msg(&self, place:&Place<'tcx>) -> String{
+        if let Some(name) = self.describe_place(place) {
+            format!("`{}` is a `&` reference, so the data it refers to cannot be written", name) 
+        } else {
+            format!("cannot assign through `&`-reference")
+        }
+    }    
 
     /// Check the permissions for the given place and read or write kind
     ///
@@ -1546,7 +1561,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.is_mutable(place, is_local_mutation_allowed)
             {
                 error_reported = true;
-                let item_msg = self.get_main_error_message(place);
+                let item_msg = self.get_default_err_msg(place);
                 let mut err = self.tcx
                     .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
                 err.span_label(span, "cannot borrow as mutable");
@@ -1576,18 +1591,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     let locations = self.mir.find_assignments(local);
                                         if locations.len() > 0 {
                                             let item_msg = if error_reported {
-                                                match self.specialized_description(base){
-                                                    Some(msg) => msg,
-                                                    None => self.get_main_error_message(place)
-                                                }
+                                                self.get_secondary_err_msg(base)
                                             } else {
-                                                self.get_main_error_message(place)
+                                                self.get_default_err_msg(place)
                                             };
+                                            
                                             err_info = Some((
                                                 self.mir.source_info(locations[0]).span,
                                                     "consider changing this to be a \
                                                     mutable reference: `&mut`", item_msg,
-                                                    "cannot assign through `&`-reference"));
+                                                    self.get_primary_err_msg(base)));
                                         }
                                 },
                             _ => {},
@@ -1597,15 +1610,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     if let Some((err_help_span, err_help_stmt, item_msg, sec_span)) = err_info {
-                        let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir, true);
+                        let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
                         err.span_suggestion(err_help_span, err_help_stmt, format!(""));
                         if place != place_err {
                             err.span_label(span, sec_span);
                         }
                         err.emit()
                     } else {
-                        let item_msg_ = self.get_main_error_message(place);
-                        let mut err = self.tcx.cannot_assign(span, &item_msg_, Origin::Mir, false);
+                        let item_msg_ = self.get_default_err_msg(place);
+                        let mut err = self.tcx.cannot_assign(span, &item_msg_, Origin::Mir);
                         err.span_label(span, "cannot mutate");
                         if place != place_err {
                             if let Some(name) = self.describe_place(place_err) {
