@@ -127,7 +127,8 @@ impl fmt::Display for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Debug for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
+        f.write_str("TokenStream ")?;
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -222,7 +223,7 @@ pub fn quote_span(span: Span) -> TokenStream {
 
 /// A region of source code, along with macro expansion information.
 #[unstable(feature = "proc_macro", issue = "38356")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Span(syntax_pos::Span);
 
 macro_rules! diagnostic_method {
@@ -334,6 +335,16 @@ impl Span {
     diagnostic_method!(help, Level::Help);
 }
 
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?} bytes({}..{})",
+               self.0.ctxt(),
+               self.0.lo().0,
+               self.0.hi().0)
+    }
+}
+
 /// A line-column pair representing the start or end of a `Span`.
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -422,7 +433,7 @@ impl PartialEq<FileName> for SourceFile {
 
 /// A single token or a delimited sequence of token trees (e.g. `[1, (), ..]`).
 #[unstable(feature = "proc_macro", issue = "38356")]
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum TokenTree {
     /// A delimited tokenstream
     Group(Group),
@@ -459,6 +470,20 @@ impl TokenTree {
             TokenTree::Term(ref mut t) => t.set_span(span),
             TokenTree::Op(ref mut t) => t.set_span(span),
             TokenTree::Literal(ref mut t) => t.set_span(span),
+        }
+    }
+}
+
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl fmt::Debug for TokenTree {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Each of these has the name in the struct type in the derived debug,
+        // so don't bother with an extra layer of indirection
+        match *self {
+            TokenTree::Group(ref tt) => tt.fmt(f),
+            TokenTree::Term(ref tt) => tt.fmt(f),
+            TokenTree::Op(ref tt) => tt.fmt(f),
+            TokenTree::Literal(ref tt) => tt.fmt(f),
         }
     }
 }
@@ -717,7 +742,8 @@ impl fmt::Display for Term {
 #[derive(Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Literal {
-    token: token::Token,
+    lit: token::Lit,
+    suffix: Option<ast::Name>,
     span: Span,
 }
 
@@ -734,10 +760,9 @@ macro_rules! suffixed_int_literals {
         /// below.
         #[unstable(feature = "proc_macro", issue = "38356")]
         pub fn $name(n: $kind) -> Literal {
-            let lit = token::Lit::Integer(Symbol::intern(&n.to_string()));
-            let ty = Some(Symbol::intern(stringify!($kind)));
             Literal {
-                token: token::Literal(lit, ty),
+                lit: token::Lit::Integer(Symbol::intern(&n.to_string())),
+                suffix: Some(Symbol::intern(stringify!($kind))),
                 span: Span::call_site(),
             }
         }
@@ -759,9 +784,9 @@ macro_rules! unsuffixed_int_literals {
         /// below.
         #[unstable(feature = "proc_macro", issue = "38356")]
         pub fn $name(n: $kind) -> Literal {
-            let lit = token::Lit::Integer(Symbol::intern(&n.to_string()));
             Literal {
-                token: token::Literal(lit, None),
+                lit: token::Lit::Integer(Symbol::intern(&n.to_string())),
+                suffix: None,
                 span: Span::call_site(),
             }
         }
@@ -814,9 +839,9 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        let lit = token::Lit::Float(Symbol::intern(&n.to_string()));
         Literal {
-            token: token::Literal(lit, None),
+            lit: token::Lit::Float(Symbol::intern(&n.to_string())),
+            suffix: None,
             span: Span::call_site(),
         }
     }
@@ -837,9 +862,9 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        let lit = token::Lit::Float(Symbol::intern(&n.to_string()));
         Literal {
-            token: token::Literal(lit, Some(Symbol::intern("f32"))),
+            lit: token::Lit::Float(Symbol::intern(&n.to_string())),
+            suffix: Some(Symbol::intern("f32")),
             span: Span::call_site(),
         }
     }
@@ -859,9 +884,9 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        let lit = token::Lit::Float(Symbol::intern(&n.to_string()));
         Literal {
-            token: token::Literal(lit, None),
+            lit: token::Lit::Float(Symbol::intern(&n.to_string())),
+            suffix: None,
             span: Span::call_site(),
         }
     }
@@ -882,9 +907,9 @@ impl Literal {
         if !n.is_finite() {
             panic!("Invalid float literal {}", n);
         }
-        let lit = token::Lit::Float(Symbol::intern(&n.to_string()));
         Literal {
-            token: token::Literal(lit, Some(Symbol::intern("f64"))),
+            lit: token::Lit::Float(Symbol::intern(&n.to_string())),
+            suffix: Some(Symbol::intern("f64")),
             span: Span::call_site(),
         }
     }
@@ -897,7 +922,8 @@ impl Literal {
             escaped.extend(ch.escape_debug());
         }
         Literal {
-            token: token::Literal(token::Lit::Str_(Symbol::intern(&escaped)), None),
+            lit: token::Lit::Str_(Symbol::intern(&escaped)),
+            suffix: None,
             span: Span::call_site(),
         }
     }
@@ -908,7 +934,8 @@ impl Literal {
         let mut escaped = String::new();
         escaped.extend(ch.escape_unicode());
         Literal {
-            token: token::Literal(token::Lit::Char(Symbol::intern(&escaped)), None),
+            lit: token::Lit::Char(Symbol::intern(&escaped)),
+            suffix: None,
             span: Span::call_site(),
         }
     }
@@ -919,7 +946,8 @@ impl Literal {
         let string = bytes.iter().cloned().flat_map(ascii::escape_default)
             .map(Into::<char>::into).collect::<String>();
         Literal {
-            token: token::Literal(token::Lit::ByteStr(Symbol::intern(&string)), None),
+            lit: token::Lit::ByteStr(Symbol::intern(&string)),
+            suffix: None,
             span: Span::call_site(),
         }
     }
@@ -1055,7 +1083,7 @@ impl TokenTree {
             Ident(ident, true) => {
                 tt!(Term::new(&format!("r#{}", ident), Span(span)))
             }
-            Literal(..) => tt!(self::Literal { token, span: Span(span) }),
+            Literal(lit, suffix) => tt!(self::Literal { lit, suffix, span: Span(span) }),
             DocComment(c) => {
                 let style = comments::doc_comment_style(&c.as_str());
                 let stripped = comments::strip_doc_comment_decoration(&c.as_str());
@@ -1111,33 +1139,36 @@ impl TokenTree {
                 return TokenTree::Token(tt.span.0, token).into();
             }
             self::TokenTree::Literal(self::Literal {
-                token: Literal(Lit::Integer(ref a), b),
+                lit: Lit::Integer(ref a),
+                suffix,
                 span,
             })
                 if a.as_str().starts_with("-") =>
             {
                 let minus = BinOp(BinOpToken::Minus);
                 let integer = Symbol::intern(&a.as_str()[1..]);
-                let integer = Literal(Lit::Integer(integer), b);
+                let integer = Literal(Lit::Integer(integer), suffix);
                 let a = TokenTree::Token(span.0, minus);
                 let b = TokenTree::Token(span.0, integer);
                 return vec![a, b].into_iter().collect()
             }
             self::TokenTree::Literal(self::Literal {
-                token: Literal(Lit::Float(ref a), b),
+                lit: Lit::Float(ref a),
+                suffix,
                 span,
             })
                 if a.as_str().starts_with("-") =>
             {
                 let minus = BinOp(BinOpToken::Minus);
                 let float = Symbol::intern(&a.as_str()[1..]);
-                let float = Literal(Lit::Float(float), b);
+                let float = Literal(Lit::Float(float), suffix);
                 let a = TokenTree::Token(span.0, minus);
                 let b = TokenTree::Token(span.0, float);
                 return vec![a, b].into_iter().collect()
             }
             self::TokenTree::Literal(tt) => {
-                return TokenTree::Token(tt.span.0, tt.token).into()
+                let token = Literal(tt.lit, tt.suffix);
+                return TokenTree::Token(tt.span.0, token).into()
             }
         };
 

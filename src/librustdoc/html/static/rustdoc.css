@@ -533,6 +533,9 @@ a {
 	left: -5px;
 }
 .small-section-header > .anchor {
+	left: -20px;
+}
+.small-section-header > .anchor:not(.field) {
 	left: -28px;
 }
 .anchor:before {

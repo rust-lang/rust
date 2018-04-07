@@ -12,3 +12,4 @@ doc = false
 [dependencies]
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
+compiler_builtins = { path = "../rustc/compiler_builtins_shim" }

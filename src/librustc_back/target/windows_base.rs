@@ -102,6 +102,7 @@ pub fn opts() -> TargetOptions {
         ],
         custom_unwind_resume: true,
         abi_return_struct_as_int: true,
+        emit_debug_gdb_scripts: false,
 
         .. Default::default()
     }

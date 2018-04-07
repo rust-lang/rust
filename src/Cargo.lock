@@ -10,6 +10,7 @@ dependencies = [
 name = "alloc"
 version = "0.0.0"
 dependencies = [
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "std_unicode 0.0.0",
@@ -23,6 +24,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cc 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
 ]
@@ -32,6 +34,7 @@ name = "alloc_system"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "dlmalloc 0.0.0",
  "libc 0.0.0",
@@ -541,6 +544,7 @@ name = "dlmalloc"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -976,6 +980,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "libc"
 version = "0.0.0"
 dependencies = [
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -1254,6 +1259,7 @@ dependencies = [
 name = "panic_abort"
 version = "0.0.0"
 dependencies = [
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
 ]
@@ -1263,6 +1269,7 @@ name = "panic_unwind"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
  "unwind 0.0.0",
@@ -1401,6 +1408,7 @@ name = "profiler_builtins"
 version = "0.0.0"
 dependencies = [
  "cc 1.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -1797,6 +1805,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -1942,6 +1951,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -1991,6 +2001,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -2130,6 +2141,7 @@ dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -2343,6 +2355,7 @@ dependencies = [
 name = "std_unicode"
 version = "0.0.0"
 dependencies = [
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]
 
@@ -2725,6 +2738,7 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
+ "compiler_builtins 0.0.0",
  "core 0.0.0",
  "libc 0.0.0",
 ]
