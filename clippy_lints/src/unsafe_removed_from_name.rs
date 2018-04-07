@@ -49,7 +49,7 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext, span: &Span) {
                 .segments
                 .last()
                 .expect("use paths cannot be empty")
-                .identifier;
+                .ident;
             unsafe_to_safe_check(old_name, new_name, cx, span);
         }
         UseTreeKind::Simple(None) |

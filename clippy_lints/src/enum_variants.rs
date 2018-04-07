@@ -119,7 +119,7 @@ impl LintPass for EnumVariantNames {
 }
 
 fn var2str(var: &Variant) -> InternedString {
-    var.node.name.name.as_str()
+    var.node.ident.name.as_str()
 }
 
 /// Returns the number of chars that match from the start

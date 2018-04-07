@@ -237,7 +237,7 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
         .iter()
         .rev()
         .zip(segments.iter().rev())
-        .all(|(a, b)| a.identifier.name == *b)
+        .all(|(a, b)| a.ident.name == *b)
 }
 
 /// Get the definition associated to a path.
