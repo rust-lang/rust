@@ -56,7 +56,7 @@ impl StaticConst {
                                 span_lint_and_then(
                                     cx,
                                     CONST_STATIC_LIFETIME,
-                                    lifetime.span,
+                                    lifetime.ident.span,
                                     "Constants have by default a `'static` lifetime",
                                     |db| {
                                         db.span_suggestion(ty.span, "consider removing `'static`", sugg);

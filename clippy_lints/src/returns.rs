@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use syntax::ast;
-use syntax::codemap::{Span, Spanned};
+use syntax::codemap::Span;
 use syntax::visit::FnKind;
 
 use utils::{in_external_macro, in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
@@ -112,9 +112,9 @@ impl ReturnPass {
             if local.ty.is_none();
             if !local.attrs.iter().any(attr_is_cfg);
             if let Some(ref initexpr) = local.init;
-            if let ast::PatKind::Ident(_, Spanned { node: id, .. }, _) = local.pat.node;
+            if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
-            if match_path_ast(path, &[&id.name.as_str()]);
+            if match_path_ast(path, &[&ident.name.as_str()]);
             if !in_external_macro(cx, initexpr.span);
             then {
                     span_note_and_lint(cx,

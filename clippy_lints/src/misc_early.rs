@@ -195,7 +195,7 @@ impl EarlyLintPass for MiscEarly {
                     span_lint(
                         cx,
                         BUILTIN_TYPE_SHADOW,
-                        ty.span,
+                        ty.ident.span,
                         &format!("This generic shadows the built-in type `{}`", name),
                     );
                 }
@@ -209,7 +209,7 @@ impl EarlyLintPass for MiscEarly {
             let type_name = npat.segments
                 .last()
                 .expect("A path must have at least one segment")
-                .identifier
+                .ident
                 .name;
 
             for field in pfields {
@@ -267,8 +267,8 @@ impl EarlyLintPass for MiscEarly {
         let mut registered_names: HashMap<String, Span> = HashMap::new();
 
         for arg in &decl.inputs {
-            if let PatKind::Ident(_, sp_ident, None) = arg.pat.node {
-                let arg_name = sp_ident.node.to_string();
+            if let PatKind::Ident(_, ident, None) = arg.pat.node {
+                let arg_name = ident.name.to_string();
 
                 if arg_name.starts_with('_') {
                     if let Some(correspondence) = registered_names.get(&arg_name[1..]) {
@@ -328,13 +328,13 @@ impl EarlyLintPass for MiscEarly {
                 if let StmtKind::Local(ref local) = w[0].node;
                 if let Option::Some(ref t) = local.init;
                 if let ExprKind::Closure(_, _, _, _, _) = t.node;
-                if let PatKind::Ident(_, sp_ident, _) = local.pat.node;
+                if let PatKind::Ident(_, ident, _) = local.pat.node;
                 if let StmtKind::Semi(ref second) = w[1].node;
                 if let ExprKind::Assign(_, ref call) = second.node;
                 if let ExprKind::Call(ref closure, _) = call.node;
                 if let ExprKind::Path(_, ref path) = closure.node;
                 then {
-                    if sp_ident.node == (&path.segments[0]).identifier {
+                    if ident == (&path.segments[0]).ident {
                         span_lint(
                             cx,
                             REDUNDANT_CLOSURE_CALL,

@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                 if_chain! {
                     if let NestedMetaItemKind::MetaItem(ref mi) = item.node;
                     if let MetaItemKind::NameValue(ref lit) = mi.node;
-                    if mi.name() == "since";
+                    if mi.ident.name == "since";
                     then {
                         check_semver(cx, item.span, lit);
                     }
@@ -328,7 +328,7 @@ fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     if let NestedMetaItemKind::MetaItem(ref mi) = nmi.node {
-        mi.is_word() && mi.name() == expected
+        mi.is_word() && mi.ident.name == expected
     } else {
         false
     }
