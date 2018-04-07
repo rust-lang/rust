@@ -373,6 +373,7 @@ extern crate unwind;
 
 // compiler-rt intrinsics
 #[doc(masked)]
+#[cfg(stage0)]
 extern crate compiler_builtins;
 
 // During testing, this crate is not actually the "real" std library, but rather

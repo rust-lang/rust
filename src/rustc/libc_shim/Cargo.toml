@@ -29,6 +29,8 @@ doc = false
 #
 # See https://github.com/rust-lang/rfcs/pull/1133.
 core = { path = "../../libcore" }
+compiler_builtins = { path = "../compiler_builtins_shim" }
+
 
 [features]
 # Certain parts of libc are conditionally compiled differently than when used

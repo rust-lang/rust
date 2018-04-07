@@ -13,6 +13,7 @@ doc = false
 
 [dependencies]
 core = { path = "../libcore" }
+compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
 
 [build-dependencies]
 cc = "1.0.1"
