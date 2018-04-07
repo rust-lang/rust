@@ -115,9 +115,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 match ret_ty.sty {
                     ty::TyAdt(ref adt_def, _) => {
                         assert!(adt_def.is_enum(), "Unexpected return type for {}", item_path);
-                        let none_variant_index = adt_def.variants.iter().enumerate().find(|&(_i, ref def)| {
+                        let none_variant_index = adt_def.variants.iter().position(|def| {
                             def.name.as_str() == "None"
-                        }).expect("No None variant").0;
+                        }).expect("No None variant");
                         let (return_place, return_to_block) = destination.unwrap();
                         write_discriminant_value(self, ret_ty, return_place, none_variant_index)?;
                         self.goto_block(return_to_block);
@@ -125,12 +125,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     }
                     _ => panic!("Unexpected return type for {}", item_path)
                 }
-            }
-            "std::sys_common::thread_info::set" | "std::sys_common::cleanup" => {
-                // TODO rustc creates invalid mir inside std::cell::BorrowRef::new which is used by this function
-                let (_return_place, return_to_block) = destination.unwrap();
-                self.goto_block(return_to_block);
-                return Ok(true);
             }
             "std::sys::unix::fast_thread_local::register_dtor" => {
                 // TODO: register the dtor
@@ -465,17 +459,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             instance,
                             promoted: None,
                         };
-                        // compute global if not cached
-                        let value: Value = match self.tcx.interpret_interner.get_cached(instance.def_id()) {
-                            Some(ptr) => {
-                                Value::ByRef(MemoryPointer::new(ptr, 0).into(), name_align)
-                            }
-                            None => {
-                                let res: Option<(Value, Pointer, Ty)> = eval_body(self.tcx.tcx, cid, ty::ParamEnv::reveal_all());
-                                res.ok_or_else(||EvalErrorKind::MachineError("<already reported>".to_string()))?.0
-                            },
-                        };
-                        let value = self.value_to_primval(ValTy { value, ty: args[0].ty })?.to_u64()?;
+                        let const_val = self.const_eval(cid)?;
+                        let value = const_val.val.unwrap_u64();
                         if value == name {
                             result = Some(path_value);
                             break;

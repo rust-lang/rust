@@ -210,7 +210,7 @@ pub struct MemoryData<'tcx> {
     /// The entry is created when allocating the memory and deleted after deallocation.
     locks: HashMap<AllocId, RangeMap<LockInfo<'tcx>>>,
 
-    mut_statics: HashMap<GlobalId<'tcx>, AllocId>,
+    statics: HashMap<GlobalId<'tcx>, AllocId>,
 }
 
 impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
@@ -252,17 +252,16 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn mark_static_initialized<'a>(
-        _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
-        _id: AllocId,
+        mem: &mut Memory<'a, 'mir, 'tcx, Self>,
+        id: AllocId,
         _mutability: Mutability,
     ) -> EvalResult<'tcx, bool> {
-        /*use memory::MemoryKind::*;
-        match m {
+        use memory::MemoryKind::*;
+        match mem.get_alloc_kind(id) {
             // FIXME: This could be allowed, but not for env vars set during miri execution
-            Env => err!(Unimplemented("statics can't refer to env vars".to_owned())),
+            Some(MemoryKind::Machine(Env)) => err!(Unimplemented("statics can't refer to env vars".to_owned())),
             _ => Ok(false), // TODO: What does the bool mean?
-        }*/
-        Ok(false)
+        }
     }
 
     fn init_static<'a>(
@@ -270,7 +269,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
         // Step 1: If the static has already been evaluated return the cached version
-        if let Some(alloc_id) = ecx.memory.data.mut_statics.get(&cid) {
+        if let Some(alloc_id) = ecx.memory.data.statics.get(&cid) {
             return Ok(*alloc_id);
         }
 
@@ -293,7 +292,7 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         )?;
 
         // Step 4: Cache allocation id for recursive statics
-        assert!(ecx.memory.data.mut_statics.insert(cid, ptr.alloc_id).is_none());
+        assert!(ecx.memory.data.statics.insert(cid, ptr.alloc_id).is_none());
 
         // Step 5: Push stackframe to evaluate static
         let cleanup = StackPopCleanup::None;
@@ -324,6 +323,8 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 }
             }
         }
+
+        // TODO: Freeze immutable statics without copying them to the global static cache
 
         // Step 7: Return the alloc
         Ok(ptr.alloc_id)

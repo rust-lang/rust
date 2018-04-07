@@ -560,7 +560,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             TyAdt(adt, _) if adt.is_box() => true,
             TySlice(_) | TyAdt(_, _) | TyTuple(..) | TyClosure(..) | TyArray(..) |
             TyDynamic(..) | TyGenerator(..) | TyForeign(_) => false,
-            TyGeneratorWitness(..) => bug!("I'm not sure what to return here"),
+            TyGeneratorWitness(..) => unreachable!("TyGeneratorWitness in validate"),
             TyParam(_) | TyInfer(_) | TyProjection(_) | TyAnon(..) | TyError => {
                 bug!("I got an incomplete/unnormalized type for validation")
             }
