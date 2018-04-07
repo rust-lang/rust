@@ -121,7 +121,9 @@ fn main() {
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
         let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
-        let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
+        let sys_root = if let Ok(sysroot) = ::std::env::var("MIRI_SYSROOT") {
+            sysroot
+        } else if let (Some(home), Some(toolchain)) = (home, toolchain) {
             format!("{}/toolchains/{}", home, toolchain)
         } else {
             option_env!("RUST_SYSROOT")

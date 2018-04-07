@@ -444,7 +444,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
             "sysconf" => {
                 let name = self.value_to_primval(args[0])?.to_u64()?;
-                let name_align = self.layout_of(args[0].ty)?.align;
 
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache

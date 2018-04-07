@@ -23,7 +23,7 @@ path = "miri/lib.rs"
 
 [dependencies]
 byteorder = { version = "1.1", features = ["i128"]}
-cargo_metadata = { version = "0.2", optional = true }
+cargo_metadata = { version = "0.5", optional = true }
 regex = "0.2.2"
 lazy_static = "1.0"
 env_logger = "0.5.0-rc.1"

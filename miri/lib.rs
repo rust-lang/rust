@@ -173,6 +173,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
         }
         Err(mut e) => {
+            ecx.tcx.sess.err(&e.to_string());
             ecx.report(&mut e, true, None);
         }
     }
