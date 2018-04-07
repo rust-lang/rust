@@ -127,7 +127,7 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         }
         hir::map::Node::NodeImplItem(item) => {
             if let hir::ImplItemKind::Type(..) = item.node {
-                program_clauses_for_associated_type(tcx, def_id)
+                program_clauses_for_associated_type_value(tcx, def_id)
             } else {
                 Lrc::new(vec![])
             }
@@ -243,8 +243,10 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     Lrc::new(tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause)))))
 }
 
-pub fn program_clauses_for_associated_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>> {
+pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item_id: DefId,
+) -> Lrc<Vec<Clause<'tcx>>> {
     // Rule Normalize-From-Impl (see rustc guide)
     //
     // ```impl<P0..Pn> Trait<A1..An> for A0
