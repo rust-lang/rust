@@ -82,7 +82,6 @@ use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
 use std::{i32, usize};
-use std::iter;
 use std::sync::mpsc;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
@@ -553,7 +552,9 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
+        let main_ret_ty = cx.tcx.erase_regions(
+            &main_ret_ty.no_late_bound_regions().unwrap(),
+        );
 
         if declare::get_defined_value(cx, "main").is_some() {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -580,8 +581,11 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = cx.tcx.require_lang_item(StartFnLangItem);
-            let start_fn = callee::resolve_and_get_fn(cx, start_def_id, cx.tcx.mk_substs(
-                iter::once(Kind::from(main_ret_ty))));
+            let start_fn = callee::resolve_and_get_fn(
+                cx,
+                start_def_id,
+                cx.tcx.intern_substs(&[Kind::from(main_ret_ty)]),
+            );
             (start_fn, vec![bx.pointercast(rust_main, Type::i8p(cx).ptr_to()),
                             arg_argc, arg_argv])
         } else {
