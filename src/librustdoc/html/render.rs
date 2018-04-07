@@ -1440,23 +1440,23 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &str) {
+    fn append(&mut self, item_name: String, item_type: &ItemType) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
             let new_url = format!("{}/{}.{}.html", url.join("/"), item_type, name);
             url.push(name);
             let name = url.join("::");
-            match item_type {
-                "struct" => self.structs.insert(ItemEntry::new(new_url, name)),
-                "enum" => self.enums.insert(ItemEntry::new(new_url, name)),
-                "union" => self.unions.insert(ItemEntry::new(new_url, name)),
-                "primitive" => self.primitives.insert(ItemEntry::new(new_url, name)),
-                "trait" => self.traits.insert(ItemEntry::new(new_url, name)),
-                "macro" => self.macros.insert(ItemEntry::new(new_url, name)),
-                "fn" => self.functions.insert(ItemEntry::new(new_url, name)),
-                "typedef" => self.typedefs.insert(ItemEntry::new(new_url, name)),
-                "static" => self.statics.insert(ItemEntry::new(new_url, name)),
-                "constant" => self.constants.insert(ItemEntry::new(new_url, name)),
+            match *item_type {
+                ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
+                ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
+                ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
+                ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
+                ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
+                ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
+                ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
+                ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
+                ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
+                ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
         }
@@ -1562,8 +1562,7 @@ impl Context {
             }
         }
 
-        let mut w = BufWriter::new(File::create(&final_file)
-                                        .expect("failed to create all.html"));
+        let mut w = BufWriter::new(try_err!(File::create(&final_file), &final_file));
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
         if !root_path.ends_with('/') {
             root_path.push('/');
@@ -1586,10 +1585,11 @@ impl Context {
         } else {
             String::new()
         };
-        layout::render(&mut w, &self.shared.layout,
-                       &page, &sidebar, &all,
-                       self.shared.css_file_extension.is_some(),
-                       &self.shared.themes).expect("layout rendering failed");
+        try_err!(layout::render(&mut w, &self.shared.layout,
+                                &page, &sidebar, &all,
+                                self.shared.css_file_extension.is_some(),
+                                &self.shared.themes),
+                 &final_file);
         Ok(())
     }
 
@@ -1728,7 +1728,7 @@ impl Context {
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
 
-                all.append(full_path(self, &item), item_type.css_class());
+                all.append(full_path(self, &item), &item_type);
                 // Redirect from a sane URL using the namespace to Rustdoc's
                 // URL for the page.
                 let redir_name = format!("{}.{}.html", name, item_type.name_space());
@@ -3733,9 +3733,8 @@ impl<'a> fmt::Display for Sidebar<'a> {
                        "<div class='block version'>\
                         <p>Version {}</p>\
                         </div>
-                        <a id='all-types' href='all{}.html'><p>See all {}'s items</p></a>",
+                        <a id='all-types' href='all.html'><p>See all {}'s items</p></a>",
                        version,
-                       cx.shared.resource_suffix,
                        it.name.as_ref().unwrap())?;
             }
         }
