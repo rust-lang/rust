@@ -64,10 +64,7 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     assigned_map: FxHashMap<Place<'tcx>, FxHashSet<BorrowIndex>>,
 
     /// Locations which activate borrows.
-    /// NOTE: A given location may activate more than one borrow in the future
-    /// when more general two-phase borrow support is introduced, but for now we
-    /// only need to store one borrow index
-    activation_map: FxHashMap<Location, BorrowIndex>,
+    activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
 
     /// Every borrow has a region; this maps each such regions back to
     /// its borrow-indexes.
@@ -174,7 +171,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
             location_map: FxHashMap<Location, BorrowIndex>,
             assigned_map: FxHashMap<Place<'tcx>, FxHashSet<BorrowIndex>>,
-            activation_map: FxHashMap<Location, BorrowIndex>,
+            activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
             region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
             local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
             region_span_map: FxHashMap<RegionKind, Span>,
@@ -211,12 +208,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                     let idx = self.idx_vec.push(borrow);
                     self.location_map.insert(location, idx);
 
-                    // This assert is a good sanity check until more general 2-phase borrow
-                    // support is introduced. See NOTE on the activation_map field for more
-                    assert!(!self.activation_map.contains_key(&activate_location),
-                            "More than one activation introduced at the same location.");
-                    self.activation_map.insert(activate_location, idx);
-
+                    insert(&mut self.activation_map, &activate_location, idx);
                     insert(&mut self.assigned_map, assigned_place, idx);
                     insert(&mut self.region_map, &region, idx);
                     if let Some(local) = root_local(borrowed_place) {
@@ -552,9 +544,11 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
                                        location: Location) {
         // Handle activations
         match self.activation_map.get(&location) {
-            Some(&activated) => {
-                debug!("activating borrow {:?}", activated);
-                sets.gen(&ReserveOrActivateIndex::active(activated))
+            Some(activations) => {
+                for activated in activations {
+                    debug!("activating borrow {:?}", activated);
+                    sets.gen(&ReserveOrActivateIndex::active(*activated))
+                }
             }
             None => {}
         }
