@@ -338,7 +338,7 @@ impl Span {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?} bytes({}...{})",
+        write!(f, "{:?} bytes({}..{})",
                self.0.ctxt(),
                self.0.lo().0,
                self.0.hi().0)
