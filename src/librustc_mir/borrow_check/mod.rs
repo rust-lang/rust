@@ -22,6 +22,7 @@ use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
 use rustc::mir::ClosureRegionRequirements;
 
+use rustc_data_structures::control_flow_graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
@@ -65,8 +66,6 @@ pub fn provide(providers: &mut Providers) {
         ..*providers
     };
 }
-
-struct IsActive(bool);
 
 fn mir_borrowck<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -234,6 +233,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         _ => false,
     };
 
+    let dominators = mir.dominators();
+
     let mut mbcx = MirBorrowckCtxt {
         tcx: tcx,
         mir: mir,
@@ -250,6 +251,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         moved_error_reported: FxHashSet(),
         nonlexical_regioncx: opt_regioncx,
         nonlexical_cause_info: None,
+        dominators,
     };
 
     let mut state = Flows::new(
@@ -302,6 +304,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// find out which CFG points are contained in each borrow region.
     nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
     nonlexical_cause_info: Option<RegionCausalInfo>,
+    dominators: Dominators<BasicBlock>,
 }
 
 // Check that:
@@ -856,7 +859,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             context,
             (sd, place_span.0),
             flow_state,
-            |this, borrow_index, is_active, borrow| match (rw, borrow.kind) {
+            |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same
                 // borrow); so don't check if they interfere.
@@ -881,7 +884,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
-                    if this.allow_two_phase_borrow(borrow.kind) && !is_active.0 {
+                    if !this.is_active(borrow, context.loc) {
+                        assert!(this.allow_two_phase_borrow(borrow.kind));
                         return Control::Continue;
                     }
 
@@ -2234,7 +2238,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         flow_state: &Flows<'cx, 'gcx, 'tcx>,
         mut op: F,
     ) where
-        F: FnMut(&mut Self, BorrowIndex, IsActive, &BorrowData<'tcx>) -> Control,
+        F: FnMut(&mut Self, BorrowIndex, &BorrowData<'tcx>) -> Control,
     {
         let (access, place) = access_place;
 
@@ -2247,6 +2251,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // borrows of P, P.a.b, etc.
         let mut iter_incoming = flow_state.borrows.iter_incoming();
         while let Some(i) = iter_incoming.next() {
+            // TODO -- for now, just skip activations, since
+            // everywhere that activation is set, reservation should
+            // be set
+            if i.is_activation() {
+                continue;
+            }
+
             let borrowed = &data[i.borrow_index()];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
@@ -2254,12 +2265,70 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                     i, borrowed, place, access
                 );
-                let is_active = IsActive(i.is_activation());
-                let ctrl = op(self, i.borrow_index(), is_active, borrowed);
+                let ctrl = op(self, i.borrow_index(), borrowed);
                 if ctrl == Control::Break {
                     return;
                 }
             }
+        }
+    }
+
+    fn is_active(
+        &self,
+        borrow_data: &BorrowData<'tcx>,
+        location: Location
+    ) -> bool {
+        debug!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
+
+        // If this is not a 2-phase borrow, it is always active.
+        let activation_location = match borrow_data.activation_location {
+            Some(v) => v,
+            None => return true,
+        };
+
+        // Otherwise, it is active for every location *except* in between
+        // the reservation and the activation:
+        //
+        //       X
+        //      /
+        //     R      <--+ Except for this
+        //    / \        | diamond
+        //    \ /        |
+        //     A  <------+
+        //     |
+        //     Z
+        //
+        // Note that we assume that:
+        // - the reservation R dominates the activation A
+        // - the activation A post-dominates the reservation R (ignoring unwinding edges).
+        //
+        // This means that there can't be an edge that leaves A and
+        // comes back into that diamond unless it passes through R.
+        //
+        // Suboptimal: In some cases, this code walks the dominator
+        // tree twice when it only has to be walked once. I am
+        // lazy. -nmatsakis
+
+        // If dominated by the activation A, then it is active. The
+        // activation occurs upon entering the point A, so this is
+        // also true if location == activation_location.
+        if activation_location.dominates(location, &self.dominators) {
+            return true;
+        }
+
+        // The reservation starts *on exiting* the reservation block,
+        // so check if the location is dominated by R.successor. If so,
+        // this point falls in between the reservation and location.
+        let reserve_location = borrow_data.reserve_location.successor_within_block();
+        if reserve_location.dominates(location, &self.dominators) {
+            false
+        } else {
+            // Otherwise, this point is outside the diamond, so
+            // consider the borrow active. This could happen for
+            // example if the borrow remains active around a loop (in
+            // which case it would be active also for the point R,
+            // which would generate an error).
+            true
         }
     }
 }
