@@ -1578,14 +1578,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
-
                     let mut err_info = None;
-
                     match *place_err {
-
                         Place::Projection(box Projection {
                         ref base, elem:ProjectionElem::Deref}) => {
-
                             match *base {
                                 Place::Local(local) => {
                                     let locations = self.mir.find_assignments(local);
@@ -1594,8 +1590,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                                 self.get_secondary_err_msg(base)
                                             } else {
                                                 self.get_default_err_msg(place)
-                                            };
-                                            
+                                            };   
                                             err_info = Some((
                                                 self.mir.source_info(locations[0]).span,
                                                     "consider changing this to be a \
