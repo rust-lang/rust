@@ -91,7 +91,7 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
 }
 
 crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>>
+    -> Lrc<[Clause<'tcx>]>
 {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(node_id);
@@ -100,12 +100,12 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
 
         // FIXME: other constructions e.g. traits, associated types...
-        _ => Lrc::new(vec![]),
+        _ => Lrc::new([]),
     }
 }
 
 fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>>
+    -> Lrc<[Clause<'tcx>]>
 {
     // Rule Implemented-From-Env (see rustc guide)
     //
@@ -134,14 +134,14 @@ fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         goal: impl_trait,
         hypotheses: vec![from_env],
     };
-    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
+    Lrc::new([Clause::ForAll(ty::Binder::dummy(clause))])
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>>
+    -> Lrc<[Clause<'tcx>]>
 {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
-        return Lrc::new(vec![]);
+        return Lrc::new([]);
     }
 
     // Rule Implemented-From-Impl (see rustc guide)
@@ -165,7 +165,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
         goal: trait_pred,
         hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect()
     };
-    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
+    Lrc::new([Clause::ForAll(ty::Binder::dummy(clause))])
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

@@ -337,10 +337,10 @@ pub struct CrateVariancesMap {
     /// For each item with generics, maps to a vector of the variance
     /// of its generics.  If an item has no generics, it will have no
     /// entry.
-    pub variances: FxHashMap<DefId, Lrc<Vec<ty::Variance>>>,
+    pub variances: FxHashMap<DefId, Lrc<[ty::Variance]>>,
 
     /// An empty vector, useful for cloning.
-    pub empty_variance: Lrc<Vec<ty::Variance>>,
+    pub empty_variance: Lrc<[ty::Variance]>,
 }
 
 impl Variance {
@@ -2641,7 +2641,7 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      def_id: DefId)
-                                     -> Lrc<Vec<DefId>> {
+                                     -> Lrc<[DefId]> {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(id);
     let vec: Vec<_> = match item.node {
@@ -2660,7 +2660,7 @@ fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hir::ItemTraitAlias(..) => vec![],
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
     };
-    Lrc::new(vec)
+    Lrc::from(vec)
 }
 
 fn def_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Span {
@@ -2772,6 +2772,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 /// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug)]
 pub struct CrateInherentImpls {
+    // Note: needs to be a Lrc<Vec<DefId>> since get_mut().push() is used
     pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
 }
 

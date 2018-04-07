@@ -188,7 +188,7 @@ pub fn provide(providers: &mut Providers) {
         assert_eq!(cnum, LOCAL_CRATE);
         let mut finder = WasmSectionFinder { tcx, list: Vec::new() };
         tcx.hir.krate().visit_all_item_likes(&mut finder);
-        Lrc::new(finder.list)
+        Lrc::from(finder.list)
     };
 
     provide_extern(providers);

@@ -428,7 +428,7 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
             (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
         }
         token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
+            (true, Some(LitKind::ByteStr(Lrc::from(i.as_str().as_bytes()))))
         }
     }
 }
@@ -502,7 +502,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     }
 }
 
-pub fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
+pub fn byte_str_lit(lit: &str) -> Lrc<[u8]> {
     let mut res = Vec::with_capacity(lit.len());
 
     let error = |i| format!("lexer should have rejected {} at {}", lit, i);
@@ -558,7 +558,7 @@ pub fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
         }
     }
 
-    Lrc::new(res)
+    Lrc::from(res)
 }
 
 pub fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)

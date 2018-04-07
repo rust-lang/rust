@@ -608,7 +608,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
         let data = ModData {
             reexports: match tcx.module_exports(def_id) {
-                Some(ref exports) => self.lazy_seq_from_slice(exports.as_slice()),
+                Some(ref exports) => self.lazy_seq_from_slice(&exports),
                 _ => LazySeq::empty(),
             },
         };

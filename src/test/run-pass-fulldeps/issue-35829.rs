@@ -37,12 +37,12 @@ fn run() {
 
     // check byte string
     let byte_string = quote_expr!(&cx, b"one");
-    let byte_string_lit_kind = LitKind::ByteStr(Lrc::new(b"one".to_vec()));
+    let byte_string_lit_kind = LitKind::ByteStr(Lrc::from(&b"one"[..]));
     assert_eq!(byte_string.node, ExprKind::Lit(P(dummy_spanned(byte_string_lit_kind))));
 
     // check raw byte string
     let raw_byte_string = quote_expr!(&cx, br###"#"two"#"###);
-    let raw_byte_string_lit_kind = LitKind::ByteStr(Lrc::new(b"#\"two\"#".to_vec()));
+    let raw_byte_string_lit_kind = LitKind::ByteStr(Lrc::from(&b"#\"two\"#"[..]));
     assert_eq!(raw_byte_string.node, ExprKind::Lit(P(dummy_spanned(raw_byte_string_lit_kind))));
 
     // check dotdoteq

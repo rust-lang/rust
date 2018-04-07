@@ -824,11 +824,11 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
-    -> Lrc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>
+    -> Lrc<[Option<(DefId, &'tcx Substs<'tcx>)>]>
 {
     debug!("vtable_methods({:?})", trait_ref);
 
-    Lrc::new(
+    Lrc::from(
         supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
             let trait_methods = tcx.associated_items(trait_ref.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Method);
@@ -871,7 +871,7 @@ fn vtable_methods<'a, 'tcx>(
 
                 Some((def_id, substs))
             })
-        }).collect()
+        }).collect::<Vec<_>>()
     )
 }
 

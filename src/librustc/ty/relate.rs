@@ -131,7 +131,7 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
 }
 
 pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
-                                        variances: Option<&Vec<ty::Variance>>,
+                                        variances: Option<&[ty::Variance]>,
                                         a_subst: &'tcx Substs<'tcx>,
                                         b_subst: &'tcx Substs<'tcx>)
                                         -> RelateResult<'tcx, &'tcx Substs<'tcx>>

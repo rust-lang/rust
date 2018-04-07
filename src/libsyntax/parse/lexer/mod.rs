@@ -61,7 +61,7 @@ pub struct StringReader<'a> {
     pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
-    source_text: Lrc<String>,
+    source_text: Lrc<str>,
     /// Stack of open delimiters and their spans. Used for error message.
     token: token::Token,
     span: Span,
