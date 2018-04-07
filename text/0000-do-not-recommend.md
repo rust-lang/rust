@@ -41,7 +41,7 @@ for i in (1, 2, 3) {
 }
 ```
 
-The get the following error:
+They get the following error:
 
 ```
 error[E0277]: the trait bound `({integer}, {integer}, {integer}): std::iter::Iterator` is not satisfied
