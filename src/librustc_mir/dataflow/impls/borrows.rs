@@ -156,6 +156,13 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
         }
     }
 
+    crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
+        self.borrow_set.activation_map
+            .get(&location)
+            .map(|activations| &activations[..])
+            .unwrap_or(&[])
+    }
+
     /// Performs the activations for a given location
     fn perform_activations_at_location(&self,
                                        sets: &mut BlockSets<ReserveOrActivateIndex>,

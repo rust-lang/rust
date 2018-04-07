@@ -35,7 +35,7 @@ crate struct BorrowSet<'tcx> {
     /// NOTE: A given location may activate more than one borrow in the future
     /// when more general two-phase borrow support is introduced, but for now we
     /// only need to store one borrow index
-    crate activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
+    crate activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
 
     /// Every borrow has a region; this maps each such regions back to
     /// its borrow-indexes.
@@ -131,7 +131,7 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
-    activation_map: FxHashMap<Location, FxHashSet<BorrowIndex>>,
+    activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
     region_span_map: FxHashMap<RegionKind, Span>,
@@ -230,8 +230,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                     borrow_data.activation_location = Some(location);
                     self.activation_map
                         .entry(location)
-                        .or_insert(FxHashSet())
-                        .insert(borrow_index);
+                        .or_insert(Vec::new())
+                        .push(borrow_index);
                 }
 
                 None => {}

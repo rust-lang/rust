@@ -1267,36 +1267,30 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
-        let domain = flow_state.borrows.operator();
-        let data = domain.borrows();
-        flow_state.borrows.each_gen_bit(|gen| {
-            if gen.is_activation() {
-                let borrow_index = gen.borrow_index();
-                let borrow = &data[borrow_index];
-                // currently the flow analysis registers
-                // activations for both mutable and immutable
-                // borrows. So make sure we are talking about a
-                // mutable borrow before we check it.
-                match borrow.kind {
-                    BorrowKind::Shared => return,
-                    BorrowKind::Unique | BorrowKind::Mut { .. } => {}
-                }
+        let borrows = flow_state.borrows.operator();
+        for &borrow_index in borrows.activations_at_location(location) {
+            let borrow = &borrows.borrows()[borrow_index];
 
-                self.access_place(
-                    ContextKind::Activation.new(location),
-                    (&borrow.borrowed_place, span),
-                    (
-                        Deep,
-                        Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index),
-                    ),
-                    LocalMutationIsAllowed::No,
-                    flow_state,
-                );
-                // We do not need to call `check_if_path_or_subpath_is_moved`
-                // again, as we already called it when we made the
-                // initial reservation.
-            }
-        });
+            // only mutable borrows should be 2-phase
+            assert!(match borrow.kind {
+                BorrowKind::Shared => false,
+                BorrowKind::Unique | BorrowKind::Mut { .. } => true,
+            });
+
+            self.access_place(
+                ContextKind::Activation.new(location),
+                (&borrow.borrowed_place, span),
+                (
+                    Deep,
+                    Activation(WriteKind::MutableBorrow(borrow.kind), borrow_index),
+                ),
+                LocalMutationIsAllowed::No,
+                flow_state,
+            );
+            // We do not need to call `check_if_path_or_subpath_is_moved`
+            // again, as we already called it when we made the
+            // initial reservation.
+        }
     }
 }
 
