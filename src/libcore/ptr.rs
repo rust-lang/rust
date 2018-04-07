@@ -2330,7 +2330,8 @@ impl<T: ?Sized> Eq for *mut T {}
 #[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
-    a == b
+    // cast to thin pointers to ignore the vtable part
+    a as *const () == b as *const ()
 }
 
 // Impls for function pointers
