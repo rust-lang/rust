@@ -233,7 +233,7 @@ trait system today (particularly with regards to chalk).
 - The vast majority of cases where this would be used are for traits and impls
   that look very similar to `Iterator` and `impl<T: Iterator> IntoIterator for
   T`. We could potentially instead try to improve the compiler's diagnostics
-  without this attribute, to detect chose cases.
+  without this attribute, to detect those cases.
 
 # Prior art
 [prior-art]: #prior-art
