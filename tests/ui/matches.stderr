@@ -9,323 +9,305 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
    = note: `-D single-match-else` implied by `-D warnings`
 
-error: this boolean expression can be simplified
-  --> $DIR/matches.rs:51:11
-   |
-51 |     match test && test {
-   |           ^^^^^^^^^^^^ help: try: `test`
-   |
-   = note: `-D nonminimal-bool` implied by `-D warnings`
-
-error: you seem to be trying to match on a boolean expression
-  --> $DIR/matches.rs:30:5
-   |
-30 | /     match test {
-31 | |         true => 0,
-32 | |         false => 42,
-33 | |     };
-   | |_____^ help: consider using an if/else expression: `if test { 0 } else { 42 }`
-   |
-   = note: `-D match-bool` implied by `-D warnings`
-
-error: you seem to be trying to match on a boolean expression
-  --> $DIR/matches.rs:36:5
-   |
-36 | /     match option == 1 {
-37 | |         true => 1,
-38 | |         false => 0,
-39 | |     };
-   | |_____^ help: consider using an if/else expression: `if option == 1 { 1 } else { 0 }`
-
-error: you seem to be trying to match on a boolean expression
-  --> $DIR/matches.rs:41:5
-   |
-41 | /     match test {
-42 | |         true => (),
-43 | |         false => { println!("Noooo!"); }
-44 | |     };
-   | |_____^ help: consider using an if/else expression: `if !test { println!("Noooo!"); }`
-
-error: you seem to be trying to match on a boolean expression
-  --> $DIR/matches.rs:46:5
-   |
-46 | /     match test {
-47 | |         false => { println!("Noooo!"); }
-48 | |         _ => (),
-49 | |     };
-   | |_____^ help: consider using an if/else expression: `if !test { println!("Noooo!"); }`
-
-error: you seem to be trying to match on a boolean expression
-  --> $DIR/matches.rs:51:5
-   |
-51 | /     match test && test {
-52 | |         false => { println!("Noooo!"); }
-53 | |         _ => (),
-54 | |     };
-   | |_____^ help: consider using an if/else expression: `if !(test && test) { println!("Noooo!"); }`
-
-error: equal expressions as operands to `&&`
-  --> $DIR/matches.rs:51:11
-   |
-51 |     match test && test {
-   |           ^^^^^^^^^^^^
-   |
-   = note: `-D eq-op` implied by `-D warnings`
-
-error: you seem to be trying to match on a boolean expression
-  --> $DIR/matches.rs:56:5
-   |
-56 | /     match test {
-57 | |         false => { println!("Noooo!"); }
-58 | |         true => { println!("Yes!"); }
-59 | |     };
-   | |_____^ help: consider using an if/else expression: `if test { println!("Yes!"); } else { println!("Noooo!"); }`
-
 error: you don't need to add `&` to all patterns
-  --> $DIR/matches.rs:72:9
+  --> $DIR/matches.rs:30:9
    |
-72 | /         match v {
-73 | |             &Some(v) => println!("{:?}", v),
-74 | |             &None => println!("none"),
-75 | |         }
+30 | /         match v {
+31 | |             &Some(v) => println!("{:?}", v),
+32 | |             &None => println!("none"),
+33 | |         }
    | |_________^
    |
    = note: `-D match-ref-pats` implied by `-D warnings`
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
-72 |         match *v {
-73 |             Some(v) => println!("{:?}", v),
-74 |             None => println!("none"),
+30 |         match *v {
+31 |             Some(v) => println!("{:?}", v),
+32 |             None => println!("none"),
    |
 
 error: you don't need to add `&` to all patterns
-  --> $DIR/matches.rs:82:5
+  --> $DIR/matches.rs:40:5
    |
-82 | /     match tup {
-83 | |         &(v, 1) => println!("{}", v),
-84 | |         _ => println!("none"),
-85 | |     }
+40 | /     match tup {
+41 | |         &(v, 1) => println!("{}", v),
+42 | |         _ => println!("none"),
+43 | |     }
    | |_____^
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
-82 |     match *tup {
-83 |         (v, 1) => println!("{}", v),
+40 |     match *tup {
+41 |         (v, 1) => println!("{}", v),
    |
 
 error: you don't need to add `&` to both the expression and the patterns
-  --> $DIR/matches.rs:88:5
+  --> $DIR/matches.rs:46:5
    |
-88 | /     match &w {
-89 | |         &Some(v) => println!("{:?}", v),
-90 | |         &None => println!("none"),
-91 | |     }
+46 | /     match &w {
+47 | |         &Some(v) => println!("{:?}", v),
+48 | |         &None => println!("none"),
+49 | |     }
    | |_____^
 help: try
    |
-88 |     match w {
-89 |         Some(v) => println!("{:?}", v),
-90 |         None => println!("none"),
+46 |     match w {
+47 |         Some(v) => println!("{:?}", v),
+48 |         None => println!("none"),
    |
 
 error: you don't need to add `&` to all patterns
-   --> $DIR/matches.rs:99:5
-    |
-99  | /     if let &None = a {
-100 | |         println!("none");
-101 | |     }
-    | |_____^
+  --> $DIR/matches.rs:57:5
+   |
+57 | /     if let &None = a {
+58 | |         println!("none");
+59 | |     }
+   | |_____^
 help: instead of prefixing all patterns with `&`, you can dereference the expression
-    |
-99  |     if let None = *a {
-    |
+   |
+57 |     if let None = *a {
+   |
 
 error: you don't need to add `&` to both the expression and the patterns
-   --> $DIR/matches.rs:104:5
-    |
-104 | /     if let &None = &b {
-105 | |         println!("none");
-106 | |     }
-    | |_____^
+  --> $DIR/matches.rs:62:5
+   |
+62 | /     if let &None = &b {
+63 | |         println!("none");
+64 | |     }
+   | |_____^
 help: try
-    |
-104 |     if let None = b {
-    |
+   |
+62 |     if let None = b {
+   |
 
 error: some ranges overlap
-   --> $DIR/matches.rs:113:9
-    |
-113 |         0 ... 10 => println!("0 ... 10"),
-    |         ^^^^^^^^
-    |
-    = note: `-D match-overlapping-arm` implied by `-D warnings`
+  --> $DIR/matches.rs:71:9
+   |
+71 |         0 ... 10 => println!("0 ... 10"),
+   |         ^^^^^^^^
+   |
+   = note: `-D match-overlapping-arm` implied by `-D warnings`
 note: overlaps with this
+  --> $DIR/matches.rs:72:9
+   |
+72 |         0 ... 11 => println!("0 ... 11"),
+   |         ^^^^^^^^
+
+error: some ranges overlap
+  --> $DIR/matches.rs:77:9
+   |
+77 |         0 ... 5 => println!("0 ... 5"),
+   |         ^^^^^^^
+   |
+note: overlaps with this
+  --> $DIR/matches.rs:79:9
+   |
+79 |         FOO ... 11 => println!("0 ... 11"),
+   |         ^^^^^^^^^^
+
+error: some ranges overlap
+  --> $DIR/matches.rs:85:9
+   |
+85 |         0 ... 5 => println!("0 ... 5"),
+   |         ^^^^^^^
+   |
+note: overlaps with this
+  --> $DIR/matches.rs:84:9
+   |
+84 |         2 => println!("2"),
+   |         ^
+
+error: some ranges overlap
+  --> $DIR/matches.rs:91:9
+   |
+91 |         0 ... 2 => println!("0 ... 2"),
+   |         ^^^^^^^
+   |
+note: overlaps with this
+  --> $DIR/matches.rs:90:9
+   |
+90 |         2 => println!("2"),
+   |         ^
+
+error: some ranges overlap
    --> $DIR/matches.rs:114:9
     |
-114 |         0 ... 11 => println!("0 ... 11"),
-    |         ^^^^^^^^
-
-error: some ranges overlap
-   --> $DIR/matches.rs:119:9
-    |
-119 |         0 ... 5 => println!("0 ... 5"),
+114 |         0 .. 11 => println!("0 .. 11"),
     |         ^^^^^^^
     |
 note: overlaps with this
-   --> $DIR/matches.rs:121:9
+   --> $DIR/matches.rs:115:9
     |
-121 |         FOO ... 11 => println!("0 ... 11"),
-    |         ^^^^^^^^^^
-
-error: some ranges overlap
-   --> $DIR/matches.rs:127:9
-    |
-127 |         0 ... 5 => println!("0 ... 5"),
-    |         ^^^^^^^
-    |
-note: overlaps with this
-   --> $DIR/matches.rs:126:9
-    |
-126 |         2 => println!("2"),
-    |         ^
-
-error: some ranges overlap
-   --> $DIR/matches.rs:133:9
-    |
-133 |         0 ... 2 => println!("0 ... 2"),
-    |         ^^^^^^^
-    |
-note: overlaps with this
-   --> $DIR/matches.rs:132:9
-    |
-132 |         2 => println!("2"),
-    |         ^
-
-error: some ranges overlap
-   --> $DIR/matches.rs:156:9
-    |
-156 |         0 .. 11 => println!("0 .. 11"),
-    |         ^^^^^^^
-    |
-note: overlaps with this
-   --> $DIR/matches.rs:157:9
-    |
-157 |         0 ... 11 => println!("0 ... 11"),
+115 |         0 ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^
 
 error: Err(_) will match all errors, maybe not a good idea
-   --> $DIR/matches.rs:174:9
+   --> $DIR/matches.rs:132:9
     |
-174 |         Err(_) => panic!("err")
+132 |         Err(_) => panic!("err")
     |         ^^^^^^
     |
     = note: `-D match-wild-err-arm` implied by `-D warnings`
     = note: to remove this warning, match each error seperately or use unreachable macro
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:173:18
+   --> $DIR/matches.rs:131:18
     |
-173 |         Ok(_) => println!("ok"),
+131 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
     = note: `-D match-same-arms` implied by `-D warnings`
 note: same as this
-   --> $DIR/matches.rs:172:18
+   --> $DIR/matches.rs:130:18
     |
-172 |         Ok(3) => println!("ok"),
+130 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:172:18
+   --> $DIR/matches.rs:130:18
     |
-172 |         Ok(3) => println!("ok"),
+130 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: Err(_) will match all errors, maybe not a good idea
-   --> $DIR/matches.rs:180:9
+   --> $DIR/matches.rs:138:9
     |
-180 |         Err(_) => {panic!()}
+138 |         Err(_) => {panic!()}
     |         ^^^^^^
     |
     = note: to remove this warning, match each error seperately or use unreachable macro
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:179:18
+   --> $DIR/matches.rs:137:18
     |
-179 |         Ok(_) => println!("ok"),
+137 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:178:18
+   --> $DIR/matches.rs:136:18
     |
-178 |         Ok(3) => println!("ok"),
+136 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:178:18
+   --> $DIR/matches.rs:136:18
     |
-178 |         Ok(3) => println!("ok"),
+136 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: Err(_) will match all errors, maybe not a good idea
-   --> $DIR/matches.rs:186:9
+   --> $DIR/matches.rs:144:9
     |
-186 |         Err(_) => {panic!();}
+144 |         Err(_) => {panic!();}
     |         ^^^^^^
     |
     = note: to remove this warning, match each error seperately or use unreachable macro
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:185:18
+   --> $DIR/matches.rs:143:18
     |
-185 |         Ok(_) => println!("ok"),
+143 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:184:18
+   --> $DIR/matches.rs:142:18
     |
-184 |         Ok(3) => println!("ok"),
+142 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:184:18
+   --> $DIR/matches.rs:142:18
     |
-184 |         Ok(3) => println!("ok"),
+142 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:192:18
+   --> $DIR/matches.rs:150:18
     |
-192 |         Ok(_) => println!("ok"),
+150 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:191:18
+   --> $DIR/matches.rs:149:18
     |
-191 |         Ok(3) => println!("ok"),
+149 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:191:18
+   --> $DIR/matches.rs:149:18
     |
-191 |         Ok(3) => println!("ok"),
+149 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:199:18
+   --> $DIR/matches.rs:157:18
     |
-199 |         Ok(_) => println!("ok"),
+157 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:198:18
+   --> $DIR/matches.rs:156:18
     |
-198 |         Ok(3) => println!("ok"),
+156 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:198:18
+   --> $DIR/matches.rs:156:18
     |
-198 |         Ok(3) => println!("ok"),
+156 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:163:18
+    |
+163 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:162:18
+    |
+162 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:162:18
+    |
+162 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:169:18
+    |
+169 |         Ok(_) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:168:18
+    |
+168 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+   --> $DIR/matches.rs:168:18
+    |
+168 |         Ok(3) => println!("ok"),
+    |                  ^^^^^^^^^^^^^^
+    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: this `match` has identical arm bodies
+   --> $DIR/matches.rs:190:29
+    |
+190 |         (Ok(_), Some(x)) => println!("ok {}", x),
+    |                             ^^^^^^^^^^^^^^^^^^^^
+    |
+note: same as this
+   --> $DIR/matches.rs:189:29
+    |
+189 |         (Ok(x), Some(_)) => println!("ok {}", x),
+    |                             ^^^^^^^^^^^^^^^^^^^^
+note: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
+   --> $DIR/matches.rs:189:29
+    |
+189 |         (Ok(x), Some(_)) => println!("ok {}", x),
+    |                             ^^^^^^^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
@@ -346,81 +328,27 @@ note: consider refactoring into `Ok(3) | Ok(_)`
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:211:18
-    |
-211 |         Ok(_) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    |
-note: same as this
-   --> $DIR/matches.rs:210:18
-    |
-210 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:210:18
-    |
-210 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:232:29
-    |
-232 |         (Ok(_), Some(x)) => println!("ok {}", x),
-    |                             ^^^^^^^^^^^^^^^^^^^^
-    |
-note: same as this
-   --> $DIR/matches.rs:231:29
-    |
-231 |         (Ok(x), Some(_)) => println!("ok {}", x),
-    |                             ^^^^^^^^^^^^^^^^^^^^
-note: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
-   --> $DIR/matches.rs:231:29
-    |
-231 |         (Ok(x), Some(_)) => println!("ok {}", x),
-    |                             ^^^^^^^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:247:18
-    |
-247 |         Ok(_) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    |
-note: same as this
-   --> $DIR/matches.rs:246:18
-    |
-246 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:246:18
-    |
-246 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
 error: use as_ref() instead
-   --> $DIR/matches.rs:254:33
+   --> $DIR/matches.rs:212:33
     |
-254 |       let borrowed: Option<&()> = match owned {
+212 |       let borrowed: Option<&()> = match owned {
     |  _________________________________^
-255 | |         None => None,
-256 | |         Some(ref v) => Some(v),
-257 | |     };
+213 | |         None => None,
+214 | |         Some(ref v) => Some(v),
+215 | |     };
     | |_____^ help: try this: `owned.as_ref()`
     |
     = note: `-D match-as-ref` implied by `-D warnings`
 
 error: use as_mut() instead
-   --> $DIR/matches.rs:260:39
+   --> $DIR/matches.rs:218:39
     |
-260 |       let borrow_mut: Option<&mut ()> = match mut_owned {
+218 |       let borrow_mut: Option<&mut ()> = match mut_owned {
     |  _______________________________________^
-261 | |         None => None,
-262 | |         Some(ref mut v) => Some(v),
-263 | |     };
+219 | |         None => None,
+220 | |         Some(ref mut v) => Some(v),
+221 | |     };
     | |_____^ help: try this: `mut_owned.as_mut()`
 
-error: aborting due to 33 previous errors
+error: aborting due to 25 previous errors
 
