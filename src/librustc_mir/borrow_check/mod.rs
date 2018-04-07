@@ -2250,9 +2250,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         // check for loan restricting path P being used. Accounts for
         // borrows of P, P.a.b, etc.
-        let mut iter_incoming = flow_state.borrows.iter_incoming();
         let borrow_set = self.borrow_set.clone();
-        while let Some(i) = iter_incoming.next() {
+        for i in flow_state.borrows.iter_incoming() {
             let borrowed = &borrow_set[i];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
