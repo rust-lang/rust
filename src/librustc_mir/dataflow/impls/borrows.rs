@@ -20,13 +20,13 @@ use rustc::ty::{Region, TyCtxt};
 use rustc::ty::RegionKind;
 use rustc::ty::RegionKind::ReScope;
 
-use rustc_data_structures::bitslice::{BitwiseOperator};
-use rustc_data_structures::indexed_set::{IdxSet};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::bitslice::BitwiseOperator;
+use rustc_data_structures::indexed_set::IdxSet;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 
 use dataflow::{BitDenotation, BlockSets, InitialFlow};
-pub use dataflow::indexes::{BorrowIndex, ReserveOrActivateIndex};
+pub use dataflow::indexes::BorrowIndex;
 use borrow_check::nll::region_infer::RegionInferenceContext;
 use borrow_check::nll::ToRegionVid;
 
@@ -51,21 +51,6 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
 
     /// NLL region inference context with which NLL queries should be resolved
     nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
-}
-
-impl ReserveOrActivateIndex {
-    fn reserved(i: BorrowIndex) -> Self { ReserveOrActivateIndex::new(i.index() * 2) }
-    fn active(i: BorrowIndex) -> Self { ReserveOrActivateIndex::new((i.index() * 2) + 1) }
-
-    pub(crate) fn is_reservation(self) -> bool { self.index() % 2 == 0 }
-    pub(crate) fn is_activation(self) -> bool { self.index() % 2 == 1}
-
-    pub(crate) fn kind(self) -> &'static str {
-        if self.is_reservation() { "reserved" } else { "active" }
-    }
-    pub(crate) fn borrow_index(self) -> BorrowIndex {
-        BorrowIndex::new(self.index() / 2)
-    }
 }
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
@@ -120,7 +105,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     /// That means either they went out of either a nonlexical scope, if we care about those
     /// at the moment, or the location represents a lexical EndRegion
     fn kill_loans_out_of_scope_at_location(&self,
-                                           sets: &mut BlockSets<ReserveOrActivateIndex>,
+                                           sets: &mut BlockSets<BorrowIndex>,
                                            location: Location) {
         if let Some(ref regioncx) = self.nonlexical_regioncx {
             // NOTE: The state associated with a given `location`
@@ -137,22 +122,18 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
                 let borrow_region = borrow_data.region.to_region_vid();
                 if !regioncx.region_contains_point(borrow_region, location) {
-                    sets.kill(&ReserveOrActivateIndex::reserved(borrow_index));
-                    sets.kill(&ReserveOrActivateIndex::active(borrow_index));
+                    sets.kill(&borrow_index);
                 }
             }
         }
     }
 
     fn kill_borrows_on_local(&self,
-                             sets: &mut BlockSets<ReserveOrActivateIndex>,
+                             sets: &mut BlockSets<BorrowIndex>,
                              local: &rustc::mir::Local)
     {
         if let Some(borrow_indexes) = self.borrow_set.local_map.get(local) {
-            sets.kill_all(borrow_indexes.iter()
-                          .map(|b| ReserveOrActivateIndex::reserved(*b)));
-            sets.kill_all(borrow_indexes.iter()
-                          .map(|b| ReserveOrActivateIndex::active(*b)));
+            sets.kill_all(borrow_indexes);
         }
     }
 
@@ -162,45 +143,29 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
             .map(|activations| &activations[..])
             .unwrap_or(&[])
     }
-
-    /// Performs the activations for a given location
-    fn perform_activations_at_location(&self,
-                                       sets: &mut BlockSets<ReserveOrActivateIndex>,
-                                       location: Location) {
-        // Handle activations
-        match self.borrow_set.activation_map.get(&location) {
-            Some(activations) => {
-                for activated in activations {
-                    debug!("activating borrow {:?}", activated);
-                    sets.gen(&ReserveOrActivateIndex::active(*activated))
-                }
-            }
-            None => {}
-        }
-    }
 }
 
 impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
-    type Idx = ReserveOrActivateIndex;
+    type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
         self.borrow_set.borrows.len() * 2
     }
 
-    fn start_block_effect(&self, _entry_set: &mut IdxSet<ReserveOrActivateIndex>) {
+    fn start_block_effect(&self, _entry_set: &mut IdxSet<BorrowIndex>) {
         // no borrows of code region_scopes have been taken prior to
         // function execution, so this method has no effect on
         // `_sets`.
     }
 
     fn before_statement_effect(&self,
-                               sets: &mut BlockSets<ReserveOrActivateIndex>,
+                               sets: &mut BlockSets<BorrowIndex>,
                                location: Location) {
         debug!("Borrows::before_statement_effect sets: {:?} location: {:?}", sets, location);
         self.kill_loans_out_of_scope_at_location(sets, location);
     }
 
-    fn statement_effect(&self, sets: &mut BlockSets<ReserveOrActivateIndex>, location: Location) {
+    fn statement_effect(&self, sets: &mut BlockSets<BorrowIndex>, location: Location) {
         debug!("Borrows::statement_effect sets: {:?} location: {:?}", sets, location);
 
         let block = &self.mir.basic_blocks().get(location.block).unwrap_or_else(|| {
@@ -210,7 +175,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
             panic!("could not find statement at location {:?}");
         });
 
-        self.perform_activations_at_location(sets, location);
         self.kill_loans_out_of_scope_at_location(sets, location);
 
         match stmt.kind {
@@ -221,8 +185,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 {
                     assert!(self.nonlexical_regioncx.is_none());
                     for idx in borrow_indexes {
-                        sets.kill(&ReserveOrActivateIndex::reserved(*idx));
-                        sets.kill(&ReserveOrActivateIndex::active(*idx));
+                        sets.kill(idx);
                     }
                 } else {
                     // (if there is no entry, then there are no borrows to be tracked)
@@ -252,14 +215,14 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                     if let RegionKind::ReEmpty = region {
                         // If the borrowed value dies before the borrow is used, the region for
                         // the borrow can be empty. Don't track the borrow in that case.
-                        sets.kill(&ReserveOrActivateIndex::active(*index));
+                        sets.kill(&index);
                         return
                     }
 
                     assert!(self.borrow_set.region_map.get(region).unwrap_or_else(|| {
                         panic!("could not find BorrowIndexs for region {:?}", region);
                     }).contains(&index));
-                    sets.gen(&ReserveOrActivateIndex::reserved(*index));
+                    sets.gen(&index);
 
                     // Issue #46746: Two-phase borrows handles
                     // stmts of form `Tmp = &mut Borrow` ...
@@ -270,7 +233,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                             // e.g. `box (&mut _)`. Current
                             // conservative solution: force
                             // immediate activation here.
-                            sets.gen(&ReserveOrActivateIndex::active(*index));
+                            sets.gen(&index);
                         }
                     }
                 }
@@ -306,13 +269,13 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     }
 
     fn before_terminator_effect(&self,
-                                sets: &mut BlockSets<ReserveOrActivateIndex>,
+                                sets: &mut BlockSets<BorrowIndex>,
                                 location: Location) {
         debug!("Borrows::before_terminator_effect sets: {:?} location: {:?}", sets, location);
         self.kill_loans_out_of_scope_at_location(sets, location);
     }
 
-    fn terminator_effect(&self, sets: &mut BlockSets<ReserveOrActivateIndex>, location: Location) {
+    fn terminator_effect(&self, sets: &mut BlockSets<BorrowIndex>, location: Location) {
         debug!("Borrows::terminator_effect sets: {:?} location: {:?}", sets, location);
 
         let block = &self.mir.basic_blocks().get(location.block).unwrap_or_else(|| {
@@ -320,7 +283,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         });
 
         let term = block.terminator();
-        self.perform_activations_at_location(sets, location);
         self.kill_loans_out_of_scope_at_location(sets, location);
 
 
@@ -343,8 +305,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                             if *scope != root_scope &&
                                 self.scope_tree.is_subscope_of(*scope, root_scope)
                             {
-                                sets.kill(&ReserveOrActivateIndex::reserved(borrow_index));
-                                sets.kill(&ReserveOrActivateIndex::active(borrow_index));
+                                sets.kill(&borrow_index);
                             }
                         }
                     }
@@ -365,7 +326,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     }
 
     fn propagate_call_return(&self,
-                             _in_out: &mut IdxSet<ReserveOrActivateIndex>,
+                             _in_out: &mut IdxSet<BorrowIndex>,
                              _call_bb: mir::BasicBlock,
                              _dest_bb: mir::BasicBlock,
                              _dest_place: &mir::Place) {

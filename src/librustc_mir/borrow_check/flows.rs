@@ -88,9 +88,8 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let borrow_data = &self.borrows.operator().borrows()[borrow.borrow_index()];
-            s.push_str(&format!("{}{}", borrow_data,
-                                if borrow.is_activation() { "@active" } else { "" }));
+            let borrow_data = &self.borrows.operator().borrows()[borrow];
+            s.push_str(&format!("{}", borrow_data));
         });
         s.push_str("] ");
 
@@ -101,7 +100,7 @@ impl<'b, 'gcx, 'tcx> fmt::Display for Flows<'b, 'gcx, 'tcx> {
                 s.push_str(", ");
             };
             saw_one = true;
-            let borrow_data = &self.borrows.operator().borrows()[borrow.borrow_index()];
+            let borrow_data = &self.borrows.operator().borrows()[borrow];
             s.push_str(&format!("{}", borrow_data));
         });
         s.push_str("] ");

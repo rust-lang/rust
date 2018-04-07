@@ -220,9 +220,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         &attributes,
         &dead_unwinds,
         Borrows::new(tcx, mir, opt_regioncx.clone(), def_id, body_id, borrow_set),
-        |rs, i| {
-            DebugFormatted::new(&(i.kind(), rs.location(i.borrow_index())))
-        }
+        |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
 
     let movable_generator = !match tcx.hir.get(id) {
@@ -549,7 +547,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     let data = domain.borrows();
                     flow_state.borrows.with_iter_outgoing(|borrows| {
                         for i in borrows {
-                            let borrow = &data[i.borrow_index()];
+                            let borrow = &data[i];
                             self.check_for_local_borrow(borrow, span);
                         }
                     });
@@ -565,7 +563,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 let data = domain.borrows();
                 flow_state.borrows.with_iter_outgoing(|borrows| {
                     for i in borrows {
-                        let borrow = &data[i.borrow_index()];
+                        let borrow = &data[i];
                         let context = ContextKind::StorageDead.new(loc);
                         self.check_for_invalidation_at_exit(context, borrow, span, flow_state);
                     }
@@ -2245,21 +2243,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // borrows of P, P.a.b, etc.
         let mut iter_incoming = flow_state.borrows.iter_incoming();
         while let Some(i) = iter_incoming.next() {
-            // TODO -- for now, just skip activations, since
-            // everywhere that activation is set, reservation should
-            // be set
-            if i.is_activation() {
-                continue;
-            }
-
-            let borrowed = &data[i.borrow_index()];
+            let borrowed = &data[i];
 
             if self.places_conflict(&borrowed.borrowed_place, place, access) {
                 debug!(
                     "each_borrow_involving_path: {:?} @ {:?} vs. {:?}/{:?}",
                     i, borrowed, place, access
                 );
-                let ctrl = op(self, i.borrow_index(), borrowed);
+                let ctrl = op(self, i, borrowed);
                 if ctrl == Control::Break {
                     return;
                 }
