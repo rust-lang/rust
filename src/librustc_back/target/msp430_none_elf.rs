@@ -59,6 +59,9 @@ pub fn target() -> TargetResult {
             // too much overhead for such small target.
             trap_unreachable: false,
 
+            // See the thumb_base.rs file for an explanation of this value
+            emit_debug_gdb_scripts: false,
+
             .. Default::default( )
         }
     })
