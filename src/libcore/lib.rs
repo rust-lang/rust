@@ -102,6 +102,7 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(core_intrinsics)]
 
 #![cfg_attr(stage0, allow(unused_attributes))]
 #![cfg_attr(stage0, feature(never_type))]

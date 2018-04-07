@@ -530,6 +530,9 @@ pub use core::fmt::{write, ArgumentV1, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{DebugList, DebugMap, DebugSet, DebugStruct, DebugTuple};
 
+#[unstable(feature = "best_effort_debug", issue = "0")]
+pub use core::fmt::BestEffortDebug;
+
 use string;
 
 /// The `format` function takes an [`Arguments`] struct and returns the resulting

@@ -2025,5 +2025,77 @@ impl<T: ?Sized + Debug> Debug for UnsafeCell<T> {
     }
 }
 
+/// A wrapper around a type `T` where `T: Debug` possibly holds. If it does,
+/// then the `Debug` impl of `T` will be used in
+/// `impl Debug for BestEffortDebug<T>`.
+/// Otherwise (if `T: !Debug`), `impl Debug for BestEffortDebug<T>`
+/// will output with the type name of `T` and that `T` is `!Debug`.
+///
+/// `BestEffortDebug` is useful to avoid `Debug` bounds when trying to debug
+/// things in generic code. Without `BestEffortDebug`, your generic call stack
+/// will get infected with `T: Debug` bounds until the type is known.
+///
+/// This type is particularly useful for macro authors.
+///
+/// # Guarantees
+///
+/// `BestEffortDebug` makes the guarantee that
+/// `impl<T> Debug for BestEffortDebug<T>` exists.
+/// However, you should not rely on the stability of `BestEffortDebug`'s
+/// output format. In particular, no guarantee is made that the `type_name`
+/// is included when `T: !Debug` or that `<T as Debug>::fmt` is used when
+/// `T: Debug`.
+///
+/// # Examples
+///
+/// `BestEffortDebug<T>` where `T: Debug` will use the `Debug`
+/// implementation of `T`:
+///
+/// ```rust
+/// #![feature(best_effort_debug)]
+/// use std::fmt::BestEffortDebug;
+///
+/// assert_eq!(format!("{:?}", BestEffortDebug(0)), "0");
+/// ```
+///
+/// `BestEffortDebug<T>` where `T: !Debug` is `Debug` and outputs the type name:
+///
+/// ```rust
+/// #![feature(best_effort_debug)]
+/// use std::fmt::BestEffortDebug;
+///
+/// struct NotDebug;
+/// assert_eq!(format!("{:?}", BestEffortDebug(NotDebug)),
+///     "[<unknown> of type main::NotDebug is !Debug]");
+/// ```
+#[unstable(feature = "best_effort_debug", issue = "0")]
+#[derive(Copy, Clone)]
+pub struct BestEffortDebug<T>(pub T);
+
+#[unstable(feature = "best_effort_debug", issue = "0")]
+impl<T> Debug for BestEffortDebug<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        <Self as BEDInternal>::fmt(self, fmt)
+    }
+}
+
+trait BEDInternal {
+    fn fmt(&self, fmt: &mut Formatter) -> Result;
+}
+
+impl<T> BEDInternal for BestEffortDebug<T> {
+    default fn fmt(&self, fmt: &mut Formatter) -> Result {
+        use intrinsics::type_name;
+        write!(fmt, "[<unknown> of type {} is !Debug]",
+            unsafe { type_name::<T>() })
+    }
+}
+
+impl<T: Debug> BEDInternal for BestEffortDebug<T> {
+    fn fmt(&self, fmt: &mut Formatter) -> Result {
+        self.0.fmt(fmt)
+    }
+}
+
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
 // it's a lot easier than creating all of the rt::Piece structures here.

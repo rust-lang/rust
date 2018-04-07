@@ -123,6 +123,7 @@
 #![feature(exact_chunks)]
 #![feature(pointer_methods)]
 #![feature(inclusive_range_fields)]
+#![feature(best_effort_debug)]
 
 #![cfg_attr(not(test), feature(fn_traits, swap_with_slice, i128))]
 #![cfg_attr(test, feature(test))]
