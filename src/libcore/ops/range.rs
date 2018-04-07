@@ -362,11 +362,19 @@ impl<Idx> RangeInclusive<Idx> {
     /// ```
     #[unstable(feature = "inclusive_range_methods", issue = "49022")]
     #[inline]
-    pub fn new(start: Idx, end: Idx) -> Self {
+    pub const fn new(start: Idx, end: Idx) -> Self {
         Self { start, end }
     }
 
     /// Returns the lower bound of the range (inclusive).
+    ///
+    /// When using an inclusive range for iteration, the values of `start()` and
+    /// [`end()`] are unspecified after the iteration ended. To determine
+    /// whether the inclusive range is empty, use the [`is_empty()`] method
+    /// instead of comparing `start() > end()`.
+    ///
+    /// [`end()`]: #method.end
+    /// [`is_empty()`]: #method.is_empty
     ///
     /// # Examples
     ///
@@ -382,6 +390,14 @@ impl<Idx> RangeInclusive<Idx> {
     }
 
     /// Returns the upper bound of the range (inclusive).
+    ///
+    /// When using an inclusive range for iteration, the values of [`start()`]
+    /// and `end()` are unspecified after the iteration ended. To determine
+    /// whether the inclusive range is empty, use the [`is_empty()`] method
+    /// instead of comparing `start() > end()`.
+    ///
+    /// [`start()`]: #method.start
+    /// [`is_empty()`]: #method.is_empty
     ///
     /// # Examples
     ///
