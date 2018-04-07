@@ -919,8 +919,6 @@ impl Step for Compiletest {
             if build.config.rust_debuginfo_tests {
                 flags.push("-g".to_string());
             }
-        }
-        if !is_rustdoc_ui {
             flags.push("-Zmiri -Zunstable-options".to_string());
         } else {
             flags.push("-Zunstable-options".to_string());
