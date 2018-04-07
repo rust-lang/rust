@@ -109,8 +109,12 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!(3..2).contains(3));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
-    pub fn contains(&self, item: Idx) -> bool {
-        (self.start <= item) && (item < self.end)
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
     /// Returns `true` if the range contains no items.
@@ -179,7 +183,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -192,8 +195,13 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// assert!( (3..).contains(3));
     /// assert!( (3..).contains(1_000_000_000));
     /// ```
-    pub fn contains(&self, item: Idx) -> bool {
-        (self.start <= item)
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 }
 
@@ -250,7 +258,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -263,8 +270,13 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// assert!( (..5).contains(4));
     /// assert!(!(..5).contains(5));
     /// ```
-    pub fn contains(&self, item: Idx) -> bool {
-        (item < self.end)
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 }
 
@@ -328,8 +340,12 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!(3..=2).contains(3));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
-    pub fn contains(&self, item: Idx) -> bool {
-        self.start <= item && item <= self.end
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
     /// Returns `true` if the range contains no items.
@@ -435,8 +451,13 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// assert!( (..=5).contains(5));
     /// assert!(!(..=5).contains(6));
     /// ```
-    pub fn contains(&self, item: Idx) -> bool {
-        (item <= self.end)
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 }
 
@@ -537,6 +558,36 @@ pub trait RangeBounds<T: ?Sized> {
     /// # }
     /// ```
     fn end(&self) -> Bound<&T>;
+
+    /// Returns `true` if `item` is contained in the range.
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    fn contains<U>(&self, item: &U) -> bool
+    where
+        T: PartialOrd<U>,
+        U: ?Sized,
+    {
+        match self.start() {
+            Included(ref start) => if *start > item {
+                return false;
+            },
+            Excluded(ref start) => if *start >= item {
+                return false;
+            },
+            Unbounded => (),
+        };
+
+        match self.end() {
+            Included(ref end) => if *end < item  {
+                return false;
+            },
+            Excluded(ref end) => if *end <= item {
+                return false;
+            },
+            Unbounded => (),
+        }
+
+        true
+    }
 }
 
 use self::Bound::{Excluded, Included, Unbounded};
