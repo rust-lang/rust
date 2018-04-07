@@ -893,7 +893,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
 
-    pub(crate) fn write_discriminant_value(
+    pub fn write_discriminant_value(
         &mut self,
         dest_ty: Ty<'tcx>,
         dest: Place,
