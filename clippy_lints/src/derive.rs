@@ -6,7 +6,7 @@ use utils::paths;
 use utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
-/// explicitly.
+/// explicitly or vice versa.
 ///
 /// **Why is this bad?** The implementation of these traits must agree (for
 /// example for use with `HashMap`) so it’s probably a bad idea to use a
