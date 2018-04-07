@@ -54,6 +54,8 @@ pub use lint::context::{LateContext, EarlyContext, LintContext, LintStore,
                         check_crate, check_ast_crate,
                         FutureIncompatibleInfo, BufferedEarlyLint};
 
+use codemap::{ExpnFormat, ExpnInfo, Span };
+
 /// Specification of a single lint.
 #[derive(Copy, Clone, Debug)]
 pub struct Lint {
@@ -668,4 +670,31 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for LintLevelMapBuilder<'a, 'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     providers.lint_levels = lint_levels;
+}
+
+pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
+    /// Invokes `in_macro` with the expansion info of the given span slightly
+    /// heavy, try to use
+    /// this after other checks have already happened.
+    fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, info: &ExpnInfo) -> bool {
+        // no ExpnInfo = no macro
+        if let ExpnFormat::MacroAttribute(..) = info.callee.format {
+            // these are all plugins
+            return true;
+        }
+        // no span for the callee = external macro
+        info.callee.span.map_or(true, |span| {
+            // no snippet = external macro or compiler-builtin expansion
+            cx.sess()
+                .codemap()
+                .span_to_snippet(span)
+                .ok()
+                .map_or(true, |code| !code.starts_with("macro_rules"))
+        })
+    }
+
+    span.ctxt()
+        .outer()
+        .expn_info()
+        .map_or(false, |info| in_macro_ext(cx, &info))
 }
