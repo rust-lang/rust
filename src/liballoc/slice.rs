@@ -1782,16 +1782,10 @@ impl<T> [T] {
     }
 }
 
-#[lang = "slice_u8"]
+#[cfg_attr(stage0, lang = "slice_u8")]
+#[cfg_attr(not(stage0), lang = "slice_u8_alloc")]
 #[cfg(not(test))]
 impl [u8] {
-    /// Checks if all bytes in this slice are within the ASCII range.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[inline]
-    pub fn is_ascii(&self) -> bool {
-        self.iter().all(|b| b.is_ascii())
-    }
-
     /// Returns a vector containing a copy of this slice where each byte
     /// is mapped to its ASCII upper case equivalent.
     ///
@@ -1826,52 +1820,8 @@ impl [u8] {
         me
     }
 
-    /// Checks that two slices are an ASCII case-insensitive match.
-    ///
-    /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
-    /// but without allocating and copying temporaries.
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[inline]
-    pub fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
-        self.len() == other.len() &&
-            self.iter().zip(other).all(|(a, b)| {
-                a.eq_ignore_ascii_case(b)
-            })
-    }
-
-    /// Converts this slice to its ASCII upper case equivalent in-place.
-    ///
-    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
-    /// but non-ASCII letters are unchanged.
-    ///
-    /// To return a new uppercased value without modifying the existing one, use
-    /// [`to_ascii_uppercase`].
-    ///
-    /// [`to_ascii_uppercase`]: #method.to_ascii_uppercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[inline]
-    pub fn make_ascii_uppercase(&mut self) {
-        for byte in self {
-            byte.make_ascii_uppercase();
-        }
-    }
-
-    /// Converts this slice to its ASCII lower case equivalent in-place.
-    ///
-    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
-    /// but non-ASCII letters are unchanged.
-    ///
-    /// To return a new lowercased value without modifying the existing one, use
-    /// [`to_ascii_lowercase`].
-    ///
-    /// [`to_ascii_lowercase`]: #method.to_ascii_lowercase
-    #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[inline]
-    pub fn make_ascii_lowercase(&mut self) {
-        for byte in self {
-            byte.make_ascii_lowercase();
-        }
-    }
+    #[cfg(stage0)]
+    slice_u8_core_methods!();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
