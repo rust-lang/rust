@@ -187,7 +187,10 @@ fn check_set<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool)
 }
 
 fn check_regex<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, utf8: bool) {
-    let mut parser = regex_syntax::ParserBuilder::new().unicode(utf8).build();
+    let mut parser = regex_syntax::ParserBuilder::new()
+        .unicode(utf8)
+        .allow_invalid_utf8(!utf8)
+        .build();
 
     if let ExprLit(ref lit) = expr.node {
         if let LitKind::Str(ref r, style) = lit.node {

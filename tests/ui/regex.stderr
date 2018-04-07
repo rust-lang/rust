@@ -56,113 +56,113 @@ error: regex syntax error on position 0: unclosed group
    |                                                        ^^^^^^^^^^^^^
 
 error: regex syntax error on position 0: unclosed group
-  --> $DIR/regex.rs:40:9
+  --> $DIR/regex.rs:41:9
    |
-40 |         OPENING_PAREN,
+41 |         OPENING_PAREN,
    |         ^^^^^^^^^^^^^
 
 error: regex syntax error on position 0: unclosed group
-  --> $DIR/regex.rs:44:9
+  --> $DIR/regex.rs:45:9
    |
-44 |         OPENING_PAREN,
+45 |         OPENING_PAREN,
    |         ^^^^^^^^^^^^^
 
 error: regex syntax error: unrecognized escape sequence
-  --> $DIR/regex.rs:48:45
+  --> $DIR/regex.rs:49:45
    |
-48 |     let raw_string_error = Regex::new(r"[...//...]");
+49 |     let raw_string_error = Regex::new(r"[...//...]");
    |                                             ^^
 
 error: regex syntax error: unrecognized escape sequence
-  --> $DIR/regex.rs:49:46
+  --> $DIR/regex.rs:50:46
    |
-49 |     let raw_string_error = Regex::new(r#"[...//...]"#);
+50 |     let raw_string_error = Regex::new(r#"[...//...]"#);
    |                                              ^^
 
 error: trivial regex
-  --> $DIR/regex.rs:53:33
+  --> $DIR/regex.rs:54:33
    |
-53 |     let trivial_eq = Regex::new("^foobar$");
+54 |     let trivial_eq = Regex::new("^foobar$");
    |                                 ^^^^^^^^^^
    |
    = help: consider using `==` on `str`s
 
 error: trivial regex
-  --> $DIR/regex.rs:55:48
+  --> $DIR/regex.rs:56:48
    |
-55 |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
+56 |     let trivial_eq_builder = RegexBuilder::new("^foobar$");
    |                                                ^^^^^^^^^^
    |
    = help: consider using `==` on `str`s
 
 error: trivial regex
-  --> $DIR/regex.rs:57:42
+  --> $DIR/regex.rs:58:42
    |
-57 |     let trivial_starts_with = Regex::new("^foobar");
+58 |     let trivial_starts_with = Regex::new("^foobar");
    |                                          ^^^^^^^^^
    |
    = help: consider using `str::starts_with`
 
 error: trivial regex
-  --> $DIR/regex.rs:59:40
+  --> $DIR/regex.rs:60:40
    |
-59 |     let trivial_ends_with = Regex::new("foobar$");
+60 |     let trivial_ends_with = Regex::new("foobar$");
    |                                        ^^^^^^^^^
    |
    = help: consider using `str::ends_with`
 
 error: trivial regex
-  --> $DIR/regex.rs:61:39
+  --> $DIR/regex.rs:62:39
    |
-61 |     let trivial_contains = Regex::new("foobar");
+62 |     let trivial_contains = Regex::new("foobar");
    |                                       ^^^^^^^^
    |
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:63:39
+  --> $DIR/regex.rs:64:39
    |
-63 |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
+64 |     let trivial_contains = Regex::new(NOT_A_REAL_REGEX);
    |                                       ^^^^^^^^^^^^^^^^
    |
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:65:40
+  --> $DIR/regex.rs:66:40
    |
-65 |     let trivial_backslash = Regex::new("a/.b");
+66 |     let trivial_backslash = Regex::new("a/.b");
    |                                        ^^^^^^^
    |
    = help: consider using `str::contains`
 
 error: trivial regex
-  --> $DIR/regex.rs:68:36
+  --> $DIR/regex.rs:69:36
    |
-68 |     let trivial_empty = Regex::new("");
+69 |     let trivial_empty = Regex::new("");
    |                                    ^^
    |
    = help: the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> $DIR/regex.rs:70:36
+  --> $DIR/regex.rs:71:36
    |
-70 |     let trivial_empty = Regex::new("^");
+71 |     let trivial_empty = Regex::new("^");
    |                                    ^^^
    |
    = help: the regex is unlikely to be useful as it is
 
 error: trivial regex
-  --> $DIR/regex.rs:72:36
+  --> $DIR/regex.rs:73:36
    |
-72 |     let trivial_empty = Regex::new("^$");
+73 |     let trivial_empty = Regex::new("^$");
    |                                    ^^^^
    |
    = help: consider using `str::is_empty`
 
 error: trivial regex
-  --> $DIR/regex.rs:74:44
+  --> $DIR/regex.rs:75:44
    |
-74 |     let binary_trivial_empty = BRegex::new("^$");
+75 |     let binary_trivial_empty = BRegex::new("^$");
    |                                            ^^^^
    |
    = help: consider using `str::is_empty`

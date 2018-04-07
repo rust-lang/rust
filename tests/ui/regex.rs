@@ -34,6 +34,7 @@ fn syntax_error() {
     let bset = BRegexSet::new(&[
         r"[a-z]+@[a-z]+\.(com|org|net)",
         r"[a-z]+\.(com|org|net)",
+        r".", // regression test
     ]);
 
     let set_error = RegexSet::new(&[
