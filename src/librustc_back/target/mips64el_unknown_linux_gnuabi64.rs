@@ -32,6 +32,9 @@ pub fn target() -> TargetResult {
             // see #36994
             exe_allocation_crate: None,
 
+            // see #49421
+            force_pic_relocation_model: true,
+
             ..super::linux_base::opts()
         },
     })
