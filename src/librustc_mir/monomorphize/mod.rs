@@ -21,6 +21,7 @@ pub use self::item::{MonoItem, MonoItemExt};
 pub mod collector;
 pub mod item;
 pub mod partitioning;
+pub mod deduplicate_instances;
 
 #[inline(never)] // give this a place in the profiler
 pub fn assert_symbols_are_distinct<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trans_items: I)

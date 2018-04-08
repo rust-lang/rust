@@ -16,7 +16,7 @@ use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
 use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
-use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
+use ty::{TyParam, TyUnusedParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -1044,6 +1044,7 @@ define_print! {
                 TyInfer(infer_ty) => write!(f, "{}", infer_ty),
                 TyError => write!(f, "[type error]"),
                 TyParam(ref param_ty) => write!(f, "{}", param_ty),
+                TyUnusedParam => write!(f, "[unused type param]"),
                 TyAdt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 TyDynamic(data, r) => {
                     data.print(f, cx)?;

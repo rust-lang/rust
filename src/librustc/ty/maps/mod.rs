@@ -440,6 +440,9 @@ define_maps! { <'tcx>
     [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
     [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
         -> Lrc<FxHashMap<DefId, String>>,
+
+    [] fn collapse_interchangable_instances:
+        collapse_interchangable_instances_dep_node(ty::Instance<'tcx>) -> ty::Instance<'tcx>,
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -600,5 +603,13 @@ fn instance_def_size_estimate_dep_node<'tcx>(instance_def: ty::InstanceDef<'tcx>
                                               -> DepConstructor<'tcx> {
     DepConstructor::InstanceDefSizeEstimate {
         instance_def
+    }
+}
+
+fn collapse_interchangable_instances_dep_node<'tcx>(
+    instance: ty::Instance<'tcx>
+) -> DepConstructor<'tcx> {
+    DepConstructor::CollapseInterchangableInstances {
+        instance,
     }
 }
