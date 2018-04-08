@@ -992,11 +992,11 @@ extern "rust-intrinsic" {
     ///
     /// * The two regions of memory must *not* overlap.
     ///
-    /// Additionally, if `T` is not [`Copy`](../marker/trait.Copy), only the
-    /// region at `src` *or* the region at `dst` can be used or dropped after
-    /// calling `copy_nonoverlapping`.  `copy_nonoverlapping` creates bitwise
-    /// copies of `T`, regardless of whether `T: Copy`, which can result in
-    /// undefined behavior if both copies are used.
+    /// Additionally, if `T` is not [`Copy`](../marker/trait.Copy.html), only
+    /// the region at `src` *or* the region at `dst` can be used or dropped
+    /// after calling `copy_nonoverlapping`.  `copy_nonoverlapping` creates
+    /// bitwise copies of `T`, regardless of whether `T: Copy`, which can result
+    /// in undefined behavior if both copies are used.
     ///
     /// # Examples
     ///
@@ -1043,7 +1043,7 @@ extern "rust-intrinsic" {
     /// assert!(b.is_empty());
     /// ```
     ///
-    /// [`Vec::append()`]: ../vec/struct.Vec.html#method.append
+    /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
 

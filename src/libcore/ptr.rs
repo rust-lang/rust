@@ -50,7 +50,7 @@ pub use intrinsics::write_bytes;
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
-/// [`ptr::read`]: ./fn.read.html
+/// [`ptr::read`]: ../ptr/fn.read.html
 ///
 /// # Safety
 ///
@@ -72,7 +72,7 @@ pub use intrinsics::write_bytes;
 /// dropped.
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
-/// [`write`]: ./fn.write.html
+/// [`write`]: ../ptr/fn.write.html
 ///
 /// # Examples
 ///
