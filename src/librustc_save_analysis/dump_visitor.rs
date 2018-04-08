@@ -20,9 +20,8 @@
 //!
 //! SpanUtils is used to manipulate spans. In particular, to extract sub-spans
 //! from spans (e.g., the span for `bar` from the above example path).
-//! DumpVisitor walks the AST and processes it, and an implementor of Dump
-//! is used for recording the output in a format-agnostic way (see CsvDumper
-//! for an example).
+//! DumpVisitor walks the AST and processes it, and JsonDumper is used for
+//! recording the output.
 
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::def_id::DefId;
