@@ -337,7 +337,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 /// // `mem::replace` would have the same effect without requiring the unsafe
 /// // block.
 /// let b = unsafe {
-///     ptr::replace(&mut a[0], 'r')
+///     ptr::replace(&mut rust[0], 'r')
 /// };
 ///
 /// assert_eq!(b, 'b');
