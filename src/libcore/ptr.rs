@@ -57,7 +57,7 @@ pub use intrinsics::write_bytes;
 /// `drop_in_place` is unsafe because it dereferences a raw pointer. The caller
 /// must ensure that the pointer points to a valid value of type `T`.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
@@ -73,7 +73,6 @@ pub use intrinsics::write_bytes;
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`write`]: ./fn.write.html
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -157,15 +156,13 @@ pub const fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// `swap` is unsafe because it dereferences a raw pointer. The caller must
 /// ensure that both pointers point to valid values of type `T`.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `x` and `y` must point to valid, initialized memory.
 ///
 /// * `x` and `y` must be properly aligned.
-///
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -317,15 +314,13 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
 ///
 /// [`mem::replace`]: ../mem/fn.replace.html
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dest` must point to valid, initialized memory.
 ///
 /// * `dest` must be properly aligned.
-///
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -358,7 +353,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// `read` is unsafe because it dereferences a raw pointer. The caller
 /// must ensure that the pointer points to a valid value of type `T`.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
@@ -377,7 +372,6 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`read_unaligned`]: ./fn.read_unaligned.html
 /// [`write`]: ./fn.write.html
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -447,7 +441,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// `read_unaligned` is unsafe because it dereferences a raw pointer. The caller
 /// must ensure that the pointer points to a valid value of type `T`.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
@@ -463,7 +457,6 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`write_unaligned`]: ./fn.write_unaligned.html
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -530,7 +523,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// `write` is unsafe because it dereferences a raw pointer.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// `write` can trigger undefined behavior if any of the following conditions
 /// are violated:
@@ -540,7 +533,6 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// * `dst` must be properly aligned. Use [`write_unaligned`] if this is not the
 ///   case.
 ///
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 /// [`write_unaligned`]: ./fn.write_unaligned.html
 ///
 /// # Examples
@@ -609,14 +601,12 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// `write_unaligned` is unsafe because it dereferences a raw pointer.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// `write_unaligned` can trigger undefined behavior if any of the following
 /// conditions are violated:
 ///
 /// * `dst` must point to valid memory.
-///
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -684,7 +674,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// `read_volatile` is unsafe because it dereferences a raw pointer. The caller
 /// must ensure that the pointer points to a valid value of type `T`.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
@@ -702,7 +692,6 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
 /// [`write_volatile`]: ./fn.write_volatile.html
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -754,7 +743,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// `write_volatile` is unsafe because it dereferences a raw pointer.
 ///
-/// # [Undefined Behavior]
+/// # Undefined Behavior
 ///
 /// `write_volatile` can trigger undefined behavior if any of the following
 /// conditions are violated:
@@ -762,8 +751,6 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// * `dst` must point to valid memory.
 ///
 /// * `dst` must be properly aligned.
-///
-/// [Undefined Behavior]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
