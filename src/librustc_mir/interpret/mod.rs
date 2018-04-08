@@ -19,7 +19,7 @@ pub use self::place::{Place, PlaceExtra};
 pub use self::memory::{Memory, MemoryKind, HasMemory};
 
 pub use self::const_eval::{
-    eval_body_with_mir,
+    eval_promoted,
     mk_borrowck_eval_cx,
     eval_body,
     CompileTimeEvaluator,
