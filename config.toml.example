@@ -346,6 +346,9 @@
 # Whether to deny warnings in crates
 #deny-warnings = true
 
+# Print backtrace on internal compiler errors during bootstrap
+#backtrace-on-ice = false
+
 # =============================================================================
 # Options for specific targets
 #

@@ -38,6 +38,39 @@ use std::str;
 
 use extract_gdb_version;
 
+#[cfg(windows)]
+fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
+    use std::sync::Mutex;
+    const SEM_NOGPFAULTERRORBOX: u32 = 0x0002;
+    extern "system" {
+        fn SetErrorMode(mode: u32) -> u32;
+    }
+
+    lazy_static! {
+        static ref LOCK: Mutex<()> = {
+            Mutex::new(())
+        };
+    }
+    // Error mode is a global variable, so lock it so only one thread will change it
+    let _lock = LOCK.lock().unwrap();
+
+    // Tell Windows to not show any UI on errors (such as terminating abnormally).
+    // This is important for running tests, since some of them use abnormal
+    // termination by design. This mode is inherited by all child processes.
+    unsafe {
+        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX);
+        let r = f();
+        SetErrorMode(old_mode);
+        r
+    }
+}
+
+#[cfg(not(windows))]
+fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
+
 /// The name of the environment variable that holds dynamic library locations.
 pub fn dylib_env_var() -> &'static str {
     if cfg!(windows) {
@@ -1578,8 +1611,7 @@ impl<'test> TestCx<'test> {
         let newpath = env::join_paths(&path).unwrap();
         command.env(dylib_env_var(), newpath);
 
-        let mut child = command
-            .spawn()
+        let mut child = disable_error_reporting(|| command.spawn())
             .expect(&format!("failed to exec `{:?}`", &command));
         if let Some(input) = input {
             child

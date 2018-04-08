@@ -72,6 +72,7 @@ pub struct Config {
     pub dry_run: bool,
 
     pub deny_warnings: bool,
+    pub backtrace_on_ice: bool,
 
     // llvm codegen options
     pub llvm_enabled: bool,
@@ -306,6 +307,7 @@ struct Rust {
     wasm_syscall: Option<bool>,
     lld: Option<bool>,
     deny_warnings: Option<bool>,
+    backtrace_on_ice: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -531,6 +533,7 @@ impl Config {
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
             set(&mut config.deny_warnings, rust.deny_warnings.or(flags.warnings));
+            set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends = backends.iter()

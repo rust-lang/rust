@@ -73,6 +73,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("flate2"),
     Crate("fuchsia-zircon"),
     Crate("fuchsia-zircon-sys"),
+    Crate("getopts"),
     Crate("humantime"),
     Crate("jobserver"),
     Crate("kernel32-sys"),
