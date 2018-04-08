@@ -168,6 +168,7 @@ macro_rules! __thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
+            #[inline]
             unsafe fn __getit() -> $crate::option::Option<
                 &'static $crate::cell::UnsafeCell<
                     $crate::option::Option<$t>>>
