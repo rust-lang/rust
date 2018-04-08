@@ -76,7 +76,7 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     }
     writeln!(w, "stack backtrace:")?;
 
-    for (index, frame, _is_on_filter_edge) in filtered_frames {
+    for (index, frame) in filtered_frames {
         resolve_symname(*frame, |symname| {
             output(w, index, *frame, symname, format)
         }, &context)?;
@@ -129,36 +129,41 @@ fn should_show_frame(frame: &Frame, context: &BacktraceContext) -> bool {
 /// If the bool is true the frame is on the edge between showing and not showing.
 fn filter_frames<'a>(frames: &'a [Frame],
                      context: &BacktraceContext,
-                     format: PrintFormat) -> Vec<(usize, &'a Frame, bool)>
+                     format: PrintFormat) -> Vec<(usize, &'a Frame)>
 {
-    let mut frames_iter = frames.iter().enumerate().peekable();
+    if format == PrintFormat::Full {
+        return frames.iter().enumerate().collect();
+    }
+
+    let mut frames_iter = frames
+        .iter()
+        .enumerate()
+        .peekable()
+        .take_while(|frame| {
+            let mut is_after_begin_short_backtrace = false;
+            let _ = resolve_symname(*frame, |symname| {
+                if let Some(mangled_symbol_name) = symname {
+                    // Use grep to find the concerned functions
+                    if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
+                        is_after_begin_short_backtrace = true;
+                    }
+                }
+                Ok(())
+            }, context);
+            !is_after_begin_short_backtrace
+        });
+
     let mut filtered_frames = Vec::new();
     let mut show_prev_frame = false;
 
     while let Some((i, frame)) = frames_iter.next() {
-        let mut is_after_begin_short_backtrace = false;
-        let _ = resolve_symname(*frame, |symname| {
-            if let Some(mangled_symbol_name) = symname {
-                // Use grep to find the concerned functions
-                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
-                    is_after_begin_short_backtrace = true;
-                }
-            }
-            Ok(())
-        }, context);
-        if is_after_begin_short_backtrace && format != PrintFormat::Full {
-            break;
-        }
-
         let show_cur_frame = should_show_frame(frame, context);
         let show_next_frame = frames_iter
             .peek()
             .map(|&(_, frame)| should_show_frame(frame, context))
             .unwrap_or(false);
-        if show_cur_frame {
-            filtered_frames.push((i, frame, false));
-        } else if show_prev_frame || show_next_frame || format == PrintFormat::Full {
-            filtered_frames.push((i, frame, true));
+        if show_prev_frame || show_cur_frame || show_next_frame {
+            filtered_frames.push((i, frame));
         }
         show_prev_frame = show_cur_frame;
     }
