@@ -592,7 +592,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
-/// memory that has previously been [`read`] from.
+/// memory that has previously been read with [`read_unaligned`].
 ///
 /// [`write`]: ./fn.write.html
 /// [`read_unaligned`]: ./fn.read_unaligned.html
