@@ -575,31 +575,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // we can be sure it does not.
 
     /// Evaluates whether the obligation `obligation` can be satisfied (by any means).
-    pub fn evaluate_obligation(&mut self,
-                               obligation: &PredicateObligation<'tcx>)
-                               -> bool
+    pub fn predicate_may_hold_fatal(&mut self,
+                                    obligation: &PredicateObligation<'tcx>)
+                                    -> bool
     {
-        debug!("evaluate_obligation({:?})",
+        debug!("predicate_may_hold_fatal({:?})",
                obligation);
 
         match self.evaluate_obligation_recursively(obligation) {
             Ok(result) => result.may_apply(),
-            Err(OverflowError(o)) => self.infcx().report_overflow_error(&o, true)
-        }
-    }
-
-    /// Evaluates whether the obligation `obligation` can be satisfied,
-    /// and returns `false` if not certain. However, this is not entirely
-    /// accurate if inference variables are involved.
-    pub fn evaluate_obligation_conservatively(&mut self,
-                                              obligation: &PredicateObligation<'tcx>)
-                                              -> bool
-    {
-        debug!("evaluate_obligation_conservatively({:?})",
-               obligation);
-
-        match self.evaluate_obligation_recursively(obligation) {
-            Ok(result) => result == EvaluatedToOk,
             Err(OverflowError(o)) => self.infcx().report_overflow_error(&o, true)
         }
     }
