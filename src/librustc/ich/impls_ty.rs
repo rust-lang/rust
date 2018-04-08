@@ -417,7 +417,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
             if let Some(alloc) = tcx.interpret_interner.get_alloc(*self) {
                 AllocDiscriminant::Alloc.hash_stable(hcx, hasher);
-                if !hcx.alloc_id_recursion_tracker.insert(*self) {
+                if hcx.alloc_id_recursion_tracker.insert(*self) {
                     tcx
                         .interpret_interner
                         .get_corresponding_static_def_id(*self)
