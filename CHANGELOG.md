@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.193
+* Rustup to *rustc 1.27.0-nightly (eeea94c11 2018-04-06)*
+
 ## 0.0.192
 * Rustup to *rustc 1.27.0-nightly (fb44b4c0e 2018-04-04)*
 * New lint: [`print_literal`]
