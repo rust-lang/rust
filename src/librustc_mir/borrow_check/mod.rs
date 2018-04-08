@@ -1576,10 +1576,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 err.emit();
             },
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
+
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
                     let mut err_info = None;
                     match *place_err {
+
                         Place::Projection(box Projection {
                         ref base, elem:ProjectionElem::Deref}) => {
                             match *base {
@@ -1641,9 +1643,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                 }
             }
-
             Activation(..) => {} // permission checks are done at Reservation point.
-
             Read(ReadKind::Borrow(BorrowKind::Unique))
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
