@@ -57,7 +57,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
     Ok(ecx)
 }
 
-pub fn eval_body_with_mir<'a, 'mir, 'tcx>(
+pub fn eval_promoted<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
@@ -67,7 +67,7 @@ pub fn eval_body_with_mir<'a, 'mir, 'tcx>(
     match res {
         Ok(val) => Some(val),
         Err(mut err) => {
-            ecx.report(&mut err, true, None);
+            ecx.report(&mut err, false, None);
             None
         }
     }

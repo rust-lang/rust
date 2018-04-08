@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,18 +10,19 @@
 
 // compile-pass
 
-#![feature(const_fn)]
-
-const fn foo(x: u32) -> u32 {
-    x
-}
-
 fn main() {
-    const X: u32 = 0-1;
-    //~^ WARN attempt to subtract with overflow
-    const Y: u32 = foo(0-1);
-    //~^ WARN attempt to subtract with overflow
-    println!("{} {}", X, Y);
-    //~^ WARN constant evaluation error
-    //~| WARN constant evaluation error
+    println!("{}", 0u32 - 1);
+    //~^ WARN const_err
+    //~| WARN const_err
+    let _x = 0u32 - 1;
+    //~^ WARN const_err
+    println!("{}", 1/(1-1));
+    //~^ WARN const_err
+    //~| WARN const_err
+    let _x = 1/(1-1);
+    //~^ WARN const_err
+    //~| WARN const_err
+    println!("{}", 1/(false as u32));
+    //~^ WARN const_err
+    let _x = 1/(false as u32);
 }

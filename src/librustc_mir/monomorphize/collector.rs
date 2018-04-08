@@ -1177,7 +1177,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_substs: instance.substs,
     }.visit_mir(&mir);
     let param_env = ty::ParamEnv::reveal_all();
-    for (i, promoted) in mir.promoted.iter().enumerate() {
+    for i in 0..mir.promoted.len() {
         use rustc_data_structures::indexed_vec::Idx;
         let cid = GlobalId {
             instance,
@@ -1185,9 +1185,7 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => collect_const(tcx, val, instance.substs, output),
-            Err(err) => {
-                err.report(tcx, promoted.span, "promoted");
-            }
+            Err(_) => {},
         }
     }
 }
