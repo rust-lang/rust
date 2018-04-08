@@ -173,7 +173,13 @@ pub fn format_expr(
         },
         ast::ExprKind::Closure(capture, movability, ref fn_decl, ref body, _) => {
             closures::rewrite_closure(
-                capture, movability, fn_decl, body, expr.span, context, shape,
+                capture,
+                movability,
+                fn_decl,
+                body,
+                expr.span,
+                context,
+                shape,
             )
         }
         ast::ExprKind::Try(..)
@@ -928,7 +934,8 @@ impl<'a> ControlFlow<'a> {
 
         // `for event in event`
         // Do not include label in the span.
-        let lo = self.label.map_or(self.span.lo(), |label| label.span.hi());
+        let lo = self.label
+            .map_or(self.span.lo(), |label| label.ident.span.hi());
         let between_kwd_cond = mk_sp(
             context
                 .snippet_provider
@@ -1702,7 +1709,7 @@ pub fn rewrite_field(
     if !attrs_str.is_empty() {
         attrs_str.push_str(&shape.indent.to_string_with_newline(context.config));
     };
-    let name = field.ident.node.to_string();
+    let name = &field.ident.name.to_string();
     if field.is_shorthand {
         Some(attrs_str + &name)
     } else {

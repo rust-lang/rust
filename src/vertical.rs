@@ -88,7 +88,7 @@ impl AlignedItem for ast::Field {
 
     fn rewrite_prefix(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let attrs_str = self.attrs.rewrite(context, shape)?;
-        let name = &self.ident.node.to_string();
+        let name = &self.ident.name.to_string();
         let missing_span = if self.attrs.is_empty() {
             mk_sp(self.span.lo(), self.span.lo())
         } else {

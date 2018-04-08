@@ -119,7 +119,7 @@ where
 
     for segment in iter {
         // Indicates a global path, shouldn't be rendered.
-        if segment.identifier.name == keywords::CrateRoot.name() {
+        if segment.ident.name == keywords::CrateRoot.name() {
             continue;
         }
         if first {
@@ -155,7 +155,7 @@ enum SegmentParam<'a> {
 impl<'a> Spanned for SegmentParam<'a> {
     fn span(&self) -> Span {
         match *self {
-            SegmentParam::LifeTime(lt) => lt.span,
+            SegmentParam::LifeTime(lt) => lt.ident.span,
             SegmentParam::Type(ty) => ty.span,
             SegmentParam::Binding(binding) => binding.span,
         }
@@ -215,7 +215,7 @@ fn rewrite_segment(
     shape: Shape,
 ) -> Option<String> {
     let mut result = String::with_capacity(128);
-    result.push_str(&segment.identifier.name.as_str());
+    result.push_str(&segment.ident.name.as_str());
 
     let ident_len = result.len();
     let shape = if context.use_block_indent() {

@@ -71,7 +71,7 @@ impl Rewrite for Pat {
                     BindingMode::ByValue(mutability) => ("", mutability),
                 };
                 let mut_infix = format_mutability(mutability);
-                let id_str = ident.node.to_string();
+                let id_str = ident.name.to_string();
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
