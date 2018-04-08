@@ -56,8 +56,8 @@ fn is_nil_type(ty: ty::Ty) -> bool {
 fn is_nil_function(cx: &LateContext, expr: &hir::Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
 
-    if let ty::TyFnDef(_, _, bare) = ty.sty {
-        if let Some(fn_type) = cx.tcx.no_late_bound_regions(&bare.sig) {
+    if let ty::TyFnDef(id, _) = ty.sty {
+        if let Some(fn_type) = cx.tcx.fn_sig(id).no_late_bound_regions() {
             return is_nil_type(fn_type.output());
         }
     }
@@ -115,17 +115,18 @@ fn reduce_nil_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<Sp
 }
 
 fn nil_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Option<(&'tcx hir::Arg, &'a hir::Expr)> {
-    if let hir::ExprClosure(_, ref decl, inner_expr_id, _) = expr.node {
-        let body = cx.tcx.map.body(inner_expr_id);
+    if let hir::ExprClosure(_, ref decl, inner_expr_id, _, _) = expr.node {
+        let body = cx.tcx.hir.body(inner_expr_id);
         let body_expr = &body.value;
 
-        if_let_chain! {[
-            decl.inputs.len() == 1,
-            is_nil_expression(cx, body_expr),
-            let Some(binding) = iter_input_pats(&decl, body).next(),
-        ], {
-            return Some((binding, body_expr))
-        }}
+        if_chain! {
+            if decl.inputs.len() == 1;
+            if is_nil_expression(cx, body_expr);
+            if let Some(binding) = iter_input_pats(&decl, body).next();
+            then {
+                return Some((binding, body_expr));
+            }
+        }
     }
     None
 }
@@ -172,7 +173,7 @@ fn lint_map_nil_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_arg
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext, stmt: &hir::Stmt) {
-        if in_macro(cx, stmt.span) {
+        if in_macro(stmt.span) {
             return;
         }
 
