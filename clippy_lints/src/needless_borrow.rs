@@ -22,7 +22,7 @@ use utils::{in_macro, snippet_opt, span_lint_and_then};
 /// ```
 declare_clippy_lint! {
     pub NEEDLESS_BORROW,
-    complexity,
+    nursery,
     "taking a reference that is going to be automatically dereferenced"
 }
 

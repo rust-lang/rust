@@ -592,7 +592,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
-        needless_borrow::NEEDLESS_BORROW,
         needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         needless_update::NEEDLESS_UPDATE,
@@ -771,7 +770,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc_early::ZERO_PREFIXED_LITERAL,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
-        needless_borrow::NEEDLESS_BORROW,
         needless_borrowed_ref::NEEDLESS_BORROWED_REFERENCE,
         needless_update::NEEDLESS_UPDATE,
         no_effect::NO_EFFECT,
@@ -872,6 +870,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         attrs::EMPTY_LINE_AFTER_OUTER_ATTR,
         fallible_impl_from::FALLIBLE_IMPL_FROM,
         mutex_atomic::MUTEX_INTEGER,
+        needless_borrow::NEEDLESS_BORROW,
         ranges::RANGE_PLUS_ONE,
     ]);
 }
