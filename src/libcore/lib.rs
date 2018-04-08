@@ -71,6 +71,7 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
+#![feature(core_float)]
 #![feature(custom_attribute)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]

@@ -233,6 +233,8 @@ language_item_table! {
     UsizeImplItem,                   "usize",                   usize_impl;
     F32ImplItem,                     "f32",                     f32_impl;
     F64ImplItem,                     "f64",                     f64_impl;
+    F32RuntimeImplItem,              "f32_runtime",             f32_runtime_impl;
+    F64RuntimeImplItem,              "f64_runtime",             f64_runtime_impl;
 
     SizedTraitLangItem,              "sized",                   sized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;

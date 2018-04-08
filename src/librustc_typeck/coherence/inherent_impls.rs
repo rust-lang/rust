@@ -258,7 +258,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             ty::TyFloat(ast::FloatTy::F32) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.f32_impl(),
-                                          None,
+                                          lang_items.f32_runtime_impl(),
                                           "f32",
                                           "f32",
                                           item.span);
@@ -266,7 +266,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
             ty::TyFloat(ast::FloatTy::F64) => {
                 self.check_primitive_impl(def_id,
                                           lang_items.f64_impl(),
-                                          None,
+                                          lang_items.f64_runtime_impl(),
                                           "f64",
                                           "f64",
                                           item.span);

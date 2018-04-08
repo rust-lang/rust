@@ -547,9 +547,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyFloat(ast::FloatTy::F32) => {
                 let lang_def_id = lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.f32_runtime_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyFloat(ast::FloatTy::F64) => {
                 let lang_def_id = lang_items.f64_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.f64_runtime_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             _ => {}

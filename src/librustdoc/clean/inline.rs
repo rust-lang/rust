@@ -286,6 +286,8 @@ pub fn build_impls(cx: &DocContext, did: DefId, auto_traits: bool) -> Vec<clean:
         lang_items.u128_impl(),
         lang_items.f32_impl(),
         lang_items.f64_impl(),
+        lang_items.f32_runtime_impl(),
+        lang_items.f64_runtime_impl(),
         lang_items.char_impl(),
         lang_items.str_impl(),
         lang_items.slice_impl(),
