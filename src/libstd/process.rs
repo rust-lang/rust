@@ -1146,7 +1146,7 @@ impl Child {
     ///
     /// [`ErrorKind`]: ../io/enum.ErrorKind.html
     /// [`InvalidInput`]: ../io/enum.ErrorKind.html#variant.InvalidInput
-    /// [`Other]: ../io/enum.ErrorKind.html#variant.Other
+    /// [`Other`]: ../io/enum.ErrorKind.html#variant.Other
     #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
