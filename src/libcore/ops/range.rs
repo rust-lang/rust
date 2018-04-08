@@ -100,13 +100,13 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!(!(3..5).contains(2));
-    /// assert!( (3..5).contains(3));
-    /// assert!( (3..5).contains(4));
-    /// assert!(!(3..5).contains(5));
+    /// assert!(!(3..5).contains(&2));
+    /// assert!( (3..5).contains(&3));
+    /// assert!( (3..5).contains(&4));
+    /// assert!(!(3..5).contains(&5));
     ///
-    /// assert!(!(3..3).contains(3));
-    /// assert!(!(3..2).contains(3));
+    /// assert!(!(3..3).contains(&3));
+    /// assert!(!(3..2).contains(&3));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains<U>(&self, item: &U) -> bool
@@ -191,9 +191,9 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!(!(3..).contains(2));
-    /// assert!( (3..).contains(3));
-    /// assert!( (3..).contains(1_000_000_000));
+    /// assert!(!(3..).contains(&2));
+    /// assert!( (3..).contains(&3));
+    /// assert!( (3..).contains(&1_000_000_000));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains<U>(&self, item: &U) -> bool
@@ -266,9 +266,9 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!( (..5).contains(-1_000_000_000));
-    /// assert!( (..5).contains(4));
-    /// assert!(!(..5).contains(5));
+    /// assert!( (..5).contains(&-1_000_000_000));
+    /// assert!( (..5).contains(&4));
+    /// assert!(!(..5).contains(&5));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains<U>(&self, item: &U) -> bool
@@ -330,14 +330,14 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!(!(3..=5).contains(2));
-    /// assert!( (3..=5).contains(3));
-    /// assert!( (3..=5).contains(4));
-    /// assert!( (3..=5).contains(5));
-    /// assert!(!(3..=5).contains(6));
+    /// assert!(!(3..=5).contains(&2));
+    /// assert!( (3..=5).contains(&3));
+    /// assert!( (3..=5).contains(&4));
+    /// assert!( (3..=5).contains(&5));
+    /// assert!(!(3..=5).contains(&6));
     ///
-    /// assert!( (3..=3).contains(3));
-    /// assert!(!(3..=2).contains(3));
+    /// assert!( (3..=3).contains(&3));
+    /// assert!(!(3..=2).contains(&3));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains<U>(&self, item: &U) -> bool
@@ -447,9 +447,9 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!( (..=5).contains(-1_000_000_000));
-    /// assert!( (..=5).contains(5));
-    /// assert!(!(..=5).contains(6));
+    /// assert!( (..=5).contains(&-1_000_000_000));
+    /// assert!( (..=5).contains(&5));
+    /// assert!(!(..=5).contains(&6));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
     pub fn contains<U>(&self, item: &U) -> bool
