@@ -357,15 +357,9 @@ Arguments:
         };
 
 
-        let mut stage = matches.opt_str("stage").map(|j| j.parse().unwrap());
-
-        if matches.opt_present("incremental") && stage.is_none() {
-            stage = Some(1);
-        }
-
         Flags {
             verbose: matches.opt_count("verbose"),
-            stage,
+            stage: matches.opt_str("stage").map(|j| j.parse().unwrap()),
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
