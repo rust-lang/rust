@@ -28,7 +28,7 @@ use std::borrow::Cow;
 /// Returns a name imported by a `use` declaration. e.g. returns `Ordering`
 /// for `std::cmp::Ordering` and `self` for `std::cmp::self`.
 pub fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
-    path.segments.last().unwrap().identifier
+    path.segments.last().unwrap().ident
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -129,7 +129,7 @@ impl UseSegment {
     }
 
     fn from_path_segment(path_seg: &ast::PathSegment) -> Option<UseSegment> {
-        let name = path_seg.identifier.name.as_str();
+        let name = path_seg.ident.name.as_str();
         if name == "{{root}}" {
             return None;
         }

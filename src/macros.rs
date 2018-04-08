@@ -117,7 +117,7 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
 fn rewrite_macro_name(path: &ast::Path, extra_ident: Option<ast::Ident>) -> String {
     let name = if path.segments.len() == 1 {
         // Avoid using pretty-printer in the common case.
-        format!("{}!", path.segments[0].identifier)
+        format!("{}!", path.segments[0].ident)
     } else {
         format!("{}!", path)
     };

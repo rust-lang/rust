@@ -438,9 +438,9 @@ fn rewrite_chain_subexpr(
                 },
                 _ => &[],
             };
-            rewrite_method_call(segment.identifier, types, expressions, span, context, shape)
+            rewrite_method_call(segment.ident, types, expressions, span, context, shape)
         }
-        ast::ExprKind::Field(_, ref field) => rewrite_element(format!(".{}", field.node)),
+        ast::ExprKind::Field(_, ref field) => rewrite_element(format!(".{}", field.name)),
         ast::ExprKind::TupField(ref expr, ref field) => {
             let space = match expr.node {
                 ast::ExprKind::TupField(..) => " ",

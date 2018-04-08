@@ -562,10 +562,10 @@ impl<'a> FmtVisitor<'a> {
             )?,
             ast::VariantData::Unit(..) => {
                 if let Some(ref expr) = field.node.disr_expr {
-                    let lhs = format!("{} =", field.node.name);
+                    let lhs = format!("{} =", field.node.ident.name);
                     rewrite_assign_rhs(&context, lhs, &**expr, shape)?
                 } else {
-                    field.node.name.to_string()
+                    field.node.ident.name.to_string()
                 }
             }
         };
@@ -893,7 +893,7 @@ impl<'a> StructParts<'a> {
     fn from_variant(variant: &'a ast::Variant) -> Self {
         StructParts {
             prefix: "",
-            ident: variant.node.name,
+            ident: variant.node.ident,
             vis: &DEFAULT_VISIBILITY,
             def: &variant.node.data,
             generics: None,
@@ -1794,7 +1794,7 @@ pub fn span_hi_for_arg(context: &RewriteContext, arg: &ast::Arg) -> BytePos {
 
 pub fn is_named_arg(arg: &ast::Arg) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
-        ident.node != symbol::keywords::Invalid.ident()
+        ident != symbol::keywords::Invalid.ident()
     } else {
         true
     }
@@ -2263,7 +2263,7 @@ fn rewrite_args(
 
 fn arg_has_pattern(arg: &ast::Arg) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
-        ident.node != symbol::keywords::Invalid.ident()
+        ident != symbol::keywords::Invalid.ident()
     } else {
         true
     }

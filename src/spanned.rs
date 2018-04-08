@@ -146,7 +146,7 @@ impl Spanned for ast::TyParam {
     fn span(&self) -> Span {
         // Note that ty.span is the span for ty.ident, not the whole item.
         let lo = if self.attrs.is_empty() {
-            self.span.lo()
+            self.ident.span.lo()
         } else {
             self.attrs[0].span.lo()
         };
@@ -154,7 +154,7 @@ impl Spanned for ast::TyParam {
             return mk_sp(lo, def.span.hi());
         }
         if self.bounds.is_empty() {
-            return mk_sp(lo, self.span.hi());
+            return mk_sp(lo, self.ident.span.hi());
         }
         let hi = self.bounds[self.bounds.len() - 1].span().hi();
         mk_sp(lo, hi)
@@ -165,7 +165,7 @@ impl Spanned for ast::TyParamBound {
     fn span(&self) -> Span {
         match *self {
             ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span,
-            ast::TyParamBound::RegionTyParamBound(ref l) => l.span,
+            ast::TyParamBound::RegionTyParamBound(ref l) => l.ident.span,
         }
     }
 }
@@ -173,11 +173,11 @@ impl Spanned for ast::TyParamBound {
 impl Spanned for ast::LifetimeDef {
     fn span(&self) -> Span {
         let hi = if self.bounds.is_empty() {
-            self.lifetime.span.hi()
+            self.lifetime.ident.span.hi()
         } else {
-            self.bounds[self.bounds.len() - 1].span.hi()
+            self.bounds[self.bounds.len() - 1].ident.span.hi()
         };
-        mk_sp(self.lifetime.span.lo(), hi)
+        mk_sp(self.lifetime.ident.span.lo(), hi)
     }
 }
 
