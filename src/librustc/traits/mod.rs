@@ -552,8 +552,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         predicate: trait_ref.to_predicate(),
     };
 
-    let result = SelectionContext::new(infcx)
-        .evaluate_obligation_conservatively(&obligation);
+    let result = infcx.predicate_must_hold(&obligation);
     debug!("type_known_to_meet_ty={:?} bound={} => {:?}",
            ty, infcx.tcx.item_path_str(def_id), result);
 
