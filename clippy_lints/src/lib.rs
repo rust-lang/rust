@@ -10,7 +10,6 @@
 #![feature(macro_vis_matcher)]
 #![allow(unknown_lints, indexing_slicing, shadow_reuse, missing_docs_in_private_items)]
 #![recursion_limit = "256"]
-
 // FIXME(mark-i-m) remove after i128 stablization merges
 #![allow(stable_features)]
 #![feature(i128, i128_type)]
@@ -172,7 +171,6 @@ pub mod overflow_check_conditional;
 pub mod panic;
 pub mod partialeq_ne_impl;
 pub mod precedence;
-pub mod print;
 pub mod ptr;
 pub mod question_mark;
 pub mod ranges;
@@ -195,6 +193,7 @@ pub mod unused_io_amount;
 pub mod unused_label;
 pub mod use_self;
 pub mod vec;
+pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
@@ -343,7 +342,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box strings::StringLitAsBytes);
     reg.register_late_lint_pass(box derive::Derive);
     reg.register_late_lint_pass(box types::CharLitAsU8);
-    reg.register_late_lint_pass(box print::Pass);
+    reg.register_late_lint_pass(box write::Pass);
     reg.register_late_lint_pass(box vec::Pass);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
@@ -418,8 +417,8 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         methods::WRONG_PUB_SELF_CONVENTION,
         misc::FLOAT_CMP_CONST,
         missing_doc::MISSING_DOCS_IN_PRIVATE_ITEMS,
-        print::PRINT_STDOUT,
-        print::USE_DEBUG,
+        write::PRINT_STDOUT,
+        write::USE_DEBUG,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
         shadow::SHADOW_UNRELATED,
@@ -610,9 +609,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         panic::PANIC_PARAMS,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
         precedence::PRECEDENCE,
-        print::PRINT_LITERAL,
-        print::PRINT_WITH_NEWLINE,
-        print::PRINTLN_EMPTY_STRING,
+        write::PRINT_LITERAL,
+        write::PRINT_WITH_NEWLINE,
+        write::PRINTLN_EMPTY_STRING,
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
@@ -724,9 +723,9 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
         ok_if_let::IF_LET_SOME_RESULT,
         panic::PANIC_PARAMS,
-        print::PRINT_LITERAL,
-        print::PRINT_WITH_NEWLINE,
-        print::PRINTLN_EMPTY_STRING,
+        write::PRINT_LITERAL,
+        write::PRINT_WITH_NEWLINE,
+        write::PRINTLN_EMPTY_STRING,
         ptr::CMP_NULL,
         ptr::PTR_ARG,
         question_mark::QUESTION_MARK,
