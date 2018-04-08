@@ -582,7 +582,6 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline]
     pub fn shrink_to_fit(&mut self) {
         if self.capacity() != self.len {
             self.buf.shrink_to_fit(self.len);
