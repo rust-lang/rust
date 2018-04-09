@@ -1,7 +1,7 @@
-- Feature Name: unnamed_fields
+- Feature Name: `unnamed_fields`
 - Start Date: 2017-08-05
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#2102](https://github.com/rust-lang/rfcs/pull/2102)
+- Rust Issue: [rust-lang/rust#49804](https://github.com/rust-lang/rust/issues/49804)
 
 # Summary
 [summary]: #summary
