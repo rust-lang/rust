@@ -1,0 +1,18 @@
+error[E0502]: cannot borrow `heap` as immutable because it is also borrowed as mutable
+  --> $DIR/issue-47646.rs:22:30
+   |
+LL |     let borrow = heap.peek_mut();
+   |                  ---- mutable borrow occurs here
+LL | 
+LL |     match (borrow, ()) {
+   |           ------------ borrow may end up in a temporary, created here
+LL |         (Some(_), ()) => {
+LL |             println!("{:?}", heap); //~ ERROR cannot borrow `heap` as immutable
+   |                              ^^^^ immutable borrow occurs here
+...
+LL |     };
+   |      - temporary later dropped here, potentially using the reference
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0502`.
