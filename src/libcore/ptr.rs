@@ -10,7 +10,7 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Manually manage memory through raw, unsafe pointers.
+//! Manually manage memory through raw pointers.
 //!
 //! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
 
@@ -438,6 +438,8 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// [`read`]: ./fn.read.html
 ///
+/// # Safety
+///
 /// `read_unaligned` is unsafe because it dereferences a raw pointer. The caller
 /// must ensure that the pointer points to a valid value of type `T`.
 ///
@@ -525,8 +527,7 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 ///
 /// # Undefined Behavior
 ///
-/// `write` can trigger undefined behavior if any of the following conditions
-/// are violated:
+/// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must point to valid memory.
 ///
@@ -603,8 +604,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// # Undefined Behavior
 ///
-/// `write_unaligned` can trigger undefined behavior if any of the following
-/// conditions are violated:
+/// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must point to valid memory.
 ///
@@ -745,8 +745,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// # Undefined Behavior
 ///
-/// `write_volatile` can trigger undefined behavior if any of the following
-/// conditions are violated:
+/// Behavior is undefined if any of the following conditions are violated:
 ///
 /// * `dst` must point to valid memory.
 ///
