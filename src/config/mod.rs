@@ -181,6 +181,31 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
 #[cfg(test)]
 mod test {
     use super::Config;
+    use std::str;
+
+    #[allow(dead_code)]
+    mod mock {
+        use super::super::*;
+
+        create_config! {
+            // Options that are used by the generated functions
+            max_width: usize, 100, true, "Maximum width of each line";
+            use_small_heuristics: bool, true, false, "Whether to use different formatting for items and \
+                expressions if they satisfy a heuristic notion of 'small'.";
+            license_template_path: String, String::default(), false, "Beginning of file must match license template";
+            required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false, "Require a specific version of rustfmt.";
+            ignore: IgnoreList, IgnoreList::default(), false, "Skip formatting the specified files and directories.";
+            verbose: bool, false, false, "Use verbose output";
+            file_lines: FileLines, FileLines::all(), false,
+                "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
+                    via the --file-lines option";
+            width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false, "'small' heuristic values";
+
+            // Options that are used by the tests
+            stable_option: bool, false, true, "A stable option";
+            unstable_option: bool, false, false, "An unstable option";
+        }
+    }
 
     #[test]
     fn test_config_set() {
@@ -216,6 +241,33 @@ mod test {
 
         assert_eq!(config.was_set().hard_tabs(), true);
         assert_eq!(config.was_set().verbose(), false);
+    }
+
+    #[test]
+    fn test_print_docs_exclude_unstable() {
+        use self::mock::Config;
+
+        let mut output = Vec::new();
+        Config::print_docs(&mut output, false);
+
+        let s = str::from_utf8(&output).unwrap();
+
+        assert_eq!(s.contains("stable_option"), true);
+        assert_eq!(s.contains("unstable_option"), false);
+        assert_eq!(s.contains("(unstable)"), false);
+    }
+
+    #[test]
+    fn test_print_docs_include_unstable() {
+        use self::mock::Config;
+
+        let mut output = Vec::new();
+        Config::print_docs(&mut output, true);
+
+        let s = str::from_utf8(&output).unwrap();
+        assert_eq!(s.contains("stable_option"), true);
+        assert_eq!(s.contains("unstable_option"), true);
+        assert_eq!(s.contains("(unstable)"), true);
     }
 
     // FIXME(#2183) these tests cannot be run in parallel because they use env vars

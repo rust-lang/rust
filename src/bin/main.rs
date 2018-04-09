@@ -15,7 +15,7 @@ extern crate getopts;
 extern crate rustfmt_nightly as rustfmt;
 
 use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::{self, stdout, Read, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{env, error};
@@ -226,7 +226,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             Ok(Summary::default())
         }
         Operation::ConfigHelp => {
-            Config::print_docs();
+            Config::print_docs(&mut stdout(), matches.opt_present("unstable-features"));
             Ok(Summary::default())
         }
         Operation::ConfigOutputDefault { path } => {

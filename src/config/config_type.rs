@@ -81,6 +81,7 @@ macro_rules! is_nightly_channel {
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $stb:expr, $( $dstring:expr ),+ );+ $(;)*) => (
         use std::collections::HashSet;
+        use std::io::Write;
 
         #[derive(Clone)]
         pub struct Config {
@@ -359,7 +360,7 @@ macro_rules! create_config {
                 HIDE_OPTIONS.contains(&name)
             }
 
-            pub fn print_docs() {
+            pub fn print_docs(out: &mut Write, include_unstable: bool) {
                 use std::cmp;
                 let max = 0;
                 $( let max = cmp::max(max, stringify!($i).len()+1); )+
@@ -367,25 +368,29 @@ macro_rules! create_config {
                 for _ in 0..max {
                     space_str.push(' ');
                 }
-                println!("Configuration Options:");
+                writeln!(out, "Configuration Options:").unwrap();
                 $(
-                    let name_raw = stringify!($i);
+                    if $stb || include_unstable {
+                        let name_raw = stringify!($i);
 
-                    if !Config::is_hidden_option(name_raw) {
-                        let mut name_out = String::with_capacity(max);
-                        for _ in name_raw.len()..max-1 {
-                            name_out.push(' ')
+                        if !Config::is_hidden_option(name_raw) {
+                            let mut name_out = String::with_capacity(max);
+                            for _ in name_raw.len()..max-1 {
+                                name_out.push(' ')
+                            }
+                            name_out.push_str(name_raw);
+                            name_out.push(' ');
+                            writeln!(out,
+                                    "{}{} Default: {:?}{}",
+                                    name_out,
+                                    <$ty>::doc_hint(),
+                                    $def,
+                                    if !$stb { " (unstable)" } else { "" }).unwrap();
+                            $(
+                                writeln!(out, "{}{}", space_str, $dstring).unwrap();
+                            )+
+                            writeln!(out).unwrap();
                         }
-                        name_out.push_str(name_raw);
-                        name_out.push(' ');
-                        println!("{}{} Default: {:?}",
-                                name_out,
-                                <$ty>::doc_hint(),
-                                $def);
-                        $(
-                            println!("{}{}", space_str, $dstring);
-                        )+
-                        println!();
                     }
                 )+
             }
