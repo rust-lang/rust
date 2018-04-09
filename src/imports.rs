@@ -309,17 +309,22 @@ impl UseTree {
             }
         }
 
+        let mut done = false;
         if aliased_self {
-            match self.path.last() {
+            match self.path.last_mut() {
                 Some(UseSegment::Ident(_, ref mut old_rename)) => {
                     assert!(old_rename.is_none());
-                    if let UseSegment::Slf(Some(rename)) = last {
+                    if let UseSegment::Slf(Some(rename)) = last.clone() {
                         *old_rename = Some(rename);
-                        return self;
+                        done = true;
                     }
                 }
                 _ => unreachable!(),
             }
+        }
+
+        if done {
+            return self;
         }
 
         // Normalise foo::{bar} -> foo::bar
