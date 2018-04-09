@@ -1,7 +1,7 @@
 - Feature Name: `metabuild`
 - Start Date: 2017-10-31
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2196](https://github.com/rust-lang/rfcs/pull/2196)
+- Rust Issue: [rust-lang/rust#49803](https://github.com/rust-lang/rust/issues/49803)
 
 # Summary
 
