@@ -62,7 +62,7 @@ use syntax::ext::build::AstBuilder;  // A trait for expr_usize.
 use syntax::ext::quote::rt::Span;
 use rustc_plugin::Registry;
 
-fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
+fn expand_rn(cx: &mut ExtCtxt, path: &Path, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
 
     static NUMERALS: &'static [(&'static str, usize)] = &[

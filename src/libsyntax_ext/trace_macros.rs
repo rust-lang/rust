@@ -16,6 +16,7 @@ use syntax_pos::Span;
 use syntax::tokenstream::TokenTree;
 
 pub fn expand_trace_macros(cx: &mut ExtCtxt,
+                           _path: &Option<::ast::Path>,
                            sp: Span,
                            tt: &[TokenTree])
                            -> Box<base::MacResult + 'static> {

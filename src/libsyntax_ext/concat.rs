@@ -18,6 +18,7 @@ use syntax::tokenstream;
 use std::string::String;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
+                         _path: &Option<::ast::Path>,
                          sp: syntax_pos::Span,
                          tts: &[tokenstream::TokenTree])
                          -> Box<base::MacResult + 'static> {

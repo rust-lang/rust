@@ -31,7 +31,9 @@ use rustc_data_structures::sync::Lrc;
 // a given file into the current one.
 
 /// line!(): expands to the current line number
-pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_line(cx: &mut ExtCtxt,
+                   _path: &Option<::ast::Path>,
+                   sp: Span, tts: &[tokenstream::TokenTree])
                    -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "line!");
 
@@ -42,7 +44,9 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 }
 
 /* column!(): expands to the current column number */
-pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_column(cx: &mut ExtCtxt,
+                     _path: &Option<::ast::Path>,
+                     sp: Span, tts: &[tokenstream::TokenTree])
                   -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "column!");
 
@@ -53,10 +57,12 @@ pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 }
 
 /* __rust_unstable_column!(): expands to the current column number */
-pub fn expand_column_gated(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_column_gated(cx: &mut ExtCtxt,
+                          path: &Option<::ast::Path>,
+                           sp: Span, tts: &[tokenstream::TokenTree])
                   -> Box<base::MacResult+'static> {
     if sp.allows_unstable() {
-        expand_column(cx, sp, tts)
+        expand_column(cx, path, sp, tts)
     } else {
         cx.span_fatal(sp, "the __rust_unstable_column macro is unstable");
     }
@@ -65,7 +71,8 @@ pub fn expand_column_gated(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::Token
 /// file!(): expands to the current filename */
 /// The filemap (`loc.file`) contains a bunch more information we could spit
 /// out if we wanted.
-pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_file(cx: &mut ExtCtxt, _path: &Option<::ast::Path>,
+                   sp: Span, tts: &[tokenstream::TokenTree])
                    -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "file!");
 
@@ -74,13 +81,28 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&loc.file.name.to_string())))
 }
 
-pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_function<'cx>(cx: &'cx mut ExtCtxt,
+                       path: &'cx Option<::ast::Path>,
+                       sp: Span, tts: &[tokenstream::TokenTree])
+                   -> Box<base::MacResult+'static> {
+    base::check_zero_tts(cx, sp, tts, "function!");
+
+    let topmost = cx.expansion_cause().unwrap_or(sp);
+    let path = path.as_ref().unwrap();
+    base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&path.to_string())))
+}
+
+pub fn expand_stringify(cx: &mut ExtCtxt,
+                        _path: &Option<::ast::Path>,
+                        sp: Span, tts: &[tokenstream::TokenTree])
                         -> Box<base::MacResult+'static> {
     let s = pprust::tts_to_string(tts);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
 }
 
-pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_mod(cx: &mut ExtCtxt,
+                  _path: &Option<::ast::Path>,
+                  sp: Span, tts: &[tokenstream::TokenTree])
                   -> Box<base::MacResult+'static> {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
@@ -92,7 +114,9 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
 /// include! : parse the given file as an expr
 /// This is generally a bad idea because it's going to behave
 /// unhygienically.
-pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt,
+                           _path: &'cx Option<::ast::Path>,
+                           sp: Span, tts: &[tokenstream::TokenTree])
                            -> Box<base::MacResult+'cx> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
         Some(f) => f,
@@ -130,7 +154,9 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
 }
 
 // include_str! : read the given file, insert it as a literal string expr
-pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_include_str(cx: &mut ExtCtxt,
+                          _path: &Option<::ast::Path>,
+                          sp: Span, tts: &[tokenstream::TokenTree])
                           -> Box<base::MacResult+'static> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
         Some(f) => f,
@@ -165,7 +191,9 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenT
     }
 }
 
-pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
+pub fn expand_include_bytes(cx: &mut ExtCtxt,
+                            _path: &Option<::ast::Path>,
+                            sp: Span, tts: &[tokenstream::TokenTree])
                             -> Box<base::MacResult+'static> {
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {
         Some(f) => f,

@@ -15,6 +15,7 @@ use syntax::tokenstream;
 use syntax_pos;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
+                              _path: &Option<::ast::Path>,
                               sp: syntax_pos::Span,
                               tts: &[tokenstream::TokenTree])
                               -> Box<base::MacResult + 'cx> {

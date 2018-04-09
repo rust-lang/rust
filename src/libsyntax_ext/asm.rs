@@ -48,6 +48,7 @@ impl State {
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
+                       _path: &Option<::ast::Path>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<base::MacResult + 'cx> {

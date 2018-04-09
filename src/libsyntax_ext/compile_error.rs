@@ -16,6 +16,7 @@ use syntax_pos::Span;
 use syntax::tokenstream;
 
 pub fn expand_compile_error<'cx>(cx: &'cx mut ExtCtxt,
+                              _path: &Option<::ast::Path>,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
                               -> Box<base::MacResult + 'cx> {

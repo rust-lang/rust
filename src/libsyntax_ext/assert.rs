@@ -20,6 +20,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub fn expand_assert<'cx>(
     cx: &'cx mut ExtCtxt,
+    _path: &Option<::ast::Path>,
     sp: Span,
     tts: &[TokenTree],
 ) -> Box<MacResult + 'cx> {
