@@ -52,6 +52,7 @@
     - [miri const evaluator](./miri.md)
 - [Parameter Environments](./param_env.md)
 - [Generating LLVM IR](./trans.md)
+- [Debugging](./debugging.md)
 
 ---
 
