@@ -32,9 +32,9 @@ pub struct Pass;
 ///     log_err_msg(format_msg(msg))
 /// }
 /// ```
-declare_lint! {
+declare_clippy_lint! {
     pub OPTION_MAP_NIL_FN,
-    Allow,
+    complexity,
     "using `Option.map(f)`, where f is a nil function or closure"
 }
 
