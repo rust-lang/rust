@@ -101,7 +101,7 @@ pub enum ErrorKind {
     LineOverflow(usize, usize),
     // Line ends in whitespace
     TrailingWhitespace,
-    // TO-DO or FIX-ME item without an issue number
+    // TODO or FIXME item without an issue number
     BadIssue(Issue),
     // License check has failed
     LicenseCheck,
@@ -112,8 +112,8 @@ impl fmt::Display for ErrorKind {
         match *self {
             ErrorKind::LineOverflow(found, maximum) => write!(
                 fmt,
-                "line exceeded maximum width (maximum: {}, found: {})",
-                maximum, found
+                "line formatted, but exceeded maximum width (maximum: {} (see `max_width` option), found: {})",
+                maximum, found,
             ),
             ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
             ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
@@ -134,10 +134,9 @@ pub struct FormattingError {
 impl FormattingError {
     fn msg_prefix(&self) -> &str {
         match self.kind {
-            ErrorKind::LineOverflow(..)
-            | ErrorKind::TrailingWhitespace
-            | ErrorKind::LicenseCheck => "error:",
-            ErrorKind::BadIssue(_) => "WARNING:",
+            ErrorKind::LineOverflow(..) | ErrorKind::TrailingWhitespace => "internal error:",
+            ErrorKind::LicenseCheck => "error:",
+            ErrorKind::BadIssue(_) => "warning:",
         }
     }
 

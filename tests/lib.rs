@@ -283,7 +283,8 @@ fn stdin_formatting_smoke_test() {
 fn format_lines_errors_are_reported() {
     let long_identifier = String::from_utf8(vec![b'a'; 239]).unwrap();
     let input = Input::Text(format!("fn {}() {{}}", long_identifier));
-    let config = Config::default();
+    let mut config = Config::default();
+    config.set().error_on_line_overflow(true);
     let (error_summary, _file_map, _report) =
         format_input::<io::Stdout>(input, &config, None).unwrap();
     assert!(error_summary.has_formatting_errors());
@@ -293,7 +294,9 @@ fn format_lines_errors_are_reported() {
 fn format_lines_errors_are_reported_with_tabs() {
     let long_identifier = String::from_utf8(vec![b'a'; 97]).unwrap();
     let input = Input::Text(format!("fn a() {{\n\t{}\n}}", long_identifier));
-    let config = Config::from_toml("hard_tabs = true", Path::new("")).unwrap();
+    let mut config = Config::default();
+    config.set().error_on_line_overflow(true);
+    config.set().hard_tabs(true);
     let (error_summary, _file_map, _report) =
         format_input::<io::Stdout>(input, &config, None).unwrap();
     assert!(error_summary.has_formatting_errors());
