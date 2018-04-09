@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::{Context, MirBorrowckCtxt};
 use borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
+use borrow_check::{Context, MirBorrowckCtxt};
 use dataflow::BorrowData;
-use rustc::mir::{Local, Location, Mir};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
+use rustc::mir::{Local, Location, Mir};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use util::liveness::{self, DefUse, LivenessMode};
