@@ -11,11 +11,13 @@
 use rustc::hir::{self, ImplPolarity};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Slice, TyCtxt};
 use rustc::ty::subst::Substs;
-use rustc::traits::{WhereClauseAtom, PolyDomainGoal, DomainGoal, ProgramClause, Clause};
+use rustc::traits::{WhereClauseAtom, PolyDomainGoal, DomainGoal, ProgramClause, Clause, Goal};
 use syntax::ast;
 use rustc_data_structures::sync::Lrc;
+
+use std::iter;
 
 trait Lower<T> {
     /// Lower a rustc construction (e.g. `ty::TraitPredicate`) to a chalk-like type.
@@ -113,7 +115,7 @@ impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
 }
 
 crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>>
+                                       -> Lrc<&'tcx Slice<Clause<'tcx>>>
 {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = tcx.hir.expect_item(node_id);
@@ -122,12 +124,12 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
 
         // FIXME: other constructions e.g. traits, associated types...
-        _ => Lrc::new(vec![]),
+        _ => Lrc::new(tcx.mk_clauses(iter::empty::<Clause>())),
     }
 }
 
 fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>>
+                                       -> Lrc<&'tcx Slice<Clause<'tcx>>>
 {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
 
@@ -147,18 +149,18 @@ fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         }
     };
     // `FromEnv(Self: Trait<P1..Pn>)`
-    let from_env = DomainGoal::FromEnv(trait_pred.lower()).into();
+    let from_env = Goal::from(DomainGoal::FromEnv(trait_pred.lower()));
     // `Implemented(Self: Trait<P1..Pn>)`
     let impl_trait = DomainGoal::Holds(WhereClauseAtom::Implemented(trait_pred));
 
     // `Implemented(Self: Trait<P1..Pn>) :- FromEnv(Self: Trait<P1..Pn>)`
     let implemented_from_env = ProgramClause {
         goal: impl_trait,
-        hypotheses: vec![from_env],
+        hypotheses: tcx.mk_goals(iter::once(from_env)),
     };
-    let mut clauses = vec![
+    let clauses = iter::once(
         Clause::ForAll(ty::Binder::dummy(implemented_from_env))
-    ];
+    );
 
     // Rule Implied-Bound-From-Trait
     //
@@ -175,14 +177,14 @@ fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     let where_clauses = &tcx.predicates_of(def_id).predicates;
     let implied_bound_clauses =
         where_clauses[1..].into_iter()
-        .map(|wc| implied_bound_from_trait(trait_pred, wc));
-    clauses.extend(implied_bound_clauses);
+        .map(|wc| implied_bound_from_trait(tcx, trait_pred, wc));
 
-    Lrc::new(clauses)
+    Lrc::new(tcx.mk_clauses(clauses.chain(implied_bound_clauses)))
 }
 
 /// For a given `where_clause`, returns a clause `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`.
-fn implied_bound_from_trait<'tcx>(
+fn implied_bound_from_trait<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_pred: ty::TraitPredicate<'tcx>,
     where_clause: &ty::Predicate<'tcx>,
 ) -> Clause<'tcx> {
@@ -193,16 +195,16 @@ fn implied_bound_from_trait<'tcx>(
     Clause::ForAll(
         where_clause.lower().map_bound(|goal| ProgramClause {
             goal: goal.into_from_env_goal(),
-            hypotheses: vec![impl_trait.into()],
+            hypotheses: tcx.mk_goals(iter::once(Goal::from(impl_trait))),
         })
     )
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<Vec<Clause<'tcx>>>
+                                      -> Lrc<&'tcx Slice<Clause<'tcx>>>
 {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
-        return Lrc::new(vec![]);
+        return Lrc::new(tcx.mk_clauses(iter::empty::<Clause>()));
     }
 
     // Rule Implemented-From-Impl (see rustc guide)
@@ -224,9 +226,11 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
      // `Implemented(A0: Trait<A1..An>) :- WC`
     let clause = ProgramClause {
         goal: trait_pred,
-        hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect()
+        hypotheses: tcx.mk_goals(
+            where_clauses.into_iter().map(|wc| Goal::from_poly_domain_goal(wc, tcx))
+        )
     };
-    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
+    Lrc::new(tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause)))))
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -248,7 +252,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx > {
         for attr in attrs {
             if attr.check_name("rustc_dump_program_clauses") {
                 let clauses = self.tcx.program_clauses_for(def_id);
-                for clause in &*clauses {
+                for clause in *clauses {
                     // Skip the top-level binder for a less verbose output
                     let program_clause = match clause {
                         Clause::Implies(program_clause) => program_clause,

@@ -23,13 +23,12 @@ use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use middle::const_val::ConstEvalErr;
 use ty::subst::Substs;
-use ty::{self, AdtKind, Ty, TyCtxt, TypeFoldable, ToPredicate};
+use ty::{self, AdtKind, Slice, Ty, TyCtxt, TypeFoldable, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
 use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
-use std::convert::From;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -280,14 +279,28 @@ pub enum QuantifierKind {
     Existential,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Goal<'tcx> {
-    // FIXME: use interned refs instead of `Box`
-    Implies(Vec<Clause<'tcx>>, Box<Goal<'tcx>>),
-    And(Box<Goal<'tcx>>, Box<Goal<'tcx>>),
-    Not(Box<Goal<'tcx>>),
+    Implies(&'tcx Slice<Clause<'tcx>>, &'tcx Goal<'tcx>),
+    And(&'tcx Goal<'tcx>, &'tcx Goal<'tcx>),
+    Not(&'tcx Goal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
-    Quantified(QuantifierKind, Box<ty::Binder<Goal<'tcx>>>)
+    Quantified(QuantifierKind, ty::Binder<&'tcx Goal<'tcx>>)
+}
+
+impl<'tcx> Goal<'tcx> {
+    pub fn from_poly_domain_goal<'a>(
+        domain_goal: PolyDomainGoal<'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ) -> Goal<'tcx> {
+        match domain_goal.no_late_bound_regions() {
+            Some(p) => p.into(),
+            None => Goal::Quantified(
+                QuantifierKind::Universal,
+                domain_goal.map_bound(|p| tcx.mk_goal(Goal::from(p)))
+            ),
+        }
+    }
 }
 
 impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
@@ -296,21 +309,9 @@ impl<'tcx> From<DomainGoal<'tcx>> for Goal<'tcx> {
     }
 }
 
-impl<'tcx> From<PolyDomainGoal<'tcx>> for Goal<'tcx> {
-    fn from(domain_goal: PolyDomainGoal<'tcx>) -> Self {
-        match domain_goal.no_late_bound_regions() {
-            Some(p) => p.into(),
-            None => Goal::Quantified(
-                QuantifierKind::Universal,
-                Box::new(domain_goal.map_bound(|p| p.into()))
-            ),
-        }
-    }
-}
-
 /// This matches the definition from Page 7 of "A Proof Procedure for the Logic of Hereditary
 /// Harrop Formulas".
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Clause<'tcx> {
     Implies(ProgramClause<'tcx>),
     ForAll(ty::Binder<ProgramClause<'tcx>>),
@@ -322,13 +323,13 @@ pub enum Clause<'tcx> {
 /// it with the reverse implication operator `:-` to emphasize the way
 /// that programs are actually solved (via backchaining, which starts
 /// with the goal to solve and proceeds from there).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProgramClause<'tcx> {
     /// This goal will be considered true...
     pub goal: DomainGoal<'tcx>,
 
     /// ...if we can prove these hypotheses (there may be no hypotheses at all):
-    pub hypotheses: Vec<Goal<'tcx>>,
+    pub hypotheses: &'tcx Slice<Goal<'tcx>>,
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;

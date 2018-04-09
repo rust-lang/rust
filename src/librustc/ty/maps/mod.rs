@@ -39,7 +39,7 @@ use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
 use traits::Clause;
-use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use ty::{self, CrateInherentImpls, ParamEnvAnd, Slice, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
@@ -435,7 +435,7 @@ define_maps! { <'tcx>
 
     [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
 
-    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<Vec<Clause<'tcx>>>,
+    [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<&'tcx Slice<Clause<'tcx>>>,
 
     [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
     [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
