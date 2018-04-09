@@ -2551,7 +2551,7 @@ impl StrExt for str {
 
     #[inline]
     fn split_whitespace(&self) -> SplitWhitespace {
-        SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
+        SplitWhitespace { inner: self.split_terminator(IsWhitespace) }
     }
 
     #[inline]
@@ -2605,7 +2605,7 @@ impl<'a> Default for &'a str {
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 #[derive(Clone, Debug)]
 pub struct SplitWhitespace<'a> {
-    inner: Filter<Split<'a, IsWhitespace>, IsNotEmpty>,
+    inner: SplitTerminator<'a, IsWhitespace>>,
 }
 
 #[derive(Clone)]
@@ -2624,25 +2624,6 @@ impl FnMut<(char, )> for IsWhitespace {
     #[inline]
     extern "rust-call" fn call_mut(&mut self, arg: (char, )) -> bool {
         arg.0.is_whitespace()
-    }
-}
-
-#[derive(Clone)]
-struct IsNotEmpty;
-
-impl<'a, 'b> FnOnce<(&'a &'b str, )> for IsNotEmpty {
-    type Output = bool;
-
-    #[inline]
-    extern "rust-call" fn call_once(mut self, arg: (&&str, )) -> bool {
-        self.call_mut(arg)
-    }
-}
-
-impl<'a, 'b> FnMut<(&'a &'b str, )> for IsNotEmpty {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, arg: (&&str, )) -> bool {
-        !arg.0.is_empty()
     }
 }
 
