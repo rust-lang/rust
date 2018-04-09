@@ -240,10 +240,11 @@ pub type MacroExpanderFn =
                 -> Box<MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F: for<'cx> Fn(&'cx mut ExtCtxt, &'cx Option<::ast::Path>, Span, &[tokenstream::TokenTree]) -> Box<MacResult+'cx>
+    where F: for<'cx> Fn(&'cx mut ExtCtxt, &'cx Option<::ast::Path>, Span,
+                         &[tokenstream::TokenTree]) -> Box<MacResult+'cx>
 {
-    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, path: &'cx Option<::ast::Path>, span: Span, input: TokenStream)
-                   -> Box<MacResult+'cx> {
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, path: &'cx Option<::ast::Path>, span: Span,
+                   input: TokenStream) -> Box<MacResult+'cx> {
         struct AvoidInterpolatedIdents;
 
         impl Folder for AvoidInterpolatedIdents {

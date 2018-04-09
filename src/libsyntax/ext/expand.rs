@@ -317,8 +317,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             // FIXME(jseyfried): Refactor out the following logic
             let (expansion, new_invocations) = if let Some(ext) = ext {
                 if let Some(ext) = ext {
-                    let dummy = (invoc.expansion_kind.dummy(invoc.span()).unwrap(), Some(dummy_path()));
-                    let (expansion, context_path) = self.expand_invoc(invoc, &*ext).unwrap_or(dummy);
+                    let dummy = (invoc.expansion_kind.dummy(
+                            invoc.span()).unwrap(), Some(dummy_path()));
+                    let (expansion, context_path) =
+                        self.expand_invoc(invoc, &*ext).unwrap_or(dummy);
                     self.collect_invocations(expansion, &[], context_path)
                 } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
                     if !item.derive_allowed() {
@@ -370,7 +372,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     unreachable!()
                 }
             } else {
-                self.collect_invocations(invoc.expansion_kind.dummy(invoc.span()).unwrap(), &[], None)
+                self.collect_invocations(
+                    invoc.expansion_kind.dummy(invoc.span()).unwrap(), &[], None)
             };
 
             if expansions.len() < depth {
@@ -403,7 +406,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn collect_invocations(&mut self, expansion: Expansion, derives: &[Mark], context_path : Option<Path>)
+    fn collect_invocations(&mut self,
+                           expansion: Expansion, derives: &[Mark], context_path : Option<Path>)
                            -> (Expansion, Vec<Invocation>) {
         let result = {
             let mut collector = InvocationCollector {
@@ -462,11 +466,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension) -> Option<(Expansion, Option<Path>)> {
+    fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension)
+        -> Option<(Expansion, Option<Path>)> {
         let result = match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext)?,
-            InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext).map(|x|(x, None))?,
-            InvocationKind::Derive { .. } => self.expand_derive_invoc(invoc, ext).map(|x|(x, None))?,
+            InvocationKind::Attr { .. } =>
+                self.expand_attr_invoc(invoc, ext).map(|x|(x, None))?,
+            InvocationKind::Derive { .. } =>
+                self.expand_derive_invoc(invoc, ext).map(|x|(x, None))?,
         };
 
         if self.cx.current_expansion.depth > self.cx.ecfg.recursion_limit {
@@ -612,7 +619,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                                     false, false, None) {
                     dummy_span
                 } else {
-                    kind.make_from(expand.expand(self.cx, &some_context_path, span, mac.node.stream()))
+                    kind.make_from(expand.expand(self.cx,
+                                                 &some_context_path, span, mac.node.stream()))
                 }
             }
 
@@ -629,7 +637,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                                     unstable_feature) {
                     dummy_span
                 } else {
-                    kind.make_from(expander.expand(self.cx, &some_context_path, span, mac.node.stream()))
+                    kind.make_from(expander.expand(self.cx,
+                                                   &some_context_path, span, mac.node.stream()))
                 }
             }
 
@@ -890,7 +899,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         if *ident != keywords::Invalid.ident() {
             self.context_path.segments.push(ast::PathSegment {
                 ident : ident.clone(),
-                parameters : None, // TODO
+                parameters : None, // FIXME
             });
             true
         } else {
@@ -899,7 +908,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 
     fn make_bang(&self, ident: Option<Ident>, mac: ast::Mac, span: Span) -> InvocationKind {
-        InvocationKind::Bang { mac: mac, ident, span: span, context_path: self.context_path.clone() }
+        InvocationKind::Bang {
+            mac: mac, ident, span: span, context_path: self.context_path.clone() }
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: ExpansionKind) -> Expansion {
