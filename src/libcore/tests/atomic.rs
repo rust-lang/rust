@@ -104,8 +104,10 @@ static S_UINT: AtomicUsize = AtomicUsize::new(0);
 
 #[test]
 fn static_init() {
-    assert!(!S_FALSE.load(SeqCst));
-    assert!(S_TRUE.load(SeqCst));
-    assert!(S_INT.load(SeqCst) == 0);
-    assert!(S_UINT.load(SeqCst) == 0);
+    // Note that we're not really testing the mutability here but it's important
+    // on Android at the moment (#49775)
+    assert!(!S_FALSE.swap(true, SeqCst));
+    assert!(S_TRUE.swap(false, SeqCst));
+    assert!(S_INT.fetch_add(1, SeqCst) == 0);
+    assert!(S_UINT.fetch_add(1, SeqCst) == 0);
 }
