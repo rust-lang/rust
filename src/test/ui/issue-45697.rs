@@ -30,6 +30,7 @@ fn main() {
         *y.pointer += 1;
         //~^ ERROR cannot assign to `*y.pointer` because it is borrowed (Ast) [E0506]
         //~| ERROR cannot use `*y.pointer` because it was mutably borrowed (Mir) [E0503]
+        //~| ERROR cannot assign to `*y.pointer` because it is borrowed (Mir) [E0506]
         *z.pointer += 1;
     }
 }

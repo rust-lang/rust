@@ -33,6 +33,7 @@ fn call_repeatedly<F>(f: F)
     f.call(&x);
     f.call(&x);
     x = 5;
+    drop(y);
 }
 
 fn main() {

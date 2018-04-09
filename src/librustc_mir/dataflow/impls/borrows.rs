@@ -48,14 +48,14 @@ pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     borrow_set: Rc<BorrowSet<'tcx>>,
 
     /// NLL region inference context with which NLL queries should be resolved
-    nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
+    nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         mir: &'a Mir<'tcx>,
-        nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
+        nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         def_id: DefId,
         body_id: Option<hir::BodyId>,
         borrow_set: &Rc<BorrowSet<'tcx>>
@@ -89,23 +89,23 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     fn kill_loans_out_of_scope_at_location(&self,
                                            sets: &mut BlockSets<BorrowIndex>,
                                            location: Location) {
-        if let Some(ref regioncx) = self.nonlexical_regioncx {
-            // NOTE: The state associated with a given `location`
-            // reflects the dataflow on entry to the statement. If it
-            // does not contain `borrow_region`, then then that means
-            // that the statement at `location` kills the borrow.
-            //
-            // We are careful always to call this function *before* we
-            // set up the gen-bits for the statement or
-            // termanator. That way, if the effect of the statement or
-            // terminator *does* introduce a new loan of the same
-            // region, then setting that gen-bit will override any
-            // potential kill introduced here.
-            for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
-                let borrow_region = borrow_data.region.to_region_vid();
-                if !regioncx.region_contains_point(borrow_region, location) {
-                    sets.kill(&borrow_index);
-                }
+        let regioncx = &self.nonlexical_regioncx;
+
+        // NOTE: The state associated with a given `location`
+        // reflects the dataflow on entry to the statement. If it
+        // does not contain `borrow_region`, then then that means
+        // that the statement at `location` kills the borrow.
+        //
+        // We are careful always to call this function *before* we
+        // set up the gen-bits for the statement or
+        // termanator. That way, if the effect of the statement or
+        // terminator *does* introduce a new loan of the same
+        // region, then setting that gen-bit will override any
+        // potential kill introduced here.
+        for (borrow_index, borrow_data) in self.borrow_set.borrows.iter_enumerated() {
+            let borrow_region = borrow_data.region.to_region_vid();
+            if !regioncx.region_contains_point(borrow_region, location) {
+                sets.kill(&borrow_index);
             }
         }
     }
@@ -153,18 +153,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         self.kill_loans_out_of_scope_at_location(sets, location);
 
         match stmt.kind {
-            // EndRegion kills any borrows (reservations and active borrows both)
-            mir::StatementKind::EndRegion(region_scope) => {
-                if let Some(borrow_indexes) =
-                    self.borrow_set.region_map.get(&ReScope(region_scope))
-                {
-                    assert!(self.nonlexical_regioncx.is_none());
-                    for idx in borrow_indexes {
-                        sets.kill(idx);
-                    }
-                } else {
-                    // (if there is no entry, then there are no borrows to be tracked)
-                }
+            mir::StatementKind::EndRegion(_) => {
             }
 
             mir::StatementKind::Assign(ref lhs, ref rhs) => {

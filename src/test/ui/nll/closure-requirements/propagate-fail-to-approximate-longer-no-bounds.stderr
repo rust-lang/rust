@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/propagate-fail-to-approximate-longer-no-bounds.rs:47:9
    |
 LL |         demand_y(x, y, x.get())
@@ -17,7 +17,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    |  _______________________________________________^
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ WARN not reporting region error due to -Znll
+LL | |         //~^ WARN not reporting region error due to nll
 LL | |         //~| ERROR does not outlive free region
 LL | |     });
    | |_____^

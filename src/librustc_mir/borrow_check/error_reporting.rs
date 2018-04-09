@@ -263,7 +263,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         (place, span): (&Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-        end_issued_loan_span: Option<Span>,
     ) {
         let issued_span = self.retrieve_borrow_span(issued_borrow);
 
@@ -297,7 +296,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "it",
                     rgt,
                     "",
-                    end_issued_loan_span,
+                    None,
                     Origin::Mir,
                 )
             }
@@ -309,7 +308,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     issued_span,
                     "",
-                    end_issued_loan_span,
+                    None,
                     Origin::Mir,
                 )
             }
@@ -319,7 +318,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     span,
                     &desc_place,
                     issued_span,
-                    end_issued_loan_span,
+                    None,
                     Origin::Mir,
                 )
             }
@@ -331,7 +330,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 issued_span,
                 "it",
                 "",
-                end_issued_loan_span,
+                None,
                 Origin::Mir,
             ),
 
@@ -343,7 +342,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     lft,
                     issued_span,
                     "",
-                    end_issued_loan_span,
+                    None,
                     Origin::Mir,
                 )
             }
@@ -356,7 +355,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     lft,
                     issued_span,
                     "",
-                    end_issued_loan_span,
+                    None,
                     Origin::Mir,
                 )
             }
@@ -392,7 +391,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
     ) {
-        let end_span = self.opt_region_end_span(&borrow.region);
         let scope_tree = self.tcx.region_scope_tree(self.mir_def_id);
         let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
             .last()
@@ -427,7 +425,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     drop_span,
                     borrow_span,
                     proper_span,
-                    end_span,
                 );
             }
             (RegionKind::ReScope(_), None) => {
@@ -438,7 +435,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     drop_span,
                     borrow_span,
                     proper_span,
-                    end_span,
                 );
             }
             (RegionKind::ReEarlyBound(_), Some(name))
@@ -454,7 +450,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     drop_span,
                     borrow_span,
                     proper_span,
-                    end_span,
                 );
             }
             (RegionKind::ReEarlyBound(_), None)
@@ -469,7 +464,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     drop_span,
                     borrow_span,
                     proper_span,
-                    end_span,
                 );
             }
             (RegionKind::ReLateBound(_, _), _)
@@ -491,7 +485,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_span: Span,
         borrow_span: Span,
         _proper_span: Span,
-        end_span: Option<Span>,
     ) {
         let tcx = self.tcx;
         let mut err =
@@ -501,9 +494,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             drop_span,
             format!("`{}` dropped here while still borrowed", name),
         );
-        if let Some(end) = end_span {
-            err.span_label(end, "borrowed value needs to live until here");
-        }
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
         err.emit();
     }
@@ -516,7 +506,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_span: Span,
         _borrow_span: Span,
         proper_span: Span,
-        end_span: Option<Span>,
     ) {
         let tcx = self.tcx;
         let mut err =
@@ -527,9 +516,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "temporary value dropped here while still borrowed",
         );
         err.note("consider using a `let` binding to increase its lifetime");
-        if let Some(end) = end_span {
-            err.span_label(end, "temporary value needs to live until here");
-        }
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
         err.emit();
     }
@@ -543,7 +529,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_span: Span,
         borrow_span: Span,
         _proper_span: Span,
-        _end_span: Option<Span>,
     ) {
         debug!(
             "report_unscoped_local_value_does_not_live_long_enough(\
@@ -558,16 +543,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err.span_label(borrow_span, "borrowed value does not live long enough");
         err.span_label(drop_span, "borrowed value only lives until here");
 
-        if !tcx.nll() {
-            tcx.note_and_explain_region(
-                scope_tree,
-                &mut err,
-                "borrowed value must be valid for ",
-                borrow.region,
-                "...",
-            );
-        }
-
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
         err.emit();
     }
@@ -580,7 +555,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         drop_span: Span,
         _borrow_span: Span,
         proper_span: Span,
-        _end_span: Option<Span>,
     ) {
         debug!(
             "report_unscoped_temporary_value_does_not_live_long_enough(\
@@ -594,16 +568,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             tcx.path_does_not_live_long_enough(proper_span, "borrowed value", Origin::Mir);
         err.span_label(proper_span, "temporary value does not live long enough");
         err.span_label(drop_span, "temporary value only lives until here");
-
-        if !tcx.nll() {
-            tcx.note_and_explain_region(
-                scope_tree,
-                &mut err,
-                "borrowed value must be valid for ",
-                borrow.region,
-                "...",
-            );
-        }
 
         self.explain_why_borrow_contains_point(context, borrow, &mut err);
         err.emit();

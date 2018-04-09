@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=mir -Z nll
+// compile-flags: -Zborrowck=mir
 
 #![allow(dead_code)]
 
@@ -22,7 +22,7 @@ where
 fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
     foo(x, y)
     //~^ ERROR lifetime mismatch [E0623]
-    //~| WARNING not reporting region error due to -Znll
+    //~| WARNING not reporting region error due to nll
 }
 
 fn main() {}

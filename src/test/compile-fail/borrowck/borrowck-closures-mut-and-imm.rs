@@ -29,7 +29,8 @@ fn a() {
     let mut x = 3;
     let c1 = || x = 4;
     let c2 = || x * 5; //[ast]~ ERROR cannot borrow `x`
-                       //[mir]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+    //[mir]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+    drop(c1);
 }
 
 fn b() {
@@ -37,6 +38,7 @@ fn b() {
     let c1 = || set(&mut x);
     let c2 = || get(&x); //[ast]~ ERROR cannot borrow `x`
                          //[mir]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+    drop(c1);
 }
 
 fn c() {
@@ -44,6 +46,7 @@ fn c() {
     let c1 = || set(&mut x);
     let c2 = || x * 5; //[ast]~ ERROR cannot borrow `x`
                        //[mir]~^ ERROR cannot borrow `x` as immutable because it is also borrowed as mutable
+    drop(c1);
 }
 
 fn d() {
@@ -51,6 +54,7 @@ fn d() {
     let c2 = || x * 5;
     x = 5; //[ast]~ ERROR cannot assign
            //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+    drop(c2);
 }
 
 fn e() {
@@ -58,6 +62,7 @@ fn e() {
     let c1 = || get(&x);
     x = 5; //[ast]~ ERROR cannot assign
            //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+    drop(c1);
 }
 
 fn f() {
@@ -65,6 +70,7 @@ fn f() {
     let c1 = || get(&*x);
     *x = 5; //[ast]~ ERROR cannot assign to `*x`
             //[mir]~^ ERROR cannot assign to `*x` because it is borrowed
+    drop(c1);
 }
 
 fn g() {
@@ -76,6 +82,7 @@ fn g() {
     let c1 = || get(&*x.f);
     *x.f = 5; //[ast]~ ERROR cannot assign to `*x.f`
               //[mir]~^ ERROR cannot assign to `*x.f` because it is borrowed
+    drop(c1);
 }
 
 fn h() {
@@ -87,6 +94,7 @@ fn h() {
     let c1 = || get(&*x.f);
     let c2 = || *x.f = 5; //[ast]~ ERROR cannot borrow `x` as mutable
                           //[mir]~^ ERROR cannot borrow `x` as mutable because it is also borrowed as immutable
+    drop(c1);
 }
 
 fn main() {

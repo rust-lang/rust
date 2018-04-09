@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: normal nll
-//[nll] compile-flags: -Znll -Zborrowck=mir
+//[nll] compile-flags:-Zborrowck=mir
 
 #![feature(fn_traits,
            step_trait,

@@ -14,8 +14,8 @@
 // but only at a particular point, and hence they wind up including
 // distinct regions.
 
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Zborrowck=mir -Zverbose
+//                              ^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]
 

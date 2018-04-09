@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:51:9
    |
 LL |         demand_y(x, y, x.get())
@@ -12,7 +12,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x,
 LL | |         //~^ ERROR does not outlive free region
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     });
    | |_____^
    |
@@ -31,7 +31,7 @@ LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x,
 LL | |         //~^ ERROR does not outlive free region
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     });
    | |_____^
 

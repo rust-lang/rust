@@ -15,7 +15,7 @@
 // relationships. In the 'main' variant, there are a number of
 // anonymous regions as well.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
@@ -47,7 +47,7 @@ fn test<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
         //~^ ERROR lifetime mismatch
 
         // Only works if 'x: 'y:
-        demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to -Znll
+        demand_y(outlives1, outlives2, x.get()) //~ WARNING not reporting region error due to nll
     });
 }
 

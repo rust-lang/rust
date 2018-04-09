@@ -22,7 +22,7 @@
 // that appear free in its type (hence, we see it before the closure's
 // "external requirements" report).
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
@@ -35,7 +35,7 @@ fn test() {
         let y = 22;
         let mut closure = expect_sig(|p, y| *p = y);
         //~^ ERROR does not outlive free region
-        //~| WARNING not reporting region error due to -Znll
+        //~| WARNING not reporting region error due to nll
         closure(&mut p, &y);
     }
 

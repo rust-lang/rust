@@ -98,19 +98,13 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         .as_local_node_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
-    // Make our own copy of the MIR. This copy will be modified (in place) to
-    // contain non-lexical lifetimes. It will have a lifetime tied
-    // to the inference context.
+    // Replace all regions with fresh inference variables. This
+    // requires first making our own copy of the MIR. This copy will
+    // be modified (in place) to contain non-lexical lifetimes. It
+    // will have a lifetime tied to the inference context.
     let mut mir: Mir<'tcx> = input_mir.clone();
-    let free_regions = if !tcx.nll() {
-        None
-    } else {
-        let mir = &mut mir;
-
-        // Replace all regions with fresh inference variables.
-        Some(nll::replace_regions_in_mir(infcx, def_id, param_env, mir))
-    };
-    let mir = &mir;
+    let free_regions = nll::replace_regions_in_mir(infcx, def_id, param_env, &mut mir);
+    let mir = &mir; // no further changes
 
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx) {
         Ok(move_data) => move_data,
@@ -195,22 +189,17 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let borrow_set = Rc::new(BorrowSet::build(tcx, mir));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
-    let (opt_regioncx, opt_closure_req) = if let Some(free_regions) = free_regions {
-        let (regioncx, opt_closure_req) = nll::compute_regions(
-            infcx,
-            def_id,
-            free_regions,
-            mir,
-            param_env,
-            &mut flow_inits,
-            &mdpe.move_data,
-            &borrow_set,
-        );
-        (Some(Rc::new(regioncx)), opt_closure_req)
-    } else {
-        assert!(!tcx.nll());
-        (None, None)
-    };
+    let (regioncx, opt_closure_req) = nll::compute_regions(
+        infcx,
+        def_id,
+        free_regions,
+        mir,
+        param_env,
+        &mut flow_inits,
+        &mdpe.move_data,
+        &borrow_set,
+    );
+    let regioncx = Rc::new(regioncx);
     let flow_inits = flow_inits; // remove mut
 
     let flow_borrows = FlowAtLocation::new(do_dataflow(
@@ -219,7 +208,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, mir, opt_regioncx.clone(), def_id, body_id, &borrow_set),
+        Borrows::new(tcx, mir, regioncx.clone(), def_id, body_id, &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
 
@@ -247,7 +236,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         access_place_error_reported: FxHashSet(),
         reservation_error_reported: FxHashSet(),
         moved_error_reported: FxHashSet(),
-        nonlexical_regioncx: opt_regioncx,
+        nonlexical_regioncx: regioncx,
         nonlexical_cause_info: None,
         borrow_set,
         dominators,
@@ -301,7 +290,7 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// Non-lexical region inference context, if NLL is enabled.  This
     /// contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
-    nonlexical_regioncx: Option<Rc<RegionInferenceContext<'tcx>>>,
+    nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
     nonlexical_cause_info: Option<RegionCausalInfo>,
 
     /// The set of borrows extracted from the MIR
@@ -897,14 +886,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
                         }
                         ReadKind::Borrow(bk) => {
-                            let end_issued_loan_span = this.opt_region_end_span(&borrow.region);
                             error_reported = true;
                             this.report_conflicting_borrow(
                                 context,
                                 place_span,
                                 bk,
                                 &borrow,
-                                end_issued_loan_span,
                             )
                         }
                     }
@@ -936,15 +923,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            let end_issued_loan_span = this.opt_region_end_span(&borrow.region);
-
                             error_reported = true;
                             this.report_conflicting_borrow(
                                 context,
                                 place_span,
                                 bk,
                                 &borrow,
-                                end_issued_loan_span,
                             )
                         }
                         WriteKind::StorageDeadOrDrop => {
@@ -1830,22 +1814,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 _ => None,
             },
             _ => None,
-        }
-    }
-
-    /// Returns the span for the "end point" given region. This will
-    /// return `None` if NLL is enabled, since that concept has no
-    /// meaning there.  Otherwise, return region span if it exists and
-    /// span for end of the function if it doesn't exist.
-    pub(crate) fn opt_region_end_span(&self, region: &ty::Region<'tcx>) -> Option<Span> {
-        match self.nonlexical_regioncx {
-            Some(_) => None,
-            None => {
-                match self.borrow_set.region_span_map.get(region) {
-                    Some(span) => Some(self.tcx.sess.codemap().end_point(*span)),
-                    None => Some(self.tcx.sess.codemap().end_point(self.mir.span))
-                }
-            }
         }
     }
 }

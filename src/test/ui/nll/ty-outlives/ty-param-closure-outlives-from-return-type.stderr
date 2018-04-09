@@ -1,10 +1,10 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:37:27
    |
 LL |     with_signature(x, |y| y)
    |                           ^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:53:5
    |
 LL |     x

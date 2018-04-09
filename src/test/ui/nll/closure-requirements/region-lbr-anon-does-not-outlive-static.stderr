@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:19:5
    |
 LL |     &*x

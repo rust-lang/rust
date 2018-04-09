@@ -17,7 +17,7 @@
 // FIXME(#45827) Because of shortcomings in the MIR type checker,
 // these errors are not (yet) reported.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
@@ -49,7 +49,7 @@ fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
         //~^ ERROR does not outlive free region
         // Only works if 'x: 'y:
         demand_y(x, y, x.get())
-        //~^ WARNING not reporting region error due to -Znll
+        //~^ WARNING not reporting region error due to nll
     });
 }
 

@@ -11,7 +11,7 @@
 // Basic test for free regions in the NLL code. This test does not
 // report an error because of the (implied) bound that `'b: 'a`.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 // compile-pass
 
 #![allow(warnings)]

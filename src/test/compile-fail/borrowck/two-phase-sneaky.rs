@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+// cmpile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 // This is the first counter-example from Niko's blog post
 // smallcultfollowing.com/babysteps/blog/2017/03/01/nested-method-calls-via-two-phase-borrowing/
@@ -22,8 +20,7 @@ fn main() {
     v[0].push_str({
 
         v.push(format!("foo"));
-        //[lxl]~^ ERROR cannot borrow `v` as mutable more than once at a time [E0499]
-        //[nll]~^^   ERROR cannot borrow `v` as mutable more than once at a time [E0499]
+        //~^   ERROR cannot borrow `v` as mutable more than once at a time [E0499]
 
         "World!"
     });

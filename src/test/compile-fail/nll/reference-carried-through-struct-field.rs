@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //revisions: ast mir
-//[mir] compile-flags: -Z borrowck=mir -Z nll
+//[mir] compile-flags: -Z borrowck=mir
 
 #![allow(unused_assignments)]
 

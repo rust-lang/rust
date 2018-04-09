@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=mir -Z nll
+// compile-flags: -Zborrowck=mir
 
 #![allow(dead_code)]
 
@@ -44,7 +44,7 @@ fn bar<'a>(x: &'a u32) -> &'static u32 {
     // The MIR type checker must therefore relate `'?0` to `'?1` and `'?2`
     // as part of checking the `ReifyFnPointer`.
     let f: fn(_) -> _ = foo;
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR free region `'a` does not outlive free region `'static`
     f(x)
 }

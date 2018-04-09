@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/propagate-from-trait-match.rs:55:9
    |
 LL |         require(value);
@@ -13,7 +13,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |
 LL | |         // This function call requires that
 ...  |
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     });
    | |_____^
    |
@@ -35,7 +35,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |
 LL | |         // This function call requires that
 ...  |
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     });
    | |_____^
    |

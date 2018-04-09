@@ -12,7 +12,7 @@
 // outlive `'static`. In this case, we don't get any errors, and in fact
 // we don't even propagate constraints from the closures to the callers.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 // compile-pass
 
 #![allow(warnings)]

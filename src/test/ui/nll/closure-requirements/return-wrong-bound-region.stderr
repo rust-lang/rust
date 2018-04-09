@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/return-wrong-bound-region.rs:21:23
    |
 LL |     expect_sig(|a, b| b); // ought to return `a`
@@ -26,7 +26,7 @@ note: No external requirements
    |
 LL | / fn test() {
 LL | |     expect_sig(|a, b| b); // ought to return `a`
-LL | |     //~^ WARN not reporting region error due to -Znll
+LL | |     //~^ WARN not reporting region error due to nll
 LL | |     //~| ERROR does not outlive free region
 LL | | }
    | |_^

@@ -1,16 +1,16 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:35:31
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:31
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                               ^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:43:31
    |
 LL |     twice(cell, value, |a, b| invoke(a, b));

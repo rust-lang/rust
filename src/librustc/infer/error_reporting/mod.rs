@@ -303,7 +303,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if will_later_be_reported_by_nll && self.tcx.nll() {
+        if will_later_be_reported_by_nll && self.tcx.use_mir() {
             // With `#![feature(nll)]`, we want to present a nice user
             // experience, so don't even mention the errors from the
             // AST checker.
@@ -311,20 +311,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 return;
             }
 
-            // But with -Znll, it's nice to have some note for later.
+            // But with nll, it's nice to have some note for later.
             for error in errors {
                 match *error {
                     RegionResolutionError::ConcreteFailure(ref origin, ..)
                     | RegionResolutionError::GenericBoundFailure(ref origin, ..) => {
                         self.tcx
                             .sess
-                            .span_warn(origin.span(), "not reporting region error due to -Znll");
+                            .span_warn(origin.span(), "not reporting region error due to nll");
                     }
 
                     RegionResolutionError::SubSupConflict(ref rvo, ..) => {
                         self.tcx
                             .sess
-                            .span_warn(rvo.span(), "not reporting region error due to -Znll");
+                            .span_warn(rvo.span(), "not reporting region error due to nll");
                     }
                 }
             }

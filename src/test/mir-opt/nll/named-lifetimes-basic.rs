@@ -13,8 +13,8 @@
 // suitable variables and that we setup the outlives relationship
 // between R0 and R1 properly.
 
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Zborrowck=mir -Zverbose
+//                              ^^^^^^^^^ force compiler to dump more region information
 // ignore-tidy-linelength
 
 #![allow(warnings)]

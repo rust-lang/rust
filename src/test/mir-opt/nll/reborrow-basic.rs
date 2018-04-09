@@ -12,8 +12,8 @@
 // in the type of `r_a` must outlive the region (`R7`) that appears in
 // the type of `r_b`
 
-// compile-flags:-Znll -Zverbose
-//                     ^^^^^^^^^ force compiler to dump more region information
+// compile-flags:-Zborrowck=mir -Zverbose
+//                              ^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]
 

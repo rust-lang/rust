@@ -13,10 +13,12 @@
 
 fn main() {
     let mut _a = 3;
-    let _b = &mut _a;
+    let b = &mut _a;
     {
-        let _c = &*_b;
+        let c = &*b;
         _a = 4; //[ast]~ ERROR cannot assign to `_a`
-                //[mir]~^ ERROR cannot assign to `_a` because it is borrowed
+        //[mir]~^ ERROR cannot assign to `_a` because it is borrowed
+        drop(c);
     }
+    drop(b);
 }

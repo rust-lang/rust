@@ -1471,12 +1471,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.on_disk_query_result_cache.serialize(self.global_tcx(), encoder)
     }
 
-    /// If true, we should use NLL-style region checking instead of
-    /// lexical style.
-    pub fn nll(self) -> bool {
-        self.features().nll || self.sess.opts.debugging_opts.nll
-    }
-
     /// If true, we should use the MIR-based borrowck (we may *also* use
     /// the AST-based borrowck).
     pub fn use_mir(self) -> bool {
@@ -1498,7 +1492,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             mode @ BorrowckMode::Compare => mode,
 
             mode @ BorrowckMode::Ast => {
-                if self.nll() {
+                if self.features().nll {
                     BorrowckMode::Mir
                 } else {
                     mode
@@ -1512,8 +1506,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// MIR borrowck, but not when NLL is used. They are also consumed
     /// by the validation stuff.
     pub fn emit_end_regions(self) -> bool {
-        // FIXME(#46875) -- we should not emit end regions when NLL is enabled,
-        // but for now we can't stop doing so because it causes false positives
         self.sess.opts.debugging_opts.emit_end_regions ||
             self.sess.opts.debugging_opts.mir_emit_validate > 0 ||
             self.use_mir()

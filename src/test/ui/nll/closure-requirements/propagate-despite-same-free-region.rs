@@ -13,7 +13,7 @@
 // need to propagate; but in fact we do because identity of free
 // regions is erased.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 // compile-pass
 
 #![feature(rustc_attrs)]

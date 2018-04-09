@@ -1686,7 +1686,7 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Nll) => {
-                rustc.args(&["-Znll", "-Zborrowck=mir", "-Ztwo-phase-borrows"]);
+                rustc.args(&["-Zborrowck=mir", "-Ztwo-phase-borrows"]);
             },
             None => {},
         }

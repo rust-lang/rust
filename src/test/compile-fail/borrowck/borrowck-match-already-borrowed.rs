@@ -25,16 +25,18 @@ fn match_enum() {
         Foo::A(x) => x //[ast]~ ERROR [E0503]
                        //[mir]~^ ERROR [E0503]
     };
+    drop(p);
 }
 
 
 fn main() {
     let mut x = 1;
-    let _x = &mut x;
+    let r = &mut x;
     let _ = match x { //[mir]~ ERROR [E0503]
         x => x + 1, //[ast]~ ERROR [E0503]
                     //[mir]~^ ERROR [E0503]
         y => y + 2, //[ast]~ ERROR [E0503]
                     //[mir]~^ ERROR [E0503]
     };
+    drop(r);
 }

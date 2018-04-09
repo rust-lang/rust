@@ -13,13 +13,12 @@ use dataflow::indexes::BorrowIndex;
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::{self, Location, Mir, Place};
-use rustc::ty::{self, Region, RegionKind, TyCtxt};
+use rustc::ty::{Region, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Index;
-use syntax_pos::Span;
 
 crate struct BorrowSet<'tcx> {
     /// The fundamental map relating bitvector indexes to the borrows
@@ -44,10 +43,6 @@ crate struct BorrowSet<'tcx> {
 
     /// Map from local to all the borrows on that local
     crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
-
-    /// Maps regions to their corresponding source spans
-    /// Only contains ReScope()s as keys
-    crate region_span_map: FxHashMap<RegionKind, Span>,
 }
 
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
@@ -103,7 +98,6 @@ impl<'tcx> BorrowSet<'tcx> {
             activation_map: FxHashMap(),
             region_map: FxHashMap(),
             local_map: FxHashMap(),
-            region_span_map: FxHashMap(),
             pending_activations: FxHashMap(),
         };
 
@@ -130,7 +124,6 @@ impl<'tcx> BorrowSet<'tcx> {
             activation_map: visitor.activation_map,
             region_map: visitor.region_map,
             local_map: visitor.local_map,
-            region_span_map: visitor.region_span_map,
         }
     }
 
@@ -150,7 +143,6 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
     region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
-    region_span_map: FxHashMap<RegionKind, Span>,
 
     /// When we encounter a 2-phase borrow statement, it will always
     /// be assigning into a temporary TEMP:
@@ -276,10 +268,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        if let mir::StatementKind::EndRegion(region_scope) = statement.kind {
-            self.region_span_map
-                .insert(ty::ReScope(region_scope), statement.source_info.span);
-        }
         return self.super_statement(block, statement, location);
     }
 }

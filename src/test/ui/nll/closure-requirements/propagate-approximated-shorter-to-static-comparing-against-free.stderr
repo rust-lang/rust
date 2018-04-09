@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:31:5
    |
 LL |     foo(cell, |cell_a, cell_x| {
@@ -15,7 +15,7 @@ note: No external requirements
    |
 LL |       foo(cell, |cell_a, cell_x| {
    |  _______________^
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
 LL | |         //~^ ERROR does not outlive free region
 LL | |     })

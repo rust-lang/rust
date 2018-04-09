@@ -12,14 +12,14 @@
 // the first, but actually returns the second. This should fail within
 // the closure.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
 #[rustc_regions]
 fn test() {
     expect_sig(|a, b| b); // ought to return `a`
-    //~^ WARN not reporting region error due to -Znll
+    //~^ WARN not reporting region error due to nll
     //~| ERROR does not outlive free region
 }
 
