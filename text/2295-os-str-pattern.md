@@ -1,7 +1,7 @@
 - Feature Name: `os_str_pattern`
 - Start Date: 2018-01-16
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2295](https://github.com/rust-lang/rfcs/pull/2295)
+- Rust Issue: [rust-lang/rust#49802](https://github.com/rust-lang/rust/issues/49802)
 
 # Summary
 [summary]: #summary
