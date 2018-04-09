@@ -1654,6 +1654,7 @@ impl AsRef<OsStr> for PathBuf {
 /// assert_eq!(extension, Some(OsStr::new("txt")));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[repr(C)]
 pub struct Path {
     inner: OsStr,
 }
