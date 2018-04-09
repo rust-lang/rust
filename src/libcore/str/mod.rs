@@ -1343,7 +1343,7 @@ generate_pattern_iterators! {
 /// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
-pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
+pub struct Lines<'a>(Map<SplitTerminator<'a, char>, fn(&'a str) -> &'a str>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Lines<'a> {
@@ -1379,35 +1379,6 @@ impl<'a> FusedIterator for Lines<'a> {}
 #[derive(Clone, Debug)]
 #[allow(deprecated)]
 pub struct LinesAny<'a>(Lines<'a>);
-
-/// A nameable, cloneable fn type
-#[derive(Clone)]
-struct LinesAnyMap;
-
-impl<'a> Fn<(&'a str,)> for LinesAnyMap {
-    #[inline]
-    extern "rust-call" fn call(&self, (line,): (&'a str,)) -> &'a str {
-        let l = line.len();
-        if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
-        else { line }
-    }
-}
-
-impl<'a> FnMut<(&'a str,)> for LinesAnyMap {
-    #[inline]
-    extern "rust-call" fn call_mut(&mut self, (line,): (&'a str,)) -> &'a str {
-        Fn::call(&*self, (line,))
-    }
-}
-
-impl<'a> FnOnce<(&'a str,)> for LinesAnyMap {
-    type Output = &'a str;
-
-    #[inline]
-    extern "rust-call" fn call_once(self, (line,): (&'a str,)) -> &'a str {
-        Fn::call(&self, (line,))
-    }
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -2353,7 +2324,16 @@ impl StrExt for str {
     }
     #[inline]
     fn lines(&self) -> Lines {
-        Lines(self.split_terminator('\n').map(LinesAnyMap))
+        Lines(
+            self.split_terminator('\n')
+                .map(|line| {
+                    if let Some((&b'\r', minus_cr)) = line.as_bytes().split_last() {
+                        unsafe { from_utf8_unchecked(minus_cr) }
+                    } else {
+                        line
+                    }
+                })
+        )
     }
 
     #[inline]
