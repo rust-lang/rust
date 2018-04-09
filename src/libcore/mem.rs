@@ -1213,3 +1213,6 @@ impl<'a, T: ?Sized> fmt::Pointer for Pin<'a, T> {
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Pin<'a, U>> for Pin<'a, T> {}
+
+#[unstable(feature = "pin", issue = "49150")]
+unsafe impl<'a, T: ?Sized> Unpin for Pin<'a, T> {}

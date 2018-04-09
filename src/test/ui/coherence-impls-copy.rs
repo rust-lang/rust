@@ -12,6 +12,10 @@
 
 use std::marker::Copy;
 
+impl Copy for i32 {}
+//~^ ERROR conflicting implementations of trait `std::marker::Copy` for type `i32`:
+//~| ERROR only traits defined in the current crate can be implemented for arbitrary types
+
 enum TestE {
   A
 }
@@ -35,14 +39,14 @@ impl Copy for (MyType, MyType) {}
 //~| ERROR only traits defined in the current crate can be implemented for arbitrary types
 
 impl Copy for &'static NotSync {}
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR conflicting implementations of trait `std::marker::Copy` for type `&NotSync`:
 
 impl Copy for [MyType] {}
 //~^ ERROR the trait `Copy` may not be implemented for this type
 //~| ERROR only traits defined in the current crate can be implemented for arbitrary types
 
 impl Copy for &'static [NotSync] {}
-//~^ ERROR the trait `Copy` may not be implemented for this type
+//~^ ERROR conflicting implementations of trait `std::marker::Copy` for type `&[NotSync]`:
 //~| ERROR only traits defined in the current crate can be implemented for arbitrary types
 
 fn main() {

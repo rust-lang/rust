@@ -46,7 +46,12 @@ use html::markdown;
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
+    /// Whether to disable the default `extern crate my_crate;` when creating doctests.
     pub no_crate_inject: bool,
+    /// Whether to emit compilation warnings when compiling doctests. Setting this will suppress
+    /// the default `#![allow(unused)]`.
+    pub display_warnings: bool,
+    /// Additional crate-level attributes to add to doctests.
     pub attrs: Vec<String>,
 }
 
@@ -113,7 +118,8 @@ pub fn run(input_path: &Path,
     let crate_name = crate_name.unwrap_or_else(|| {
         ::rustc_trans_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
     });
-    let opts = scrape_test_config(hir_forest.krate());
+    let mut opts = scrape_test_config(hir_forest.krate());
+    opts.display_warnings |= display_warnings;
     let mut collector = Collector::new(crate_name,
                                        cfgs,
                                        libs,
@@ -153,6 +159,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
 
     let mut opts = TestOptions {
         no_crate_inject: false,
+        display_warnings: false,
         attrs: Vec::new(),
     };
 
@@ -357,7 +364,7 @@ pub fn make_test(s: &str,
     let mut line_offset = 0;
     let mut prog = String::new();
 
-    if opts.attrs.is_empty() {
+    if opts.attrs.is_empty() && !opts.display_warnings {
         // If there aren't any attributes supplied by #![doc(test(attr(...)))], then allow some
         // lints that are commonly triggered in doctests. The crate-level test attributes are
         // commonly used to make tests fail in case they trigger warnings, so having this there in
@@ -787,6 +794,7 @@ assert_eq!(2+2, 4);
         //adding it anyway
         let opts = TestOptions {
             no_crate_inject: true,
+            display_warnings: false,
             attrs: vec![],
         };
         let input =
@@ -955,6 +963,21 @@ assert_eq!(2+2, 4);";
 //Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);".to_string();
         let output = make_test(input, None, true, &opts);
+        assert_eq!(output, (expected.clone(), 1));
+    }
+
+    #[test]
+    fn make_test_display_warnings() {
+        //if the user is asking to display doctest warnings, suppress the default allow(unused)
+        let mut opts = TestOptions::default();
+        opts.display_warnings = true;
+        let input =
+"assert_eq!(2+2, 4);";
+        let expected =
+"fn main() {
+assert_eq!(2+2, 4);
+}".to_string();
+        let output = make_test(input, None, false, &opts);
         assert_eq!(output, (expected.clone(), 1));
     }
 }

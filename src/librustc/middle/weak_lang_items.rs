@@ -64,6 +64,24 @@ pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
     })
 }
 
+/// Returns whether the specified `lang_item` doesn't actually need to be
+/// present for this compilation.
+///
+/// Not all lang items are always required for each compilation, particularly in
+/// the case of panic=abort. In these situations some lang items are injected by
+/// crates and don't actually need to be defined in libstd.
+pub fn whitelisted(tcx: TyCtxt, lang_item: lang_items::LangItem) -> bool {
+    // If we're not compiling with unwinding, we won't actually need these
+    // symbols. Other panic runtimes ensure that the relevant symbols are
+    // available to link things together, but they're never exercised.
+    if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
+        return lang_item == lang_items::EhPersonalityLangItem ||
+            lang_item == lang_items::EhUnwindResumeLangItem
+    }
+
+    false
+}
+
 fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     items: &lang_items::LanguageItems) {
     // We only need to check for the presence of weak lang items if we're
@@ -89,18 +107,9 @@ fn verify<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    // If we're not compiling with unwinding, we won't actually need these
-    // symbols. Other panic runtimes ensure that the relevant symbols are
-    // available to link things together, but they're never exercised.
-    let mut whitelisted = HashSet::new();
-    if tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        whitelisted.insert(lang_items::EhPersonalityLangItem);
-        whitelisted.insert(lang_items::EhUnwindResumeLangItem);
-    }
-
     $(
         if missing.contains(&lang_items::$item) &&
-           !whitelisted.contains(&lang_items::$item) &&
+           !whitelisted(tcx, lang_items::$item) &&
            items.$name().is_none() {
             tcx.sess.err(&format!("language item required, but not found: `{}`",
                                   stringify!($name)));

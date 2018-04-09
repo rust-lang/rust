@@ -1426,7 +1426,7 @@ pub fn abort() -> ! {
 /// ```
 ///
 ///
-#[stable(feature = "getpid", since = "1.27.0")]
+#[stable(feature = "getpid", since = "1.26.0")]
 pub fn id() -> u32 {
     ::sys::os::getpid()
 }
@@ -1452,6 +1452,7 @@ pub trait Termination {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for () {
+    #[inline]
     fn report(self) -> i32 { ExitCode::SUCCESS.report() }
 }
 
@@ -1481,6 +1482,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ExitCode {
+    #[inline]
     fn report(self) -> i32 {
         self.0.as_i32()
     }

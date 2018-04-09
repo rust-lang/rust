@@ -423,12 +423,18 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                     _ => t.super_visit_with(self)
                 }
             }
+
+            fn visit_region(&mut self, _: ty::Region<'tcx>) -> bool {
+                true
+            }
         }
         let mut param_count = CountParams { params: FxHashSet() };
-        pred.visit_with(&mut param_count);
+        let has_region = pred.visit_with(&mut param_count);
         let substituted_pred = pred.subst(fcx.tcx, substs);
-        // Don't check non-defaulted params, dependent defaults or preds with multiple params.
-        if substituted_pred.references_error() || param_count.params.len() > 1 {
+        // Don't check non-defaulted params, dependent defaults (including lifetimes)
+        // or preds with multiple params.
+        if substituted_pred.references_error() || param_count.params.len() > 1
+            || has_region {
             continue;
         }
         // Avoid duplication of predicates that contain no parameters, for example.

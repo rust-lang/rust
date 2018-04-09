@@ -55,6 +55,7 @@ impl MultiItemModifier for ProcMacroDerive {
             Annotatable::Item(item) => item,
             Annotatable::ImplItem(_) |
             Annotatable::TraitItem(_) |
+            Annotatable::ForeignItem(_) |
             Annotatable::Stmt(_) |
             Annotatable::Expr(_) => {
                 ecx.span_err(span, "proc-macro derives may only be \

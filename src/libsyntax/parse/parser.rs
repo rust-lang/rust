@@ -26,7 +26,7 @@ use ast::{Ident, ImplItem, IsAuto, Item, ItemKind};
 use ast::{Label, Lifetime, LifetimeDef, Lit, LitKind, UintTy};
 use ast::Local;
 use ast::MacStmtStyle;
-use ast::Mac_;
+use ast::{Mac, Mac_};
 use ast::{MutTy, Mutability};
 use ast::{Pat, PatKind, PathSegment};
 use ast::{PolyTraitRef, QSelf};
@@ -512,13 +512,10 @@ impl From<P<Expr>> for LhsExpr {
 
 /// Create a placeholder argument.
 fn dummy_arg(span: Span) -> Arg {
-    let spanned = Spanned {
-        span,
-        node: keywords::Invalid.ident()
-    };
+    let ident = Ident::new(keywords::Invalid.name(), span);
     let pat = P(Pat {
         id: ast::DUMMY_NODE_ID,
-        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), spanned, None),
+        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
         span,
     });
     let ty = Ty {
@@ -778,7 +775,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(i, _) => {
+            token::Ident(ident, _) => {
                 if self.token.is_reserved_ident() {
                     let mut err = self.expected_ident_found();
                     if recover {
@@ -787,8 +784,9 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 }
+                let span = self.span;
                 self.bump();
-                Ok(i)
+                Ok(Ident::new(ident.name, span))
             }
             _ => {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
@@ -1319,19 +1317,6 @@ impl<'a> Parser<'a> {
             self.check_keyword(keywords::Extern) && self.is_extern_non_path()
     }
 
-    fn eat_label(&mut self) -> Option<Label> {
-        let ident = match self.token {
-            token::Lifetime(ref ident) => *ident,
-            token::Interpolated(ref nt) => match nt.0 {
-                token::NtLifetime(lifetime) => lifetime.ident,
-                _ => return None,
-            },
-            _ => return None,
-        };
-        self.bump();
-        Some(Label { ident, span: self.prev_span })
-    }
-
     /// parse a TyKind::BareFn type:
     pub fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>)
                             -> PResult<'a, TyKind> {
@@ -1417,28 +1402,8 @@ impl<'a> Parser<'a> {
                 None
             };
             (ident, TraitItemKind::Const(ty, default), ast::Generics::default())
-        } else if self.token.is_path_start() && !self.is_extern_non_path() {
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
             // trait item macro.
-            // code copied from parse_macro_use_or_failure... abstraction!
-            let prev_span = self.prev_span;
-            let lo = self.span;
-            let pth = self.parse_path(PathStyle::Mod)?;
-
-            if pth.segments.len() == 1 {
-                if !self.eat(&token::Not) {
-                    return Err(self.missing_assoc_item_kind_err("trait", prev_span));
-                }
-            } else {
-                self.expect(&token::Not)?;
-            }
-
-            // eat a matched-delimiter token tree:
-            let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != token::Brace {
-                self.expect(&token::Semi)?
-            }
-
-            let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
             (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac), ast::Generics::default())
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
@@ -1804,13 +1769,11 @@ impl<'a> Parser<'a> {
             pat
         } else {
             debug!("parse_arg_general ident_to_pat");
-            let sp = self.prev_span;
-            let spanned = Spanned { span: sp, node: keywords::Invalid.ident() };
+            let ident = Ident::new(keywords::Invalid.name(), self.prev_span);
             P(Pat {
                 id: ast::DUMMY_NODE_ID,
-                node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable),
-                                     spanned, None),
-                span: sp
+                node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), ident, None),
+                span: ident.span,
             })
         };
 
@@ -1919,13 +1882,14 @@ impl<'a> Parser<'a> {
 
     pub fn parse_path_segment_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(sid, _) if self.token.is_path_segment_keyword() => {
+            token::Ident(ident, _) if self.token.is_path_segment_keyword() => {
+                let span = self.span;
                 self.bump();
-                Ok(sid)
+                Ok(Ident::new(ident.name, span))
             }
             _ => self.parse_ident(),
-         }
-     }
+        }
+    }
 
     /// Parses qualified path.
     /// Assumes that the leading `<` has been parsed already.
@@ -1993,7 +1957,7 @@ impl<'a> Parser<'a> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(ast::Ident::with_empty_ctxt(meta.name)),
+                    ast::MetaItemKind::Word => Some(meta.ident),
                     _ => None,
                 },
                 _ => None,
@@ -2002,7 +1966,7 @@ impl<'a> Parser<'a> {
         };
         if let Some(ident) = meta_ident {
             self.bump();
-            return Ok(ast::Path::from_ident(self.prev_span, ident));
+            return Ok(ast::Path::from_ident(ident));
         }
         self.parse_path(style)
     }
@@ -2023,7 +1987,6 @@ impl<'a> Parser<'a> {
 
     fn parse_path_segment(&mut self, style: PathStyle, enable_warning: bool)
                           -> PResult<'a, PathSegment> {
-        let ident_span = self.span;
         let ident = self.parse_path_segment_ident()?;
 
         let is_args_start = |token: &token::Token| match *token {
@@ -2071,10 +2034,10 @@ impl<'a> Parser<'a> {
                 ParenthesizedParameterData { inputs, output, span }.into()
             };
 
-            PathSegment { identifier: ident, span: ident_span, parameters }
+            PathSegment { ident, parameters }
         } else {
             // Generic arguments are not found.
-            PathSegment::from_ident(ident, ident_span)
+            PathSegment::from_ident(ident)
         })
     }
 
@@ -2085,11 +2048,22 @@ impl<'a> Parser<'a> {
 
     /// Parse single lifetime 'a or panic.
     pub fn expect_lifetime(&mut self) -> Lifetime {
-        if let Some(lifetime) = self.token.lifetime(self.span) {
+        if let Some(ident) = self.token.lifetime() {
+            let span = self.span;
             self.bump();
-            lifetime
+            Lifetime { ident: Ident::new(ident.name, span), id: ast::DUMMY_NODE_ID }
         } else {
             self.span_bug(self.span, "not a lifetime")
+        }
+    }
+
+    fn eat_label(&mut self) -> Option<Label> {
+        if let Some(ident) = self.token.lifetime() {
+            let span = self.span;
+            self.bump();
+            Some(Label { ident: Ident::new(ident.name, span) })
+        } else {
+            None
         }
     }
 
@@ -2105,7 +2079,7 @@ impl<'a> Parser<'a> {
     pub fn parse_field_name(&mut self) -> PResult<'a, Ident> {
         if let token::Literal(token::Integer(name), None) = self.token {
             self.bump();
-            Ok(Ident::with_empty_ctxt(name))
+            Ok(Ident::new(name, self.prev_span))
         } else {
             self.parse_ident_common(false)
         }
@@ -2115,24 +2089,22 @@ impl<'a> Parser<'a> {
     pub fn parse_field(&mut self) -> PResult<'a, Field> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
-        let hi;
 
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
         let (fieldname, expr, is_shorthand) = if self.look_ahead(1, |t| t == &token::Colon) {
             let fieldname = self.parse_field_name()?;
-            hi = self.prev_span;
-            self.bump();
+            self.bump(); // `:`
             (fieldname, self.parse_expr()?, false)
         } else {
             let fieldname = self.parse_ident_common(false)?;
-            hi = self.prev_span;
 
             // Mimic `x: x` for the `x` field shorthand.
-            let path = ast::Path::from_ident(lo.to(hi), fieldname);
-            (fieldname, self.mk_expr(lo.to(hi), ExprKind::Path(None, path), ThinVec::new()), true)
+            let path = ast::Path::from_ident(fieldname);
+            let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), ThinVec::new());
+            (fieldname, expr, true)
         };
         Ok(ast::Field {
-            ident: respan(lo.to(hi), fieldname),
+            ident: fieldname,
             span: lo.to(expr.span),
             expr,
             is_shorthand,
@@ -2338,7 +2310,7 @@ impl<'a> Parser<'a> {
                     return self.parse_while_expr(None, lo, attrs);
                 }
                 if let Some(label) = self.eat_label() {
-                    let lo = label.span;
+                    let lo = label.ident.span;
                     self.expect(&token::Colon)?;
                     if self.eat_keyword(keywords::While) {
                         return self.parse_while_expr(Some(label), lo, attrs)
@@ -2612,8 +2584,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let span = lo.to(self.prev_span);
-                let ident = respan(segment.span, segment.identifier);
-                self.mk_expr(span, ExprKind::Field(self_arg, ident), ThinVec::new())
+                self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), ThinVec::new())
             }
         })
     }
@@ -2734,7 +2705,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn process_potential_macro_variable(&mut self) {
-        let (ident, is_raw) = match self.token {
+        let (token, span) = match self.token {
             token::Dollar if self.span.ctxt() != syntax_pos::hygiene::SyntaxContext::empty() &&
                              self.look_ahead(1, |t| t.is_ident()) => {
                 self.bump();
@@ -2749,15 +2720,18 @@ impl<'a> Parser<'a> {
             }
             token::Interpolated(ref nt) => {
                 self.meta_var_span = Some(self.span);
+                // Interpolated identifier and lifetime tokens are replaced with usual identifier
+                // and lifetime tokens, so the former are never encountered during normal parsing.
                 match nt.0 {
-                    token::NtIdent(ident, is_raw) => (ident, is_raw),
+                    token::NtIdent(ident, is_raw) => (token::Ident(ident, is_raw), ident.span),
+                    token::NtLifetime(ident) => (token::Lifetime(ident), ident.span),
                     _ => return,
                 }
             }
             _ => return,
         };
-        self.token = token::Ident(ident.node, is_raw);
-        self.span = ident.span;
+        self.token = token;
+        self.span = span;
     }
 
     /// parse a single token tree from the input.
@@ -3692,10 +3666,9 @@ impl<'a> Parser<'a> {
                     (false, true) => BindingMode::ByValue(Mutability::Mutable),
                     (false, false) => BindingMode::ByValue(Mutability::Immutable),
                 };
-                let fieldpath = codemap::Spanned{span:self.prev_span, node:fieldname};
                 let fieldpat = P(Pat {
                     id: ast::DUMMY_NODE_ID,
-                    node: PatKind::Ident(bind_type, fieldpath, None),
+                    node: PatKind::Ident(bind_type, fieldname, None),
                     span: boxed_span.to(hi),
                 });
 
@@ -3986,9 +3959,7 @@ impl<'a> Parser<'a> {
     fn parse_pat_ident(&mut self,
                        binding_mode: ast::BindingMode)
                        -> PResult<'a, PatKind> {
-        let ident_span = self.span;
         let ident = self.parse_ident()?;
-        let name = codemap::Spanned{span: ident_span, node: ident};
         let sub = if self.eat(&token::At) {
             Some(self.parse_pat()?)
         } else {
@@ -4007,7 +3978,7 @@ impl<'a> Parser<'a> {
                 "expected identifier, found enum pattern"))
         }
 
-        Ok(PatKind::Ident(binding_mode, name, sub))
+        Ok(PatKind::Ident(binding_mode, ident, sub))
     }
 
     /// Parse a local variable declaration
@@ -4719,7 +4690,6 @@ impl<'a> Parser<'a> {
 
     /// Matches typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?
     fn parse_ty_param(&mut self, preceding_attrs: Vec<Attribute>) -> PResult<'a, TyParam> {
-        let span = self.span;
         let ident = self.parse_ident()?;
 
         // Parse optional colon and param bounds.
@@ -4741,7 +4711,6 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             bounds,
             default,
-            span,
         })
     }
 
@@ -4749,7 +4718,6 @@ impl<'a> Parser<'a> {
     ///     TraitItemAssocTy = Ident ["<"...">"] [":" [TyParamBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self, preceding_attrs: Vec<Attribute>)
         -> PResult<'a, (ast::Generics, TyParam)> {
-        let span = self.span;
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -4774,7 +4742,6 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             bounds,
             default,
-            span,
         }))
     }
 
@@ -5071,9 +5038,8 @@ impl<'a> Parser<'a> {
     fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
         let expect_ident = |this: &mut Self| match this.token {
             // Preserve hygienic context.
-            token::Ident(ident, _) => {
-                let sp = this.span; this.bump(); codemap::respan(sp, ident)
-            }
+            token::Ident(ident, _) =>
+                { let span = this.span; this.bump(); Ident::new(ident.name, span) }
             _ => unreachable!()
         };
         let isolated_self = |this: &mut Self, n| {
@@ -5393,6 +5359,12 @@ impl<'a> Parser<'a> {
     fn missing_assoc_item_kind_err(&mut self, item_type: &str, prev_span: Span)
                                    -> DiagnosticBuilder<'a>
     {
+        let expected_kinds = if item_type == "extern" {
+            "missing `fn`, `type`, or `static`"
+        } else {
+            "missing `fn`, `type`, or `const`"
+        };
+
         // Given this code `path(`, it seems like this is not
         // setting the visibility of a macro invocation, but rather
         // a mistyped method declaration.
@@ -5405,9 +5377,9 @@ impl<'a> Parser<'a> {
         let sp = prev_span.between(self.prev_span);
         let mut err = self.diagnostic().struct_span_err(
             sp,
-            &format!("missing `fn`, `type`, or `const` for {}-item declaration",
-                     item_type));
-        err.span_label(sp, "missing `fn`, `type`, or `const`");
+            &format!("{} for {}-item declaration",
+                     expected_kinds, item_type));
+        err.span_label(sp, expected_kinds);
         err
     }
 
@@ -5416,31 +5388,8 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, (Ident, Vec<Attribute>, ast::Generics,
                              ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
-        if self.token.is_path_start() && !self.is_extern_non_path() {
+        if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(vis), at_end)? {
             // Method macro.
-
-            let prev_span = self.prev_span;
-
-            let lo = self.span;
-            let pth = self.parse_path(PathStyle::Mod)?;
-            if pth.segments.len() == 1 {
-                if !self.eat(&token::Not) {
-                    return Err(self.missing_assoc_item_kind_err("impl", prev_span));
-                }
-            } else {
-                self.expect(&token::Not)?;
-            }
-
-            self.complain_if_pub_macro(&vis.node, prev_span);
-
-            // eat a matched-delimiter token tree:
-            *at_end = true;
-            let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != token::Brace {
-                self.expect(&token::Semi)?
-            }
-
-            let mac = respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts });
             Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(),
                 ast::ImplItemKind::Macro(mac)))
         } else {
@@ -5603,7 +5552,7 @@ impl<'a> Parser<'a> {
                     TyKind::Path(None, path) => path,
                     _ => {
                         self.span_err(ty_first.span, "expected a trait, found type");
-                        ast::Path::from_ident(ty_first.span, keywords::Invalid.ident())
+                        ast::Path::from_ident(Ident::new(keywords::Invalid.name(), ty_first.span))
                     }
                 };
                 let trait_ref = TraitRef { path, ref_id: ty_first.id };
@@ -5988,8 +5937,7 @@ impl<'a> Parser<'a> {
                     let attr = Attribute {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
-                        path: ast::Path::from_ident(syntax_pos::DUMMY_SP,
-                                                    Ident::from_str("warn_directory_ownership")),
+                        path: ast::Path::from_ident(Ident::from_str("warn_directory_ownership")),
                         tokens: TokenStream::empty(),
                         is_sugared_doc: false,
                         span: syntax_pos::DUMMY_SP,
@@ -6371,7 +6319,7 @@ impl<'a> Parser<'a> {
             }
 
             let vr = ast::Variant_ {
-                name: ident,
+                ident,
                 attrs: variant_attrs,
                 data: struct_def,
                 disr_expr,
@@ -6786,7 +6734,9 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a foreign item.
-    fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
+    pub fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
+        maybe_whole!(self, NtForeignItem, |ni| Some(ni));
+
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span;
         let visibility = self.parse_visibility(false)?;
@@ -6812,12 +6762,26 @@ impl<'a> Parser<'a> {
             return Ok(Some(self.parse_item_foreign_type(visibility, lo, attrs)?));
         }
 
-        // FIXME #5668: this will occur for a macro invocation:
-        match self.parse_macro_use_or_failure(attrs, true, false, lo, visibility)? {
-            Some(item) => {
-                return Err(self.span_fatal(item.span, "macros cannot expand to foreign items"));
+        match self.parse_assoc_macro_invoc("extern", Some(&visibility), &mut false)? {
+            Some(mac) => {
+                Ok(Some(
+                    ForeignItem {
+                        ident: keywords::Invalid.ident(),
+                        span: lo.to(self.prev_span),
+                        id: ast::DUMMY_NODE_ID,
+                        attrs,
+                        vis: visibility,
+                        node: ForeignItemKind::Macro(mac),
+                    }
+                ))
             }
-            None => Ok(None)
+            None => {
+                if !attrs.is_empty() {
+                    self.expected_item_err(&attrs);
+                }
+
+                Ok(None)
+            }
         }
     }
 
@@ -6879,6 +6843,41 @@ impl<'a> Parser<'a> {
             self.expected_item_err(&attrs);
         }
         Ok(None)
+    }
+
+    /// Parse a macro invocation inside a `trait`, `impl` or `extern` block
+    fn parse_assoc_macro_invoc(&mut self, item_kind: &str, vis: Option<&Visibility>,
+                               at_end: &mut bool) -> PResult<'a, Option<Mac>>
+    {
+        if self.token.is_path_start() && !self.is_extern_non_path() {
+            let prev_span = self.prev_span;
+            let lo = self.span;
+            let pth = self.parse_path(PathStyle::Mod)?;
+
+            if pth.segments.len() == 1 {
+                if !self.eat(&token::Not) {
+                    return Err(self.missing_assoc_item_kind_err(item_kind, prev_span));
+                }
+            } else {
+                self.expect(&token::Not)?;
+            }
+
+            if let Some(vis) = vis {
+                self.complain_if_pub_macro(&vis.node, prev_span);
+            }
+
+            *at_end = true;
+
+            // eat a matched-delimiter token tree:
+            let (delim, tts) = self.expect_delimited_token_tree()?;
+            if delim != token::Brace {
+                self.expect(&token::Semi)?
+            }
+
+            Ok(Some(respan(lo.to(self.prev_span), Mac_ { path: pth, tts: tts })))
+        } else {
+            Ok(None)
+        }
     }
 
     fn collect_tokens<F, R>(&mut self, f: F) -> PResult<'a, (R, TokenStream)>

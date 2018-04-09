@@ -204,7 +204,7 @@ impl<'a> StripUnconfigured<'a> {
                     self.configure(v).map(|v| {
                         Spanned {
                             node: ast::Variant_ {
-                                name: v.node.name,
+                                ident: v.node.ident,
                                 attrs: v.node.attrs,
                                 data: self.configure_variant_data(v.node.data),
                                 disr_expr: v.node.disr_expr,

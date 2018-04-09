@@ -1283,6 +1283,49 @@ impl<T> Vec<T> {
         }
         other
     }
+
+    /// Resizes the `Vec` in-place so that `len` is equal to `new_len`.
+    ///
+    /// If `new_len` is greater than `len`, the `Vec` is extended by the
+    /// difference, with each additional slot filled with the result of
+    /// calling the closure `f`. The return values from `f` will end up
+    /// in the `Vec` in the order they have been generated.
+    ///
+    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    ///
+    /// This method uses a closure to create new values on every push. If
+    /// you'd rather [`Clone`] a given value, use [`resize`]. If you want
+    /// to use the [`Default`] trait to generate values, you can pass
+    /// [`Default::default()`] as the second argument..
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_resize_with)]
+    ///
+    /// let mut vec = vec![1, 2, 3];
+    /// vec.resize_with(5, Default::default);
+    /// assert_eq!(vec, [1, 2, 3, 0, 0]);
+    ///
+    /// let mut vec = vec![];
+    /// let mut p = 1;
+    /// vec.resize_with(4, || { p *= 2; p });
+    /// assert_eq!(vec, [2, 4, 8, 16]);
+    /// ```
+    ///
+    /// [`resize`]: #method.resize
+    /// [`Clone`]: ../../std/clone/trait.Clone.html
+    #[unstable(feature = "vec_resize_with", issue = "41758")]
+    pub fn resize_with<F>(&mut self, new_len: usize, f: F)
+        where F: FnMut() -> T
+    {
+        let len = self.len();
+        if new_len > len {
+            self.extend_with(new_len - len, ExtendFunc(f));
+        } else {
+            self.truncate(new_len);
+        }
+    }
 }
 
 impl<T: Clone> Vec<T> {
@@ -1293,8 +1336,8 @@ impl<T: Clone> Vec<T> {
     /// If `new_len` is less than `len`, the `Vec` is simply truncated.
     ///
     /// This method requires [`Clone`] to be able clone the passed value. If
-    /// you'd rather create a value with [`Default`] instead, see
-    /// [`resize_default`].
+    /// you need more flexibility (or want to rely on [`Default`] instead of
+    /// [`Clone`]), use [`resize_with`].
     ///
     /// # Examples
     ///
@@ -1310,7 +1353,7 @@ impl<T: Clone> Vec<T> {
     ///
     /// [`Clone`]: ../../std/clone/trait.Clone.html
     /// [`Default`]: ../../std/default/trait.Default.html
-    /// [`resize_default`]: #method.resize_default
+    /// [`resize_with`]: #method.resize_with
     #[stable(feature = "vec_resize", since = "1.5.0")]
     pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
@@ -1389,24 +1432,31 @@ impl<T: Default> Vec<T> {
 
 // This code generalises `extend_with_{element,default}`.
 trait ExtendWith<T> {
-    fn next(&self) -> T;
+    fn next(&mut self) -> T;
     fn last(self) -> T;
 }
 
 struct ExtendElement<T>(T);
 impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
-    fn next(&self) -> T { self.0.clone() }
+    fn next(&mut self) -> T { self.0.clone() }
     fn last(self) -> T { self.0 }
 }
 
 struct ExtendDefault;
 impl<T: Default> ExtendWith<T> for ExtendDefault {
-    fn next(&self) -> T { Default::default() }
+    fn next(&mut self) -> T { Default::default() }
     fn last(self) -> T { Default::default() }
 }
+
+struct ExtendFunc<F>(F);
+impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
+    fn next(&mut self) -> T { (self.0)() }
+    fn last(mut self) -> T { (self.0)() }
+}
+
 impl<T> Vec<T> {
     /// Extend the vector by `n` values, using the given generator.
-    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, value: E) {
+    fn extend_with<E: ExtendWith<T>>(&mut self, n: usize, mut value: E) {
         self.reserve(n);
 
         unsafe {
@@ -1544,40 +1594,69 @@ impl SpecFromElem for u8 {
     }
 }
 
-macro_rules! impl_spec_from_elem {
-    ($t: ty, $is_zero: expr) => {
-        impl SpecFromElem for $t {
-            #[inline]
-            fn from_elem(elem: $t, n: usize) -> Vec<$t> {
-                if $is_zero(elem) {
-                    return Vec {
-                        buf: RawVec::with_capacity_zeroed(n),
-                        len: n,
-                    }
-                }
-                let mut v = Vec::with_capacity(n);
-                v.extend_with(n, ExtendElement(elem));
-                v
+impl<T: Clone + IsZero> SpecFromElem for T {
+    #[inline]
+    fn from_elem(elem: T, n: usize) -> Vec<T> {
+        if elem.is_zero() {
+            return Vec {
+                buf: RawVec::with_capacity_zeroed(n),
+                len: n,
             }
         }
-    };
+        let mut v = Vec::with_capacity(n);
+        v.extend_with(n, ExtendElement(elem));
+        v
+    }
 }
 
-impl_spec_from_elem!(i8, |x| x == 0);
-impl_spec_from_elem!(i16, |x| x == 0);
-impl_spec_from_elem!(i32, |x| x == 0);
-impl_spec_from_elem!(i64, |x| x == 0);
-impl_spec_from_elem!(i128, |x| x == 0);
-impl_spec_from_elem!(isize, |x| x == 0);
+unsafe trait IsZero {
+    /// Whether this value is zero
+    fn is_zero(&self) -> bool;
+}
 
-impl_spec_from_elem!(u16, |x| x == 0);
-impl_spec_from_elem!(u32, |x| x == 0);
-impl_spec_from_elem!(u64, |x| x == 0);
-impl_spec_from_elem!(u128, |x| x == 0);
-impl_spec_from_elem!(usize, |x| x == 0);
+macro_rules! impl_is_zero {
+    ($t: ty, $is_zero: expr) => {
+        unsafe impl IsZero for $t {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                $is_zero(*self)
+            }
+        }
+    }
+}
 
-impl_spec_from_elem!(f32, |x: f32| x.to_bits() == 0);
-impl_spec_from_elem!(f64, |x: f64| x.to_bits() == 0);
+impl_is_zero!(i8, |x| x == 0);
+impl_is_zero!(i16, |x| x == 0);
+impl_is_zero!(i32, |x| x == 0);
+impl_is_zero!(i64, |x| x == 0);
+impl_is_zero!(i128, |x| x == 0);
+impl_is_zero!(isize, |x| x == 0);
+
+impl_is_zero!(u16, |x| x == 0);
+impl_is_zero!(u32, |x| x == 0);
+impl_is_zero!(u64, |x| x == 0);
+impl_is_zero!(u128, |x| x == 0);
+impl_is_zero!(usize, |x| x == 0);
+
+impl_is_zero!(char, |x| x == '\0');
+
+impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
+impl_is_zero!(f64, |x: f64| x.to_bits() == 0);
+
+unsafe impl<T: ?Sized> IsZero for *const T {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        (*self).is_null()
+    }
+}
+
+unsafe impl<T: ?Sized> IsZero for *mut T {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        (*self).is_null()
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec

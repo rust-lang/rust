@@ -86,7 +86,6 @@ use self::TokenTreeOrTokenTreeVec::*;
 
 use ast::Ident;
 use syntax_pos::{self, BytePos, Span};
-use codemap::respan;
 use errors::FatalError;
 use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
@@ -366,7 +365,7 @@ pub fn parse_failure_msg(tok: Token) -> String {
 fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     if let (Some((id1, is_raw1)), Some((id2, is_raw2))) = (t1.ident(), t2.ident()) {
         id1.name == id2.name && is_raw1 == is_raw2
-    } else if let (&token::Lifetime(id1), &token::Lifetime(id2)) = (t1, t2) {
+    } else if let (Some(id1), Some(id2)) = (t1.lifetime(), t2.lifetime()) {
         id1.name == id2.name
     } else {
         *t1 == *t2
@@ -825,8 +824,9 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {
+            let span = p.span;
             p.bump();
-            token::NtIdent(respan(p.prev_span, ident), is_raw)
+            token::NtIdent(Ident::new(ident.name, span), is_raw)
         } else {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal(&format!("expected ident, found {}", &token_str)).emit();
@@ -835,7 +835,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
-        "lifetime" => token::NtLifetime(p.expect_lifetime()),
+        "lifetime" => token::NtLifetime(p.expect_lifetime().ident),
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier"),

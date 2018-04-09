@@ -317,7 +317,7 @@ newtype_index!(ScopeId);
 /// macro (and methods below) makes working with `BlockAnd` much more
 /// convenient.
 
-#[must_use] // if you don't use one of these results, you're leaving a dangling edge
+#[must_use = "if you don't use one of these results, you're leaving a dangling edge"]
 struct BlockAnd<T>(BasicBlock, T);
 
 trait BlockAndExtension {
@@ -467,8 +467,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 mutability: Mutability::Not,
             };
             if let Some(hir::map::NodeBinding(pat)) = tcx.hir.find(var_id) {
-                if let hir::PatKind::Binding(_, _, ref ident, _) = pat.node {
-                    decl.debug_name = ident.node;
+                if let hir::PatKind::Binding(_, _, ref name, _) = pat.node {
+                    decl.debug_name = name.node;
 
                     let bm = *hir.tables.pat_binding_modes()
                                         .get(pat.hir_id)

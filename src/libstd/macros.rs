@@ -341,8 +341,8 @@ pub mod builtin {
     /// format string in `format_args!`.
     ///
     /// ```rust
-    /// let display = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
-    /// let debug = format!("{}", format_args!("{} foo {:?}", 1, 2));
+    /// let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
+    /// let display = format!("{}", format_args!("{} foo {:?}", 1, 2));
     /// assert_eq!("1 foo 2", display);
     /// assert_eq!(display, debug);
     /// ```

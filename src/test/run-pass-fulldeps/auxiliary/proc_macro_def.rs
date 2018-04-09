@@ -15,7 +15,7 @@
 
 extern crate proc_macro;
 
-use proc_macro::{TokenStream, quote};
+use proc_macro::*;
 
 #[proc_macro_attribute]
 pub fn attr_tru(_attr: TokenStream, item: TokenStream) -> TokenStream {

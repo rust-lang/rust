@@ -97,9 +97,6 @@
 #![feature(fmt_internals)]
 #![feature(from_ref)]
 #![feature(fundamental)]
-#![feature(generic_param_attrs)]
-#![cfg_attr(stage0, feature(i128_type))]
-#![feature(iter_rfold)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(nonzero)]
@@ -125,6 +122,8 @@
 #![feature(pointer_methods)]
 #![feature(inclusive_range_fields)]
 #![feature(fn_traits)]
+
+#![cfg_attr(stage0, feature(generic_param_attrs))]
 
 #![cfg_attr(not(test), feature(swap_with_slice, i128))]
 #![cfg_attr(test, feature(test))]

@@ -13,6 +13,7 @@ use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{Incremental, MirOpt, RunMake, Ui};
 use common::{expected_output_path, UI_STDERR, UI_STDOUT};
+use common::CompareMode;
 use diff;
 use errors::{self, Error, ErrorKind};
 use filetime::FileTime;
@@ -1683,6 +1684,13 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        match self.config.compare_mode {
+            Some(CompareMode::Nll) => {
+                rustc.args(&["-Znll", "-Zborrowck=mir", "-Ztwo-phase-borrows"]);
+            },
+            None => {},
+        }
+
         if self.props.force_host {
             rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
         } else {
@@ -2505,11 +2513,8 @@ impl<'test> TestCx<'test> {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
 
-        let expected_stderr_path = self.expected_output_path(UI_STDERR);
-        let expected_stderr = self.load_expected_output(&expected_stderr_path);
-
-        let expected_stdout_path = self.expected_output_path(UI_STDOUT);
-        let expected_stdout = self.load_expected_output(&expected_stdout_path);
+        let expected_stderr = self.load_expected_output(UI_STDERR);
+        let expected_stdout = self.load_expected_output(UI_STDOUT);
 
         let normalized_stdout =
             self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
@@ -2552,7 +2557,7 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec("test run failed!", &proc_res);
             }
         }
-        if !explicit {
+        if !explicit && self.config.compare_mode.is_none() {
             if !expected_errors.is_empty() || !proc_res.status.success() {
                 // "// error-pattern" comments
                 self.check_expected_errors(expected_errors, &proc_res);
@@ -2795,19 +2800,32 @@ impl<'test> TestCx<'test> {
         normalized
     }
 
-    fn expected_output_path(&self, kind: &str) -> PathBuf {
-        expected_output_path(&self.testpaths, self.revision, kind)
-    }
+    fn load_expected_output(&self, kind: &str) -> String {
+        let mut path = expected_output_path(&self.testpaths,
+                                            self.revision,
+                                            &self.config.compare_mode,
+                                            kind);
 
-    fn load_expected_output(&self, path: &Path) -> String {
-        if !path.exists() {
-            return String::new();
+        if !path.exists() && self.config.compare_mode.is_some() {
+            // fallback!
+            path = expected_output_path(&self.testpaths, self.revision, &None, kind);
         }
 
+        if path.exists() {
+            match self.load_expected_output_from_path(&path) {
+                Ok(x) => x,
+                Err(x) => self.fatal(&x),
+            }
+        } else {
+            String::new()
+        }
+    }
+
+    fn load_expected_output_from_path(&self, path: &Path) -> Result<String, String> {
         let mut result = String::new();
         match File::open(path).and_then(|mut f| f.read_to_string(&mut result)) {
-            Ok(_) => result,
-            Err(e) => self.fatal(&format!(
+            Ok(_) => Ok(result),
+            Err(e) => Err(format!(
                 "failed to load expected output from `{}`: {}",
                 path.display(),
                 e

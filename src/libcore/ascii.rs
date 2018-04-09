@@ -31,7 +31,7 @@ use iter::FusedIterator;
 /// documentation for more.
 ///
 /// [`escape_default`]: fn.escape_default.html
-#[stable(feature = "core_ascii", since = "1.26.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     range: Range<usize>,
     data: [u8; 4],
@@ -99,7 +99,7 @@ pub struct EscapeDefault {
 /// assert_eq!(b'9', escaped.next().unwrap());
 /// assert_eq!(b'd', escaped.next().unwrap());
 /// ```
-#[stable(feature = "core_ascii", since = "1.26.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn escape_default(c: u8) -> EscapeDefault {
     let (data, len) = match c {
         b'\t' => ([b'\\', b't', 0, 0], 2),

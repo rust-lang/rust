@@ -1304,6 +1304,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "embed LLVM bitcode in object files"),
     strip_debuginfo_if_disabled: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "tell the linker to strip debuginfo when building without debuginfo enabled."),
+    share_generics: Option<bool> = (None, parse_opt_bool, [TRACKED],
+          "make the current crate share its generic instantiations"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1683,12 +1685,12 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
             } else if meta_item.is_meta_item_list() {
                 let msg = format!(
                     "invalid predicate in --cfg command line argument: `{}`",
-                    meta_item.name()
+                    meta_item.ident
                 );
                 early_error(ErrorOutputType::default(), &msg)
             }
 
-            (meta_item.name(), meta_item.value_str())
+            (meta_item.ident.name, meta_item.value_str())
         })
         .collect::<ast::CrateConfig>()
 }

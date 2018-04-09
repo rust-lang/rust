@@ -14,7 +14,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
 use hir::svh::Svh;
-use infer::canonical::{Canonical, QueryResult};
+use infer::canonical::{self, Canonical};
 use lint;
 use middle::borrowck::BorrowCheckResult;
 use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
@@ -65,6 +65,10 @@ use syntax::symbol::Symbol;
 mod plumbing;
 use self::plumbing::*;
 pub use self::plumbing::force_from_dep_node;
+
+mod job;
+pub use self::job::{QueryJob, QueryInfo};
+use self::job::QueryResult;
 
 mod keys;
 pub use self::keys::Key;
@@ -315,9 +319,15 @@ define_maps! { <'tcx>
     //
     // Does not include external symbols that don't have a corresponding DefId,
     // like the compiler-generated `main` function and so on.
-    [] fn reachable_non_generics: ReachableNonGenerics(CrateNum) -> Lrc<DefIdSet>,
+    [] fn reachable_non_generics: ReachableNonGenerics(CrateNum)
+        -> Lrc<DefIdMap<SymbolExportLevel>>,
     [] fn is_reachable_non_generic: IsReachableNonGeneric(DefId) -> bool,
+    [] fn is_unreachable_local_definition: IsUnreachableLocalDefinition(DefId) -> bool,
 
+    [] fn upstream_monomorphizations: UpstreamMonomorphizations(CrateNum)
+        -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>,
+    [] fn upstream_monomorphizations_for: UpstreamMonomorphizationsFor(DefId)
+        -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>,
 
     [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
 
@@ -328,6 +338,7 @@ define_maps! { <'tcx>
     [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
     [] fn crate_hash: CrateHash(CrateNum) -> Svh,
     [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
+    [] fn extra_filename: ExtraFileName(CrateNum) -> String,
 
     [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
         -> Lrc<Vec<DefId>>,
@@ -376,11 +387,10 @@ define_maps! { <'tcx>
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
     [] fn exported_symbols: ExportedSymbols(CrateNum)
-        -> Arc<Vec<(ExportedSymbol, SymbolExportLevel)>>,
+        -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
         collect_and_partition_translation_items_node(CrateNum)
         -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>),
-    [] fn symbol_export_level: GetSymbolExportLevel(DefId) -> SymbolExportLevel,
     [] fn is_translated_item: IsTranslatedItem(DefId) -> bool,
     [] fn codegen_unit: CodegenUnit(InternedString) -> Arc<CodegenUnit<'tcx>>,
     [] fn compile_codegen_unit: CompileCodegenUnit(InternedString) -> Stats,
@@ -396,7 +406,7 @@ define_maps! { <'tcx>
     [] fn normalize_projection_ty: NormalizeProjectionTy(
         CanonicalProjectionGoal<'tcx>
     ) -> Result<
-        Lrc<Canonical<'tcx, QueryResult<'tcx, NormalizationResult<'tcx>>>>,
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, NormalizationResult<'tcx>>>>,
         NoSolution,
     >,
 
@@ -409,7 +419,7 @@ define_maps! { <'tcx>
     [] fn dropck_outlives: DropckOutlives(
         CanonicalTyGoal<'tcx>
     ) -> Result<
-        Lrc<Canonical<'tcx, QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
+        Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
         NoSolution,
     >,
 

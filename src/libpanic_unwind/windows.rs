@@ -79,21 +79,18 @@ pub enum EXCEPTION_DISPOSITION {
 pub use self::EXCEPTION_DISPOSITION::*;
 
 extern "system" {
-    #[cfg_attr(stage0, unwind)]
-    #[cfg_attr(not(stage0), unwind(allowed))]
+    #[unwind(allowed)]
     pub fn RaiseException(dwExceptionCode: DWORD,
                           dwExceptionFlags: DWORD,
                           nNumberOfArguments: DWORD,
                           lpArguments: *const ULONG_PTR);
-    #[cfg_attr(stage0, unwind)]
-    #[cfg_attr(not(stage0), unwind(allowed))]
+    #[unwind(allowed)]
     pub fn RtlUnwindEx(TargetFrame: LPVOID,
                        TargetIp: LPVOID,
                        ExceptionRecord: *const EXCEPTION_RECORD,
                        ReturnValue: LPVOID,
                        OriginalContext: *const CONTEXT,
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
-    #[cfg_attr(stage0, unwind)]
-    #[cfg_attr(not(stage0), unwind(allowed))]
+    #[unwind(allowed)]
     pub fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8);
 }

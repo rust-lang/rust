@@ -83,7 +83,6 @@ pub fn needs_gdb_debug_scripts_section(cx: &CodegenCx) -> bool {
                             "omit_gdb_pretty_printer_section");
 
     !omit_gdb_pretty_printer_section &&
-    !cx.sess().target.target.options.is_like_osx &&
-    !cx.sess().target.target.options.is_like_windows &&
-    cx.sess().opts.debuginfo != NoDebugInfo
+    cx.sess().opts.debuginfo != NoDebugInfo &&
+    cx.sess().target.target.options.emit_debug_gdb_scripts
 }

@@ -2113,9 +2113,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}",
-                               since,
-                               MarkdownHtml(&deprecated_reason));
+            let text = if stability::deprecation_in_effect(&stab.deprecated_since) {
+                format!("Deprecated{}{}",
+                        since,
+                        MarkdownHtml(&deprecated_reason))
+            } else {
+                format!("Deprecating in {}{}",
+                        Escape(&stab.deprecated_since),
+                        MarkdownHtml(&deprecated_reason))
+            };
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -2165,7 +2171,15 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
+        let text = if stability::deprecation_in_effect(&depr.since) {
+            format!("Deprecated{}{}",
+                    since,
+                    MarkdownHtml(&note))
+        } else {
+            format!("Deprecating in {}{}",
+                    Escape(&depr.since),
+                    MarkdownHtml(&note))
+        };
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
@@ -2279,9 +2293,9 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
 }
 
 fn render_impls(cx: &Context, w: &mut fmt::Formatter,
-                traits: Vec<&&Impl>,
+                traits: &[&&Impl],
                 containing_item: &clean::Item) -> Result<(), fmt::Error> {
-    for i in &traits {
+    for i in traits {
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
         render_impl(w, cx, i, assoc_link,
@@ -2801,10 +2815,15 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "<h2 id='fields' class='fields small-section-header'>
                    Fields<a href='#fields' class='anchor'></a></h2>")?;
         for (field, ty) in fields {
-            write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
+            let name = field.name.as_ref().expect("union field name");
+            let id = format!("{}.{}", ItemType::StructField, name);
+            write!(w, "<span id=\"{id}\" class=\"{shortty} small-section-header\">\
+                           <a href=\"#{id}\" class=\"anchor field\"></a>\
+                           <span class='invisible'><code>{name}: {ty}</code></span>\
                        </span>",
+                   id = id,
+                   name = name,
                    shortty = ItemType::StructField,
-                   name = field.name.as_ref().unwrap(),
                    ty = ty)?;
             if let Some(stability_class) = field.stability_class() {
                 write!(w, "<span class='stab {stab}'></span>",
@@ -2947,7 +2966,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let name = attr.name();
+    let name = attr.ident.name;
 
     if attr.is_word() {
         Some(format!("{}", name))
@@ -3185,14 +3204,22 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             .iter()
             .partition::<Vec<_>, _>(|t| t.inner_impl().synthetic);
 
-        write!(w, "
-            <h2 id='implementations' class='small-section-header'>
-              Trait Implementations<a href='#implementations' class='anchor'></a>
-            </h2>
-            <div id='implementations-list'>
-        ")?;
-        render_impls(cx, w, concrete, containing_item)?;
-        write!(w, "</div>")?;
+        struct RendererStruct<'a, 'b, 'c>(&'a Context, Vec<&'b &'b Impl>, &'c clean::Item);
+
+        impl<'a, 'b, 'c> fmt::Display for RendererStruct<'a, 'b, 'c> {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                render_impls(self.0, fmt, &self.1, self.2)
+            }
+        }
+
+        let impls = format!("{}", RendererStruct(cx, concrete, containing_item));
+        if !impls.is_empty() {
+            write!(w, "
+                <h2 id='implementations' class='small-section-header'>
+                  Trait Implementations<a href='#implementations' class='anchor'></a>
+                </h2>
+                <div id='implementations-list'>{}</div>", impls)?;
+        }
 
         if !synthetic.is_empty() {
             write!(w, "
@@ -3201,7 +3228,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
                 </h2>
                 <div id='synthetic-implementations-list'>
             ")?;
-            render_impls(cx, w, synthetic, containing_item)?;
+            render_impls(cx, w, &synthetic, containing_item)?;
             write!(w, "</div>")?;
         }
     }

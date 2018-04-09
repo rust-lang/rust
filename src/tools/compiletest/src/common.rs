@@ -96,6 +96,26 @@ impl fmt::Display for Mode {
 }
 
 #[derive(Clone)]
+pub enum CompareMode {
+    Nll
+}
+
+impl CompareMode {
+    fn to_str(&self) -> &'static str {
+        match *self {
+            CompareMode::Nll => "nll"
+        }
+    }
+
+    pub fn parse(s: String) -> CompareMode {
+        match s.as_str() {
+            "nll" => CompareMode::Nll,
+            x => panic!("unknown --compare-mode option: {}", x),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Config {
     /// The library paths required for running the compiler
     pub compile_lib_path: PathBuf,
@@ -210,6 +230,9 @@ pub struct Config {
     /// where to find the remote test client process, if we're using it
     pub remote_test_client: Option<PathBuf>,
 
+    /// mode describing what file the actual ui output will be compared to
+    pub compare_mode: Option<CompareMode>,
+
     // Configuration for various run-make tests frobbing things like C compilers
     // or querying about various LLVM component information.
     pub cc: String,
@@ -230,12 +253,19 @@ pub struct TestPaths {
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
-pub fn expected_output_path(testpaths: &TestPaths, revision: Option<&str>, kind: &str) -> PathBuf {
+pub fn expected_output_path(testpaths: &TestPaths,
+                            revision: Option<&str>,
+                            compare_mode: &Option<CompareMode>,
+                            kind: &str) -> PathBuf {
+
     assert!(UI_EXTENSIONS.contains(&kind));
-    let extension = match revision {
-        Some(r) => format!("{}.{}", r, kind),
-        None => kind.to_string(),
-    };
+    let mut parts = Vec::new();
+
+    if let Some(x) = revision { parts.push(x); }
+    if let Some(ref x) = *compare_mode { parts.push(x.to_str()); }
+    parts.push(kind);
+
+    let extension = parts.join(".");
     testpaths.file.with_extension(extension)
 }
 

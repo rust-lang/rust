@@ -7,8 +7,8 @@ LL | impl Copy for Foo { }
 error[E0206]: the trait `Copy` may not be implemented for this type
   --> $DIR/E0206.rs:20:15
    |
-LL | impl Copy for &'static Bar { }
-   |               ^^^^^^^^^^^^ type is not a structure or enumeration
+LL | impl Copy for &'static mut Bar { }
+   |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/E0206.rs:13:1

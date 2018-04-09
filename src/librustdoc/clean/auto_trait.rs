@@ -171,7 +171,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             let mut segments = path.segments.into_vec();
             let last = segments.pop().unwrap();
 
-            let real_name = name.as_ref().map(|n| Symbol::from(n.as_str()));
+            let real_name = name.map(|name| Symbol::intern(&name));
 
             segments.push(hir::PathSegment::new(
                 real_name.unwrap_or(last.name),

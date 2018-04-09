@@ -21,9 +21,9 @@ pub use self::Visibility::*;
 
 use syntax;
 use syntax::abi::Abi;
-use syntax::ast::{self, AttrStyle};
+use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
-use syntax::codemap::Spanned;
+use syntax::codemap::{dummy_spanned, Spanned};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
@@ -840,7 +840,8 @@ impl Attributes {
         for attr in attrs.lists("target_feature") {
             if attr.check_name("enable") {
                 if let Some(feat) = attr.value_str() {
-                    let meta = attr::mk_name_value_item_str("target_feature".into(), feat);
+                    let meta = attr::mk_name_value_item_str(Ident::from_str("target_feature"),
+                                                            dummy_spanned(feat));
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
                     }
@@ -1074,8 +1075,7 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
         let ty = cx.resolver.borrow_mut()
                             .with_scope(*id,
             |resolver| {
-                resolver.resolve_str_path_error(DUMMY_SP,
-                                                &path, false)
+                resolver.resolve_str_path_error(DUMMY_SP, &path, false)
         })?;
         match ty.def {
             Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
@@ -1090,7 +1090,27 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                     };
                     Ok((ty.def, Some(format!("{}.{}", out, item_name))))
                 } else {
-                    Err(())
+                    let is_enum = match ty.def {
+                        Def::Enum(_) => true,
+                        _ => false,
+                    };
+                    let elem = if is_enum {
+                        cx.tcx.adt_def(did).all_fields().find(|item| item.name == item_name)
+                    } else {
+                        cx.tcx.adt_def(did)
+                              .non_enum_variant()
+                              .fields
+                              .iter()
+                              .find(|item| item.name == item_name)
+                    };
+                    if let Some(item) = elem {
+                        Ok((ty.def,
+                            Some(format!("{}.{}",
+                                         if is_enum { "variant" } else { "structfield" },
+                                         item.name))))
+                    } else {
+                        Err(())
+                    }
                 }
             }
             Def::Trait(did) => {
@@ -1101,7 +1121,13 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
                     let kind = match item.kind {
                         ty::AssociatedKind::Const if is_val => "associatedconstant",
                         ty::AssociatedKind::Type if !is_val => "associatedtype",
-                        ty::AssociatedKind::Method if is_val => "tymethod",
+                        ty::AssociatedKind::Method if is_val => {
+                            if item.defaultness.has_value() {
+                                "method"
+                            } else {
+                                "tymethod"
+                            }
+                        }
                         _ => return Err(())
                     };
 
@@ -1121,16 +1147,8 @@ fn resolve(cx: &DocContext, path_str: &str, is_val: bool) -> Result<(Def, Option
 fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     use syntax::ext::hygiene::Mark;
-    let segment = ast::PathSegment {
-        identifier: ast::Ident::from_str(path_str),
-        span: DUMMY_SP,
-        parameters: None,
-    };
-    let path = ast::Path {
-        span: DUMMY_SP,
-        segments: vec![segment],
-    };
-
+    let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
+    let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     let mut resolver = cx.resolver.borrow_mut();
     let mark = Mark::root();
     let res = resolver
@@ -1141,7 +1159,7 @@ fn macro_resolve(cx: &DocContext, path_str: &str) -> Option<Def> {
         } else {
             None
         }
-    } else if let Some(def) = resolver.all_macros.get(&path_str.into()) {
+    } else if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
         Some(*def)
     } else {
         None

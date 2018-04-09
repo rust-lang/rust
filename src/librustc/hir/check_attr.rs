@@ -66,6 +66,8 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         for attr in &item.attrs {
             if attr.check_name("inline") {
                 self.check_inline(attr, &item.span, target)
+            } else if attr.check_name("non_exhaustive") {
+                self.check_non_exhaustive(attr, item, target)
             } else if attr.check_name("wasm_import_module") {
                 has_wasm_import_module = true;
                 if attr.value_str().is_none() {
@@ -109,6 +111,31 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                              E0518,
                              "attribute should be applied to function")
                 .span_label(*span, "not a function")
+                .emit();
+        }
+    }
+
+    /// Check if the `#[non_exhaustive]` attribute on an `item` is valid.
+    fn check_non_exhaustive(&self, attr: &hir::Attribute, item: &hir::Item, target: Target) {
+        match target {
+            Target::Struct | Target::Enum => { /* Valid */ },
+            _ => {
+                struct_span_err!(self.tcx.sess,
+                                 attr.span,
+                                 E0910,
+                                 "attribute can only be applied to a struct or enum")
+                    .span_label(item.span, "not a struct or enum")
+                    .emit();
+                return;
+            }
+        }
+
+        if attr.meta_item_list().is_some() || attr.value_str().is_some() {
+            struct_span_err!(self.tcx.sess,
+                             attr.span,
+                             E0911,
+                             "attribute should be empty")
+                .span_label(item.span, "not empty")
                 .emit();
         }
     }

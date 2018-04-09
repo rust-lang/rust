@@ -18,25 +18,31 @@ environment:
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
+    CI_JOB_NAME: x86_64-msvc
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
     SCRIPT: make appveyor-subset-1
+    CI_JOB_NAME: i686-msvc-1
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
     SCRIPT: make appveyor-subset-2
+    CI_JOB_NAME: i686-msvc-2
 
   # MSVC aux tests
   - MSYS_BITS: 64
     RUST_CHECK_TARGET: check-aux EXCLUDE_CARGO=1
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    CI_JOB_NAME: x86_64-msvc-aux
   - MSYS_BITS: 64
     SCRIPT: python x.py test src/tools/cargotest src/tools/cargo
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    CI_JOB_NAME: x86_64-msvc-cargo
 
   # MSVC tools tests
   - MSYS_BITS: 64
     SCRIPT: src/ci/docker/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstates.json windows
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --save-toolstates=/tmp/toolstates.json --enable-test-miri
+    CI_JOB_NAME: x86_64-msvc-tools
 
   # 32/64-bit MinGW builds.
   #
@@ -57,18 +63,21 @@ environment:
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
+    CI_JOB_NAME: i686-mingw-1
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
     SCRIPT: make appveyor-subset-2
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
+    CI_JOB_NAME: i686-mingw-2
   - MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
+    CI_JOB_NAME: x86_64-mingw
 
   # 32/64 bit MSVC and GNU deployment
   - RUST_CONFIGURE_ARGS: >
@@ -77,6 +86,7 @@ environment:
       --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
+    CI_JOB_NAME: dist-x86_64-msvc
   - RUST_CONFIGURE_ARGS: >
       --build=i686-pc-windows-msvc
       --target=i586-pc-windows-msvc
@@ -84,6 +94,7 @@ environment:
       --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY: 1
+    CI_JOB_NAME: dist-i686-msvc
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools
     SCRIPT: python x.py dist
@@ -91,6 +102,7 @@ environment:
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
+    CI_JOB_NAME: dist-i686-mingw
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools
@@ -98,12 +110,14 @@ environment:
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
+    CI_JOB_NAME: dist-x86_64-mingw
 
   # "alternate" deployment, see .travis.yml for more info
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
     SCRIPT: python x.py dist
     DEPLOY_ALT: 1
+    CI_JOB_NAME: dist-x86_64-msvc-alt
 
 matrix:
   fast_finish: true

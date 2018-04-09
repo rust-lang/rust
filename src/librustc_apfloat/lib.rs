@@ -46,10 +46,6 @@
 #![deny(warnings)]
 #![forbid(unsafe_code)]
 
-#![cfg_attr(stage0, feature(slice_patterns))]
-#![cfg_attr(stage0, feature(i128_type))]
-#![cfg_attr(stage0, feature(try_from))]
-
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]
 extern crate rustc_cratesio_shim;

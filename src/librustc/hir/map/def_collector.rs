@@ -132,7 +132,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     for v in &enum_definition.variants {
                         let variant_def_index =
                             this.create_def(v.node.data.id(),
-                                            DefPathData::EnumVariant(v.node.name.name.as_str()),
+                                            DefPathData::EnumVariant(v.node.ident.name.as_str()),
                                             REGULAR_SPACE,
                                             v.span);
                         this.with_parent(variant_def_index, |this| {
@@ -181,6 +181,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
+        if let ForeignItemKind::Macro(_) = foreign_item.node {
+            return self.visit_macro_invoc(foreign_item.id, false);
+        }
+
         let def = self.create_def(foreign_item.id,
                                   DefPathData::ValueNs(foreign_item.ident.name.as_str()),
                                   REGULAR_SPACE,
@@ -198,7 +202,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     lifetime_def.lifetime.id,
                     DefPathData::LifetimeDef(lifetime_def.lifetime.ident.name.as_str()),
                     REGULAR_SPACE,
-                    lifetime_def.lifetime.span
+                    lifetime_def.lifetime.ident.span
                 );
             }
             GenericParam::Type(ref ty_param) => {
@@ -206,7 +210,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     ty_param.id,
                     DefPathData::TypeParam(ty_param.ident.name.as_str()),
                     REGULAR_SPACE,
-                    ty_param.span
+                    ty_param.ident.span
                 );
             }
         }

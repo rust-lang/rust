@@ -1164,10 +1164,12 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// constraint that `'z <= 'a`. Given this setup, let's clarify the
     /// parameters in (roughly) terms of the example:
     ///
+    /// ```plain,ignore (pseudo-Rust)
     ///     A borrow of: `& 'z bk * r` where `r` has type `& 'a bk T`
     ///     borrow_region   ^~                 ref_region    ^~
     ///     borrow_kind        ^~               ref_kind        ^~
     ///     ref_cmt                 ^
+    /// ```
     ///
     /// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
     ///

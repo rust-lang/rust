@@ -200,7 +200,7 @@ macro_rules! range_trusted_len_impl {
 
 macro_rules! range_incl_trusted_len_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "inclusive_range", since = "1.26.0")]
+        #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
     )*)
 }
@@ -488,6 +488,7 @@ macro_rules! try_from_unbounded {
 }
 
 // unsigned to signed (only positive bound)
+#[cfg(any(target_pointer_width = "32", target_pointer_width = "64"))]
 macro_rules! try_from_upper_bounded {
     ($($target:ty),*) => {$(
         impl PrivateTryFromUsize for $target {

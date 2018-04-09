@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 // We specify -Z incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-trans-items=eager -Zincremental=tmp/partitioning-tests/extern-generic
+// compile-flags:-Zprint-trans-items=eager -Zincremental=tmp/partitioning-tests/extern-generic -Zshare-generics=y
 
 #![allow(dead_code)]
 #![crate_type="lib"]
@@ -59,4 +59,4 @@ mod mod3 {
 // Make sure the two generic functions from the extern crate get instantiated
 // once for the current crate
 //~ TRANS_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function.volatile[External]
-//~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function.volatile[Internal]
+//~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function.volatile[External]

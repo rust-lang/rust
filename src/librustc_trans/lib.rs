@@ -24,15 +24,12 @@
 #![feature(custom_attribute)]
 #![feature(fs_read_write)]
 #![allow(unused_attributes)]
-#![cfg_attr(stage0, feature(i128_type, i128))]
-#![cfg_attr(stage0, feature(inclusive_range_syntax))]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
-#![cfg_attr(stage0, feature(slice_patterns))]
-#![cfg_attr(stage0, feature(conservative_impl_trait))]
 #![feature(optin_builtin_traits)]
 #![feature(inclusive_range_fields)]
+#![feature(underscore_lifetimes)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
@@ -407,7 +404,7 @@ struct CrateInfo {
     wasm_custom_sections: BTreeMap<String, Vec<u8>>,
     wasm_imports: FxHashMap<String, String>,
     lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Lrc<Vec<LangItem>>>,
+    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

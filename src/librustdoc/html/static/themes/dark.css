@@ -239,7 +239,7 @@ a.test-arrow:hover{
 }
 
 :target > code {
-	background: #FDFFD3;
+	background-color: #494a3d;
 }
 
 pre.compile_fail {

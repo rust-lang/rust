@@ -149,6 +149,7 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
 
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
+    opts.display_warnings = display_warnings;
     let mut collector = Collector::new(input.to_owned(), cfgs, libs, externs,
                                        true, opts, maybe_sysroot, None,
                                        Some(PathBuf::from(input)),

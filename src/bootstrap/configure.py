@@ -145,7 +145,7 @@ o("jemalloc", "rust.use-jemalloc", "build liballoc with jemalloc")
 o("full-bootstrap", "build.full-bootstrap", "build three compilers instead of two")
 o("extended", "build.extended", "build an extended rust tool set")
 
-v("tools", "build.tools", "List of extended tools will be installed")
+v("tools", None, "List of extended tools will be installed")
 v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
 v("host", None, "GNUs ./configure syntax LLVM host triples")
 v("target", None, "GNUs ./configure syntax LLVM target triples")
@@ -321,6 +321,8 @@ for key in known_args:
         set('target.{}.llvm-config'.format(build()), value + '/bin/llvm-config')
     elif option.name == 'jemalloc-root':
         set('target.{}.jemalloc'.format(build()), value + '/libjemalloc_pic.a')
+    elif option.name == 'tools':
+        set('build.tools', value.split(','))
     elif option.name == 'host':
         set('build.host', value.split(','))
     elif option.name == 'target':

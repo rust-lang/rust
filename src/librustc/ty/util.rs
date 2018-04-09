@@ -197,7 +197,14 @@ impl<'tcx> ty::ParamEnv<'tcx> {
         // FIXME: (@jroesch) float this code up
         tcx.infer_ctxt().enter(|infcx| {
             let (adt, substs) = match self_type.sty {
+                // These types used to have a builtin impl.
+                // Now libcore provides that impl.
+                ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+                ty::TyChar | ty::TyRawPtr(..) | ty::TyNever |
+                ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => return Ok(()),
+
                 ty::TyAdt(adt, substs) => (adt, substs),
+
                 _ => return Err(CopyImplementationError::NotAnAdt),
             };
 

@@ -44,33 +44,44 @@ thread_local! {
 }
 
 pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>) -> ast::Crate {
-    let name = if attr::contains_name(&krate.attrs, "no_core") {
+    // the first name in this list is the crate name of the crate with the prelude
+    let names: &[&str] = if attr::contains_name(&krate.attrs, "no_core") {
         return krate;
     } else if attr::contains_name(&krate.attrs, "no_std") {
-        "core"
+        if attr::contains_name(&krate.attrs, "compiler_builtins") {
+            &["core"]
+        } else {
+            &["core", "compiler_builtins"]
+        }
     } else {
-        "std"
+        &["std"]
     };
 
-    INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
+    for name in names {
+        krate.module.items.insert(0, P(ast::Item {
+            attrs: vec![attr::mk_attr_outer(DUMMY_SP,
+                                            attr::mk_attr_id(),
+                                            attr::mk_word_item(ast::Ident::from_str("macro_use")))],
+            vis: dummy_spanned(ast::VisibilityKind::Inherited),
+            node: ast::ItemKind::ExternCrate(alt_std_name.map(Symbol::intern)),
+            ident: ast::Ident::from_str(name),
+            id: ast::DUMMY_NODE_ID,
+            span: DUMMY_SP,
+            tokens: None,
+        }));
+    }
 
-    krate.module.items.insert(0, P(ast::Item {
-        attrs: vec![attr::mk_attr_outer(DUMMY_SP,
-                                        attr::mk_attr_id(),
-                                        attr::mk_word_item(Symbol::intern("macro_use")))],
-        vis: dummy_spanned(ast::VisibilityKind::Inherited),
-        node: ast::ItemKind::ExternCrate(alt_std_name.map(Symbol::intern)),
-        ident: ast::Ident::from_str(name),
-        id: ast::DUMMY_NODE_ID,
-        span: DUMMY_SP,
-        tokens: None,
-    }));
+    // the crates have been injected, the assumption is that the first one is the one with
+    // the prelude.
+    let name = names[0];
+
+    INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
     let span = ignored_span(DUMMY_SP);
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,
-            path: ast::Path::from_ident(span, ast::Ident::from_str("prelude_import")),
+            path: ast::Path::from_ident(ast::Ident::new(Symbol::intern("prelude_import"), span)),
             tokens: TokenStream::empty(),
             id: attr::mk_attr_id(),
             is_sugared_doc: false,
@@ -80,7 +91,7 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
         node: ast::ItemKind::Use(P(ast::UseTree {
             prefix: ast::Path {
                 segments: [name, "prelude", "v1"].into_iter().map(|name| {
-                    ast::PathSegment::from_ident(ast::Ident::from_str(name), DUMMY_SP)
+                    ast::PathSegment::from_ident(ast::Ident::from_str(name))
                 }).collect(),
                 span,
             },

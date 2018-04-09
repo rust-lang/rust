@@ -462,6 +462,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let has_global_allocator = tcx.sess.has_global_allocator.get();
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
+            extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
@@ -1357,6 +1358,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     name: self.tcx.original_crate_name(cnum),
                     hash: self.tcx.crate_hash(cnum),
                     kind: self.tcx.dep_kind(cnum),
+                    extra_filename: self.tcx.extra_filename(cnum),
                 };
                 (cnum, dep)
             })
@@ -1442,13 +1444,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // definition (as that's not defined in this crate).
     fn encode_exported_symbols(&mut self,
                                exported_symbols: &[(ExportedSymbol, SymbolExportLevel)])
-                               -> LazySeq<(ExportedSymbol, SymbolExportLevel)> {
-
+                               -> EncodedExportedSymbols {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
         let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
 
-        self.lazy_seq(exported_symbols
+        let lazy_seq = self.lazy_seq(exported_symbols
             .iter()
             .filter(|&&(ref exported_symbol, _)| {
                 match *exported_symbol {
@@ -1458,7 +1459,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     _ => true,
                 }
             })
-            .cloned())
+            .cloned());
+
+        EncodedExportedSymbols {
+            len: lazy_seq.len,
+            position: lazy_seq.position,
+        }
     }
 
     fn encode_wasm_custom_sections(&mut self, statics: &[DefId]) -> LazySeq<DefIndex> {

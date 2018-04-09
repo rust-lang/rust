@@ -120,6 +120,7 @@ impl<'a> PanicInfo<'a> {
     }
 }
 
+#[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl<'a> fmt::Display for PanicInfo<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("panicked at ")?;
@@ -244,6 +245,7 @@ impl<'a> Location<'a> {
     }
 }
 
+#[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl<'a> fmt::Display for Location<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}:{}:{}", self.file, self.line, self.col)

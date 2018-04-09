@@ -221,7 +221,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         continue
                     }
                 };
-                let name = word.name();
+                let name = word.ident.name;
                 match store.check_lint_name(&name.as_str()) {
                     CheckLintNameResult::Ok(ids) => {
                         let src = LintSource::Node(name, li.span);

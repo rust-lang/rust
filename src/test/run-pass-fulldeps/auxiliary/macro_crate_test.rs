@@ -96,7 +96,9 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 }
             })
         ],
-        // these are covered in proc_macro/attr-stmt-expr.rs
+        // covered in proc_macro/macros-in-extern.rs
+        Annotatable::ForeignItem(..) => unimplemented!(),
+        // covered in proc_macro/attr-stmt-expr.rs
         Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item"),
     }
 }
@@ -110,7 +112,7 @@ fn expand_duplicate(cx: &mut ExtCtxt,
     let copy_name = match mi.node {
         ast::MetaItemKind::List(ref xs) => {
             if let Some(word) = xs[0].word() {
-                ast::Ident::with_empty_ctxt(word.name())
+                word.ident
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;
@@ -142,7 +144,9 @@ fn expand_duplicate(cx: &mut ExtCtxt,
             new_it.ident = copy_name;
             push(Annotatable::TraitItem(P(new_it)));
         }
-        // these are covered in proc_macro/attr-stmt-expr.rs
+        // covered in proc_macro/macros-in-extern.rs
+        Annotatable::ForeignItem(..) => unimplemented!(),
+        // covered in proc_macro/attr-stmt-expr.rs
         Annotatable::Stmt(_) | Annotatable::Expr(_) => panic!("expected item")
     }
 }
