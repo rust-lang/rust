@@ -28,7 +28,7 @@ use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
-use rustc::session::config::{self, CrateTypeProcMacro, OutputType};
+use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -835,8 +835,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
     fn metadata_output_only(&self) -> bool {
         // MIR optimisation can be skipped when we're just interested in the metadata.
-        self.tcx.sess.opts.output_types.len() == 1 &&
-            self.tcx.sess.opts.output_types.contains_key(&OutputType::Metadata)
+        !self.tcx.sess.opts.output_types.should_trans()
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
