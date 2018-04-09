@@ -43,19 +43,19 @@ create_config! {
     hard_tabs: bool, false, true, "Use tab characters for indentation, spaces for alignment";
     tab_spaces: usize, 4, true, "Number of spaces per tab";
     newline_style: NewlineStyle, NewlineStyle::Unix, true, "Unix or Windows line endings";
-    indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
     use_small_heuristics: bool, true, false, "Whether to use different formatting for items and \
         expressions if they satisfy a heuristic notion of 'small'.";
+    indent_style: IndentStyle, IndentStyle::Block, false, "How do we indent expressions or items.";
 
-    // strings and comments
-    format_strings: bool, false, false, "Format string literals where necessary";
+    // Comments and strings
     wrap_comments: bool, false, true, "Break comments to fit on the line";
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
     license_template_path: String, String::default(), false, "Beginning of file must match license template";
+    format_strings: bool, false, false, "Format string literals where necessary";
 
-    // Single line expressions and items.
+    // Single line expressions and items
     empty_item_single_line: bool, true, false,
         "Put empty-body functions and impls on a single line";
     struct_lit_single_line: bool, true, false,
@@ -78,8 +78,6 @@ create_config! {
     reorder_impl_items: bool, false, false, "Reorder impl items";
 
     // Spaces around punctuation
-    binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
-        "Where to put a binary operator when a binary expression goes multiline.";
     type_punctuation_density: TypeDensity, TypeDensity::Wide, false,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     space_before_colon: bool, false, false, "Leave a space before the colon";
@@ -87,13 +85,15 @@ create_config! {
     spaces_around_ranges: bool, false, false, "Put spaces around the  .. and ... range operators";
     spaces_within_parens_and_brackets: bool, false, false,
         "Put spaces within non-empty parentheses or brackets";
+    binop_separator: SeparatorPlace, SeparatorPlace::Front, false,
+        "Where to put a binary operator when a binary expression goes multiline.";
 
     // Misc.
+    remove_blank_lines_at_start_or_end_of_block: bool, true, false,
+        "Remove blank lines at start or end of a block";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls.";
     struct_field_align_threshold: usize, 0, false, "Align struct fields if their diffs fits within \
                                              threshold.";
-    remove_blank_lines_at_start_or_end_of_block: bool, true, false,
-        "Remove blank lines at start or end of a block";
     match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \
         the same line with the pattern of arms";
     force_multiline_blocks: bool, false, false,
@@ -102,10 +102,10 @@ create_config! {
     brace_style: BraceStyle, BraceStyle::SameLineWhere, false, "Brace style for items";
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine, false,
         "Brace style for control flow constructs";
-    trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
-        "How to handle trailing commas for lists";
     trailing_semicolon: bool, true, false,
         "Add trailing semicolon after break, continue and return";
+    trailing_comma: SeparatorTactic, SeparatorTactic::Vertical, false,
+        "How to handle trailing commas for lists";
     match_block_trailing_comma: bool, false, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     blank_lines_upper_bound: usize, 1, false,
@@ -145,7 +145,7 @@ create_config! {
     ignore: IgnoreList, IgnoreList::default(), false,
         "Skip formatting the specified files and directories.";
 
-    // Not user-facing.
+    // Not user-facing
     verbose: bool, false, false, "Use verbose output";
     file_lines: FileLines, FileLines::all(), false,
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
