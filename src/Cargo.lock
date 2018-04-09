@@ -540,7 +540,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "dlmalloc"
 version = "0.0.0"
 dependencies = [
- "alloc 0.0.0",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
 ]

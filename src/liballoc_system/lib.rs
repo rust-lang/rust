@@ -495,27 +495,35 @@ mod platform {
 mod platform {
     extern crate dlmalloc;
 
-    use core::alloc::{Alloc, AllocErr, Layout, Excess, CannotReallocInPlace};
+    use core::alloc::{Alloc, AllocErr, Layout};
     use System;
-    use self::dlmalloc::GlobalDlmalloc;
+
+    // No need for synchronization here as wasm is currently single-threaded
+    static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::DLMALLOC_INIT;
+
+    fn to_result(ptr: *mut u8) -> Result<*mut u8, AllocErr> {
+        if !ptr.is_null() {
+            Ok(ptr)
+        } else {
+            Err(AllocErr::Unsupported { details: "" })
+        }
+    }
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl<'a> Alloc for &'a System {
         #[inline]
         unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
-            GlobalDlmalloc.alloc(layout)
+            to_result(DLMALLOC.malloc(layout.size(), layout.align()))
         }
 
         #[inline]
-        unsafe fn alloc_zeroed(&mut self, layout: Layout)
-            -> Result<*mut u8, AllocErr>
-        {
-            GlobalDlmalloc.alloc_zeroed(layout)
+        unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+            to_result(DLMALLOC.calloc(layout.size(), layout.align()))
         }
 
         #[inline]
         unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-            GlobalDlmalloc.dealloc(ptr, layout)
+            DLMALLOC.free(ptr, layout.size(), layout.align())
         }
 
         #[inline]
@@ -523,41 +531,9 @@ mod platform {
                           ptr: *mut u8,
                           old_layout: Layout,
                           new_layout: Layout) -> Result<*mut u8, AllocErr> {
-            GlobalDlmalloc.realloc(ptr, old_layout, new_layout)
-        }
-
-        #[inline]
-        fn usable_size(&self, layout: &Layout) -> (usize, usize) {
-            GlobalDlmalloc.usable_size(layout)
-        }
-
-        #[inline]
-        unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
-            GlobalDlmalloc.alloc_excess(layout)
-        }
-
-        #[inline]
-        unsafe fn realloc_excess(&mut self,
-                                 ptr: *mut u8,
-                                 layout: Layout,
-                                 new_layout: Layout) -> Result<Excess, AllocErr> {
-            GlobalDlmalloc.realloc_excess(ptr, layout, new_layout)
-        }
-
-        #[inline]
-        unsafe fn grow_in_place(&mut self,
-                                ptr: *mut u8,
-                                layout: Layout,
-                                new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-            GlobalDlmalloc.grow_in_place(ptr, layout, new_layout)
-        }
-
-        #[inline]
-        unsafe fn shrink_in_place(&mut self,
-                                  ptr: *mut u8,
-                                  layout: Layout,
-                                  new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-            GlobalDlmalloc.shrink_in_place(ptr, layout, new_layout)
+            to_result(DLMALLOC.realloc(
+                ptr, old_layout.size(), old_layout.align(), new_layout.size(),
+            ))
         }
     }
 }

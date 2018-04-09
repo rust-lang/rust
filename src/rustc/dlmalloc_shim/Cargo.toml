@@ -12,4 +12,3 @@ doc = false
 [dependencies]
 core = { path = "../../libcore" }
 compiler_builtins = { path = "../../rustc/compiler_builtins_shim" }
-alloc = { path = "../../liballoc" }
