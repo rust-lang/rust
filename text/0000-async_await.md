@@ -15,14 +15,14 @@ This has a companion RFC to add a small futures API to libstd and libcore.
 [motivation]: #motivation
 
 High performance network services frequently use asynchronous IO, rather than
-blocking IO, becuase it can be easier to get optimal performance when handling
+blocking IO, because it can be easier to get optimal performance when handling
 many concurrent connections. Rust has seen some adoption in the network
 services space, and we wish to continue to enable those users - and to enable
 adoption by other users - by making it more ergonomic to write asynchronous
 network services in Rust.
 
 The development of asynchronous IO in Rust has gone through multiple phases.
-Prior to 1.0, we experimented with having a greenthreading runtime built into
+Prior to 1.0, we experimented with having a green-threading runtime built into
 the language. However, this proved too opinionated - because it impacted every
 program written in Rust - and it was removed shortly before 1.0. After 1.0,
 asynchronous IO initially focused around the mio library, which provided an
@@ -425,11 +425,11 @@ initialization step.
 A final - and extreme - alternative would be to abandon futures and async/await
 as the mechanism for async/await in Rust and to adopt a different paradigm.
 Among those suggested are a generalized effects system, monads & do notation,
-greenthreading, and stackfull coroutines.
+green-threading, and stack-full coroutines.
 
 While it is hypothetically plausible that some generalization beyond
 async/await could be supported by Rust, there has not enough research in this
-area to support it in the nearterm. Given our goals for 2018 - which emphasize
+area to support it in the near-term. Given our goals for 2018 - which emphasize
 shipping - async/await syntax (a concept available widely in many languages
 which interacts well with our existing async IO libraries) is the most logical
 thing to implement at this stage in Rust's evolution.
@@ -445,7 +445,7 @@ There are three paradigms for asynchronous programming which are dominant
 today:
 
 - Async and await notation.
-- An implicit concurrent runtime, often called "greenthreading," such as
+- An implicit concurrent runtime, often called "green-threading," such as
   communicating sequential processes (e.g. Go) or an actor model (e.g. Erlang).
 - Monadic transformations on lazily evaluated code, such as do notation (e.g.
   Haskell).
@@ -453,7 +453,7 @@ today:
 Async/await is the most compelling model for Rust because it interacts
 favorably with ownership and borrowing (unlike systems based on monads) and it
 enables us to have an entirely library-based asynchronicity model (unlike
-greenthreading).
+green-threading).
 
 One way in which our handling of async/await differs from most other statically
 typed languages (such as C#) is that we have chosen to show the "inner" return
@@ -490,9 +490,9 @@ There are a couple of possible solutions:
 1. Require delimiters of some kind, maybe braces or parens or either, so that
    it will look more like how you expect - `await { future }?` - this is rather
    noisy.
-2. Define the precedence as the obvious, if inconvient precedence, requiring
+2. Define the precedence as the obvious, if inconvenient precedence, requiring
    users to write `(await future)?` - this seems very surprising for users.
-3. Define the precedence as the inconvient precedence - this seems equally
+3. Define the precedence as the inconvenient precedence - this seems equally
    surprising as the other precedence.
 4. Introduce a special syntax to handle the multiple applications, such as
    `await? future` - this seems very unusual in its own way.
@@ -548,7 +548,7 @@ As proposed in this RFC, all async functions do not implement `Unpin`, making
 it unsafe to move them out of a `Pin`. This allows them to contain references
 across yield points.
 
-We could also, with an annotation, typeck an async function to confirm that it
+We could also, with an annotation, typecheck an async function to confirm that it
 does not contain any references across yield points, allowing it to implement
 `Unpin`. The annotation to enable this is left unspecified for the time being.
 
