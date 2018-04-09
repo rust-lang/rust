@@ -1529,11 +1529,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     fn get_primary_err_msg(&self, place:&Place<'tcx>) -> String{
         if let Some(name) = self.describe_place(place) {
-            format!("`{}` is a `&` reference, so the data it refers to cannot be written", name) 
+            format!("`{}` is a `&` reference, so the data it refers to cannot be written", name)
         } else {
             format!("cannot assign through `&`-reference")
         }
-    }    
+    }
 
     /// Check the permissions for the given place and read or write kind
     ///
@@ -1592,7 +1592,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                                 self.get_secondary_err_msg(base)
                                             } else {
                                                 self.get_default_err_msg(place)
-                                            };   
+                                            };
                                             err_info = Some((
                                                 self.mir.source_info(locations[0]).span,
                                                     "consider changing this to be a \
