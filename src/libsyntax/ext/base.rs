@@ -231,7 +231,8 @@ impl<F> AttrProcMacro for F
 
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
-    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, &'cx Option<::ast::Path>, span: Span, input: TokenStream)
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt,
+                   &'cx Option<::ast::Path>, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx>;
 }
 
