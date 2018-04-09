@@ -723,10 +723,10 @@ pub fn args_os() -> ArgsOs {
     ArgsOs { inner: sys::args::args() }
 }
 
-#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
 impl !Send for Args {}
 
-#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
 impl !Sync for Args {}
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -760,10 +760,10 @@ impl fmt::Debug for Args {
     }
 }
 
-#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
 impl !Send for ArgsOs {}
 
-#[stable(feature = "env_unimpl_send_sync", since = "1.25.0")]
+#[stable(feature = "env_unimpl_send_sync", since = "1.26.0")]
 impl !Sync for ArgsOs {}
 
 #[stable(feature = "env", since = "1.0.0")]
