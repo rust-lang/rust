@@ -463,6 +463,9 @@ declare_features! (
 
     // Scoped attributes
     (active, tool_attributes, "1.25.0", Some(44690), None),
+
+    // Allows use of the :literal macro fragment specifier (RFC 1576)
+    (active, macro_literal_matcher, "1.27.0", Some(35625), None),
 );
 
 declare_features! (
@@ -1330,6 +1333,9 @@ pub const EXPLAIN_VIS_MATCHER: &'static str =
 
 pub const EXPLAIN_LIFETIME_MATCHER: &'static str =
     ":lifetime fragment specifier is experimental and subject to change";
+
+pub const EXPLAIN_LITERAL_MATCHER: &'static str =
+    ":literal fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
     "Unsized tuple coercion is not stable enough for use and is subject to change";
