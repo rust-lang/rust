@@ -17,7 +17,9 @@ normal Rust programs.  IIRC backtraces **don't work** on Mac and on MinGW,
 sorry. If you have trouble or the backtraces are full of `unknown`,
 you might want to find some way to use Linux or MSVC on Windows.
 
-In the default configuration, you don't have line numbers enabled, so the backtrace looks like this:
+In the default configuration, you don't have line numbers enabled, so the 
+backtrace looks like this:
+
    ```
 stack backtrace:
    0: std::sys::imp::backtrace::tracing::imp::unwind_backtrace
@@ -26,7 +28,8 @@ stack backtrace:
    3: std::panicking::default_hook
    4: std::panicking::rust_panic_with_hook
    5: std::panicking::begin_panic
-   6: rustc_typeck::check::cast::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, 'tcx>>::pointer_kind
+   6: rustc_typeck::check::cast::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, \ 
+      'tcx>>::pointer_kind
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
   32: rustc_typeck::check_crate
   33: <std::thread::local::LocalKey<T>>::with
@@ -36,11 +39,15 @@ stack backtrace:
   37: rustc_driver::run_compiler
    ```
 
-If you want line numbers for the stack trace, you can enable `debuginfo-lines=true` or `debuginfo=true` in your config.toml and rebuild the compiler. Then the backtrace will look like this:
+If you want line numbers for the stack trace, you can enable 
+`debuginfo-lines=true` or `debuginfo=true` in your config.toml and rebuild the 
+compiler. Then the backtrace will look like this:
+
 ```
 stack backtrace:
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
-   6: rustc_typeck::check::cast::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, 'tcx>>::pointer_kind
+   6: rustc_typeck::check::cast::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, \
+             'tcx>>::pointer_kind
              at /home/user/rust/src/librustc_typeck/check/cast.rs:110
    7: rustc_typeck::check::cast::CastCheck::check
              at /home/user/rust/src/librustc_typeck/check/cast.rs:572
@@ -104,13 +111,17 @@ note: rustc 1.24.0-dev running on x86_64-unknown-linux-gnu
 
 note: run with `RUST_BACKTRACE=1` for a backtrace
 
-thread 'rustc' panicked at 'encountered error with `-Z treat_err_as_bug', /home/user/rust/src/librustc_errors/lib.rs:411:12
-note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+thread 'rustc' panicked at 'encountered error with `-Z treat_err_as_bug', 
+/home/user/rust/src/librustc_errors/lib.rs:411:12
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose 
+backtrace.
 stack backtrace:
   (~~~ IRRELEVANT PART OF BACKTRACE REMOVED BY ME ~~~)
-   7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'gcx, 'tcx>>::report_selection_error
+   7: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'gcx, 
+             'tcx>>::report_selection_error
              at /home/user/rust/src/librustc/traits/error_reporting.rs:823
-   8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'gcx, 'tcx>>::report_fulfillment_errors
+   8: rustc::traits::error_reporting::<impl rustc::infer::InferCtxt<'a, 'gcx, 
+             'tcx>>::report_fulfillment_errors
              at /home/user/rust/src/librustc/traits/error_reporting.rs:160
              at /home/user/rust/src/librustc/traits/error_reporting.rs:112
    9: rustc_typeck::check::FnCtxt::select_obligations_where_possible
@@ -190,18 +201,28 @@ However, there are still a few concerns that you might care about:
 ### Expensive operations in logs
 
 A note of caution: the expressions *within* the `debug!` call are run
-whenever RUST_LOG is set, even if the filter would exclude the log. This means that if in the module `rustc::foo` you have a statement
+whenever RUST_LOG is set, even if the filter would exclude the log. This means 
+that if in the module `rustc::foo` you have a statement
 
 ```Rust
 debug!("{:?}", random_operation(tcx));
 ```
 
-Then if someone runs a debug `rustc` with `RUST_LOG=rustc::bar`, then `random_operation()` will still run - even while it's output will never be needed!
+Then if someone runs a debug `rustc` with `RUST_LOG=rustc::bar`, then 
+`random_operation()` will still run - even while it's output will never be 
+needed!
 
 This means that you should not put anything too expensive or likely
-to crash there - that would annoy anyone who wants to use logging for their own module. Note that if `RUST_LOG` is unset (the default), then the code will not run - this means that if your logging code panics, then no-one will know it until someone tries to use logging to find *another* bug.
+to crash there - that would annoy anyone who wants to use logging for their own 
+module. Note that if `RUST_LOG` is unset (the default), then the code will not 
+run - this means that if your logging code panics, then no-one will know it 
+until someone tries to use logging to find *another* bug.
 
-If you *need* to do an expensive operation in a log, be aware that while log expressions are *evaluated* even if logging is not enabled in your module, they are not *formatted* unless it *is*. This means you can put your expensive/crashy operations inside an `fmt::Debug` impl, and they will not be run unless your log is enabled:
+If you *need* to do an expensive operation in a log, be aware that while log 
+expressions are *evaluated* even if logging is not enabled in your module, 
+they are not *formatted* unless it *is*. This means you can put your 
+expensive/crashy operations inside an `fmt::Debug` impl, and they will not be 
+run unless your log is enabled:
 
 ```Rust
 use std::fmt;
@@ -225,8 +246,8 @@ debug!("{:?}", ExpensiveOperationContainer { tcx });
 ## Formatting Graphviz output (.dot files)
 [formatting-graphviz-output]: #formatting-graphviz-output
 
-Some compiler options for debugging specific features yield graphviz graphs - e.g.
-the `#[rustc_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
+Some compiler options for debugging specific features yield graphviz graphs - 
+e.g. the `#[rustc_mir(borrowck_graphviz_postflow="suffix.dot")]` attribute
 dumps various borrow-checker dataflow graphs.
 
 These all produce `.dot` files. To view these files, install graphviz (e.g.
@@ -252,7 +273,8 @@ assertions enabled - either an "alt" nightly or a compiler you build yourself
 by setting `[llvm] assertions=true` in your config.toml - and
 see whether anything turns up.
 
-The rustc build process builds the LLVM tools into `./build/<host-triple>/llvm/bin`. They can be called directly.
+The rustc build process builds the LLVM tools into 
+`./build/<host-triple>/llvm/bin`. They can be called directly.
 
 The default rustc compilation pipeline has multiple codegen units, which is hard
 to replicate manually and means that LLVM is called multiple times in parallel.
@@ -262,7 +284,8 @@ passing `-C codegen-units=1` to rustc will make debugging easier.
 If you want to play with the optimization pipeline, you can use the `opt` from
 there on the IR rustc emits with `--emit=llvm-ir`. Note
 that rustc emits different IR depending on whether `-O` is enabled, even without
-LLVM's optimizations, so if you want to play with the IR rustc emits, you should:
+LLVM's optimizations, so if you want to play with the IR rustc emits, 
+you should:
 ```
 $ rustc +local my-file.rs --emit=llvm-ir -O -C no-prepopulate-passes \
     -C codegen-units=1
@@ -275,7 +298,8 @@ IR causes an optimization-time assertion to fail, or to see when
 LLVM performs a particular optimization, you can pass the rustc flag
 `-C llvm-args=-print-after-all`, and possibly add
 `-C llvm-args='-filter-print-funcs=EXACT_FUNCTION_NAME` (e.g.
-`-C llvm-args='-filter-print-funcs=_ZN11collections3str21_$LT$impl$u20$str$GT$7replace17hbe10ea2e7c809b0bE'`).
+`-C llvm-args='-filter-print-funcs=_ZN11collections3str21_$LT$impl$u20$str$GT$\
+    7replace17hbe10ea2e7c809b0bE'`).
 
 That produces a lot of output into standard error, so you'll want to pipe
 that to some file. Also, if you are using neither `-filter-print-funcs` nor
