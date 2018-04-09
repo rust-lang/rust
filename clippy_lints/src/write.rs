@@ -230,11 +230,11 @@ fn check_write_variants<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, 
                                         "using `write!()` with a format string that ends in a \
                                         newline, consider using `writeln!()` instead");
                             },
-                            "writeln" => if has_empty_arg(cx, span, fmtstr, fmtlen) {
+                            "writeln" => if let Some(final_span) = has_empty_arg(cx, span, fmtstr, fmtlen) {
                                 span_lint_and_sugg(
                                     cx,
                                     WRITE_WITH_NEWLINE,
-                                    span,
+                                    final_span,
                                     "using `writeln!(v, \"\")`",
                                     "replace it with",
                                     "writeln!(v)".to_string(),
@@ -295,11 +295,11 @@ fn check_print_variants<'a, 'tcx>(
                                                 newline, consider using `println!()` instead");
                                     },
                                 "println" =>
-                                    if has_empty_arg(cx, span, fmtstr, fmtlen) {
+                                    if let Some(final_span) = has_empty_arg(cx, span, fmtstr, fmtlen) {
                                         span_lint_and_sugg(
                                             cx,
                                             PRINT_WITH_NEWLINE,
-                                            span,
+                                            final_span,
                                             "using `println!(\"\")`",
                                             "replace it with",
                                             "println!()".to_string(),
@@ -390,7 +390,7 @@ fn has_newline_end(args: &HirVec<Expr>, fmtstr: InternedString, fmtlen: usize) -
 }
 
 /// Check for writeln!(v, "") / println!("")
-fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: InternedString, fmtlen: usize) -> bool {
+fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: InternedString, fmtlen: usize) -> Option<Span> {
     if_chain! {
         // check that the string is empty
         if fmtlen == 1;
@@ -400,10 +400,13 @@ fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: Inter
         if let Ok(snippet) = cx.sess().codemap().span_to_snippet(span);
         if snippet.contains("\"\"");
         then {
-            return true
+            if snippet.ends_with(';') {
+                return Some(cx.sess().codemap().span_until_char(span, ';'));
+            }
+            return Some(span)
         }
     }
-    false
+    None
 }
 
 /// Returns the slice of format string parts in an `Arguments::new_v1` call.

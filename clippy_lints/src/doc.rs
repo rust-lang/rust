@@ -12,7 +12,7 @@ use url::Url;
 ///
 /// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and
 /// camel-case probably indicates some code which should be included between
-/// ticks. `_` can also be used for empasis in markdown, this lint tries to
+/// ticks. `_` can also be used for emphasis in markdown, this lint tries to
 /// consider that.
 ///
 /// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks
