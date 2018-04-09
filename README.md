@@ -67,7 +67,7 @@ If you have built using `cargo build --release` instead, change the path to poin
 You can also install the (possibly more stable) version of the tool from crates.io:
 
 ```sh
-$ cargo install +nightly semverver
+$ cargo +nightly install semverver
 ```
 
 ## Usage
