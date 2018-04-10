@@ -62,7 +62,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 52 |     x.field.map(|value| { do_nothing(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured) }`
+   |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured); }`
 
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:54:5
@@ -70,7 +70,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 54 |     x.field.map(|value| { { do_nothing(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured) }`
+   |     help: try this: `if let Some(value) = x.field { do_nothing(value + captured); }`
 
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:57:5
@@ -94,7 +94,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 61 |     x.field.map(|value| { diverge(value + captured); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Some(value) = x.field { diverge(value + captured) }`
+   |     help: try this: `if let Some(value) = x.field { diverge(value + captured); }`
 
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:63:5
@@ -102,7 +102,7 @@ error: called `map(f)` on an Option value where `f` is a unit closure
 63 |     x.field.map(|value| { { diverge(value + captured); } });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Some(value) = x.field { diverge(value + captured) }`
+   |     help: try this: `if let Some(value) = x.field { diverge(value + captured); }`
 
 error: called `map(f)` on an Option value where `f` is a unit closure
   --> $DIR/option_map_unit_fn.rs:68:5

@@ -97,17 +97,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
                     match inner_stmt.node {
                         hir::StmtDecl(ref d, _) => Some(d.span),
                         hir::StmtExpr(ref e, _) => Some(e.span),
-                        hir::StmtSemi(ref e, _) => {
-                            if is_unit_expression(cx, e) {
-                                // `X` returns unit so we can strip the
-                                // semicolon and reduce further
-                                reduce_unit_expression(cx, e)
-                            } else {
-                                // `X` doesn't return unit so it needs a
-                                // trailing semicolon
-                                Some(inner_stmt.span)
-                            }
-                        },
+                        hir::StmtSemi(_, _) => Some(inner_stmt.span),
                     }
                 },
                 _ => None,
