@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/borrowing.rs:15:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let _b = {
+LL | |         let a = 3;
+LL | |         unsafe { (|| yield &a).resume() }
+...  |
+LL | |     };
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

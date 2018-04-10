@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/borrowck-report-with-custom-diagnostic.rs:12:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     // Original borrow ends at end of function
+LL | |     let mut x = 1;
+LL | |     let y = &mut x;
+...  |
+LL | |     //~^ immutable borrow occurs here
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

@@ -1,0 +1,28 @@
+error[E0596]: cannot borrow immutable item `f.v` as mutable
+  --> $DIR/issue-35937.rs:17:5
+   |
+LL |     f.v.push("cat".to_string()); //~ ERROR cannot borrow
+   |     ^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `f`
+
+error[E0384]: cannot assign twice to immutable variable `s.x`
+  --> $DIR/issue-35937.rs:26:5
+   |
+LL |     let s = S { x: 42 };
+   |             ----------- first assignment to `s.x`
+LL |     s.x += 1; //~ ERROR cannot assign
+   |     ^^^^^^^^ cannot assign twice to immutable variable
+
+error[E0384]: cannot assign twice to immutable variable `s.x`
+  --> $DIR/issue-35937.rs:30:5
+   |
+LL | fn bar(s: S) {
+   |        - first assignment to `s.x`
+LL |     s.x += 1; //~ ERROR cannot assign
+   |     ^^^^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0384, E0596.
+For more information about an error, try `rustc --explain E0384`.

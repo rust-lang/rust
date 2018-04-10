@@ -1,0 +1,27 @@
+error[E0597]: `c1` does not live long enough
+  --> $DIR/vec-must-not-hide-type-from-dropck.rs:129:24
+   |
+LL |     c2.v[0].v.set(Some(&c1));
+   |                        ^^^ borrowed value does not live long enough
+LL |     //~^ ERROR `c1` does not live long enough
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `c1` is dropped
+
+error[E0597]: `c2` does not live long enough
+  --> $DIR/vec-must-not-hide-type-from-dropck.rs:127:24
+   |
+LL |     c1.v[0].v.set(Some(&c2));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `c1` is dropped
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

@@ -1,0 +1,13 @@
+error: compilation successful
+  --> $DIR/feature-gate-nll.rs:13:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let mut x = 33;
+LL | |
+LL | |     let p = &x;
+LL | |     x = 22; //~ ERROR cannot assign to `x` because it is borrowed [E0506]
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

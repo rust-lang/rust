@@ -1,0 +1,12 @@
+error: compilation successful
+  --> $DIR/E0503.rs:11:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let mut value = 3;
+LL | |     let _borrow = &mut value;
+LL | |     let _sum = value + 1; //~ ERROR E0503
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

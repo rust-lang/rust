@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/range-2.rs:13:1
+   |
+LL | / pub fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let r = {
+LL | |         let a = 42;
+LL | |         let b = 42;
+...  |
+LL | |     //~| ERROR `b` does not live long enough
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

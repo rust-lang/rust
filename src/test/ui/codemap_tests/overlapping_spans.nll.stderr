@@ -1,0 +1,9 @@
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/overlapping_spans.rs:21:14
+   |
+LL |         S {f:_s} => {} //~ ERROR cannot move out
+   |              ^^ cannot move out of here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0509`.

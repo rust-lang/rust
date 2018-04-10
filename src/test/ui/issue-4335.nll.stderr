@@ -1,0 +1,25 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/issue-4335.rs:16:20
+   |
+LL |     id(Box::new(|| *v))
+   |                    ^^ cannot move out of borrowed content
+
+error[E0597]: `v` does not live long enough
+  --> $DIR/issue-4335.rs:16:17
+   |
+LL |     id(Box::new(|| *v))
+   |                 ^^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:1...
+  --> $DIR/issue-4335.rs:15:1
+   |
+LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0507, E0597.
+For more information about an error, try `rustc --explain E0507`.

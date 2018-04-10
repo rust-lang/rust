@@ -1,0 +1,51 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:42:15
+   |
+LL |         &mut [_a, //~ ERROR cannot move out
+   |               ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:55:13
+   |
+LL |     let a = vec[0]; //~ ERROR cannot move out
+   |             ^^^^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:65:10
+   |
+LL |          _b] => {}
+   |          ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:68:13
+   |
+LL |     let a = vec[0]; //~ ERROR cannot move out
+   |             ^^^^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:76:15
+   |
+LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
+   |               ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:76:19
+   |
+LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
+   |                   ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:76:23
+   |
+LL |         &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
+   |                       ^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-vec-pattern-nesting.rs:80:13
+   |
+LL |     let a = vec[0]; //~ ERROR cannot move out
+   |             ^^^^^^ cannot move out of borrowed content
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

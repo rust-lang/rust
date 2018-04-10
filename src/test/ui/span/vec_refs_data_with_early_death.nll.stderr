@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/vec_refs_data_with_early_death.rs:21:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let mut v = Vec::new();
+LL | |
+LL | |     let x: i8 = 3;
+...  |
+LL | |     assert_eq!(v, [&3, &4]);
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

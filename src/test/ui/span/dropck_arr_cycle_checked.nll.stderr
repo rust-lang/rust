@@ -1,0 +1,39 @@
+error[E0597]: `b1` does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:111:24
+   |
+LL |     b3.a[0].v.set(Some(&b1));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `b1` is dropped
+
+error[E0597]: `b2` does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:103:24
+   |
+LL |     b1.a[0].v.set(Some(&b2));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `b1` is dropped
+
+error[E0597]: `b3` does not live long enough
+  --> $DIR/dropck_arr_cycle_checked.rs:105:24
+   |
+LL |     b1.a[1].v.set(Some(&b3));
+   |                        ^^^ borrowed value does not live long enough
+...
+LL | }
+   | -
+   | |
+   | borrowed value only lives until here
+   | borrow later used here, when `b1` is dropped
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

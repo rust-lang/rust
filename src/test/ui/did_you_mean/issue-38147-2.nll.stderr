@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow immutable item `*self.s` as mutable
+  --> $DIR/issue-38147-2.rs:17:9
+   |
+LL |         self.s.push('x');
+   |         ^^^^^^ cannot borrow as mutable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0596`.

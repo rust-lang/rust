@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/regions-escape-unboxed-closure.rs:16:27
+   |
+LL |     with_int(&mut |y| x = Some(y));
+   |                           ^^^^^^^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/regions-escape-unboxed-closure.rs:16:32
+   |
+LL |     with_int(&mut |y| x = Some(y));
+   |                                ^
+
+error: aborting due to previous error
+

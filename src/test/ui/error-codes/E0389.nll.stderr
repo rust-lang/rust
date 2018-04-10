@@ -1,0 +1,11 @@
+error[E0594]: cannot assign to immutable item `fancy_ref.num`
+  --> $DIR/E0389.rs:18:5
+   |
+LL |     fancy_ref.num = 6; //~ ERROR E0389
+   |     ^^^^^^^^^^^^^^^^^ cannot mutate
+   |
+   = note: Value not mutable causing this error: `*fancy_ref`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0594`.
