@@ -3017,9 +3017,10 @@ impl<'a> LoweringContext<'a> {
                     let tail = block.expr.take().map_or_else(
                         || {
                             let LoweredNodeId { node_id, hir_id } = this.next_id();
+                            let span = this.sess.codemap().end_point(unstable_span);
                             hir::Expr {
                                 id: node_id,
-                                span: unstable_span,
+                                span,
                                 node: hir::ExprTup(hir_vec![]),
                                 attrs: ThinVec::new(),
                                 hir_id,

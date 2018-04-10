@@ -8,14 +8,10 @@ LL |         42
               found type `{integer}`
 
 error[E0271]: type mismatch resolving `<std::option::Option<i32> as std::ops::Try>::Ok == ()`
-  --> $DIR/catch-block-type-error.rs:22:35
+  --> $DIR/catch-block-type-error.rs:24:5
    |
-LL |       let _: Option<i32> = do catch {
-   |  ___________________________________^
-LL | |         //~^ ERROR type mismatch
-LL | |         foo()?;
-LL | |     };
-   | |_____^ expected i32, found ()
+LL |     };
+   |     ^ expected i32, found ()
    |
    = note: expected type `i32`
               found type `()`

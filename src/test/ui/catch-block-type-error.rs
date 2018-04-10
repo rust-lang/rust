@@ -20,7 +20,7 @@ fn main() {
     };
 
     let _: Option<i32> = do catch {
-        //~^ ERROR type mismatch
         foo()?;
     };
+    //~^ ERROR type mismatch
 }
