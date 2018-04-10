@@ -1156,7 +1156,6 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 
 impl DebruijnIndex {
     pub fn new(depth: u32) -> DebruijnIndex {
-        assert!(depth > 0);
         DebruijnIndex { depth: depth }
     }
 

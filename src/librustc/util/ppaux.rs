@@ -497,7 +497,7 @@ impl PrintContext {
                                 name)
                 }
             };
-            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
+            tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(0), br))
         }).0;
         start_or_continue(f, "", "> ")?;
 

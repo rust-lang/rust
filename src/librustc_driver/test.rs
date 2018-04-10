@@ -327,7 +327,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
-        let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
+        let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(0));
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
@@ -484,7 +484,7 @@ fn subst_ty_renumber_bound() {
 
         // t_expected = fn(&'a isize)
         let t_expected = {
-            let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+            let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
             env.t_fn(&[t_ptr_bound2], env.t_nil())
         };
 
@@ -521,7 +521,7 @@ fn subst_ty_renumber_some_bounds() {
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
-            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
             env.t_pair(t_rptr_bound1, env.t_fn(&[t_rptr_bound2], env.t_nil()))
         };
 
@@ -549,10 +549,10 @@ fn escaping() {
         let t_rptr_free1 = env.t_rptr_free(1);
         assert!(!t_rptr_free1.has_escaping_regions());
 
-        let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
+        let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(0));
         assert!(t_rptr_bound1.has_escaping_regions());
 
-        let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+        let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
         assert!(t_rptr_bound2.has_escaping_regions());
 
         // t_fn = fn(A)
@@ -568,7 +568,7 @@ fn escaping() {
 #[test]
 fn subst_region_renumber_region() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
-        let re_bound1 = env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
+        let re_bound1 = env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(0));
 
         // type t_source<'a> = fn(&'a isize)
         let t_source = {
@@ -583,7 +583,7 @@ fn subst_region_renumber_region() {
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
-            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
+            let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
             env.t_fn(&[t_rptr_bound2], env.t_nil())
         };
 

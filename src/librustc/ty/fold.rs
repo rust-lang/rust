@@ -448,7 +448,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let mut counter = 0;
         Binder(self.replace_late_bound_regions(sig, |_| {
             counter += 1;
-            self.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(counter)))
+            self.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(0), ty::BrAnon(counter)))
         }).0)
     }
 }
