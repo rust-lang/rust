@@ -13,6 +13,7 @@ We have a bunch of lint categories to allow you to choose how much clippy is sup
 
 * `clippy` (everything that has no false positives)
 * `clippy_pedantic` (everything)
+* `clippy_nursery` (new lints that aren't quite ready yet)
 * `clippy_style` (code that should be written in a more idiomatic way)
 * `clippy_complexity` (code that does something simple but in a complex way)
 * `clippy_perf` (code that can be written in a faster way)
