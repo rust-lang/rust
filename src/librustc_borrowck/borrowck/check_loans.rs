@@ -417,11 +417,17 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             RegionKind::ReLateBound(..) |
             RegionKind::ReFree(..) |
             RegionKind::ReStatic => {
-                self.bccx
-                    .tcx
-                    .sess.delay_span_bug(borrow_span,
-                                         &format!("unexpected region for local data {:?}",
-                                                  loan_region));
+                if !self.bccx.tcx.nll() {
+                    self.bccx
+                        .tcx
+                        .sess.delay_span_bug(borrow_span,
+                                             &format!("unexpected region for local data {:?}",
+                                                      loan_region));
+                } else {
+                    // When in NLL mode, invalid region errors get
+                    // suppressed; it ought to be reported later, by
+                    // the NLL region analysis.
+                }
                 return
             }
 

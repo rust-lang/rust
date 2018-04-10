@@ -51,7 +51,13 @@ impl MirPass for ElaborateDrops {
             _ => return
         }
         let param_env = tcx.param_env(src.def_id);
-        let move_data = MoveData::gather_moves(mir, tcx).unwrap();
+        let move_data = match MoveData::gather_moves(mir, tcx) {
+            Ok(d) => d,
+            Err(_) => {
+                tcx.sess.delay_span_bug(mir.span, "ElaborateDrops: failed to gather move data");
+                return;
+            }
+        };
         let elaborate_patch = {
             let mir = &*mir;
             let env = MoveDataParamEnv {
