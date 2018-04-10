@@ -69,7 +69,7 @@ the first `delay_span_bug` call panic, which will give you a useful backtrace.
 
 For example:
 
-```rust
+```bash
 $ cat error.rs
 fn main() {
     1 + ();
