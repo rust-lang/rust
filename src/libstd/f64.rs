@@ -19,6 +19,7 @@
 #![allow(missing_docs)]
 
 #[cfg(not(test))]
+#[cfg(stage0)]
 use core::num::Float;
 #[cfg(not(test))]
 use intrinsics;
@@ -141,7 +142,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn abs(self) -> f64 { Float::abs(self) }
+    pub fn abs(self) -> f64 {
+        unsafe { intrinsics::fabsf64(self) }
+    }
 
     /// Returns a number that represents the sign of `self`.
     ///
@@ -161,7 +164,13 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn signum(self) -> f64 { Float::signum(self) }
+    pub fn signum(self) -> f64 {
+        if self.is_nan() {
+            NAN
+        } else {
+            unsafe { intrinsics::copysignf64(1.0, self) }
+        }
+    }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -245,7 +254,9 @@ impl f64 {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn powi(self, n: i32) -> f64 { Float::powi(self, n) }
+    pub fn powi(self, n: i32) -> f64 {
+        unsafe { intrinsics::powif64(self, n) }
+    }
 
     /// Raises a number to a floating point power.
     ///

@@ -17,7 +17,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use intrinsics;
 use mem;
 use num::Float;
 #[cfg(not(stage0))] use num::FpCategory;
@@ -189,27 +188,6 @@ impl Float for f32 {
         }
     }
 
-    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
-    /// number is `Float::nan()`.
-    #[inline]
-    fn abs(self) -> f32 {
-        unsafe { intrinsics::fabsf32(self) }
-    }
-
-    /// Returns a number that represents the sign of `self`.
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
-    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
-    /// - `Float::nan()` if the number is `Float::nan()`
-    #[inline]
-    fn signum(self) -> f32 {
-        if self.is_nan() {
-            NAN
-        } else {
-            unsafe { intrinsics::copysignf32(1.0, self) }
-        }
-    }
-
     /// Returns `true` if and only if `self` has a positive sign, including `+0.0`, `NaN`s with
     /// positive sign bit and positive infinity.
     #[inline]
@@ -230,11 +208,6 @@ impl Float for f32 {
     #[inline]
     fn recip(self) -> f32 {
         1.0 / self
-    }
-
-    #[inline]
-    fn powi(self, n: i32) -> f32 {
-        unsafe { intrinsics::powif32(self, n) }
     }
 
     /// Converts to degrees, assuming the number is in radians.

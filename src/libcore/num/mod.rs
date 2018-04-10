@@ -4125,18 +4125,6 @@ pub trait Float: Sized {
     #[stable(feature = "core", since = "1.6.0")]
     fn classify(self) -> FpCategory;
 
-    /// Computes the absolute value of `self`. Returns `Float::nan()` if the
-    /// number is `Float::nan()`.
-    #[stable(feature = "core", since = "1.6.0")]
-    fn abs(self) -> Self;
-    /// Returns a number that represents the sign of `self`.
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
-    /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
-    /// - `Float::nan()` if the number is `Float::nan()`
-    #[stable(feature = "core", since = "1.6.0")]
-    fn signum(self) -> Self;
-
     /// Returns `true` if `self` is positive, including `+0.0` and
     /// `Float::infinity()`.
     #[stable(feature = "core", since = "1.6.0")]
@@ -4149,12 +4137,6 @@ pub trait Float: Sized {
     /// Take the reciprocal (inverse) of a number, `1/x`.
     #[stable(feature = "core", since = "1.6.0")]
     fn recip(self) -> Self;
-
-    /// Raise a number to an integer power.
-    ///
-    /// Using this function is generally faster than using `powf`
-    #[stable(feature = "core", since = "1.6.0")]
-    fn powi(self, n: i32) -> Self;
 
     /// Convert radians to degrees.
     #[stable(feature = "deg_rad_conversions", since="1.7.0")]
