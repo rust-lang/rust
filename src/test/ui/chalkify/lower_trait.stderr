@@ -4,5 +4,23 @@ error: Implemented(Self: Foo<S, T, U>) :- FromEnv(Self: Foo<S, T, U>).
 LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<S, T, U>).
+  --> $DIR/lower_trait.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<S, T, U>).
+  --> $DIR/lower_trait.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(U: std::marker::Sized) :- FromEnv(Self: Foo<S, T, U>).
+  --> $DIR/lower_trait.rs:13:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

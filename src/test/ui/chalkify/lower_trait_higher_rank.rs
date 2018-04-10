@@ -10,14 +10,13 @@
 
 #![feature(rustc_attrs)]
 
-#[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<S, T, U>) :-
+#[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<F>) :-
                               //~| ERROR FromEnv
                               //~| ERROR FromEnv
                               //~| ERROR FromEnv
-trait Foo<S, T, U> {
-    fn s(S) -> S;
-    fn t(T) -> T;
-    fn u(U) -> U;
+trait Foo<F> where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8
+{
+    fn s(F) -> F;
 }
 
 fn main() {
