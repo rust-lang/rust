@@ -18,7 +18,9 @@ use path::Path;
 use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 
-/// Redox-specific extensions to `Permissions`
+/// Redox-specific extensions to [`fs::Permissions`].
+///
+/// [`fs::Permissions`]: ../../../../std/fs/struct.Permissions.html
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
     /// Returns the underlying raw `mode_t` bits that are the standard Redox
@@ -95,7 +97,9 @@ impl PermissionsExt for Permissions {
     }
 }
 
-/// Redox-specific extensions to `OpenOptions`
+/// Redox-specific extensions to [`fs::OpenOptions`].
+///
+/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait OpenOptionsExt {
     /// Sets the mode bits that a new file will be created with.
@@ -163,13 +167,9 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
-// Hm, why are there casts here to the returned type, shouldn't the types always
-// be the same? Right you are! Turns out, however, on android at least the types
-// in the raw `stat` structure are not the same as the types being returned. Who
-// knew!
-//
-// As a result to make sure this compiles for all platforms we do the manual
-// casts and rely on manual lowering to `stat` if the raw type is desired.
+/// Redox-specific extensions to [`fs::Metadata`].
+///
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -204,6 +204,13 @@ pub trait MetadataExt {
     fn blocks(&self) -> u64;
 }
 
+// Hm, why are there casts here to the returned type, shouldn't the types always
+// be the same? Right you are! Turns out, however, on android at least the types
+// in the raw `stat` structure are not the same as the types being returned. Who
+// knew!
+//
+// As a result to make sure this compiles for all platforms we do the manual
+// casts and rely on manual lowering to `stat` if the raw type is desired.
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for fs::Metadata {
     fn dev(&self) -> u64 {
@@ -253,7 +260,12 @@ impl MetadataExt for fs::Metadata {
     }
 }
 
-/// Add special Redox types (block/char device, fifo and socket)
+/// Redox-specific extensions for [`fs::FileType`].
+///
+/// Adds support for special Unix file types such as block/character devices,
+/// pipes, and sockets.
+///
+/// [`fs::FileType`]: ../../../../std/fs/struct.FileType.html
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.
@@ -307,8 +319,10 @@ pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
     sys::fs::symlink(src.as_ref(), dst.as_ref())
 }
 
+/// Redox-specific extensions to [`fs::DirBuilder`].
+///
+/// [`fs::DirBuilder`]: ../../../../std/fs/struct.DirBuilder.html
 #[stable(feature = "dir_builder", since = "1.6.0")]
-/// An extension trait for `fs::DirBuilder` for Redox-specific options.
 pub trait DirBuilderExt {
     /// Sets the mode to create new directories with. This option defaults to
     /// 0o777.
