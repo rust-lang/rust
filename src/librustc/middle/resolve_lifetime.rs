@@ -137,14 +137,14 @@ impl Region {
         match self {
             Region::LateBound(debruijn, id, origin) => Region::LateBound(
                 ty::DebruijnIndex {
-                    depth: debruijn.depth - (depth - 1),
+                    depth: debruijn.depth - depth,
                 },
                 id,
                 origin,
             ),
             Region::LateBoundAnon(debruijn, index) => Region::LateBoundAnon(
                 ty::DebruijnIndex {
-                    depth: debruijn.depth - (depth - 1),
+                    depth: debruijn.depth - depth,
                 },
                 index,
             ),
@@ -1781,7 +1781,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             .map(|(i, input)| {
                 let mut gather = GatherLifetimes {
                     map: self.map,
-                    binder_depth: 1,
+                    binder_depth: 0,
                     have_bound_regions: false,
                     lifetimes: FxHashSet(),
                 };

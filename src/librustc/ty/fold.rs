@@ -292,7 +292,7 @@ impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
         RegionFolder {
             tcx,
             skipped_regions,
-            current_depth: 1,
+            current_depth: 0,
             fld_r,
         }
     }
@@ -460,7 +460,7 @@ impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
     {
         RegionReplacer {
             tcx,
-            current_depth: 1,
+            current_depth: 0,
             fld_r,
             map: BTreeMap::default()
         }
@@ -478,7 +478,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_regions_escaping_depth(self.current_depth-1) {
+        if !t.has_regions_escaping_depth(self.current_depth) {
             return t;
         }
 
@@ -635,7 +635,7 @@ struct LateBoundRegionsCollector {
 impl LateBoundRegionsCollector {
     fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
-            current_depth: 1,
+            current_depth: 0,
             regions: FxHashSet(),
             just_constrained,
         }
