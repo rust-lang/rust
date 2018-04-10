@@ -58,7 +58,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableVec};
 use arena::{TypedArena, DroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock};
 use std::any::Any;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
@@ -131,28 +131,28 @@ pub struct CtxtInterners<'tcx> {
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
-    type_: RefCell<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
-    type_list: RefCell<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
-    substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
-    canonical_var_infos: RefCell<FxHashSet<Interned<'tcx, Slice<CanonicalVarInfo>>>>,
-    region: RefCell<FxHashSet<Interned<'tcx, RegionKind>>>,
-    existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
-    predicates: RefCell<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
-    const_: RefCell<FxHashSet<Interned<'tcx, Const<'tcx>>>>,
+    type_: Lock<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
+    type_list: Lock<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
+    substs: Lock<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
+    canonical_var_infos: Lock<FxHashSet<Interned<'tcx, Slice<CanonicalVarInfo>>>>,
+    region: Lock<FxHashSet<Interned<'tcx, RegionKind>>>,
+    existential_predicates: Lock<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
+    predicates: Lock<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
+    const_: Lock<FxHashSet<Interned<'tcx, Const<'tcx>>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx DroplessArena) -> CtxtInterners<'tcx> {
         CtxtInterners {
-            arena,
-            type_: RefCell::new(FxHashSet()),
-            type_list: RefCell::new(FxHashSet()),
-            substs: RefCell::new(FxHashSet()),
-            region: RefCell::new(FxHashSet()),
-            existential_predicates: RefCell::new(FxHashSet()),
-            canonical_var_infos: RefCell::new(FxHashSet()),
-            predicates: RefCell::new(FxHashSet()),
-            const_: RefCell::new(FxHashSet()),
+            arena: arena,
+            type_: Lock::new(FxHashSet()),
+            type_list: Lock::new(FxHashSet()),
+            substs: Lock::new(FxHashSet()),
+            canonical_var_infos: Lock::new(FxHashSet()),
+            region: Lock::new(FxHashSet()),
+            existential_predicates: Lock::new(FxHashSet()),
+            predicates: Lock::new(FxHashSet()),
+            const_: Lock::new(FxHashSet()),
         }
     }
 
@@ -892,11 +892,11 @@ pub struct GlobalCtxt<'tcx> {
     /// by `proc-macro` crates.
     pub derive_macros: RefCell<NodeMap<Symbol>>,
 
-    stability_interner: RefCell<FxHashSet<&'tcx attr::Stability>>,
+    stability_interner: Lock<FxHashSet<&'tcx attr::Stability>>,
 
     pub interpret_interner: InterpretInterner<'tcx>,
 
-    layout_interner: RefCell<FxHashSet<&'tcx LayoutDetails>>,
+    layout_interner: Lock<FxHashSet<&'tcx LayoutDetails>>,
 
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
@@ -910,7 +910,7 @@ pub struct GlobalCtxt<'tcx> {
     /// This is intended to only get used during the trans phase of the compiler
     /// when satisfying the query for a particular codegen unit. Internally in
     /// the query it'll send data along this channel to get processed later.
-    pub tx_to_llvm_workers: mpsc::Sender<Box<dyn Any + Send>>,
+    pub tx_to_llvm_workers: Lock<mpsc::Sender<Box<dyn Any + Send>>>,
 
     output_filenames: Arc<OutputFilenames>,
 }
@@ -918,7 +918,7 @@ pub struct GlobalCtxt<'tcx> {
 /// Everything needed to efficiently work with interned allocations
 #[derive(Debug, Default)]
 pub struct InterpretInterner<'tcx> {
-    inner: RefCell<InterpretInternerInner<'tcx>>,
+    inner: Lock<InterpretInternerInner<'tcx>>,
 }
 
 #[derive(Debug, Default)]
@@ -1278,13 +1278,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             crate_name: Symbol::intern(crate_name),
             data_layout,
-            layout_interner: RefCell::new(FxHashSet()),
+            layout_interner: Lock::new(FxHashSet()),
             layout_depth: Cell::new(0),
             derive_macros: RefCell::new(NodeMap()),
-            stability_interner: RefCell::new(FxHashSet()),
+            stability_interner: Lock::new(FxHashSet()),
             interpret_interner: Default::default(),
             all_traits: RefCell::new(None),
-            tx_to_llvm_workers: tx,
+            tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
         };
 

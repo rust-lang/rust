@@ -23,7 +23,6 @@ use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
 
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -46,17 +45,17 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
-    pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
+    pub missing_fragment_specifiers: Lock<HashSet<Span>>,
     /// Places where raw identifiers were used. This is used for feature gating
     /// raw identifiers
-    pub raw_identifier_spans: RefCell<Vec<Span>>,
+    pub raw_identifier_spans: Lock<Vec<Span>>,
     /// The registered diagnostics codes
     pub registered_diagnostics: Lock<ErrorMap>,
     // Spans where a `mod foo;` statement was included in a non-mod.rs file.
     // These are used to issue errors if the non_modrs_mods feature is not enabled.
-    pub non_modrs_mods: RefCell<Vec<(ast::Ident, Span)>>,
+    pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: RefCell<Vec<PathBuf>>,
+    included_mod_stack: Lock<Vec<PathBuf>>,
     code_map: Lrc<CodeMap>,
 }
 
@@ -75,12 +74,12 @@ impl ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
-            missing_fragment_specifiers: RefCell::new(HashSet::new()),
-            raw_identifier_spans: RefCell::new(Vec::new()),
+            missing_fragment_specifiers: Lock::new(HashSet::new()),
+            raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
-            included_mod_stack: RefCell::new(vec![]),
+            included_mod_stack: Lock::new(vec![]),
             code_map,
-            non_modrs_mods: RefCell::new(vec![]),
+            non_modrs_mods: Lock::new(vec![]),
         }
     }
 

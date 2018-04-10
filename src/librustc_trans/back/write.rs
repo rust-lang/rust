@@ -1035,7 +1035,7 @@ pub fn start_async_translation(tcx: TyCtxt,
         crate_info,
 
         time_graph,
-        coordinator_send: tcx.tx_to_llvm_workers.clone(),
+        coordinator_send: tcx.tx_to_llvm_workers.lock().clone(),
         trans_worker_receive,
         shared_emitter_main,
         future: coordinator_thread,
@@ -1428,7 +1428,7 @@ fn start_executing_work(tcx: TyCtxt,
                         metadata_config: Arc<ModuleConfig>,
                         allocator_config: Arc<ModuleConfig>)
                         -> thread::JoinHandle<Result<CompiledModules, ()>> {
-    let coordinator_send = tcx.tx_to_llvm_workers.clone();
+    let coordinator_send = tcx.tx_to_llvm_workers.lock().clone();
     let sess = tcx.sess;
 
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
@@ -2340,7 +2340,7 @@ pub(crate) fn submit_translated_module_to_llvm(tcx: TyCtxt,
                                                mtrans: ModuleTranslation,
                                                cost: u64) {
     let llvm_work_item = WorkItem::Optimize(mtrans);
-    drop(tcx.tx_to_llvm_workers.send(Box::new(Message::TranslationDone {
+    drop(tcx.tx_to_llvm_workers.lock().send(Box::new(Message::TranslationDone {
         llvm_work_item,
         cost,
     })));

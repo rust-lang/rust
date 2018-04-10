@@ -28,7 +28,7 @@ use std::collections::HashMap;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use std::default::Default;
 use tokenstream::{self, TokenStream};
 
@@ -565,26 +565,26 @@ pub enum SyntaxExtension {
     /// `#[derive(...)]` is a `MultiItemDecorator`.
     ///
     /// Prefer ProcMacro or MultiModifier since they are more flexible.
-    MultiDecorator(Box<MultiItemDecorator>),
+    MultiDecorator(Box<MultiItemDecorator + sync::Sync + sync::Send>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place. Also allows decoration, i.e., creating new items.
-    MultiModifier(Box<MultiItemModifier>),
+    MultiModifier(Box<MultiItemModifier + sync::Sync + sync::Send>),
 
     /// A function-like procedural macro. TokenStream -> TokenStream.
-    ProcMacro(Box<ProcMacro>),
+    ProcMacro(Box<ProcMacro + sync::Sync + sync::Send>),
 
     /// An attribute-like procedural macro. TokenStream, TokenStream -> TokenStream.
     /// The first TokenSteam is the attribute, the second is the annotated item.
     /// Allows modification of the input items and adding new items, similar to
     /// MultiModifier, but uses TokenStreams, rather than AST nodes.
-    AttrProcMacro(Box<AttrProcMacro>),
+    AttrProcMacro(Box<AttrProcMacro + sync::Sync + sync::Send>),
 
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
     NormalTT {
-        expander: Box<TTMacroExpander>,
+        expander: Box<TTMacroExpander + sync::Sync + sync::Send>,
         def_info: Option<(ast::NodeId, Span)>,
         /// Whether the contents of the macro can
         /// directly use `#[unstable]` things (true == yes).
@@ -599,13 +599,15 @@ pub enum SyntaxExtension {
     /// A function-like syntax extension that has an extra ident before
     /// the block.
     ///
-    IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
+    IdentTT(Box<IdentMacroExpander + sync::Sync + sync::Send>, Option<Span>, bool),
 
     /// An attribute-like procedural macro. TokenStream -> TokenStream.
     /// The input is the annotated item.
     /// Allows generating code to implement a Trait for a given struct
     /// or enum item.
-    ProcMacroDerive(Box<MultiItemModifier>, Vec<Symbol> /* inert attribute names */),
+    ProcMacroDerive(Box<MultiItemModifier +
+                        sync::Sync +
+                        sync::Send>, Vec<Symbol> /* inert attribute names */),
 
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
@@ -613,7 +615,7 @@ pub enum SyntaxExtension {
     /// A declarative macro, e.g. `macro m() {}`.
     ///
     /// The second element is the definition site span.
-    DeclMacro(Box<TTMacroExpander>, Option<(ast::NodeId, Span)>),
+    DeclMacro(Box<TTMacroExpander + sync::Sync + sync::Send>, Option<(ast::NodeId, Span)>),
 }
 
 impl SyntaxExtension {

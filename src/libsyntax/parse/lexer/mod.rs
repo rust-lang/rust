@@ -1781,7 +1781,6 @@ mod tests {
     use errors;
     use feature_gate::UnstableFeatures;
     use parse::token;
-    use std::cell::RefCell;
     use std::collections::HashSet;
     use std::io;
     use std::path::PathBuf;
@@ -1797,12 +1796,12 @@ mod tests {
             span_diagnostic: errors::Handler::with_emitter(true, false, Box::new(emitter)),
             unstable_features: UnstableFeatures::from_environment(),
             config: CrateConfig::new(),
-            included_mod_stack: RefCell::new(Vec::new()),
+            included_mod_stack: Lock::new(Vec::new()),
             code_map: cm,
-            missing_fragment_specifiers: RefCell::new(HashSet::new()),
-            raw_identifier_spans: RefCell::new(Vec::new()),
+            missing_fragment_specifiers: Lock::new(HashSet::new()),
+            raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
-            non_modrs_mods: RefCell::new(vec![]),
+            non_modrs_mods: Lock::new(vec![]),
         }
     }
 

@@ -34,7 +34,7 @@ use util::ppaux;
 use std::slice;
 use hir::{self, InlineAsm};
 use std::borrow::{Cow};
-use std::cell::Ref;
+use rustc_data_structures::sync::ReadGuard;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::{iter, mem, u32};
 use std::ops::{Index, IndexMut};
@@ -187,13 +187,13 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
-    pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self) -> ReadGuard<IndexVec<BasicBlock, Vec<BasicBlock>>> {
         self.cache.predecessors(self)
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
-        Ref::map(self.predecessors(), |p| &p[bb])
+    pub fn predecessors_for(&self, bb: BasicBlock) -> ReadGuard<Vec<BasicBlock>> {
+        ReadGuard::map(self.predecessors(), |p| &p[bb])
     }
 
     #[inline]
