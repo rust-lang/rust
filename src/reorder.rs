@@ -198,18 +198,18 @@ impl ReorderableItemKind {
 
     pub fn is_reorderable(&self, config: &Config) -> bool {
         match *self {
-            ReorderableItemKind::ExternCrate => config.reorder_extern_crates(),
+            ReorderableItemKind::ExternCrate => config.reorder_imports(),
             ReorderableItemKind::Mod => config.reorder_modules(),
             ReorderableItemKind::Use => config.reorder_imports(),
             ReorderableItemKind::Other => false,
         }
     }
 
-    pub fn in_group(&self, config: &Config) -> bool {
+    pub fn in_group(&self) -> bool {
         match *self {
-            ReorderableItemKind::ExternCrate => config.reorder_extern_crates_in_group(),
-            ReorderableItemKind::Mod => config.reorder_modules(),
-            ReorderableItemKind::Use => config.reorder_imports_in_group(),
+            ReorderableItemKind::ExternCrate
+            | ReorderableItemKind::Mod
+            | ReorderableItemKind::Use => true,
             ReorderableItemKind::Other => false,
         }
     }
@@ -268,7 +268,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             let item_kind = ReorderableItemKind::from(items[0]);
             if item_kind.is_reorderable(self.config) {
                 let visited_items_num =
-                    self.walk_reorderable_items(items, item_kind, item_kind.in_group(self.config));
+                    self.walk_reorderable_items(items, item_kind, item_kind.in_group());
                 let (_, rest) = items.split_at(visited_items_num);
                 items = rest;
             } else {

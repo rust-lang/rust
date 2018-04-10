@@ -6,7 +6,7 @@ A possible content of `rustfmt.toml` or `.rustfmt.toml` might look like this:
 
 ```toml
 indent_style = "Block"
-reorder_imported_names = true
+reorder_imports = false
 ```
 
 Each configuration option is either stable or unstable.
@@ -1240,33 +1240,13 @@ fn dolor() -> usize {}
 fn adipiscing() -> usize {}
 ```
 
-## `reorder_imported_names`
-
-Reorder lists of names in import statements alphabetically
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-#### `false` (default):
-
-```rust
-use super::{lorem, ipsum, dolor, sit};
-```
-
-#### `true`:
-
-```rust
-use super::{dolor, ipsum, lorem, sit};
-```
-
-See also [`reorder_imports`](#reorder_imports).
 
 ## `reorder_imports`
 
-Reorder import statements alphabetically
+Reorder import and extern crate statements alphabetically in groups (a group is
+separated by a newline).
 
-- **Default value**: `false`
+- **Default value**: `true`
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
@@ -1288,98 +1268,6 @@ use lorem;
 use sit;
 ```
 
-See also [`reorder_imported_names`](#reorder_imported_names), [`reorder_imports_in_group`](#reorder_imports_in_group).
-
-## `reorder_imports_in_group`
-
-Reorder import statements in group
-
-- **Default value**: `false`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-**Note:** This option takes effect only when [`reorder_imports`](#reorder_imports) is set to `true`.
-
-#### `true` (default):
-
-```rust
-use std::io;
-use std::mem;
-
-use dolor;
-use ipsum;
-use lorem;
-use sit;
-```
-
-#### `false`:
-
-
-```rust
-use dolor;
-use ipsum;
-use lorem;
-use sit;
-use std::io;
-use std::mem;
-```
-
-See also [`reorder_imports`](#reorder_imports).
-
-## `reorder_extern_crates`
-
-Reorder `extern crate` statements alphabetically
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-#### `true` (default):
-
-```rust
-extern crate dolor;
-extern crate ipsum;
-extern crate lorem;
-extern crate sit;
-```
-
-#### `false`:
-
-```rust
-extern crate lorem;
-extern crate ipsum;
-
-extern crate dolor;
-extern crate sit;
-```
-
-See also [`reorder_extern_crates_in_group`](#reorder_extern_crates_in_group).
-
-## `reorder_extern_crates_in_group`
-
-Reorder `extern crate` statements in group
-
-- **Default value**: `true`
-- **Possible values**: `true`, `false`
-- **Stable**: No
-
-#### `false` (default):
-
-This value has no influence beyond the effect of the [`reorder_extern_crates`](#reorder_extern_crates) option. Set [`reorder_extern_crates`](#reorder_extern_crates) to `false` if you do not want `extern crate` groups to be collapsed and ordered.
-
-#### `true`:
-
-**Note:** This only takes effect when [`reorder_extern_crates`](#reorder_extern_crates) is set to `true`.
-
-```rust
-extern crate a;
-extern crate b;
-
-extern crate dolor;
-extern crate ipsum;
-extern crate lorem;
-extern crate sit;
-```
 
 ## `reorder_modules`
 
