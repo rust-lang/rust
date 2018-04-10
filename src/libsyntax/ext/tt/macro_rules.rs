@@ -69,7 +69,6 @@ struct MacroRulesMacroExpander {
 impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
-                   _path: &'cx Option<::ast::Path>,
                    sp: Span,
                    input: TokenStream)
                    -> Box<MacResult+'cx> {

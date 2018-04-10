@@ -40,7 +40,6 @@ pub struct ErrorInfo {
 pub type ErrorMap = BTreeMap<Name, ErrorInfo>;
 
 pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
-                                   _path: &'cx Option<::ast::Path>,
                                    span: Span,
                                    token_tree: &[TokenTree])
                                    -> Box<MacResult+'cx> {
@@ -74,7 +73,6 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
-                                       _path: &'cx Option<::ast::Path>,
                                        span: Span,
                                        token_tree: &[TokenTree])
                                        -> Box<MacResult+'cx> {
@@ -145,7 +143,6 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
-                                          _path: &'cx Option<::ast::Path>,
                                           span: Span,
                                           token_tree: &[TokenTree])
                                           -> Box<MacResult+'cx> {

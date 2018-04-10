@@ -24,7 +24,6 @@ use syntax::tokenstream;
 use std::env;
 
 pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
-                              _path: &Option<::ast::Path>,
                               sp: Span,
                               tts: &[tokenstream::TokenTree])
                               -> Box<base::MacResult + 'cx> {
@@ -57,7 +56,6 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt,
-                       _path: &Option<::ast::Path>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<base::MacResult + 'cx> {

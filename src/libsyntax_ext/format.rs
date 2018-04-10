@@ -675,7 +675,6 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
-                               _path: &'cx Option<::ast::Path>,
                                mut sp: Span,
                                tts: &[tokenstream::TokenTree])
                                -> Box<base::MacResult + 'cx> {

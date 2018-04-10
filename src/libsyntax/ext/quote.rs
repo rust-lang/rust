@@ -450,7 +450,6 @@ pub fn parse_path_panic(parser: &mut Parser, mode: PathStyle) -> ast::Path {
 }
 
 pub fn expand_quote_tokens<'cx>(cx: &'cx mut ExtCtxt,
-                                _path: &'cx Option<::ast::Path>,
                                 sp: Span,
                                 tts: &[TokenTree])
                                 -> Box<base::MacResult+'cx> {
@@ -460,7 +459,6 @@ pub fn expand_quote_tokens<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_quote_expr<'cx>(cx: &'cx mut ExtCtxt,
-                              _path: &'cx Option<::ast::Path>,
                               sp: Span,
                               tts: &[TokenTree])
                               -> Box<base::MacResult+'cx> {
@@ -469,7 +467,6 @@ pub fn expand_quote_expr<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_quote_item<'cx>(cx: &'cx mut ExtCtxt,
-                              _path: &'cx Option<::ast::Path>,
                               sp: Span,
                               tts: &[TokenTree])
                               -> Box<base::MacResult+'cx> {
@@ -478,7 +475,6 @@ pub fn expand_quote_item<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_quote_pat<'cx>(cx: &'cx mut ExtCtxt,
-                             _path: &'cx Option<::ast::Path>,
                              sp: Span,
                              tts: &[TokenTree])
                              -> Box<base::MacResult+'cx> {
@@ -487,7 +483,6 @@ pub fn expand_quote_pat<'cx>(cx: &'cx mut ExtCtxt,
 }
 
 pub fn expand_quote_arm(cx: &mut ExtCtxt,
-                        _path: &Option<::ast::Path>,
                         sp: Span,
                         tts: &[TokenTree])
                         -> Box<base::MacResult+'static> {
@@ -496,7 +491,6 @@ pub fn expand_quote_arm(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_ty(cx: &mut ExtCtxt,
-                        _path: &Option<::ast::Path>,
                        sp: Span,
                        tts: &[TokenTree])
                        -> Box<base::MacResult+'static> {
@@ -505,7 +499,6 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_stmt(cx: &mut ExtCtxt,
-                         _path: &Option<::ast::Path>,
                          sp: Span,
                          tts: &[TokenTree])
                          -> Box<base::MacResult+'static> {
@@ -514,7 +507,6 @@ pub fn expand_quote_stmt(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_attr(cx: &mut ExtCtxt,
-                         _path: &Option<::ast::Path>,
                          sp: Span,
                          tts: &[TokenTree])
                          -> Box<base::MacResult+'static> {
@@ -525,7 +517,6 @@ pub fn expand_quote_attr(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_arg(cx: &mut ExtCtxt,
-                        _path: &Option<::ast::Path>,
                         sp: Span,
                         tts: &[TokenTree])
                         -> Box<base::MacResult+'static> {
@@ -534,7 +525,6 @@ pub fn expand_quote_arg(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_block(cx: &mut ExtCtxt,
-                        _path: &Option<::ast::Path>,
                         sp: Span,
                         tts: &[TokenTree])
                         -> Box<base::MacResult+'static> {
@@ -543,7 +533,6 @@ pub fn expand_quote_block(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_meta_item(cx: &mut ExtCtxt,
-                        _path: &Option<::ast::Path>,
                         sp: Span,
                         tts: &[TokenTree])
                         -> Box<base::MacResult+'static> {
@@ -552,7 +541,6 @@ pub fn expand_quote_meta_item(cx: &mut ExtCtxt,
 }
 
 pub fn expand_quote_path(cx: &mut ExtCtxt,
-                        _path: &Option<::ast::Path>,
                         sp: Span,
                         tts: &[TokenTree])
                         -> Box<base::MacResult+'static> {

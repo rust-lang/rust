@@ -33,7 +33,6 @@ use syntax::util::small_vector::SmallVector;
 pub const MACRO: &'static str = "global_asm";
 
 pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
-                              _path: &Option<::ast::Path>,
                               sp: Span,
                               tts: &[tokenstream::TokenTree]) -> Box<base::MacResult + 'cx> {
     if !cx.ecfg.enable_global_asm() {

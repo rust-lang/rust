@@ -21,7 +21,6 @@ use syntax::parse::token;
 use syntax_pos::Span;
 
 pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
-                       _path: &Option<::ast::Path>,
                        sp: Span,
                        tts: &[tokenstream::TokenTree])
                        -> Box<base::MacResult + 'static> {

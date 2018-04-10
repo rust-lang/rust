@@ -104,6 +104,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         include_str: expand_include_str,
         include_bytes: expand_include_bytes,
         module_path: expand_mod,
+
         asm: asm::expand_asm,
         global_asm: global_asm::expand_global_asm,
         cfg: cfg::expand_cfg,

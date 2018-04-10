@@ -196,7 +196,7 @@ pub enum InvocationKind {
         mac: ast::Mac,
         ident: Option<Ident>,
         span: Span,
-        context_path: Path,
+        context_path: Rc<Path>,
     },
     Attr {
         attr: Option<ast::Attribute>,
@@ -318,7 +318,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             let (expansion, new_invocations) = if let Some(ext) = ext {
                 if let Some(ext) = ext {
                     let dummy = (invoc.expansion_kind.dummy(
-                            invoc.span()).unwrap(), Some(dummy_path()));
+                            invoc.span()).unwrap(), None);
                     let (expansion, context_path) =
                         self.expand_invoc(invoc, &*ext).unwrap_or(dummy);
                     self.collect_invocations(expansion, &[], context_path)
@@ -407,7 +407,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn collect_invocations(&mut self,
-                           expansion: Expansion, derives: &[Mark], context_path : Option<Path>)
+                           expansion: Expansion, derives: &[Mark], context_path : Option<Rc<Path>>)
                            -> (Expansion, Vec<Invocation>) {
         let result = {
             let mut collector = InvocationCollector {
@@ -417,7 +417,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     features: self.cx.ecfg.features,
                 },
                 cx: self.cx,
-                context_path : context_path.unwrap_or(dummy_path()),
+                context_path : match context_path {
+                    None => dummy_path(),
+                    Some(path) => (*path).clone(),
+                },
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
             };
@@ -467,7 +470,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: &SyntaxExtension)
-        -> Option<(Expansion, Option<Path>)> {
+        -> Option<(Expansion, Option<Rc<Path>>)> {
         let result = match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext)?,
             InvocationKind::Attr { .. } =>
@@ -559,15 +562,15 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     fn expand_bang_invoc(&mut self,
                          invoc: Invocation,
                          ext: &SyntaxExtension)
-                         -> Option<(Expansion, Option<Path>)> {
+                         -> Option<(Expansion, Option<Rc<Path>>)> {
         let (mark, kind) = (invoc.expansion_data.mark, invoc.expansion_kind);
         let (mac, ident, span, context_path) = match invoc.kind {
             InvocationKind::Bang { mac, ident, span, context_path }
                 => (mac, ident, span, context_path),
             _ => unreachable!(),
         };
-        let some_context_path = Some(context_path);
         let path = &mac.node.path;
+        self.cx.context_path = None;
 
         let ident = ident.unwrap_or_else(|| keywords::Invalid.ident());
         let validate_and_set_expn_info = |this: &mut Self, // arg instead of capture
@@ -619,8 +622,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                                     false, false, None) {
                     dummy_span
                 } else {
-                    kind.make_from(expand.expand(self.cx,
-                                                 &some_context_path, span, mac.node.stream()))
+                    self.cx.context_path = Some(context_path.clone());
+                    kind.make_from(expand.expand(self.cx, span, mac.node.stream()))
                 }
             }
 
@@ -637,8 +640,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                                     unstable_feature) {
                     dummy_span
                 } else {
-                    kind.make_from(expander.expand(self.cx,
-                                                   &some_context_path, span, mac.node.stream()))
+                    self.cx.context_path = Some(context_path.clone());
+                    kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
                 }
             }
 
@@ -713,7 +716,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.trace_macros_diag();
             kind.dummy(span)
         };
-        r.map(|x|(x, some_context_path))
+        r.map(|x|(x, Some(context_path)))
     }
 
     /// Expand a derive invocation. Returns the result of expansion.
@@ -909,7 +912,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn make_bang(&self, ident: Option<Ident>, mac: ast::Mac, span: Span) -> InvocationKind {
         InvocationKind::Bang {
-            mac: mac, ident, span: span, context_path: self.context_path.clone() }
+            mac: mac, ident, span: span, context_path: Rc::new(self.context_path.clone()) }
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: ExpansionKind) -> Expansion {
