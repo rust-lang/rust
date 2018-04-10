@@ -29,7 +29,7 @@ use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
-use rustc::util::nodemap::FxHashMap;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
@@ -59,7 +59,10 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
+
+    interpret_allocs: FxHashMap<interpret::AllocId, usize>,
+    interpret_allocs_inverse: Vec<interpret::AllocId>,
+    interpret_alloc_ids: FxHashSet<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     filemap_cache: Lrc<FileMap>,
@@ -196,26 +199,17 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        use std::collections::hash_map::Entry;
-        let tcx = self.tcx;
-        let pos = self.position();
-        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
-            Entry::Occupied(entry) => Some(entry.get().clone()),
-            Entry::Vacant(entry) => {
-                // ensure that we don't place any AllocIds at the very beginning
-                // of the metadata file, because that would end up making our indices
-                // not special. This is essentially impossible, but let's make sure
-                assert!(pos >= interpret::SHORTHAND_START);
-                entry.insert(pos);
-                None
-            },
+        let index = if self.interpret_alloc_ids.insert(*alloc_id) {
+            let idx = self.interpret_alloc_ids.len() - 1;
+            assert_eq!(idx, self.interpret_allocs_inverse.len());
+            self.interpret_allocs_inverse.push(*alloc_id);
+            assert!(self.interpret_allocs.insert(*alloc_id, idx).is_none());
+            idx
+        } else {
+            self.interpret_allocs[alloc_id]
         };
-        interpret::specialized_encode_alloc_id(
-            self,
-            tcx,
-            *alloc_id,
-            shorthand,
-        )
+
+        index.encode(self)
     }
 }
 
@@ -460,6 +454,33 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let has_default_lib_allocator =
             attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
+
+        // Encode the allocation index
+        let interpret_alloc_index = {
+            let mut interpret_alloc_index = Vec::new();
+            let mut n = 0;
+            loop {
+                let new_n = self.interpret_alloc_ids.len();
+                for idx in n..new_n {
+                    let id = self.interpret_allocs_inverse[idx];
+                    let pos = self.position() as u32;
+                    interpret_alloc_index.push(pos);
+                    interpret::specialized_encode_alloc_id(
+                        self,
+                        tcx,
+                        id,
+                    ).unwrap();
+                }
+                // if we have found new ids, serialize those, too
+                if n == new_n {
+                    // otherwise, abort
+                    break;
+                }
+                n = new_n;
+            }
+            interpret_alloc_index
+        };
+
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
@@ -492,6 +513,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             exported_symbols,
             wasm_custom_sections,
             index,
+            interpret_alloc_index,
         });
 
         let total_bytes = self.position();
@@ -1760,7 +1782,9 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
-            interpret_alloc_shorthands: Default::default(),
+            interpret_allocs: Default::default(),
+            interpret_allocs_inverse: Default::default(),
+            interpret_alloc_ids: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.
