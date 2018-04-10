@@ -147,9 +147,9 @@ pub(crate) fn link_binary(sess: &Session,
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-trans, as they will error.
         let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
-        let ignore_executable = sess.opts.debugging_opts.no_trans ||
-            !(sess.opts.output_types.should_trans() || output_metadata);
-        if crate_type == config::CrateTypeExecutable && ignore_executable {
+        if (sess.opts.debugging_opts.no_trans || !sess.opts.output_types.should_trans()) &&
+           !output_metadata &&
+           crate_type == config::CrateTypeExecutable {
             continue;
         }
 
