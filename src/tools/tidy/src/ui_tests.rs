@@ -25,7 +25,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         if let Some(ext) = file_path.extension() {
             if (ext == "stderr" || ext == "stdout") && !file_path.with_extension("rs").exists() {
 
-                // rust-lang/rust#48879: this fn used to be beautful
+                // rust-lang/rust#48879: this fn used to be beautiful
                 // because Path API special-cases replacing
                 // extensions. That works great for ".stderr" but not
                 // so well for ".nll.stderr". To support the latter,
