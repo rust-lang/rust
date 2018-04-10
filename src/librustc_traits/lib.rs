@@ -37,6 +37,7 @@ pub fn provide(p: &mut Providers) {
         normalize_ty_after_erasing_regions:
             normalize_erasing_regions::normalize_ty_after_erasing_regions,
         program_clauses_for: lowering::program_clauses_for,
+        program_clauses_for_env: lowering::program_clauses_for_env,
         ..*p
     };
 }

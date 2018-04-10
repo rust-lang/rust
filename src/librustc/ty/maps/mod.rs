@@ -447,6 +447,10 @@ define_maps! { <'tcx>
 
     [] fn program_clauses_for: ProgramClausesFor(DefId) -> Lrc<&'tcx Slice<Clause<'tcx>>>,
 
+    [] fn program_clauses_for_env: ProgramClausesForEnv(
+        ty::ParamEnv<'tcx>
+    ) -> Lrc<&'tcx Slice<Clause<'tcx>>>,
+
     [] fn wasm_custom_sections: WasmCustomSections(CrateNum) -> Lrc<Vec<DefId>>,
     [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
         -> Lrc<FxHashMap<DefId, String>>,

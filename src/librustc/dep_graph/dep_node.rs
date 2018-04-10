@@ -655,6 +655,7 @@ define_dep_nodes!( <'tcx>
     [input] Features,
 
     [] ProgramClausesFor(DefId),
+    [] ProgramClausesForEnv(ParamEnv<'tcx>),
     [] WasmImportModuleMap(CrateNum),
     [] ForeignModules(CrateNum),
 

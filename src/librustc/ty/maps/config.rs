@@ -717,6 +717,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::program_clauses_for_env<'tcx> {
+    fn describe(_tcx: TyCtxt, _: ty::ParamEnv<'tcx>) -> String {
+        format!("generating chalk-style clauses for param env")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::wasm_import_module_map<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
         format!("wasm import module map")
