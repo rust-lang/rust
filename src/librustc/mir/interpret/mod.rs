@@ -158,7 +158,7 @@ impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
 enum AllocKind {
     Alloc,
     Fn,
-    ExternStatic,
+    Static,
 }
 
 pub fn specialized_encode_alloc_id<
@@ -173,17 +173,13 @@ pub fn specialized_encode_alloc_id<
         trace!("encoding {:?} with {:#?}", alloc_id, alloc);
         AllocKind::Alloc.encode(encoder)?;
         alloc.encode(encoder)?;
-        // encode whether this allocation is the root allocation of a static
-        tcx.interpret_interner
-            .get_corresponding_static_def_id(alloc_id)
-            .encode(encoder)?;
     } else if let Some(fn_instance) = tcx.interpret_interner.get_fn(alloc_id) {
         trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
         AllocKind::Fn.encode(encoder)?;
         fn_instance.encode(encoder)?;
-    } else if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(alloc_id) {
-        // extern "C" statics don't have allocations, just encode its def_id
-        AllocKind::ExternStatic.encode(encoder)?;
+    } else if let Some(did) = tcx.interpret_interner.get_static(alloc_id) {
+        // referring to statics doesn't need to know about their allocations, just hash the DefId
+        AllocKind::Static.encode(encoder)?;
         did.encode(encoder)?;
     } else {
         bug!("alloc id without corresponding allocation: {}", alloc_id);
@@ -212,10 +208,6 @@ pub fn specialized_decode_alloc_id<
             let allocation = tcx.intern_const_alloc(allocation);
             tcx.interpret_interner.intern_at_reserved(alloc_id, allocation);
 
-            if let Some(glob) = Option::<DefId>::decode(decoder)? {
-                tcx.interpret_interner.cache(glob, alloc_id);
-            }
-
             Ok(alloc_id)
         },
         AllocKind::Fn => {
@@ -227,12 +219,11 @@ pub fn specialized_decode_alloc_id<
             cache(decoder, id);
             Ok(id)
         },
-        AllocKind::ExternStatic => {
+        AllocKind::Static => {
             trace!("creating extern static alloc id at");
             let did = DefId::decode(decoder)?;
-            let alloc_id = tcx.interpret_interner.reserve();
+            let alloc_id = tcx.interpret_interner.cache_static(did);
             cache(decoder, alloc_id);
-            tcx.interpret_interner.cache(did, alloc_id);
             Ok(alloc_id)
         },
     }
