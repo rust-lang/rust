@@ -12,6 +12,7 @@
 //! from rustc::middle::cstore in no particular order.
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
+use ich::StableHashingContext;
 
 use middle;
 
@@ -47,11 +48,31 @@ impl_stable_hash_for!(enum middle::cstore::LinkagePreference {
 });
 
 impl_stable_hash_for!(struct middle::cstore::ExternCrate {
-    def_id,
+    src,
     span,
-    direct,
-    path_len
+    direct
 });
+
+impl<'a> HashStable<StableHashingContext<'a>> for middle::cstore::ExternCrateSource {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        use middle::cstore::ExternCrateSource::*;
+
+        ::std::mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Extern { def_id, path_len } => {
+                def_id.hash_stable(hcx, hasher);
+                path_len.hash_stable(hcx, hasher);
+            }
+            Use { path_len } => path_len.hash_stable(hcx, hasher),
+            Path => {}
+        }
+    }
+}
 
 impl_stable_hash_for!(struct middle::cstore::CrateSource {
     dylib,

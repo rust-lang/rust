@@ -11,6 +11,7 @@
 use hir::map::DefPathData;
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ty::{self, Ty, TyCtxt};
+use middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax::symbol::InternedString;
@@ -95,21 +96,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 //    `extern crate` manually, we put the `extern
                 //    crate` as the parent. So you wind up with
                 //    something relative to the current crate.
-                // 2. for an indirect crate, where there is no extern
-                //    crate, we just prepend the crate name.
+                // 2. for an extern inferred from a path or an indirect crate,
+                //    where there is no explicit `extern crate`, we just prepend
+                //    the crate name.
                 //
                 // Returns `None` for the local crate.
                 if cnum != LOCAL_CRATE {
                     let opt_extern_crate = self.extern_crate(cnum.as_def_id());
-                    let opt_extern_crate = opt_extern_crate.and_then(|extern_crate| {
-                        if extern_crate.direct {
-                            Some(extern_crate.def_id)
-                        } else {
-                            None
-                        }
-                    });
-                    if let Some(extern_crate_def_id) = opt_extern_crate {
-                        self.push_item_path(buffer, extern_crate_def_id);
+                    if let Some(ExternCrate {
+                        src: ExternCrateSource::Extern { def_id, .. },
+                        direct: true,
+                        ..
+                    }) = *opt_extern_crate
+                    {
+                        self.push_item_path(buffer, def_id);
                     } else {
                         buffer.push(&self.crate_name(cnum).as_str());
                     }
@@ -137,14 +137,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // followed by the path to the item within the crate and return.
             if cur_def.index == CRATE_DEF_INDEX {
                 match *self.extern_crate(cur_def) {
-                    Some(ref extern_crate) if extern_crate.direct => {
-                        self.push_item_path(buffer, extern_crate.def_id);
-                        cur_path.iter().rev().map(|segment| buffer.push(&segment)).count();
+                    Some(ExternCrate {
+                        src: ExternCrateSource::Extern { def_id, .. },
+                        direct: true,
+                        ..
+                    }) => {
+                        self.push_item_path(buffer, def_id);
+                        cur_path.iter().rev().for_each(|segment| buffer.push(&segment));
                         return true;
                     }
                     None => {
                         buffer.push(&self.crate_name(cur_def.krate).as_str());
-                        cur_path.iter().rev().map(|segment| buffer.push(&segment)).count();
+                        cur_path.iter().rev().for_each(|segment| buffer.push(&segment));
                         return true;
                     }
                     _ => {},

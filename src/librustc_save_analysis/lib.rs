@@ -42,6 +42,7 @@ use rustc::hir;
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::map::{Node, NodeItem};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
@@ -112,10 +113,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         for &n in self.tcx.crates().iter() {
             let span = match *self.tcx.extern_crate(n.as_def_id()) {
-                Some(ref c) => c.span,
+                Some(ExternCrate { span, .. }) => span,
                 None => {
-                    debug!("Skipping crate {}, no data", n);
-                    continue;
+                    bug!("no data for crate {}", n);
                 }
             };
             let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());

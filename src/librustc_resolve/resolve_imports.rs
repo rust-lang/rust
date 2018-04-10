@@ -627,7 +627,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         }
                     } else if is_extern && !token::is_path_segment_keyword(source) {
                         let crate_id =
-                            self.crate_loader.resolve_crate_from_path(source.name, directive.span);
+                            self.resolver.crate_loader.process_use_extern(
+                                source.name,
+                                directive.span,
+                                directive.id,
+                                &self.resolver.definitions,
+                            );
                         let crate_root =
                             self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                         self.populate_module_if_necessary(crate_root);

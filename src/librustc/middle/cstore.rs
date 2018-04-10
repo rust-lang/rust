@@ -148,10 +148,7 @@ pub enum LoadedMacro {
 
 #[derive(Copy, Clone, Debug)]
 pub struct ExternCrate {
-    /// def_id of an `extern crate` in the current crate that caused
-    /// this crate to be loaded; note that there could be multiple
-    /// such ids
-    pub def_id: DefId,
+    pub src: ExternCrateSource,
 
     /// span of the extern crate that caused this to be loaded
     pub span: Span,
@@ -160,11 +157,28 @@ pub struct ExternCrate {
     /// crate referenced above. If false, then this crate is a dep
     /// of the crate.
     pub direct: bool,
+}
 
-    /// Number of links to reach the extern crate `def_id`
-    /// declaration; used to select the extern crate with the shortest
-    /// path
-    pub path_len: usize,
+#[derive(Copy, Clone, Debug)]
+pub enum ExternCrateSource {
+    /// Crate is loaded by `extern crate`.
+    Extern {
+        /// def_id of the item in the current crate that caused
+        /// this crate to be loaded; note that there could be multiple
+        /// such ids
+        def_id: DefId,
+
+        /// Number of links to reach the extern crate `def_id`
+        /// declaration; used to select the extern crate with the shortest
+        /// path
+        path_len: usize,
+    },
+    // Crate is loaded by `use`.
+    Use {
+        path_len: usize,
+    },
+    /// Crate is implicitly loaded by an absolute or an `extern::` path.
+    Path,
 }
 
 pub struct EncodedMetadata {
@@ -357,9 +371,23 @@ impl CrateStore for DummyCrateStore {
 }
 
 pub trait CrateLoader {
-    fn process_item(&mut self, item: &ast::Item, defs: &Definitions);
+    fn process_extern_crate(&mut self, item: &ast::Item, defs: &Definitions) -> CrateNum;
+
+    fn process_path_extern(
+        &mut self,
+        name: Symbol,
+        span: Span,
+    ) -> CrateNum;
+
+    fn process_use_extern(
+        &mut self,
+        name: Symbol,
+        span: Span,
+        id: ast::NodeId,
+        defs: &Definitions,
+    ) -> CrateNum;
+
     fn postprocess(&mut self, krate: &ast::Crate);
-    fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum;
 }
 
 // This method is used when generating the command line to pass through to

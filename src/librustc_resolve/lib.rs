@@ -3258,7 +3258,7 @@ impl<'a> Resolver<'a> {
                        prev_name == keywords::CrateRoot.name() &&
                        self.session.features_untracked().extern_absolute_paths {
                         // `::extern_crate::a::b`
-                        let crate_id = self.crate_loader.resolve_crate_from_path(name, ident.span);
+                        let crate_id = self.crate_loader.process_path_extern(name, ident.span);
                         let crate_root =
                             self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                         self.populate_module_if_necessary(crate_root);
