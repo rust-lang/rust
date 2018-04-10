@@ -17,7 +17,7 @@ build: false
 test_script:
   - set RUST_BACKTRACE=full
   - cargo build
-  - cargo test --verbose
+# - cargo test --verbose
 
 notifications:
   - provider: Email

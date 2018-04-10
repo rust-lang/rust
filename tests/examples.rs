@@ -1,3 +1,4 @@
+#[cfg(not(target_os = "windows"))]
 mod features {
     use std::env;
     use std::fs::File;
