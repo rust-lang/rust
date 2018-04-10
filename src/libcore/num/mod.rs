@@ -15,6 +15,7 @@
 use convert::TryFrom;
 use fmt;
 use intrinsics;
+use mem;
 #[allow(deprecated)] use nonzero::NonZero;
 use ops;
 use str::FromStr;
@@ -1619,6 +1620,50 @@ $EndFeature, "
             #[inline]
             pub fn is_negative(self) -> bool { self < 0 }
         }
+
+        /// Return the memory representation of this integer as a byte array.
+        ///
+        /// The target platform’s native endianness is used.
+        /// Portable code likely wants to use this after [`to_be`] or [`to_le`].
+        ///
+        /// [`to_be`]: #method.to_be
+        /// [`to_le`]: #method.to_le
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_from_bytes)]
+        ///
+        /// let bytes = i32::min_value().to_be().to_bytes();
+        /// assert_eq!(bytes, [0x80, 0, 0, 0]);
+        /// ```
+        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[inline]
+        pub fn to_bytes(self) -> [u8; mem::size_of::<Self>()] {
+            unsafe { mem::transmute(self) }
+        }
+
+        /// Create an integer value from its memory representation as a byte array.
+        ///
+        /// The target platform’s native endianness is used.
+        /// Portable code likely wants to use [`from_be`] or [`from_le`] after this.
+        ///
+        /// [`from_be`]: #method.from_be
+        /// [`from_le`]: #method.from_le
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_from_bytes)]
+        ///
+        /// let int = i32::from_be(i32::from_bytes([0x80, 0, 0, 0]));
+        /// assert_eq!(int, i32::min_value());
+        /// ```
+        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[inline]
+        pub fn from_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+            unsafe { mem::transmute(bytes) }
+        }
     }
 }
 
@@ -2932,6 +2977,50 @@ $EndFeature, "
             pub fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
             }
+        }
+
+        /// Return the memory representation of this integer as a byte array.
+        ///
+        /// The target platform’s native endianness is used.
+        /// Portable code likely wants to use this after [`to_be`] or [`to_le`].
+        ///
+        /// [`to_be`]: #method.to_be
+        /// [`to_le`]: #method.to_le
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_from_bytes)]
+        ///
+        /// let bytes = 0x1234_5678_u32.to_be().to_bytes();
+        /// assert_eq!(bytes, [0x12, 0x34, 0x56, 0x78]);
+        /// ```
+        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[inline]
+        pub fn to_bytes(self) -> [u8; mem::size_of::<Self>()] {
+            unsafe { mem::transmute(self) }
+        }
+
+        /// Create an integer value from its memory representation as a byte array.
+        ///
+        /// The target platform’s native endianness is used.
+        /// Portable code likely wants to use [`to_be`] or [`to_le`] after this.
+        ///
+        /// [`to_be`]: #method.to_be
+        /// [`to_le`]: #method.to_le
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_to_from_bytes)]
+        ///
+        /// let int = u32::from_be(u32::from_bytes([0x12, 0x34, 0x56, 0x78]));
+        /// assert_eq!(int, 0x1234_5678_u32);
+        /// ```
+        #[unstable(feature = "int_to_from_bytes", issue = "49792")]
+        #[inline]
+        pub fn from_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+            unsafe { mem::transmute(bytes) }
         }
     }
 }
