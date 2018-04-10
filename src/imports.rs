@@ -172,13 +172,13 @@ fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree) {
 
 impl fmt::Debug for UseTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        fmt::Display::fmt(self, f)
     }
 }
 
 impl fmt::Debug for UseSegment {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -221,7 +221,7 @@ impl UseTree {
     pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(256);
         if let Some(ref attrs) = self.attrs {
-            result.push_str(&attrs.rewrite(context, shape).expect("rewrite attr"));
+            result.push_str(&attrs.rewrite(context, shape)?);
             if !result.is_empty() {
                 result.push_str(&shape.indent.to_string_with_newline(context.config));
             }
@@ -242,6 +242,10 @@ impl UseTree {
     }
 
     // FIXME: Use correct span?
+    // The given span is essentially incorrect, since we are reconstructing
+    // use statements. This should not be a problem, though, since we have
+    // already tried to extract comment and observed that there are no comment
+    // around the given use item, and the span will not be used afterward.
     fn from_path(path: Vec<UseSegment>, span: Span) -> UseTree {
         UseTree {
             path,
@@ -514,22 +518,18 @@ impl UseTree {
 
     fn merge(&mut self, other: UseTree) {
         let mut new_path = vec![];
-        let mut len = 0;
-        for (i, (mut a, b)) in self.path
+        for (mut a, b) in self.path
             .clone()
             .iter_mut()
             .zip(other.path.clone().into_iter())
-            .enumerate()
         {
             if *a == b {
-                len = i + 1;
                 new_path.push(b);
             } else {
-                len = i;
                 break;
             }
         }
-        if let Some(merged) = merge_rest(&self.path, &other.path, len) {
+        if let Some(merged) = merge_rest(&self.path, &other.path, new_path.len()) {
             new_path.push(merged);
             self.span = self.span.to(other.span);
         }
