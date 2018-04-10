@@ -303,7 +303,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) {
         debug!("report_region_errors(): {} errors to start", errors.len());
 
-        if will_later_be_reported_by_nll && self.tcx.use_mir() {
+        if will_later_be_reported_by_nll && self.tcx.use_mir_borrowck() {
             // With `#![feature(nll)]`, we want to present a nice user
             // experience, so don't even mention the errors from the
             // AST checker.

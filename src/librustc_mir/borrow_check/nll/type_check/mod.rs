@@ -1596,7 +1596,7 @@ impl MirPass for TypeckMir {
 
         // When NLL is enabled, the borrow checker runs the typeck
         // itself, so we don't need this MIR pass anymore.
-        if tcx.use_mir() {
+        if tcx.use_mir_borrowck() {
             return;
         }
 

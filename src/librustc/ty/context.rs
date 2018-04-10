@@ -1473,7 +1473,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// If true, we should use the MIR-based borrowck (we may *also* use
     /// the AST-based borrowck).
-    pub fn use_mir(self) -> bool {
+    pub fn use_mir_borrowck(self) -> bool {
         self.borrowck_mode().use_mir()
     }
 
@@ -1508,7 +1508,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn emit_end_regions(self) -> bool {
         self.sess.opts.debugging_opts.emit_end_regions ||
             self.sess.opts.debugging_opts.mir_emit_validate > 0 ||
-            self.use_mir()
+            self.use_mir_borrowck()
     }
 
     #[inline]
