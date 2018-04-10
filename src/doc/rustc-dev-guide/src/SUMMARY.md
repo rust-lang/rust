@@ -8,6 +8,7 @@
     - [Adding new tests](./tests/adding.md)
     - [Using `compiletest` + commands to control test
       execution](./compiletest.md)
+- [Debugging the Compiler](./compiler-debugging.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
 - [High-level overview of the compiler source](./high-level-overview.md)
 - [The Rustc Driver](./rustc-driver.md)
@@ -52,7 +53,6 @@
     - [miri const evaluator](./miri.md)
 - [Parameter Environments](./param_env.md)
 - [Generating LLVM IR](./trans.md)
-- [Debugging the Compiler](./compiler-debugging.md)
 
 ---
 

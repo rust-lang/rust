@@ -20,7 +20,7 @@ you might want to find some way to use Linux or MSVC on Windows.
 In the default configuration, you don't have line numbers enabled, so the 
 backtrace looks like this:
 
-   ```
+```text
 stack backtrace:
    0: std::sys::imp::backtrace::tracing::imp::unwind_backtrace
    1: std::sys_common::backtrace::_print
@@ -28,8 +28,6 @@ stack backtrace:
    3: std::panicking::default_hook
    4: std::panicking::rust_panic_with_hook
    5: std::panicking::begin_panic
-   6: rustc_typeck::check::cast::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, \ 
-      'tcx>>::pointer_kind
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
   32: rustc_typeck::check_crate
   33: <std::thread::local::LocalKey<T>>::with
@@ -37,17 +35,15 @@ stack backtrace:
   35: rustc::ty::context::TyCtxt::create_and_enter
   36: rustc_driver::driver::compile_input
   37: rustc_driver::run_compiler
-   ```
+```
 
 If you want line numbers for the stack trace, you can enable 
 `debuginfo-lines=true` or `debuginfo=true` in your config.toml and rebuild the 
 compiler. Then the backtrace will look like this:
 
-```
+```text
 stack backtrace:
    (~~~~ LINES REMOVED BY ME FOR BREVITY ~~~~)
-   6: rustc_typeck::check::cast::<impl rustc_typeck::check::FnCtxt<'a, 'gcx, \
-             'tcx>>::pointer_kind
              at /home/user/rust/src/librustc_typeck/check/cast.rs:110
    7: rustc_typeck::check::cast::CastCheck::check
              at /home/user/rust/src/librustc_typeck/check/cast.rs:572
@@ -72,11 +68,15 @@ This can also help when debugging `delay_span_bug` calls - it will make
 the first `delay_span_bug` call panic, which will give you a useful backtrace.
 
 For example:
-```
+
+```rust
 $ cat error.rs
 fn main() {
     1 + ();
 }
+```
+
+```bash
 $ ./build/x86_64-unknown-linux-gnu/stage1/bin/rustc error.rs
 error[E0277]: the trait bound `{integer}: std::ops::Add<()>` is not satisfied
  --> error.rs:2:7
@@ -137,8 +137,8 @@ $ # Cool, now I have a backtrace for the error
 
 The compiler has a lot of `debug!` calls, which print out logging information
 at many points. These are very useful to at least narrow down the location of
-a bug if not to find it entirely, or just to orient yourself to why a compiler
-is doing a particular thing.
+a bug if not to find it entirely, or just to orient yourself as to why the 
+compiler is doing a particular thing.
 
 To see the logs, you need to set the `RUST_LOG` environment variable to
 your log filter, e.g. to get the logs for a specific module, you can run the
@@ -152,7 +152,8 @@ of output - so it's typically a good idea to pipe standard error to a file
 and look at the log output with a text editor.
 
 So to put it together.
-```
+
+```bash
 # This puts the output of all debug calls in `librustc/traits` into
 # standard error, which might fill your console backscroll.
 $ RUST_LOG=rustc::traits rustc +local my-file.rs
@@ -191,10 +192,10 @@ want to call `x.py clean` to force one.
 ### Logging etiquette
 
 Because calls to `debug!` are removed by default, in most cases, don't worry
-about adding "unnecessary" calls to `debug!` and leaving them in in code
-you commit - they won't slow
-down the performance of what we ship, and if they helped you pinning down
-a bug, they will probably help someone else with a different one.
+about adding "unnecessary" calls to `debug!` and leaving them in code you 
+commit - they won't slow down the performance of what we ship, and if they 
+helped you pinning down a bug, they will probably help someone else with a 
+different one.
 
 However, there are still a few concerns that you might care about:
 
@@ -253,7 +254,7 @@ dumps various borrow-checker dataflow graphs.
 These all produce `.dot` files. To view these files, install graphviz (e.g.
 `apt-get install graphviz`) and then run the following commands:
 
-```
+```bash
 $ dot -T pdf maybe_init_suffix.dot > maybe_init_suffix.pdf
 $ firefox maybe_init_suffix.pdf # Or your favorite pdf viewer
 ```
@@ -281,12 +282,13 @@ to replicate manually and means that LLVM is called multiple times in parallel.
 If you can get away with it (i.e. if it doesn't make your bug disappear),
 passing `-C codegen-units=1` to rustc will make debugging easier.
 
-If you want to play with the optimization pipeline, you can use the `opt` from
-there on the IR rustc emits with `--emit=llvm-ir`. Note
-that rustc emits different IR depending on whether `-O` is enabled, even without
-LLVM's optimizations, so if you want to play with the IR rustc emits, 
+If you want to play with the optimization pipeline, you can use the opt tool 
+from `./build/<host-triple>/llvm/bin/` with the the LLVM IR emitted by rustc. 
+Note that rustc emits different IR depending on whether `-O` is enabled, even 
+without LLVM's optimizations, so if you want to play with the IR rustc emits, 
 you should:
-```
+
+```bash
 $ rustc +local my-file.rs --emit=llvm-ir -O -C no-prepopulate-passes \
     -C codegen-units=1
 $ OPT=./build/$TRIPLE/llvm/bin/opt
@@ -309,7 +311,8 @@ the printouts will mix together and you won't be able to read anything.
 If you want just the IR for a specific function (say, you want to see
 why it causes an assertion or doesn't optimize correctly), you can use
 `llvm-extract`, e.g.
-```
+
+```bash
 $ ./build/$TRIPLE/llvm/bin/llvm-extract \
     -func='_ZN11collections3str21_$LT$impl$u20$str$GT$7replace17hbe10ea2e7c809b0bE' \
     -S \
