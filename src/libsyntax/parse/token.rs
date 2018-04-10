@@ -519,8 +519,17 @@ impl Token {
         // all span information.
         //
         // As a result, some AST nodes are annotated with the token
-        // stream they came from. Attempt to extract these lossless
-        // token streams before we fall back to the stringification.
+        // stream they came from. Here we attempt to extract these
+        // lossless token streams before we fall back to the
+        // stringification.
+        //
+        // During early phases of the compiler, though, the AST could
+        // get modified directly (e.g. attributes added or removed) and
+        // the internal cache of tokens my not be invalidated or
+        // updated. Consequently if the "lossless" token stream
+        // disagrees with our actuall stringification (which has
+        // historically been much more battle-tested) then we go with
+        // the lossy stream anyway (losing span information).
         let mut tokens = None;
 
         match nt.0 {
@@ -547,13 +556,17 @@ impl Token {
             _ => {}
         }
 
-        tokens.unwrap_or_else(|| {
-            nt.1.force(|| {
-                // FIXME(jseyfried): Avoid this pretty-print + reparse hack
-                let source = pprust::token_to_string(self);
-                parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
-            })
-        })
+        let tokens_for_real = nt.1.force(|| {
+            // FIXME(#43081): Avoid this pretty-print + reparse hack
+            let source = pprust::token_to_string(self);
+            parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
+        });
+        if let Some(tokens) = tokens {
+            if tokens.eq_unspanned(&tokens_for_real) {
+                return tokens
+            }
+        }
+        return tokens_for_real
     }
 }
 
