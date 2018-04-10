@@ -11,8 +11,17 @@
     <style>
         blockquote { font-size: 1em; }
         [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
-        .panel .anchor { display: none; }
-        .panel:hover .anchor { display: inline; color: #fff; }
+
+        .form-inline .checkbox { margin-right: 0.6em }
+
+        .panel-title { display: flex; }
+        .panel-title .label { display: inline-block; }
+
+        .panel-title-name { flex: 1; }
+        .panel-title-name span { vertical-align: bottom; }
+
+        .panel .panel-title-name .anchor { display: none; }
+        .panel:hover .panel-title-name .anchor { display: inline; color: #fff; }
     </style>
 </head>
 <body>
@@ -23,7 +32,7 @@
 
         <noscript>
             <div class="alert alert-danger" role="alert">
-                Sorry, this site only works with JavaScript!
+                Sorry, this site only works with JavaScript! :(
             </div>
         </noscript>
 
@@ -40,7 +49,8 @@
                 <div class="panel-body row">
                     <div class="col-md-6 form-inline">
                         <div class="form-group form-group-lg">
-                            <div class="checkbox" ng-repeat="(level, enabled) in levels" style="margin-right: 0.6em">
+                            <p class="h4">Lint levels</p>
+                            <div class="checkbox" ng-repeat="(level, enabled) in levels">
                                 <label>
                                     <input type="checkbox" ng-model="levels[level]" />
                                     {{level}}
@@ -48,7 +58,20 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-6 form-inline">
+                        <div class="form-group form-group-lg">
+                            <p class="h4">Lint groups</p>
+                            <div class="checkbox" ng-repeat="(group, enabled) in groups">
+                                <label class="text-capitalize">
+                                    <input type="checkbox" ng-model="groups[group]" />
+                                    {{group}}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-body row">
+                    <div class="col-md-12 form-horizontal">
                         <div class="input-group">
                             <span class="input-group-addon" id="filter-label">Filter:</span>
                             <input type="text" class="form-control" placeholder="Keywords or search string" aria-describedby="filter-label" ng-model="search" />
@@ -63,22 +86,27 @@
             </div>
 
             <article class="panel panel-default" id="{{lint.id}}"
-                ng-repeat="lint in data | filter:byLevels | filter:search | orderBy:'id' track by lint.id" on-finish-render="ngRepeatFinished">
+                ng-repeat="lint in data | filter:byLevels | filter:byGroups | filter:search | orderBy:'id' track by lint.id" on-finish-render="ngRepeatFinished">
                 <header class="panel-heading" ng-click="open[lint.id] = !open[lint.id]">
-                    <button class="btn btn-default btn-sm pull-right" style="margin-top: -6px;">
-                        <span ng-show="open[lint.id]">&minus;</span>
-                        <span ng-hide="open[lint.id]">&plus;</span>
-                    </button>
-
                     <h2 class="panel-title">
-                        {{lint.id}}
+                        <div class="panel-title-name">
+                            <span>{{lint.id}}</span>
+                            <a href="#{{lint.id}}" class="anchor label label-default" ng-click="open[lint.id] = true; $event.stopPropagation()">&para;</a>
+                        </div>
 
-                        <span ng-if="lint.level == 'Allow'" class="label label-info">Allow</span>
-                        <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
-                        <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
-                        <span ng-if="lint.level == 'Deprecated'" class="label label-default">Deprecated</span>
+                        <div class="panel-title-addons">
+                            <span class="label label-default text-capitalize">{{lint.group}}</span>
 
-                        <a href="#{{lint.id}}" class="anchor label label-default" ng-click="open[lint.id] = true; $event.stopPropagation()">&para;</a>
+                            <span ng-if="lint.level == 'Allow'" class="label label-success">Allow</span>
+                            <span ng-if="lint.level == 'Warn'" class="label label-warning">Warn</span>
+                            <span ng-if="lint.level == 'Deny'" class="label label-danger">Deny</span>
+                            <span ng-if="lint.level == 'Deprecated'" class="label label-default">Deprecated</span>
+
+                            <button class="btn btn-default btn-xs">
+                                <span ng-show="open[lint.id]">&minus;</span>
+                                <span ng-hide="open[lint.id]">&plus;</span>
+                            </button>
+                        </div>
                     </h2>
                 </header>
 
@@ -95,7 +123,7 @@
     </div>
 
     <a href="https://github.com/rust-lang-nursery/rust-clippy">
-        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png"/>
+        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on Github"/>
     </a>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/7.0.0/markdown-it.min.js"></script>
@@ -166,6 +194,11 @@
                 return $scope.levels[lint.level];
             };
 
+            $scope.groups = {};
+            $scope.byGroups = function (lint) {
+                return $scope.groups[lint.group];
+            };
+
             // Get data
             $scope.open = {};
             $scope.loading = true;
@@ -180,6 +213,12 @@
             .success(function (data) {
                 $scope.data = data;
                 $scope.loading = false;
+
+                // Initialize lint groups (the same structure is also used to enable filtering)
+                $scope.groups = data.reduce(function (result, val) {
+                    result[val.group] = true;
+                    return result;
+                }, {});
 
                 scrollToLintByURL($scope);
             })

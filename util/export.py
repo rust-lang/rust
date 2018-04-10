@@ -18,6 +18,7 @@ This lint has the following configuration variables:
 def parse_lint_def(lint):
     lint_dict = {}
     lint_dict['id'] = lint.name
+    lint_dict['group'] = lint.group
     lint_dict['level'] = lint.level
     lint_dict['docs'] = {}
 
