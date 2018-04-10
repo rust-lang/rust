@@ -284,7 +284,8 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         self.cancel_if_wrong_origin(err, o)
     }
 
-    fn cannot_assign(self, span: Span, desc: &str, o: Origin) -> DiagnosticBuilder<'cx>
+    fn cannot_assign(self, span: Span, desc: &str, o: Origin)
+                     -> DiagnosticBuilder<'cx>
     {
         let err = struct_span_err!(self, span, E0594,
                                   "cannot assign to {}{OGN}",

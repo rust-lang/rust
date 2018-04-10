@@ -17,6 +17,7 @@ mod alignment;
 mod graphviz;
 pub(crate) mod pretty;
 pub mod liveness;
+pub mod collect_writes;
 
 pub use self::alignment::is_disaligned;
 pub use self::pretty::{dump_enabled, dump_mir, write_mir_pretty, PassWhere};

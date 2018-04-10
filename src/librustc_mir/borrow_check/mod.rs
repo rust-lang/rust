@@ -42,6 +42,7 @@ use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::{IllegalMoveOriginKind, MoveError};
 use dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MovePathIndex};
 use util::borrowck_errors::{BorrowckErrors, Origin};
+use util::collect_writes::FindAssignments;
 
 use std::iter;
 
@@ -1550,6 +1551,36 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn specialized_description(&self, place:&Place<'tcx>) -> Option<String>{
+        if let Some(_name) = self.describe_place(place) {
+            Some(format!("data in a `&` reference"))
+        } else {
+            None
+        }
+    }
+
+    fn get_default_err_msg(&self, place:&Place<'tcx>) -> String{
+        match self.describe_place(place) {
+            Some(name) => format!("immutable item `{}`", name),
+            None => "immutable item".to_owned(),
+        }
+    }
+
+    fn get_secondary_err_msg(&self, place:&Place<'tcx>) -> String{
+        match self.specialized_description(place) {
+            Some(_) => format!("data in a `&` reference"),
+            None => self.get_default_err_msg(place)
+        }
+    }
+
+    fn get_primary_err_msg(&self, place:&Place<'tcx>) -> String{
+        if let Some(name) = self.describe_place(place) {
+            format!("`{}` is a `&` reference, so the data it refers to cannot be written", name)
+        } else {
+            format!("cannot assign through `&`-reference")
+        }
+    }
+
     /// Check the permissions for the given place and read or write kind
     ///
     /// Returns true if an error is reported, false otherwise.
@@ -1576,43 +1607,70 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 self.is_mutable(place, is_local_mutation_allowed)
             {
                 error_reported = true;
-
-                let item_msg = match self.describe_place(place) {
-                    Some(name) => format!("immutable item `{}`", name),
-                    None => "immutable item".to_owned(),
-                };
-
+                let item_msg = self.get_default_err_msg(place);
                 let mut err = self.tcx
                     .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
                 err.span_label(span, "cannot borrow as mutable");
 
                 if place != place_err {
                     if let Some(name) = self.describe_place(place_err) {
-                        err.note(&format!("Value not mutable causing this error: `{}`", name));
+                        err.note(&format!("the value which is causing this path not to be mutable \
+                                           is...: `{}`", name));
                     }
                 }
 
                 err.emit();
             },
             Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
+
                 if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
                     error_reported = true;
+                    let mut err_info = None;
+                    match *place_err {
 
-                    let item_msg = match self.describe_place(place) {
-                        Some(name) => format!("immutable item `{}`", name),
-                        None => "immutable item".to_owned(),
-                    };
-
-                    let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
-                    err.span_label(span, "cannot mutate");
-
-                    if place != place_err {
-                        if let Some(name) = self.describe_place(place_err) {
-                            err.note(&format!("Value not mutable causing this error: `{}`", name));
-                        }
+                        Place::Projection(box Projection {
+                        ref base, elem:ProjectionElem::Deref}) => {
+                            match *base {
+                                Place::Local(local) => {
+                                    let locations = self.mir.find_assignments(local);
+                                        if locations.len() > 0 {
+                                            let item_msg = if error_reported {
+                                                self.get_secondary_err_msg(base)
+                                            } else {
+                                                self.get_default_err_msg(place)
+                                            };
+                                            err_info = Some((
+                                                self.mir.source_info(locations[0]).span,
+                                                    "consider changing this to be a \
+                                                    mutable reference: `&mut`", item_msg,
+                                                    self.get_primary_err_msg(base)));
+                                        }
+                                },
+                            _ => {},
+                            }
+                        },
+                        _ => {},
                     }
 
-                    err.emit();
+                    if let Some((err_help_span, err_help_stmt, item_msg, sec_span)) = err_info {
+                        let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
+                        err.span_suggestion(err_help_span, err_help_stmt, format!(""));
+                        if place != place_err {
+                            err.span_label(span, sec_span);
+                        }
+                        err.emit()
+                    } else {
+                        let item_msg_ = self.get_default_err_msg(place);
+                        let mut err = self.tcx.cannot_assign(span, &item_msg_, Origin::Mir);
+                        err.span_label(span, "cannot mutate");
+                        if place != place_err {
+                            if let Some(name) = self.describe_place(place_err) {
+                                err.note(&format!("the value which is causing this path not to be \
+                                                   mutable is...: `{}`", name));
+                            }
+                        }
+                        err.emit();
+                    }
                 }
             }
             Reservation(WriteKind::Move)
@@ -1631,9 +1689,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     );
                 }
             }
-
             Activation(..) => {} // permission checks are done at Reservation point.
-
             Read(ReadKind::Borrow(BorrowKind::Unique))
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
@@ -2255,3 +2311,4 @@ impl ContextKind {
         }
     }
 }
+
