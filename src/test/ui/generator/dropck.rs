@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators, generator_trait, box_leak)]
+#![feature(generators, generator_trait, box_leak, rustc_attrs)]
 
 use std::cell::RefCell;
 use std::ops::Generator;
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     let (cell, mut gen);
     cell = Box::new(RefCell::new(0));
     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));

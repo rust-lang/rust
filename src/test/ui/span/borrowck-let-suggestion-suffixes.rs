@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(rustc_attrs)]
 fn id<T>(x: T) -> T { x }
 
 fn f() {
@@ -58,6 +58,6 @@ fn f() {
 //~| NOTE temporary value needs to live until here
 //~| NOTE temporary value needs to live until here
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     f();
 }

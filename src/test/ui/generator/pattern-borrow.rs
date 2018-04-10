@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators)]
+#![feature(generators, rustc_attrs)]
 
 enum Test { A(i32), B, }
 
-fn main() { }
+fn main() { #![rustc_error] } // rust-lang/rust#49855
 
 fn fun(test: Test) {
     move || {

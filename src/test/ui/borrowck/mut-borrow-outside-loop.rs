@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // ensure borrowck messages are correct outside special case
-
-fn main() {
+#![feature(rustc_attrs)]
+fn main() { #![rustc_error] // rust-lang/rust#49855
     let mut void = ();
 
     let first = &mut void;

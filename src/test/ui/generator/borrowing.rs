@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators, generator_trait)]
+#![feature(generators, generator_trait, rustc_attrs)]
 
 use std::ops::Generator;
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     let _b = {
         let a = 3;
         unsafe { (|| yield &a).resume() }
