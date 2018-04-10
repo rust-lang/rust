@@ -1,11 +1,13 @@
 use std::env;
 use std::fs::File;
+#[cfg(not(windows))]
 use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 macro_rules! full_test {
     ($name:ident, $crate_name:expr, $old_version:expr, $new_version:expr) => {
+        #[cfg(not(windows))]
         #[test]
         fn $name() {
             let mut success = true;
