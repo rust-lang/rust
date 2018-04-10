@@ -59,9 +59,6 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
 
     // interpreter allocation cache
     interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
-    // a cache for sizes of interpreter allocations
-    // needed to skip already deserialized allocations
-    interpret_alloc_size: FxHashMap<usize, usize>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -81,7 +78,6 @@ pub trait Metadata<'a, 'tcx>: Copy {
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
             interpret_alloc_cache: FxHashMap::default(),
-            interpret_alloc_size: FxHashMap::default(),
         }
     }
 }
@@ -290,34 +286,25 @@ impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
-        let tcx = self.tcx.expect("need tcx for AllocId decoding");
-        let pos = self.position();
-        if let Some(cached) = self.interpret_alloc_cache.get(&pos).cloned() {
-            // if there's no end position we are currently deserializing a recursive
-            // allocation
-            if let Some(end) = self.interpret_alloc_size.get(&pos).cloned() {
-                trace!("{} already cached as {:?}", pos, cached);
-                // skip ahead
-                self.opaque.set_position(end);
-                return Ok(cached)
-            }
+        let tcx = self.tcx.unwrap();
+        let idx = usize::decode(self)?;
+
+        if let Some(cached) = self.interpret_alloc_cache.get(&idx).cloned() {
+            return Ok(cached);
         }
-        let id = interpret::specialized_decode_alloc_id(
-            self,
-            tcx,
-            pos,
-            |this, pos, alloc_id| { this.interpret_alloc_cache.insert(pos, alloc_id); },
-            |this, shorthand| {
-                // need to load allocation
-                this.with_position(shorthand, |this| interpret::AllocId::decode(this))
-            }
-        )?;
-        let end_pos = self.position();
-        assert!(self
-            .interpret_alloc_size
-            .insert(pos, end_pos)
-            .is_none());
-        Ok(id)
+        let pos = self
+            .cdata()
+            .root
+            .interpret_alloc_index[idx];
+        self.with_position(pos as usize, |this| {
+            interpret::specialized_decode_alloc_id(
+                this,
+                tcx,
+                |this, alloc_id| {
+                    assert!(this.interpret_alloc_cache.insert(idx, alloc_id).is_none());
+                },
+            )
+        })
     }
 }
 
