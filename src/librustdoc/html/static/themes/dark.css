@@ -389,3 +389,10 @@ kbd {
 		background: #f0f0f0;
 	}
 }
+
+#all-types {
+	background-color: #505050;
+}
+#all-types:hover {
+	background-color: #606060;
+}

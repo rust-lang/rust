@@ -1294,3 +1294,21 @@ kbd {
 	font-size: 19px;
 	display: block;
 }
+
+#main > ul {
+	padding-left: 10px;
+}
+#main > ul > li {
+	list-style: none;
+}
+#all-types {
+	text-align: center;
+	border: 1px solid;
+	margin: 0 10px;
+	margin-bottom: 10px;
+	display: block;
+	border-radius: 7px;
+}
+#all-types > p {
+	margin: 5px 0;
+}
