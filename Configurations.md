@@ -1243,9 +1243,10 @@ fn adipiscing() -> usize {}
 
 ## `reorder_imports`
 
-Reorder import and extern crate statements alphabetically
+Reorder import and extern crate statements alphabetically in groups (a group is
+separated by a newline).
 
-- **Default value**: `false`
+- **Default value**: `true`
 - **Possible values**: `true`, `false`
 - **Stable**: No
 

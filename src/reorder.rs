@@ -207,9 +207,9 @@ impl ReorderableItemKind {
 
     pub fn in_group(&self) -> bool {
         match *self {
-            ReorderableItemKind::ExternCrate => true,
-            ReorderableItemKind::Mod => true,
-            ReorderableItemKind::Use => true,
+            ReorderableItemKind::ExternCrate
+            | ReorderableItemKind::Mod
+            | ReorderableItemKind::Use => true,
             ReorderableItemKind::Other => false,
         }
     }

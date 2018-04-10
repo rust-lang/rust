@@ -68,9 +68,9 @@ create_config! {
     imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
 
     // Ordering
-    reorder_impl_items: bool, false, false, "Reorder impl items";
     reorder_imports: bool, true, false, "Reorder import and extern crate statements alphabetically";
     reorder_modules: bool, true, false, "Reorder module statements alphabetically in group";
+    reorder_impl_items: bool, false, false, "Reorder impl items";
 
     // Spaces around punctuation
     type_punctuation_density: TypeDensity, TypeDensity::Wide, false,
