@@ -380,6 +380,7 @@ pub enum CollectionAllocErr {
 
 #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
 impl From<AllocErr> for CollectionAllocErr {
+    #[inline]
     fn from(AllocErr: AllocErr) -> Self {
         CollectionAllocErr::AllocErr
     }
