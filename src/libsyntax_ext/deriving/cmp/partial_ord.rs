@@ -190,58 +190,79 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<
 
 /// Strict inequality.
 fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-    let op = if less { BinOpKind::Lt } else { BinOpKind::Gt };
-    cs_fold(false, // need foldr,
-            |cx, span, subexpr, self_f, other_fs| {
-        // build up a series of chain ||'s and &&'s from the inside
-        // out (hence foldr) to get lexical ordering, i.e. for op ==
-        // `ast::lt`
-        //
-        // ```
-        // self.f1 < other.f1 || (!(other.f1 < self.f1) &&
-        // (self.f2 < other.f2 || (!(other.f2 < self.f2) &&
-        // (false)
-        // ))
-        // )
-        // ```
-        //
-        // The optimiser should remove the redundancy. We explicitly
-        // get use the binops to avoid auto-deref dereferencing too many
-        // layers of pointers, if the type includes pointers.
-        //
-        let other_f = match (other_fs.len(), other_fs.get(0)) {
-            (1, Some(o_f)) => o_f,
-            _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
-        };
-
-        let strict_ineq = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
-
-        let deleg_cmp = if !equal {
-            cx.expr_unary(span,
-                          ast::UnOp::Not,
-                          cx.expr_binary(span, op, other_f.clone(), self_f))
-        } else {
-            cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone())
-        };
-
-        let and = cx.expr_binary(span, BinOpKind::And, deleg_cmp, subexpr);
-        cx.expr_binary(span, BinOpKind::Or, strict_ineq, and)
-    },
-            cx.expr_bool(span, equal),
-            Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
-        if self_args.len() != 2 {
-            cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
-        } else {
-            let op = match (less, equal) {
-                (true, true) => LeOp,
-                (true, false) => LtOp,
-                (false, true) => GeOp,
-                (false, false) => GtOp,
+    let strict_op = if less { BinOpKind::Lt } else { BinOpKind::Gt };
+    cs_fold1(false, // need foldr,
+        |cx, span, subexpr, self_f, other_fs| {
+            // build up a series of chain ||'s and &&'s from the inside
+            // out (hence foldr) to get lexical ordering, i.e. for op ==
+            // `ast::lt`
+            //
+            // ```
+            // self.f1 < other.f1 || (!(other.f1 < self.f1) &&
+            // (self.f2 < other.f2 || (!(other.f2 < self.f2) &&
+            // (false)
+            // ))
+            // )
+            // ```
+            //
+            // The optimiser should remove the redundancy. We explicitly
+            // get use the binops to avoid auto-deref dereferencing too many
+            // layers of pointers, if the type includes pointers.
+            //
+            let other_f = match (other_fs.len(), other_fs.get(0)) {
+                (1, Some(o_f)) => o_f,
+                _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
             };
-            some_ordering_collapsed(cx, span, op, tag_tuple)
-        }
-    }),
-            cx,
-            span,
-            substr)
+
+            let strict_ineq = cx.expr_binary(span, strict_op, self_f.clone(), other_f.clone());
+
+            let deleg_cmp = if !equal {
+                cx.expr_unary(span,
+                            ast::UnOp::Not,
+                            cx.expr_binary(span, strict_op, other_f.clone(), self_f))
+            } else {
+                cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone())
+            };
+
+            let and = cx.expr_binary(span, BinOpKind::And, deleg_cmp, subexpr);
+            cx.expr_binary(span, BinOpKind::Or, strict_ineq, and)
+        },
+        |cx, args| {
+            match args {
+                Some((span, self_f, other_fs)) => {
+                    // Special-case the base case to generate cleaner code with
+                    // fewer operations (e.g. `<=` instead of `<` and `==`).
+                    let other_f = match (other_fs.len(), other_fs.get(0)) {
+                        (1, Some(o_f)) => o_f,
+                        _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
+                    };
+
+                    let op = match (less, equal) {
+                        (false, false) => BinOpKind::Gt,
+                        (false, true) => BinOpKind::Ge,
+                        (true, false) => BinOpKind::Lt,
+                        (true, true) => BinOpKind::Le,
+                    };
+
+                    cx.expr_binary(span, op, self_f, other_f.clone())
+                }
+                None => cx.expr_bool(span, equal)
+            }
+        },
+        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
+            if self_args.len() != 2 {
+                cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
+            } else {
+                let op = match (less, equal) {
+                    (false, false) => GtOp,
+                    (false, true) => GeOp,
+                    (true, false) => LtOp,
+                    (true, true) => LeOp,
+                };
+                some_ordering_collapsed(cx, span, op, tag_tuple)
+            }
+        }),
+        cx,
+        span,
+        substr)
 }
