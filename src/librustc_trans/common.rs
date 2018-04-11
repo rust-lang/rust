@@ -33,7 +33,7 @@ use libc::{c_uint, c_char};
 use std::iter;
 
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use context::CodegenCx;
@@ -183,7 +183,7 @@ pub fn C_u8(cx: &CodegenCx, i: u8) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &CodegenCx, s: InternedString, null_terminated: bool) -> ValueRef {
+pub fn C_cstr(cx: &CodegenCx, s: LocalInternedString, null_terminated: bool) -> ValueRef {
     unsafe {
         if let Some(&llval) = cx.const_cstr_cache.borrow().get(&s) {
             return llval;
@@ -208,7 +208,7 @@ pub fn C_cstr(cx: &CodegenCx, s: InternedString, null_terminated: bool) -> Value
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_str_slice(cx: &CodegenCx, s: InternedString) -> ValueRef {
+pub fn C_str_slice(cx: &CodegenCx, s: LocalInternedString) -> ValueRef {
     let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false),
         cx.layout_of(cx.tcx.mk_str()).llvm_type(cx).ptr_to());

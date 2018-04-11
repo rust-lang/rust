@@ -462,7 +462,7 @@ impl PrintContext {
                 0 => Symbol::intern("'r"),
                 1 => Symbol::intern("'s"),
                 i => Symbol::intern(&format!("'t{}", i-2)),
-            }.as_str()
+            }.as_interned_str()
         }
 
         // Replace any anonymous late-bound regions with named

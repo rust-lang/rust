@@ -701,7 +701,7 @@ impl DefPathData {
             Typeof => "{{typeof}}",
         };
 
-        Symbol::intern(s).as_str()
+        Symbol::intern(s).as_interned_str()
     }
 
     pub fn to_string(&self) -> String {
@@ -731,7 +731,7 @@ macro_rules! define_global_metadata_kind {
                     definitions.create_def_with_parent(
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
-                        DefPathData::GlobalMetaData(instance.name().as_str()),
+                        DefPathData::GlobalMetaData(instance.name().as_interned_str()),
                         GLOBAL_MD_ADDRESS_SPACE,
                         Mark::root(),
                         DUMMY_SP
@@ -746,7 +746,7 @@ macro_rules! define_global_metadata_kind {
                 let def_key = DefKey {
                     parent: Some(CRATE_DEF_INDEX),
                     disambiguated_data: DisambiguatedDefPathData {
-                        data: DefPathData::GlobalMetaData(self.name().as_str()),
+                        data: DefPathData::GlobalMetaData(self.name().as_interned_str()),
                         disambiguator: 0,
                     }
                 };

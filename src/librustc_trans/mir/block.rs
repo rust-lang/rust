@@ -442,7 +442,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match def {
                     Some(ty::InstanceDef::Intrinsic(def_id))
-                        => Some(bx.tcx().item_name(def_id)),
+                        => Some(bx.tcx().item_name(def_id).as_str()),
                     _ => None
                 };
                 let intrinsic = intrinsic.as_ref().map(|s| &s[..]);

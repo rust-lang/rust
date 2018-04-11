@@ -146,7 +146,7 @@ pub trait CodegenUnitExt<'tcx> {
     }
 
     fn work_product_id(&self) -> WorkProductId {
-        WorkProductId::from_cgu_name(self.name())
+        WorkProductId::from_cgu_name(&self.name().as_str())
     }
 
     fn items_in_deterministic_order<'a>(&self,
@@ -206,9 +206,9 @@ fn fallback_cgu_name(tcx: TyCtxt) -> InternedString {
     const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
     if tcx.sess.opts.debugging_opts.human_readable_cgu_names {
-        Symbol::intern(FALLBACK_CODEGEN_UNIT).as_str()
+        Symbol::intern(FALLBACK_CODEGEN_UNIT).as_interned_str()
     } else {
-        Symbol::intern(&CodegenUnit::mangle_name(FALLBACK_CODEGEN_UNIT)).as_str()
+        Symbol::intern(&CodegenUnit::mangle_name(FALLBACK_CODEGEN_UNIT)).as_interned_str()
     }
 }
 
@@ -740,7 +740,7 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         }
                     }) {
         cgu_name.push_str("-");
-        cgu_name.push_str(&part.data.as_interned_str());
+        cgu_name.push_str(&part.data.as_interned_str().as_str());
     }
 
     if volatile {
@@ -753,11 +753,11 @@ fn compute_codegen_unit_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         CodegenUnit::mangle_name(&cgu_name)
     };
 
-    Symbol::intern(&cgu_name[..]).as_str()
+    Symbol::intern(&cgu_name[..]).as_interned_str()
 }
 
 fn numbered_codegen_unit_name(crate_name: &str, index: usize) -> InternedString {
-    Symbol::intern(&format!("{}{}", crate_name, index)).as_str()
+    Symbol::intern(&format!("{}{}", crate_name, index)).as_interned_str()
 }
 
 fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -772,7 +772,7 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("CodegenUnit {}:", cgu.name());
 
             for (trans_item, linkage) in cgu.items() {
-                let symbol_name = trans_item.symbol_name(tcx);
+                let symbol_name = trans_item.symbol_name(tcx).name.as_str();
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");

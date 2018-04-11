@@ -88,7 +88,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
                self.to_raw_string(),
                cx.codegen_unit.name());
 
-        let symbol_name = self.symbol_name(cx.tcx);
+        let symbol_name = self.symbol_name(cx.tcx).as_str();
 
         debug!("symbol {}", &symbol_name);
 

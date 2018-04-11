@@ -263,7 +263,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     ) -> EvalResult<'tcx> {
         let substs = instance.substs;
 
-        let intrinsic_name = &ecx.tcx.item_name(instance.def_id())[..];
+        let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);

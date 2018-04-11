@@ -103,7 +103,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
-    let name = &*tcx.item_name(def_id);
+    let name = &*tcx.item_name(def_id).as_str();
 
     let llret_ty = cx.layout_of(ret_ty).llvm_type(cx);
     let result = PlaceRef::new_sized(llresult, fn_ty.ret.layout, fn_ty.ret.layout.align);

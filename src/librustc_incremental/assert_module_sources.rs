@@ -74,7 +74,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
 
         let mname = self.field(attr, MODULE);
         let mangled_cgu_name = CodegenUnit::mangle_name(&mname.as_str());
-        let mangled_cgu_name = Symbol::intern(&mangled_cgu_name).as_str();
+        let mangled_cgu_name = Symbol::intern(&mangled_cgu_name).as_interned_str();
 
         let dep_node = DepNode::new(self.tcx,
                                     DepConstructor::CompileCodegenUnit(mangled_cgu_name));
