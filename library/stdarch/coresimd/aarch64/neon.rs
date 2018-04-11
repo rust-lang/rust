@@ -43,38 +43,6 @@ impl_from_bits_!(
     m8x16
 );
 
-/// Vector add.
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fadd))]
-pub unsafe fn vadd_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
-    simd_add(a, b)
-}
-
-/// Vector add.
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(fadd))]
-pub unsafe fn vaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
-    simd_add(a, b)
-}
-
-/// Vector add.
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(add))]
-pub unsafe fn vaddd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    simd_add(a, b)
-}
-
-/// Vector add.
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(add))]
-pub unsafe fn vaddd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
-    simd_add(a, b)
-}
-
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.aarch64.neon.smaxv.i8.v8i8"]
@@ -143,6 +111,71 @@ extern "C" {
     #[link_name = "llvm.aarch64.neon.fminv.f64.v2f64"]
     fn vminvq_f64_(a: float64x2_t) -> f64;
 
+    #[link_name = "llvm.aarch64.neon.sminp.v16i8"]
+    fn vpminq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+    #[link_name = "llvm.aarch64.neon.sminp.v8i16"]
+    fn vpminq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+    #[link_name = "llvm.aarch64.neon.sminp.v4i32"]
+    fn vpminq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    #[link_name = "llvm.aarch64.neon.uminp.v16i8"]
+    fn vpminq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
+    #[link_name = "llvm.aarch64.neon.uminp.v8i16"]
+    fn vpminq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
+    #[link_name = "llvm.aarch64.neon.uminp.v4i32"]
+    fn vpminq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
+    #[link_name = "llvm.aarch64.neon.fminp.4f32"]
+    fn vpminq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    #[link_name = "llvm.aarch64.neon.fminp.v2f64"]
+    fn vpminq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+
+    #[link_name = "llvm.aarch64.neon.smaxp.v16i8"]
+    fn vpmaxq_s8_(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+    #[link_name = "llvm.aarch64.neon.smaxp.v8i16"]
+    fn vpmaxq_s16_(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+    #[link_name = "llvm.aarch64.neon.smaxp.v4i32"]
+    fn vpmaxq_s32_(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+    #[link_name = "llvm.aarch64.neon.umaxp.v16i8"]
+    fn vpmaxq_u8_(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
+    #[link_name = "llvm.aarch64.neon.umaxp.v8i16"]
+    fn vpmaxq_u16_(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
+    #[link_name = "llvm.aarch64.neon.umaxp.v4i32"]
+    fn vpmaxq_u32_(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
+    #[link_name = "llvm.aarch64.neon.fmaxp.4f32"]
+    fn vpmaxq_f32_(a: float32x4_t, b: float32x4_t) -> float32x4_t;
+    #[link_name = "llvm.aarch64.neon.fmaxp.v2f64"]
+    fn vpmaxq_f64_(a: float64x2_t, b: float64x2_t) -> float64x2_t;
+}
+
+/// Vector add.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fadd))]
+pub unsafe fn vadd_f64(a: float64x1_t, b: float64x1_t) -> float64x1_t {
+    simd_add(a, b)
+}
+
+/// Vector add.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fadd))]
+pub unsafe fn vaddq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    simd_add(a, b)
+}
+
+/// Vector add.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(add))]
+pub unsafe fn vaddd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t {
+    simd_add(a, b)
+}
+
+/// Vector add.
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(add))]
+pub unsafe fn vaddd_u64(a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
+    simd_add(a, b)
 }
 
 /// Horizontal vector max.
@@ -384,6 +417,135 @@ pub unsafe fn vminvq_f32(a: float32x4_t) -> f32 {
 pub unsafe fn vminvq_f64(a: float64x2_t) -> f64 {
     vminvq_f64_(a)
 }
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sminp))]
+pub unsafe fn vpminq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    vpminq_s8_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sminp))]
+pub unsafe fn vpminq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    vpminq_s16_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(sminp))]
+pub unsafe fn vpminq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    vpminq_s32_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uminp))]
+pub unsafe fn vpminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    vpminq_u8_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uminp))]
+pub unsafe fn vpminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    vpminq_u16_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(uminp))]
+pub unsafe fn vpminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    vpminq_u32_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fminp))]
+pub unsafe fn vpminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    vpminq_f32_(a, b)
+}
+
+/// Folding minimum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fminp))]
+pub unsafe fn vpminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    vpminq_f64_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smaxp))]
+pub unsafe fn vpmaxq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t {
+    vpmaxq_s8_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smaxp))]
+pub unsafe fn vpmaxq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t {
+    vpmaxq_s16_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(smaxp))]
+pub unsafe fn vpmaxq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t {
+    vpmaxq_s32_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umaxp))]
+pub unsafe fn vpmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    vpmaxq_u8_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umaxp))]
+pub unsafe fn vpmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
+    vpmaxq_u16_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(umaxp))]
+pub unsafe fn vpmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
+    vpmaxq_u32_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmaxp))]
+pub unsafe fn vpmaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    vpmaxq_f32_(a, b)
+}
+
+/// Folding maximum of adjacent pairs
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(fmaxp))]
+pub unsafe fn vpmaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+    vpmaxq_f64_(a, b)
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -633,5 +795,197 @@ mod tests {
     unsafe fn test_vminvq_f64() {
         let r = vminvq_f64(f64x2::new(1., 4.).into_bits());
         assert_eq!(r, 1_f64);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpminq_s8() {
+        #[cfg_attr(rustfmt, skip)]
+        let a = i8x16::new(
+            1, -2, 3, -4, 5, 6, 7, 8,
+            1, 2, 3, 4, 5, 6, 7, 8
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let b = i8x16::new(
+            0, 3, 2, 5, 4, 7, 6, 9,
+            0, 3, 2, 5, 4, 7, 6, 9
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let e = i8x16::new(
+            -2, -4, 5, 7, 1, 3, 5, 7,
+            0, 2, 4, 6, 0, 2, 4, 6,
+        );
+        let r: i8x16 = vpminq_s8(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpminq_s16() {
+        let a = i16x8::new(1, -2, 3, 4, 5, 6, 7, 8);
+        let b = i16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
+        let e = i16x8::new(-2, 3, 5, 7, 0, 2, 4, 6);
+        let r: i16x8 = vpminq_s16(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpminq_s32() {
+        let a = i32x4::new(1, -2, 3, 4);
+        let b = i32x4::new(0, 3, 2, 5);
+        let e = i32x4::new(-2, 3, 0, 2);
+        let r: i32x4 = vpminq_s32(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpminq_u8() {
+        #[cfg_attr(rustfmt, skip)]
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            1, 2, 3, 4, 5, 6, 7, 8
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let b = u8x16::new(
+            0, 3, 2, 5, 4, 7, 6, 9,
+            0, 3, 2, 5, 4, 7, 6, 9
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let e = u8x16::new(
+            1, 3, 5, 7, 1, 3, 5, 7,
+            0, 2, 4, 6, 0, 2, 4, 6,
+        );
+        let r: u8x16 = vpminq_u8(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpminq_u16() {
+        let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = u16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
+        let e = u16x8::new(1, 3, 5, 7, 0, 2, 4, 6);
+        let r: u16x8 = vpminq_u16(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpminq_u32() {
+        let a = u32x4::new(1, 2, 3, 4);
+        let b = u32x4::new(0, 3, 2, 5);
+        let e = u32x4::new(1, 3, 0, 2);
+        let r: u32x4 = vpminq_u32(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmin_f32() {
+        let a = f32x4::new(1., -2., 3., 4.);
+        let b = f32x4::new(0., 3., 2., 5.);
+        let e = f32x4::new(-2., 3., 0., 2.);
+        let r: f32x4 = vpminq_f32(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmin_f64() {
+        let a = f64x2::new(1., -2.);
+        let b = f64x2::new(0., 3.);
+        let e = f64x2::new(-2., 0.);
+        let r: f64x2 = vpminq_f64(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmaxq_s8() {
+        #[cfg_attr(rustfmt, skip)]
+        let a = i8x16::new(
+            1, -2, 3, -4, 5, 6, 7, 8,
+            1, 2, 3, 4, 5, 6, 7, 8
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let b = i8x16::new(
+            0, 3, 2, 5, 4, 7, 6, 9,
+            0, 3, 2, 5, 4, 7, 6, 9
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let e = i8x16::new(
+            1, 3, 6, 8, 2, 4, 6, 8,
+            3, 5, 7, 9, 3, 5, 7, 9,
+        );
+        let r: i8x16 = vpmaxq_s8(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmaxq_s16() {
+        let a = i16x8::new(1, -2, 3, 4, 5, 6, 7, 8);
+        let b = i16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
+        let e = i16x8::new(1, 4, 6, 8, 3, 5, 7, 9);
+        let r: i16x8 = vpmaxq_s16(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmaxq_s32() {
+        let a = i32x4::new(1, -2, 3, 4);
+        let b = i32x4::new(0, 3, 2, 5);
+        let e = i32x4::new(1, 4, 3, 5);
+        let r: i32x4 = vpmaxq_s32(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmaxq_u8() {
+        #[cfg_attr(rustfmt, skip)]
+        let a = u8x16::new(
+            1, 2, 3, 4, 5, 6, 7, 8,
+            1, 2, 3, 4, 5, 6, 7, 8
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let b = u8x16::new(
+            0, 3, 2, 5, 4, 7, 6, 9,
+            0, 3, 2, 5, 4, 7, 6, 9
+        );
+        #[cfg_attr(rustfmt, skip)]
+        let e = u8x16::new(
+            2, 4, 6, 8, 2, 4, 6, 8,
+            3, 5, 7, 9, 3, 5, 7, 9,
+        );
+        let r: u8x16 = vpmaxq_u8(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmaxq_u16() {
+        let a = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
+        let b = u16x8::new(0, 3, 2, 5, 4, 7, 6, 9);
+        let e = u16x8::new(2, 4, 6, 8, 3, 5, 7, 9);
+        let r: u16x8 = vpmaxq_u16(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmaxq_u32() {
+        let a = u32x4::new(1, 2, 3, 4);
+        let b = u32x4::new(0, 3, 2, 5);
+        let e = u32x4::new(2, 4, 3, 5);
+        let r: u32x4 = vpmaxq_u32(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmax_f32() {
+        let a = f32x4::new(1., -2., 3., 4.);
+        let b = f32x4::new(0., 3., 2., 5.);
+        let e = f32x4::new(1., 4., 3., 5.);
+        let r: f32x4 = vpmaxq_f32(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
+    }
+
+    #[simd_test = "neon"]
+    unsafe fn test_vpmax_f64() {
+        let a = f64x2::new(1., -2.);
+        let b = f64x2::new(0., 3.);
+        let e = f64x2::new(1., 3.);
+        let r: f64x2 = vpmaxq_f64(a.into_bits(), b.into_bits()).into_bits();
+        assert_eq!(r, e);
     }
 }
