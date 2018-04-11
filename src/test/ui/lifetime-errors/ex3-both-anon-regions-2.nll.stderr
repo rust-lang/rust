@@ -1,0 +1,17 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/ex3-both-anon-regions-2.rs:12:9
+   |
+LL |     v = x; //~ ERROR lifetime mismatch
+   |         ^
+
+error[E0384]: cannot assign twice to immutable variable `v`
+  --> $DIR/ex3-both-anon-regions-2.rs:12:5
+   |
+LL | fn foo((v, w): (&u8, &u8), x: &u8) {
+   |         - first assignment to `v`
+LL |     v = x; //~ ERROR lifetime mismatch
+   |     ^^^^^ cannot assign twice to immutable variable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0384`.

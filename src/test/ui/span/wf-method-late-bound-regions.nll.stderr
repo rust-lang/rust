@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/wf-method-late-bound-regions.rs:25:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let f = Foo(None);
+LL | |     let f2 = f;
+LL | |     let dangling = {
+...  |
+LL | |     println!("{}", dangling);
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

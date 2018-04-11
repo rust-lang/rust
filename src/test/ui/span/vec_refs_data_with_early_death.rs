@@ -17,8 +17,8 @@
 //  element it owns; thus, for data like this, it seems like we could
 //  loosen the restrictions here if we wanted. But it also is not
 //  clear whether such loosening is terribly important.)
-
-fn main() {
+#![feature(rustc_attrs)]
+fn main() { #![rustc_error] // rust-lang/rust#49855
     let mut v = Vec::new();
 
     let x: i8 = 3;

@@ -1,0 +1,15 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/issue-40402-2.rs:15:10
+   |
+LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+   |          ^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/issue-40402-2.rs:15:13
+   |
+LL |     let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+   |             ^ cannot move out of borrowed content
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

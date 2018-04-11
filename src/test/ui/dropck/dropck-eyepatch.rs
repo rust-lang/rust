@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dropck_eyepatch)]
+#![feature(dropck_eyepatch, rustc_attrs)]
 
 // The point of this test is to illustrate that the `#[may_dangle]`
 // attribute specifically allows, in the context of a type
@@ -64,7 +64,7 @@ unsafe impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 }
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     use std::cell::Cell;
     let c_long;
     let (c, mut dt, mut dr, mut pt, mut pr, st, sr)

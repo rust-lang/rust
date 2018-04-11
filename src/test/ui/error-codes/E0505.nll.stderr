@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/E0505.rs:15:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let x = Value{};
+LL | |     {
+LL | |         let _ref_to_val: &Value = &x;
+LL | |         eat(x); //~ ERROR E0505
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/mut-borrow-outside-loop.rs:13:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let mut void = ();
+LL | |
+LL | |     let first = &mut void;
+...  |
+LL | |     }
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

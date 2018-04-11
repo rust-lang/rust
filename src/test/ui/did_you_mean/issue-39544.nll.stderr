@@ -1,0 +1,98 @@
+error[E0596]: cannot borrow immutable item `z.x` as mutable
+  --> $DIR/issue-39544.rs:21:13
+   |
+LL |     let _ = &mut z.x; //~ ERROR cannot borrow
+   |             ^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `z`
+
+error[E0596]: cannot borrow immutable item `self.x` as mutable
+  --> $DIR/issue-39544.rs:26:17
+   |
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*self`
+
+error[E0596]: cannot borrow immutable item `self.x` as mutable
+  --> $DIR/issue-39544.rs:30:17
+   |
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*self`
+
+error[E0596]: cannot borrow immutable item `other.x` as mutable
+  --> $DIR/issue-39544.rs:31:17
+   |
+LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*other`
+
+error[E0596]: cannot borrow immutable item `self.x` as mutable
+  --> $DIR/issue-39544.rs:35:17
+   |
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*self`
+
+error[E0596]: cannot borrow immutable item `other.x` as mutable
+  --> $DIR/issue-39544.rs:36:17
+   |
+LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*other`
+
+error[E0596]: cannot borrow immutable item `self.x` as mutable
+  --> $DIR/issue-39544.rs:40:17
+   |
+LL |         let _ = &mut self.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*self`
+
+error[E0596]: cannot borrow immutable item `other.x` as mutable
+  --> $DIR/issue-39544.rs:41:17
+   |
+LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*other`
+
+error[E0596]: cannot borrow immutable item `other.x` as mutable
+  --> $DIR/issue-39544.rs:45:17
+   |
+LL |         let _ = &mut other.x; //~ ERROR cannot borrow
+   |                 ^^^^^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*other`
+
+error[E0596]: cannot borrow immutable item `z.x` as mutable
+  --> $DIR/issue-39544.rs:51:13
+   |
+LL |     let _ = &mut z.x; //~ ERROR cannot borrow
+   |             ^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `z`
+
+error[E0596]: cannot borrow immutable item `w.x` as mutable
+  --> $DIR/issue-39544.rs:52:13
+   |
+LL |     let _ = &mut w.x; //~ ERROR cannot borrow
+   |             ^^^^^^^^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `*w`
+
+error[E0594]: cannot assign to immutable item `*x.0`
+  --> $DIR/issue-39544.rs:58:5
+   |
+LL |     *x.0 = 1;
+   |     ^^^^^^^^ cannot mutate
+
+error: aborting due to 12 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

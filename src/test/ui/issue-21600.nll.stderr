@@ -1,0 +1,15 @@
+error[E0596]: cannot borrow immutable item `x` as mutable
+  --> $DIR/issue-21600.rs:24:20
+   |
+LL |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
+   |                    ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable item `x` as mutable
+  --> $DIR/issue-21600.rs:24:17
+   |
+LL |         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
+   |                 ^^^^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

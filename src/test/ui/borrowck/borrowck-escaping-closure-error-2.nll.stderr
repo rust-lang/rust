@@ -1,0 +1,18 @@
+error[E0597]: `books` does not live long enough
+  --> $DIR/borrowck-escaping-closure-error-2.rs:21:14
+   |
+LL |     Box::new(|| books.push(4))
+   |              ^^^^^^^^^^^^^^^^ borrowed value does not live long enough
+LL |     //~^ ERROR E0373
+LL | }
+   | - borrowed value only lives until here
+   |
+note: borrowed value must be valid for the lifetime 'a as defined on the function body at 19:1...
+  --> $DIR/borrowck-escaping-closure-error-2.rs:19:1
+   |
+LL | fn foo<'a>(x: &'a i32) -> Box<FnMut()+'a> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

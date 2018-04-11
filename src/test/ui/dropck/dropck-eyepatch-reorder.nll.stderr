@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/dropck-eyepatch-reorder.rs:44:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     use std::cell::Cell;
+LL | |     let c_long;
+LL | |     let (c, mut dt, mut dr, mut pt, mut pr, st, sr)
+...  |
+LL | |     println!("{:?}", (dt.0, dr.0, pt.0, pr.0, st.0, sr.0));
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

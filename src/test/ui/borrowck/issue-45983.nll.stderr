@@ -1,0 +1,30 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/issue-45983.rs:17:27
+   |
+LL |     give_any(|y| x = Some(y));
+   |                           ^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/issue-45983.rs:17:27
+   |
+LL |     give_any(|y| x = Some(y));
+   |                           ^
+
+error[E0594]: cannot assign to immutable item `x`
+  --> $DIR/issue-45983.rs:17:18
+   |
+LL |     give_any(|y| x = Some(y));
+   |                  ^^^^^^^^^^^ cannot mutate
+   |
+   = note: Value not mutable causing this error: `x`
+
+error[E0596]: cannot borrow immutable item `x` as mutable
+  --> $DIR/issue-45983.rs:17:14
+   |
+LL |     give_any(|y| x = Some(y));
+   |              ^^^^^^^^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

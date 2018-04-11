@@ -1,0 +1,40 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-error-with-note.rs:23:19
+   |
+LL |         Foo::Foo1(num1,
+   |                   ^^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-error-with-note.rs:24:19
+   |
+LL |                   num2) => (),
+   |                   ^^^^ cannot move out of borrowed content
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-error-with-note.rs:25:19
+   |
+LL |         Foo::Foo2(num) => (),
+   |                   ^^^ cannot move out of borrowed content
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-error-with-note.rs:42:16
+   |
+LL |             f: _s,
+   |                ^^ cannot move out of here
+
+error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
+  --> $DIR/borrowck-move-error-with-note.rs:43:16
+   |
+LL |             g: _t
+   |                ^^ cannot move out of here
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-error-with-note.rs:59:9
+   |
+LL |         n => {
+   |         ^ cannot move out of borrowed content
+
+error: aborting due to 6 previous errors
+
+Some errors occurred: E0507, E0509.
+For more information about an error, try `rustc --explain E0507`.

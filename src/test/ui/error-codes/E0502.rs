@@ -7,12 +7,12 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(rustc_attrs)]
 fn bar(x: &mut i32) {}
 fn foo(a: &mut i32) {
     let ref y = a;
     bar(a); //~ ERROR E0502
 }
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
 }

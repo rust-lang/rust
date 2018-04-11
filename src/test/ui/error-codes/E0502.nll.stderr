@@ -1,0 +1,9 @@
+error: compilation successful
+  --> $DIR/E0502.rs:17:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

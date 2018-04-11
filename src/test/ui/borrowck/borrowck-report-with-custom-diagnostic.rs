@@ -7,9 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     // Original borrow ends at end of function
     let mut x = 1;
     let y = &mut x;

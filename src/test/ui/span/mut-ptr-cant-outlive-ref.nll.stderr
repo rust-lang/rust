@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/mut-ptr-cant-outlive-ref.rs:13:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let m = RefCell::new(0);
+LL | |     let p;
+LL | |     {
+...  |
+LL | |     //~^^ ERROR `b` does not live long enough
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

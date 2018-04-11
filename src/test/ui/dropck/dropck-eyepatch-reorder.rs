@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dropck_eyepatch)]
+#![feature(dropck_eyepatch, rustc_attrs)]
 
 // The point of this test is to test uses of `#[may_dangle]` attribute
 // where the formal declaration order (in the impl generics) does not
@@ -41,7 +41,7 @@ unsafe impl<'b, #[may_dangle] 'a, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 }
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     use std::cell::Cell;
     let c_long;
     let (c, mut dt, mut dr, mut pt, mut pr, st, sr)

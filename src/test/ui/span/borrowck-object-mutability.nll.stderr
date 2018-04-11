@@ -1,0 +1,17 @@
+error[E0596]: cannot borrow immutable item `*x` as mutable
+  --> $DIR/borrowck-object-mutability.rs:19:5
+   |
+LL |     x.borrowed_mut(); //~ ERROR cannot borrow
+   |     ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable item `*x` as mutable
+  --> $DIR/borrowck-object-mutability.rs:29:5
+   |
+LL |     x.borrowed_mut(); //~ ERROR cannot borrow
+   |     ^ cannot borrow as mutable
+   |
+   = note: Value not mutable causing this error: `x`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

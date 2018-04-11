@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/regions-escape-bound-fn.rs:18:22
+   |
+LL |     with_int(|y| x = Some(y));
+   |                      ^^^^^^^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/regions-escape-bound-fn.rs:18:27
+   |
+LL |     with_int(|y| x = Some(y));
+   |                           ^
+
+error: aborting due to previous error
+

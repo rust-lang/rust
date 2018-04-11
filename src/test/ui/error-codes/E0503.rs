@@ -7,8 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-fn main() {
+#![feature(rustc_attrs)]
+fn main() { #![rustc_error] // rust-lang/rust#49855
     let mut value = 3;
     let _borrow = &mut value;
     let _sum = value + 1; //~ ERROR E0503

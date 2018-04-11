@@ -1,0 +1,21 @@
+error[E0594]: cannot assign to immutable item `*n`
+  --> $DIR/explicit-mut.rs:17:13
+   |
+LL |             *n += 1; //~ ERROR cannot assign to immutable
+   |             ^^^^^^^ cannot mutate
+
+error[E0594]: cannot assign to immutable item `*n`
+  --> $DIR/explicit-mut.rs:25:13
+   |
+LL |             *n += 1; //~ ERROR cannot assign to immutable
+   |             ^^^^^^^ cannot mutate
+
+error[E0594]: cannot assign to immutable item `*n`
+  --> $DIR/explicit-mut.rs:33:13
+   |
+LL |             *n += 1; //~ ERROR cannot assign to immutable
+   |             ^^^^^^^ cannot mutate
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0594`.

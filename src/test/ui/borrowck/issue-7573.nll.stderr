@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/issue-7573.rs:27:31
+   |
+LL |     let mut lines_to_use: Vec<&CrateId> = Vec::new();
+   |                               ^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/issue-7573.rs:32:9
+   |
+LL |         lines_to_use.push(installed_id);
+   |         ^^^^^^^^^^^^
+
+error: aborting due to previous error
+

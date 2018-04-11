@@ -1,0 +1,14 @@
+error[E0597]: `*x` does not live long enough
+  --> $DIR/regions-infer-borrow-scope-within-loop.rs:24:20
+   |
+LL |         y = borrow(&*x);
+   |                    ^^^ borrowed value does not live long enough
+...
+LL |     }
+   |     - borrowed value only lives until here
+LL |     assert!(*y != 0);
+   |             -- borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

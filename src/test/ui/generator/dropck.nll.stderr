@@ -1,0 +1,14 @@
+error: compilation successful
+  --> $DIR/dropck.rs:16:1
+   |
+LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
+LL | |     let (cell, mut gen);
+LL | |     cell = Box::new(RefCell::new(0));
+LL | |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
+...  |
+LL | |     // drops the RefCell and then the Ref, leading to use-after-free
+LL | | }
+   | |_^
+
+error: aborting due to previous error
+

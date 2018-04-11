@@ -1,0 +1,27 @@
+error[E0596]: cannot borrow immutable item `x` as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:39:25
+   |
+LL |     let __isize = &mut *x; //~ ERROR cannot borrow
+   |                         ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable item `*x` as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:51:11
+   |
+LL |     &mut **x //~ ERROR cannot borrow
+   |           ^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable item `x` as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:59:6
+   |
+LL |     *x = 3; //~ ERROR cannot borrow
+   |      ^ cannot borrow as mutable
+
+error[E0596]: cannot borrow immutable item `*x` as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref-mut.rs:63:6
+   |
+LL |     **x = 3; //~ ERROR cannot borrow
+   |      ^^ cannot borrow as mutable
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0596`.

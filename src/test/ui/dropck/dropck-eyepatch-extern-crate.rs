@@ -19,12 +19,12 @@
 //
 // See also dropck-eyepatch.rs for more information about the general
 // structure of the test.
-
+#![feature(rustc_attrs)]
 extern crate dropck_eyepatch_extern_crate as other;
 
 use other::{Dt,Dr,Pt,Pr,St,Sr};
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     use std::cell::Cell;
     let c_long;
     let (c, mut dt, mut dr, mut pt, mut pr, st, sr)

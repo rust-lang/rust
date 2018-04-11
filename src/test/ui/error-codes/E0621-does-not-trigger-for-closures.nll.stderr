@@ -1,0 +1,14 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:5
+   |
+LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
+   |     ^^^^^^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/E0621-does-not-trigger-for-closures.rs:25:26
+   |
+LL |     invoke(&x, |a, b| if a > b { a } else { b }); //~ ERROR E0495
+   |                          ^^^^^
+
+error: aborting due to previous error
+

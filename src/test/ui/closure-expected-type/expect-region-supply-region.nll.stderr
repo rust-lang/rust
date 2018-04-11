@@ -1,0 +1,44 @@
+warning: not reporting region error due to -Znll
+  --> $DIR/expect-region-supply-region.rs:28:13
+   |
+LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
+   |             ^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/expect-region-supply-region.rs:38:13
+   |
+LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
+   |             ^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/expect-region-supply-region.rs:47:33
+   |
+LL |     closure_expecting_bound(|x: &'x u32| {
+   |                                 ^^^^^^^
+
+warning: not reporting region error due to -Znll
+  --> $DIR/expect-region-supply-region.rs:52:13
+   |
+LL |         f = Some(x);
+   |             ^^^^^^^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/expect-region-supply-region.rs:28:18
+   |
+LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
+   |                  ^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/expect-region-supply-region.rs:38:18
+   |
+LL |         f = Some(x); //~ ERROR borrowed data cannot be stored outside of its closure
+   |                  ^
+
+error: free region `` does not outlive free region `'_#2r`
+  --> $DIR/expect-region-supply-region.rs:52:18
+   |
+LL |         f = Some(x);
+   |                  ^
+
+error: aborting due to 3 previous errors
+
