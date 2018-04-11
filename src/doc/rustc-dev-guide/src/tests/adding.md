@@ -122,6 +122,8 @@ be compiled or run.
 
 * `ignore-X` where `X` is a target detail or stage will ignore the
   test accordingly (see below)
+* `only-X` is like `ignore-X`, but will *only* run the test on that
+  target or stage
 * `ignore-pretty` will not compile the pretty-printed test (this is
   done to test the pretty-printer, but might not always work)
 * `ignore-test` always ignores the test
