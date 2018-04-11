@@ -1493,6 +1493,13 @@ impl fmt::Debug for PathBuf {
     }
 }
 
+#[stable(feature = "rust1", since = "1.27.0")]
+impl fmt::Display for PathBuf {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&Display { path: &**self }, formatter)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for PathBuf {
     type Target = Path;
@@ -2250,6 +2257,10 @@ impl Path {
     /// Returns an object that implements [`Display`] for safely printing paths
     /// that may contain non-Unicode data.
     ///
+    /// This method has been deprecated since version 1.27.0, because paths now
+    /// implement [`Display`] directly, with the same outcome as using this
+    /// adapter.
+    ///
     /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
@@ -2262,6 +2273,7 @@ impl Path {
     /// println!("{}", path.display());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_deprecated(since = "1.27.0", reason = "Path and PathBuf implement Display directly")]
     pub fn display(&self) -> Display {
         Display { path: self }
     }
@@ -2477,6 +2489,13 @@ impl Path {
 impl AsRef<OsStr> for Path {
     fn as_ref(&self) -> &OsStr {
         &self.inner
+    }
+}
+
+#[stable(feature = "rust1", since = "1.27.0")]
+impl fmt::Display for Path {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&Display { path: self }, formatter)
     }
 }
 
