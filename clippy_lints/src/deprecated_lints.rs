@@ -71,3 +71,14 @@ declare_deprecated_lint! {
     pub STRING_TO_STRING,
     "using `string::to_string` is common even today and specialization will likely happen soon"
 }
+
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** This lint should never have applied to non-pointer types, as transmuting
+/// between non-pointer types of differing alignment is well-defined behavior (it's semantically
+/// equivalent to a memcpy). This lint has thus been refactored into two separate lints:
+/// cast_ptr_alignment and transmute_ptr_to_ptr.
+declare_deprecated_lint! {
+    pub MISALIGNED_TRANSMUTE,
+    "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr"
+}

@@ -204,39 +204,31 @@ error: transmute from a `&mut [u8]` to a `&mut str`
 140 |     let _: &mut str = unsafe { std::mem::transmute(mb) };
     |                                ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_mut(mb).unwrap()`
 
-error: transmute from `[u8; 4]` to a less-aligned type (`u32`)
-   --> $DIR/transmute.rs:145:27
-    |
-145 |     let _: u32 = unsafe { std::mem::transmute([0u8; 4]) }; // err
-    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-    = note: `-D misaligned-transmute` implied by `-D warnings`
-
 error: transmute from a pointer to a pointer
-   --> $DIR/transmute.rs:156:29
+   --> $DIR/transmute.rs:149:29
     |
-156 |         let _: *const f32 = std::mem::transmute(ptr);
+149 |         let _: *const f32 = std::mem::transmute(ptr);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr as *const f32`
     |
     = note: `-D transmute-ptr-to-ptr` implied by `-D warnings`
 
 error: transmute from a pointer to a pointer
-   --> $DIR/transmute.rs:157:27
+   --> $DIR/transmute.rs:150:27
     |
-157 |         let _: *mut f32 = std::mem::transmute(mut_ptr);
+150 |         let _: *mut f32 = std::mem::transmute(mut_ptr);
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `mut_ptr as *mut f32`
 
 error: transmute from a reference to a reference
-   --> $DIR/transmute.rs:159:23
+   --> $DIR/transmute.rs:152:23
     |
-159 |         let _: &f32 = std::mem::transmute(&1u32);
+152 |         let _: &f32 = std::mem::transmute(&1u32);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(&1u32 as *const u32 as *const f32)`
 
 error: transmute from a reference to a reference
-   --> $DIR/transmute.rs:160:27
+   --> $DIR/transmute.rs:153:27
     |
-160 |         let _: &mut f32 = std::mem::transmute(&mut 1u32);
+153 |         let _: &mut f32 = std::mem::transmute(&mut 1u32);
     |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(&mut 1u32 as *mut u32 as *mut f32)`
 
-error: aborting due to 37 previous errors
+error: aborting due to 36 previous errors
 

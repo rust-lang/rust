@@ -277,6 +277,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         "string_to_string",
         "using `string::to_string` is common even today and specialization will likely happen soon",
     );
+    store.register_removed(
+        "misaligned_transmute",
+        "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -635,7 +639,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
-        transmute::MISALIGNED_TRANSMUTE,
         transmute::TRANSMUTE_BYTES_TO_STR,
         transmute::TRANSMUTE_INT_TO_BOOL,
         transmute::TRANSMUTE_INT_TO_CHAR,
@@ -787,7 +790,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
-        transmute::MISALIGNED_TRANSMUTE,
         transmute::TRANSMUTE_BYTES_TO_STR,
         transmute::TRANSMUTE_INT_TO_BOOL,
         transmute::TRANSMUTE_INT_TO_CHAR,

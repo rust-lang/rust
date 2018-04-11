@@ -9,4 +9,6 @@
 
 #[warn(unstable_as_mut_slice)]
 
+#[warn(misaligned_transmute)]
+
 fn main() {}

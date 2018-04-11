@@ -24,5 +24,11 @@ error: lint unstable_as_mut_slice has been removed: `Vec::as_mut_slice` has been
 10 | #[warn(unstable_as_mut_slice)]
    |        ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: lint misaligned_transmute has been removed: this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr
+  --> $DIR/deprecated.rs:12:8
+   |
+12 | #[warn(misaligned_transmute)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
