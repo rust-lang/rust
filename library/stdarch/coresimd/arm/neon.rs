@@ -366,8 +366,8 @@ impl_from_bits_!(
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[cfg(target_arch = "aarch64")]
-    #[link_name = "llvm.aarch64.neon.frsqrte.v2f32"]
+    #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.neon.frsqrte.v2f32")]
+    #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.neon.vrsqrte.v2f32")]
     fn frsqrte_v2f32(a: float32x2_t) -> float32x2_t;
 }
 
@@ -724,11 +724,10 @@ pub unsafe fn vmovl_u32(a: uint32x2_t) -> uint64x2_t {
 }
 
 /// Reciprocal square-root estimate.
-#[cfg(target_arch = "aarch64")]
-// FIXME (https://github.com/rust-lang-nursery/stdsimd/issues/383)
 #[inline]
 #[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(frsqrte))]
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(frsqrte))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr(vrsqrte))]
 pub unsafe fn vrsqrte_f32(a: float32x2_t) -> float32x2_t {
     frsqrte_v2f32(a)
 }
@@ -1022,7 +1021,6 @@ mod tests {
         assert_eq!(r, e);
     }
 
-    #[cfg(target_arch = "aarch64")]
     #[simd_test = "neon"]
     unsafe fn test_vrsqrt_f32() {
         let a = f32x2::new(1.0, 2.0);
