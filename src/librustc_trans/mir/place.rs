@@ -16,7 +16,7 @@ use rustc::mir::tcx::PlaceTy;
 use rustc_data_structures::indexed_vec::Idx;
 use base;
 use builder::Builder;
-use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_int, C_null, C_uint_big};
+use common::{CodegenCx, C_undef, C_usize, C_u8, C_u32, C_uint, C_null, C_uint_big};
 use consts;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -331,9 +331,11 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 let ptr = self.project_field(bx, 0);
                 let to = self.layout.ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(bx.tcx(), variant_index)
-                    .val as u64;
-                bx.store(C_int(ptr.layout.llvm_type(bx.cx), to as i64),
-                    ptr.llval, ptr.align);
+                    .val;
+                bx.store(
+                    C_uint_big(ptr.layout.llvm_type(bx.cx), to),
+                    ptr.llval,
+                    ptr.align);
             }
             layout::Variants::NicheFilling {
                 dataful_variant,
