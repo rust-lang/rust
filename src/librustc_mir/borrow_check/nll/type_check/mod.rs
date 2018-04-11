@@ -14,20 +14,20 @@
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use borrow_check::nll::universal_regions::UniversalRegions;
+use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
-use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, Normalized, TraitEngine};
+use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::mir::tcx::PlaceTy;
+use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::*;
 use rustc::traits::query::NoSolution;
+use rustc::traits::{self, Normalized, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
-use rustc::mir::*;
-use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor};
 use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -61,8 +61,8 @@ macro_rules! span_mirbug_and_err {
     })
 }
 
-mod liveness;
 mod input_output;
+mod liveness;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
@@ -763,9 +763,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             StatementKind::UserAssertTy(ref c_ty, ref local) => {
                 let local_ty = mir.local_decls()[*local].ty;
-                let (ty, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                    stmt.source_info.span, c_ty);
-                debug!("check_stmt: user_assert_ty ty={:?} local_ty={:?}", ty, local_ty);
+                let (ty, _) = self.infcx
+                    .instantiate_canonical_with_fresh_inference_vars(stmt.source_info.span, c_ty);
+                debug!(
+                    "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
+                    ty, local_ty
+                );
                 if let Err(terr) = self.eq_types(ty, local_ty, location.at_self()) {
                     span_mirbug!(
                         self,
@@ -1513,9 +1516,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, location: Location) {
         self.prove_predicates(
-            &[
-                ty::Predicate::Trait(trait_ref.to_poly_trait_ref().to_poly_trait_predicate()),
-            ],
+            &[ty::Predicate::Trait(
+                trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
+            )],
             location,
         );
     }
