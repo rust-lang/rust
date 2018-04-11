@@ -519,7 +519,7 @@ pub fn rustc_cargo(builder: &Builder, cargo: &mut Command) {
     rustc_cargo_env(builder, cargo);
 }
 
-fn rustc_cargo_env(builder: &Builder, cargo: &mut Command) {
+pub fn rustc_cargo_env(builder: &Builder, cargo: &mut Command) {
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
     cargo.env("CFG_RELEASE", builder.rust_release())
@@ -614,7 +614,7 @@ impl Step for CodegenBackend {
         run.builder.ensure(CodegenBackend {
             compiler: run.builder.compiler(run.builder.top_stage, run.host),
             target: run.target,
-            backend
+            backend,
         });
     }
 
@@ -803,7 +803,7 @@ fn codegen_backend_stamp(builder: &Builder,
         .join(format!(".librustc_trans-{}.stamp", backend))
 }
 
-fn compiler_file(builder: &Builder,
+pub fn compiler_file(builder: &Builder,
                  compiler: &Path,
                  target: Interned<String>,
                  file: &str) -> PathBuf {

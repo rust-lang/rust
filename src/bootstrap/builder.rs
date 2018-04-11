@@ -310,7 +310,7 @@ impl<'a> Builder<'a> {
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
                 native::Llvm, tool::Rustfmt, tool::Miri, native::Lld),
-            Kind::Check => describe!(check::Std, check::Test, check::Rustc),
+            Kind::Check => describe!(check::Std, check::Test, check::Rustc, check::CodegenBackend),
             Kind::Test => describe!(test::Tidy, test::Bootstrap, test::Ui, test::RunPass,
                 test::CompileFail, test::ParseFail, test::RunFail, test::RunPassValgrind,
                 test::MirOpt, test::Codegen, test::CodegenUnits, test::Incremental, test::Debuginfo,
@@ -834,7 +834,7 @@ impl<'a> Builder<'a> {
         cargo
     }
 
-    /// Ensure that a given step is built, returning it's output. This will
+    /// Ensure that a given step is built, returning its output. This will
     /// cache the step, so it is safe (and good!) to call this as often as
     /// needed to ensure that all dependencies are built.
     pub fn ensure<S: Step>(&'a self, step: S) -> S::Output {
