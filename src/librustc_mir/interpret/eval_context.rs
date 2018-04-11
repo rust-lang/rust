@@ -850,6 +850,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx, u128> {
         let layout = self.layout_of(ty)?;
         trace!("read_discriminant_value {:#?}", layout);
+        if layout.abi == layout::Abi::Uninhabited {
+            return Ok(0);
+        }
 
         match layout.variants {
             layout::Variants::Single { index } => {
