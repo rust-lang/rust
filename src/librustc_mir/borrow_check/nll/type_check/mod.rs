@@ -898,6 +898,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let sig = self.normalize(&sig, term_location);
                 self.check_call_dest(mir, term, &sig, destination, term_location);
 
+                self.prove_predicates(
+                    sig.inputs().iter().map(|ty| ty::Predicate::WellFormed(ty)),
+                    term_location,
+                );
+
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
                 // then further constrain the late-bound regions that
