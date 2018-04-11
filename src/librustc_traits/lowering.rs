@@ -251,16 +251,15 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // Rule Normalize-From-Impl (see rustc guide)
     //
     // ```impl<P0..Pn> Trait<A1..An> for A0
-    // where WC
     // {
-    //     type AssocType<Pn+1..Pm> where WC1 = T;
+    //     type AssocType<Pn+1..Pm> where WC = T;
     // }```
     //
     // ```
     // forall<P0..Pm> {
     //   forall<Pn+1..Pm> {
     //     Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
-    //       WC && WC1
+    //       Implemented(A0: Trait<A1..An>) && WC
     //   }
     // }
     // ```
@@ -276,19 +275,18 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
     // `T`
     let ty = tcx.type_of(item_id);
+    // `Implemented(A0: Trait<A1..An>)`
+    let trait_implemented = ty::Binder::dummy(ty::TraitPredicate { trait_ref }.lower());
     // `WC`
-    let impl_where_clauses = tcx.predicates_of(impl_id).predicates.lower();
-    // `WC1`
     let item_where_clauses = tcx.predicates_of(item_id).predicates.lower();
-    // `WC && WC1`
-    let mut where_clauses = vec![];
-    where_clauses.extend(impl_where_clauses);
+    // `Implemented(A0: Trait<A1..An>) && WC`
+    let mut where_clauses = vec![trait_implemented];
     where_clauses.extend(item_where_clauses);
     // `<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm>`
     let projection_ty = ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, item.name);
     // `Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T)`
     let normalize_goal = DomainGoal::Normalize(ty::ProjectionPredicate { projection_ty, ty });
-    // `Normalize(... -> T) :- WC && WC1`
+    // `Normalize(... -> T) :- ...`
     let clause = ProgramClause {
         goal: normalize_goal,
         hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect(),
