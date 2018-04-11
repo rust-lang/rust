@@ -1493,7 +1493,7 @@ impl fmt::Debug for PathBuf {
     }
 }
 
-#[stable(feature = "rust1", since = "1.27.0")]
+#[stable(feature = "display_path", since = "1.27.0")]
 impl fmt::Display for PathBuf {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&Display { path: &**self }, formatter)
@@ -2487,7 +2487,7 @@ impl AsRef<OsStr> for Path {
     }
 }
 
-#[stable(feature = "rust1", since = "1.27.0")]
+#[stable(feature = "display_for_path", since = "1.27.0")]
 impl fmt::Display for Path {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&Display { path: self }, formatter)
