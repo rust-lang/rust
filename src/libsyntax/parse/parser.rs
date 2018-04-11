@@ -689,7 +689,7 @@ impl<'a> Parser<'a> {
                 .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
                 .chain(self.expected_tokens.iter().cloned())
                 .collect::<Vec<_>>();
-            expected.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+            expected.sort_by_cached_key(|x| x.to_string());
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
             let actual = self.this_token_to_string();

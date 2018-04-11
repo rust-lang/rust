@@ -22,6 +22,7 @@
 #![cfg_attr(unix, feature(libc))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
 #![feature(rustc_stack_internals)]
 
@@ -82,7 +83,6 @@ use rustc_trans_utils::trans_crate::TransCrate;
 use serialize::json::ToJson;
 
 use std::any::Any;
-use std::cmp::Ordering::Equal;
 use std::cmp::max;
 use std::default::Default;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
@@ -1176,13 +1176,8 @@ Available lint options:
 
     fn sort_lints(sess: &Session, lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
         let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
-        lints.sort_by(|x: &&Lint, y: &&Lint| {
-            match x.default_level(sess).cmp(&y.default_level(sess)) {
-                // The sort doesn't case-fold but it's doubtful we care.
-                Equal => x.name.cmp(y.name),
-                r => r,
-            }
-        });
+        // The sort doesn't case-fold but it's doubtful we care.
+        lints.sort_by_cached_key(|x: &&Lint| (x.default_level(sess), x.name));
         lints
     }
 

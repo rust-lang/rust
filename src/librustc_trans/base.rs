@@ -82,7 +82,8 @@ use std::ffi::CString;
 use std::str;
 use std::sync::Arc;
 use std::time::{Instant, Duration};
-use std::{i32, usize};
+use std::i32;
+use std::cmp;
 use std::sync::mpsc;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
@@ -830,7 +831,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // a bit more efficiently.
     let codegen_units = {
         let mut codegen_units = codegen_units;
-        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
+        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         codegen_units
     };
 

@@ -1400,6 +1400,7 @@ impl<T> [T] {
         let sz_usize = mem::size_of::<(K, usize)>();
 
         let len = self.len();
+        if len < 2 { return }
         if sz_u8  < sz_u16   && len <= ( u8::MAX as usize) { return sort_by_key!( u8, self, f) }
         if sz_u16 < sz_u32   && len <= (u16::MAX as usize) { return sort_by_key!(u16, self, f) }
         if sz_u32 < sz_usize && len <= (u32::MAX as usize) { return sort_by_key!(u32, self, f) }

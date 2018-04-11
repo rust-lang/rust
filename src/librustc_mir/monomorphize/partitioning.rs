@@ -112,11 +112,11 @@ use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use std::collections::hash_map::Entry;
+use std::cmp;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::mir::mono::MonoItem;
 use monomorphize::item::{MonoItemExt, InstantiationMode};
-use core::usize;
 
 pub use rustc::mir::mono::CodegenUnit;
 
@@ -189,11 +189,9 @@ pub trait CodegenUnitExt<'tcx> {
             }, item.symbol_name(tcx))
         }
 
-        let items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
-        let mut items : Vec<_> = items.iter()
-            .map(|il| (il, item_sort_key(tcx, il.0))).collect();
-        items.sort_by(|&(_, ref key1), &(_, ref key2)| key1.cmp(key2));
-        items.into_iter().map(|(&item_linkage, _)| item_linkage).collect()
+        let mut items: Vec<_> = self.items().iter().map(|(&i, &l)| (i, l)).collect();
+        items.sort_by_cached_key(|&(i, _)| item_sort_key(tcx, i));
+        items
     }
 }
 
@@ -509,7 +507,7 @@ fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<
     // Merge the two smallest codegen units until the target size is reached.
     while codegen_units.len() > target_cgu_count {
         // Sort small cgus to the back
-        codegen_units.sort_by_key(|cgu| usize::MAX - cgu.size_estimate());
+        codegen_units.sort_by_cached_key(|cgu| cmp::Reverse(cgu.size_estimate()));
         let mut smallest = codegen_units.pop().unwrap();
         let second_smallest = codegen_units.last_mut().unwrap();
 

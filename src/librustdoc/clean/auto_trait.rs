@@ -1437,9 +1437,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // involved (impls rarely have more than a few bounds) means that it
     // shouldn't matter in practice.
     fn unstable_debug_sort<T: Debug>(&self, vec: &mut Vec<T>) {
-        vec.sort_unstable_by(|first, second| {
-            format!("{:?}", first).cmp(&format!("{:?}", second))
-        });
+        vec.sort_by_cached_key(|x| format!("{:?}", x))
     }
 
     fn is_fn_ty(&self, tcx: &TyCtxt, ty: &Type) -> bool {
