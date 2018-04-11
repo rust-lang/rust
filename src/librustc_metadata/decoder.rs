@@ -185,8 +185,8 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         if let Some(index) = self.interpret_alloc_index.as_mut() {
             return index[idx] as usize;
         }
-        let index = self.cdata().root.interpret_alloc_index;
-        let index: Vec<u32> = index.decode(self.cdata()).collect();
+        let cdata = self.cdata();
+        let index: Vec<u32> = cdata.root.interpret_alloc_index.decode(cdata).collect();
         let pos = index[idx];
         self.interpret_alloc_index = Some(index);
         pos as usize
