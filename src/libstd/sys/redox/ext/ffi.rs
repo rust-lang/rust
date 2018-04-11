@@ -17,9 +17,9 @@ use mem;
 use sys::os_str::Buf;
 use sys_common::{FromInner, IntoInner, AsInner};
 
-/// Redox-specific extensions to [`ffi::OsString`].
+/// Redox-specific extensions to [`OsString`].
 ///
-/// [`ffi::OsString`]: ../../../../std/ffi/struct.OsString.html
+/// [`OsString`]: ../../../../std/ffi/struct.OsString.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStringExt {
     /// Creates an `OsString` from a byte vector.
@@ -41,9 +41,9 @@ impl OsStringExt for OsString {
     }
 }
 
-/// Redox-specific extensions to [`ffi::OsStr`].
+/// Redox-specific extensions to [`OsStr`].
 ///
-/// [`ffi::OsStr`]: ../../../../std/ffi/struct.OsStr.html
+/// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStrExt {
     #[stable(feature = "rust1", since = "1.0.0")]

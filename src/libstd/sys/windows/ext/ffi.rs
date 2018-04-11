@@ -76,9 +76,9 @@ use sys_common::{FromInner, AsInner};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use sys_common::wtf8::EncodeWide;
 
-/// Windows-specific extensions to [`ffi::OsString`].
+/// Windows-specific extensions to [`OsString`].
 ///
-/// [`ffi::OsString`]: ../../../../std/ffi/struct.OsString.html
+/// [`OsString`]: ../../../../std/ffi/struct.OsString.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStringExt {
     /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
@@ -111,9 +111,9 @@ impl OsStringExt for OsString {
     }
 }
 
-/// Windows-specific extensions to [`ffi::OsStr`].
+/// Windows-specific extensions to [`OsStr`].
 ///
-/// [`ffi::OsStr`]: ../../../../std/ffi/struct.OsStr.html
+/// [`OsStr`]: ../../../../std/ffi/struct.OsStr.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait OsStrExt {
     /// Re-encodes an `OsStr` as a wide character sequence, i.e. potentially

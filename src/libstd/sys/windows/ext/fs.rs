@@ -18,9 +18,9 @@ use path::Path;
 use sys;
 use sys_common::{AsInnerMut, AsInner};
 
-/// Windows-specific extensions to [`fs::File`].
+/// Windows-specific extensions to [`File`].
 ///
-/// [`fs::File`]: ../../../fs/struct.File.html
+/// [`File`]: ../../../fs/struct.File.html
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Seeks to a given position and reads a number of bytes.
@@ -444,11 +444,11 @@ impl MetadataExt for Metadata {
     fn file_size(&self) -> u64 { self.as_inner().size() }
 }
 
-/// Windows-specific extensions to [`fs::FileType`].
+/// Windows-specific extensions to [`FileType`].
 ///
 /// On Windows, a symbolic link knows whether it is a file or directory.
 ///
-/// [`fs::FileType`]: ../../../../std/fs/struct.FileType.html
+/// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[unstable(feature = "windows_file_type_ext", issue = "0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a symbolic link that is also a directory.

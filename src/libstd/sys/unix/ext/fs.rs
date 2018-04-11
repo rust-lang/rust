@@ -20,9 +20,9 @@ use sys;
 use sys_common::{FromInner, AsInner, AsInnerMut};
 use sys::platform::fs::MetadataExt as UnixMetadataExt;
 
-/// Unix-specific extensions to [`fs::File`].
+/// Unix-specific extensions to [`File`].
 ///
-/// [`fs::File`]: ../../../../std/fs/struct.File.html
+/// [`File`]: ../../../../std/fs/struct.File.html
 #[stable(feature = "file_offset", since = "1.15.0")]
 pub trait FileExt {
     /// Reads a number of bytes starting from a given offset.
@@ -555,12 +555,12 @@ impl MetadataExt for fs::Metadata {
     fn blocks(&self) -> u64 { self.st_blocks() }
 }
 
-/// Unix-specific extensions for [`fs::FileType`].
+/// Unix-specific extensions for [`FileType`].
 ///
 /// Adds support for special Unix file types such as block/character devices,
 /// pipes, and sockets.
 ///
-/// [`fs::FileType`]: ../../../../std/fs/struct.FileType.html
+/// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a block device.

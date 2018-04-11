@@ -18,7 +18,7 @@ use process;
 use sys;
 use sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
 
-/// Redox-specific extensions to the [`process::Command`] builder.
+/// Redox-specific extensions to the [`process::Command`] builder,
 ///
 /// [`process::Command`]: ../../../../std/process/struct.Command.html
 #[stable(feature = "rust1", since = "1.0.0")]
