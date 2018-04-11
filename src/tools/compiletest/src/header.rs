@@ -595,7 +595,7 @@ impl Config {
     fn has_cfg_prefix(&self, line: &str, prefix: &str) -> bool {
         // returns whether this line contains this prefix or not. For prefix
         // "ignore", returns true if line says "ignore-x86_64", "ignore-arch",
-        // "ignore-andorid" etc.
+        // "ignore-android" etc.
         line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-')
     }
 
