@@ -445,12 +445,24 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let tcx = self.tcx;
 
+        // Encode the items.
+        i = self.position();
+        let items = self.encode_info_for_items();
+        let item_bytes = self.position() - i;
+
         // Encode the allocation index
         let interpret_alloc_index = {
             let mut interpret_alloc_index = Vec::new();
             let mut n = 0;
+            trace!("beginning to encode alloc ids");
             loop {
                 let new_n = self.interpret_alloc_ids.len();
+                // if we have found new ids, serialize those, too
+                if n == new_n {
+                    // otherwise, abort
+                    break;
+                }
+                trace!("encoding {} further alloc ids", new_n - n);
                 for idx in n..new_n {
                     let id = self.interpret_allocs_inverse[idx];
                     let pos = self.position() as u32;
@@ -461,21 +473,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         id,
                     ).unwrap();
                 }
-                // if we have found new ids, serialize those, too
-                if n == new_n {
-                    // otherwise, abort
-                    break;
-                }
                 n = new_n;
             }
             self.lazy_seq(interpret_alloc_index)
         };
 
-        // Encode and index the items.
-        i = self.position();
-        let items = self.encode_info_for_items();
-        let item_bytes = self.position() - i;
-
+        // Index the items
         i = self.position();
         let index = items.write_index(&mut self.opaque.cursor);
         let index_bytes = self.position() - i;
