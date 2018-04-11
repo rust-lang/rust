@@ -19,7 +19,6 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
-#![deny(warnings)]
 #![panic_runtime]
 #![allow(unused_features)]
 

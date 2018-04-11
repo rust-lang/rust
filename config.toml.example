@@ -339,6 +339,9 @@
 # rustc to execute.
 #lld = false
 
+# Whether to deny warnings in crates
+#deny-warnings = true
+
 # =============================================================================
 # Options for specific targets
 #

@@ -14,7 +14,6 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
-#![deny(warnings)]
 #![feature(alloc_system)]
 #![feature(libc)]
 #![feature(linkage)]

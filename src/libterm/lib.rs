@@ -46,7 +46,6 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 #![deny(missing_docs)]
-#![deny(warnings)]
 
 #![cfg_attr(windows, feature(libc))]
 // Handle rustfmt skips

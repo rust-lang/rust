@@ -279,6 +279,10 @@ fn main() {
         cmd.arg("--color=always");
     }
 
+    if env::var_os("RUSTC_DENY_WARNINGS").is_some() {
+        cmd.arg("-Dwarnings");
+    }
+
     if verbose > 1 {
         eprintln!("rustc command: {:?}", cmd);
         eprintln!("sysroot: {:?}", sysroot);

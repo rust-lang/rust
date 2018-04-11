@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
 
 use std::fs::File;
 use std::path::{Path, PathBuf};

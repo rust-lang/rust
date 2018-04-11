@@ -42,6 +42,9 @@ pub struct Flags {
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
     pub dry_run: bool,
+
+    // true => deny
+    pub warnings: Option<bool>,
 }
 
 pub enum Subcommand {
@@ -118,6 +121,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
+        opts.optopt("", "warnings", "if value is deny, will deny warnings, otherwise use default",
+            "VALUE");
         opts.optopt("", "error-format", "rustc error format", "FORMAT");
 
         // fn usage()
@@ -374,6 +379,7 @@ Arguments:
             incremental: matches.opt_present("incremental"),
             exclude: split(matches.opt_strs("exclude"))
                 .into_iter().map(|p| p.into()).collect::<Vec<_>>(),
+            warnings: matches.opt_str("warnings").map(|v| v == "deny"),
         }
     }
 }

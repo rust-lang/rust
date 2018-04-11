@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![feature(link_args)]
+
+#[allow(unused_attributes)]
 // Set the stack size at link time on Windows. See rustc_driver::in_rustc_thread
 // for the rationale.
 #[cfg_attr(all(windows, target_env = "msvc"), link_args = "/STACK:16777216")]

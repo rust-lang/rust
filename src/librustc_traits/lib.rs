@@ -11,8 +11,6 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![deny(warnings)]
-
 #![feature(crate_visibility_modifier)]
 
 #[macro_use]

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(warnings)]
-
 #![feature(ascii_ctype)]
 #![feature(box_syntax)]
 #![feature(core_float)]

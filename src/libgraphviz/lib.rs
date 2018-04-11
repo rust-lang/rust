@@ -287,7 +287,6 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(allow(unused_variables), deny(warnings))))]
-#![deny(warnings)]
 
 #![feature(str_escape)]
 
