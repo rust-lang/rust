@@ -42,6 +42,8 @@ struct AllTheRanges {
     //~^^ ERROR Ord
     //~^^^ ERROR binary operation `<` cannot be applied to type
     //~^^^^ ERROR binary operation `>` cannot be applied to type
+    //~^^^^^ ERROR binary operation `<=` cannot be applied to type
+    //~^^^^^^ ERROR binary operation `>=` cannot be applied to type
 }
 
 fn main() {}

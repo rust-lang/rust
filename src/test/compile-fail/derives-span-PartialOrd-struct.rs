@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,6 +18,8 @@ struct Struct {
     x: Error //~ ERROR
 //~^ ERROR
 //~^^ ERROR
+//~^^^ ERROR
+//~^^^^ ERROR
 }
 
 fn main() {}
