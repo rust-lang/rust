@@ -32,6 +32,16 @@ If you are already using Rust nightly and have successfully installed tools like
 `cargo add` and `cargo clippy`, just do:
 
 ```sh
+$ cargo +nightly install semverver
+```
+
+You'd also need `cmake` for some dependencies, and a few common libraries (if I you hit
+build failures because of missing system-wide dependencies, please open an issue, so they
+can be added here.
+
+You can also install the newest version of the tool from git:
+
+```sh
 $ cargo +nightly install --git https://github.com/rust-lang-nursery/rust-semverver
 ```
 
@@ -63,12 +73,6 @@ If you have built using `cargo build --release` instead, change the path to poin
 `release` subdirectory of the `target` directory.
 
 </details>
-
-You can also install the (possibly more stable) version of the tool from crates.io:
-
-```sh
-$ cargo +nightly install semverver
-```
 
 ## Usage
 
