@@ -1,7 +1,7 @@
 # rust-semverver
 
-[![Build
-Status](https://travis-ci.org/rust-lang-nursery/rust-semverver.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-semverver)
+[![Travis Build Status](https://travis-ci.org/rust-lang-nursery/rust-semverver.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-semverver)
+[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/qktm3ndv6cnbj01m?svg=true)](https://ci.appveyor.com/project/ibabushkin/rust-semverver)
 [![Current Version](https://meritbadge.herokuapp.com/semverver)](https://crates.io/crates/semverver)
 
 This repository is hosting a proof-of-concept implementation of an automatic tool checking

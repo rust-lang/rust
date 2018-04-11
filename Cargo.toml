@@ -14,6 +14,7 @@ license-file = "LICENSE"
 
 [badges]
 travis-ci = { repository = "rust-lang-nursery/rust-semverver" }
+appveyor = { repository = "rust-lang-nursery/rust-semverver" }
 
 [[bin]]
 name = "cargo-semver"
