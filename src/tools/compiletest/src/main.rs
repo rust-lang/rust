@@ -728,7 +728,11 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
-    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
+    let mode_suffix = match config.compare_mode {
+        Some(ref mode) => format!(" ({})", mode.to_str()),
+        None => format!(""),
+    };
+    test::DynTestName(format!("[{}{}] {}", config.mode, mode_suffix, path.display()))
 }
 
 pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {

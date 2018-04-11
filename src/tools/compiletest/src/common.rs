@@ -101,7 +101,7 @@ pub enum CompareMode {
 }
 
 impl CompareMode {
-    fn to_str(&self) -> &'static str {
+    pub(crate) fn to_str(&self) -> &'static str {
         match *self {
             CompareMode::Nll => "nll"
         }
