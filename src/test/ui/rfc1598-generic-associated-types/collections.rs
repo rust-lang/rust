@@ -19,16 +19,19 @@
 // associated-type-constructors-part-2-family-traits/
 
 trait Collection<T> {
-    fn empty() -> Self;
-    fn add(&mut self, value: T);
-    fn iterate<'iter>(&'iter self) -> Self::Iter<'iter>;
-    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
     type Iter<'iter>: Iterator<Item=&'iter T>;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
     type Sibling<U>: Collection<U> = <<Self as Collection<T>>::Family as CollectionFamily>::
         Member<U>;
     //~^ ERROR type parameters are not allowed on this type [E0109]
+
+    fn empty() -> Self;
+
+    fn add(&mut self, value: T);
+
+    fn iterate<'iter>(&'iter self) -> Self::Iter<'iter>;
+    //~^ ERROR lifetime parameters are not allowed on this type [E0110]
 }
 
 trait CollectionFamily {
@@ -42,23 +45,28 @@ impl CollectionFamily for VecFamily {
 }
 
 impl<T> Collection<T> for Vec<T> {
+    type Iter<'iter> = std::slice::Iter<'iter, T>;
+    type Family = VecFamily;
+
     fn empty() -> Self {
         Vec::new()
     }
+
     fn add(&mut self, value: T) {
         self.push(value)
     }
+
     fn iterate<'iter>(&'iter self) -> Self::Iter<'iter> {
     //~^ ERROR lifetime parameters are not allowed on this type [E0110]
         self.iter()
     }
-    type Iter<'iter> = std::slice::Iter<'iter, T>;
-    type Family = VecFamily;
 }
 
 fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>
     //~^ ERROR type parameters are not allowed on this type [E0109]
-    where C: Collection<i32> {
+where
+    C: Collection<i32>,
+{
     let mut res = C::Family::Member::<f32>::empty();
     for &v in ints.iterate() {
         res.add(v as f32);
@@ -68,7 +76,9 @@ fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>
 
 fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
     //~^ ERROR type parameters are not allowed on this type [E0109]
-    where C: Collection<i32> {
+where
+    C: Collection<i32>,
+{
     let mut res = C::Family::Member::<f32>::empty();
     for &v in ints.iterate() {
         res.add(v as f32);

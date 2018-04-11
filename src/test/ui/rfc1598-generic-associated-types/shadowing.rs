@@ -11,8 +11,8 @@
 #![feature(generic_associated_types)]
 
 //FIXME(#44265): The lifetime shadowing and type parameter shadowing
-// should cause an error. This will be addressed by a future PR.
-// For now this compiles:
+// should cause an error. Now it compiles (errorneously) and this will be addressed
+// by a future PR. Then remove the following:
 // must-compile-successfully
 
 trait Shadow<'a> {
