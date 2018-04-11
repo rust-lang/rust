@@ -712,7 +712,7 @@ pub struct FloatVarValue(pub ast::FloatTy);
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct TypeParameterDef {
-    pub name: Name,
+    pub name: InternedString,
     pub def_id: DefId,
     pub index: u32,
     pub has_default: bool,

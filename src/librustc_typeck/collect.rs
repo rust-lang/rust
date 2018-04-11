@@ -241,7 +241,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_owner_def_id = tcx.hir.local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.type_param_to_index[&def_id];
-    let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id));
+    let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id).as_str());
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner_def_id {
@@ -839,7 +839,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                     opt_self = Some(ty::TypeParameterDef {
                         index: 0,
-                        name: keywords::SelfType.name(),
+                        name: keywords::SelfType.name().as_str(),
                         def_id: tcx.hir.local_def_id(param_id),
                         has_default: false,
                         object_lifetime_default: rl::Set1::Empty,
@@ -915,7 +915,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         ty::TypeParameterDef {
             index: type_start + i as u32,
-            name: p.name,
+            name: p.name.as_str(),
             def_id: tcx.hir.local_def_id(p.id),
             has_default: p.default.is_some(),
             object_lifetime_default:
@@ -934,7 +934,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // add a dummy parameter for the closure kind
         types.push(ty::TypeParameterDef {
             index: type_start,
-            name: Symbol::intern("<closure_kind>"),
+            name: Symbol::intern("<closure_kind>").as_str(),
             def_id,
             has_default: false,
             object_lifetime_default: rl::Set1::Empty,
@@ -945,7 +945,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // add a dummy parameter for the closure signature
         types.push(ty::TypeParameterDef {
             index: type_start + 1,
-            name: Symbol::intern("<closure_signature>"),
+            name: Symbol::intern("<closure_signature>").as_str(),
             def_id,
             has_default: false,
             object_lifetime_default: rl::Set1::Empty,
@@ -956,7 +956,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.with_freevars(node_id, |fv| {
             types.extend(fv.iter().zip(2..).map(|(_, i)| ty::TypeParameterDef {
                 index: type_start + i,
-                name: Symbol::intern("<upvar>"),
+                name: Symbol::intern("<upvar>").as_str(),
                 def_id,
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
@@ -1436,7 +1436,7 @@ fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
     for param in ast_generics.ty_params() {
-        let param_ty = ty::ParamTy::new(index, param.name).to_ty(tcx);
+        let param_ty = ty::ParamTy::new(index, param.name.as_str()).to_ty(tcx);
         index += 1;
 
         let bounds = compute_bounds(&icx,
