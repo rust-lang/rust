@@ -799,7 +799,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .collect();
 
         // sort them by the name so we have a stable result
-        names.sort_by_key(|n| n.as_str());
+        names.sort_by_cached_key(|n| n.as_str());
         names
     }
 

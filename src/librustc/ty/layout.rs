@@ -1471,10 +1471,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     // Find one non-ZST variant.
                     'variants: for (v, fields) in variants.iter().enumerate() {
+                        if fields.iter().any(|f| f.abi == Abi::Uninhabited) {
+                            continue 'variants;
+                        }
                         for f in fields {
-                            if f.abi == Abi::Uninhabited {
-                                continue 'variants;
-                            }
                             if !f.is_zst() {
                                 if dataful_variant.is_none() {
                                     dataful_variant = Some(v);

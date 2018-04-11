@@ -368,6 +368,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
         match it.node {
             hir::ItemStatic(..) => {
+                if attr::find_by_name(&it.attrs, "no_mangle").is_some() {
+                    return;
+                }
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", it.name, it.span);
             }
             hir::ItemConst(..) => {

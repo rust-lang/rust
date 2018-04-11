@@ -42,6 +42,12 @@ enum ReorderedEnum {
     B(u8, u16, u8),
 }
 
+enum NicheFilledEnumWithInhabitedVariant {
+    A(&'static ()),
+    B(&'static (), !),
+    C,
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -67,4 +73,5 @@ pub fn main() {
     assert_eq!(size_of::<e3>(), 4 as usize);
     assert_eq!(size_of::<ReorderedStruct>(), 4);
     assert_eq!(size_of::<ReorderedEnum>(), 6);
+    assert_eq!(size_of::<NicheFilledEnumWithInhabitedVariant>(), size_of::<&'static ()>());
 }

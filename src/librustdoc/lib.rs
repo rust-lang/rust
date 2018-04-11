@@ -19,6 +19,7 @@
 #![feature(box_syntax)]
 #![feature(fs_read_write)]
 #![feature(set_stdio)]
+#![feature(slice_sort_by_cached_key)]
 #![feature(test)]
 #![feature(unicode)]
 #![feature(vec_remove_item)]

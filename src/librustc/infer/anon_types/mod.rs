@@ -533,10 +533,14 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
         match r {
             // ignore bound regions that appear in the type (e.g., this
             // would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
-            ty::ReLateBound(..) => return r,
+            ty::ReLateBound(..) |
 
             // ignore `'static`, as that can appear anywhere
-            ty::ReStatic => return r,
+            ty::ReStatic |
+
+            // ignore `ReScope`, as that can appear anywhere
+            // See `src/test/run-pass/issue-49556.rs` for example.
+            ty::ReScope(..) => return r,
 
             _ => { }
         }

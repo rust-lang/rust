@@ -140,9 +140,16 @@ impl From<TokenTree> for TokenStream {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
+        trees.into_iter().map(TokenStream::from).collect()
+    }
+}
+
+#[unstable(feature = "proc_macro", issue = "38356")]
+impl iter::FromIterator<TokenStream> for TokenStream {
+    fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let mut builder = tokenstream::TokenStreamBuilder::new();
-        for tree in trees {
-            builder.push(tree.to_internal());
+        for stream in streams {
+            builder.push(stream.0);
         }
         TokenStream(builder.build())
     }

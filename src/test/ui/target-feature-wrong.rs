@@ -12,6 +12,9 @@
 // ignore-aarch64
 // ignore-wasm
 // ignore-emscripten
+// ignore-mips
+// ignore-powerpc
+// ignore-s390x
 
 #![feature(target_feature)]
 

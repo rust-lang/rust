@@ -486,11 +486,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     ty::TypeVariants::TyInfer(t) => {
                         match t {
                             ty::InferTy::IntVar(_) |
-                            ty::InferTy::FloatVar(_) |
-                            ty::InferTy::FreshIntTy(_) |
-                            ty::InferTy::FreshFloatTy(_) => {
-                                Err(CastError::NeedDeref)
-                            }
+                            ty::InferTy::FloatVar(_) => Err(CastError::NeedDeref),
                             _ => Err(CastError::NeedViaPtr),
                         }
                     }

@@ -13,6 +13,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(rustc_diagnostic_macros)]
+#![feature(slice_sort_by_cached_key)]
 
 #[macro_use]
 extern crate log;
@@ -1149,13 +1150,9 @@ impl<'a> ModuleData<'a> {
 
     fn for_each_child_stable<F: FnMut(Ident, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
         let resolutions = self.resolutions.borrow();
-        let mut resolutions = resolutions.iter().map(|(&(ident, ns), &resolution)| {
-                                                    // Pre-compute keys for sorting
-                                                    (ident.name.as_str(), ns, ident, resolution)
-                                                })
-                                                .collect::<Vec<_>>();
-        resolutions.sort_unstable_by_key(|&(str, ns, ..)| (str, ns));
-        for &(_, ns, ident, resolution) in resolutions.iter() {
+        let mut resolutions = resolutions.iter().collect::<Vec<_>>();
+        resolutions.sort_by_cached_key(|&(&(ident, ns), _)| (ident.name.as_str(), ns));
+        for &(&(ident, ns), &resolution) in resolutions.iter() {
             resolution.borrow().binding.map(|binding| f(ident, ns, binding));
         }
     }
@@ -3340,7 +3337,9 @@ impl<'a> Resolver<'a> {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
                             self.lookup_import_candidates(name, TypeNS, is_mod);
-                        candidates.sort_by_key(|c| (c.path.segments.len(), c.path.to_string()));
+                        candidates.sort_by_cached_key(|c| {
+                            (c.path.segments.len(), c.path.to_string())
+                        });
                         if let Some(candidate) = candidates.get(0) {
                             format!("Did you mean `{}`?", candidate.path)
                         } else {
@@ -3578,7 +3577,7 @@ impl<'a> Resolver<'a> {
 
         let name = path[path.len() - 1].name;
         // Make sure error reporting is deterministic.
-        names.sort_by_key(|name| name.as_str());
+        names.sort_by_cached_key(|name| name.as_str());
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
             Some(found) if found != name => Some(found),
             _ => None,

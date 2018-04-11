@@ -1167,7 +1167,9 @@ pub fn stream_cargo(
     cargo.arg("--message-format").arg("json")
          .stdout(Stdio::piped());
 
-    if stderr_isatty() && build.ci_env == CiEnv::None {
+    if stderr_isatty() && build.ci_env == CiEnv::None &&
+        // if the terminal is reported as dumb, then we don't want to enable color for rustc
+        env::var_os("TERM").map(|t| t != *"dumb").unwrap_or(true) {
         // since we pass message-format=json to cargo, we need to tell the rustc
         // wrapper to give us colored output if necessary. This is because we
         // only want Cargo's JSON output, not rustcs.
