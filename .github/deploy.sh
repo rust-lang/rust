@@ -2,6 +2,7 @@
 # Automatically deploy on gh-pages
 
 set -e
+set -x
 
 SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
