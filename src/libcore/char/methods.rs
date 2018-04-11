@@ -8,169 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A character type.
-//!
-//! The `char` type represents a single character. More specifically, since
-//! 'character' isn't a well-defined concept in Unicode, `char` is a '[Unicode
-//! scalar value]', which is similar to, but not the same as, a '[Unicode code
-//! point]'.
-//!
-//! [Unicode scalar value]: http://www.unicode.org/glossary/#unicode_scalar_value
-//! [Unicode code point]: http://www.unicode.org/glossary/#code_point
-//!
-//! This module exists for technical reasons, the primary documentation for
-//! `char` is directly on [the `char` primitive type](../../std/primitive.char.html)
-//! itself.
-//!
-//! This module is the home of the iterator implementations for the iterators
-//! implemented on `char`, as well as some useful constants and conversion
-//! functions that convert various types to `char`.
+//! impl char {}
 
-#![stable(feature = "rust1", since = "1.0.0")]
-
-use core::char::CharExt as C;
-use core::iter::FusedIterator;
-use core::fmt::{self, Write};
-use tables::{conversions, derived_property, general_category, property};
-
-// stable re-exports
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{MAX, from_digit, from_u32, from_u32_unchecked};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
-#[stable(feature = "char_from_str", since = "1.20.0")]
-pub use core::char::ParseCharError;
-
-// unstable re-exports
-#[stable(feature = "try_from", since = "1.26.0")]
-pub use core::char::CharTryFromError;
-#[unstable(feature = "decode_utf8", issue = "33906")]
-pub use core::char::{DecodeUtf8, decode_utf8};
-#[unstable(feature = "unicode", issue = "27783")]
-pub use tables::{UNICODE_VERSION};
-#[unstable(feature = "unicode", issue = "27783")]
-pub use version::UnicodeVersion;
-
-/// Returns an iterator that yields the lowercase equivalent of a `char`.
-///
-/// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
-/// its documentation for more.
-///
-/// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
-/// [`char`]: ../../std/primitive.char.html
-#[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone)]
-pub struct ToLowercase(CaseMappingIter);
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Iterator for ToLowercase {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        self.0.next()
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl FusedIterator for ToLowercase {}
-
-/// Returns an iterator that yields the uppercase equivalent of a `char`.
-///
-/// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
-/// its documentation for more.
-///
-/// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
-/// [`char`]: ../../std/primitive.char.html
-#[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Debug, Clone)]
-pub struct ToUppercase(CaseMappingIter);
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Iterator for ToUppercase {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        self.0.next()
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl FusedIterator for ToUppercase {}
-
-#[derive(Debug, Clone)]
-enum CaseMappingIter {
-    Three(char, char, char),
-    Two(char, char),
-    One(char),
-    Zero,
-}
-
-impl CaseMappingIter {
-    fn new(chars: [char; 3]) -> CaseMappingIter {
-        if chars[2] == '\0' {
-            if chars[1] == '\0' {
-                CaseMappingIter::One(chars[0])  // Including if chars[0] == '\0'
-            } else {
-                CaseMappingIter::Two(chars[0], chars[1])
-            }
-        } else {
-            CaseMappingIter::Three(chars[0], chars[1], chars[2])
-        }
-    }
-}
-
-impl Iterator for CaseMappingIter {
-    type Item = char;
-    fn next(&mut self) -> Option<char> {
-        match *self {
-            CaseMappingIter::Three(a, b, c) => {
-                *self = CaseMappingIter::Two(b, c);
-                Some(a)
-            }
-            CaseMappingIter::Two(b, c) => {
-                *self = CaseMappingIter::One(c);
-                Some(b)
-            }
-            CaseMappingIter::One(c) => {
-                *self = CaseMappingIter::Zero;
-                Some(c)
-            }
-            CaseMappingIter::Zero => None,
-        }
-    }
-}
-
-impl fmt::Display for CaseMappingIter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            CaseMappingIter::Three(a, b, c) => {
-                f.write_char(a)?;
-                f.write_char(b)?;
-                f.write_char(c)
-            }
-            CaseMappingIter::Two(b, c) => {
-                f.write_char(b)?;
-                f.write_char(c)
-            }
-            CaseMappingIter::One(c) => {
-                f.write_char(c)
-            }
-            CaseMappingIter::Zero => Ok(()),
-        }
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToLowercase {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
-
-#[stable(feature = "char_struct_display", since = "1.16.0")]
-impl fmt::Display for ToUppercase {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
-    }
-}
+use slice;
+use str::from_utf8_unchecked_mut;
+use super::*;
+use unicode::printable::is_printable;
+use unicode::tables::{conversions, derived_property, general_category, property};
 
 #[lang = "char"]
 impl char {
@@ -223,7 +67,7 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_digit(self, radix: u32) -> bool {
-        C::is_digit(self, radix)
+        self.to_digit(radix).is_some()
     }
 
     /// Converts a `char` to a digit in the given radix.
@@ -277,7 +121,17 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_digit(self, radix: u32) -> Option<u32> {
-        C::to_digit(self, radix)
+        if radix > 36 {
+            panic!("to_digit: radix is too high (maximum 36)");
+        }
+        let val = match self {
+          '0' ... '9' => self as u32 - '0' as u32,
+          'a' ... 'z' => self as u32 - 'a' as u32 + 10,
+          'A' ... 'Z' => self as u32 - 'A' as u32 + 10,
+          _ => return None,
+        };
+        if val < radix { Some(val) }
+        else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -317,7 +171,20 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_unicode(self) -> EscapeUnicode {
-        C::escape_unicode(self)
+        let c = self as u32;
+
+        // or-ing 1 ensures that for c==0 the code computes that one
+        // digit should be printed and (which is the same) avoids the
+        // (31 - 32) underflow
+        let msb = 31 - (c | 1).leading_zeros();
+
+        // the index of the most significant hex digit
+        let ms_hex_digit = msb / 4;
+        EscapeUnicode {
+            c: self,
+            state: EscapeUnicodeState::Backslash,
+            hex_digit_idx: ms_hex_digit as usize,
+        }
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -357,7 +224,15 @@ impl char {
     #[stable(feature = "char_escape_debug", since = "1.20.0")]
     #[inline]
     pub fn escape_debug(self) -> EscapeDebug {
-        C::escape_debug(self)
+        let init_state = match self {
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            c if is_printable(c) => EscapeDefaultState::Char(c),
+            c => EscapeDefaultState::Unicode(c.escape_unicode()),
+        };
+        EscapeDebug(EscapeDefault { state: init_state })
     }
 
     /// Returns an iterator that yields the literal escape code of a character
@@ -412,7 +287,15 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn escape_default(self) -> EscapeDefault {
-        C::escape_default(self)
+        let init_state = match self {
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
+            '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode())
+        };
+        EscapeDefault { state: init_state }
     }
 
     /// Returns the number of bytes this `char` would need if encoded in UTF-8.
@@ -463,7 +346,16 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len_utf8(self) -> usize {
-        C::len_utf8(self)
+        let code = self as u32;
+        if code < MAX_ONE_B {
+            1
+        } else if code < MAX_TWO_B {
+            2
+        } else if code < MAX_THREE_B {
+            3
+        } else {
+            4
+        }
     }
 
     /// Returns the number of 16-bit code units this `char` would need if
@@ -488,7 +380,8 @@ impl char {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn len_utf16(self) -> usize {
-        C::len_utf16(self)
+        let ch = self as u32;
+        if (ch & 0xFFFF) == ch { 1 } else { 2 }
     }
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -530,7 +423,35 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf8(self, dst: &mut [u8]) -> &mut str {
-        C::encode_utf8(self, dst)
+        let code = self as u32;
+        unsafe {
+            let len =
+            if code < MAX_ONE_B && !dst.is_empty() {
+                *dst.get_unchecked_mut(0) = code as u8;
+                1
+            } else if code < MAX_TWO_B && dst.len() >= 2 {
+                *dst.get_unchecked_mut(0) = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+                *dst.get_unchecked_mut(1) = (code & 0x3F) as u8 | TAG_CONT;
+                2
+            } else if code < MAX_THREE_B && dst.len() >= 3  {
+                *dst.get_unchecked_mut(0) = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+                *dst.get_unchecked_mut(1) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code & 0x3F) as u8 | TAG_CONT;
+                3
+            } else if dst.len() >= 4 {
+                *dst.get_unchecked_mut(0) = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+                *dst.get_unchecked_mut(1) = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(2) = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+                *dst.get_unchecked_mut(3) = (code & 0x3F) as u8 | TAG_CONT;
+                4
+            } else {
+                panic!("encode_utf8: need {} bytes to encode U+{:X}, but the buffer has {}",
+                    from_u32_unchecked(code).len_utf8(),
+                    code,
+                    dst.len())
+            };
+            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
+        }
     }
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -570,7 +491,25 @@ impl char {
     #[stable(feature = "unicode_encode_char", since = "1.15.0")]
     #[inline]
     pub fn encode_utf16(self, dst: &mut [u16]) -> &mut [u16] {
-        C::encode_utf16(self, dst)
+        let mut code = self as u32;
+        unsafe {
+            if (code & 0xFFFF) == code && !dst.is_empty() {
+                // The BMP falls through (assuming non-surrogate, as it should)
+                *dst.get_unchecked_mut(0) = code as u16;
+                slice::from_raw_parts_mut(dst.as_mut_ptr(), 1)
+            } else if dst.len() >= 2 {
+                // Supplementary planes break into surrogates.
+                code -= 0x1_0000;
+                *dst.get_unchecked_mut(0) = 0xD800 | ((code >> 10) as u16);
+                *dst.get_unchecked_mut(1) = 0xDC00 | ((code as u16) & 0x3FF);
+                slice::from_raw_parts_mut(dst.as_mut_ptr(), 2)
+            } else {
+                panic!("encode_utf16: need {} units to encode U+{:X}, but the buffer has {}",
+                    from_u32_unchecked(code).len_utf16(),
+                    code,
+                    dst.len())
+            }
+        }
     }
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.
@@ -1452,140 +1391,3 @@ impl char {
         self.is_ascii() && (*self as u8).is_ascii_control()
     }
 }
-
-/// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-#[derive(Clone, Debug)]
-pub struct DecodeUtf16<I>
-    where I: Iterator<Item = u16>
-{
-    iter: I,
-    buf: Option<u16>,
-}
-
-/// An error that can be returned when decoding UTF-16 code points.
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct DecodeUtf16Error {
-    code: u16,
-}
-
-/// Create an iterator over the UTF-16 encoded code points in `iter`,
-/// returning unpaired surrogates as `Err`s.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::char::decode_utf16;
-///
-/// fn main() {
-///     // 𝄞mus<invalid>ic<invalid>
-///     let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///              0x0073, 0xDD1E, 0x0069, 0x0063,
-///              0xD834];
-///
-///     assert_eq!(decode_utf16(v.iter().cloned())
-///                            .map(|r| r.map_err(|e| e.unpaired_surrogate()))
-///                            .collect::<Vec<_>>(),
-///                vec![Ok('𝄞'),
-///                     Ok('m'), Ok('u'), Ok('s'),
-///                     Err(0xDD1E),
-///                     Ok('i'), Ok('c'),
-///                     Err(0xD834)]);
-/// }
-/// ```
-///
-/// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
-///
-/// ```
-/// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
-///
-/// fn main() {
-///     // 𝄞mus<invalid>ic<invalid>
-///     let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///              0x0073, 0xDD1E, 0x0069, 0x0063,
-///              0xD834];
-///
-///     assert_eq!(decode_utf16(v.iter().cloned())
-///                    .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
-///                    .collect::<String>(),
-///                "𝄞mus�ic�");
-/// }
-/// ```
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-#[inline]
-pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
-    DecodeUtf16 {
-        iter: iter.into_iter(),
-        buf: None,
-    }
-}
-
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
-    type Item = Result<char, DecodeUtf16Error>;
-
-    fn next(&mut self) -> Option<Result<char, DecodeUtf16Error>> {
-        let u = match self.buf.take() {
-            Some(buf) => buf,
-            None => self.iter.next()?
-        };
-
-        if u < 0xD800 || 0xDFFF < u {
-            // not a surrogate
-            Some(Ok(unsafe { from_u32_unchecked(u as u32) }))
-        } else if u >= 0xDC00 {
-            // a trailing surrogate
-            Some(Err(DecodeUtf16Error { code: u }))
-        } else {
-            let u2 = match self.iter.next() {
-                Some(u2) => u2,
-                // eof
-                None => return Some(Err(DecodeUtf16Error { code: u })),
-            };
-            if u2 < 0xDC00 || u2 > 0xDFFF {
-                // not a trailing surrogate so we're not a valid
-                // surrogate pair, so rewind to redecode u2 next time.
-                self.buf = Some(u2);
-                return Some(Err(DecodeUtf16Error { code: u }));
-            }
-
-            // all ok, so lets decode it.
-            let c = (((u - 0xD800) as u32) << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
-            Some(Ok(unsafe { from_u32_unchecked(c) }))
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (low, high) = self.iter.size_hint();
-        // we could be entirely valid surrogates (2 elements per
-        // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
-    }
-}
-
-impl DecodeUtf16Error {
-    /// Returns the unpaired surrogate which caused this error.
-    #[stable(feature = "decode_utf16", since = "1.9.0")]
-    pub fn unpaired_surrogate(&self) -> u16 {
-        self.code
-    }
-}
-
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-impl fmt::Display for DecodeUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "unpaired surrogate found: {:x}", self.code)
-    }
-}
-
-/// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
-/// decoding error.
-///
-/// It can occur, for example, when giving ill-formed UTF-8 bytes to
-/// [`String::from_utf8_lossy`](../../std/string/struct.String.html#method.from_utf8_lossy).
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';

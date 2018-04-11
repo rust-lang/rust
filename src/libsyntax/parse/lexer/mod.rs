@@ -15,7 +15,7 @@ use errors::{FatalError, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
 use symbol::{Symbol, keywords};
-use std_unicode::property::Pattern_White_Space;
+use core::unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
 use std::char;

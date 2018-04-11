@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::str as core_str;
-use core::fmt;
-use core::fmt::Write;
 use char;
-use core::mem;
-
+use str as core_str;
+use fmt;
+use fmt::Write;
+use mem;
 
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "0")]

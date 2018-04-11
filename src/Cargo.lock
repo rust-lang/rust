@@ -13,7 +13,6 @@ dependencies = [
  "compiler_builtins 0.0.0",
  "core 0.0.0",
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "std_unicode 0.0.0",
 ]
 
 [[package]]
