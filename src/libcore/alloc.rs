@@ -385,10 +385,25 @@ impl From<AllocErr> for CollectionAllocErr {
     }
 }
 
-// FIXME: docs
+/// A memory allocator that can be registered to be the one backing `std::alloc::Global`
+/// though the `#[global_allocator]` attributes.
 pub unsafe trait GlobalAlloc {
+    /// Allocate memory as described by the given `layout`.
+    ///
+    /// Returns a pointer to newly-allocated memory,
+    /// or NULL to indicate allocation failure.
+    ///
+    /// # Safety
+    ///
+    /// **FIXME:** what are the exact requirements?
     unsafe fn alloc(&self, layout: Layout) -> *mut Opaque;
 
+    /// Deallocate the block of memory at the given `ptr` pointer with the given `layout`.
+    ///
+    /// # Safety
+    ///
+    /// **FIXME:** what are the exact requirements?
+    /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
     unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout);
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
@@ -400,24 +415,43 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
+    /// Shink or grow a block of memory to the given `new_size`.
+    /// The block is described by the given `ptr` pointer and `layout`.
+    ///
+    /// Return a new pointer (which may or may not be the same as `ptr`),
+    /// or NULL to indicate reallocation failure.
+    ///
+    /// If reallocation is successful, the old `ptr` pointer is considered
+    /// to have been deallocated.
+    ///
     /// # Safety
     ///
     /// `new_size`, when rounded up to the nearest multiple of `old_layout.align()`,
     /// must not overflow (i.e. the rounded value must be less than `usize::MAX`).
-    unsafe fn realloc(&self, ptr: *mut Opaque, old_layout: Layout, new_size: usize) -> *mut Opaque {
-        let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
+    ///
+    /// **FIXME:** what are the exact requirements?
+    /// In particular around layout *fit*. (See docs for the `Alloc` trait.)
+    unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+        let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
         let new_ptr = self.alloc(new_layout);
         if !new_ptr.is_null() {
             ptr::copy_nonoverlapping(
                 ptr as *const u8,
                 new_ptr as *mut u8,
-                cmp::min(old_layout.size(), new_size),
+                cmp::min(layout.size(), new_size),
             );
-            self.dealloc(ptr, old_layout);
+            self.dealloc(ptr, layout);
         }
         new_ptr
     }
 
+    /// Aborts the thread or process, optionally performing
+    /// cleanup or logging diagnostic information before panicking or
+    /// aborting.
+    ///
+    /// `oom` is meant to be used by clients unable to cope with an
+    /// unsatisfied allocation request, and wish to abandon
+    /// computation rather than attempt to recover locally.
     fn oom(&self) -> ! {
         unsafe { ::intrinsics::abort() }
     }
