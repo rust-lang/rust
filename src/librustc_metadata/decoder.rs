@@ -59,6 +59,9 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
 
     // interpreter allocation cache
     interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
+
+    // Read from the LazySeq CrateRoot::inpterpret_alloc_index on demand
+    interpret_alloc_index: Option<Vec<u32>>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -78,6 +81,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
             interpret_alloc_cache: FxHashMap::default(),
+            interpret_alloc_index: None,
         }
     }
 }
@@ -175,6 +179,17 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         };
         self.lazy_state = LazyState::Previous(position + min_size);
         Ok(position)
+    }
+
+    fn interpret_alloc(&mut self, idx: usize) -> usize {
+        if let Some(index) = self.interpret_alloc_index.as_mut() {
+            return index[idx] as usize;
+        }
+        let index = self.cdata().root.interpret_alloc_index;
+        let index: Vec<u32> = index.decode(self.cdata()).collect();
+        let pos = index[idx];
+        self.interpret_alloc_index = Some(index);
+        pos as usize
     }
 }
 
@@ -292,11 +307,8 @@ impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx
         if let Some(cached) = self.interpret_alloc_cache.get(&idx).cloned() {
             return Ok(cached);
         }
-        let pos = self
-            .cdata()
-            .root
-            .interpret_alloc_index[idx];
-        self.with_position(pos as usize, |this| {
+        let pos = self.interpret_alloc(idx);
+        self.with_position(pos, |this| {
             interpret::specialized_decode_alloc_id(
                 this,
                 tcx,

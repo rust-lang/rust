@@ -265,7 +265,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 start - min_end
             }
             LazyState::Previous(last_min_end) => {
-                assert!(last_min_end <= position);
+                assert!(
+                    last_min_end <= position,
+                    "make sure that the calls to `lazy*` \
+                    are in the same order as the metadata fields",
+                );
                 position - last_min_end
             }
         };
@@ -439,21 +443,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             IsolatedEncoder::encode_wasm_custom_sections,
             &wasm_custom_sections);
 
-        // Encode and index the items.
-        i = self.position();
-        let items = self.encode_info_for_items();
-        let item_bytes = self.position() - i;
-
-        i = self.position();
-        let index = items.write_index(&mut self.opaque.cursor);
-        let index_bytes = self.position() - i;
-
         let tcx = self.tcx;
-        let link_meta = self.link_meta;
-        let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
-        let has_default_lib_allocator =
-            attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
-        let has_global_allocator = *tcx.sess.has_global_allocator.get();
 
         // Encode the allocation index
         let interpret_alloc_index = {
@@ -478,8 +468,23 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
                 n = new_n;
             }
-            interpret_alloc_index
+            self.lazy_seq(interpret_alloc_index)
         };
+
+        // Encode and index the items.
+        i = self.position();
+        let items = self.encode_info_for_items();
+        let item_bytes = self.position() - i;
+
+        i = self.position();
+        let index = items.write_index(&mut self.opaque.cursor);
+        let index_bytes = self.position() - i;
+
+        let link_meta = self.link_meta;
+        let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
+        let has_default_lib_allocator =
+            attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
+        let has_global_allocator = tcx.sess.has_global_allocator.get();
 
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -512,8 +517,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             impls,
             exported_symbols,
             wasm_custom_sections,
-            index,
             interpret_alloc_index,
+            index,
         });
 
         let total_bytes = self.position();
