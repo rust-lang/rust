@@ -199,9 +199,16 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substru
             //
             // ```
             // self.f1 < other.f1 || (!(other.f1 < self.f1) &&
-            // (self.f2 < other.f2 || (!(other.f2 < self.f2) &&
-            // (false)
-            // ))
+            // self.f2 < other.f2
+            // )
+            // ```
+            //
+            // and for op ==
+            // `ast::le`
+            //
+            // ```
+            // self.f1 < other.f1 || (self.f1 == other.f1 &&
+            // self.f2 <= other.f2
             // )
             // ```
             //
