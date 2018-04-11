@@ -2257,10 +2257,6 @@ impl Path {
     /// Returns an object that implements [`Display`] for safely printing paths
     /// that may contain non-Unicode data.
     ///
-    /// This method has been deprecated since version 1.27.0, because paths now
-    /// implement [`Display`] directly, with the same outcome as using this
-    /// adapter.
-    ///
     /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
@@ -2273,7 +2269,6 @@ impl Path {
     /// println!("{}", path.display());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.27.0", reason = "Path and PathBuf implement Display directly")]
     pub fn display(&self) -> Display {
         Display { path: self }
     }
