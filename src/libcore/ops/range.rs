@@ -119,7 +119,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
-        U: ?Sized,
+        U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
@@ -212,7 +212,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
-        U: ?Sized,
+        U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
@@ -293,7 +293,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
-        U: ?Sized,
+        U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
@@ -369,7 +369,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
-        U: ?Sized,
+        U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
@@ -487,7 +487,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     pub fn contains<U>(&self, item: &U) -> bool
     where
         Idx: PartialOrd<U>,
-        U: ?Sized,
+        U: ?Sized + PartialOrd<Idx>,
     {
         <Self as RangeBounds<Idx>>::contains(self, item)
     }
@@ -612,7 +612,7 @@ pub trait RangeBounds<T: ?Sized> {
     fn contains<U>(&self, item: &U) -> bool
     where
         T: PartialOrd<U>,
-        U: ?Sized,
+        U: ?Sized + PartialOrd<T>,
     {
         (match self.start() {
             Included(ref start) => *start <= item,
@@ -621,8 +621,8 @@ pub trait RangeBounds<T: ?Sized> {
         })
         &&
         (match self.end() {
-            Included(ref end) => *end >= item,
-            Excluded(ref end) => *end > item,
+            Included(ref end) => item <= *end,
+            Excluded(ref end) => item < *end,
             Unbounded => true,
         })
     }
