@@ -679,6 +679,25 @@ declare_clippy_lint! {
     "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
+/// **What it does:** Checks for casts from a more-strictly-aligned pointer to a
+/// less-strictly-aligned pointer
+///
+/// **Why is this bad?** Dereferencing the resulting pointer is undefined
+/// behavior.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let _ = (&1u8 as *const u8) as *const u16;
+/// let _ = (&mut 1u8 as *mut u8) as *mut u16;
+/// ```
+declare_clippy_lint! {
+    pub CAST_PTR_ALIGNMENT,
+    correctness,
+    "cast from a pointer to a less-strictly-aligned pointer"
+}
+
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: Ty, tcx: TyCtxt) -> u64 {
@@ -871,7 +890,8 @@ impl LintPass for CastPass {
             CAST_POSSIBLE_TRUNCATION,
             CAST_POSSIBLE_WRAP,
             CAST_LOSSLESS,
-            UNNECESSARY_CAST
+            UNNECESSARY_CAST,
+            CAST_PTR_ALIGNMENT
         )
     }
 }
@@ -953,6 +973,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                             span_lossless_lint(cx, expr, ex, cast_from, cast_to);
                         }
                     },
+                }
+            }
+            if_chain!{
+                if let ty::TyRawPtr(from_ptr_ty) = &cast_from.sty;
+                if let ty::TyRawPtr(to_ptr_ty) = &cast_to.sty;
+                if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi());
+                if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi());
+                if from_align < to_align;
+                then {
+                    span_lint(
+                        cx,
+                        CAST_PTR_ALIGNMENT,
+                        expr.span,
+                        &format!("casting from `{}` to a less-strictly-aligned pointer (`{}`)", cast_from, cast_to)
+                    );
                 }
             }
         }

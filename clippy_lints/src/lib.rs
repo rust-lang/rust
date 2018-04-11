@@ -276,6 +276,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         "string_to_string",
         "using `string::to_string` is common even today and specialization will likely happen soon",
     );
+    store.register_removed(
+        "misaligned_transmute",
+        "this lint has been split into cast_ptr_alignment and transmute_ptr_to_ptr",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -633,18 +637,19 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
-        transmute::MISALIGNED_TRANSMUTE,
         transmute::TRANSMUTE_BYTES_TO_STR,
         transmute::TRANSMUTE_INT_TO_BOOL,
         transmute::TRANSMUTE_INT_TO_CHAR,
         transmute::TRANSMUTE_INT_TO_FLOAT,
         transmute::TRANSMUTE_PTR_TO_REF,
+        transmute::TRANSMUTE_PTR_TO_PTR,
         transmute::USELESS_TRANSMUTE,
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BORROWED_BOX,
         types::BOX_VEC,
         types::CAST_LOSSLESS,
+        types::CAST_PTR_ALIGNMENT,
         types::CHAR_LIT_AS_U8,
         types::IMPLICIT_HASHER,
         types::LET_UNIT_VALUE,
@@ -782,12 +787,12 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
-        transmute::MISALIGNED_TRANSMUTE,
         transmute::TRANSMUTE_BYTES_TO_STR,
         transmute::TRANSMUTE_INT_TO_BOOL,
         transmute::TRANSMUTE_INT_TO_CHAR,
         transmute::TRANSMUTE_INT_TO_FLOAT,
         transmute::TRANSMUTE_PTR_TO_REF,
+        transmute::TRANSMUTE_PTR_TO_PTR,
         transmute::USELESS_TRANSMUTE,
         types::BORROWED_BOX,
         types::CAST_LOSSLESS,
@@ -845,6 +850,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         swap::ALMOST_SWAPPED,
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
+        types::CAST_PTR_ALIGNMENT,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
         unused_io_amount::UNUSED_IO_AMOUNT,

@@ -160,6 +160,20 @@ impl<'a> Sugg<'a> {
         make_unop("*", self)
     }
 
+    /// Convenience method to create the `&*<expr>` suggestion. Currently this
+    /// is needed because `sugg.deref().addr()` produces an unnecessary set of
+    /// parentheses around the deref.
+    pub fn addr_deref(self) -> Sugg<'static> {
+        make_unop("&*", self)
+    }
+
+    /// Convenience method to create the `&mut *<expr>` suggestion. Currently
+    /// this is needed because `sugg.deref().mut_addr()` produces an unnecessary
+    /// set of parentheses around the deref.
+    pub fn mut_addr_deref(self) -> Sugg<'static> {
+        make_unop("&mut *", self)
+    }
+
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
     pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
