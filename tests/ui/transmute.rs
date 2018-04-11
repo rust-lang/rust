@@ -16,7 +16,7 @@ fn my_vec() -> MyVec<i32> {
     vec![]
 }
 
-#[allow(needless_lifetimes)]
+#[allow(needless_lifetimes, transmute_ptr_to_ptr)]
 #[warn(useless_transmute)]
 unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     let _: &'a T = core::intrinsics::transmute(t);
@@ -145,6 +145,25 @@ fn misaligned_transmute() {
     let _: u32 = unsafe { std::mem::transmute([0u8; 4]) }; // err
     let _: u32 = unsafe { std::mem::transmute(0f32) }; // ok (alignment-wise)
     let _: [u8; 4] = unsafe { std::mem::transmute(0u32) }; // ok (alignment-wise)
+}
+
+#[warn(transmute_ptr_to_ptr)]
+fn transmute_ptr_to_ptr() {
+    let ptr = &1u32 as *const u32;
+    let mut_ptr = &mut 1u32 as *mut u32;
+    unsafe {
+        // pointer-to-pointer transmutes; bad
+        let _: *const f32 = std::mem::transmute(ptr);
+        let _: *mut f32 = std::mem::transmute(mut_ptr);
+        // ref-ref transmutes; bad
+        let _: &f32 = std::mem::transmute(&1u32);
+        let _: &mut f32 = std::mem::transmute(&mut 1u32);
+    }
+    // These should be fine
+    let _ = ptr as *const f32;
+    let _ = mut_ptr as *mut f32;
+    let _ = unsafe { &*(&1u32 as *const u32 as *const f32) };
+    let _ = unsafe { &mut *(&mut 1u32 as *mut u32 as *mut f32) };
 }
 
 fn main() { }

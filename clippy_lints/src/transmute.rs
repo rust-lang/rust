@@ -186,6 +186,33 @@ declare_clippy_lint! {
     "transmutes to a potentially less-aligned type"
 }
 
+/// **What it does:** Checks for transmutes from a pointer to a pointer, or
+/// from a reference to a reference.
+///
+/// **Why is this bad?** Transmutes are dangerous, and these can instead be
+/// written as casts.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let ptr = &1u32 as *const u32;
+/// unsafe {
+///     // pointer-to-pointer transmute
+///     let _: *const f32 = std::mem::transmute(ptr);
+///     // ref-ref transmute
+///     let _: &f32 = std::mem::transmute(&1u32);
+/// }
+/// // These can be respectively written:
+/// let _ = ptr as *const f32
+/// let _ = unsafe{ &*(&1u32 as *const u32 as *const f32) };
+/// ```
+declare_clippy_lint! {
+    pub TRANSMUTE_PTR_TO_PTR,
+    complexity,
+    "transmutes from a pointer to a reference type"
+}
+
 pub struct Transmute;
 
 impl LintPass for Transmute {
@@ -193,6 +220,7 @@ impl LintPass for Transmute {
         lint_array!(
             CROSSPOINTER_TRANSMUTE,
             TRANSMUTE_PTR_TO_REF,
+            TRANSMUTE_PTR_TO_PTR,
             USELESS_TRANSMUTE,
             WRONG_TRANSMUTE,
             TRANSMUTE_INT_TO_CHAR,
@@ -363,9 +391,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                                 );
                                             }
                                         )
+                                    } else {
+                                        span_lint_and_then(
+                                            cx,
+                                            TRANSMUTE_PTR_TO_PTR,
+                                            e.span,
+                                            "transmute from a reference to a reference",
+                                            |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                                let sugg_paren = arg.as_ty(cx.tcx.mk_ptr(*ref_from)).as_ty(cx.tcx.mk_ptr(*ref_to));
+                                                let sugg = if ref_to.mutbl == Mutability::MutMutable {
+                                                    sugg_paren.mut_addr_deref()
+                                                } else {
+                                                    sugg_paren.addr_deref()
+                                                };
+                                                db.span_suggestion(e.span, "try", sugg.to_string());
+                                            },
+                                        )
                                     }
                                 }
                             },
+                            (&ty::TyRawPtr(_), &ty::TyRawPtr(to_ty)) => span_lint_and_then(
+                                cx,
+                                TRANSMUTE_PTR_TO_PTR,
+                                e.span,
+                                "transmute from a pointer to a pointer",
+                                |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                                    let sugg = arg.as_ty(cx.tcx.mk_ptr(to_ty));
+                                    db.span_suggestion(e.span, "try", sugg.to_string());
+                                },
+                            ),
                             (&ty::TyInt(ast::IntTy::I8), &ty::TyBool) | (&ty::TyUint(ast::UintTy::U8), &ty::TyBool) => {
                                 span_lint_and_then(
                                     cx,
