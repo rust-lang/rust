@@ -2,6 +2,7 @@
 # Automatically deploy on gh-pages
 
 set -e
+set -x
 
 SOURCE_BRANCH="master"
 TARGET_BRANCH="gh-pages"
@@ -18,16 +19,16 @@ SHA=$(git rev-parse --verify HEAD)
     git checkout $TARGET_BRANCH
 )
 
-# Remove the current doc for master
+echo "Removing the current docs for master"
 rm -rf out/master/ || exit 0
 
-# Make the doc for master
+echo "Making the docs for master"
 mkdir out/master/
 cp util/gh-pages/index.html out/master
 python ./util/export.py out/master/lints.json
 
-# Save the doc for the current tag and point current/ to it
 if [ -n "$TRAVIS_TAG" ]; then
+    echo "Save the doc for the current tag ($TRAVIS_TAG) and point current/ to it"
     cp -r out/master "out/$TRAVIS_TAG"
     rm -f out/current
     ln -s "$TRAVIS_TAG" out/current

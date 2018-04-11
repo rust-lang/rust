@@ -22,6 +22,8 @@ before_install:
      command curl -sSL https://rvm.io/mpapis.asc | gpg --import -
      rvm get stable
     fi
+  - echo "TRAVIS_BRANCH:"
+  - echo $TRAVIS_BRANCH
 
 install:
   - . $HOME/.nvm/nvm.sh
