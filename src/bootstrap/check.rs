@@ -186,13 +186,10 @@ impl Step for CodegenBackend {
             _ => panic!("unknown backend: {}", self.backend),
         }
 
-        let tmp_stamp = build.cargo_out(compiler, Mode::Librustc, target)
-            .join(".tmp.stamp");
-
         let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
         run_cargo(build,
                   cargo.arg("--features").arg(features),
-                  &tmp_stamp,
+                  &codegen_backend_stamp(build, compiler, target, self.backend),
                   true);
     }
 }
@@ -253,4 +250,14 @@ pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<Str
 /// compiler for the specified target.
 pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
     builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
+}
+
+/// Cargo's output path for librustc_trans in a given stage, compiled by a particular
+/// compiler for the specified target and backend.
+fn codegen_backend_stamp(build: &Build,
+                         compiler: Compiler,
+                         target: Interned<String>,
+                         backend: Interned<String>) -> PathBuf {
+    build.cargo_out(compiler, Mode::Librustc, target)
+         .join(format!(".librustc_trans-{}-check.stamp", backend))
 }

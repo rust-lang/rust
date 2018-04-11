@@ -795,6 +795,8 @@ pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<St
     builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
 }
 
+/// Cargo's output path for librustc_trans in a given stage, compiled by a particular
+/// compiler for the specified target and backend.
 fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
