@@ -108,6 +108,7 @@ impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
             FromEnv(..) |
             WellFormedTy(..) |
             FromEnvTy(..) |
+            Normalize(..) |
             RegionOutlives(..) |
             TypeOutlives(..) => self,
         }
@@ -288,8 +289,11 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // `Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T)`
     let normalize_goal = DomainGoal::Normalize(ty::ProjectionPredicate { projection_ty, ty });
     // `Normalize(... -> T) :- WC && WC1`
-    let clause = Clause::Implies(where_clauses, normalize_goal);
-    Lrc::new(vec![clause])
+    let clause = ProgramClause {
+        goal: normalize_goal,
+        hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect(),
+    };
+    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
