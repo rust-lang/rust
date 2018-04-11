@@ -76,36 +76,36 @@ pub const Heap: Global = Global;
 
 unsafe impl GlobalAlloc for Global {
     #[inline]
-    unsafe fn alloc(&self, layout: Layout) -> *mut Void {
+    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
         #[cfg(not(stage0))]
         let ptr = __rust_alloc(layout.size(), layout.align());
         #[cfg(stage0)]
         let ptr = __rust_alloc(layout.size(), layout.align(), &mut 0);
-        ptr as *mut Void
+        ptr as *mut Opaque
     }
 
     #[inline]
-    unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
         __rust_dealloc(ptr as *mut u8, layout.size(), layout.align())
     }
 
     #[inline]
-    unsafe fn realloc(&self, ptr: *mut Void, layout: Layout, new_size: usize) -> *mut Void {
+    unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
         #[cfg(not(stage0))]
         let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(), new_size);
         #[cfg(stage0)]
         let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(),
                                  new_size, layout.align(), &mut 0);
-        ptr as *mut Void
+        ptr as *mut Opaque
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
         #[cfg(not(stage0))]
         let ptr = __rust_alloc_zeroed(layout.size(), layout.align());
         #[cfg(stage0)]
         let ptr = __rust_alloc_zeroed(layout.size(), layout.align(), &mut 0);
-        ptr as *mut Void
+        ptr as *mut Opaque
     }
 
     #[inline]
@@ -121,27 +121,27 @@ unsafe impl GlobalAlloc for Global {
 
 unsafe impl Alloc for Global {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
         GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: NonNull<Void>,
+                      ptr: NonNull<Opaque>,
                       layout: Layout,
                       new_size: usize)
-                      -> Result<NonNull<Void>, AllocErr>
+                      -> Result<NonNull<Opaque>, AllocErr>
     {
         NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
     }
 
@@ -178,7 +178,7 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        Global.dealloc(ptr as *mut Void, layout);
+        Global.dealloc(ptr as *mut Opaque, layout);
     }
 }
 

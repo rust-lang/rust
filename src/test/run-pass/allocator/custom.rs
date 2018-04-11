@@ -15,7 +15,7 @@
 
 extern crate helper;
 
-use std::alloc::{self, Global, Alloc, System, Layout, Void};
+use std::alloc::{self, Global, Alloc, System, Layout, Opaque};
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -23,12 +23,12 @@ static HITS: AtomicUsize = ATOMIC_USIZE_INIT;
 struct A;
 
 unsafe impl alloc::GlobalAlloc for A {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Void {
+    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.dealloc(ptr, layout)
     }

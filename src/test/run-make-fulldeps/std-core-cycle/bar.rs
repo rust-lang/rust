@@ -16,11 +16,11 @@ use std::alloc::*;
 pub struct A;
 
 unsafe impl GlobalAlloc for A {
-    unsafe fn alloc(&self, _: Layout) -> *mut Void {
+    unsafe fn alloc(&self, _: Layout) -> *mut Opaque {
         loop {}
     }
 
-    unsafe fn dealloc(&self, _ptr: *mut Void, _: Layout) {
+    unsafe fn dealloc(&self, _ptr: *mut Opaque, _: Layout) {
         loop {}
     }
 }

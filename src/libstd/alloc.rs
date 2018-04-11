@@ -21,7 +21,7 @@
 #[doc(hidden)]
 #[allow(unused_attributes)]
 pub mod __default_lib_allocator {
-    use super::{System, Layout, GlobalAlloc, Void};
+    use super::{System, Layout, GlobalAlloc, Opaque};
     // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
@@ -46,7 +46,7 @@ pub mod __default_lib_allocator {
     pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
-        System.dealloc(ptr as *mut Void, Layout::from_size_align_unchecked(size, align))
+        System.dealloc(ptr as *mut Opaque, Layout::from_size_align_unchecked(size, align))
     }
 
     #[no_mangle]
@@ -56,7 +56,7 @@ pub mod __default_lib_allocator {
                                        align: usize,
                                        new_size: usize) -> *mut u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, align);
-        System.realloc(ptr as *mut Void, old_layout, new_size) as *mut u8
+        System.realloc(ptr as *mut Opaque, old_layout, new_size) as *mut u8
     }
 
     #[no_mangle]

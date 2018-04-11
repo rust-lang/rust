@@ -249,7 +249,7 @@ impl<K, V> Root<K, V> {
         self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
-            Global.dealloc(NonNull::from(top).as_void(), Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(NonNull::from(top).as_opaque(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -435,7 +435,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
     > {
         let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(node.as_void(), Layout::new::<LeafNode<K, V>>());
+        Global.dealloc(node.as_opaque(), Layout::new::<LeafNode<K, V>>());
         ret
     }
 }
@@ -456,7 +456,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
     > {
         let node = self.node;
         let ret = self.ascend().ok();
-        Global.dealloc(node.as_void(), Layout::new::<InternalNode<K, V>>());
+        Global.dealloc(node.as_opaque(), Layout::new::<InternalNode<K, V>>());
         ret
     }
 }
@@ -1239,12 +1239,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 }
 
                 Global.dealloc(
-                    right_node.node.as_void(),
+                    right_node.node.as_opaque(),
                     Layout::new::<InternalNode<K, V>>(),
                 );
             } else {
                 Global.dealloc(
-                    right_node.node.as_void(),
+                    right_node.node.as_opaque(),
                     Layout::new::<LeafNode<K, V>>(),
                 );
             }

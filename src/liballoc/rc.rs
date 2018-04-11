@@ -259,7 +259,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, NonNull};
 use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, Void, box_free};
+use alloc::{Global, Alloc, Layout, Opaque, box_free};
 use string::String;
 use vec::Vec;
 
@@ -737,7 +737,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
         struct Guard<T> {
-            mem: NonNull<Void>,
+            mem: NonNull<Opaque>,
             elems: *mut T,
             layout: Layout,
             n_elems: usize,
@@ -760,7 +760,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             let v_ptr = v as *const [T];
             let ptr = Self::allocate_for_ptr(v_ptr);
 
-            let mem = ptr as *mut _ as *mut Void;
+            let mem = ptr as *mut _ as *mut Opaque;
             let layout = Layout::for_value(&*ptr);
 
             // Pointer to first element
@@ -844,7 +844,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Global.dealloc(self.ptr.as_void(), Layout::for_value(self.ptr.as_ref()));
+                    Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
         }
@@ -1268,7 +1268,7 @@ impl<T: ?Sized> Drop for Weak<T> {
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                Global.dealloc(self.ptr.as_void(), Layout::for_value(self.ptr.as_ref()));
+                Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()));
             }
         }
     }

@@ -2751,9 +2751,9 @@ impl<T: ?Sized> NonNull<T> {
         }
     }
 
-    /// Cast to a `Void` pointer
+    /// Cast to an `Opaque` pointer
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn as_void(self) -> NonNull<::alloc::Void> {
+    pub fn as_opaque(self) -> NonNull<::alloc::Opaque> {
         unsafe {
             NonNull::new_unchecked(self.as_ptr() as _)
         }

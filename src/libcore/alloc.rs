@@ -24,12 +24,12 @@ use ptr::{self, NonNull};
 extern {
     /// An opaque, unsized type. Used for pointers to allocated memory.
     ///
-    /// This type can only be used behind a pointer like `*mut Void` or `ptr::NonNull<Void>`.
+    /// This type can only be used behind a pointer like `*mut Opaque` or `ptr::NonNull<Opaque>`.
     /// Such pointers are similar to C’s `void*` type.
-    pub type Void;
+    pub type Opaque;
 }
 
-impl Void {
+impl Opaque {
     /// Similar to `std::ptr::null`, which requires `T: Sized`.
     pub fn null() -> *const Self {
         0 as _
@@ -44,7 +44,7 @@ impl Void {
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
 #[derive(Debug)]
-pub struct Excess(pub NonNull<Void>, pub usize);
+pub struct Excess(pub NonNull<Opaque>, pub usize);
 
 fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
@@ -387,11 +387,11 @@ impl From<AllocErr> for CollectionAllocErr {
 
 // FIXME: docs
 pub unsafe trait GlobalAlloc {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Void;
+    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque;
 
-    unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout);
+    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout);
 
-    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
         let size = layout.size();
         let ptr = self.alloc(layout);
         if !ptr.is_null() {
@@ -404,7 +404,7 @@ pub unsafe trait GlobalAlloc {
     ///
     /// `new_size`, when rounded up to the nearest multiple of `old_layout.align()`,
     /// must not overflow (i.e. the rounded value must be less than `usize::MAX`).
-    unsafe fn realloc(&self, ptr: *mut Void, old_layout: Layout, new_size: usize) -> *mut Void {
+    unsafe fn realloc(&self, ptr: *mut Opaque, old_layout: Layout, new_size: usize) -> *mut Opaque {
         let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
         let new_ptr = self.alloc(new_layout);
         if !new_ptr.is_null() {
@@ -554,7 +554,7 @@ pub unsafe trait Alloc {
     /// Clients wishing to abort computation in response to an
     /// allocation error are encouraged to call the allocator's `oom`
     /// method, rather than directly invoking `panic!` or similar.
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr>;
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr>;
 
     /// Deallocate the memory referenced by `ptr`.
     ///
@@ -571,7 +571,7 @@ pub unsafe trait Alloc {
     /// * In addition to fitting the block of memory `layout`, the
     ///   alignment of the `layout` must match the alignment used
     ///   to allocate that block of memory.
-    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout);
+    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout);
 
     /// Allocator-specific method for signaling an out-of-memory
     /// condition.
@@ -689,9 +689,9 @@ pub unsafe trait Alloc {
     /// reallocation error are encouraged to call the allocator's `oom`
     /// method, rather than directly invoking `panic!` or similar.
     unsafe fn realloc(&mut self,
-                      ptr: NonNull<Void>,
+                      ptr: NonNull<Opaque>,
                       layout: Layout,
-                      new_size: usize) -> Result<NonNull<Void>, AllocErr> {
+                      new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
         let old_size = layout.size();
 
         if new_size >= old_size {
@@ -732,7 +732,7 @@ pub unsafe trait Alloc {
     /// Clients wishing to abort computation in response to an
     /// allocation error are encouraged to call the allocator's `oom`
     /// method, rather than directly invoking `panic!` or similar.
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         let size = layout.size();
         let p = self.alloc(layout);
         if let Ok(p) = p {
@@ -781,7 +781,7 @@ pub unsafe trait Alloc {
     /// reallocation error are encouraged to call the allocator's `oom`
     /// method, rather than directly invoking `panic!` or similar.
     unsafe fn realloc_excess(&mut self,
-                             ptr: NonNull<Void>,
+                             ptr: NonNull<Opaque>,
                              layout: Layout,
                              new_size: usize) -> Result<Excess, AllocErr> {
         let new_layout = Layout::from_size_align_unchecked(new_size, layout.align());
@@ -826,7 +826,7 @@ pub unsafe trait Alloc {
     /// `grow_in_place` failures without aborting, or to fall back on
     /// another reallocation method before resorting to an abort.
     unsafe fn grow_in_place(&mut self,
-                            ptr: NonNull<Void>,
+                            ptr: NonNull<Opaque>,
                             layout: Layout,
                             new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
@@ -881,7 +881,7 @@ pub unsafe trait Alloc {
     /// `shrink_in_place` failures without aborting, or to fall back
     /// on another reallocation method before resorting to an abort.
     unsafe fn shrink_in_place(&mut self,
-                              ptr: NonNull<Void>,
+                              ptr: NonNull<Opaque>,
                               layout: Layout,
                               new_size: usize) -> Result<(), CannotReallocInPlace> {
         let _ = ptr; // this default implementation doesn't care about the actual address.
@@ -960,7 +960,7 @@ pub unsafe trait Alloc {
     {
         let k = Layout::new::<T>();
         if k.size() > 0 {
-            self.dealloc(ptr.as_void(), k);
+            self.dealloc(ptr.as_opaque(), k);
         }
     }
 
@@ -1048,7 +1048,7 @@ pub unsafe trait Alloc {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
             (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
                 debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.as_void(), k_old.clone(), k_new.size()).map(NonNull::cast)
+                self.realloc(ptr.as_opaque(), k_old.clone(), k_new.size()).map(NonNull::cast)
             }
             _ => {
                 Err(AllocErr)
@@ -1081,7 +1081,7 @@ pub unsafe trait Alloc {
     {
         match Layout::array::<T>(n) {
             Ok(ref k) if k.size() > 0 => {
-                Ok(self.dealloc(ptr.as_void(), k.clone()))
+                Ok(self.dealloc(ptr.as_opaque(), k.clone()))
             }
             _ => {
                 Err(AllocErr)

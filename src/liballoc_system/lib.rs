@@ -41,7 +41,7 @@ const MIN_ALIGN: usize = 8;
 #[allow(dead_code)]
 const MIN_ALIGN: usize = 16;
 
-use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout, Void};
+use core::alloc::{Alloc, GlobalAlloc, AllocErr, Layout, Opaque};
 use core::ptr::NonNull;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -50,25 +50,25 @@ pub struct System;
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
         GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: NonNull<Void>,
+                      ptr: NonNull<Opaque>,
                       layout: Layout,
-                      new_size: usize) -> Result<NonNull<Void>, AllocErr> {
+                      new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
@@ -82,25 +82,25 @@ unsafe impl Alloc for System {
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<'a> Alloc for &'a System {
     #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc(*self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
+    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc_zeroed(*self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<Void>, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
         GlobalAlloc::dealloc(*self, ptr.as_ptr(), layout)
     }
 
     #[inline]
     unsafe fn realloc(&mut self,
-                      ptr: NonNull<Void>,
+                      ptr: NonNull<Opaque>,
                       layout: Layout,
-                      new_size: usize) -> Result<NonNull<Void>, AllocErr> {
+                      new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::realloc(*self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
@@ -112,13 +112,13 @@ unsafe impl<'a> Alloc for &'a System {
 
 #[cfg(any(windows, unix, target_os = "cloudabi", target_os = "redox"))]
 mod realloc_fallback {
-    use core::alloc::{GlobalAlloc, Void, Layout};
+    use core::alloc::{GlobalAlloc, Opaque, Layout};
     use core::cmp;
     use core::ptr;
 
     impl super::System {
-        pub(crate) unsafe fn realloc_fallback(&self, ptr: *mut Void, old_layout: Layout,
-                                              new_size: usize) -> *mut Void {
+        pub(crate) unsafe fn realloc_fallback(&self, ptr: *mut Opaque, old_layout: Layout,
+                                              new_size: usize) -> *mut Opaque {
             // Docs for GlobalAlloc::realloc require this to be valid:
             let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
 
@@ -141,20 +141,21 @@ mod platform {
 
     use MIN_ALIGN;
     use System;
-    use core::alloc::{GlobalAlloc, Layout, Void};
+    use core::alloc::{GlobalAlloc, Layout, Opaque};
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl GlobalAlloc for System {
         #[inline]
-        unsafe fn alloc(&self, layout: Layout) -> *mut Void {
+        unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
             if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
-                libc::malloc(layout.size()) as *mut Void
+                libc::malloc(layout.size()) as *mut Opaque
             } else {
                 #[cfg(target_os = "macos")]
                 {
                     if layout.align() > (1 << 31) {
-                        // FIXME: use Void::null_mut https://github.com/rust-lang/rust/issues/49659
-                        return 0 as *mut Void
+                        // FIXME: use Opaque::null_mut
+                        // https://github.com/rust-lang/rust/issues/49659
+                        return 0 as *mut Opaque
                     }
                 }
                 aligned_malloc(&layout)
@@ -162,9 +163,9 @@ mod platform {
         }
 
         #[inline]
-        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
+        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
             if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
-                libc::calloc(layout.size(), 1) as *mut Void
+                libc::calloc(layout.size(), 1) as *mut Opaque
             } else {
                 let ptr = self.alloc(layout.clone());
                 if !ptr.is_null() {
@@ -175,24 +176,23 @@ mod platform {
         }
 
         #[inline]
-        unsafe fn dealloc(&self, ptr: *mut Void, _layout: Layout) {
+        unsafe fn dealloc(&self, ptr: *mut Opaque, _layout: Layout) {
             libc::free(ptr as *mut libc::c_void)
         }
 
         #[inline]
-        unsafe fn realloc(&self, ptr: *mut Void, old_layout: Layout, new_size: usize) -> *mut Void {
-            let align = old_layout.align();
-            if align <= MIN_ALIGN && align <= new_size {
-                libc::realloc(ptr as *mut libc::c_void, new_size) as *mut Void
+        unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+            if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
+                libc::realloc(ptr as *mut libc::c_void, new_size) as *mut Opaque
             } else {
-                self.realloc_fallback(ptr, old_layout, new_size)
+                self.realloc_fallback(ptr, layout, new_size)
             }
         }
     }
 
     #[cfg(any(target_os = "android", target_os = "redox", target_os = "solaris"))]
     #[inline]
-    unsafe fn aligned_malloc(layout: &Layout) -> *mut Void {
+    unsafe fn aligned_malloc(layout: &Layout) -> *mut Opaque {
         // On android we currently target API level 9 which unfortunately
         // doesn't have the `posix_memalign` API used below. Instead we use
         // `memalign`, but this unfortunately has the property on some systems
@@ -210,19 +210,19 @@ mod platform {
         // [3]: https://bugs.chromium.org/p/chromium/issues/detail?id=138579
         // [4]: https://chromium.googlesource.com/chromium/src/base/+/master/
         //                                       /memory/aligned_memory.cc
-        libc::memalign(layout.align(), layout.size()) as *mut Void
+        libc::memalign(layout.align(), layout.size()) as *mut Opaque
     }
 
     #[cfg(not(any(target_os = "android", target_os = "redox", target_os = "solaris")))]
     #[inline]
-    unsafe fn aligned_malloc(layout: &Layout) -> *mut Void {
+    unsafe fn aligned_malloc(layout: &Layout) -> *mut Opaque {
         let mut out = ptr::null_mut();
         let ret = libc::posix_memalign(&mut out, layout.align(), layout.size());
         if ret != 0 {
-            // FIXME: use Void::null_mut https://github.com/rust-lang/rust/issues/49659
-            0 as *mut Void
+            // FIXME: use Opaque::null_mut https://github.com/rust-lang/rust/issues/49659
+            0 as *mut Opaque
         } else {
-            out as *mut Void
+            out as *mut Opaque
         }
     }
 }
@@ -232,7 +232,7 @@ mod platform {
 mod platform {
     use MIN_ALIGN;
     use System;
-    use core::alloc::{GlobalAlloc, Void, Layout};
+    use core::alloc::{GlobalAlloc, Opaque, Layout};
 
     type LPVOID = *mut u8;
     type HANDLE = LPVOID;
@@ -264,7 +264,7 @@ mod platform {
     }
 
     #[inline]
-    unsafe fn allocate_with_flags(layout: Layout, flags: DWORD) -> *mut Void {
+    unsafe fn allocate_with_flags(layout: Layout, flags: DWORD) -> *mut Opaque {
         let ptr = if layout.align() <= MIN_ALIGN {
             HeapAlloc(GetProcessHeap(), flags, layout.size())
         } else {
@@ -276,23 +276,23 @@ mod platform {
                 align_ptr(ptr, layout.align())
             }
         };
-        ptr as *mut Void
+        ptr as *mut Opaque
     }
 
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl GlobalAlloc for System {
         #[inline]
-        unsafe fn alloc(&self, layout: Layout) -> *mut Void {
+        unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
             allocate_with_flags(layout, 0)
         }
 
         #[inline]
-        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
+        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
             allocate_with_flags(layout, HEAP_ZERO_MEMORY)
         }
 
         #[inline]
-        unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout) {
+        unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
             if layout.align() <= MIN_ALIGN {
                 let err = HeapFree(GetProcessHeap(), 0, ptr as LPVOID);
                 debug_assert!(err != 0, "Failed to free heap memory: {}",
@@ -306,12 +306,11 @@ mod platform {
         }
 
         #[inline]
-        unsafe fn realloc(&self, ptr: *mut Void, old_layout: Layout, new_size: usize) -> *mut Void {
-            let align = old_layout.align();
-            if align <= MIN_ALIGN {
-                HeapReAlloc(GetProcessHeap(), 0, ptr as LPVOID, new_size) as *mut Void
+        unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+            if layout.align() <= MIN_ALIGN {
+                HeapReAlloc(GetProcessHeap(), 0, ptr as LPVOID, new_size) as *mut Opaque
             } else {
-                self.realloc_fallback(ptr, old_layout, new_size)
+                self.realloc_fallback(ptr, layout, new_size)
             }
         }
     }
@@ -338,7 +337,7 @@ mod platform {
 mod platform {
     extern crate dlmalloc;
 
-    use core::alloc::{GlobalAlloc, Layout, Void};
+    use core::alloc::{GlobalAlloc, Layout, Opaque};
     use System;
 
     // No need for synchronization here as wasm is currently single-threaded
@@ -347,23 +346,23 @@ mod platform {
     #[unstable(feature = "allocator_api", issue = "32838")]
     unsafe impl GlobalAlloc for System {
         #[inline]
-        unsafe fn alloc(&self, layout: Layout) -> *mut Void {
-            DLMALLOC.malloc(layout.size(), layout.align()) as *mut Void
+        unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+            DLMALLOC.malloc(layout.size(), layout.align()) as *mut Opaque
         }
 
         #[inline]
-        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Void {
-            DLMALLOC.calloc(layout.size(), layout.align()) as *mut Void
+        unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
+            DLMALLOC.calloc(layout.size(), layout.align()) as *mut Opaque
         }
 
         #[inline]
-        unsafe fn dealloc(&self, ptr: *mut Void, layout: Layout) {
+        unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
             DLMALLOC.free(ptr as *mut u8, layout.size(), layout.align())
         }
 
         #[inline]
-        unsafe fn realloc(&self, ptr: *mut Void, layout: Layout, new_size: usize) -> *mut Void {
-            DLMALLOC.realloc(ptr as *mut u8, layout.size(), layout.align(), new_size) as *mut Void
+        unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
+            DLMALLOC.realloc(ptr as *mut u8, layout.size(), layout.align(), new_size) as *mut Opaque
         }
     }
 }

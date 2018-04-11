@@ -10,7 +10,7 @@
 
 #![allow(deprecated)]
 
-pub use alloc::{Layout, AllocErr, CannotReallocInPlace, Void};
+pub use alloc::{Layout, AllocErr, CannotReallocInPlace, Opaque};
 use core::alloc::Alloc as CoreAlloc;
 use core::ptr::NonNull;
 
@@ -54,7 +54,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
     }
 
     unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-        let ptr = NonNull::new_unchecked(ptr as *mut Void);
+        let ptr = NonNull::new_unchecked(ptr as *mut Opaque);
         CoreAlloc::dealloc(self, ptr, layout)
     }
 
@@ -70,7 +70,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                       ptr: *mut u8,
                       layout: Layout,
                       new_layout: Layout) -> Result<*mut u8, AllocErr> {
-        let ptr = NonNull::new_unchecked(ptr as *mut Void);
+        let ptr = NonNull::new_unchecked(ptr as *mut Opaque);
         CoreAlloc::realloc(self, ptr, layout, new_layout.size()).map(|ptr| ptr.cast().as_ptr())
     }
 
@@ -87,7 +87,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                              ptr: *mut u8,
                              layout: Layout,
                              new_layout: Layout) -> Result<Excess, AllocErr> {
-        let ptr = NonNull::new_unchecked(ptr as *mut Void);
+        let ptr = NonNull::new_unchecked(ptr as *mut Opaque);
         CoreAlloc::realloc_excess(self, ptr, layout, new_layout.size())
             .map(|e| Excess(e.0 .cast().as_ptr(), e.1))
     }
@@ -96,7 +96,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                             ptr: *mut u8,
                             layout: Layout,
                             new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-        let ptr = NonNull::new_unchecked(ptr as *mut Void);
+        let ptr = NonNull::new_unchecked(ptr as *mut Opaque);
         CoreAlloc::grow_in_place(self, ptr, layout, new_layout.size())
     }
 
@@ -104,7 +104,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
                               ptr: *mut u8,
                               layout: Layout,
                               new_layout: Layout) -> Result<(), CannotReallocInPlace> {
-        let ptr = NonNull::new_unchecked(ptr as *mut Void);
+        let ptr = NonNull::new_unchecked(ptr as *mut Opaque);
         CoreAlloc::shrink_in_place(self, ptr, layout, new_layout.size())
     }
 }
