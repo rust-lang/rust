@@ -1829,7 +1829,6 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(take_set_limit)]
     /// use std::io;
     /// use std::io::prelude::*;
     /// use std::fs::File;
@@ -1845,7 +1844,7 @@ impl<T> Take<T> {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "take_set_limit", issue = "42781")]
+    #[stable(feature = "take_set_limit", since = "1.27.0")]
     pub fn set_limit(&mut self, limit: u64) {
         self.limit = limit;
     }
