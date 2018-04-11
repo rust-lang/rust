@@ -214,14 +214,18 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt, span: Span, substr: &Substru
             _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
         };
 
-        let cmp = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
+        let strict_ineq = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
 
-        let not_cmp = cx.expr_unary(span,
-                                    ast::UnOp::Not,
-                                    cx.expr_binary(span, op, other_f.clone(), self_f));
+        let deleg_cmp = if !equal {
+            cx.expr_unary(span,
+                          ast::UnOp::Not,
+                          cx.expr_binary(span, op, other_f.clone(), self_f))
+        } else {
+            cx.expr_binary(span, BinOpKind::Eq, self_f, other_f.clone())
+        };
 
-        let and = cx.expr_binary(span, BinOpKind::And, not_cmp, subexpr);
-        cx.expr_binary(span, BinOpKind::Or, cmp, and)
+        let and = cx.expr_binary(span, BinOpKind::And, deleg_cmp, subexpr);
+        cx.expr_binary(span, BinOpKind::Or, strict_ineq, and)
     },
             cx.expr_bool(span, equal),
             Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
