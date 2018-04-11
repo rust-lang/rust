@@ -41,23 +41,6 @@ impl Void {
     }
 }
 
-/// Convert from a return value of GlobalAlloc::alloc to that of Alloc::alloc
-impl From<*mut Void> for Result<NonNull<Void>, AllocErr> {
-    fn from(ptr: *mut Void) -> Self {
-        NonNull::new(ptr).ok_or(AllocErr)
-    }
-}
-
-/// Convert from a return value of Alloc::alloc to that of GlobalAlloc::alloc
-impl From<Result<NonNull<Void>, AllocErr>> for *mut Void {
-    fn from(result: Result<NonNull<Void>, AllocErr>) -> Self {
-        match result {
-            Ok(ptr) => ptr.as_ptr(),
-            Err(_) => Void::null_mut(),
-        }
-    }
-}
-
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
 #[derive(Debug)]

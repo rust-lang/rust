@@ -122,7 +122,7 @@ unsafe impl GlobalAlloc for Global {
 unsafe impl Alloc for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
-        GlobalAlloc::alloc(self, layout).into()
+        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
@@ -137,12 +137,12 @@ unsafe impl Alloc for Global {
                       new_size: usize)
                       -> Result<NonNull<Void>, AllocErr>
     {
-        GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size).into()
+        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Void>, AllocErr> {
-        GlobalAlloc::alloc_zeroed(self, layout).into()
+        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
     }
 
     #[inline]
