@@ -23,12 +23,12 @@
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the unicode.py file into git.
 
-import fileinput, re, os, sys, operator, math
+import fileinput, re, os, sys, operator, math, datetime
 
 # The directory in which this file resides.
 fdir = os.path.dirname(os.path.realpath(__file__)) + "/"
 
-preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
+preamble = '''// Copyright 2012-{year} The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,8 +43,8 @@ preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRI
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
 use unicode::version::UnicodeVersion;
-use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
-'''
+use unicode::bool_trie::{{BoolTrie, SmallBoolTrie}};
+'''.format(year = datetime.datetime.now().year)
 
 # Mapping taken from Table 12 from:
 # http://www.unicode.org/reports/tr44/#General_Category_Values
