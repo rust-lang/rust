@@ -2,8 +2,9 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::LitKind;
+use syntax_pos::Span;
 use utils::paths;
-use utils::{in_macro, is_expn_of, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
+use utils::{in_macro, is_expn_of, last_path_segment, match_def_path, match_type, opt_def_id, resolve_node, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** Checks for the use of `format!("string literal with no
 /// argument")` and `format!("{}", foo)` where `foo` is a string.
@@ -43,20 +44,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 return;
             }
             match expr.node {
+
                 // `format!("{}", foo)` expansion
                 ExprCall(ref fun, ref args) => {
                     if_chain! {
                         if let ExprPath(ref qpath) = fun.node;
-                        if args.len() == 2;
+                        if args.len() == 3;
                         if let Some(fun_def_id) = opt_def_id(resolve_node(cx, qpath, fun.hir_id));
-                        if match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1);
-                        // ensure the format string is `"{..}"` with only one argument and no text
-                        if check_static_str(&args[0]);
-                        // ensure the format argument is `{}` ie. Display with no fancy option
-                        // and that the argument is a string
-                        if check_arg_is_display(cx, &args[1]);
+                        if match_def_path(cx.tcx, fun_def_id, &paths::FMT_ARGUMENTS_NEWV1FORMATTED);
+                        if check_single_piece(&args[0]);
+                        if let Some(format_arg) = get_single_string_arg(cx, &args[1]);
+                        if check_unformatted(&args[2]);
                         then {
-                            let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
+                            let sugg = format!("{}.to_string()", snippet(cx, format_arg, "<arg>").into_owned());
                             span_lint_and_then(cx, USELESS_FORMAT, span, "useless use of `format!`", |db| {
                                 db.span_suggestion(expr.span, "consider using .to_string()", sugg);
                             });
@@ -79,7 +79,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 /// Checks if the expressions matches `&[""]`
-fn check_static_str(expr: &Expr) -> bool {
+fn check_single_piece(expr: &Expr) -> bool {
     if_chain! {
         if let ExprAddrOf(_, ref expr) = expr.node; // &[""]
         if let ExprArray(ref exprs) = expr.node; // [""]
@@ -96,15 +96,17 @@ fn check_static_str(expr: &Expr) -> bool {
 
 /// Checks if the expressions matches
 /// ```rust,ignore
-/// &match (&42,) {
+/// &match (&"arg",) {
 /// (__arg0,) => [::std::fmt::ArgumentV1::new(__arg0,
 /// ::std::fmt::Display::fmt)],
 /// }
 /// ```
-fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
+/// and that type of `__arg0` is `&str` or `String`
+/// then returns the span of first element of the matched tuple
+fn get_single_string_arg(cx: &LateContext, expr: &Expr) -> Option<Span> {
     if_chain! {
         if let ExprAddrOf(_, ref expr) = expr.node;
-        if let ExprMatch(_, ref arms, _) = expr.node;
+        if let ExprMatch(ref match_expr, ref arms, _) = expr.node;
         if arms.len() == 1;
         if arms[0].pats.len() == 1;
         if let PatKind::Tuple(ref pat, None) = arms[0].pats[0].node;
@@ -118,8 +120,40 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
         then {
             let ty = walk_ptrs_ty(cx.tables.pat_ty(&pat[0]));
+            if ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING) {
+                if let ExprTup(ref values) = match_expr.node {
+                    return Some(values[0].span);
+                }
+            }
+        }
+    }
 
-            return ty.sty == ty::TyStr || match_type(cx, ty, &paths::STRING);
+    None
+}
+
+/// Checks if the expression matches
+/// ```rust,ignore
+/// &[_ {
+///    format: _ {
+///         width: _::Implied,
+///         ...
+///    },
+///    ...,
+/// }]
+/// ```
+fn check_unformatted(expr: &Expr) -> bool {
+    if_chain! {
+        if let ExprAddrOf(_, ref expr) = expr.node;
+        if let ExprArray(ref exprs) = expr.node;
+        if exprs.len() == 1;
+        if let ExprStruct(_, ref fields, _) = exprs[0].node;
+        if let Some(format_field) = fields.iter().filter(|f| f.name.node == "format").next();
+        if let ExprStruct(_, ref fields, _) = format_field.expr.node;
+        if let Some(align_field) = fields.iter().filter(|f| f.name.node == "width").next();
+        if let ExprPath(ref qpath) = align_field.expr.node;
+        if last_path_segment(qpath).name == "Implied";
+        then {
+            return true;
         }
     }
 
