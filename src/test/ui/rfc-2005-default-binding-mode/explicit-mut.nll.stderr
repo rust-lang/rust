@@ -1,20 +1,26 @@
-error[E0594]: cannot assign to immutable item `*n`
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/explicit-mut.rs:17:13
    |
+LL |         Some(n) => {
+   |              - help: consider changing this to be a mutable reference: `&mut`
 LL |             *n += 1; //~ ERROR cannot assign to immutable
-   |             ^^^^^^^ cannot mutate
+   |             ^^^^^^^
 
-error[E0594]: cannot assign to immutable item `*n`
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/explicit-mut.rs:25:13
    |
+LL |         Some(n) => {
+   |              - help: consider changing this to be a mutable reference: `&mut`
 LL |             *n += 1; //~ ERROR cannot assign to immutable
-   |             ^^^^^^^ cannot mutate
+   |             ^^^^^^^
 
-error[E0594]: cannot assign to immutable item `*n`
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/explicit-mut.rs:33:13
    |
+LL |         Some(n) => {
+   |              - help: consider changing this to be a mutable reference: `&mut`
 LL |             *n += 1; //~ ERROR cannot assign to immutable
-   |             ^^^^^^^ cannot mutate
+   |             ^^^^^^^
 
 error: aborting due to 3 previous errors
 
