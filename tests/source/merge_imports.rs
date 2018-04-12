@@ -1,6 +1,4 @@
 // rustfmt-merge_imports: true
-// rustfmt-reorder_imports: true
-// rustfmt-reorder_imported_names: true
 
 use a::{c,d,b};
 use a::{d, e, b, a, f};
