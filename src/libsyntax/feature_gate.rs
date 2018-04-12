@@ -432,6 +432,9 @@ declare_features! (
     // Parentheses in patterns
     (active, pattern_parentheses, "1.26.0", None, None),
 
+    // Allows `#[repr(packed)]` attribute on structs
+    (active, repr_packed, "1.26.0", Some(33158), None),
+
     // `use path as _;` and `extern crate c as _;`
     (active, underscore_imports, "1.26.0", Some(48216), None),
 
@@ -1439,11 +1442,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
         }
 
-        // allow attr_literals in #[repr(align(x))]
-        let mut is_repr_align = false;
+        // allow attr_literals in #[repr(align(x))] and #[repr(packed(n))]
+        let mut allow_attr_literal = false;
         if attr.path == "repr" {
             if let Some(content) = attr.meta_item_list() {
-                is_repr_align = content.iter().any(|c| c.check_name("align"));
+                allow_attr_literal = content.iter().any(
+                    |c| c.check_name("align") || c.check_name("packed"));
             }
         }
 
@@ -1451,7 +1455,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             return
         }
 
-        if !is_repr_align {
+        if !allow_attr_literal {
             let meta = panictry!(attr.parse_meta(self.context.parse_sess));
             if contains_novel_literal(&meta) {
                 gate_feature_post!(&self, attr_literals, attr.span,
@@ -1534,6 +1538,13 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                             gate_feature_post!(&self, repr_transparent, attr.span,
                                                "the `#[repr(transparent)]` attribute \
                                                is experimental");
+                        }
+                        if let Some((name, _)) = item.name_value_literal() {
+                            if name == "packed" {
+                                gate_feature_post!(&self, repr_packed, attr.span,
+                                                   "the `#[repr(packed(n))]` attribute \
+                                                   is experimental");
+                            }
                         }
                     }
                 }
