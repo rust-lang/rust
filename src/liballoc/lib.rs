@@ -113,7 +113,7 @@
 #![feature(trusted_len)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unicode)]
+#![feature(unicode_internals)]
 #![feature(unsize)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
@@ -134,8 +134,6 @@ extern crate std;
 extern crate test;
 #[cfg(test)]
 extern crate rand;
-
-extern crate std_unicode;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]

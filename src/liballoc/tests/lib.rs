@@ -24,12 +24,11 @@
 #![feature(string_retain)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
-#![feature(unicode)]
 #![feature(exact_chunks)]
 #![feature(inclusive_range_fields)]
 
 extern crate alloc_system;
-extern crate std_unicode;
+extern crate core;
 extern crate rand;
 
 use std::hash::{Hash, Hasher};

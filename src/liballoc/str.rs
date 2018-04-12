@@ -45,12 +45,10 @@ use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
-use std_unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
 use string::String;
-use std_unicode;
 use vec::Vec;
 use slice::{SliceConcatExt, SliceIndex};
 use boxed::Box;
@@ -75,7 +73,7 @@ pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use std_unicode::str::SplitWhitespace;
+pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 
@@ -147,7 +145,8 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
 #[derive(Clone)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
-    encoder: Utf16Encoder<Chars<'a>>,
+    chars: Chars<'a>,
+    extra: u16,
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -163,12 +162,29 @@ impl<'a> Iterator for EncodeUtf16<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<u16> {
-        self.encoder.next()
+        if self.extra != 0 {
+            let tmp = self.extra;
+            self.extra = 0;
+            return Some(tmp);
+        }
+
+        let mut buf = [0; 2];
+        self.chars.next().map(|ch| {
+            let n = ch.encode_utf16(&mut buf).len();
+            if n == 2 {
+                self.extra = buf[1];
+            }
+            buf[0]
+        })
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.encoder.size_hint()
+        let (low, high) = self.chars.size_hint();
+        // every char gets either one u16 or two u16,
+        // so this iterator is between 1 or 2 times as
+        // long as the underlying iterator.
+        (low, high.and_then(|n| n.checked_mul(2)))
     }
 }
 
@@ -801,7 +817,7 @@ impl str {
     #[stable(feature = "split_whitespace", since = "1.1.0")]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace {
-        UnicodeStr::split_whitespace(self)
+        StrExt::split_whitespace(self)
     }
 
     /// An iterator over the lines of a string, as string slices.
@@ -871,7 +887,7 @@ impl str {
     /// ```
     #[stable(feature = "encode_utf16", since = "1.8.0")]
     pub fn encode_utf16(&self) -> EncodeUtf16 {
-        EncodeUtf16 { encoder: Utf16Encoder::new(self[..].chars()) }
+        EncodeUtf16 { chars: self[..].chars(), extra: 0 }
     }
 
     /// Returns `true` if the given pattern matches a sub-slice of
@@ -1571,7 +1587,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim(&self) -> &str {
-        UnicodeStr::trim(self)
+        StrExt::trim(self)
     }
 
     /// Returns a string slice with leading whitespace removed.
@@ -1607,7 +1623,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_left(&self) -> &str {
-        UnicodeStr::trim_left(self)
+        StrExt::trim_left(self)
     }
 
     /// Returns a string slice with trailing whitespace removed.
@@ -1643,7 +1659,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn trim_right(&self) -> &str {
-        UnicodeStr::trim_right(self)
+        StrExt::trim_right(self)
     }
 
     /// Returns a string slice with all prefixes and suffixes that match a
@@ -1960,7 +1976,7 @@ impl str {
         }
 
         fn case_ignoreable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            use std_unicode::derived_property::{Cased, Case_Ignorable};
+            use core::unicode::derived_property::{Cased, Case_Ignorable};
             match iter.skip_while(|&c| Case_Ignorable(c)).next() {
                 Some(c) => Cased(c),
                 None => false,
@@ -2142,7 +2158,7 @@ impl str {
     #[stable(feature = "unicode_methods_on_intrinsics", since = "1.27.0")]
     #[inline]
     pub fn is_whitespace(&self) -> bool {
-        UnicodeStr::is_whitespace(self)
+        StrExt::is_whitespace(self)
     }
 
     /// Returns true if this `str` is entirely alphanumeric, and false otherwise.
@@ -2161,7 +2177,7 @@ impl str {
     #[stable(feature = "unicode_methods_on_intrinsics", since = "1.27.0")]
     #[inline]
     pub fn is_alphanumeric(&self) -> bool {
-        UnicodeStr::is_alphanumeric(self)
+        StrExt::is_alphanumeric(self)
     }
 
     /// Checks if all characters in this string are within the ASCII range.

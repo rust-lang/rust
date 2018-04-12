@@ -33,6 +33,7 @@
 #![feature(sort_internals)]
 #![feature(specialization)]
 #![feature(step_trait)]
+#![feature(str_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_trait)]
@@ -68,4 +69,5 @@ mod ptr;
 mod result;
 mod slice;
 mod str;
+mod str_lossy;
 mod tuple;

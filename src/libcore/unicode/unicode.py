@@ -39,8 +39,8 @@ preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRI
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
-use version::UnicodeVersion;
-use bool_trie::{BoolTrie, SmallBoolTrie};
+use unicode::version::UnicodeVersion;
+use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
 '''
 
 # Mapping taken from Table 12 from:
@@ -408,9 +408,6 @@ def emit_property_module(f, mod, tbl, emit):
 def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
     f.write("""
-    use core::option::Option;
-    use core::option::Option::{Some, None};
-
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
             None        => [c, '\\0', '\\0'],
@@ -473,7 +470,8 @@ if __name__ == "__main__":
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
-/// `CharExt` and `UnicodeStrPrelude` traits are based on.
+/// `char` and `str` methods are based on.
+#[unstable(feature = "unicode_version", issue = "49726")]
 pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
     major: %s,
     minor: %s,

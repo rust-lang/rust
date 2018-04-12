@@ -12,6 +12,7 @@
 ///
 /// See also: <http://www.unicode.org/versions/>
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[unstable(feature = "unicode_version", issue = "49726")]
 pub struct UnicodeVersion {
     /// Major version.
     pub major: u32,

@@ -180,12 +180,13 @@ pub mod hash;
 pub mod fmt;
 pub mod time;
 
+pub mod unicode;
+
 /* Heap memory allocator trait */
 #[allow(missing_docs)]
 pub mod heap;
 
 // note: does not need to be public
-mod char_private;
 mod iter_private;
 mod tuple;
 mod unit;

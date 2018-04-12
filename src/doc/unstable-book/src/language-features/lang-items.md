@@ -243,7 +243,7 @@ the source code.
   - `usize`: `libcore/num/mod.rs`
   - `f32`: `libstd/f32.rs`
   - `f64`: `libstd/f64.rs`
-  - `char`: `libstd_unicode/char.rs`
+  - `char`: `libcore/char.rs`
   - `slice`: `liballoc/slice.rs`
   - `str`: `liballoc/str.rs`
   - `const_ptr`: `libcore/ptr.rs`
