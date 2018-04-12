@@ -970,8 +970,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    .map(|param| (param.def_id, param.index))
                                    .collect();
 
-    let lifetimes = regions.into_iter().map(|lt| ty::GenericParam::Lifetime(lt));
-    let types = types.into_iter().map(|ty| ty::GenericParam::Type(ty));
+    let lifetimes = regions.into_iter().map(|lt| ty::GenericParamDef::Lifetime(lt));
+    let types = types.into_iter().map(|ty| ty::GenericParamDef::Type(ty));
     let params = lifetimes.chain(types).collect();
 
     tcx.alloc_generics(ty::Generics {

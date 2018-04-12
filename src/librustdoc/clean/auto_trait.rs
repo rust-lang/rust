@@ -491,7 +491,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         &self,
         tcx: TyCtxt<'b, 'c, 'd>,
         pred: ty::Predicate<'d>,
-    ) -> FxHashSet<GenericParam> {
+    ) -> FxHashSet<GenericParamDef> {
         pred.walk_tys()
             .flat_map(|t| {
                 let mut regions = FxHashSet();
@@ -502,7 +502,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // We only care about late bound regions, as we need to add them
                         // to the 'for<>' section
                         &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParam::Lifetime(Lifetime(name.to_string())))
+                            Some(GenericParamDef::Lifetime(Lifetime(name.to_string())))
                         }
                         &ty::ReVar(_) | &ty::ReEarlyBound(_) => None,
                         _ => panic!("Unexpected region type {:?}", r),
@@ -850,7 +850,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         for p in generic_params.iter_mut() {
             match p {
-                &mut GenericParam::Type(ref mut ty) => {
+                &mut GenericParamDef::Type(ref mut ty) => {
                     // We never want something like 'impl<T=Foo>'
                     ty.default.take();
 

@@ -1484,7 +1484,7 @@ impl<'a, 'tcx> Clean<TyParamBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
                         if let &ty::RegionKind::ReLateBound(..) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
-                                late_bounds.push(GenericParam::Lifetime(lt));
+                                late_bounds.push(GenericParamDef::Lifetime(lt));
                             }
                         }
                     }
@@ -1718,14 +1718,14 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
-pub enum GenericParam {
+pub enum GenericParamDef {
     Lifetime(Lifetime),
     Type(TyParam),
 }
 
-impl GenericParam {
+impl GenericParamDef {
     pub fn is_synthetic_type_param(&self) -> bool {
-        if let GenericParam::Type(ref t) = *self {
+        if let GenericParamDef::Type(ref t) = *self {
             t.synthetic.is_some()
         } else {
             false
@@ -1733,11 +1733,11 @@ impl GenericParam {
     }
 }
 
-impl Clean<GenericParam> for hir::GenericParam {
-    fn clean(&self, cx: &DocContext) -> GenericParam {
+impl Clean<GenericParamDef> for hir::GenericParam {
+    fn clean(&self, cx: &DocContext) -> GenericParamDef {
         match *self {
-            hir::GenericParam::Lifetime(ref l) => GenericParam::Lifetime(l.clean(cx)),
-            hir::GenericParam::Type(ref t) => GenericParam::Type(t.clean(cx)),
+            hir::GenericParam::Lifetime(ref l) => GenericParamDef::Lifetime(l.clean(cx)),
+            hir::GenericParam::Type(ref t) => GenericParamDef::Type(t.clean(cx)),
         }
     }
 }
@@ -1745,7 +1745,7 @@ impl Clean<GenericParam> for hir::GenericParam {
 // maybe use a Generic enum and use Vec<Generic>?
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Default, Hash)]
 pub struct Generics {
-    pub params: Vec<GenericParam>,
+    pub params: Vec<GenericParamDef>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -1774,7 +1774,7 @@ impl Clean<Generics> for hir::Generics {
                 WherePredicate::BoundPredicate { ty: Generic(ref name), ref mut bounds } => {
                     if bounds.is_empty() {
                         for param in &mut g.params {
-                            if let GenericParam::Type(ref mut type_param) = *param {
+                            if let GenericParamDef::Type(ref mut type_param) = *param {
                                 if &type_param.name == name {
                                     mem::swap(bounds, &mut type_param.bounds);
                                     break
@@ -1851,11 +1851,11 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         Generics {
             params: gens.lifetimes()
                         .into_iter()
-                        .map(|lp| GenericParam::Lifetime(lp.clean(cx)))
+                        .map(|lp| GenericParamDef::Lifetime(lp.clean(cx)))
                         .chain(
                             simplify::ty_params(stripped_typarams)
                                 .into_iter()
-                                .map(|tp| GenericParam::Type(tp))
+                                .map(|tp| GenericParamDef::Type(tp))
                         )
                         .collect(),
             where_predicates: simplify::where_clauses(cx, where_predicates),
@@ -2348,7 +2348,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct PolyTrait {
     pub trait_: Type,
-    pub generic_params: Vec<GenericParam>,
+    pub generic_params: Vec<GenericParamDef>,
 }
 
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
@@ -3413,7 +3413,7 @@ impl Clean<Item> for doctree::Typedef {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Debug, Hash)]
 pub struct BareFunctionDecl {
     pub unsafety: hir::Unsafety,
-    pub generic_params: Vec<GenericParam>,
+    pub generic_params: Vec<GenericParamDef>,
     pub decl: FnDecl,
     pub abi: Abi,
 }
@@ -4172,7 +4172,7 @@ struct RegionDeps<'tcx> {
 #[derive(Eq, PartialEq, Hash, Debug)]
 enum SimpleBound {
     RegionBound(Lifetime),
-    TraitBound(Vec<PathSegment>, Vec<SimpleBound>, Vec<GenericParam>, hir::TraitBoundModifier)
+    TraitBound(Vec<PathSegment>, Vec<SimpleBound>, Vec<GenericParamDef>, hir::TraitBoundModifier)
 }
 
 enum AutoTraitResult {

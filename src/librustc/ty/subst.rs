@@ -253,10 +253,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
 
         for def in &defs.params {
             let param = match def {
-                ty::GenericParam::Lifetime(ref lt) => {
+                ty::GenericParamDef::Lifetime(ref lt) => {
                     mk_region(lt, substs).into()
                 }
-                ty::GenericParam::Type(ref ty) => {
+                ty::GenericParamDef::Type(ref ty) => {
                     if skip_self {
                         skip_self = false;
                         continue
