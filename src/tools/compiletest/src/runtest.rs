@@ -1878,6 +1878,8 @@ impl<'test> TestCx<'test> {
         dir.join(&self.output_testname(&self.testpaths.file))
     }
 
+    /// Same as `output_base_name`, but includes the stage ID as an extension,
+    /// such as: `.../compile-fail/foo/bar.stage1-<triple>`
     fn output_base_name_stage(&self) -> PathBuf {
         self.output_base_name().with_extension(&self.config.stage_id)
     }
