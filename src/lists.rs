@@ -80,6 +80,16 @@ pub struct ListItem {
 }
 
 impl ListItem {
+    pub fn empty() -> ListItem {
+        ListItem {
+            pre_comment: None,
+            pre_comment_style: ListItemCommentStyle::None,
+            item: None,
+            post_comment: None,
+            new_lines: false,
+        }
+    }
+
     pub fn inner_as_ref(&self) -> &str {
         self.item.as_ref().map_or("", |s| s)
     }
