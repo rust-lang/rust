@@ -13,8 +13,6 @@
 //
 // cc #48468
 
-#![feature(dyn_trait)]
-
 use std::fmt::Debug;
 
 struct Foo {

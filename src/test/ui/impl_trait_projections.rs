@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dyn_trait)]
 #![feature(conservative_impl_trait, universal_impl_trait)]
 
 use std::fmt::Debug;

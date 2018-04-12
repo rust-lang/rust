@@ -10,7 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-#![feature(dyn_trait)]
 #![feature(raw_identifiers)]
 
 fn test_if() {

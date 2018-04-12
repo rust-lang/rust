@@ -11,8 +11,6 @@
 // compile-pass
 // failure-status: 1
 
-#![feature(dyn_trait)]
-
 use std::error::Error;
 use std::io;
 

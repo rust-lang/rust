@@ -13,8 +13,6 @@
 //
 // cc #48468
 
-#![feature(dyn_trait)]
-
 fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
     //                      ^^^^^^^^^^^^^^^^^^^^^ bound *here* defaults to `'static`
     Box::new(items.iter()) //~ ERROR cannot infer an appropriate lifetime
