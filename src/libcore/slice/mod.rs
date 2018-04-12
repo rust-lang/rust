@@ -238,6 +238,12 @@ pub trait SliceExt {
     fn sort_unstable_by_key<B, F>(&mut self, f: F)
         where F: FnMut(&Self::Item) -> B,
               B: Ord;
+
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    fn split_off<'a>(self: &mut &'a Self, at: usize) -> &'a Self;
+
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    fn split_off_mut<'a>(self: &mut &'a mut Self, at: usize) -> &'a mut Self;
 }
 
 // Use macros to be generic over const/mut
@@ -752,6 +758,20 @@ impl<T> SliceExt for [T] {
               B: Ord
     {
         sort::quicksort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    #[inline]
+    fn split_off<'a>(self: &mut &'a Self, at: usize) -> &'a [T] {
+        let (rest, split) = self.split_at(at);
+        *self = rest;
+        split
+    }
+
+    #[inline]
+    fn split_off_mut<'a>(self: &mut &'a mut Self, at: usize) -> &'a mut [T] {
+        let (rest, split) = mem::replace(self, &mut []).split_at_mut(at);
+        *self = rest;
+        split
     }
 }
 

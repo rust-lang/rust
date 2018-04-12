@@ -2212,6 +2212,10 @@ pub trait StrExt {
     fn is_empty(&self) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    fn split_off<'a>(self: &mut &'a Self, at: usize) -> &'a Self;
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    fn split_off_mut<'a>(self: &mut &'a mut Self, at: usize) -> &'a mut Self;
 }
 
 // truncate `&str` to length at most equal to `max`
@@ -2532,6 +2536,22 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+
+    #[inline]
+    fn split_off<'a>(self: &mut &'a Self, at: usize) -> &'a str {
+        let (rest, split) = self.split_at(at);
+        *self = rest;
+        split
+    }
+
+    #[inline]
+    fn split_off_mut<'a>(self: &mut &'a mut Self, at: usize) -> &'a mut str {
+        // An empty slice of bytes is trivially valid UTF-8.
+        let empty = unsafe { from_utf8_unchecked_mut(&mut []) };
+        let (rest, split) = mem::replace(self, empty).split_at_mut(at);
+        *self = rest;
+        split
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

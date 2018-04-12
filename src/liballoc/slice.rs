@@ -1791,6 +1791,57 @@ impl<T> [T] {
         // NB see hack module in this file
         hack::into_vec(self)
     }
+
+    /// Splits the slice into two at the given index.
+    ///
+    /// Returns a newly slice. `self` contains elements `[0, at)`,
+    /// and the returned `Self` contains elements `[at, len)`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off)]
+    ///
+    /// let mut parisien: &[_] = &["baguette", "jambon", "beurre"];
+    /// let ingredients = parisien.split_off(1);
+    /// assert_eq!(parisien, &["baguette"]);
+    /// assert_eq!(ingredients, &["jambon", "beurre"]);
+    /// ```
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    #[inline]
+    pub fn split_off<'a>(self: &mut &'a Self, at: usize) -> &'a [T] {
+        core_slice::SliceExt::split_off(self, at)
+    }
+
+    /// Splits the mutable slice into two at the given index.
+    ///
+    /// Returns a newly mutable slice. `self` contains elements `[0, at)`,
+    /// and the returned `Self` contains elements `[at, len)`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_split_off)]
+    ///
+    /// let mut parisien: &mut [_] = &mut ["baguette", "jambon", "beurre"];
+    /// let ingredients = parisien.split_off_mut(1);
+    /// ingredients[1] = "fromage";
+    /// assert_eq!(parisien, &["baguette"]);
+    /// assert_eq!(ingredients, &["jambon", "fromage"]);
+    /// ```
+    #[unstable(feature = "slice_split_off", issue = "0")]
+    #[inline]
+    pub fn split_off_mut<'a>(self: &mut &'a mut Self, at: usize) -> &'a mut [T] {
+        core_slice::SliceExt::split_off_mut(self, at)
+    }
 }
 
 #[lang = "slice_u8"]
