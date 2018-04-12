@@ -2117,14 +2117,16 @@ mod traits {
 
 }
 
-
+public_in_stage0! {
+{
 /// Methods for string slices
 #[allow(missing_docs)]
 #[doc(hidden)]
 #[unstable(feature = "core_str_ext",
            reason = "stable interface provided by `impl str` in later crates",
            issue = "32110")]
-pub trait StrExt {
+}
+trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // liballoc, not here.
 
@@ -2224,7 +2226,7 @@ pub trait StrExt {
     fn trim_left(&self) -> &str;
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_right(&self) -> &str;
-}
+}}
 
 // truncate `&str` to length at most equal to `max`
 // return `true` if it were truncated, and the new str.

@@ -4098,65 +4098,58 @@ pub enum FpCategory {
     Normal,
 }
 
-/// A built-in floating point number.
+// Technically private and only exposed for coretests:
 #[doc(hidden)]
-#[unstable(feature = "core_float",
-           reason = "stable interface is via `impl f{32,64}` in later crates",
-           issue = "32110")]
+#[unstable(feature = "float_internals",
+           reason = "internal routines only exposed for testing",
+           issue = "0")]
 pub trait Float: Sized {
     /// Type used by `to_bits` and `from_bits`.
-    #[stable(feature = "core_float_bits", since = "1.25.0")]
     type Bits;
 
     /// Returns `true` if this value is NaN and false otherwise.
-    #[stable(feature = "core", since = "1.6.0")]
     fn is_nan(self) -> bool;
+
     /// Returns `true` if this value is positive infinity or negative infinity and
     /// false otherwise.
-    #[stable(feature = "core", since = "1.6.0")]
     fn is_infinite(self) -> bool;
+
     /// Returns `true` if this number is neither infinite nor NaN.
-    #[stable(feature = "core", since = "1.6.0")]
     fn is_finite(self) -> bool;
+
     /// Returns `true` if this number is neither zero, infinite, denormal, or NaN.
-    #[stable(feature = "core", since = "1.6.0")]
     fn is_normal(self) -> bool;
+
     /// Returns the category that this number falls into.
-    #[stable(feature = "core", since = "1.6.0")]
     fn classify(self) -> FpCategory;
 
     /// Returns `true` if `self` is positive, including `+0.0` and
     /// `Float::infinity()`.
-    #[stable(feature = "core", since = "1.6.0")]
     fn is_sign_positive(self) -> bool;
+
     /// Returns `true` if `self` is negative, including `-0.0` and
     /// `Float::neg_infinity()`.
-    #[stable(feature = "core", since = "1.6.0")]
     fn is_sign_negative(self) -> bool;
 
     /// Take the reciprocal (inverse) of a number, `1/x`.
-    #[stable(feature = "core", since = "1.6.0")]
     fn recip(self) -> Self;
 
     /// Convert radians to degrees.
-    #[stable(feature = "deg_rad_conversions", since="1.7.0")]
     fn to_degrees(self) -> Self;
+
     /// Convert degrees to radians.
-    #[stable(feature = "deg_rad_conversions", since="1.7.0")]
     fn to_radians(self) -> Self;
 
     /// Returns the maximum of the two numbers.
-    #[stable(feature = "core_float_min_max", since="1.20.0")]
     fn max(self, other: Self) -> Self;
+
     /// Returns the minimum of the two numbers.
-    #[stable(feature = "core_float_min_max", since="1.20.0")]
     fn min(self, other: Self) -> Self;
 
     /// Raw transmutation to integer.
-    #[stable(feature = "core_float_bits", since="1.25.0")]
     fn to_bits(self) -> Self::Bits;
+
     /// Raw transmutation from integer.
-    #[stable(feature = "core_float_bits", since="1.25.0")]
     fn from_bits(v: Self::Bits) -> Self;
 }
 

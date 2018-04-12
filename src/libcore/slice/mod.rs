@@ -68,12 +68,15 @@ struct Repr<T> {
 // Extension traits
 //
 
+public_in_stage0! {
+{
 /// Extension methods for slices.
 #[unstable(feature = "core_slice_ext",
            reason = "stable interface provided by `impl [T]` in later crates",
            issue = "32110")]
 #[allow(missing_docs)] // documented elsewhere
-pub trait SliceExt {
+}
+trait SliceExt {
     type Item;
 
     #[stable(feature = "core", since = "1.6.0")]
@@ -238,7 +241,7 @@ pub trait SliceExt {
     fn sort_unstable_by_key<B, F>(&mut self, f: F)
         where F: FnMut(&Self::Item) -> B,
               B: Ord;
-}
+}}
 
 // Use macros to be generic over const/mut
 macro_rules! slice_offset {
