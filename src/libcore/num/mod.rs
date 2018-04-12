@@ -1050,9 +1050,9 @@ $EndFeature, "
             concat!("Wrapping Euclidean division. Computes `self.div_euc(rhs)`,
 wrapping around at the boundary of the type.
 
-The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type (where
-`MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a positive value
-that is too large to represent in the type. In such a case, this function returns `MIN` itself.
+Wrapping will only occur in `MIN / -1` on a signed type (where `MIN` is the negative minimal value
+for the type). This is equivalent to `-MIN`, a positive value that is too large to represent in the
+type. In this case, this method returns `MIN` itself.
 
 # Panics
 
@@ -1106,9 +1106,8 @@ $EndFeature, "
             concat!("Wrapping Euclidean modulo. Computes `self.mod_euc(rhs)`, wrapping around at the
 boundary of the type.
 
-Such wrap-around never actually occurs mathematically; implementation artifacts make `x % y`
-invalid for `MIN / -1` on a signed type (where `MIN` is the negative minimal value). In such a case,
-this function returns `0`.
+Wrapping will only occur in `MIN % -1` on a signed type (where `MIN` is the negative minimal value
+for the type). In this case, this method returns 0.
 
 # Panics
 
@@ -1399,7 +1398,7 @@ $EndFeature, "
             concat!("Calculates the quotient of Euclidean division `self.div_euc(rhs)`.
 
 Returns a tuple of the divisor along with a boolean indicating whether an arithmetic overflow would
-occur. If an overflow would occur then self is returned.
+occur. If an overflow would occur then `self` is returned.
 
 # Panics
 
