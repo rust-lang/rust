@@ -375,9 +375,6 @@ declare_features! (
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109), None),
 
-    // Trait object syntax with `dyn` prefix
-    (active, dyn_trait, "1.22.0", Some(44662), Some(Edition::Edition2018)),
-
     // `crate` as visibility modifier, synonymous to `pub(crate)`
     (active, crate_visibility_modifier, "1.23.0", Some(45388), Some(Edition::Edition2018)),
 
@@ -592,6 +589,8 @@ declare_features! (
     (accepted, cfg_target_feature, "1.27.0", Some(29717), None),
     // Allows #[target_feature(...)]
     (accepted, target_feature, "1.27.0", None, None),
+    // Trait object syntax with `dyn` prefix
+    (accepted, dyn_trait, "1.22.0", Some(44662), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1656,10 +1655,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span,
                                    "The `!` type is experimental");
-            }
-            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::Dyn) => {
-                gate_feature_post!(&self, dyn_trait, ty.span,
-                                   "`dyn Trait` syntax is unstable");
             }
             _ => {}
         }
