@@ -1260,8 +1260,8 @@ pub enum StrStyle {
     Cooked,
     /// A raw string, like `r##"foo"##`
     ///
-    /// The uint is the number of `#` symbols used
-    Raw(usize)
+    /// The value is the number of `#` symbols used.
+    Raw(u16)
 }
 
 /// A literal

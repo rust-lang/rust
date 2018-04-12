@@ -72,9 +72,9 @@ pub enum Lit {
     Integer(ast::Name),
     Float(ast::Name),
     Str_(ast::Name),
-    StrRaw(ast::Name, usize), /* raw str delimited by n hash symbols */
+    StrRaw(ast::Name, u16), /* raw str delimited by n hash symbols */
     ByteStr(ast::Name),
-    ByteStrRaw(ast::Name, usize), /* raw byte str delimited by n hash symbols */
+    ByteStrRaw(ast::Name, u16), /* raw byte str delimited by n hash symbols */
 }
 
 impl Lit {

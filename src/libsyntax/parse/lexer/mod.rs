@@ -133,12 +133,12 @@ impl<'a> StringReader<'a> {
         Ok(ret_val)
     }
 
-    fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: usize) {
+    fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: u16) {
         let mut err = self.struct_span_fatal(pos, pos, "unterminated raw string");
         err.span_label(self.mk_sp(pos, pos), "unterminated raw string");
         if hash_count > 0 {
             err.note(&format!("this raw string should be terminated with `\"{}`",
-                              "#".repeat(hash_count)));
+                              "#".repeat(hash_count as usize)));
         }
         err.emit();
         FatalError.raise();
@@ -1439,7 +1439,7 @@ impl<'a> StringReader<'a> {
             'r' => {
                 let start_bpos = self.pos;
                 self.bump();
-                let mut hash_count = 0;
+                let mut hash_count: u16 = 0;
                 while self.ch_is('#') {
                     self.bump();
                     hash_count += 1;
