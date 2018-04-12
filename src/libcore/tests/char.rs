@@ -187,6 +187,14 @@ fn test_escape_debug() {
 }
 
 #[test]
+fn test_debug() {
+    assert_eq!(format!("{:?}", 'a'), "'a'");                // ASCII character
+    assert_eq!(format!("{:?}", 'é'), "'é'");                // printable character
+    assert_eq!(format!("{:?}", '\u{301}'), "'\\u{301}'");   // combining character
+    assert_eq!(format!("{:?}", '\u{e000}'), "'\\u{e000}'"); // private use 1
+}
+
+#[test]
 fn test_escape_default() {
     fn string(c: char) -> String {
         let iter: String = c.escape_default().collect();
