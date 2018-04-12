@@ -898,7 +898,7 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     let (param_env, ty) = query.into_parts();
 
-    let rec_limit = tcx.sess.recursion_limit.get();
+    let rec_limit = *tcx.sess.recursion_limit.get();
     let depth = tcx.layout_depth.get();
     if depth > rec_limit {
         tcx.sess.fatal(

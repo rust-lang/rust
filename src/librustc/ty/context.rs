@@ -50,7 +50,7 @@ use ty::maps;
 use ty::steal::Steal;
 use ty::BindingMode;
 use ty::CanonicalTy;
-use util::nodemap::{NodeMap, DefIdSet, ItemLocalMap};
+use util::nodemap::{DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -888,21 +888,11 @@ pub struct GlobalCtxt<'tcx> {
     /// Used to prevent layout from recursing too deeply.
     pub layout_depth: Cell<usize>,
 
-    /// Map from function to the `#[derive]` mode that it's defining. Only used
-    /// by `proc-macro` crates.
-    pub derive_macros: RefCell<NodeMap<Symbol>>,
-
     stability_interner: Lock<FxHashSet<&'tcx attr::Stability>>,
 
     pub interpret_interner: InterpretInterner<'tcx>,
 
     layout_interner: Lock<FxHashSet<&'tcx LayoutDetails>>,
-
-    /// A vector of every trait accessible in the whole crate
-    /// (i.e. including those from subcrates). This is used only for
-    /// error reporting, and so is lazily initialized and generally
-    /// shouldn't taint the common path (hence the RefCell).
-    pub all_traits: RefCell<Option<Vec<DefId>>>,
 
     /// A general purpose channel to throw data out the back towards LLVM worker
     /// threads.
@@ -1280,10 +1270,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data_layout,
             layout_interner: Lock::new(FxHashSet()),
             layout_depth: Cell::new(0),
-            derive_macros: RefCell::new(NodeMap()),
             stability_interner: Lock::new(FxHashSet()),
             interpret_interner: Default::default(),
-            all_traits: RefCell::new(None),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
         };

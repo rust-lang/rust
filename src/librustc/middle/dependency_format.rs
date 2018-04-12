@@ -94,13 +94,14 @@ pub enum Linkage {
 
 pub fn calculate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let sess = &tcx.sess;
-    let mut fmts = sess.dependency_formats.borrow_mut();
+    let mut fmts = FxHashMap();
     for &ty in sess.crate_types.borrow().iter() {
         let linkage = calculate_type(tcx, ty);
         verify_ok(tcx, &linkage);
         fmts.insert(ty, linkage);
     }
     sess.abort_if_errors();
+    sess.dependency_formats.set(fmts);
 }
 
 fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -222,7 +223,7 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // Things like allocators and panic runtimes may not have been activated
     // quite yet, so do so here.
-    activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
+    activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
     activate_injected_allocator(sess, &mut ret);
 
@@ -301,7 +302,7 @@ fn attempt_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<DependencyLis
     // Our allocator/panic runtime may not have been linked above if it wasn't
     // explicitly linked, which is the case for any injected dependency. Handle
     // that here and activate them.
-    activate_injected_dep(sess.injected_panic_runtime.get(), &mut ret,
+    activate_injected_dep(*sess.injected_panic_runtime.get(), &mut ret,
                           &|cnum| tcx.is_panic_runtime(cnum));
     activate_injected_allocator(sess, &mut ret);
 

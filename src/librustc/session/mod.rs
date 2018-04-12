@@ -22,11 +22,11 @@ use middle::dependency_format;
 use session::search_paths::PathKind;
 use session::config::{DebugInfoLevel, OutputType};
 use ty::tls;
-use util::nodemap::{FxHashMap, FxHashSet};
+use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::sync::{Lrc, Lock, LockCell, OneThread, Once};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -46,15 +46,16 @@ use rustc_back::target::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;
 
+use std;
 use std::cell::{self, Cell, RefCell};
 use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::{Once, ONCE_INIT};
 use std::time::Duration;
 use std::sync::mpsc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 mod code_stats;
 pub mod config;
@@ -69,10 +70,9 @@ pub struct Session {
     pub opts: config::Options,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
-    pub entry_fn: RefCell<Option<(NodeId, Span)>>,
-    pub entry_type: Cell<Option<config::EntryFnType>>,
-    pub plugin_registrar_fn: Cell<Option<ast::NodeId>>,
-    pub derive_registrar_fn: Cell<Option<ast::NodeId>>,
+    pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
+    pub plugin_registrar_fn: Once<Option<ast::NodeId>>,
+    pub derive_registrar_fn: Once<Option<ast::NodeId>>,
     pub default_sysroot: Option<PathBuf>,
     /// The name of the root source file of the crate, in the local file system.
     /// `None` means that there is no source file.
@@ -80,50 +80,54 @@ pub struct Session {
     /// The directory the compiler has been executed in plus a flag indicating
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
-    pub lint_store: RefCell<lint::LintStore>,
-    pub buffered_lints: RefCell<Option<lint::LintBuffer>>,
+
+    // FIXME: lint_store and buffered_lints are not thread-safe,
+    // but are only used in a single thread
+    pub lint_store: OneThread<RefCell<lint::LintStore>>,
+    pub buffered_lints: OneThread<RefCell<Option<lint::LintBuffer>>>,
+
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
-    pub plugin_llvm_passes: RefCell<Vec<String>>,
-    pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
-    pub crate_types: RefCell<Vec<config::CrateType>>,
-    pub dependency_formats: RefCell<dependency_format::Dependencies>,
+    pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
+    pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
+    pub crate_types: Once<Vec<config::CrateType>>,
+    pub dependency_formats: Once<dependency_format::Dependencies>,
     /// The crate_disambiguator is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
     /// trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<Option<CrateDisambiguator>>,
+    pub crate_disambiguator: Once<CrateDisambiguator>,
 
-    features: RefCell<Option<feature_gate::Features>>,
+    features: Once<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
-    pub recursion_limit: Cell<usize>,
+    pub recursion_limit: Once<usize>,
 
     /// The maximum length of types during monomorphization.
-    pub type_length_limit: Cell<usize>,
+    pub type_length_limit: Once<usize>,
 
     /// The maximum number of stackframes allowed in const eval
-    pub const_eval_stack_frame_limit: Cell<usize>,
+    pub const_eval_stack_frame_limit: usize,
     /// The maximum number miri steps per constant
-    pub const_eval_step_limit: Cell<usize>,
+    pub const_eval_step_limit: usize,
 
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
     /// injected.
-    pub injected_allocator: Cell<Option<CrateNum>>,
-    pub allocator_kind: Cell<Option<AllocatorKind>>,
-    pub injected_panic_runtime: Cell<Option<CrateNum>>,
+    pub injected_allocator: Once<Option<CrateNum>>,
+    pub allocator_kind: Once<Option<AllocatorKind>>,
+    pub injected_panic_runtime: Once<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
     /// macro name and definition span in the source crate.
-    pub imported_macro_spans: RefCell<HashMap<Span, (String, Span)>>,
+    pub imported_macro_spans: OneThread<RefCell<HashMap<Span, (String, Span)>>>,
 
-    incr_comp_session: RefCell<IncrCompSession>,
+    incr_comp_session: OneThread<RefCell<IncrCompSession>>,
 
     /// A cache of attributes ignored by StableHashingContext
     pub ignored_attr_names: FxHashSet<Symbol>,
@@ -135,53 +139,42 @@ pub struct Session {
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: RefCell<CodeStats>,
+    pub code_stats: Lock<CodeStats>,
 
-    next_node_id: Cell<ast::NodeId>,
+    next_node_id: OneThread<Cell<ast::NodeId>>,
 
     /// If -zfuel=crate=n is specified, Some(crate).
     optimization_fuel_crate: Option<String>,
     /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
-    optimization_fuel_limit: Cell<u64>,
+    optimization_fuel_limit: LockCell<u64>,
     /// We're rejecting all further optimizations.
-    out_of_fuel: Cell<bool>,
+    out_of_fuel: LockCell<bool>,
 
     // The next two are public because the driver needs to read them.
     /// If -zprint-fuel=crate, Some(crate).
     pub print_fuel_crate: Option<String>,
     /// Always set to zero and incremented so that we can print fuel expended by a crate.
-    pub print_fuel: Cell<u64>,
+    pub print_fuel: LockCell<u64>,
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
     pub jobserver_from_env: Option<Client>,
 
     /// Metadata about the allocators for the current crate being compiled
-    pub has_global_allocator: Cell<bool>,
+    pub has_global_allocator: Once<bool>,
 }
 
 pub struct PerfStats {
-    /// The accumulated time needed for computing the SVH of the crate
-    pub svh_time: Cell<Duration>,
-    /// The accumulated time spent on computing incr. comp. hashes
-    pub incr_comp_hashes_time: Cell<Duration>,
-    /// The number of incr. comp. hash computations performed
-    pub incr_comp_hashes_count: Cell<u64>,
-    /// The number of bytes hashed when computing ICH values
-    pub incr_comp_bytes_hashed: Cell<u64>,
     /// The accumulated time spent on computing symbol hashes
-    pub symbol_hash_time: Cell<Duration>,
+    pub symbol_hash_time: Lock<Duration>,
     /// The accumulated time spent decoding def path tables from metadata
-    pub decode_def_path_tables_time: Cell<Duration>,
+    pub decode_def_path_tables_time: Lock<Duration>,
     /// Total number of values canonicalized queries constructed.
-    pub queries_canonicalized: Cell<usize>,
-    /// Number of times we canonicalized a value and found that the
-    /// result had already been canonicalized.
-    pub canonicalized_values_allocated: Cell<usize>,
+    pub queries_canonicalized: AtomicUsize,
     /// Number of times this query is invoked.
-    pub normalize_ty_after_erasing_regions: Cell<usize>,
+    pub normalize_ty_after_erasing_regions: AtomicUsize,
     /// Number of times this query is invoked.
-    pub normalize_projection_ty: Cell<usize>,
+    pub normalize_projection_ty: AtomicUsize,
 }
 
 /// Enum to support dispatch of one-time diagnostics (in Session.diag_once)
@@ -209,10 +202,7 @@ impl From<&'static lint::Lint> for DiagnosticMessageId {
 
 impl Session {
     pub fn local_crate_disambiguator(&self) -> CrateDisambiguator {
-        match *self.crate_disambiguator.borrow() {
-            Some(value) => value,
-            None => bug!("accessing disambiguator before initialization"),
-        }
+        *self.crate_disambiguator.get()
     }
 
     pub fn struct_span_warn<'a, S: Into<MultiSpan>>(
@@ -539,18 +529,12 @@ impl Session {
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
     /// dependency tracking. Use tcx.features() instead.
     #[inline]
-    pub fn features_untracked(&self) -> cell::Ref<feature_gate::Features> {
-        let features = self.features.borrow();
-
-        if features.is_none() {
-            bug!("Access to Session::features before it is initialized");
-        }
-
-        cell::Ref::map(features, |r| r.as_ref().unwrap())
+    pub fn features_untracked(&self) -> &feature_gate::Features {
+        self.features.get()
     }
 
     pub fn init_features(&self, features: feature_gate::Features) {
-        *(self.features.borrow_mut()) = Some(features);
+        self.features.set(features);
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
@@ -835,51 +819,25 @@ impl Session {
 
     pub fn print_perf_stats(&self) {
         println!(
-            "Total time spent computing SVHs:               {}",
-            duration_to_secs_str(self.perf_stats.svh_time.get())
-        );
-        println!(
-            "Total time spent computing incr. comp. hashes: {}",
-            duration_to_secs_str(self.perf_stats.incr_comp_hashes_time.get())
-        );
-        println!(
-            "Total number of incr. comp. hashes computed:   {}",
-            self.perf_stats.incr_comp_hashes_count.get()
-        );
-        println!(
-            "Total number of bytes hashed for incr. comp.:  {}",
-            self.perf_stats.incr_comp_bytes_hashed.get()
-        );
-        if self.perf_stats.incr_comp_hashes_count.get() != 0 {
-            println!(
-                "Average bytes hashed per incr. comp. HIR node: {}",
-                self.perf_stats.incr_comp_bytes_hashed.get()
-                    / self.perf_stats.incr_comp_hashes_count.get()
-            );
-        } else {
-            println!("Average bytes hashed per incr. comp. HIR node: N/A");
-        }
-        println!(
             "Total time spent computing symbol hashes:      {}",
-            duration_to_secs_str(self.perf_stats.symbol_hash_time.get())
+            duration_to_secs_str(*self.perf_stats.symbol_hash_time.lock())
         );
         println!(
             "Total time spent decoding DefPath tables:      {}",
-            duration_to_secs_str(self.perf_stats.decode_def_path_tables_time.get())
+            duration_to_secs_str(*self.perf_stats.decode_def_path_tables_time.lock())
         );
         println!("Total queries canonicalized:                   {}",
-                 self.perf_stats.queries_canonicalized.get());
-        println!("Total canonical values interned:               {}",
-                 self.perf_stats.canonicalized_values_allocated.get());
+                 self.perf_stats.queries_canonicalized.load(Ordering::Relaxed));
         println!("normalize_ty_after_erasing_regions:            {}",
-                 self.perf_stats.normalize_ty_after_erasing_regions.get());
+                 self.perf_stats.normalize_ty_after_erasing_regions.load(Ordering::Relaxed));
         println!("normalize_projection_ty:                       {}",
-                 self.perf_stats.normalize_projection_ty.get());
+                 self.perf_stats.normalize_projection_ty.load(Ordering::Relaxed));
     }
 
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
+        assert!(self.query_threads() == 1);
         let mut ret = true;
         match self.optimization_fuel_crate {
             Some(ref c) if c == crate_name => {
@@ -1109,9 +1067,9 @@ pub fn build_session_(
 
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
     let optimization_fuel_limit =
-        Cell::new(sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0));
+        LockCell::new(sopts.debugging_opts.fuel.as_ref().map(|i| i.1).unwrap_or(0));
     let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
-    let print_fuel = Cell::new(0);
+    let print_fuel = LockCell::new(0);
 
     let working_dir = match env::current_dir() {
         Ok(dir) => dir,
@@ -1127,52 +1085,46 @@ pub fn build_session_(
         opts: sopts,
         parse_sess: p_s,
         // For a library crate, this is always none
-        entry_fn: RefCell::new(None),
-        entry_type: Cell::new(None),
-        plugin_registrar_fn: Cell::new(None),
-        derive_registrar_fn: Cell::new(None),
+        entry_fn: Once::new(),
+        plugin_registrar_fn: Once::new(),
+        derive_registrar_fn: Once::new(),
         default_sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: RefCell::new(lint::LintStore::new()),
-        buffered_lints: RefCell::new(Some(lint::LintBuffer::new())),
+        lint_store: OneThread::new(RefCell::new(lint::LintStore::new())),
+        buffered_lints: OneThread::new(RefCell::new(Some(lint::LintBuffer::new()))),
         one_time_diagnostics: RefCell::new(FxHashSet()),
-        plugin_llvm_passes: RefCell::new(Vec::new()),
-        plugin_attributes: RefCell::new(Vec::new()),
-        crate_types: RefCell::new(Vec::new()),
-        dependency_formats: RefCell::new(FxHashMap()),
-        crate_disambiguator: RefCell::new(None),
-        features: RefCell::new(None),
-        recursion_limit: Cell::new(64),
-        type_length_limit: Cell::new(1048576),
-        const_eval_stack_frame_limit: Cell::new(100),
-        const_eval_step_limit: Cell::new(1_000_000),
-        next_node_id: Cell::new(NodeId::new(1)),
-        injected_allocator: Cell::new(None),
-        allocator_kind: Cell::new(None),
-        injected_panic_runtime: Cell::new(None),
-        imported_macro_spans: RefCell::new(HashMap::new()),
-        incr_comp_session: RefCell::new(IncrCompSession::NotInitialized),
+        plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
+        plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
+        crate_types: Once::new(),
+        dependency_formats: Once::new(),
+        crate_disambiguator: Once::new(),
+        features: Once::new(),
+        recursion_limit: Once::new(),
+        type_length_limit: Once::new(),
+        const_eval_stack_frame_limit: 100,
+        const_eval_step_limit: 1_000_000,
+        next_node_id: OneThread::new(Cell::new(NodeId::new(1))),
+        injected_allocator: Once::new(),
+        allocator_kind: Once::new(),
+        injected_panic_runtime: Once::new(),
+        imported_macro_spans: OneThread::new(RefCell::new(HashMap::new())),
+        incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         ignored_attr_names: ich::compute_ignored_attr_names(),
         profile_channel: Lock::new(None),
         perf_stats: PerfStats {
-            svh_time: Cell::new(Duration::from_secs(0)),
-            incr_comp_hashes_time: Cell::new(Duration::from_secs(0)),
-            incr_comp_hashes_count: Cell::new(0),
-            incr_comp_bytes_hashed: Cell::new(0),
-            symbol_hash_time: Cell::new(Duration::from_secs(0)),
-            decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
-            queries_canonicalized: Cell::new(0),
-            canonicalized_values_allocated: Cell::new(0),
-            normalize_ty_after_erasing_regions: Cell::new(0),
-            normalize_projection_ty: Cell::new(0),
+            symbol_hash_time: Lock::new(Duration::from_secs(0)),
+            decode_def_path_tables_time: Lock::new(Duration::from_secs(0)),
+            queries_canonicalized: AtomicUsize::new(0),
+            normalize_ty_after_erasing_regions: AtomicUsize::new(0),
+            normalize_projection_ty: AtomicUsize::new(0),
         },
-        code_stats: RefCell::new(CodeStats::new()),
+        code_stats: Lock::new(CodeStats::new()),
         optimization_fuel_crate,
         optimization_fuel_limit,
         print_fuel_crate,
         print_fuel,
-        out_of_fuel: Cell::new(false),
+        out_of_fuel: LockCell::new(false),
         // Note that this is unsafe because it may misinterpret file descriptors
         // on Unix as jobserver file descriptors. We hopefully execute this near
         // the beginning of the process though to ensure we don't get false
@@ -1184,13 +1136,13 @@ pub fn build_session_(
         // per-process.
         jobserver_from_env: unsafe {
             static mut GLOBAL_JOBSERVER: *mut Option<Client> = 0 as *mut _;
-            static INIT: Once = ONCE_INIT;
+            static INIT: std::sync::Once = std::sync::ONCE_INIT;
             INIT.call_once(|| {
                 GLOBAL_JOBSERVER = Box::into_raw(Box::new(Client::from_env()));
             });
             (*GLOBAL_JOBSERVER).clone()
         },
-        has_global_allocator: Cell::new(false),
+        has_global_allocator: Once::new(),
     };
 
     sess

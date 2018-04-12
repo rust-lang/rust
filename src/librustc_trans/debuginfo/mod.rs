@@ -263,7 +263,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     let local_id = cx.tcx.hir.as_local_node_id(def_id);
     match *cx.sess().entry_fn.borrow() {
-        Some((id, _)) => {
+        Some((id, _, _)) => {
             if local_id == Some(id) {
                 flags = flags | DIFlags::FlagMainSubprogram;
             }

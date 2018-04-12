@@ -652,10 +652,11 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
     // these need to be set "early" so that expansion sees `quote` if enabled.
     sess.init_features(features);
 
-    *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
+    let crate_types = collect_crate_types(sess, &krate.attrs);
+    sess.crate_types.set(crate_types);
 
     let disambiguator = compute_crate_disambiguator(sess);
-    *sess.crate_disambiguator.borrow_mut() = Some(disambiguator);
+    sess.crate_disambiguator.set(disambiguator);
     rustc_incremental::prepare_session_directory(
         sess,
         &crate_name,
@@ -783,7 +784,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(sess: &'a Session,
         let features = sess.features_untracked();
         let cfg = syntax::ext::expand::ExpansionConfig {
             features: Some(&features),
-            recursion_limit: sess.recursion_limit.get(),
+            recursion_limit: *sess.recursion_limit.get(),
             trace_mac: sess.opts.debugging_opts.trace_macros,
             should_test: sess.opts.test,
             ..syntax::ext::expand::ExpansionConfig::default(crate_name.to_string())

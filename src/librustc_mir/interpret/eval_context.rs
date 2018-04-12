@@ -194,8 +194,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             param_env,
             memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
-            stack_limit: tcx.sess.const_eval_stack_frame_limit.get(),
-            steps_remaining: tcx.sess.const_eval_step_limit.get(),
+            stack_limit: tcx.sess.const_eval_stack_frame_limit,
+            steps_remaining: tcx.sess.const_eval_step_limit,
         }
     }
 

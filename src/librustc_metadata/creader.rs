@@ -614,6 +614,7 @@ impl<'a> CrateLoader<'a> {
         });
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
+            self.sess.injected_panic_runtime.set(None);
             return
         }
 
@@ -646,6 +647,7 @@ impl<'a> CrateLoader<'a> {
         // we just don't need one at all, then we're done here and there's
         // nothing else to do.
         if !needs_panic_runtime || runtime_found {
+            self.sess.injected_panic_runtime.set(None);
             return
         }
 
@@ -812,9 +814,7 @@ impl<'a> CrateLoader<'a> {
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
         let has_global_allocator = has_global_allocator(krate);
-        if has_global_allocator {
-            self.sess.has_global_allocator.set(true);
-        }
+        self.sess.has_global_allocator.set(has_global_allocator);
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
@@ -825,6 +825,8 @@ impl<'a> CrateLoader<'a> {
             needs_allocator = needs_allocator || data.needs_allocator(self.sess);
         });
         if !needs_allocator {
+            self.sess.injected_allocator.set(None);
+            self.sess.allocator_kind.set(None);
             return
         }
 
@@ -844,6 +846,8 @@ impl<'a> CrateLoader<'a> {
             }
         }
         if !need_lib_alloc && !need_exe_alloc {
+            self.sess.injected_allocator.set(None);
+            self.sess.allocator_kind.set(None);
             return
         }
 
@@ -881,6 +885,7 @@ impl<'a> CrateLoader<'a> {
         });
         if global_allocator.is_some() {
             self.sess.allocator_kind.set(Some(AllocatorKind::Global));
+            self.sess.injected_allocator.set(None);
             return
         }
 
@@ -924,6 +929,9 @@ impl<'a> CrateLoader<'a> {
             };
 
         let allocation_crate_data = exe_allocation_crate_data.or_else(|| {
+            // No allocator was injected
+            self.sess.injected_allocator.set(None);
+
             if attr::contains_name(&krate.attrs, "default_lib_allocator") {
                 // Prefer self as the allocator if there's a collision
                 return None;

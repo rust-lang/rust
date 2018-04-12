@@ -36,13 +36,13 @@ use rustc_data_structures::indexed_vec::Idx;
 use serialize::UseSpecializedDecodable;
 use std::fmt::Debug;
 use std::ops::Index;
+use std::sync::atomic::Ordering;
 use syntax::codemap::Span;
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::{self, CanonicalVar, Lift, Region, Slice, Ty, TyCtxt, TypeFlags};
 use ty::subst::{Kind, UnpackedKind};
 use ty::fold::{TypeFoldable, TypeFolder};
 use util::captures::Captures;
-use util::common::CellUsizeExt;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
@@ -473,7 +473,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         V: Canonicalize<'gcx, 'tcx>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.increment();
+        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
 
         Canonicalizer::canonicalize(
             value,

@@ -63,12 +63,13 @@ pub fn find_entry_point(session: &Session,
     });
     if !any_exe {
         // No need to find a main function
+        session.entry_fn.set(None);
         return
     }
 
     // If the user wants no main function at all, then stop here.
     if attr::contains_name(&hir_map.krate().attrs, "no_main") {
-        session.entry_type.set(Some(config::EntryNone));
+        session.entry_fn.set(None);
         return
     }
 
@@ -153,17 +154,15 @@ fn find_item(item: &Item, ctxt: &mut EntryContext, at_root: bool) {
 }
 
 fn configure_main(this: &mut EntryContext, crate_name: &str) {
-    if this.start_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.start_fn;
-        this.session.entry_type.set(Some(config::EntryStart));
-    } else if this.attr_main_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.attr_main_fn;
-        this.session.entry_type.set(Some(config::EntryMain));
-    } else if this.main_fn.is_some() {
-        *this.session.entry_fn.borrow_mut() = this.main_fn;
-        this.session.entry_type.set(Some(config::EntryMain));
+    if let Some((node_id, span)) = this.start_fn {
+        this.session.entry_fn.set(Some((node_id, span, config::EntryStart)));
+    } else if let Some((node_id, span)) = this.attr_main_fn {
+        this.session.entry_fn.set(Some((node_id, span, config::EntryMain)));
+    } else if let Some((node_id, span)) = this.main_fn {
+        this.session.entry_fn.set(Some((node_id, span, config::EntryMain)));
     } else {
         // No main function
+        this.session.entry_fn.set(None);
         let mut err = struct_err!(this.session, E0601,
             "`main` function not found in crate `{}`", crate_name);
         if !this.non_main_fns.is_empty() {

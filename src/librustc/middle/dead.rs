@@ -408,7 +408,7 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // Seed entry point
-    if let Some((id, _)) = *tcx.sess.entry_fn.borrow() {
+    if let Some((id, _, _)) = *tcx.sess.entry_fn.borrow() {
         worklist.push(id);
     }
 

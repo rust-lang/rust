@@ -518,7 +518,7 @@ pub fn set_link_section(cx: &CodegenCx,
 /// users main function.
 fn maybe_create_entry_wrapper(cx: &CodegenCx) {
     let (main_def_id, span) = match *cx.sess().entry_fn.borrow() {
-        Some((id, span)) => {
+        Some((id, span, _)) => {
             (cx.tcx.hir.local_def_id(id), span)
         }
         None => return,
@@ -534,11 +534,11 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
 
     let main_llfn = callee::get_fn(cx, instance);
 
-    let et = cx.sess().entry_type.get().unwrap();
+    let et = cx.sess().entry_fn.get().map(|e| e.2);
     match et {
-        config::EntryMain => create_entry_fn(cx, span, main_llfn, main_def_id, true),
-        config::EntryStart => create_entry_fn(cx, span, main_llfn, main_def_id, false),
-        config::EntryNone => {}    // Do nothing.
+        Some(config::EntryMain) => create_entry_fn(cx, span, main_llfn, main_def_id, true),
+        Some(config::EntryStart) => create_entry_fn(cx, span, main_llfn, main_def_id, false),
+        None => {}    // Do nothing.
     }
 
     fn create_entry_fn<'cx>(cx: &'cx CodegenCx,
@@ -738,7 +738,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: ModuleSource::Translated(ModuleLlvm {
             llcx: metadata_llcx,
             llmod: metadata_llmod,
-            tm: create_target_machine(tcx.sess),
+            tm: create_target_machine(tcx.sess, false),
         }),
         kind: ModuleKind::Metadata,
     };
@@ -796,7 +796,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         codegen_units.len());
 
     // Translate an allocator shim, if any
-    let allocator_module = if let Some(kind) = tcx.sess.allocator_kind.get() {
+    let allocator_module = if let Some(kind) = *tcx.sess.allocator_kind.get() {
         unsafe {
             let llmod_id = "allocator";
             let (llcx, llmod) =
@@ -804,7 +804,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let modules = ModuleLlvm {
                 llmod,
                 llcx,
-                tm: create_target_machine(tcx.sess),
+                tm: create_target_machine(tcx.sess, false),
             };
             time(tcx.sess, "write allocator module", || {
                 allocator::trans(tcx, &modules, kind)
@@ -1261,7 +1261,7 @@ fn compile_codegen_unit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let llvm_module = ModuleLlvm {
                 llcx: cx.llcx,
                 llmod: cx.llmod,
-                tm: create_target_machine(cx.sess()),
+                tm: create_target_machine(cx.sess(), false),
             };
 
             ModuleTranslation {

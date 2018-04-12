@@ -386,6 +386,11 @@ define_maps! { <'tcx>
     [] fn stability_index: stability_index_node(CrateNum) -> Lrc<stability::Index<'tcx>>,
     [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
+    /// A vector of every trait accessible in the whole crate
+    /// (i.e. including those from subcrates). This is used only for
+    /// error reporting.
+    [] fn all_traits: all_traits_node(CrateNum) -> Lrc<Vec<DefId>>,
+
     [] fn exported_symbols: ExportedSymbols(CrateNum)
         -> Arc<Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)>>,
     [] fn collect_and_partition_translation_items:
@@ -573,6 +578,10 @@ fn stability_index_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 
 fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::AllCrateNums
+}
+
+fn all_traits_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::AllTraits
 }
 
 fn collect_and_partition_translation_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

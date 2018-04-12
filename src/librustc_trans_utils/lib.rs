@@ -51,7 +51,7 @@ pub mod symbol_names_test;
 /// that actually test that compilation succeeds without
 /// reporting an error.
 pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
-    if let Some((id, span)) = *tcx.sess.entry_fn.borrow() {
+    if let Some((id, span, _)) = *tcx.sess.entry_fn.borrow() {
         let main_def_id = tcx.hir.local_def_id(id);
 
         if tcx.has_attr(main_def_id, "rustc_error") {

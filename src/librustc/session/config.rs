@@ -614,13 +614,11 @@ impl Options {
 
 // The type of entry function, so
 // users can have their own entry
-// functions that don't start a
-// scheduler
+// functions
 #[derive(Copy, Clone, PartialEq)]
 pub enum EntryFnType {
     EntryMain,
     EntryStart,
-    EntryNone,
 }
 
 #[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
@@ -1858,6 +1856,13 @@ pub fn build_session_options_and_crate_config(
         early_error(
             error_format,
             "Value for query threads must be a positive nonzero integer",
+        );
+    }
+
+    if debugging_opts.query_threads.unwrap_or(1) > 1 && debugging_opts.fuel.is_some() {
+        early_error(
+            error_format,
+            "Optimization fuel is incompatible with multiple query threads",
         );
     }
 
