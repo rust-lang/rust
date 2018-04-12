@@ -374,8 +374,8 @@ impl<'a> LoweringContext<'a> {
 
                 if item_lowered {
                     let item_lifetimes = match self.lctx.items.get(&item.id).unwrap().node {
-                        hir::Item_::ItemImpl(_, _, _, ref generics, ..)
-                        | hir::Item_::ItemTrait(_, _, ref generics, ..) => {
+                        hir::Item_::ItemImpl(_, _, _, ref generics, .. ) |
+                        hir::Item_::ItemTrait(_, _, ref generics, .. ) => {
                             generics.lifetimes().cloned().collect::<Vec<_>>()
                         }
                         _ => Vec::new(),

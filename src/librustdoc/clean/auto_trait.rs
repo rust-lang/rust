@@ -224,33 +224,33 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     }
 
     fn generics_to_path_params(&self, generics: ty::Generics) -> hir::PathParameters {
-        let lifetimes = HirVec::from_vec(
-            generics.lifetimes()
-                    .map(|p| {
-                        let name = if p.name == "" {
-                            hir::LifetimeName::Static
-                        } else {
-                            hir::LifetimeName::Name(p.name.as_symbol())
-                        };
+        let mut lifetimes = vec![];
+        let mut types = vec![];
 
-                        hir::Lifetime {
-                            id: ast::DUMMY_NODE_ID,
-                            span: DUMMY_SP,
-                            name,
-                        }
-                    })
-                    .collect(),
-        );
-        let types = HirVec::from_vec(
-            generics.types()
-                    .into_iter()
-                    .map(|p| P(self.ty_param_to_ty(p.clone())))
-                    .collect(),
-        );
+        for param in generics.params.iter() {
+            match param {
+                ty::GenericParamDef::Lifetime(lt) => {
+                    let name = if lt.name == "" {
+                        hir::LifetimeName::Static
+                    } else {
+                        hir::LifetimeName::Name(lt.name.as_symbol())
+                    };
+
+                    lifetimes.push(hir::Lifetime {
+                        id: ast::DUMMY_NODE_ID,
+                        span: DUMMY_SP,
+                        name,
+                    });
+                }
+                ty::GenericParamDef::Type(ty) => {
+                    types.push(P(self.ty_param_to_ty(ty.clone())));
+                }
+            }
+        }
 
         hir::PathParameters {
-            lifetimes: lifetimes,
-            types: types,
+            lifetimes: HirVec::from_vec(lifetimes),
+            types: HirVec::from_vec(types),
             bindings: HirVec::new(),
             parenthesized: false,
         }

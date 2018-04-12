@@ -667,8 +667,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 for lt_def in generics.lifetimes() {
                     let (lt_name, region) = Region::early(&self.tcx.hir, &mut index, &lt_def);
                     if let hir::LifetimeName::Underscore = lt_name {
-                        // Pick the elided lifetime "definition" if one exists and use it to make an
-                        // elision scope.
+                        // Pick the elided lifetime "definition" if one exists and use it to make
+                        // an elision scope.
                         elision = Some(region);
                     } else {
                         lifetimes.insert(lt_name, region);

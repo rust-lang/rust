@@ -11,6 +11,8 @@
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
+use ty::GenericParamDef;
+
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt};
@@ -187,7 +189,7 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 fcx.register_wf_obligation(ty, span, code.clone());
             }
             ty::AssociatedKind::Method => {
-                reject_shadowing_type_parameters(fcx.tcx, item.def_id);
+                reject_shadowing_parameters(fcx.tcx, item.def_id);
                 let sig = fcx.tcx.fn_sig(item.def_id);
                 let sig = fcx.normalize_associated_types_in(span, &sig);
                 check_fn_or_method(tcx, fcx, span, sig,
@@ -638,23 +640,37 @@ fn report_bivariance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     err.emit();
 }
 
-fn reject_shadowing_type_parameters(tcx: TyCtxt, def_id: DefId) {
+fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     let generics = tcx.generics_of(def_id);
     let parent = tcx.generics_of(generics.parent.unwrap());
-    let impl_params: FxHashMap<_, _> = parent.types()
-                                             .map(|tp| (tp.name, tp.def_id))
-                                             .collect();
+    let impl_params: FxHashMap<_, _> =
+        parent.params.iter()
+                     .flat_map(|param| {
+                         match param {
+                             GenericParamDef::Lifetime(_) => None,
+                             GenericParamDef::Type(ty) => Some((ty.name, ty.def_id)),
+                         }
+                     })
+                     .collect();
 
-    for method_param in generics.types() {
-        if impl_params.contains_key(&method_param.name) {
+    for method_param in generics.params.iter() {
+        // Shadowing is currently permitted with lifetimes.
+        if let GenericParamDef::Lifetime(_) = method_param {
+            continue;
+        }
+        let (name, def_id) = match method_param {
+            GenericParamDef::Lifetime(_) => continue,
+            GenericParamDef::Type(ty) => (ty.name, ty.def_id),
+        };
+        if impl_params.contains_key(&name) {
             // Tighten up the span to focus on only the shadowing type
-            let type_span = tcx.def_span(method_param.def_id);
+            let type_span = tcx.def_span(def_id);
 
             // The expectation here is that the original trait declaration is
             // local so it should be okay to just unwrap everything.
-            let trait_def_id = impl_params[&method_param.name];
+            let trait_def_id = impl_params[&name];
             let trait_decl_span = tcx.def_span(trait_def_id);
-            error_194(tcx, type_span, trait_decl_span, &method_param.name.as_str()[..]);
+            error_194(tcx, type_span, trait_decl_span, &name[..]);
         }
     }
 }

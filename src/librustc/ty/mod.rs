@@ -757,6 +757,18 @@ impl ty::EarlyBoundRegion {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+pub enum Kind {
+    Lifetime,
+    Type,
+}
+
+impl Kind {
+    pub fn iter<'a>() -> impl Iterator<Item = &'a Kind> {
+        [Kind::Lifetime, Kind::Type].into_iter()
+    }
+}
+
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum GenericParamDef {
     Lifetime(RegionParamDef),
@@ -797,6 +809,23 @@ pub struct Generics {
 impl<'a, 'gcx, 'tcx> Generics {
     pub fn count(&self) -> usize {
         self.parent_count + self.params.len()
+    }
+
+    pub fn param_counts(&self) -> FxHashMap<Kind, usize> {
+        let mut param_counts: FxHashMap<_, _> = FxHashMap();
+        Kind::iter().for_each(|kind| {
+            param_counts.insert(*kind, 0);
+        });
+
+        for param in self.params.iter() {
+            let key = match param {
+                GenericParamDef::Type(_) => Kind::Type,
+                GenericParamDef::Lifetime(_) => Kind::Lifetime,
+            };
+            *param_counts.get_mut(&key).unwrap() += 1;
+        }
+
+        param_counts
     }
 
     pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &RegionParamDef> {

@@ -19,8 +19,8 @@ use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, Ty, TyCtxt, TypeFoldable};
-use util::nodemap::FxHashSet;
+use ty::{self, Ty, TyCtxt, TypeFoldable, Kind};
+use util::nodemap::{FxHashSet, FxHashMap};
 
 use std::cell::Cell;
 use std::fmt;
@@ -256,8 +256,10 @@ impl PrintContext {
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
-        let mut num_regions = 0;
-        let mut num_types = 0;
+        let mut param_counts = FxHashMap();
+        Kind::iter().for_each(|kind| {
+            param_counts.insert(*kind, 0);
+        });
         let mut is_value_path = false;
         let fn_trait_kind = ty::tls::with(|tcx| {
             // Unfortunately, some kinds of items (e.g., closures) don't have
@@ -303,6 +305,7 @@ impl PrintContext {
                 }
             }
             let mut generics = tcx.generics_of(item_def_id);
+            let child_param_counts = generics.param_counts();
             let mut path_def_id = did;
             has_self = generics.has_self;
 
@@ -310,10 +313,9 @@ impl PrintContext {
             if let Some(def_id) = generics.parent {
                 // Methods.
                 assert!(is_value_path);
-                child_types = generics.types().count();
+                child_types = child_param_counts[&Kind::Type];
                 generics = tcx.generics_of(def_id);
-                num_regions = generics.lifetimes().count();
-                num_types = generics.types().count();
+                param_counts = generics.param_counts();
 
                 if has_self {
                     print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
@@ -328,8 +330,7 @@ impl PrintContext {
                     assert_eq!(has_self, false);
                 } else {
                     // Types and traits.
-                    num_regions = generics.lifetimes().count();
-                    num_types = generics.types().count();
+                    param_counts = child_param_counts;
                 }
             }
 
@@ -401,10 +402,11 @@ impl PrintContext {
             Ok(())
         };
 
-        print_regions(f, "<", 0, num_regions)?;
+        print_regions(f, "<", 0, param_counts[&Kind::Lifetime])?;
 
-        let tps = substs.types().take(num_types - num_supplied_defaults)
-                                .skip(has_self as usize);
+        let tps = substs.types()
+                        .take(param_counts[&Kind::Type] - num_supplied_defaults)
+                        .skip(has_self as usize);
 
         for ty in tps {
             start_or_continue(f, "<", ", ")?;
@@ -435,10 +437,10 @@ impl PrintContext {
                 write!(f, "::{}", item_name)?;
             }
 
-            print_regions(f, "::<", num_regions, usize::MAX)?;
+            print_regions(f, "::<", param_counts[&Kind::Lifetime], usize::MAX)?;
 
             // FIXME: consider being smart with defaults here too
-            for ty in substs.types().skip(num_types) {
+            for ty in substs.types().skip(param_counts[&Kind::Type]) {
                 start_or_continue(f, "::<", ", ")?;
                 ty.print_display(f, self)?;
             }

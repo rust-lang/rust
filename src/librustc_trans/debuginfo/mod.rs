@@ -26,6 +26,7 @@ use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArr
 use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
+use rustc::ty::{Kind, GenericParamDef};
 
 use abi::Abi;
 use common::CodegenCx;
@@ -390,7 +391,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
-            let names = get_type_parameter_names(cx, generics);
+            let names = get_parameter_names(cx, generics);
+            let names = names.iter().flat_map(|(kind, param)| {
+                if kind == &Kind::Type {
+                    Some(param)
+                } else {
+                    None
+                }
+            });
             substs.types().zip(names).map(|(ty, name)| {
                 let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
@@ -413,11 +421,18 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names(cx: &CodegenCx, generics: &ty::Generics) -> Vec<InternedString> {
+    fn get_parameter_names(cx: &CodegenCx,
+                           generics: &ty::Generics)
+                           -> Vec<(Kind, InternedString)> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
-            get_type_parameter_names(cx, cx.tcx.generics_of(def_id))
+            get_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
-        names.extend(generics.types().map(|param| param.name));
+        names.extend(generics.params.iter().map(|param| {
+            match param {
+                GenericParamDef::Lifetime(lt) => (Kind::Lifetime, lt.name.as_str()),
+                GenericParamDef::Type(ty) => (Kind::Type, ty.name),
+            }
+        }));
         names
     }
 

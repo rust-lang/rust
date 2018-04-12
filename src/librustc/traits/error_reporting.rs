@@ -382,8 +382,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let name = param.name.to_string();
             let ty = trait_ref.substs.type_for_def(param);
             let ty_str = ty.to_string();
-            flags.push((name.clone(),
-                        Some(ty_str.clone())));
+            flags.push((name.clone(), Some(ty_str.clone())));
         }
 
         if let Some(true) = self_ty.ty_to_def_id().map(|def_id| def_id.is_local()) {
