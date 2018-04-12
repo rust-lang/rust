@@ -181,7 +181,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id))
     }
 
-    fn re_infer(&self, _span: Span, _def: Option<&ty::RegionParameterDef>)
+    fn re_infer(&self, _span: Span, _def: Option<&ty::RegionParamDef>)
                 -> Option<ty::Region<'tcx>> {
         None
     }
@@ -840,7 +840,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     // the node id for the Self type parameter.
                     let param_id = item.id;
 
-                    opt_self = Some(ty::TypeParameterDef {
+                    opt_self = Some(ty::TypeParamDef {
                         index: 0,
                         name: keywords::SelfType.name().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param_id),
@@ -886,7 +886,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     let regions = early_lifetimes.enumerate().map(|(i, l)| {
-        ty::RegionParameterDef {
+        ty::RegionParamDef {
             name: l.lifetime.name.name().as_interned_str(),
             index: own_start + i as u32,
             def_id: tcx.hir.local_def_id(l.lifetime.id),
@@ -915,7 +915,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
 
-        ty::TypeParameterDef {
+        ty::TypeParamDef {
             index: type_start + i as u32,
             name: p.name.as_interned_str(),
             def_id: tcx.hir.local_def_id(p.id),
@@ -940,7 +940,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         for (i, &arg) in dummy_args.iter().enumerate() {
-            types.push(ty::TypeParameterDef {
+            types.push(ty::TypeParamDef {
                 index: type_start + i as u32,
                 name: Symbol::intern(arg).as_interned_str(),
                 def_id,

@@ -738,7 +738,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
             ref parent_count,
             ref params,
 
-            // Reverse map to each `TypeParameterDef`'s `index` field, from
+            // Reverse map to each `TypeParamDef`'s `index` field, from
             // `def_id.index` (`def_id.krate` is the same as the item's).
             type_param_to_index: _, // Don't hash this
             has_self,
@@ -759,11 +759,11 @@ impl_stable_hash_for!(enum ty::GenericParamDef {
 });
 
 impl<'a> HashStable<StableHashingContext<'a>>
-for ty::RegionParameterDef {
+for ty::RegionParamDef {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        let ty::RegionParameterDef {
+        let ty::RegionParamDef {
             name,
             def_id,
             index,
@@ -777,7 +777,7 @@ for ty::RegionParameterDef {
     }
 }
 
-impl_stable_hash_for!(struct ty::TypeParameterDef {
+impl_stable_hash_for!(struct ty::TypeParamDef {
     name,
     def_id,
     index,

@@ -710,7 +710,7 @@ pub enum IntVarValue {
 pub struct FloatVarValue(pub ast::FloatTy);
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub struct TypeParameterDef {
+pub struct TypeParamDef {
     pub name: InternedString,
     pub def_id: DefId,
     pub index: u32,
@@ -726,7 +726,7 @@ pub struct TypeParameterDef {
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub struct RegionParameterDef {
+pub struct RegionParamDef {
     pub name: InternedString,
     pub def_id: DefId,
     pub index: u32,
@@ -737,7 +737,7 @@ pub struct RegionParameterDef {
     pub pure_wrt_drop: bool,
 }
 
-impl RegionParameterDef {
+impl RegionParamDef {
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         ty::EarlyBoundRegion {
             def_id: self.def_id,
@@ -759,8 +759,8 @@ impl ty::EarlyBoundRegion {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum GenericParamDef {
-    Lifetime(RegionParameterDef),
-    Type(TypeParameterDef),
+    Lifetime(RegionParamDef),
+    Type(TypeParamDef),
 }
 
 impl GenericParamDef {
@@ -787,7 +787,7 @@ pub struct Generics {
     pub parent_count: usize,
     pub params: Vec<GenericParamDef>,
 
-    /// Reverse map to each `TypeParameterDef`'s `index` field
+    /// Reverse map to each `TypeParamDef`'s `index` field
     pub type_param_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
@@ -799,7 +799,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         self.parent_count + self.params.len()
     }
 
-    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &RegionParameterDef> {
+    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &RegionParamDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParamDef::Lifetime(lt) = p {
                 Some(lt)
@@ -809,7 +809,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         })
     }
 
-    pub fn types(&self) -> impl DoubleEndedIterator<Item = &TypeParameterDef> {
+    pub fn types(&self) -> impl DoubleEndedIterator<Item = &TypeParamDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParamDef::Type(ty) = p {
                 Some(ty)
@@ -836,7 +836,7 @@ impl<'a, 'gcx, 'tcx> Generics {
     pub fn region_param(&'tcx self,
                         param: &EarlyBoundRegion,
                         tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                        -> &'tcx RegionParameterDef
+                        -> &'tcx RegionParamDef
     {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             // We're currently assuming that lifetimes precede other generic parameters.
@@ -850,11 +850,11 @@ impl<'a, 'gcx, 'tcx> Generics {
         }
     }
 
-    /// Returns the `TypeParameterDef` associated with this `ParamTy`.
+    /// Returns the `TypeParamDef` associated with this `ParamTy`.
     pub fn type_param(&'tcx self,
                       param: &ParamTy,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                      -> &TypeParameterDef {
+                      -> &TypeParamDef {
         if let Some(idx) = param.idx.checked_sub(self.parent_count as u32) {
             // non-Self type parameters are always offset by exactly
             // `self.regions.len()`. In the absence of a Self, this is obvious,

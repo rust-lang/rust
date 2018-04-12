@@ -43,7 +43,7 @@ pub trait AstConv<'gcx, 'tcx> {
                                  -> ty::GenericPredicates<'tcx>;
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
-    fn re_infer(&self, span: Span, _def: Option<&ty::RegionParameterDef>)
+    fn re_infer(&self, span: Span, _def: Option<&ty::RegionParamDef>)
                 -> Option<ty::Region<'tcx>>;
 
     /// What type should we use when a type is omitted?
@@ -51,7 +51,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
-                        _def: &ty::TypeParameterDef,
+                        _def: &ty::TypeParamDef,
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
@@ -95,7 +95,7 @@ const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::Fresh
 impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
-        def: Option<&ty::RegionParameterDef>)
+        def: Option<&ty::RegionParamDef>)
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
@@ -228,7 +228,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
-        let default_needs_object_self = |p: &ty::TypeParameterDef| {
+        let default_needs_object_self = |p: &ty::TypeParamDef| {
             if is_object && p.has_default {
                 if tcx.at(span).type_of(p.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
@@ -1301,7 +1301,7 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 }
 
 fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
-                             ty_param_defs: &[&ty::TypeParameterDef]) {
+                             ty_param_defs: &[&ty::TypeParamDef]) {
     let accepted = ty_param_defs.len();
     let required = ty_param_defs.iter().take_while(|x| !x.has_default).count();
     if supplied < required {

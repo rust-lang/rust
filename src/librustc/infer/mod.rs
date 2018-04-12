@@ -909,7 +909,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// region parameter definition.
     pub fn region_var_for_def(&self,
                               span: Span,
-                              def: &ty::RegionParameterDef)
+                              def: &ty::RegionParamDef)
                               -> ty::Region<'tcx> {
         self.next_region_var(EarlyBoundRegion(span, def.name))
     }
@@ -924,7 +924,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// as the substitutions for the default, `(T, U)`.
     pub fn type_var_for_def(&self,
                             span: Span,
-                            def: &ty::TypeParameterDef)
+                            def: &ty::TypeParamDef)
                             -> Ty<'tcx> {
         let ty_var_id = self.type_variables
                             .borrow_mut()

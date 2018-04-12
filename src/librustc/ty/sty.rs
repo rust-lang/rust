@@ -928,7 +928,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         ParamTy::new(0, keywords::SelfType.name().as_interned_str())
     }
 
-    pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
+    pub fn for_def(def: &ty::TypeParamDef) -> ParamTy {
         ParamTy::new(def.index, def.name)
     }
 

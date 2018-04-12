@@ -256,7 +256,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         }
     }
 
-    fn ty_param_to_ty(&self, param: ty::TypeParameterDef) -> hir::Ty {
+    fn ty_param_to_ty(&self, param: ty::TypeParamDef) -> hir::Ty {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,

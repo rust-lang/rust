@@ -588,18 +588,18 @@ define_print! {
     }
 }
 
-impl fmt::Debug for ty::TypeParameterDef {
+impl fmt::Debug for ty::TypeParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParameterDef({}, {:?}, {})",
+        write!(f, "TypeParamDef({}, {:?}, {})",
                self.name,
                self.def_id,
                self.index)
     }
 }
 
-impl fmt::Debug for ty::RegionParameterDef {
+impl fmt::Debug for ty::RegionParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParameterDef({}, {:?}, {})",
+        write!(f, "RegionParamDef({}, {:?}, {})",
                self.name,
                self.def_id,
                self.index)

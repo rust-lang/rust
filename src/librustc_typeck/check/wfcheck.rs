@@ -368,7 +368,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     let mut substituted_predicates = Vec::new();
 
     let generics = tcx.generics_of(def_id);
-    let is_our_default = |def: &ty::TypeParameterDef|
+    let is_our_default = |def: &ty::TypeParamDef|
                             def.has_default && def.index >= generics.parent_count as u32;
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
