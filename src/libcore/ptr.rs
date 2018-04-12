@@ -677,6 +677,7 @@ impl<T: ?Sized> *const T {
     ///
     /// ```
     /// #![feature(offset_to)]
+    /// #![allow(deprecated)]
     ///
     /// fn main() {
     ///     let a = [0; 5];
@@ -689,14 +690,15 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "offset_to", issue = "41079")]
+    #[rustc_deprecated(since = "1.27.0", reason = "Replaced by `wrapping_offset_from`, with the \
+        opposite argument order.  If you're writing unsafe code, consider `offset_from`.")]
     #[inline]
     pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
         let size = mem::size_of::<T>();
         if size == 0 {
             None
         } else {
-            let diff = (other as isize).wrapping_sub(self as isize);
-            Some(diff / size as isize)
+            Some(other.wrapping_offset_from(self))
         }
     }
 
@@ -1442,6 +1444,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(offset_to)]
+    /// #![allow(deprecated)]
     ///
     /// fn main() {
     ///     let mut a = [0; 5];
@@ -1454,14 +1457,15 @@ impl<T: ?Sized> *mut T {
     /// }
     /// ```
     #[unstable(feature = "offset_to", issue = "41079")]
+    #[rustc_deprecated(since = "1.27.0", reason = "Replaced by `wrapping_offset_from`, with the \
+        opposite argument order.  If you're writing unsafe code, consider `offset_from`.")]
     #[inline]
     pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
         let size = mem::size_of::<T>();
         if size == 0 {
             None
         } else {
-            let diff = (other as isize).wrapping_sub(self as isize);
-            Some(diff / size as isize)
+            Some(other.wrapping_offset_from(self))
         }
     }
 

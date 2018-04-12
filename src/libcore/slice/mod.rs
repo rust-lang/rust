@@ -1185,7 +1185,7 @@ macro_rules! iterator {
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let exact = ptrdistance(self.ptr, self.end);
+                let exact = unsafe { ptrdistance(self.ptr, self.end) };
                 (exact, Some(exact))
             }
 
@@ -1593,10 +1593,11 @@ unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
 // Return the number of elements of `T` from `start` to `end`.
 // Return the arithmetic difference if `T` is zero size.
 #[inline(always)]
-fn ptrdistance<T>(start: *const T, end: *const T) -> usize {
-    match start.offset_to(end) {
-        Some(x) => x as usize,
-        None => (end as usize).wrapping_sub(start as usize),
+unsafe fn ptrdistance<T>(start: *const T, end: *const T) -> usize {
+    if mem::size_of::<T>() == 0 {
+        (end as usize).wrapping_sub(start as usize)
+    } else {
+        end.offset_from(start) as usize
     }
 }
 
