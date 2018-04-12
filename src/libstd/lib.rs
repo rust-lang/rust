@@ -457,6 +457,8 @@ pub use alloc_crate::vec;
 pub use core::char;
 #[stable(feature = "i128", since = "1.26.0")]
 pub use core::u128;
+#[stable(feature = "core_hint", since = "1.27.0")]
+pub use core::hint;
 
 pub mod f32;
 pub mod f64;

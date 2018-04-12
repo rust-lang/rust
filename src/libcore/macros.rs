@@ -420,13 +420,13 @@ macro_rules! writeln {
 /// * Iterators that dynamically terminate.
 ///
 /// If the determination that the code is unreachable proves incorrect, the
-/// program immediately terminates with a [`panic!`].  The function [`unreachable`],
-/// which belongs to the [`std::intrinsics`] module, informs the compilier to
+/// program immediately terminates with a [`panic!`].  The function [`unreachable_unchecked`],
+/// which belongs to the [`std::hint`] module, informs the compilier to
 /// optimize the code out of the release version entirely.
 ///
 /// [`panic!`]:  ../std/macro.panic.html
-/// [`unreachable`]: ../std/intrinsics/fn.unreachable.html
-/// [`std::intrinsics`]: ../std/intrinsics/index.html
+/// [`unreachable_unchecked`]: ../std/hint/fn.unreachable_unchecked.html
+/// [`std::hint`]: ../std/hint/index.html
 ///
 /// # Panics
 ///

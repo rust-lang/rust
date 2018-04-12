@@ -638,6 +638,9 @@ extern "rust-intrinsic" {
     /// NB: This is very different from the `unreachable!()` macro: Unlike the
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::hint::unreachable_unchecked`](../../std/hint/fn.unreachable_unchecked.html).
     pub fn unreachable() -> !;
 
     /// Informs the optimizer that a condition is always true.

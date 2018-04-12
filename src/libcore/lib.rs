@@ -149,6 +149,7 @@ pub mod intrinsics;
 pub mod mem;
 pub mod nonzero;
 pub mod ptr;
+pub mod hint;
 
 /* Core language traits */
 
