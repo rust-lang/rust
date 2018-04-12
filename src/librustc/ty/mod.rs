@@ -819,13 +819,15 @@ impl<'a, 'gcx, 'tcx> Generics {
         })
     }
 
-    pub fn has_type_parameters(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        if self.types().count() != 0 {
+    pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        if self.params.iter().any(|p| {
+            if let GenericParam::Type(_) = p { true } else { false }
+        }) {
             return true;
         }
         if let Some(parent_def_id) = self.parent {
             let parent = tcx.generics_of(parent_def_id);
-            parent.has_type_parameters(tcx)
+            parent.requires_monomorphization(tcx)
         } else {
             false
         }

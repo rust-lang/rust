@@ -1076,7 +1076,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
 
 fn item_has_type_parameters<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
     let generics = tcx.generics_of(def_id);
-    generics.has_type_parameters(tcx)
+    generics.requires_monomorphization(tcx)
 }
 
 fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

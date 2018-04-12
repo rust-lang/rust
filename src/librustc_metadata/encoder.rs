@@ -929,7 +929,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 hir::ImplItemKind::Const(..) => true,
                 hir::ImplItemKind::Method(ref sig, _) => {
                     let generics = self.tcx.generics_of(def_id);
-                    let needs_inline = (generics.has_type_parameters(self.tcx) ||
+                    let needs_inline = (generics.requires_monomorphization(self.tcx) ||
                                         tcx.trans_fn_attrs(def_id).requests_inline()) &&
                                         !self.metadata_output_only();
                     let is_const_fn = sig.constness == hir::Constness::Const;
