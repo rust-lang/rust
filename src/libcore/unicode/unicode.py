@@ -25,6 +25,9 @@
 
 import fileinput, re, os, sys, operator, math
 
+# The directory in which this file resides.
+fdir = os.path.dirname(os.path.realpath(__file__)) + "/"
+
 preamble = '''// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -61,11 +64,12 @@ expanded_categories = {
 surrogate_codepoints = (0xd800, 0xdfff)
 
 def fetch(f):
-    if not os.path.exists(os.path.basename(f)):
+    path = fdir + os.path.basename(f)
+    if not os.path.exists(path):
         os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
                   % f)
 
-    if not os.path.exists(os.path.basename(f)):
+    if not os.path.exists(path):
         sys.stderr.write("cannot load %s" % f)
         exit(1)
 
@@ -84,7 +88,7 @@ def load_unicode_data(f):
 
     udict = {}
     range_start = -1
-    for line in fileinput.input(f):
+    for line in fileinput.input(fdir + f):
         data = line.split(';')
         if len(data) != 15:
             continue
@@ -156,7 +160,7 @@ def load_unicode_data(f):
 
 def load_special_casing(f, to_upper, to_lower, to_title):
     fetch(f)
-    for line in fileinput.input(f):
+    for line in fileinput.input(fdir + f):
         data = line.split('#')[0].split(';')
         if len(data) == 5:
             code, lower, title, upper, _comment = data
@@ -243,7 +247,7 @@ def load_properties(f, interestingprops):
     re1 = re.compile("^ *([0-9A-F]+) *; *(\w+)")
     re2 = re.compile("^ *([0-9A-F]+)\.\.([0-9A-F]+) *; *(\w+)")
 
-    for line in fileinput.input(os.path.basename(f)):
+    for line in fileinput.input(fdir + os.path.basename(f)):
         prop = None
         d_lo = 0
         d_hi = 0
@@ -456,7 +460,7 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_comp_keys = sorted(canon_comp.keys())
 
 if __name__ == "__main__":
-    r = "tables.rs"
+    r = fdir + "tables.rs"
     if os.path.exists(r):
         os.remove(r)
     with open(r, "w") as rf:
@@ -465,7 +469,7 @@ if __name__ == "__main__":
 
         # download and parse all the data
         fetch("ReadMe.txt")
-        with open("ReadMe.txt") as readme:
+        with open(fdir + "ReadMe.txt") as readme:
             pattern = "for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
