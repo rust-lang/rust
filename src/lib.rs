@@ -46,7 +46,6 @@ use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 
-use checkstyle::{output_footer, output_header};
 use comment::{CharClasses, FullCodeCharKind, LineClasses};
 use issues::{BadIssueSeeker, Issue};
 use shape::Indent;
@@ -61,7 +60,7 @@ mod utils;
 
 mod attr;
 mod chains;
-mod checkstyle;
+pub mod checkstyle;
 mod closures;
 pub mod codemap;
 mod comment;
@@ -883,11 +882,8 @@ pub enum Input {
 
 pub fn run(input: Input, config: &Config) -> Summary {
     let out = &mut stdout();
-    output_header(out, config.write_mode()).ok();
     match format_input(input, config, Some(out)) {
         Ok((summary, _, report)) => {
-            output_footer(out, config.write_mode()).ok();
-
             if report.has_warnings() {
                 match term::stderr() {
                     Some(ref t)
