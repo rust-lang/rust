@@ -10,16 +10,16 @@
 
 use super::*;
 
-use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
+use std::collections::VecDeque;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
-use infer::{InferCtxt, RegionObligation};
 use infer::region_constraints::{Constraint, RegionConstraintData};
+use infer::{InferCtxt, RegionObligation};
 
-use ty::{Region, RegionVid};
 use ty::fold::TypeFolder;
+use ty::{Region, RegionVid};
 
 // FIXME(twk): this is obviously not nice to duplicate like that
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
@@ -43,8 +43,7 @@ pub enum AutoTraitResult<A> {
 impl<A> AutoTraitResult<A> {
     fn is_auto(&self) -> bool {
         match *self {
-            AutoTraitResult::PositiveImpl(_) |
-            AutoTraitResult::NegativeImpl => true,
+            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
             _ => false,
         }
     }
@@ -69,14 +68,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     /// Determine whether an auto trait is implemented for a type, and if this is the case if
     /// non-trivial bounds need to be fulfilled, invoke a callback to compute a value representing
     /// these in a fashion suitable for the caller.
-    pub fn find_auto_trait_generics<A>(&self,
-                                       did: DefId,
-                                       trait_did: DefId,
-                                       generics: &ty::Generics,
-                                       auto_trait_callback:
-                                           impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>,
-                                                           AutoTraitInfo<'i>) -> A)
-                                       -> AutoTraitResult<A> {
+    pub fn find_auto_trait_generics<A>(
+        &self,
+        did: DefId,
+        trait_did: DefId,
+        generics: &ty::Generics,
+        auto_trait_callback: impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>, AutoTraitInfo<'i>) -> A,
+    ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
         let ty = self.tcx.type_of(did);
 
@@ -89,33 +87,32 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
         let trait_pred = ty::Binder::bind(trait_ref);
 
-        let bail_out = tcx.infer_ctxt()
-            .enter(|infcx| {
-                let mut selcx = SelectionContext::with_negative(&infcx, true);
-                let result =
-                    selcx.select(&Obligation::new(ObligationCause::dummy(),
-                                                  orig_params,
-                                                  trait_pred.to_poly_trait_predicate()));
-                match result {
-                    Ok(Some(Vtable::VtableImpl(_))) => {
-                        debug!("find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
+        let bail_out = tcx.infer_ctxt().enter(|infcx| {
+            let mut selcx = SelectionContext::with_negative(&infcx, true);
+            let result = selcx.select(&Obligation::new(
+                ObligationCause::dummy(),
+                orig_params,
+                trait_pred.to_poly_trait_predicate(),
+            ));
+            match result {
+                Ok(Some(Vtable::VtableImpl(_))) => {
+                    debug!(
+                        "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
                          manual impl found, bailing out",
-                               did,
-                               trait_did,
-                               generics);
-                        return true;
-                    }
-                    _ => return false,
-                };
-            });
+                        did, trait_did, generics
+                    );
+                    return true;
+                }
+                _ => return false,
+            };
+        });
 
         // If an explicit impl exists, it always takes priority over an auto impl
         if bail_out {
             return AutoTraitResult::ExplicitImpl;
         }
 
-        return tcx.infer_ctxt()
-                   .enter(|mut infcx| {
+        return tcx.infer_ctxt().enter(|mut infcx| {
             let mut fresh_preds = FxHashSet();
 
             // Due to the way projections are handled by SelectionContext, we need to run
@@ -151,59 +148,60 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
             // SelectionContext to return it back to us.
 
-            let (new_env, user_env) =
-                match self.evaluate_predicates(&mut infcx,
-                                               did,
-                                               trait_did,
-                                               ty,
-                                               orig_params.clone(),
-                                               orig_params,
-                                               &mut fresh_preds,
-                                               false) {
-                    Some(e) => e,
-                    None => return AutoTraitResult::NegativeImpl,
-                };
+            let (new_env, user_env) = match self.evaluate_predicates(
+                &mut infcx,
+                did,
+                trait_did,
+                ty,
+                orig_params.clone(),
+                orig_params,
+                &mut fresh_preds,
+                false,
+            ) {
+                Some(e) => e,
+                None => return AutoTraitResult::NegativeImpl,
+            };
 
-            let (full_env, full_user_env) = self.evaluate_predicates(&mut infcx,
-                                                                     did,
-                                                                     trait_did,
-                                                                     ty,
-                                                                     new_env.clone(),
-                                                                     user_env,
-                                                                     &mut fresh_preds,
-                                                                     true)
-                .unwrap_or_else(|| {
-                                    panic!("Failed to fully process: {:?} {:?} {:?}",
-                                           ty,
-                                           trait_did,
-                                           orig_params)
-                                });
+            let (full_env, full_user_env) = self.evaluate_predicates(
+                &mut infcx,
+                did,
+                trait_did,
+                ty,
+                new_env.clone(),
+                user_env,
+                &mut fresh_preds,
+                true,
+            ).unwrap_or_else(|| {
+                panic!(
+                    "Failed to fully process: {:?} {:?} {:?}",
+                    ty, trait_did, orig_params
+                )
+            });
 
-            debug!("find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): fulfilling \
+            debug!(
+                "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): fulfilling \
                  with {:?}",
-                   did,
-                   trait_did,
-                   generics,
-                   full_env);
+                did, trait_did, generics, full_env
+            );
             infcx.clear_caches();
 
             // At this point, we already have all of the bounds we need. FulfillmentContext is used
             // to store all of the necessary region/lifetime bounds in the InferContext, as well as
             // an additional sanity check.
             let mut fulfill = FulfillmentContext::new();
-            fulfill.register_bound(&infcx,
-                                   full_env,
-                                   ty,
-                                   trait_did,
-                                   ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID));
-            fulfill
-                .select_all_or_error(&infcx)
-                .unwrap_or_else(|e| {
-                                    panic!("Unable to fulfill trait {:?} for '{:?}': {:?}",
-                                           trait_did,
-                                           ty,
-                                           e)
-                                });
+            fulfill.register_bound(
+                &infcx,
+                full_env,
+                ty,
+                trait_did,
+                ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+            );
+            fulfill.select_all_or_error(&infcx).unwrap_or_else(|e| {
+                panic!(
+                    "Unable to fulfill trait {:?} for '{:?}': {:?}",
+                    trait_did, ty, e
+                )
+            });
 
             let names_map: FxHashMap<String, String> = generics
                 .regions
@@ -281,16 +279,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate
     // 'user_env', which only holds the predicates that will actually be displayed to the user.
-    pub fn evaluate_predicates<'b, 'gcx, 'c>(&self,
-                                             infcx: &InferCtxt<'b, 'tcx, 'c>,
-                                             ty_did: DefId,
-                                             trait_did: DefId,
-                                             ty: ty::Ty<'c>,
-                                             param_env: ty::ParamEnv<'c>,
-                                             user_env: ty::ParamEnv<'c>,
-                                             fresh_preds: &mut FxHashSet<ty::Predicate<'c>>,
-                                             only_projections: bool)
-                                             -> Option<(ty::ParamEnv<'c>, ty::ParamEnv<'c>)> {
+    pub fn evaluate_predicates<'b, 'gcx, 'c>(
+        &self,
+        infcx: &InferCtxt<'b, 'tcx, 'c>,
+        ty_did: DefId,
+        trait_did: DefId,
+        ty: ty::Ty<'c>,
+        param_env: ty::ParamEnv<'c>,
+        user_env: ty::ParamEnv<'c>,
+        fresh_preds: &mut FxHashSet<ty::Predicate<'c>>,
+        only_projections: bool,
+    ) -> Option<(ty::ParamEnv<'c>, ty::ParamEnv<'c>)> {
         let tcx = infcx.tcx;
 
         let mut select = SelectionContext::new(&infcx);
@@ -298,11 +297,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut already_visited = FxHashSet();
         let mut predicates = VecDeque::new();
         predicates.push_back(ty::Binder::bind(ty::TraitPredicate {
-                                                  trait_ref: ty::TraitRef {
-                                                      def_id: trait_did,
-                                                      substs: infcx.tcx.mk_substs_trait(ty, &[]),
-                                                  },
-                                              }));
+            trait_ref: ty::TraitRef {
+                def_id: trait_did,
+                substs: infcx.tcx.mk_substs_trait(ty, &[]),
+            },
+        }));
 
         let mut computed_preds: FxHashSet<_> = param_env.caller_bounds.iter().cloned().collect();
         let mut user_computed_preds: FxHashSet<_> =
@@ -324,13 +323,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 &Ok(Some(ref vtable)) => {
                     let obligations = vtable.clone().nested_obligations().into_iter();
 
-                    if !self.evaluate_nested_obligations(ty,
-                                                         obligations,
-                                                         &mut user_computed_preds,
-                                                         fresh_preds,
-                                                         &mut predicates,
-                                                         &mut select,
-                                                         only_projections) {
+                    if !self.evaluate_nested_obligations(
+                        ty,
+                        obligations,
+                        &mut user_computed_preds,
+                        fresh_preds,
+                        &mut predicates,
+                        &mut select,
+                        only_projections,
+                    ) {
                         return None;
                     }
                 }
@@ -341,11 +342,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         user_computed_preds.insert(ty::Predicate::Trait(pred.clone()));
                         predicates.push_back(pred);
                     } else {
-                        debug!("evaluate_nested_obligations: Unimplemented found, bailing: \
+                        debug!(
+                            "evaluate_nested_obligations: Unimplemented found, bailing: \
                              {:?} {:?} {:?}",
-                               ty,
-                               pred,
-                               pred.skip_binder().trait_ref.substs);
+                            ty,
+                            pred,
+                            pred.skip_binder().trait_ref.substs
+                        );
                         return None;
                     }
                 }
@@ -358,14 +361,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             new_env = ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal);
         }
 
-        let final_user_env = ty::ParamEnv::new(tcx.mk_predicates(user_computed_preds.into_iter()),
-                                               user_env.reveal);
-        debug!("evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
+        let final_user_env = ty::ParamEnv::new(
+            tcx.mk_predicates(user_computed_preds.into_iter()),
+            user_env.reveal,
+        );
+        debug!(
+            "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
              '{:?}'",
-               ty_did,
-               trait_did,
-               new_env,
-               final_user_env);
+            ty_did, trait_did, new_env, final_user_env
+        );
 
         return Some((new_env, final_user_env));
     }
@@ -380,13 +384,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     pub fn get_lifetime(&self, region: Region, names_map: &FxHashMap<String, String>) -> String {
         self.region_name(region)
             .map(|name| {
-                names_map
-                    .get(&name)
-                    .unwrap_or_else(|| {
-                                        panic!("Missing lifetime with name {:?} for {:?}",
-                                               name,
-                                               region)
-                                    })
+                names_map.get(&name).unwrap_or_else(|| {
+                    panic!("Missing lifetime with name {:?} for {:?}", name, region)
+                })
             })
             .unwrap_or(&"'static".to_string())
             .clone()
@@ -394,9 +394,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     // This is very similar to handle_lifetimes. However, instead of matching ty::Region's
     // to each other, we match ty::RegionVid's to ty::Region's
-    pub fn map_vid_to_region<'cx>(&self,
-                                  regions: &RegionConstraintData<'cx>)
-                                  -> FxHashMap<ty::RegionVid, ty::Region<'cx>> {
+    pub fn map_vid_to_region<'cx>(
+        &self,
+        regions: &RegionConstraintData<'cx>,
+    ) -> FxHashMap<ty::RegionVid, ty::Region<'cx>> {
         let mut vid_map: FxHashMap<RegionTarget<'cx>, RegionDeps<'cx>> = FxHashMap();
         let mut finished_map = FxHashMap();
 
@@ -499,34 +500,36 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
 
         return match substs.type_at(0).sty {
-                   ty::TyParam(_) => true,
-                   ty::TyProjection(p) => self.is_of_param(p.substs),
-                   _ => false,
-               };
+            ty::TyParam(_) => true,
+            ty::TyProjection(p) => self.is_of_param(p.substs),
+            _ => false,
+        };
     }
 
-    pub fn evaluate_nested_obligations<'b,
-                                       'c,
-                                       'd,
-                                       'cx,
-                                       T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>>
-        (&self,
-         ty: ty::Ty,
-         nested: T,
-         computed_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
-         fresh_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
-         predicates: &'b mut VecDeque<ty::PolyTraitPredicate<'cx>>,
-         select: &mut SelectionContext<'c, 'd, 'cx>,
-         only_projections: bool)
-         -> bool {
+    pub fn evaluate_nested_obligations<
+        'b,
+        'c,
+        'd,
+        'cx,
+        T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>,
+    >(
+        &self,
+        ty: ty::Ty,
+        nested: T,
+        computed_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
+        fresh_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
+        predicates: &'b mut VecDeque<ty::PolyTraitPredicate<'cx>>,
+        select: &mut SelectionContext<'c, 'd, 'cx>,
+        only_projections: bool,
+    ) -> bool {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
-        for (obligation, predicate) in
-            nested
-                .filter(|o| o.recursion_depth == 1)
-                .map(|o| (o.clone(), o.predicate.clone())) {
-            let is_new_pred = fresh_preds
-                .insert(self.clean_pred(select.infcx(), predicate.clone()));
+        for (obligation, predicate) in nested
+            .filter(|o| o.recursion_depth == 1)
+            .map(|o| (o.clone(), o.predicate.clone()))
+        {
+            let is_new_pred =
+                fresh_preds.insert(self.clean_pred(select.infcx(), predicate.clone()));
 
             match &predicate {
                 &ty::Predicate::Trait(ref p) => {
@@ -545,20 +548,23 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     } else {
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
                             Err(e) => {
-                                debug!("evaluate_nested_obligations: Unable to unify predicate \
+                                debug!(
+                                    "evaluate_nested_obligations: Unable to unify predicate \
                                      '{:?}' '{:?}', bailing out",
-                                       ty,
-                                       e);
+                                    ty, e
+                                );
                                 return false;
                             }
                             Ok(Some(v)) => {
-                                if !self.evaluate_nested_obligations(ty,
-                                                                     v.clone().iter().cloned(),
-                                                                     computed_preds,
-                                                                     fresh_preds,
-                                                                     predicates,
-                                                                     select,
-                                                                     only_projections) {
+                                if !self.evaluate_nested_obligations(
+                                    ty,
+                                    v.clone().iter().cloned(),
+                                    computed_preds,
+                                    fresh_preds,
+                                    predicates,
+                                    select,
+                                    only_projections,
+                                ) {
                                     return false;
                                 }
                             }
@@ -570,37 +576,36 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 &ty::Predicate::RegionOutlives(ref binder) => {
                     if let Err(_) = select
-                           .infcx()
-                           .region_outlives_predicate(&dummy_cause, binder) {
+                        .infcx()
+                        .region_outlives_predicate(&dummy_cause, binder)
+                    {
                         return false;
                     }
                 }
                 &ty::Predicate::TypeOutlives(ref binder) => {
-                    match (binder.no_late_bound_regions(),
-                           binder.map_bound_ref(|pred| pred.0).no_late_bound_regions()) {
+                    match (
+                        binder.no_late_bound_regions(),
+                        binder.map_bound_ref(|pred| pred.0).no_late_bound_regions(),
+                    ) {
                         (None, Some(t_a)) => {
-                            select
-                                .infcx()
-                                .register_region_obligation(ast::DUMMY_NODE_ID,
-                                                            RegionObligation {
-                                                                sup_type: t_a,
-                                                                sub_region: select
-                                                                    .infcx()
-                                                                    .tcx
-                                                                    .types
-                                                                    .re_static,
-                                                                cause: dummy_cause.clone(),
-                                                            });
+                            select.infcx().register_region_obligation(
+                                ast::DUMMY_NODE_ID,
+                                RegionObligation {
+                                    sup_type: t_a,
+                                    sub_region: select.infcx().tcx.types.re_static,
+                                    cause: dummy_cause.clone(),
+                                },
+                            );
                         }
                         (Some(ty::OutlivesPredicate(t_a, r_b)), _) => {
-                            select
-                                .infcx()
-                                .register_region_obligation(ast::DUMMY_NODE_ID,
-                                                            RegionObligation {
-                                                                sup_type: t_a,
-                                                                sub_region: r_b,
-                                                                cause: dummy_cause.clone(),
-                                                            });
+                            select.infcx().register_region_obligation(
+                                ast::DUMMY_NODE_ID,
+                                RegionObligation {
+                                    sup_type: t_a,
+                                    sub_region: r_b,
+                                    cause: dummy_cause.clone(),
+                                },
+                            );
                         }
                         _ => {}
                     };
@@ -611,10 +616,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         return true;
     }
 
-    pub fn clean_pred<'c, 'd, 'cx>(&self,
-                                   infcx: &InferCtxt<'c, 'd, 'cx>,
-                                   p: ty::Predicate<'cx>)
-                                   -> ty::Predicate<'cx> {
+    pub fn clean_pred<'c, 'd, 'cx>(
+        &self,
+        infcx: &InferCtxt<'c, 'd, 'cx>,
+        p: ty::Predicate<'cx>,
+    ) -> ty::Predicate<'cx> {
         infcx.freshen(p)
     }
 }
@@ -632,9 +638,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         (match r {
-                 &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
-                 _ => None,
-             })
-            .unwrap_or_else(|| r.super_fold_with(self))
+            &ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
+            _ => None,
+        }).unwrap_or_else(|| r.super_fold_with(self))
     }
 }
