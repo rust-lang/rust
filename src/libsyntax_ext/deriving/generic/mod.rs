@@ -1745,8 +1745,15 @@ pub fn cs_fold<F>(use_foldl: bool,
     }
 }
 
-/// Special version of `cs_fold` that uses the result of a function call on the first field
-/// as the base case when is at least 1 field, and the usual base case when there are zero fields.
+/// Function to fold over fields, with three cases, to generate more efficient and concise code.
+/// When the `substructure` has grouped fields, there are two cases:
+/// Zero fields: call the base case function with None (like the usual base case of `cs_fold`).
+/// One or more fields: call the base case function on the first value (which depends on
+/// `use_fold`), and use that as the base case. Then perform `cs_fold` on the remainder of the
+/// fields.
+/// When the `substructure` is a `EnumNonMatchingCollapsed`, the result of `enum_nonmatch_f`
+/// is returned. Statics may not be folded over.
+/// See `cs_op` in `partial_ord.rs` for a model example.
 pub fn cs_fold1<F, B>(use_foldl: bool,
                       f: F,
                       mut b: B,
