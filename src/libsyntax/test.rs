@@ -320,37 +320,48 @@ fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
 #[derive(PartialEq)]
 enum HasTestSignature {
     Yes,
-    No,
+    No(BadTestSignature),
+}
+
+#[derive(PartialEq)]
+enum BadTestSignature {
     NotEvenAFunction,
+    WrongTypeSignature,
+    NoArgumentsAllowed,
+    ShouldPanicOnlyWithNoArgs,
 }
 
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(&i.attrs, "test");
 
     fn has_test_signature(cx: &TestCtxt, i: &ast::Item) -> HasTestSignature {
+        let has_should_panic_attr = attr::contains_name(&i.attrs, "should_panic");
         match i.node {
             ast::ItemKind::Fn(ref decl, _, _, _, ref generics, _) => {
                 // If the termination trait is active, the compiler will check that the output
                 // type implements the `Termination` trait as `libtest` enforces that.
-                let output_matches = if cx.features.termination_trait_test {
-                    true
-                } else {
-                    let no_output = match decl.output {
-                        ast::FunctionRetTy::Default(..) => true,
-                        ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => true,
-                        _ => false
-                    };
-
-                    no_output && !generics.is_parameterized()
+                let has_output = match decl.output {
+                    ast::FunctionRetTy::Default(..) => false,
+                    ast::FunctionRetTy::Ty(ref t) if t.node == ast::TyKind::Tup(vec![]) => false,
+                    _ => true
                 };
 
-                if decl.inputs.is_empty() && output_matches {
-                    Yes
-                } else {
-                    No
+                if !decl.inputs.is_empty() {
+                    return No(BadTestSignature::NoArgumentsAllowed);
+                }
+
+                match (has_output, cx.features.termination_trait_test, has_should_panic_attr) {
+                    (true, true, true) => No(BadTestSignature::ShouldPanicOnlyWithNoArgs),
+                    (true, true, false) => if generics.is_parameterized() {
+                        No(BadTestSignature::WrongTypeSignature)
+                    } else {
+                        Yes
+                    },
+                    (true, false, _) => No(BadTestSignature::WrongTypeSignature),
+                    (false, _, _) => Yes
                 }
             }
-            _ => NotEvenAFunction,
+            _ => No(BadTestSignature::NotEvenAFunction),
         }
     }
 
@@ -358,18 +369,20 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
         let diag = cx.span_diagnostic;
         match has_test_signature(cx, i) {
             Yes => true,
-            No => {
-                if cx.features.termination_trait_test {
-                    diag.span_err(i.span, "functions used as tests can not have any arguments");
-                } else {
-                    diag.span_err(i.span, "functions used as tests must have signature fn() -> ()");
+            No(cause) => {
+                match cause {
+                    BadTestSignature::NotEvenAFunction =>
+                        diag.span_err(i.span, "only functions may be used as tests"),
+                    BadTestSignature::WrongTypeSignature =>
+                        diag.span_err(i.span,
+                                      "functions used as tests must have signature fn() -> ()"),
+                    BadTestSignature::NoArgumentsAllowed =>
+                        diag.span_err(i.span, "functions used as tests can not have any arguments"),
+                    BadTestSignature::ShouldPanicOnlyWithNoArgs =>
+                        diag.span_err(i.span, "functions using `#[should_panic]` must return `()`"),
                 }
                 false
-            },
-            NotEvenAFunction => {
-                diag.span_err(i.span, "only functions may be used as tests");
-                false
-            },
+            }
         }
     } else {
         false
@@ -407,7 +420,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                 // well before resolve, can't get too deep.
                 input_cnt == 1 && output_matches
             }
-          _ => false
+            _ => false
         }
     }
 
