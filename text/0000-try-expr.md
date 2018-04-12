@@ -156,6 +156,19 @@ In the RFC author's opinion however, the sum total benefits of `try { .. }`
 seem to outweigh the drawbacks of the difficulty with purging [`try!`] from
 our collective memory.
 
+## Inverse semantics of `?`
+
+The `?` postfix operator is sometimes referred to as the "try operator",
+and can be seen as having the inverse semantics as `try { .. }`.
+
+To many, this is a drawback. To others, this makes the `?` and `try { .. }`
+expression forms more closely related and therefore makes them more findable
+in relation to each other.
+
+There is currently some ongoing debate about renaming the `?` operator to
+something other than the "try operator". This could help in mitigating the
+effects of picking `try` as the keyword.
+
 # Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
@@ -177,9 +190,11 @@ Among the considerations when picking a keyword are, ordered by importance:
 
 [`Try`]: https://doc.rust-lang.org/nightly/std/ops/trait.Try.html
 
-4. Consistency with the naming of the trait used for `?` (the [`Try`] trait).
+4. Consistency with related standard library function conventions.
 
-5. Consistency with related standard library function conventions.
+5. Consistency with the naming of the trait used for `?` (the [`Try`] trait).
+   Since the `Try` trait is unstable and the naming of the `?` operator in
+   communication is still unsettled, this is not regarded as very important.
 
 6. Degree / Risk of breakage.
 
@@ -200,8 +215,8 @@ Among the considerations when picking a keyword are, ordered by importance:
     2. **Fidelity to behavior in those languages:** Very high
     3. **Familiarity with respect to their analogous constructs:** Very high
 3. **Brevity / Length:** 3
-4. **Consistency with the naming of the trait used for `?`:** Consistent
-5. **Consistency with related libstd fn conventions:** Consistent
+4. **Consistency with related libstd fn conventions:** Consistent
+5. **Consistency with the naming of the trait used for `?`:** Consistent
 6. **Risk of breakage:** High (if we assume `try!` will break, otherwise: Low)
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=try), `std::try!`, but it is technically possible to not break this macro. (unstable: `std::intrinsics::try` so irrelevant)
     - **Used as crate?** [*Yes*](https://crates.io/crates/try). No reverse dependencies. Described as: *"Deprecation warning resistant try macro"*
@@ -218,18 +233,22 @@ This is our choice of keyword, because it:
 
 1. has a massive dominance in both popular and less known languages and is
    sufficiently semantically faithful to what `try` means in those languages.
+   Thus, we can leverage people's intuitions and not spend too much of our
+   complexity budget.
 2. is consistent with the standard library wrt. `Try` and `try_` prefixed methods.
-3. it is brief.
-4. it has high fidelity wrt. the concepts it attempts to communicate (exception boundary for `?`).
+3. it is brief. 
+4. it has high fidelity wrt. the concepts it attempts to communicate
+   (exception boundary for `?`). This high fidelity is from the perspective of
+   a programmers intent, i.e: "I want to try a bunch of stuff in this block".
 5. it can be further extended with `catch { .. }` handlers if we wish.
 
 ## Alternative: reserving `catch`
 
-1. **Fidelity to the construct's actual behavior:** Low
-2. **Precedent from existing languages:** None
+1. **Fidelity to the construct's actual behavior:** High
+2. **Precedent from existing languages:** Erlang and Tcl, see [prior-art]
 3. **Brevity / Length:** 6
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Somewhat consistent
+4. **Consistency with related libstd fn conventions:** Somewhat consistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=catch)
     - **Used as crate?** [*No*](https://crates.io/crates/catch).
@@ -244,7 +263,7 @@ This is our choice of keyword, because it:
 
 We believe `catch` to be a poor choice of keyword, because it:
 
-1. is used nowhere in other languages to demarcate the body which can result in
+1. is used in few in other languages to demarcate the body which can result in
    an exceptional path. Instead, it is almost exclusively used for exception
    handlers of the form: `catch(pat) { recover_expr }`.
 4. extending `catch` with handlers will require a different word such as
@@ -256,15 +275,18 @@ We believe `catch` to be a poor choice of keyword, because it:
    there's only `catch_unwind`, but that has to do with panics,
    not `Try` style exceptions.
 
+However, `catch` has high fidelity wrt. the operational semantics of "catching"
+any exceptions in the `try { .. }` block.
+
 ## Alternative: keeping `do catch { .. }`
 
-1. **Fidelity to the construct's actual behavior:** Low
+1. **Fidelity to the construct's actual behavior:** Middle
 2. **Precedent from existing languages:**
     + `do`: Haskell, Idris
-    + `catch`: None, see [prior-art]
+    + `catch`: Erlang and Tcl, see [prior-art]
 3. **Brevity / Length:** 8
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Tiny bit consistent
+4. **Consistency with related libstd fn conventions:** Tiny bit consistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Impossible (already reserved keyword)
     - **Used in std:** *No*, the form `$ident $ident` is not a legal identifier.
     - **Used as crate?** *No*, as above.
@@ -285,8 +307,8 @@ RFC and was only a temporarly fix around `catch { .. }` not working.
     2. **Fidelity to behavior in those languages:** High
     3. **Familiarity with respect to their analogous constructs:** High
 3. **Brevity / Length:** 6 (including space)
-4. **Consistency with the naming of the trait used for `?`:** Moderately consistent
-5. **Consistency with related libstd fn conventions:** Moderately consistent
+4. **Consistency with related libstd fn conventions:** Moderately consistent
+5. **Consistency with the naming of the trait used for `?`:** Moderately consistent
 6. **Risk of breakage:** Impossible (already reserved keyword)
     - **Used in std:** *No*, the form `$ident $ident` is not a legal identifier.
     - **Used as crate?** *No*, as above.
@@ -327,8 +349,8 @@ argument of `try` over `catch`.
     2. **Fidelity to behavior in those languages:** Good
     3. **Familiarity with respect to their analogous constructs:** Poor
 3. **Brevity / Length:** 2
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Impossible (already reserved keyword)
 7. **Consistency with old learning material:** Untaught
 
@@ -450,8 +472,8 @@ problematic as it:
 1. **Fidelity to the construct's actual behavior:** Good
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 4
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=trap)
     - **Used as crate?** [*No*](https://crates.io/crates/trap).
@@ -479,8 +501,8 @@ inconsistent wrt. naming in the standard library.
 1. **Fidelity to the construct's actual behavior:** Somewhat good
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 4
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=wrap)
     - **Used as crate?** [*Yes*](https://crates.io/crates/wrap), no reverse dependencies.
@@ -505,8 +527,8 @@ fit for any monad.
 1. **Fidelity to the construct's actual behavior:** Somewhat good
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 6
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very high
     - **Used in std:** [*Yes*](https://doc.rust-lang.org/nightly/std/?search=result) for the `{std, core}::result` modules.
     - **Used as crate?** [*Yes*](https://crates.io/crates/result). 6 reverse dependencies (transitive closure).
@@ -545,8 +567,8 @@ for constructions which are oft used.
 1. **Fidelity to the construct's actual behavior:**  High
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 8
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Highly inconsistent
+4. **Consistency with related libstd fn conventions:** Highly inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=fallible)
     - **Used as crate?** [*Yes*](https://crates.io/crates/fallible), some reverse dependencies (all by the same author).
@@ -562,8 +584,8 @@ Some synonyms of `catch` [have been suggested](https://internals.rust-lang.org/t
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 6
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Medium
     - **Used in std:** [*Yes*](https://doc.rust-lang.org/nightly/std/?search=accept)
     - **Used as crate?** [*No*](https://crates.io/crates/accept).
@@ -579,8 +601,8 @@ Some synonyms of `catch` [have been suggested](https://internals.rust-lang.org/t
 1. **Fidelity to the construct's actual behavior:** Good.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 7
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=capture)
     - **Used as crate?** [*Yes*](https://crates.io/crates/capture), no reverse dependencies.
@@ -596,8 +618,8 @@ Some synonyms of `catch` [have been suggested](https://internals.rust-lang.org/t
 1. **Fidelity to the construct's actual behavior:** Very much not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 7
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very high
     - **Used in std:** [*Yes*](https://doc.rust-lang.org/nightly/std/?search=collect) (`Iterator::collect`)
     - **Used as crate?** [*Yes*](https://crates.io/crates/collect), no reverse dependencies.
@@ -613,8 +635,8 @@ Some synonyms of `catch` [have been suggested](https://internals.rust-lang.org/t
 1. **Fidelity to the construct's actual behavior:** Good
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 7
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=recover)
     - **Used as crate?** [*No*](https://crates.io/crates/recover)
@@ -630,8 +652,8 @@ Some synonyms of `catch` [have been suggested](https://internals.rust-lang.org/t
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 7
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Low to medium
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=resolve)
     - **Used as crate?** [*Yes*](https://crates.io/crates/resolve), 3 reverse dependencies
@@ -647,8 +669,8 @@ Some synonyms of `catch` [have been suggested](https://internals.rust-lang.org/t
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 4
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Huge
     - **Used in std:** [*Yes*](https://doc.rust-lang.org/nightly/std/?search=take), `{Cell, HashSet, Read, Iterator, Option}::take`.
     - **Used as crate?** [*Yes*](https://crates.io/crates/resolve), a lot of reverse dependency (transitive closure).
@@ -674,8 +696,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 8
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Medium (itertools)
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=coalesce).
     - **Used as crate?** [*Yes*](https://crates.io/crates/coalesce), one reverse dependency.
@@ -691,8 +713,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 4
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Medium (libstd)
     - **Used in std:** [*Yes*](https://doc.rust-lang.org/nightly/std/?search=fuse), `Iterator::fuse`.
     - **Used as crate?** [*Yes*](https://crates.io/crates/fuse), 8 reverse dependencies (transitive closure).
@@ -708,8 +730,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 5
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=unite).
     - **Used as crate?** [*No*](https://crates.io/crates/unite).
@@ -725,8 +747,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 6
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=cohere).
     - **Used as crate?** [*No*](https://crates.io/crates/cohere).
@@ -742,8 +764,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 11
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=consolidate).
     - **Used as crate?** [*No*](https://crates.io/crates/consolidate).
@@ -759,8 +781,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 5
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=unify).
     - **Used as crate?** [*Yes*](https://crates.io/crates/unify), no dependencies
@@ -776,8 +798,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 7
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Inconsistent
+4. **Consistency with related libstd fn conventions:** Inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Medium
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=combine).
     - **Used as crate?** [*Yes*](https://crates.io/crates/combine), 17 (direct dependencies)
@@ -793,8 +815,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:** Somewhat
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 8
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Very inconsistent (not verb)
+4. **Consistency with related libstd fn conventions:** Very inconsistent (not verb)
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:** Very low
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=resultof).
     - **Used as crate?** [*No*](https://crates.io/crates/resultof).
@@ -810,8 +832,8 @@ but it seems obscure and lacks familiarity, which is counted as a strong downsid
 1. **Fidelity to the construct's actual behavior:**  Not at all.
 2. **Precedent from existing languages:** None
 3. **Brevity / Length:** 8
-4. **Consistency with the naming of the trait used for `?`:** Inconsistent
-5. **Consistency with related libstd fn conventions:** Very inconsistent
+4. **Consistency with related libstd fn conventions:** Very inconsistent
+5. **Consistency with the naming of the trait used for `?`:** Inconsistent
 6. **Risk of breakage:**
     - **Used in std:** [*No*](https://doc.rust-lang.org/nightly/std/?search=returned).
     - **Used as crate?** [*No*](https://crates.io/crates/returned).
@@ -841,7 +863,7 @@ All of the languages listed below have a `try { .. } <handler_kw> { .. }` concep
 (modulo layout syntax / braces) where `<handler_kw>` is one of:
 `catch`, `with`, `except`, `trap`, `rescue`.
 
-In total, these are 27 languages and they have massive ~80% dominance according
+In total, these are 29 languages and they have massive ~80% dominance according
 to the [TIOBE index](https://www.tiobe.com/tiobe-index/)
 and roughly the same with the [PYPL index](http://pypl.github.io/PYPL.html).
 
@@ -879,6 +901,14 @@ The syntactic form `catch { .. }` seems quite rare and is,
 together with `trap`, `rescue`, `except`, only used for handlers.
 However, the `<kw> { .. }` expression we want to introduce is not a handler,
 but rather the body of expression we wish to `try`.
+
+There are however a few languages where `catch { .. }` is used for the fallible
+part and not for the handler, these languages are:
++ [Erlang](http://erlang.org/doc/reference_manual/expressions.html#catch)
++ [Tcl](https://www.tcl.tk/man/tcl/TclCmd/catch.htm)
+
+However, the combined popularity of these langauges are not significant as
+compared to that for `try { .. }`.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
