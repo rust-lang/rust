@@ -22,12 +22,15 @@ use std::{env, error};
 
 use getopts::{Matches, Options};
 
+use rustfmt::checkstyle;
 use rustfmt::config::file_lines::FileLines;
 use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
 use rustfmt::{run, FileName, Input, Summary};
 
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;
+
+const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|checkstyle]";
 
 /// Rustfmt operations.
 enum Operation {
@@ -87,8 +90,8 @@ impl CliOptions {
                 options.write_mode = Some(write_mode);
             } else {
                 return Err(FmtError::from(format!(
-                    "Invalid write-mode: {}",
-                    write_mode
+                    "Invalid write-mode: {}, expected one of {}",
+                    write_mode, WRITE_MODE_LIST
                 )));
             }
         }
@@ -206,7 +209,7 @@ fn make_opts() -> Options {
         "",
         "write-mode",
         "How to write output (not usable when piping from stdin)",
-        "[replace|overwrite|display|plain|diff|coverage|checkstyle]",
+        WRITE_MODE_LIST,
     );
 
     opts
@@ -260,7 +263,10 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             let mut error_summary = Summary::default();
             if config.version_meets_requirement(&mut error_summary) {
+                let mut out = &mut stdout();
+                checkstyle::output_header(&mut out, config.write_mode())?;
                 error_summary.add(run(Input::Text(input), &config));
+                checkstyle::output_footer(&mut out, config.write_mode())?;
             }
 
             Ok(error_summary)
@@ -294,6 +300,8 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 }
             }
 
+            let mut out = &mut stdout();
+            checkstyle::output_header(&mut out, config.write_mode())?;
             let mut error_summary = Summary::default();
             for file in files {
                 if !file.exists() {
@@ -327,6 +335,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                     error_summary.add(run(Input::File(file), &config));
                 }
             }
+            checkstyle::output_footer(&mut out, config.write_mode())?;
 
             // If we were given a path via dump-minimal-config, output any options
             // that were used during formatting as TOML.
