@@ -621,6 +621,7 @@ impl Step for CodegenBackend {
     fn run(self, builder: &Builder) {
         let compiler = self.compiler;
         let target = self.target;
+        let backend = self.backend;
 
         builder.ensure(Rustc { compiler, target });
 
@@ -628,7 +629,7 @@ impl Step for CodegenBackend {
             builder.ensure(CodegenBackend {
                 compiler: builder.compiler(1, builder.config.build),
                 target,
-                backend: self.backend,
+                backend,
             });
             return;
         }
@@ -639,52 +640,7 @@ impl Step for CodegenBackend {
             .arg(builder.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
-        match &*self.backend {
-            "llvm" | "emscripten" => {
-                // Build LLVM for our target. This will implicitly build the
-                // host LLVM if necessary.
-                let llvm_config = builder.ensure(native::Llvm {
-                    target,
-                    emscripten: self.backend == "emscripten",
-                });
-
-                if self.backend == "emscripten" {
-                    features.push_str(" emscripten");
-                }
-
-                builder.info(&format!("Building stage{} codegen artifacts ({} -> {}, {})",
-                         compiler.stage, &compiler.host, target, self.backend));
-
-                // Pass down configuration from the LLVM build into the build of
-                // librustc_llvm and librustc_trans.
-                if builder.is_rust_llvm(target) {
-                    cargo.env("LLVM_RUSTLLVM", "1");
-                }
-                cargo.env("LLVM_CONFIG", &llvm_config);
-                if self.backend != "emscripten" {
-                    let target_config = builder.config.target_config.get(&target);
-                    if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
-                        cargo.env("CFG_LLVM_ROOT", s);
-                    }
-                }
-                // Building with a static libstdc++ is only supported on linux right now,
-                // not for MSVC or macOS
-                if builder.config.llvm_static_stdcpp &&
-                   !target.contains("freebsd") &&
-                   !target.contains("windows") &&
-                   !target.contains("apple") {
-                    let file = compiler_file(builder,
-                                             builder.cxx(target).unwrap(),
-                                             target,
-                                             "libstdc++.a");
-                    cargo.env("LLVM_STATIC_STDCPP", file);
-                }
-                if builder.config.llvm_link_shared {
-                    cargo.env("LLVM_LINK_SHARED", "1");
-                }
-            }
-            _ => panic!("unknown backend: {}", self.backend),
-        }
+        features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
 
         let tmp_stamp = builder.cargo_out(compiler, Mode::Librustc, target)
             .join(".tmp.stamp");
@@ -711,10 +667,67 @@ impl Step for CodegenBackend {
                    codegen_backend.display(),
                    f.display());
         }
-        let stamp = codegen_backend_stamp(builder, compiler, target, self.backend);
+        let stamp = codegen_backend_stamp(build, compiler, target, backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
     }
+}
+
+pub fn build_codegen_backend(builder: &Builder,
+                             cargo: &mut Command,
+                             compiler: &Compiler,
+                             target: Interned<String>,
+                             backend: Interned<String>) -> String {
+    let mut features = String::new();
+
+    match &*backend {
+        "llvm" | "emscripten" => {
+            // Build LLVM for our target. This will implicitly build the
+            // host LLVM if necessary.
+            let llvm_config = builder.ensure(native::Llvm {
+                target,
+                emscripten: backend == "emscripten",
+            });
+
+            if backend == "emscripten" {
+                features.push_str(" emscripten");
+            }
+
+            builder.info(&format!("Building stage{} codegen artifacts ({} -> {}, {})",
+                     compiler.stage, &compiler.host, target, backend));
+
+            // Pass down configuration from the LLVM build into the build of
+            // librustc_llvm and librustc_trans.
+            if builder.is_rust_llvm(target) {
+                cargo.env("LLVM_RUSTLLVM", "1");
+            }
+            cargo.env("LLVM_CONFIG", &llvm_config);
+            if backend != "emscripten" {
+                let target_config = builder.config.target_config.get(&target);
+                if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+                    cargo.env("CFG_LLVM_ROOT", s);
+                }
+            }
+            // Building with a static libstdc++ is only supported on linux right now,
+            // not for MSVC or macOS
+            if builder.config.llvm_static_stdcpp &&
+               !target.contains("freebsd") &&
+               !target.contains("windows") &&
+               !target.contains("apple") {
+                let file = compiler_file(builder,
+                                         builder.cxx(target).unwrap(),
+                                         target,
+                                         "libstdc++.a");
+                cargo.env("LLVM_STATIC_STDCPP", file);
+            }
+            if builder.config.llvm_link_shared {
+                cargo.env("LLVM_LINK_SHARED", "1");
+            }
+        }
+        _ => panic!("unknown backend: {}", backend),
+    }
+
+    features
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be
