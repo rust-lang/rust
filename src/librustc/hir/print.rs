@@ -2043,7 +2043,10 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_generic_params(&mut self, generic_params: &[hir::GenericParam]) -> io::Result<()> {
+    pub fn print_generic_params(&mut self,
+                                generic_params: &[hir::GenericParam])
+                                -> io::Result<()>
+    {
         if !generic_params.is_empty() {
             self.s.word("<")?;
 

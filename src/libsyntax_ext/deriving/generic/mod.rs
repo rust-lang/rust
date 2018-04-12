@@ -570,7 +570,11 @@ impl<'a> TraitDef<'a> {
                         bounds.push((*declared_bound).clone());
                     }
 
-                    GenericParam::Type(cx.typaram(self.span, ty_param.ident, vec![], bounds, None))
+                    GenericParam::Type(cx.typaram(self.span,
+                                                  ty_param.ident,
+                                                  vec![],
+                                                  bounds,
+                                                  None))
                 }
             }
         }));
