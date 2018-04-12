@@ -16,7 +16,7 @@ use std::path::{PathBuf, Path};
 use getopts;
 use testing;
 use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::Externs;
+use rustc::session::config::{Externs, CodegenOptions};
 use syntax::codemap::DUMMY_SP;
 use syntax::edition::Edition;
 
@@ -140,7 +140,8 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
 /// Run any tests/code examples in the markdown file `input`.
 pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
             mut test_args: Vec<String>, maybe_sysroot: Option<PathBuf>,
-            display_warnings: bool, linker: Option<PathBuf>, edition: Edition) -> isize {
+            display_warnings: bool, linker: Option<PathBuf>, edition: Edition,
+            cg: CodegenOptions) -> isize {
     let input_str = match load_string(input) {
         Ok(s) => s,
         Err(LoadStringError::ReadFail) => return 1,
@@ -150,7 +151,7 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
     let mut opts = TestOptions::default();
     opts.no_crate_inject = true;
     opts.display_warnings = display_warnings;
-    let mut collector = Collector::new(input.to_owned(), cfgs, libs, externs,
+    let mut collector = Collector::new(input.to_owned(), cfgs, libs, cg, externs,
                                        true, opts, maybe_sysroot, None,
                                        Some(PathBuf::from(input)),
                                        linker, edition);
