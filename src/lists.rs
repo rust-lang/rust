@@ -279,10 +279,7 @@ where
                 }
 
                 if last && formatting.ends_with_newline {
-                    match formatting.trailing_separator {
-                        SeparatorTactic::Always | SeparatorTactic::Vertical => separate = true,
-                        _ => (),
-                    }
+                    separate = formatting.trailing_separator != SeparatorTactic::Never;
                 }
 
                 if line_len > 0 {
