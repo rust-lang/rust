@@ -3,6 +3,12 @@
 - RFC PR: [rust-lang/rfcs#809](https://github.com/rust-lang/rfcs/pull/809)
 - Rust Issue: [rust-lang/rust#22181](https://github.com/rust-lang/rust/issues/22181)
 
+# This RFC has been **unapproved**
+
+For details see the [summary comment].
+
+[summary comment]: https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911
+
 # Summary
 
   * Change placement-new syntax from: `box (<place-expr>) <expr>` instead
