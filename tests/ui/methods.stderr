@@ -493,45 +493,13 @@ error: called `skip(x).next()` on an iterator. This is more succinctly expressed
 382 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:391:19
-    |
-391 |     let _ = (0..3).fold(false, |acc, x| acc || x > 2);
-    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
-    |
-    = note: `-D unnecessary-fold` implied by `-D warnings`
-
-error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:393:19
-    |
-393 |     let _ = (0..3).fold(true, |acc, x| acc && x > 2);
-    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.all(|x| x > 2)`
-
-error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:395:19
-    |
-395 |     let _ = (0..3).fold(0, |acc, x| acc + x);
-    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.sum()`
-
-error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:397:19
-    |
-397 |     let _ = (0..3).fold(1, |acc, x| acc * x);
-    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.product()`
-
-error: this `.fold` can be written more succinctly using another method
-   --> $DIR/methods.rs:402:34
-    |
-402 |     let _ = (0..3).map(|x| 2 * x).fold(false, |acc, x| acc || x > 2);
-    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `.any(|x| x > 2)`
-
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:430:13
+   --> $DIR/methods.rs:391:13
     |
-430 |     let _ = opt.unwrap();
+391 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 71 previous errors
+error: aborting due to 66 previous errors
 
