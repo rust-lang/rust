@@ -83,6 +83,7 @@ __pycache__/
 /src/libstd_unicode/UnicodeData.txt
 /stage[0-9]+/
 /target
+target/
 /test/
 /tmp/
 TAGS

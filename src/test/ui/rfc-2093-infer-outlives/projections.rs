@@ -10,16 +10,11 @@
 
 // ignore-tidy-linelength
 
-// Test that the outlives computation runs for now...
+// Needs an explicit where clause stating outlives condition. RFC 2093
 
-#![feature(rustc_attrs)]
-
-//todo add all the test cases
-// https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md#example-1-a-reference
-
-#[rustc_outlives]
-struct Direct<'a, T> { //~ ERROR 21:1: 23:2: [Binder(OutlivesPredicate(T, ReEarlyBound(0, 'a)))] [E0640]
-    field: &'a T
+// Associated type <Iterator>::Item  needs to outlives lifetime 'a.
+struct Foo<'a, T: Iterator> {
+    bar: &'a T::Item //~ Error the associated type `<T as std::iter::Iterator>::Item` may not live long enough [E0309]
 }
 
 fn main() { }

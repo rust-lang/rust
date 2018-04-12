@@ -102,6 +102,7 @@ define_maps! { <'tcx>
     /// associated generics and predicates.
     [] fn generics_of: GenericsOfItem(DefId) -> &'tcx ty::Generics,
     [] fn predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
+    [] fn explicit_predicates_of: PredicatesOfItem(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -139,7 +140,11 @@ define_maps! { <'tcx>
     [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
 
     /// Maps from def-id of a type to its (inferred) outlives.
-    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Vec<ty::Predicate<'tcx>>,
+    [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Lrc<Vec<ty::Predicate<'tcx>>>,
+
+    /// Maps from def-id of a type to its (inferred) outlives.
+    [] fn inferred_outlives_crate: InferredOutlivesCrate(CrateNum)
+        -> Lrc<ty::CratePredicatesMap<'tcx>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<Vec<DefId>>,
