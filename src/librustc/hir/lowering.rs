@@ -3010,7 +3010,28 @@ impl<'a> LoweringContext<'a> {
                 )
             }),
             ExprKind::Catch(ref body) => {
-                self.with_catch_scope(body.id, |this| hir::ExprBlock(this.lower_block(body, true)))
+                self.with_catch_scope(body.id, |this| {
+                    let unstable_span =
+                        this.allow_internal_unstable(CompilerDesugaringKind::Catch, body.span);
+                    let mut block = this.lower_block(body, true).into_inner();
+                    let tail = block.expr.take().map_or_else(
+                        || {
+                            let LoweredNodeId { node_id, hir_id } = this.next_id();
+                            let span = this.sess.codemap().end_point(unstable_span);
+                            hir::Expr {
+                                id: node_id,
+                                span,
+                                node: hir::ExprTup(hir_vec![]),
+                                attrs: ThinVec::new(),
+                                hir_id,
+                            }
+                        },
+                        |x: P<hir::Expr>| x.into_inner(),
+                    );
+                    block.expr = Some(this.wrap_in_try_constructor(
+                        "from_ok", tail, unstable_span));
+                    hir::ExprBlock(P(block))
+                })
             }
             ExprKind::Match(ref expr, ref arms) => hir::ExprMatch(
                 P(self.lower_expr(expr)),
@@ -3539,12 +3560,8 @@ impl<'a> LoweringContext<'a> {
 
                         self.expr_call(e.span, from, hir_vec![err_expr])
                     };
-                    let from_err_expr = {
-                        let path = &["ops", "Try", "from_error"];
-                        let from_err = P(self.expr_std_path(unstable_span, path, ThinVec::new()));
-                        P(self.expr_call(e.span, from_err, hir_vec![from_expr]))
-                    };
-
+                    let from_err_expr =
+                        self.wrap_in_try_constructor("from_error", from_expr, unstable_span);
                     let thin_attrs = ThinVec::from(attrs);
                     let catch_scope = self.catch_scopes.last().map(|x| *x);
                     let ret_expr = if let Some(catch_node) = catch_scope {
@@ -4078,6 +4095,18 @@ impl<'a> LoweringContext<'a> {
                 builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global),
             )
         }
+    }
+
+    fn wrap_in_try_constructor(
+        &mut self,
+        method: &'static str,
+        e: hir::Expr,
+        unstable_span: Span,
+    ) -> P<hir::Expr> {
+        let path = &["ops", "Try", method];
+        let from_err = P(self.expr_std_path(unstable_span, path,
+                                            ThinVec::new()));
+        P(self.expr_call(e.span, from_err, hir_vec![e]))
     }
 }
 

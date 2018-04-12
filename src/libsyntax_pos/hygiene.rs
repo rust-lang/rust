@@ -432,6 +432,7 @@ pub enum ExpnFormat {
 pub enum CompilerDesugaringKind {
     DotFill,
     QuestionMark,
+    Catch,
 }
 
 impl CompilerDesugaringKind {
@@ -440,6 +441,7 @@ impl CompilerDesugaringKind {
         let s = match *self {
             DotFill => "...",
             QuestionMark => "?",
+            Catch => "do catch",
         };
         Symbol::intern(s)
     }

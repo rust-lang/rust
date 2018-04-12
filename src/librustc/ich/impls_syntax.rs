@@ -372,7 +372,8 @@ impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnFormat {
 
 impl_stable_hash_for!(enum ::syntax_pos::hygiene::CompilerDesugaringKind {
     DotFill,
-    QuestionMark
+    QuestionMark,
+    Catch
 });
 
 impl_stable_hash_for!(enum ::syntax_pos::FileName {
