@@ -10,7 +10,9 @@
 
 //! A simple test for testing many permutations of allowedness of
 //! impl Trait
-#![feature(dyn_trait)]
+
+#![feature(conservative_impl_trait, universal_impl_trait)]
+
 use std::fmt::Debug;
 
 // Allowed

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dyn_trait)]
 #![allow(bare_trait_object)]
 
 struct Foo;

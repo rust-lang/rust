@@ -11,7 +11,6 @@
 // compile-flags: -Z borrowck=mir
 
 #![allow(dead_code)]
-#![feature(dyn_trait)]
 
 use std::fmt::Debug;
 
