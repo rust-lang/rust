@@ -229,8 +229,8 @@ impl char {
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
             '\\' | '\'' | '"' => EscapeDefaultState::Backslash(self),
-            c if is_printable(c) => EscapeDefaultState::Char(c),
-            c => EscapeDefaultState::Unicode(c.escape_unicode()),
+            _ if is_printable(self) => EscapeDefaultState::Char(self),
+            _ => EscapeDefaultState::Unicode(self.escape_unicode()),
         };
         EscapeDebug(EscapeDefault { state: init_state })
     }
@@ -690,6 +690,28 @@ impl char {
     #[inline]
     pub fn is_control(self) -> bool {
         general_category::Cc(self)
+    }
+
+    /// Returns true if this `char` is a nonspacing mark code point, and false otherwise.
+    ///
+    /// 'Nonspacing mark code point' is defined in terms of the Unicode General
+    /// Category `Mn`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // U+0301, COMBINING ACUTE ACCENT
+    /// assert!('\u{301}'.is_nonspacing_mark());
+    /// assert!(!'e'.is_nonspacing_mark());
+    /// ```
+    #[unstable(feature = "rustc_private",
+               reason = "mainly needed for compiler internals",
+               issue = "27812")]
+    #[inline]
+    pub fn is_nonspacing_mark(self) -> bool {
+        general_category::Mn(self)
     }
 
     /// Returns true if this `char` is numeric, and false otherwise.

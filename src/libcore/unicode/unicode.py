@@ -496,7 +496,7 @@ pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
                      ["Full_Composition_Exclusion"])
 
         # category tables
-        for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc"]), \
+        for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc", "Mn"]), \
                                   ("derived_property", derived, want_derived), \
                                   ("property", props, ["White_Space", "Pattern_White_Space"]):
             emit_property_module(rf, name, cat, pfuns)
