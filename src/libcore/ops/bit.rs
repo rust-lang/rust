@@ -315,7 +315,12 @@ macro_rules! bitxor_impl {
 
 bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The left shift operator `<<`.
+/// The left shift operator `<<`. Note that because this trait is implemented
+/// for all integer types with multiple right-hand-side types, Rust's type
+/// checker has special handling for `_ << _`, setting the result type for
+/// integer operations to the type of the left-hand-side operand. This means
+/// that though `a << b` and `a.shl(b)` are one and the same from an evaluation
+/// standpoint, they are different when it comes to type inference.
 ///
 /// # Examples
 ///
@@ -417,7 +422,12 @@ macro_rules! shl_impl_all {
 
 shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 
-/// The right shift operator `>>`.
+/// The right shift operator `>>`. Note that because this trait is implemented
+/// for all integer types with multiple right-hand-side types, Rust's type
+/// checker has special handling for `_ >> _`, setting the result type for
+/// integer operations to the type of the left-hand-side operand. This means
+/// that though `a >> b` and `a.shr(b)` are one and the same from an evaluation
+/// standpoint, they are different when it comes to type inference.
 ///
 /// # Examples
 ///
