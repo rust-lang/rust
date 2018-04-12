@@ -58,7 +58,7 @@ pub enum BoundRegion {
     ///
     /// The def-id is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, Name),
+    BrNamed(DefId, InternedString),
 
     /// Fresh bound identifiers created during GLB computations.
     BrFresh(u32),
@@ -1058,7 +1058,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
-    pub name: Name,
+    pub name: InternedString,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]

@@ -30,7 +30,7 @@ use std::usize;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::abi::Abi;
 use syntax::ast::CRATE_NODE_ID;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, InternedString};
 use hir;
 
 macro_rules! gen_display_debug_body {
@@ -130,7 +130,7 @@ macro_rules! print {
 }
 
 
-struct LateBoundRegionNameCollector(FxHashSet<Symbol>);
+struct LateBoundRegionNameCollector(FxHashSet<InternedString>);
 impl<'tcx> ty::fold::TypeVisitor<'tcx> for LateBoundRegionNameCollector {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
         match *r {
@@ -148,7 +148,7 @@ pub struct PrintContext {
     is_debug: bool,
     is_verbose: bool,
     identify_regions: bool,
-    used_region_names: Option<FxHashSet<Symbol>>,
+    used_region_names: Option<FxHashSet<InternedString>>,
     region_index: usize,
     binder_depth: usize,
 }
@@ -440,12 +440,12 @@ impl PrintContext {
                                           lifted: Option<ty::Binder<U>>) -> fmt::Result
         where T: Print, U: Print + TypeFoldable<'tcx>, F: fmt::Write
     {
-        fn name_by_region_index(index: usize) -> Symbol {
+        fn name_by_region_index(index: usize) -> InternedString {
             match index {
                 0 => Symbol::intern("'r"),
                 1 => Symbol::intern("'s"),
                 i => Symbol::intern(&format!("'t{}", i-2)),
-            }
+            }.as_str()
         }
 
         // Replace any anonymous late-bound regions with named
@@ -493,8 +493,7 @@ impl PrintContext {
                         }
                     };
                     let _ = write!(f, "{}", name);
-                    ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID),
-                                name)
+                    ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID), name)
                 }
             };
             tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
@@ -510,7 +509,7 @@ impl PrintContext {
         result
     }
 
-    fn is_name_used(&self, name: &Symbol) -> bool {
+    fn is_name_used(&self, name: &InternedString) -> bool {
         match self.used_region_names {
             Some(ref names) => names.contains(name),
             None => false,
@@ -697,7 +696,7 @@ define_print! {
                 BrAnon(n) => write!(f, "BrAnon({:?})", n),
                 BrFresh(n) => write!(f, "BrFresh({:?})", n),
                 BrNamed(did, name) => {
-                    write!(f, "BrNamed({:?}:{:?}, {:?})",
+                    write!(f, "BrNamed({:?}:{:?}, {})",
                            did.krate, did.index, name)
                 }
                 BrEnv => write!(f, "BrEnv"),

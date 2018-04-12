@@ -35,6 +35,7 @@ use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span};
+use syntax_pos::symbol::InternedString;
 use util::nodemap::FxHashMap;
 use arena::DroplessArena;
 
@@ -343,7 +344,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     // Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, ast::Name),
+    EarlyBoundRegion(Span, InternedString),
 
     // Region variables created for bound regions
     // in a function or method that is called

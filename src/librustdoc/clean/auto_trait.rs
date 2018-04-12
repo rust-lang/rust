@@ -224,7 +224,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     let name = if p.name == "" {
                         hir::LifetimeName::Static
                     } else {
-                        hir::LifetimeName::Name(p.name)
+                        hir::LifetimeName::Name(Symbol::intern(&p.name))
                     };
 
                     hir::Lifetime {
@@ -407,7 +407,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
             let names_map: FxHashMap<String, Lifetime> = generics
                 .regions
                 .iter()
-                .map(|l| (l.name.as_str().to_string(), l.clean(self.cx)))
+                .map(|l| (l.name.to_string(), l.clean(self.cx)))
                 .collect();
 
             let body_ids: FxHashSet<_> = infcx
@@ -728,7 +728,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
     fn region_name(&self, region: Region) -> Option<String> {
         match region {
-            &ty::ReEarlyBound(r) => Some(r.name.as_str().to_string()),
+            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
             _ => None,
         }
     }
@@ -1005,7 +1005,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         // We only care about late bound regions, as we need to add them
                         // to the 'for<>' section
                         &ty::ReLateBound(_, ty::BoundRegion::BrNamed(_, name)) => {
-                            Some(GenericParam::Lifetime(Lifetime(name.as_str().to_string())))
+                            Some(GenericParam::Lifetime(Lifetime(name.to_string())))
                         }
                         &ty::ReVar(_) | &ty::ReEarlyBound(_) => None,
                         _ => panic!("Unexpected region type {:?}", r),
