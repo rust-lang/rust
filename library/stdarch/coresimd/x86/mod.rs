@@ -34,6 +34,7 @@ types! {
     ///
     /// ```
     /// # #![feature(stdsimd)]
+    /// # #![cfg_attr(dox, feature(mmx_target_feature))]
     /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
