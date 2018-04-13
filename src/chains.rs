@@ -393,7 +393,6 @@ fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Exp
         ast::ExprKind::MethodCall(_, ref expressions) => {
             Some(convert_try(&expressions[0], context))
         }
-        ast::ExprKind::TupField(ref subexpr, _)
         | ast::ExprKind::Field(ref subexpr, _)
         | ast::ExprKind::Try(ref subexpr) => Some(convert_try(subexpr, context)),
         _ => None,
@@ -440,16 +439,25 @@ fn rewrite_chain_subexpr(
             };
             rewrite_method_call(segment.ident, types, expressions, span, context, shape)
         }
-        ast::ExprKind::Field(_, ref field) => rewrite_element(format!(".{}", field.name)),
-        ast::ExprKind::TupField(ref expr, ref field) => {
-            let space = match expr.node {
-                ast::ExprKind::TupField(..) => " ",
-                _ => "",
+        ast::ExprKind::Field(ref nested, ref field) => {
+            let space = if is_tup_field_access(expr) && is_tup_field_access(nested) {
+                " "
+            } else {
+                ""
             };
-            rewrite_element(format!("{}.{}", space, field.node))
+            rewrite_element(format!("{}.{}", space, field.name))
         }
         ast::ExprKind::Try(_) => rewrite_element(String::from("?")),
         _ => unreachable!(),
+    }
+}
+
+fn is_tup_field_access(expr: &ast::Expr) -> bool {
+    match expr.node {
+        ast::ExprKind::Field(_, ref field) => {
+            field.name.to_string().chars().all(|c| c.is_digit(10))
+        }
+        _ => false,
     }
 }
 

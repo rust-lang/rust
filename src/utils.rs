@@ -365,7 +365,6 @@ pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
         | ast::ExprKind::Assign(ref e, _)
         | ast::ExprKind::AssignOp(_, ref e, _)
         | ast::ExprKind::Field(ref e, _)
-        | ast::ExprKind::TupField(ref e, _)
         | ast::ExprKind::Index(ref e, _)
         | ast::ExprKind::Range(Some(ref e), _, _)
         | ast::ExprKind::Try(ref e) => left_most_sub_expr(e),

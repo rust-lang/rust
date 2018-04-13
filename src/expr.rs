@@ -178,7 +178,6 @@ pub fn format_expr(
         }
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
-        | ast::ExprKind::TupField(..)
         | ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
         ast::ExprKind::Mac(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
@@ -1349,7 +1348,6 @@ fn is_simple_expr(expr: &ast::Expr) -> bool {
         | ast::ExprKind::Cast(ref expr, _)
         | ast::ExprKind::Field(ref expr, _)
         | ast::ExprKind::Try(ref expr)
-        | ast::ExprKind::TupField(ref expr, _)
         | ast::ExprKind::Unary(_, ref expr) => is_simple_expr(expr),
         ast::ExprKind::Index(ref lhs, ref rhs) | ast::ExprKind::Repeat(ref lhs, ref rhs) => {
             is_simple_expr(lhs) && is_simple_expr(rhs)
