@@ -242,11 +242,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     where FR: FnMut(&ty::RegionParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
           FT: FnMut(&ty::TypeParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
         // Handle Self first, before all regions.
-        let mut types = defs.types();
         let mut skip_self = defs.parent.is_none() && defs.has_self;
         if skip_self {
-            let def = types.next().unwrap();
-            let ty = mk_type(def, substs);
+            let def = defs.params.iter().find_map(|p| p.get_type()).unwrap();
+            let ty = mk_type(&def, substs);
             assert_eq!(def.index as usize, substs.len());
             substs.push(ty.into());
         }

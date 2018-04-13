@@ -46,6 +46,7 @@ use hir::HirVec;
 use hir::map::{DefKey, DefPathData, Definitions};
 use hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution};
+use ty::Kind;
 use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES};
 use middle::cstore::CrateStore;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -1461,7 +1462,7 @@ impl<'a> LoweringContext<'a> {
                         assert!(!def_id.is_local());
                         let item_generics =
                             self.cstore.item_generics_cloned_untracked(def_id, self.sess);
-                        let n = item_generics.lifetimes().count();
+                        let n = item_generics.param_counts()[&Kind::Lifetime];
                         self.type_def_lifetime_params.insert(def_id, n);
                         n
                     });

@@ -96,7 +96,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate, GenericParamDef};
+use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
@@ -4923,16 +4923,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             segment.map_or((0, 0, 0), |(_, generics)| {
                 let params_count = generics.param_counts();
 
-                let offset_type_params = generics.parent.is_none() && generics.has_self;
-                let type_params = params_count[&ty::Kind::Type] - offset_type_params as usize;
+                let type_params_offset
+                    = (generics.parent.is_none() && generics.has_self) as usize;
+                let type_params = params_count[&ty::Kind::Type] - type_params_offset;
                 let type_params_barring_defaults =
-                    type_params - generics.params.iter().filter(|param| {
-                        if let GenericParamDef::Type(ty) = param {
-                            ty.has_default
-                        } else {
-                            false
-                        }
-                    }).count();
+                    generics.type_params_without_defaults() - type_params_offset;
 
                 (type_params_barring_defaults, type_params, params_count[&ty::Kind::Lifetime])
             });

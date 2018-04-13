@@ -49,6 +49,7 @@
 #![cfg_attr(stage0, feature(dyn_trait))]
 #![feature(from_ref)]
 #![feature(fs_read_write)]
+#![feature(iterator_find_map)]
 #![cfg_attr(windows, feature(libc))]
 #![cfg_attr(stage0, feature(macro_lifetime_matcher))]
 #![feature(macro_vis_matcher)]

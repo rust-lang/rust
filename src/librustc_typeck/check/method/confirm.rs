@@ -15,7 +15,7 @@ use check::{FnCtxt, PlaceOp, callee, Needs};
 use hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::traits;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Kind};
 use rustc::ty::subst::Subst;
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
@@ -332,7 +332,9 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 parent_substs.type_at(i)
             } else if let Some(ast_ty)
                 = provided.as_ref().and_then(|p| {
-                    p.types.get(i - parent_substs.len() - method_generics.lifetimes().count())
+                    let idx =
+                        i - parent_substs.len() - method_generics.param_counts()[&Kind::Lifetime];
+                    p.types.get(idx)
                 })
             {
                 self.to_ty(ast_ty)

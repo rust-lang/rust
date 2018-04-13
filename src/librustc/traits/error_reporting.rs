@@ -378,7 +378,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push(("_Self".to_string(), Some(self.tcx.type_of(def.did).to_string())));
         }
 
-        for param in generics.types() {
+        for param in generics.types_depr() {
             let name = param.name.to_string();
             let ty = trait_ref.substs.type_for_def(param);
             let ty_str = ty.to_string();

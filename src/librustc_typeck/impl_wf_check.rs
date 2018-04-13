@@ -105,7 +105,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx, &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
     // Disallow ANY unconstrained type parameters.
-    for (ty_param, param) in impl_generics.types().zip(impl_hir_generics.ty_params()) {
+    for (ty_param, param) in impl_generics.types_depr().zip(impl_hir_generics.ty_params()) {
         let param_ty = ty::ParamTy::for_def(ty_param);
         if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
             report_unused_parameter(tcx, param.span, "type", &param_ty.to_string());
@@ -122,13 +122,13 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .flat_map(|def_id| {
             ctp::parameters_for(&tcx.type_of(def_id), true)
         }).collect();
-    for (ty_lifetime, lifetime) in impl_generics.lifetimes().zip(impl_hir_generics.lifetimes()) {
-        let param = ctp::Parameter::from(ty_lifetime.to_early_bound_region_data());
+    for (ty_lt, lt) in impl_generics.lifetimes_depr().zip(impl_hir_generics.lifetimes()) {
+        let param = ctp::Parameter::from(ty_lt.to_early_bound_region_data());
 
         if lifetimes_in_associated_types.contains(&param) && // (*)
             !input_parameters.contains(&param) {
-            report_unused_parameter(tcx, lifetime.lifetime.span,
-                                    "lifetime", &lifetime.lifetime.name.name().to_string());
+            report_unused_parameter(tcx, lt.lifetime.span,
+                                    "lifetime", &lt.lifetime.name.name().to_string());
         }
     }
 

@@ -13,7 +13,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::maps::Providers;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Kind};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
@@ -357,7 +357,7 @@ fn unsafe_derive_on_repr_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: D
 
     // FIXME: when we make this a hard error, this should have its
     // own error code.
-    let message = if tcx.generics_of(def_id).types().count() != 0 {
+    let message = if tcx.generics_of(def_id).param_counts()[&Kind::Type] != 0 {
         format!("#[derive] can't be used on a #[repr(packed)] struct with \
                  type parameters (error E0133)")
     } else {

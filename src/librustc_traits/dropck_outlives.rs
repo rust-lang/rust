@@ -280,8 +280,12 @@ crate fn adt_dtorck_constraint<'a, 'tcx>(
     if def.is_phantom_data() {
         let result = DtorckConstraint {
             outlives: vec![],
-            dtorck_types: vec![tcx.mk_param_from_def(&tcx.generics_of(def_id).types().next()
-                .expect("should be at least one type parameter"))],
+            dtorck_types: vec![tcx.mk_param_from_def(
+                &tcx.generics_of(def_id)
+                    .params
+                    .iter()
+                    .find_map(|p| p.get_type())
+                    .expect("should be at least one type parameter"))],
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);

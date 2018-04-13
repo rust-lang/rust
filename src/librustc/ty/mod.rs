@@ -782,6 +782,13 @@ impl GenericParamDef {
             GenericParamDef::Type(ty)     => ty.index,
         }
     }
+
+    pub fn get_type(&self) -> Option<TypeParamDef> {
+        match *self {
+            GenericParamDef::Type(ty) => Some(ty),
+            _ => None,
+        }
+    }
 }
 
 /// Information about the formal type/lifetime parameters associated
@@ -828,7 +835,19 @@ impl<'a, 'gcx, 'tcx> Generics {
         param_counts
     }
 
-    pub fn lifetimes(&self) -> impl DoubleEndedIterator<Item = &RegionParamDef> {
+    pub fn type_params_without_defaults(&self) -> usize {
+        let mut count = 0;
+        for param in self.params.iter() {
+            if let GenericParamDef::Type(ty) = param {
+                if !ty.has_default {
+                    count += 1
+                }
+            }
+        }
+        count
+    }
+
+    pub fn lifetimes_depr(&self) -> impl DoubleEndedIterator<Item = &RegionParamDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParamDef::Lifetime(lt) = p {
                 Some(lt)
@@ -838,7 +857,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         })
     }
 
-    pub fn types(&self) -> impl DoubleEndedIterator<Item = &TypeParamDef> {
+    pub fn types_depr(&self) -> impl DoubleEndedIterator<Item = &TypeParamDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParamDef::Type(ty) = p {
                 Some(ty)
@@ -849,9 +868,7 @@ impl<'a, 'gcx, 'tcx> Generics {
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        if self.params.iter().any(|p| {
-            if let GenericParamDef::Type(_) = p { true } else { false }
-        }) {
+        if self.params.iter().any(|p| p.get_type().is_some()) {
             return true;
         }
         if let Some(parent_def_id) = self.parent {
@@ -912,7 +929,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             // And it can be seen that in both cases, to move from a substs
             // offset to a generics offset you just have to offset by the
             // number of regions.
-            let type_param_offset = self.lifetimes().count();
+            let type_param_offset = self.param_counts()[&Kind::Lifetime];
 
             let has_self = self.has_self && self.parent.is_none();
             let is_separated_self = type_param_offset != 0 && idx == 0 && has_self;

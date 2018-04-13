@@ -21,7 +21,7 @@ use super::elaborate_predicates;
 
 use hir::def_id::DefId;
 use traits;
-use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::{self, Ty, TyCtxt, Kind, TypeFoldable};
 use ty::subst::Substs;
 use ty::util::ExplicitSelf;
 use std::borrow::Cow;
@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if self.generics_of(method.def_id).types().count() != 0 {
+        if self.generics_of(method.def_id).param_counts()[&Kind::Type] != 0 {
             return Some(MethodViolationCode::Generic);
         }
 

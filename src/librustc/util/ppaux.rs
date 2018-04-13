@@ -335,10 +335,10 @@ impl PrintContext {
             }
 
             if !verbose {
-                if generics.types().last().map_or(false, |def| def.has_default) {
+                if generics.types_depr().last().map_or(false, |def| def.has_default) {
                     if let Some(substs) = tcx.lift(&substs) {
                         let tps = substs.types().rev().skip(child_types);
-                        for (def, actual) in generics.types().rev().zip(tps) {
+                        for (def, actual) in generics.types_depr().rev().zip(tps) {
                             if !def.has_default {
                                 break;
                             }

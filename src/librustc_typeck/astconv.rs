@@ -208,8 +208,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
         let decl_generics = tcx.generics_of(def_id);
+        let param_counts = decl_generics.param_counts();
         let num_types_provided = parameters.types.len();
-        let expected_num_region_params = decl_generics.lifetimes().count();
+        let expected_num_region_params = param_counts[&ty::Kind::Lifetime];
         let supplied_num_region_params = parameters.lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
             report_lifetime_number_error(tcx, span,
@@ -221,10 +222,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        let ty_param_defs =
-            decl_generics.types().skip(self_ty.is_some() as usize).collect::<Vec<_>>();
-        if !infer_types || num_types_provided > ty_param_defs.len() {
-            check_type_argument_count(tcx, span, num_types_provided, &ty_param_defs);
+        let type_params_offset = self_ty.is_some() as usize;
+        let ty_param_defs = param_counts[&ty::Kind::Type] - type_params_offset;
+        if !infer_types || num_types_provided > ty_param_defs {
+            check_type_argument_count(tcx,
+                span,
+                num_types_provided,
+                ty_param_defs,
+                decl_generics.type_params_without_defaults() - type_params_offset);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
@@ -241,7 +246,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let substs = Substs::for_item(tcx, def_id, |def, _| {
-            let i = def.index as usize - self_ty.is_some() as usize;
+            let i = def.index as usize - type_params_offset;
             if let Some(lifetime) = parameters.lifetimes.get(i) {
                 self.ast_region_to_region(lifetime, Some(def))
             } else {
@@ -255,7 +260,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
-            let i = i - self_ty.is_some() as usize - decl_generics.lifetimes().count();
+            let i = i - (param_counts[&ty::Kind::Lifetime] + type_params_offset);
             if i < num_types_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])
@@ -1300,10 +1305,14 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     (auto_traits, trait_bounds)
 }
 
-fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
-                             ty_param_defs: &[&ty::TypeParamDef]) {
-    let accepted = ty_param_defs.len();
-    let required = ty_param_defs.iter().take_while(|x| !x.has_default).count();
+fn check_type_argument_count(tcx: TyCtxt,
+                             span: Span,
+                             supplied: usize,
+                             ty_param_defs: usize,
+                             ty_param_defs_without_default: usize)
+{
+    let accepted = ty_param_defs;
+    let required = ty_param_defs_without_default;
     if supplied < required {
         let expected = if required < accepted {
             "expected at least"
