@@ -106,6 +106,7 @@ impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
             FromEnv(..) |
             WellFormedTy(..) |
             FromEnvTy(..) |
+            Normalize(..) |
             RegionOutlives(..) |
             TypeOutlives(..) => self,
         }
@@ -116,10 +117,20 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     -> Lrc<Vec<Clause<'tcx>>>
 {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let item = tcx.hir.expect_item(node_id);
-    match item.node {
-        hir::ItemTrait(..) => program_clauses_for_trait(tcx, def_id),
-        hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
+    let node = tcx.hir.find(node_id).unwrap();
+    match node {
+        hir::map::Node::NodeItem(item) => match item.node {
+            hir::ItemTrait(..) => program_clauses_for_trait(tcx, def_id),
+            hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
+            _ => Lrc::new(vec![]),
+        }
+        hir::map::Node::NodeImplItem(item) => {
+            if let hir::ImplItemKind::Type(..) = item.node {
+                program_clauses_for_associated_type_value(tcx, def_id)
+            } else {
+                Lrc::new(vec![])
+            }
+        },
 
         // FIXME: other constructions e.g. traits, associated types...
         _ => Lrc::new(vec![]),
@@ -225,6 +236,56 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     let clause = ProgramClause {
         goal: trait_pred,
         hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect()
+    };
+    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
+}
+
+pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item_id: DefId,
+) -> Lrc<Vec<Clause<'tcx>>> {
+    // Rule Normalize-From-Impl (see rustc guide)
+    //
+    // ```impl<P0..Pn> Trait<A1..An> for A0
+    // {
+    //     type AssocType<Pn+1..Pm> where WC = T;
+    // }```
+    //
+    // ```
+    // forall<P0..Pm> {
+    //   forall<Pn+1..Pm> {
+    //     Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T) :-
+    //       Implemented(A0: Trait<A1..An>) && WC
+    //   }
+    // }
+    // ```
+
+    let item = tcx.associated_item(item_id);
+    debug_assert_eq!(item.kind, ty::AssociatedKind::Type);
+    let impl_id = if let ty::AssociatedItemContainer::ImplContainer(impl_id) = item.container {
+        impl_id
+    } else {
+        bug!()
+    };
+    // `A0 as Trait<A1..An>`
+    let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
+    // `T`
+    let ty = tcx.type_of(item_id);
+    // `Implemented(A0: Trait<A1..An>)`
+    let trait_implemented = ty::Binder::dummy(ty::TraitPredicate { trait_ref }.lower());
+    // `WC`
+    let item_where_clauses = tcx.predicates_of(item_id).predicates.lower();
+    // `Implemented(A0: Trait<A1..An>) && WC`
+    let mut where_clauses = vec![trait_implemented];
+    where_clauses.extend(item_where_clauses);
+    // `<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm>`
+    let projection_ty = ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, item.name);
+    // `Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> T)`
+    let normalize_goal = DomainGoal::Normalize(ty::ProjectionPredicate { projection_ty, ty });
+    // `Normalize(... -> T) :- ...`
+    let clause = ProgramClause {
+        goal: normalize_goal,
+        hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect(),
     };
     Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
 }
