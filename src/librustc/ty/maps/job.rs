@@ -31,6 +31,7 @@ pub(super) enum QueryResult<'tcx, T> {
 /// A span and a query key
 #[derive(Clone, Debug)]
 pub struct QueryInfo<'tcx> {
+    /// The span for a reason this query was required
     pub span: Span,
     pub query: Query<'tcx>,
 }
@@ -73,13 +74,22 @@ impl<'tcx> QueryJob<'tcx> {
             cycle.insert(0, job.info.clone());
 
             if &*job as *const _ == self as *const _ {
-                break;
+                // This is the end of the cycle
+                // The span entry we included was for the usage
+                // of the cycle itself, and not part of the cycle
+                // Replace it with the span which caused the cycle to form
+                cycle[0].span = span;
+                // Find out why the cycle itself was used
+                let usage = job.parent.as_ref().map(|parent| {
+                    (job.info.span, parent.info.query.clone())
+                });
+                return Err(CycleError { usage, cycle });
             }
 
             current_job = job.parent.clone();
         }
 
-        Err(CycleError { span, cycle })
+        panic!("did not find a cycle")
     }
 
     /// Signals to waiters that the query is complete.

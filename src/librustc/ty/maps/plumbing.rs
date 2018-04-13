@@ -64,8 +64,8 @@ pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
 
 #[derive(Clone)]
 pub(super) struct CycleError<'tcx> {
-    /// The span of the reason the first query in `cycle` ran the last query in `cycle`
-    pub(super) span: Span,
+    /// The query and related span which uses the cycle
+    pub(super) usage: Option<(Span, Query<'tcx>)>,
     pub(super) cycle: Vec<QueryInfo<'tcx>>,
 }
 
@@ -81,7 +81,7 @@ pub(super) enum TryGetLock<'a, 'tcx: 'a, T, D: QueryDescription<'tcx> + 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub(super) fn report_cycle(self, CycleError { span, cycle: stack }: CycleError<'gcx>)
+    pub(super) fn report_cycle(self, CycleError { usage, cycle: stack }: CycleError<'gcx>)
         -> DiagnosticBuilder<'a>
     {
         assert!(!stack.is_empty());
@@ -95,22 +95,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // (And cycle errors around impls tend to occur during the
         // collect/coherence phases anyhow.)
         item_path::with_forced_impl_filename_line(|| {
-            let span = fix_span(span, &stack.first().unwrap().query);
-            let mut err =
-                struct_span_err!(self.sess, span, E0391,
-                                 "cyclic dependency detected");
-            err.span_label(span, "cyclic reference");
+            let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
+            let mut err = struct_span_err!(self.sess,
+                                           span,
+                                           E0391,
+                                           "cycle detected when {}",
+                                           stack[0].query.describe(self));
 
-            err.span_note(fix_span(stack[0].span, &stack[0].query),
-                          &format!("the cycle begins when {}...", stack[0].query.describe(self)));
-
-            for &QueryInfo { span, ref query, .. } in &stack[1..] {
-                err.span_note(fix_span(span, query),
-                              &format!("...which then requires {}...", query.describe(self)));
+            for i in 1..stack.len() {
+                let query = &stack[i].query;
+                let span = fix_span(stack[(i + 1) % stack.len()].span, query);
+                err.span_note(span, &format!("...which requires {}...", query.describe(self)));
             }
 
-            err.note(&format!("...which then again requires {}, completing the cycle.",
+            err.note(&format!("...which again requires {}, completing the cycle",
                               stack[0].query.describe(self)));
+
+            if let Some((span, query)) = usage {
+                err.span_note(fix_span(span, &query),
+                              &format!("cycle used when {}", query.describe(self)));
+            }
 
             return err
         })
