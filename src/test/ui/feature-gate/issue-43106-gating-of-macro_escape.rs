@@ -13,7 +13,7 @@
 // `#![macro_escape]` is incompatible with crate-level `#![macro_use]`
 // already present in issue-43106-gating-of-builtin-attrs.
 
-// must-compile-successfully
+// compile-pass
 
 #![macro_escape]
 //~^ WARN macro_escape is a deprecated synonym for macro_use

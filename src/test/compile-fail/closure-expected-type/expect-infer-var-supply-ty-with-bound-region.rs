@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 fn with_closure<F, A>(_: F)
     where F: FnOnce(A, &u32)

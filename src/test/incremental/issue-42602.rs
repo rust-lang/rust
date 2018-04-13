@@ -18,7 +18,7 @@
 
 // revisions:cfail1 cfail2 cfail3
 // compile-flags:-Zquery-dep-graph
-// must-compile-successfully
+// compile-pass
 
 #![feature(rustc_attrs)]
 

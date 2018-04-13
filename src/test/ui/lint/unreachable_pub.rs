@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(crate_visibility_modifier)]
 #![feature(macro_vis_matcher)]

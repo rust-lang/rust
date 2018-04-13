@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-test
-// must-compile-successfully
+// compile-pass
 
 #![feature(infer_outlives_requirements)]
 // Outlives requirementes are inferred (RFC 2093)

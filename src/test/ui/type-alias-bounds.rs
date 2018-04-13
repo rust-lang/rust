@@ -10,7 +10,7 @@
 
 // Test ignored_generic_bounds lint warning about bounds in type aliases
 
-// must-compile-successfully
+// compile-pass
 #![allow(dead_code)]
 
 use std::rc::Rc;

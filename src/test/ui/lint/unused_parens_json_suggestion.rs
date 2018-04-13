@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: --error-format pretty-json -Zunstable-options
-// must-compile-successfully
+// compile-pass
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested

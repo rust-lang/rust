@@ -16,7 +16,7 @@
 // using `rustc_attrs` feature. There is a separate compile-fail/ test
 // ensuring that the attribute feature-gating works in this context.)
 
-// must-compile-successfully
+// compile-pass
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]

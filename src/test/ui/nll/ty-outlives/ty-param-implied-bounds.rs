@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
+// compile-pass
 
 // Test that we assume that universal types like `T` outlive the
 // function body.

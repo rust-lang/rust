@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// must-compile-successfully
+// compile-pass
 
 // if `X` were used instead of `x`, `X - 10` would result in a lint.
 // This file should never produce a lint, no matter how the const

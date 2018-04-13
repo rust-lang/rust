@@ -16,7 +16,7 @@
 // Note that we specify -g so that the FileMaps actually get referenced by the
 // incr. comp. cache:
 // compile-flags: -Z query-dep-graph -g
-// must-compile-successfully
+// compile-pass
 
 #![crate_type= "rlib"]
 

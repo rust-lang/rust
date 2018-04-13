@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -Z print-type-sizes
-// must-compile-successfully
+// compile-pass
 
 // This file illustrates how niche-filling enums are handled,
 // modelled after cases like `Option<&u32>`, `Option<bool>` and such.

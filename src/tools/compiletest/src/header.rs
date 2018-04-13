@@ -223,7 +223,7 @@ pub struct TestProps {
     // arguments. (In particular, it propagates to the aux-builds.)
     pub incremental_dir: Option<PathBuf>,
     // Specifies that a test must actually compile without errors.
-    pub must_compile_successfully: bool,
+    pub compile_pass: bool,
     // rustdoc will test the output of the `--test` option
     pub check_test_line_numbers_match: bool,
     // The test must be compiled and run successfully. Only used in UI tests for now.
@@ -257,7 +257,7 @@ impl TestProps {
             pretty_compare_only: false,
             forbid_output: vec![],
             incremental_dir: None,
-            must_compile_successfully: false,
+            compile_pass: false,
             check_test_line_numbers_match: false,
             run_pass: false,
             disable_ui_testing_normalization: false,
@@ -375,10 +375,10 @@ impl TestProps {
                 self.run_pass = config.parse_run_pass(ln);
             }
 
-            if !self.must_compile_successfully {
+            if !self.compile_pass {
                 // run-pass implies must_compile_sucessfully
-                self.must_compile_successfully =
-                    config.parse_must_compile_successfully(ln) || self.run_pass;
+                self.compile_pass =
+                    config.parse_compile_pass(ln) || self.run_pass;
             }
 
             if !self.disable_ui_testing_normalization {
@@ -508,8 +508,8 @@ impl Config {
         }
     }
 
-    fn parse_must_compile_successfully(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "must-compile-successfully")
+    fn parse_compile_pass(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "compile-pass")
     }
 
     fn parse_disable_ui_testing_normalization(&self, line: &str) -> bool {

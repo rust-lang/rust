@@ -16,7 +16,7 @@
 // over a yield -- because the data that is borrowed (`*x`) is not
 // stored on the stack.
 
-// must-compile-successfully
+// compile-pass
 
 fn foo(x: &mut u32) {
     move || {

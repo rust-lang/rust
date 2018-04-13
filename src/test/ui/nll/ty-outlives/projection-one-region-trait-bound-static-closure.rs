@@ -13,7 +13,7 @@
 // we don't even propagate constraints from the closures to the callers.
 
 // compile-flags:-Znll -Zborrowck=mir -Zverbose
-// must-compile-successfully
+// compile-pass
 
 #![allow(warnings)]
 #![feature(dyn_trait)]
