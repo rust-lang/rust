@@ -1728,7 +1728,9 @@ impl Context {
                 let mut dst = try_err!(File::create(&joint_dst), &joint_dst);
                 try_err!(dst.write_all(&buf), &joint_dst);
 
-                all.append(full_path(self, &item), &item_type);
+                if !self.render_redirect_pages {
+                    all.append(full_path(self, &item), &item_type);
+                }
                 // Redirect from a sane URL using the namespace to Rustdoc's
                 // URL for the page.
                 let redir_name = format!("{}.{}.html", name, item_type.name_space());
