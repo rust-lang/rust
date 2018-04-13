@@ -847,16 +847,6 @@ impl<'a, 'gcx, 'tcx> Generics {
         count
     }
 
-    pub fn lifetimes_depr(&self) -> impl DoubleEndedIterator<Item = &RegionParamDef> {
-        self.params.iter().filter_map(|p| {
-            if let GenericParamDef::Lifetime(lt) = p {
-                Some(lt)
-            } else {
-                None
-            }
-        })
-    }
-
     pub fn types_depr(&self) -> impl DoubleEndedIterator<Item = &TypeParamDef> {
         self.params.iter().filter_map(|p| {
             if let GenericParamDef::Type(ty) = p {

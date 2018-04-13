@@ -104,14 +104,6 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctp::identify_constrained_type_params(
         tcx, &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
-    // Disallow ANY unconstrained type parameters.
-    for (ty_param, param) in impl_generics.types_depr().zip(impl_hir_generics.ty_params()) {
-        let param_ty = ty::ParamTy::for_def(ty_param);
-        if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
-            report_unused_parameter(tcx, param.span, "type", &param_ty.to_string());
-        }
-    }
-
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
     let lifetimes_in_associated_types: FxHashSet<_> = impl_item_refs.iter()
         .map(|item_ref| tcx.hir.local_def_id(item_ref.id.node_id))
@@ -122,13 +114,27 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         .flat_map(|def_id| {
             ctp::parameters_for(&tcx.type_of(def_id), true)
         }).collect();
-    for (ty_lt, lt) in impl_generics.lifetimes_depr().zip(impl_hir_generics.lifetimes()) {
-        let param = ctp::Parameter::from(ty_lt.to_early_bound_region_data());
 
-        if lifetimes_in_associated_types.contains(&param) && // (*)
-            !input_parameters.contains(&param) {
-            report_unused_parameter(tcx, lt.lifetime.span,
-                                    "lifetime", &lt.lifetime.name.name().to_string());
+    for (ty_param, hir_param) in impl_generics.params.iter()
+                                              .zip(impl_hir_generics.params.iter()) {
+        match (ty_param, hir_param) {
+            // Disallow ANY unconstrained type parameters.
+            (ty::GenericParamDef::Type(ty_ty), hir::GenericParamDef::Type(hir_ty)) => {
+                let param_ty = ty::ParamTy::for_def(ty_ty);
+                if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
+                    report_unused_parameter(tcx, hir_ty.span, "type", &param_ty.to_string());
+                }
+            }
+            (ty::GenericParamDef::Lifetime(ty_lt), hir::GenericParamDef::Lifetime(hir_lt)) => {
+                let param = ctp::Parameter::from(ty_lt.to_early_bound_region_data());
+                if lifetimes_in_associated_types.contains(&param) && // (*)
+                    !input_parameters.contains(&param) {
+                    report_unused_parameter(tcx, hir_lt.lifetime.span,
+                                            "lifetime", &hir_lt.lifetime.name.name().to_string());
+                }
+            }
+            (ty::GenericParamDef::Type(_), _) => continue,
+            (ty::GenericParamDef::Lifetime(_), _) => continue,
         }
     }
 

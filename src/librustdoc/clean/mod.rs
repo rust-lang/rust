@@ -1849,10 +1849,15 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
-            params: gens.lifetimes_depr()
-                        .into_iter()
-                        .map(|lp| GenericParamDef::Lifetime(lp.clean(cx)))
-                        .chain(
+            params: gens.params
+                        .iter()
+                        .flat_map(|param| {
+                            if let ty::GenericParamDef::Lifetime(lt) = param {
+                                Some(GenericParamDef::Lifetime(lt.clean(cx)))
+                            } else {
+                                None
+                            }
+                        }).chain(
                             simplify::ty_params(stripped_typarams)
                                 .into_iter()
                                 .map(|tp| GenericParamDef::Type(tp))
