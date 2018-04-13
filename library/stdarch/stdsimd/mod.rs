@@ -205,7 +205,7 @@
 /// AVX2 and also for the default platform.
 ///
 /// ```rust
-/// #![feature(cfg_target_feature, target_feature, stdsimd)]
+/// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
 ///
 /// # #[cfg(not(dox))]
 /// # #[macro_use]
@@ -247,7 +247,7 @@
 /// we'll be using SSE4.1 features to implement hex encoding.
 ///
 /// ```
-/// #![feature(cfg_target_feature, target_feature, stdsimd)]
+/// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
 /// # extern crate std as real_std;
