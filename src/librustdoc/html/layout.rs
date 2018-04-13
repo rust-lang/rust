@@ -85,6 +85,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                        autocomplete=\"off\" \
                        placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
                        type=\"search\">\
+                <a id=\"settings-menu\" href=\"{root_path}settings.html\">\
+                    <img src=\"{root_path}wheel{suffix}.svg\" width=\"18\" alt=\"Change settings\">\
+                </a>\
             </div>\
         </form>\
     </nav>\
@@ -181,9 +184,10 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     themes = themes.iter()
                    .filter_map(|t| t.file_stem())
                    .filter_map(|t| t.to_str())
-                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}{}">"#,
+                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}{}{}.css">"#,
                                     page.root_path,
-                                    t.replace(".css", &format!("{}.css", page.resource_suffix))))
+                                    t,
+                                    page.resource_suffix))
                    .collect::<String>(),
     suffix=page.resource_suffix,
     )
