@@ -33,7 +33,7 @@ use rustc_data_structures::fx::FxHashMap;
 use std::{cmp, fmt};
 use std::hash::Hash;
 use std::intrinsics;
-use syntax::ast::{self, Name};
+use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -268,42 +268,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             _ => (),
         }
         false
-    }
-
-    /// Returns the type of element at index `i` in tuple or tuple-like type `t`.
-    /// For an enum `t`, `variant` is None only if `t` is a univariant enum.
-    pub fn positional_element_ty(self,
-                                 ty: Ty<'tcx>,
-                                 i: usize,
-                                 variant: Option<DefId>) -> Option<Ty<'tcx>> {
-        match (&ty.sty, variant) {
-            (&TyAdt(adt, substs), Some(vid)) => {
-                adt.variant_with_id(vid).fields.get(i).map(|f| f.ty(self, substs))
-            }
-            (&TyAdt(adt, substs), None) => {
-                // Don't use `non_enum_variant`, this may be a univariant enum.
-                adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
-            }
-            (&TyTuple(ref v), None) => v.get(i).cloned(),
-            _ => None,
-        }
-    }
-
-    /// Returns the type of element at field `n` in struct or struct-like type `t`.
-    /// For an enum `t`, `variant` must be some def id.
-    pub fn named_element_ty(self,
-                            ty: Ty<'tcx>,
-                            n: Name,
-                            variant: Option<DefId>) -> Option<Ty<'tcx>> {
-        match (&ty.sty, variant) {
-            (&TyAdt(adt, substs), Some(vid)) => {
-                adt.variant_with_id(vid).find_field_named(n).map(|f| f.ty(self, substs))
-            }
-            (&TyAdt(adt, substs), None) => {
-                adt.non_enum_variant().find_field_named(n).map(|f| f.ty(self, substs))
-            }
-            _ => return None
-        }
     }
 
     /// Returns the deeply last field of nested structures, or the same type,

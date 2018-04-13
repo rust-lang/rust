@@ -476,7 +476,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       // otherwise, live nodes are not required:
-      hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
+      hir::ExprIndex(..) | hir::ExprField(..) |
       hir::ExprArray(..) | hir::ExprCall(..) | hir::ExprMethodCall(..) |
       hir::ExprTup(..) | hir::ExprBinary(..) | hir::ExprAddrOf(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprBreak(..) |
@@ -912,10 +912,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprTupField(ref e, _) => {
-              self.propagate_through_expr(&e, succ)
-          }
-
           hir::ExprClosure(.., blk_id, _, _) => {
               debug!("{} is an ExprClosure", self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
@@ -1226,7 +1222,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
             hir::ExprPath(_) => succ,
             hir::ExprField(ref e, _) => self.propagate_through_expr(&e, succ),
-            hir::ExprTupField(ref e, _) => self.propagate_through_expr(&e, succ),
             _ => self.propagate_through_expr(expr, succ)
         }
     }
@@ -1419,7 +1414,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
       // no correctness conditions related to liveness
       hir::ExprCall(..) | hir::ExprMethodCall(..) | hir::ExprIf(..) |
       hir::ExprMatch(..) | hir::ExprWhile(..) | hir::ExprLoop(..) |
-      hir::ExprIndex(..) | hir::ExprField(..) | hir::ExprTupField(..) |
+      hir::ExprIndex(..) | hir::ExprField(..) |
       hir::ExprArray(..) | hir::ExprTup(..) | hir::ExprBinary(..) |
       hir::ExprCast(..) | hir::ExprUnary(..) | hir::ExprRet(..) |
       hir::ExprBreak(..) | hir::ExprAgain(..) | hir::ExprLit(_) |

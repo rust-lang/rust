@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Point(i32, i32);
+#![feature(decl_macro)]
 
-fn main() {
-    let origin = Point(0, 0);
-    origin.0;
-    origin.1;
-    origin.2;
-    //~^ ERROR no field `2` on type `Point`
-    let tuple = (0, 0);
-    tuple.0;
-    tuple.1;
-    tuple.2;
-    //~^ ERROR no field `2` on type `({integer}, {integer})`
+macro modern($a: ident) {
+    struct Modern {
+        a: u8,
+        $a: u8, // OK
+    }
 }
+
+macro_rules! legacy {
+    ($a: ident) => {
+        struct Legacy {
+            a: u8,
+            $a: u8, //~ ERROR field `a` is already declared
+        }
+    }
+}
+
+modern!(a);
+legacy!(a);
+
+fn main() {}

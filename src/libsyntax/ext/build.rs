@@ -636,8 +636,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(sp, ast::ExprKind::Field(expr, ident.with_span_pos(sp)))
     }
     fn expr_tup_field_access(&self, sp: Span, expr: P<ast::Expr>, idx: usize) -> P<ast::Expr> {
-        let id = Spanned { node: idx, span: sp };
-        self.expr(sp, ast::ExprKind::TupField(expr, id))
+        let ident = Ident::from_str(&idx.to_string()).with_span_pos(sp);
+        self.expr(sp, ast::ExprKind::Field(expr, ident))
     }
     fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::AddrOf(ast::Mutability::Immutable, e))

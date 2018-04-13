@@ -1201,8 +1201,7 @@ impl<'a> State<'a> {
     fn print_expr_call(&mut self, func: &hir::Expr, args: &[hir::Expr]) -> io::Result<()> {
         let prec =
             match func.node {
-                hir::ExprField(..) |
-                hir::ExprTupField(..) => parser::PREC_FORCE_PAREN,
+                hir::ExprField(..) => parser::PREC_FORCE_PAREN,
                 _ => parser::PREC_POSTFIX,
             };
 
@@ -1404,11 +1403,6 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX)?;
                 self.s.word(".")?;
                 self.print_name(name.node)?;
-            }
-            hir::ExprTupField(ref expr, id) => {
-                self.print_expr_maybe_paren(&expr, parser::PREC_POSTFIX)?;
-                self.s.word(".")?;
-                self.print_usize(id.node)?;
             }
             hir::ExprIndex(ref expr, ref index) => {
                 self.print_expr_maybe_paren(&expr, parser::PREC_POSTFIX)?;
@@ -2376,7 +2370,6 @@ fn contains_exterior_struct_lit(value: &hir::Expr) -> bool {
         hir::ExprCast(ref x, _) |
         hir::ExprType(ref x, _) |
         hir::ExprField(ref x, _) |
-        hir::ExprTupField(ref x, _) |
         hir::ExprIndex(ref x, _) => {
             // &X { y: 1 }, X { y: 1 }.y
             contains_exterior_struct_lit(&x)

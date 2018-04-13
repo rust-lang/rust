@@ -404,10 +404,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.select_from_expr(&base);
             }
 
-            hir::ExprTupField(ref base, _) => {         // base.<n>
-                self.select_from_expr(&base);
-            }
-
             hir::ExprIndex(ref lhs, ref rhs) => {       // lhs[rhs]
                 self.select_from_expr(&lhs);
                 self.consume_expr(&rhs);
@@ -663,11 +659,15 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         match with_cmt.ty.sty {
             ty::TyAdt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
-                for with_field in &adt.non_enum_variant().fields {
-                    if !contains_field_named(with_field, fields) {
+                for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
+                    let is_mentioned = fields.iter().any(|f| {
+                        self.tcx().field_index(f.id, self.mc.tables) == f_index
+                    });
+                    if !is_mentioned {
                         let cmt_field = self.mc.cat_field(
                             &*with_expr,
                             with_cmt.clone(),
+                            f_index,
                             with_field.name,
                             with_field.ty(self.tcx(), substs)
                         );
@@ -691,14 +691,6 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // walk the with expression so that complex expressions
         // are properly handled.
         self.walk_expr(with_expr);
-
-        fn contains_field_named(field: &ty::FieldDef,
-                                fields: &[hir::Field])
-                                -> bool
-        {
-            fields.iter().any(
-                |f| f.name.node == field.name)
-        }
     }
 
     // Invoke the appropriate delegate calls for anything that gets

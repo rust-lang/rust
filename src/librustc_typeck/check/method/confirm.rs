@@ -433,7 +433,6 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             let last = exprs[exprs.len() - 1];
             match last.node {
                 hir::ExprField(ref expr, _) |
-                hir::ExprTupField(ref expr, _) |
                 hir::ExprIndex(ref expr, _) |
                 hir::ExprUnary(hir::UnDeref, ref expr) => exprs.push(&expr),
                 _ => break,

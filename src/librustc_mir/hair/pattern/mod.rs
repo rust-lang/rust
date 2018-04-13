@@ -528,28 +528,12 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             PatKind::Struct(ref qpath, ref fields, _) => {
                 let def = self.tables.qpath_def(qpath, pat.hir_id);
-                let adt_def = match ty.sty {
-                    ty::TyAdt(adt_def, _) => adt_def,
-                    _ => {
-                        span_bug!(
-                            pat.span,
-                            "struct pattern not applied to an ADT");
-                    }
-                };
-                let variant_def = adt_def.variant_of_def(def);
-
                 let subpatterns =
                     fields.iter()
                           .map(|field| {
-                              let index = variant_def.index_of_field_named(field.node.name);
-                              let index = index.unwrap_or_else(|| {
-                                  span_bug!(
-                                      pat.span,
-                                      "no field with name {:?}",
-                                      field.node.name);
-                              });
                               FieldPattern {
-                                  field: Field::new(index),
+                                  field: Field::new(self.tcx.field_index(field.node.id,
+                                                                         self.tables)),
                                   pattern: self.lower_pattern(&field.node.pat),
                               }
                           })

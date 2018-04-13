@@ -827,6 +827,7 @@ impl Pat {
 /// except is_shorthand is true
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FieldPat {
+    pub id: NodeId,
     /// The identifier for the field
     pub name: Name,
     /// The pattern the field is destructured to
@@ -1172,6 +1173,7 @@ pub struct Arm {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Field {
+    pub id: NodeId,
     pub name: Spanned<Name>,
     pub expr: P<Expr>,
     pub span: Span,
@@ -1276,7 +1278,6 @@ impl Expr {
             ExprAssign(..) => ExprPrecedence::Assign,
             ExprAssignOp(..) => ExprPrecedence::AssignOp,
             ExprField(..) => ExprPrecedence::Field,
-            ExprTupField(..) => ExprPrecedence::TupField,
             ExprIndex(..) => ExprPrecedence::Index,
             ExprPath(..) => ExprPrecedence::Path,
             ExprAddrOf(..) => ExprPrecedence::AddrOf,
@@ -1363,12 +1364,8 @@ pub enum Expr_ {
     ///
     /// For example, `a += 1`.
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
-    /// Access of a named struct field (`obj.foo`)
+    /// Access of a named (`obj.foo`) or unnamed (`obj.0`) struct or tuple field
     ExprField(P<Expr>, Spanned<Name>),
-    /// Access of an unnamed field of a struct or tuple-struct
-    ///
-    /// For example, `foo.0`.
-    ExprTupField(P<Expr>, Spanned<usize>),
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
 

@@ -16,7 +16,7 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::interpret::{GlobalId, Value, PrimVal};
-use rustc::ty::{self, AdtKind, VariantDef, Ty};
+use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
@@ -420,12 +420,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 ty::TyAdt(adt, substs) => {
                     match adt.adt_kind() {
                         AdtKind::Struct | AdtKind::Union => {
-                            let field_refs = field_refs(&adt.variants[0], fields);
                             ExprKind::Adt {
                                 adt_def: adt,
                                 variant_index: 0,
                                 substs,
-                                fields: field_refs,
+                                fields: field_refs(cx, fields),
                                 base: base.as_ref().map(|base| {
                                     FruInfo {
                                         base: base.to_ref(),
@@ -446,12 +445,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     assert!(base.is_none());
 
                                     let index = adt.variant_index_with_id(variant_id);
-                                    let field_refs = field_refs(&adt.variants[index], fields);
                                     ExprKind::Adt {
                                         adt_def: adt,
                                         variant_index: index,
                                         substs,
-                                        fields: field_refs,
+                                        fields: field_refs(cx, fields),
                                         base: None,
                                     }
                                 }
@@ -581,24 +579,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 body: block::to_expr_ref(cx, body),
             }
         }
-        hir::ExprField(ref source, name) => {
-            let index = match cx.tables().expr_ty_adjusted(source).sty {
-                ty::TyAdt(adt_def, _) => adt_def.variants[0].index_of_field_named(name.node),
-                ref ty => span_bug!(expr.span, "field of non-ADT: {:?}", ty),
-            };
-            let index =
-                index.unwrap_or_else(|| {
-                    span_bug!(expr.span, "no index found for field `{}`", name.node)
-                });
+        hir::ExprField(ref source, ..) => {
             ExprKind::Field {
                 lhs: source.to_ref(),
-                name: Field::new(index),
-            }
-        }
-        hir::ExprTupField(ref source, index) => {
-            ExprKind::Field {
-                lhs: source.to_ref(),
-                name: Field::new(index.node as usize),
+                name: Field::new(cx.tcx.field_index(expr.id, cx.tables)),
             }
         }
         hir::ExprCast(ref source, _) => {
@@ -999,13 +983,13 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 }
 
 /// Converts a list of named fields (i.e. for struct-like struct/enum ADTs) into FieldExprRef.
-fn field_refs<'tcx>(variant: &'tcx VariantDef,
-                    fields: &'tcx [hir::Field])
-                    -> Vec<FieldExprRef<'tcx>> {
+fn field_refs<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
+                              fields: &'tcx [hir::Field])
+                              -> Vec<FieldExprRef<'tcx>> {
     fields.iter()
         .map(|field| {
             FieldExprRef {
-                name: Field::new(variant.index_of_field_named(field.name.node).unwrap()),
+                name: Field::new(cx.tcx.field_index(field.id, cx.tables)),
                 expr: field.expr.to_ref(),
             }
         })

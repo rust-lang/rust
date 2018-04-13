@@ -21,7 +21,6 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
-use rustc::middle::mem_categorization as mc;
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
@@ -343,8 +342,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
             if let (&ty::TyAdt(adt_def, _), LpInterior(opt_variant_id, interior))
                     = (&base_lp.ty.sty, lp_elem) {
                 if adt_def.is_union() {
-                    for field in &adt_def.non_enum_variant().fields {
-                        let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                    for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
+                        let field = InteriorKind::InteriorField(mc::FieldIndex(i, field.name));
                         if field != interior {
                             let sibling_lp_kind =
                                 LpExtend(base_lp.clone(), mutbl, LpInterior(opt_variant_id, field));
@@ -395,8 +394,8 @@ impl<'a, 'tcx> MoveData<'tcx> {
         if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
             if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
                 if adt_def.is_union() {
-                    for field in &adt_def.non_enum_variant().fields {
-                        let field = InteriorKind::InteriorField(mc::NamedField(field.name));
+                    for (i, field) in adt_def.non_enum_variant().fields.iter().enumerate() {
+                        let field = InteriorKind::InteriorField(mc::FieldIndex(i, field.name));
                         let field_ty = if field == interior {
                             lp.ty
                         } else {

@@ -7,10 +7,10 @@ LL |     let _ = x.foo; //~ ERROR E0609
    = note: available fields are: `x`
 
 error[E0609]: no field `1` on type `Bar`
-  --> $DIR/E0609.rs:21:5
+  --> $DIR/E0609.rs:21:7
    |
 LL |     y.1; //~ ERROR E0609
-   |     ^^^
+   |       ^ unknown field
 
 error: aborting due to 2 previous errors
 

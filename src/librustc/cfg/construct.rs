@@ -389,7 +389,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ExprType(ref e, _) |
             hir::ExprUnary(_, ref e) |
             hir::ExprField(ref e, _) |
-            hir::ExprTupField(ref e, _) |
             hir::ExprYield(ref e) |
             hir::ExprRepeat(ref e, _) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())

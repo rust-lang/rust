@@ -36,7 +36,7 @@ fn main() {
 
     let mut line1 = Line::default();
     let _moved = line1.origin;
-    let _ = line1.origin.x + 1; //[ast]~ ERROR use of collaterally moved value: `line1.origin.x`
+    let _ = line1.origin.x + 1; //[ast]~ ERROR use of moved value: `line1.origin.x`
                                 //[mir]~^ [E0382]
 
     let mut line2 = Line::default();

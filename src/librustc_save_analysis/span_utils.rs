@@ -202,10 +202,6 @@ impl<'a> SpanUtils<'a> {
         self.sub_span_after(span, |t| t.is_keyword(keyword))
     }
 
-    pub fn sub_span_after_token(&self, span: Span, tok: Token) -> Option<Span> {
-        self.sub_span_after(span, |t| t == tok)
-    }
-
     fn sub_span_after<F: Fn(Token) -> bool>(&self, span: Span, f: F) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {

@@ -85,7 +85,7 @@ use self::method::MethodCallee;
 use self::TupleArgumentsFlag::*;
 
 use astconv::AstConv;
-use hir::def::{Def, CtorKind};
+use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use std::slice;
 use namespace::Namespace;
@@ -121,7 +121,7 @@ use std::ops::{self, Deref};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::{self, original_sp, Spanned};
+use syntax::codemap::{original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, InternedString, keywords};
@@ -1938,6 +1938,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn write_field_index(&self, node_id: ast::NodeId, index: usize) {
+        let hir_id = self.tcx.hir.node_to_hir_id(node_id);
+        self.tables.borrow_mut().field_indices_mut().insert(hir_id, index);
+    }
+
     // The NodeId and the ItemLocalId must identify the same item. We just pass
     // both of them for consistency checking.
     pub fn write_method_call(&self,
@@ -2266,7 +2271,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             hir::ExprUnary(hir::UnDeref, _) |
             hir::ExprField(..) |
-            hir::ExprTupField(..) |
             hir::ExprIndex(..) => {
                 true
             }
@@ -3070,18 +3074,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let (ident, def_scope) =
                         self.tcx.adjust(field.node, base_def.did, self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
-                    if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
+                    if let Some(index) = fields.iter().position(|f| f.name.to_ident() == ident) {
+                        let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             let adjustments = autoderef.adjust_steps(needs);
                             self.apply_adjustments(base, adjustments);
                             autoderef.finalize();
 
+                            self.write_field_index(expr.id, index);
                             self.tcx.check_stability(field.did, Some(expr.id), expr.span);
-
                             return field_ty;
                         }
                         private_candidate = Some((base_def.did, field_ty));
+                    }
+                }
+                ty::TyTuple(ref tys) => {
+                    let fstr = field.node.as_str();
+                    if let Ok(index) = fstr.parse::<usize>() {
+                        if fstr == index.to_string() {
+                            if let Some(field_ty) = tys.get(index) {
+                                let adjustments = autoderef.adjust_steps(needs);
+                                self.apply_adjustments(base, adjustments);
+                                autoderef.finalize();
+
+                                self.write_field_index(expr.id, index);
+                                return field_ty;
+                            }
+                        }
                     }
                 }
                 _ => {}
@@ -3189,78 +3209,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         display
     }
 
-    // Check tuple index expressions
-    fn check_tup_field(&self,
-                       expr: &'gcx hir::Expr,
-                       needs: Needs,
-                       base: &'gcx hir::Expr,
-                       idx: codemap::Spanned<usize>) -> Ty<'tcx> {
-        let expr_t = self.check_expr_with_needs(base, needs);
-        let expr_t = self.structurally_resolved_type(expr.span,
-                                                     expr_t);
-        let mut private_candidate = None;
-        let mut tuple_like = false;
-        let mut autoderef = self.autoderef(expr.span, expr_t);
-        while let Some((base_t, _)) = autoderef.next() {
-            let field = match base_t.sty {
-                ty::TyAdt(base_def, substs) if base_def.is_struct() => {
-                    tuple_like = base_def.non_enum_variant().ctor_kind == CtorKind::Fn;
-                    if !tuple_like { continue }
-
-                    debug!("tuple struct named {:?}",  base_t);
-                    let ident =
-                        ast::Ident::new(Symbol::intern(&idx.node.to_string()), idx.span.modern());
-                    let (ident, def_scope) =
-                        self.tcx.adjust_ident(ident, base_def.did, self.body_id);
-                    let fields = &base_def.non_enum_variant().fields;
-                    if let Some(field) = fields.iter().find(|f| f.name.to_ident() == ident) {
-                        let field_ty = self.field_ty(expr.span, field, substs);
-                        if field.vis.is_accessible_from(def_scope, self.tcx) {
-                            self.tcx.check_stability(field.did, Some(expr.id), expr.span);
-                            Some(field_ty)
-                        } else {
-                            private_candidate = Some((base_def.did, field_ty));
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                }
-                ty::TyTuple(ref v) => {
-                    tuple_like = true;
-                    v.get(idx.node).cloned()
-                }
-                _ => continue
-            };
-
-            if let Some(field_ty) = field {
-                let adjustments = autoderef.adjust_steps(needs);
-                self.apply_adjustments(base, adjustments);
-                autoderef.finalize();
-                return field_ty;
-            }
-        }
-        autoderef.unambiguous_final_ty();
-
-        if let Some((did, field_ty)) = private_candidate {
-            let struct_path = self.tcx().item_path_str(did);
-            struct_span_err!(self.tcx().sess, expr.span, E0611,
-                             "field `{}` of tuple-struct `{}` is private",
-                             idx.node, struct_path).emit();
-            return field_ty;
-        }
-
-        if tuple_like {
-            type_error_struct!(self.tcx().sess, expr.span, expr_t, E0612,
-                "attempted out-of-bounds tuple index `{}` on type `{}`",
-                idx.node, expr_t).emit();
-        } else {
-            self.no_such_field_err(expr.span, idx.node, expr_t).emit();
-        }
-
-        self.tcx().types.err
-    }
-
     fn no_such_field_err<T: Display>(&self, span: Span, field: T, expr_t: &ty::TyS)
         -> DiagnosticBuilder {
         type_error_struct!(self.tcx().sess, span, expr_t, E0609,
@@ -3343,8 +3291,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         let mut remaining_fields = FxHashMap();
-        for field in &variant.fields {
-            remaining_fields.insert(field.name.to_ident(), field);
+        for (i, field) in variant.fields.iter().enumerate() {
+            remaining_fields.insert(field.name.to_ident(), (i, field));
         }
 
         let mut seen_fields = FxHashMap();
@@ -3354,8 +3302,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Typecheck each field.
         for field in ast_fields {
             let ident = tcx.adjust(field.name.node, variant.did, self.body_id).0;
-            let field_type = if let Some(v_field) = remaining_fields.remove(&ident) {
-                seen_fields.insert(field.name.node, field.span);
+            let field_type = if let Some((i, v_field)) = remaining_fields.remove(&ident) {
+                seen_fields.insert(ident, field.span);
+                self.write_field_index(field.id, i);
 
                 // we don't look at stability attributes on
                 // struct-like enums (yet...), but it's definitely not
@@ -3367,18 +3316,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.field_ty(field.span, v_field, substs)
             } else {
                 error_happened = true;
-                if let Some(_) = variant.find_field_named(field.name.node) {
+                if let Some(prev_span) = seen_fields.get(&ident) {
                     let mut err = struct_span_err!(self.tcx.sess,
                                                 field.name.span,
                                                 E0062,
                                                 "field `{}` specified more than once",
-                                                field.name.node);
+                                                ident);
 
                     err.span_label(field.name.span, "used more than once");
-
-                    if let Some(prev_span) = seen_fields.get(&field.name.node) {
-                        err.span_label(*prev_span, format!("first use of `{}`", field.name.node));
-                    }
+                    err.span_label(*prev_span, format!("first use of `{}`", ident));
 
                     err.emit();
                 } else {
@@ -4120,9 +4066,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprField(ref base, ref field) => {
             self.check_field(expr, needs, &base, field)
-          }
-          hir::ExprTupField(ref base, idx) => {
-            self.check_tup_field(expr, needs, &base, idx)
           }
           hir::ExprIndex(ref base, ref idx) => {
               let base_t = self.check_expr_with_needs(&base, needs);

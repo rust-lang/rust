@@ -25,7 +25,6 @@
 
 use rustc::hir::def::Def as HirDef;
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::Node;
 use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 
@@ -1006,20 +1005,16 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
                 let variant = adt.variant_of_def(self.save_ctxt.get_path_def(p.id));
 
-                for &Spanned {
-                    node: ref field,
-                    span,
-                } in fields
-                {
+                for &Spanned { node: ref field, span } in fields {
                     let sub_span = self.span.span_for_first_ident(span);
-                    if let Some(f) = variant.find_field_named(field.ident.name) {
+                    if let Some(index) = self.tcx.find_field_index(field.ident, variant) {
                         if !self.span.filter_generated(sub_span, span) {
                             let span =
                                 self.span_from_span(sub_span.expect("No span fund for var ref"));
                             self.dumper.dump_ref(Ref {
                                 kind: RefKind::Variable,
                                 span,
-                                ref_id: ::id_from_def_id(f.did),
+                                ref_id: ::id_from_def_id(variant.fields[index].did),
                             });
                         }
                     }
@@ -1635,52 +1630,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     down_cast_data!(field_data, RefData, ex.span);
                     if !generated_code(ex.span) {
                         self.dumper.dump_ref(field_data);
-                    }
-                }
-            }
-            ast::ExprKind::TupField(ref sub_ex, idx) => {
-                self.visit_expr(&sub_ex);
-
-                let hir_node = match self.save_ctxt.tcx.hir.find(sub_ex.id) {
-                    Some(Node::NodeExpr(expr)) => expr,
-                    _ => {
-                        debug!(
-                            "Missing or weird node for sub-expression {} in {:?}",
-                            sub_ex.id,
-                            ex
-                        );
-                        return;
-                    }
-                };
-                let ty = match self.save_ctxt.tables.expr_ty_adjusted_opt(&hir_node) {
-                    Some(ty) => &ty.sty,
-                    None => {
-                        visit::walk_expr(self, ex);
-                        return;
-                    }
-                };
-                match *ty {
-                    ty::TyAdt(def, _) => {
-                        let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);
-                        if !self.span.filter_generated(sub_span, ex.span) {
-                            let span =
-                                self.span_from_span(sub_span.expect("No span found for var ref"));
-                            if let Some(field) = def.non_enum_variant().fields.get(idx.node) {
-                                let ref_id = ::id_from_def_id(field.did);
-                                self.dumper.dump_ref(Ref {
-                                    kind: RefKind::Variable,
-                                    span,
-                                    ref_id,
-                                });
-                            } else {
-                                return;
-                            }
-                        }
-                    }
-                    ty::TyTuple(..) => {}
-                    _ => {
-                        debug!("Expected struct or tuple type, found {:?}", ty);
-                        return;
                     }
                 }
             }

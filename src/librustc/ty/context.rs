@@ -346,6 +346,12 @@ pub struct TypeckTables<'tcx> {
     /// method calls, including those of overloaded operators.
     type_dependent_defs: ItemLocalMap<Def>,
 
+    /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
+    /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
+    /// about the field you also need definition of the variant to which the field
+    /// belongs, but it may not exist if it's a tuple field (`tuple.0`).
+    field_indices: ItemLocalMap<usize>,
+
     /// Stores the canonicalized types provided by the user. See also `UserAssertTy` statement in
     /// MIR.
     user_provided_tys: ItemLocalMap<CanonicalTy<'tcx>>,
@@ -426,6 +432,7 @@ impl<'tcx> TypeckTables<'tcx> {
         TypeckTables {
             local_id_root,
             type_dependent_defs: ItemLocalMap(),
+            field_indices: ItemLocalMap(),
             user_provided_tys: ItemLocalMap(),
             node_types: ItemLocalMap(),
             node_substs: ItemLocalMap(),
@@ -465,6 +472,20 @@ impl<'tcx> TypeckTables<'tcx> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.type_dependent_defs
+        }
+    }
+
+    pub fn field_indices(&self) -> LocalTableInContext<usize> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.field_indices
+        }
+    }
+
+    pub fn field_indices_mut(&mut self) -> LocalTableInContextMut<usize> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.field_indices
         }
     }
 
@@ -706,6 +727,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
         let ty::TypeckTables {
             local_id_root,
             ref type_dependent_defs,
+            ref field_indices,
             ref user_provided_tys,
             ref node_types,
             ref node_substs,
@@ -726,6 +748,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             type_dependent_defs.hash_stable(hcx, hasher);
+            field_indices.hash_stable(hcx, hasher);
             user_provided_tys.hash_stable(hcx, hasher);
             node_types.hash_stable(hcx, hasher);
             node_substs.hash_stable(hcx, hasher);

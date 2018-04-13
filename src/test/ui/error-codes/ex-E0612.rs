@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod a {
-    pub struct Foo(u32);
-
-    impl Foo {
-        pub fn new() -> Foo { Foo(0) }
-    }
-}
+struct Foo(u32);
 
 fn main() {
-   let y = a::Foo::new();
-   y.0; //~ ERROR E0611
+   let y = Foo(0);
+   y.1; //~ ERROR no field `1` on type `Foo`
 }
