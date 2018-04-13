@@ -696,16 +696,6 @@ impl char {
     ///
     /// 'Nonspacing mark code point' is defined in terms of the Unicode General
     /// Category `Mn`.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// // U+0301, COMBINING ACUTE ACCENT
-    /// assert!('\u{301}'.is_nonspacing_mark());
-    /// assert!(!'e'.is_nonspacing_mark());
-    /// ```
     #[unstable(feature = "rustc_private",
                reason = "mainly needed for compiler internals",
                issue = "27812")]
