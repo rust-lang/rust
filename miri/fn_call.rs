@@ -499,7 +499,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     return err!(OutOfTls);
                 }
                 self.memory.write_primval(
-                    key_ptr.to_ptr()?,
+                    key_ptr,
                     key_align,
                     PrimVal::Bytes(key),
                     key_size.bytes(),

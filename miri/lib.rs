@@ -133,7 +133,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             let ptr_size = ecx.memory.pointer_size();
             let ptr_align = ecx.tcx.data_layout.pointer_align;
             let foo_ptr = ecx.memory.allocate(ptr_size, ptr_align, None)?;
-            ecx.memory.write_primval(foo_ptr, ptr_align, PrimVal::Ptr(foo.into()), ptr_size, false)?;
+            ecx.memory.write_primval(foo_ptr.into(), ptr_align, PrimVal::Ptr(foo.into()), ptr_size, false)?;
             ecx.memory.mark_static_initialized(foo_ptr.alloc_id, Mutability::Immutable)?;
             ecx.write_ptr(dest, foo_ptr.into(), ty)?;
 

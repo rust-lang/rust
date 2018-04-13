@@ -206,6 +206,7 @@ fn find_sysroot() -> String {
 }
 
 fn main() {
+    rustc_driver::init_rustc_env_logger();
     init_logger();
     let mut args: Vec<String> = std::env::args().collect();
 

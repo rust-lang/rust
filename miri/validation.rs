@@ -782,16 +782,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
                     match adt.adt_kind() {
                         AdtKind::Enum => {
-                            let discr = self.read_discriminant_value(query.place.1, query.ty)?;
-
-                            // Get variant index for discriminant
-                            let variant_idx = adt.discriminants(self.tcx.tcx).position(|variant_discr| {
-                                variant_discr.val == discr
-                            });
-                            let variant_idx = match variant_idx {
-                                Some(val) => val,
-                                None => return err!(InvalidDiscriminant),
-                            };
+                            let variant_idx = self.read_discriminant_value_as_variant_index(query.place.1, query.ty)?;
                             let variant = &adt.variants[variant_idx];
 
                             if variant.fields.len() > 0 {

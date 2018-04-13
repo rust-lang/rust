@@ -34,7 +34,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "align_offset" => {
                 // FIXME: return a real value in case the target allocation has an
                 // alignment bigger than the one requested
-                self.write_primval(dest, PrimVal::Bytes(u128::max_value()), dest_layout.ty)?;
+                let n = u128::max_value();
+                let amt = 128 - self.memory.pointer_size() * 8;
+                self.write_primval(dest, PrimVal::Bytes((n << amt) >> amt), dest_layout.ty)?;
             },
 
             "add_with_overflow" => {
