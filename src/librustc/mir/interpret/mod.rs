@@ -178,7 +178,7 @@ pub fn specialized_encode_alloc_id<
         AllocKind::Fn.encode(encoder)?;
         fn_instance.encode(encoder)?;
     } else if let Some(did) = tcx.interpret_interner.get_static(alloc_id) {
-        // referring to statics doesn't need to know about their allocations, just hash the DefId
+        // referring to statics doesn't need to know about their allocations, just about its DefId
         AllocKind::Static.encode(encoder)?;
         did.encode(encoder)?;
     } else {
