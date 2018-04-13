@@ -121,6 +121,7 @@ configuration used in the build process. Some options to note:
 #### `[rust]`:
 - `debuginfo = true` - Build a compiler with debuginfo. Makes building rustc slower, but then you can use a debugger to debug `rustc`.
 - `debuginfo-lines = true` - An alternative to `debuginfo = true` that doesn't let you use a debugger, but doesn't make building rustc slower and still gives you line numbers in backtraces.
+- `debuginfo-tools = true` - Build the extended tools with debuginfo.
 - `debug-assertions = true` - Makes the log output of `debug!` work.
 - `optimize = false` - Disable optimizations to speed up compilation of stage1 rust, but makes the stage1 compiler x100 slower.
 
