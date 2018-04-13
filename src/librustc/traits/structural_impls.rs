@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 use traits;
 use traits::project::Normalized;
 use ty::{self, Lift, TyCtxt};
@@ -557,6 +558,28 @@ EnumTypeFoldableImpl! {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<traits::Goal<'tcx>> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_goals(&v)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|t| t.visit_with(visitor))
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx traits::Goal<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = (**self).fold_with(folder);
+        folder.tcx().mk_goal(v)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        (**self).visit_with(visitor)
+    }
+}
+
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for traits::ProgramClause<'tcx> {
         goal,
@@ -568,5 +591,16 @@ EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for traits::Clause<'tcx> {
         (traits::Clause::Implies)(clause),
         (traits::Clause::ForAll)(clause),
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Slice<traits::Clause<'tcx>> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        let v = self.iter().map(|t| t.fold_with(folder)).collect::<AccumulateVec<[_; 8]>>();
+        folder.tcx().intern_clauses(&v)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|t| t.visit_with(visitor))
     }
 }

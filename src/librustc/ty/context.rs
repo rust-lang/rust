@@ -38,6 +38,7 @@ use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use ty::Instance;
 use traits;
+use traits::{Clause, Goal};
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region, Const};
@@ -125,34 +126,40 @@ impl<'tcx> GlobalArenas<'tcx> {
     }
 }
 
+type InternedSet<'tcx, T> = Lock<FxHashSet<Interned<'tcx, T>>>;
+
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc are allocated from
     arena: &'tcx DroplessArena,
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
-    type_: Lock<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
-    type_list: Lock<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
-    substs: Lock<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
-    canonical_var_infos: Lock<FxHashSet<Interned<'tcx, Slice<CanonicalVarInfo>>>>,
-    region: Lock<FxHashSet<Interned<'tcx, RegionKind>>>,
-    existential_predicates: Lock<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
-    predicates: Lock<FxHashSet<Interned<'tcx, Slice<Predicate<'tcx>>>>>,
-    const_: Lock<FxHashSet<Interned<'tcx, Const<'tcx>>>>,
+    type_: InternedSet<'tcx, TyS<'tcx>>,
+    type_list: InternedSet<'tcx, Slice<Ty<'tcx>>>,
+    substs: InternedSet<'tcx, Substs<'tcx>>,
+    canonical_var_infos: InternedSet<'tcx, Slice<CanonicalVarInfo>>,
+    region: InternedSet<'tcx, RegionKind>,
+    existential_predicates: InternedSet<'tcx, Slice<ExistentialPredicate<'tcx>>>,
+    predicates: InternedSet<'tcx, Slice<Predicate<'tcx>>>,
+    const_: InternedSet<'tcx, Const<'tcx>>,
+    clauses: InternedSet<'tcx, Slice<Clause<'tcx>>>,
+    goals: InternedSet<'tcx, Slice<Goal<'tcx>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx DroplessArena) -> CtxtInterners<'tcx> {
         CtxtInterners {
-            arena: arena,
-            type_: Lock::new(FxHashSet()),
-            type_list: Lock::new(FxHashSet()),
-            substs: Lock::new(FxHashSet()),
-            canonical_var_infos: Lock::new(FxHashSet()),
-            region: Lock::new(FxHashSet()),
-            existential_predicates: Lock::new(FxHashSet()),
-            predicates: Lock::new(FxHashSet()),
-            const_: Lock::new(FxHashSet()),
+            arena,
+            type_: Default::default(),
+            type_list: Default::default(),
+            substs: Default::default(),
+            region: Default::default(),
+            existential_predicates: Default::default(),
+            canonical_var_infos: Default::default(),
+            predicates: Default::default(),
+            const_: Default::default(),
+            clauses: Default::default(),
+            goals: Default::default(),
         }
     }
 
@@ -2099,6 +2106,20 @@ impl<'tcx: 'lcx, 'lcx> Borrow<Const<'lcx>> for Interned<'tcx, Const<'tcx>> {
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<[Clause<'lcx>]>
+for Interned<'tcx, Slice<Clause<'tcx>>> {
+    fn borrow<'a>(&'a self) -> &'a [Clause<'lcx>] {
+        &self.0[..]
+    }
+}
+
+impl<'tcx: 'lcx, 'lcx> Borrow<[Goal<'lcx>]>
+for Interned<'tcx, Slice<Goal<'tcx>>> {
+    fn borrow<'a>(&'a self) -> &'a [Goal<'lcx>] {
+        &self.0[..]
+    }
+}
+
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
                                             $alloc_method:ident,
@@ -2196,7 +2217,9 @@ slice_interners!(
     existential_predicates: _intern_existential_predicates(ExistentialPredicate),
     predicates: _intern_predicates(Predicate),
     type_list: _intern_type_list(Ty),
-    substs: _intern_substs(Kind)
+    substs: _intern_substs(Kind),
+    clauses: _intern_clauses(Clause),
+    goals: _intern_goals(Goal)
 );
 
 // This isn't a perfect fit: CanonicalVarInfo slices are always
@@ -2501,6 +2524,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    pub fn intern_clauses(self, ts: &[Clause<'tcx>]) -> &'tcx Slice<Clause<'tcx>> {
+        if ts.len() == 0 {
+            Slice::empty()
+        } else {
+            self._intern_clauses(ts)
+        }
+    }
+
+    pub fn intern_goals(self, ts: &[Goal<'tcx>]) -> &'tcx Slice<Goal<'tcx>> {
+        if ts.len() == 0 {
+            Slice::empty()
+        } else {
+            self._intern_goals(ts)
+        }
+    }
+
     pub fn mk_fn_sig<I>(self,
                         inputs: I,
                         output: I::Item,
@@ -2545,6 +2584,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     -> &'tcx Substs<'tcx>
     {
         self.mk_substs(iter::once(s).chain(t.into_iter().cloned()).map(Kind::from))
+    }
+
+    pub fn mk_clauses<I: InternAs<[Clause<'tcx>],
+        &'tcx Slice<Clause<'tcx>>>>(self, iter: I) -> I::Output {
+        iter.intern_with(|xs| self.intern_clauses(xs))
+    }
+
+    pub fn mk_goals<I: InternAs<[Goal<'tcx>],
+        &'tcx Slice<Goal<'tcx>>>>(self, iter: I) -> I::Output {
+        iter.intern_with(|xs| self.intern_goals(xs))
+    }
+
+    pub fn mk_goal(self, goal: Goal<'tcx>) -> &'tcx Goal {
+        &self.mk_goals(iter::once(goal))[0]
     }
 
     pub fn lint_node<S: Into<MultiSpan>>(self,
