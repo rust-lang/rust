@@ -1,0 +1,100 @@
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:14:26
+   |
+14 |     const BAD32_1: f32 = 0.123_456_789_f32;
+   |                          ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345679`
+   |
+   = note: `-D excessive-precision` implied by `-D warnings`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:15:26
+   |
+15 |     const BAD32_2: f32 = 0.123_456_789;
+   |                          ^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345679`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:16:26
+   |
+16 |     const BAD32_3: f32 = 0.100_000_000_000_1;
+   |                          ^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.1`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:18:26
+   |
+18 |     const BAD64_1: f64 = 0.123_456_789_012_345_67f64;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345678901234566`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:19:26
+   |
+19 |     const BAD64_2: f64 = 0.123_456_789_012_345_67;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345678901234566`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:20:26
+   |
+20 |     const BAD64_3: f64 = 0.100_000_000_000_000_000_1;
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.1`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:23:20
+   |
+23 |     println!("{}", 8.888_888_888_888_888_888_888);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `8.88888888888889`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:35:24
+   |
+35 |     let bad32_1: f32 = 1.123_456_789_f32;
+   |                        ^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.1234568`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:36:24
+   |
+36 |     let bad32_2: f32 = 1.123_456_789;
+   |                        ^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.1234568`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:38:24
+   |
+38 |     let bad64_1: f64 = 0.123_456_789_012_345_67f64;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345678901234566`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:39:24
+   |
+39 |     let bad64_2: f64 = 0.123_456_789_012_345_67;
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345678901234566`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:40:19
+   |
+40 |     let bad64_3 = 0.123_456_789_012_345_67;
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345678901234566`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:43:32
+   |
+43 |     let vec32: Vec<f32> = vec![0.123_456_789];
+   |                                ^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345679`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:44:32
+   |
+44 |     let vec64: Vec<f64> = vec![0.123_456_789_123_456_789];
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `0.12345678912345678`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:48:24
+   |
+48 |     let bad_e32: f32 = 1.123_456_788_888e-10;
+   |                        ^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.1234568e-10`
+
+error: float has excessive precision
+  --> $DIR/excessive_precision.rs:51:27
+   |
+51 |     let bad_bige32: f32 = 1.123_456_788_888E-10;
+   |                           ^^^^^^^^^^^^^^^^^^^^^ help: consider changing the type or truncating it to: `1.1234568E-10`
+
+error: aborting due to 16 previous errors
+
