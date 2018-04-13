@@ -509,7 +509,6 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             Intrinsic(ref s) => Intrinsic(s.clone()),
             OverflowingMath => OverflowingMath,
             InvalidChar(c) => InvalidChar(c),
-            ExecutionTimeLimitReached => ExecutionTimeLimitReached,
             StackFrameLimitReached => StackFrameLimitReached,
             OutOfTls => OutOfTls,
             TlsOutOfBounds => TlsOutOfBounds,
