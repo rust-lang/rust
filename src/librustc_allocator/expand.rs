@@ -11,12 +11,12 @@
 use rustc::middle::allocator::AllocatorKind;
 use rustc_errors;
 use syntax::abi::Abi;
-use syntax::ast::{Crate, Attribute, LitKind, StrStyle};
-use syntax::ast::{Unsafety, Constness, Generics, Mutability, Ty, Mac, Arg};
-use syntax::ast::{self, Ident, Item, ItemKind, TyKind, VisibilityKind, Expr};
+use syntax::ast::{Attribute, Crate, LitKind, StrStyle};
+use syntax::ast::{Arg, Constness, Generics, Mac, Mutability, Ty, Unsafety};
+use syntax::ast::{self, Expr, Ident, Item, ItemKind, TyKind, VisibilityKind};
 use syntax::attr;
 use syntax::codemap::{dummy_spanned, respan};
-use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
+use syntax::codemap::{ExpnInfo, MacroAttribute, NameAndSpan};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::base::Resolver;
 use syntax::ext::build::AstBuilder;
@@ -31,10 +31,12 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use {AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS};
 
-pub fn modify(sess: &ParseSess,
-              resolver: &mut Resolver,
-              krate: Crate,
-              handler: &rustc_errors::Handler) -> ast::Crate {
+pub fn modify(
+    sess: &ParseSess,
+    resolver: &mut Resolver,
+    krate: Crate,
+    handler: &rustc_errors::Handler,
+) -> ast::Crate {
     ExpandAllocatorDirectives {
         handler,
         sess,
@@ -55,20 +57,24 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let name = if attr::contains_name(&item.attrs, "global_allocator") {
             "global_allocator"
         } else {
-            return fold::noop_fold_item(item, self)
+            return fold::noop_fold_item(item, self);
         };
         match item.node {
             ItemKind::Static(..) => {}
             _ => {
-                self.handler.span_err(item.span, "allocators must be statics");
-                return SmallVector::one(item)
+                self.handler
+                    .span_err(item.span, "allocators must be statics");
+                return SmallVector::one(item);
             }
         }
 
         if self.found {
-            self.handler.span_err(item.span, "cannot define more than one \
-                                              #[global_allocator]");
-            return SmallVector::one(item)
+            self.handler.span_err(
+                item.span,
+                "cannot define more than one \
+                 #[global_allocator]",
+            );
+            return SmallVector::one(item);
         }
         self.found = true;
 
@@ -80,7 +86,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
                 span: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
-            }
+            },
         });
         let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
         let ecfg = ExpansionConfig::default(name.to_string());
@@ -91,10 +97,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             core: Ident::from_str("core"),
             cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
         };
-        let super_path = f.cx.path(f.span, vec![
-            Ident::from_str("super"),
-            f.global,
-        ]);
+        let super_path = f.cx.path(f.span, vec![Ident::from_str("super"), f.global]);
         let mut items = vec![
             f.cx.item_extern_crate(f.span, f.core),
             f.cx.item_use_simple(
@@ -114,7 +117,7 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         let mut ret = SmallVector::new();
         ret.push(item);
         ret.push(module);
-        return ret
+        return ret;
     }
 
     fn fold_mac(&mut self, mac: Mac) -> Mac {
@@ -139,30 +142,39 @@ impl<'a> AllocFnFactory<'a> {
             i += 1;
             name
         };
-        let args = method.inputs.iter().map(|ty| {
-            self.arg_ty(ty, &mut abi_args, mk)
-        }).collect();
+        let args = method
+            .inputs
+            .iter()
+            .map(|ty| self.arg_ty(ty, &mut abi_args, mk))
+            .collect();
         let result = self.call_allocator(method.name, args);
         let (output_ty, output_expr) = self.ret_ty(&method.output, result);
-        let kind = ItemKind::Fn(self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty)),
-                                Unsafety::Unsafe,
-                                dummy_spanned(Constness::NotConst),
-                                Abi::Rust,
-                                Generics::default(),
-                                self.cx.block_expr(output_expr));
-        self.cx.item(self.span,
-                     Ident::from_str(&self.kind.fn_name(method.name)),
-                     self.attrs(),
-                     kind)
+        let kind = ItemKind::Fn(
+            self.cx.fn_decl(abi_args, ast::FunctionRetTy::Ty(output_ty)),
+            Unsafety::Unsafe,
+            dummy_spanned(Constness::NotConst),
+            Abi::Rust,
+            Generics::default(),
+            self.cx.block_expr(output_expr),
+        );
+        self.cx.item(
+            self.span,
+            Ident::from_str(&self.kind.fn_name(method.name)),
+            self.attrs(),
+            kind,
+        )
     }
 
     fn call_allocator(&self, method: &str, mut args: Vec<P<Expr>>) -> P<Expr> {
-        let method = self.cx.path(self.span, vec![
-            self.core,
-            Ident::from_str("alloc"),
-            Ident::from_str("GlobalAlloc"),
-            Ident::from_str(method),
-        ]);
+        let method = self.cx.path(
+            self.span,
+            vec![
+                self.core,
+                Ident::from_str("alloc"),
+                Ident::from_str("GlobalAlloc"),
+                Ident::from_str(method),
+            ],
+        );
         let method = self.cx.expr_path(method);
         let allocator = self.cx.path_ident(self.span, self.global);
         let allocator = self.cx.expr_path(allocator);
@@ -189,10 +201,12 @@ impl<'a> AllocFnFactory<'a> {
         ]
     }
 
-    fn arg_ty(&self,
-              ty: &AllocatorTy,
-              args: &mut Vec<Arg>,
-              ident: &mut FnMut() -> Ident) -> P<Expr> {
+    fn arg_ty(
+        &self,
+        ty: &AllocatorTy,
+        args: &mut Vec<Arg>,
+        ident: &mut FnMut() -> Ident,
+    ) -> P<Expr> {
         match *ty {
             AllocatorTy::Layout => {
                 let usize = self.cx.path_ident(self.span, Ident::from_str("usize"));
@@ -202,18 +216,19 @@ impl<'a> AllocFnFactory<'a> {
                 args.push(self.cx.arg(self.span, size, ty_usize.clone()));
                 args.push(self.cx.arg(self.span, align, ty_usize));
 
-                let layout_new = self.cx.path(self.span, vec![
-                    self.core,
-                    Ident::from_str("alloc"),
-                    Ident::from_str("Layout"),
-                    Ident::from_str("from_size_align_unchecked"),
-                ]);
+                let layout_new = self.cx.path(
+                    self.span,
+                    vec![
+                        self.core,
+                        Ident::from_str("alloc"),
+                        Ident::from_str("Layout"),
+                        Ident::from_str("from_size_align_unchecked"),
+                    ],
+                );
                 let layout_new = self.cx.expr_path(layout_new);
                 let size = self.cx.expr_ident(self.span, size);
                 let align = self.cx.expr_ident(self.span, align);
-                let layout = self.cx.expr_call(self.span,
-                                               layout_new,
-                                               vec![size, align]);
+                let layout = self.cx.expr_call(self.span, layout_new, vec![size, align]);
                 layout
             }
 
@@ -230,9 +245,7 @@ impl<'a> AllocFnFactory<'a> {
                 self.cx.expr_ident(self.span, ident)
             }
 
-            AllocatorTy::ResultPtr |
-            AllocatorTy::Bang |
-            AllocatorTy::Unit => {
+            AllocatorTy::ResultPtr | AllocatorTy::Bang | AllocatorTy::Unit => {
                 panic!("can't convert AllocatorTy to an argument")
             }
         }
@@ -249,17 +262,11 @@ impl<'a> AllocFnFactory<'a> {
                 (self.ptr_u8(), expr)
             }
 
-            AllocatorTy::Bang => {
-                (self.cx.ty(self.span, TyKind::Never), expr)
-            }
+            AllocatorTy::Bang => (self.cx.ty(self.span, TyKind::Never), expr),
 
-            AllocatorTy::Unit => {
-                (self.cx.ty(self.span, TyKind::Tup(Vec::new())), expr)
-            }
+            AllocatorTy::Unit => (self.cx.ty(self.span, TyKind::Tup(Vec::new())), expr),
 
-            AllocatorTy::Layout |
-            AllocatorTy::Usize |
-            AllocatorTy::Ptr => {
+            AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
                 panic!("can't convert AllocatorTy to an output")
             }
         }
@@ -277,11 +284,14 @@ impl<'a> AllocFnFactory<'a> {
     }
 
     fn ptr_opaque(&self) -> P<Ty> {
-        let opaque = self.cx.path(self.span, vec![
-            self.core,
-            Ident::from_str("alloc"),
-            Ident::from_str("Opaque"),
-        ]);
+        let opaque = self.cx.path(
+            self.span,
+            vec![
+                self.core,
+                Ident::from_str("alloc"),
+                Ident::from_str("Opaque"),
+            ],
+        );
         let ty_opaque = self.cx.ty_path(opaque);
         self.cx.ty_ptr(self.span, ty_opaque, Mutability::Mutable)
     }
