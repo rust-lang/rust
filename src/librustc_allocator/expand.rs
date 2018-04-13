@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(unused_imports, unused_variables, dead_code)]
+
 use rustc::middle::allocator::AllocatorKind;
 use rustc_errors;
 use rustc_target::spec::abi::Abi;
@@ -35,6 +37,7 @@ pub fn modify(
     sess: &ParseSess,
     resolver: &mut Resolver,
     krate: Crate,
+    crate_name: String,
     handler: &rustc_errors::Handler,
 ) -> ast::Crate {
     ExpandAllocatorDirectives {
@@ -42,6 +45,7 @@ pub fn modify(
         sess,
         resolver,
         found: false,
+        crate_name: Some(crate_name),
     }.fold_crate(krate)
 }
 
@@ -50,6 +54,7 @@ struct ExpandAllocatorDirectives<'a> {
     handler: &'a rustc_errors::Handler,
     sess: &'a ParseSess,
     resolver: &'a mut Resolver,
+    crate_name: Option<String>,
 }
 
 impl<'a> Folder for ExpandAllocatorDirectives<'a> {
@@ -78,9 +83,10 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
         }
         self.found = true;
 
+        // Create a fresh Mark for the new macro expansion we are about to do
         let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(ExpnInfo {
-            call_site: DUMMY_SP,
+            call_site: item.span,
             callee: NameAndSpan {
                 format: MacroAttribute(Symbol::intern(name)),
                 span: None,
@@ -88,8 +94,14 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
                 allow_internal_unsafe: false,
             },
         });
+
+        // Tie the span to the macro expansion info we just created
         let span = item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark));
-        let ecfg = ExpansionConfig::default(name.to_string());
+
+        // Create an expansion config
+        let ecfg = ExpansionConfig::default(self.crate_name.take().unwrap());
+
+        // Generate a bunch of new items using the AllocFnFactory
         let mut f = AllocFnFactory {
             span,
             kind: AllocatorKind::Global,
@@ -97,7 +109,8 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             core: Ident::from_str("core"),
             cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
         };
-        let super_path = f.cx.path(f.span, vec![Ident::from_str("super"), f.global]);
+        //let super_path = f.cx.path(f.span, vec![Ident::from_str("super"), f.global]);
+        let super_path = f.cx.path(f.span, vec![f.global]);
         let mut items = vec![
             f.cx.item_extern_crate(f.span, f.core),
             f.cx.item_use_simple(
