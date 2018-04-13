@@ -84,7 +84,6 @@ This API is completely unstable and subject to change.
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(never_type)]
-#![feature(underscore_lifetimes)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
