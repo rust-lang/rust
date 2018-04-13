@@ -14,9 +14,12 @@ use stdsimd_test::assert_instr;
 
 /// Extracts bits in range [`start`, `start` + `length`) from `a` into
 /// the least significant bits of the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bextr_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
     _bextr2_u32(
         a,
@@ -29,33 +32,45 @@ pub unsafe fn _bextr_u32(a: u32, start: u32, len: u32) -> u32 {
 ///
 /// Bits [7,0] of `control` specify the index to the first bit in the range to
 /// be extracted, and bits [15,8] specify the length of the range.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bextr2_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(bextr))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _bextr2_u32(a: u32, control: u32) -> u32 {
     x86_bmi_bextr_32(a, control)
 }
 
 /// Bitwise logical `AND` of inverted `a` with `b`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_andn_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(andn))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _andn_u32(a: u32, b: u32) -> u32 {
     !a & b
 }
 
 /// Extract lowest set isolated bit.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsi_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsi))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsi_u32(x: u32) -> u32 {
     x & x.wrapping_neg()
 }
 
 /// Get mask up to lowest set bit.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsmsk_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsmsk))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_sub(1_u32))
 }
@@ -63,9 +78,12 @@ pub unsafe fn _blsmsk_u32(x: u32) -> u32 {
 /// Resets the lowest set bit of `x`.
 ///
 /// If `x` is sets CF.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_blsr_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(blsr))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsr_u32(x: u32) -> u32 {
     x & (x.wrapping_sub(1))
 }
@@ -73,9 +91,12 @@ pub unsafe fn _blsr_u32(x: u32) -> u32 {
 /// Counts the number of trailing least significant zero bits.
 ///
 /// When the source operand is 0, it returns its size in bits.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_tzcnt_u32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _tzcnt_u32(x: u32) -> u32 {
     x.trailing_zeros()
 }
@@ -83,9 +104,12 @@ pub unsafe fn _tzcnt_u32(x: u32) -> u32 {
 /// Counts the number of trailing least significant zero bits.
 ///
 /// When the source operand is 0, it returns its size in bits.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_tzcnt_32)
 #[inline]
 #[target_feature(enable = "bmi1")]
 #[cfg_attr(test, assert_instr(tzcnt))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_tzcnt_32(x: u32) -> i32 {
     x.trailing_zeros() as i32
 }

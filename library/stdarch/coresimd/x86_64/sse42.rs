@@ -11,9 +11,12 @@ extern "C" {
 
 /// Starting with the initial value in `crc`, return the accumulated
 /// CRC32 value for unsigned 64-bit integer `v`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_crc32_u64)
 #[inline]
 #[target_feature(enable = "sse4.2")]
 #[cfg_attr(test, assert_instr(crc32))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_crc32_u64(crc: u64, v: u64) -> u64 {
     crc32_64_64(crc, v)
 }

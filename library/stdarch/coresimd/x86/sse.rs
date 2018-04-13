@@ -12,122 +12,164 @@ use stdsimd_test::assert_instr;
 
 /// Adds the first component of `a` and `b`, the other components are copied
 /// from `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_add_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(addss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_add_ss(a: __m128, b: __m128) -> __m128 {
     addss(a, b)
 }
 
 /// Adds __m128 vectors.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_add_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(addps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_add_ps(a: __m128, b: __m128) -> __m128 {
     simd_add(a, b)
 }
 
 /// Subtracts the first component of `b` from `a`, the other components are
 /// copied from `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sub_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(subss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sub_ss(a: __m128, b: __m128) -> __m128 {
     subss(a, b)
 }
 
 /// Subtracts __m128 vectors.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sub_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(subps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sub_ps(a: __m128, b: __m128) -> __m128 {
     simd_sub(a, b)
 }
 
 /// Multiplies the first component of `a` and `b`, the other components are
 /// copied from `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mul_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(mulss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mul_ss(a: __m128, b: __m128) -> __m128 {
     mulss(a, b)
 }
 
 /// Multiplies __m128 vectors.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mul_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(mulps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_mul_ps(a: __m128, b: __m128) -> __m128 {
     simd_mul(a, b)
 }
 
 /// Divides the first component of `b` by `a`, the other components are
 /// copied from `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_div_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(divss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_div_ss(a: __m128, b: __m128) -> __m128 {
     divss(a, b)
 }
 
 /// Divides __m128 vectors.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_div_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(divps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_div_ps(a: __m128, b: __m128) -> __m128 {
     simd_div(a, b)
 }
 
 /// Return the square root of the first single-precision (32-bit)
 /// floating-point element in `a`, the other elements are unchanged.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sqrt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sqrtss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_ss(a: __m128) -> __m128 {
     sqrtss(a)
 }
 
 /// Return the square root of packed single-precision (32-bit) floating-point
 /// elements in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sqrt_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sqrtps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sqrt_ps(a: __m128) -> __m128 {
     sqrtps(a)
 }
 
 /// Return the approximate reciprocal of the first single-precision
 /// (32-bit) floating-point element in `a`, the other elements are unchanged.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rcp_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rcpss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_rcp_ss(a: __m128) -> __m128 {
     rcpss(a)
 }
 
 /// Return the approximate reciprocal of packed single-precision (32-bit)
 /// floating-point elements in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rcp_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rcpps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_rcp_ps(a: __m128) -> __m128 {
     rcpps(a)
 }
 
 /// Return the approximate reciprocal square root of the fist single-precision
 /// (32-bit) floating-point elements in `a`, the other elements are unchanged.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rsqrtss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_rsqrt_ss(a: __m128) -> __m128 {
     rsqrtss(a)
 }
 
 /// Return the approximate reciprocal square root of packed single-precision
 /// (32-bit) floating-point elements in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_rsqrt_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(rsqrtps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_rsqrt_ps(a: __m128) -> __m128 {
     rsqrtps(a)
 }
@@ -135,18 +177,24 @@ pub unsafe fn _mm_rsqrt_ps(a: __m128) -> __m128 {
 /// Compare the first single-precision (32-bit) floating-point element of `a`
 /// and `b`, and return the minimum value in the first element of the return
 /// value, the other elements are copied from `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(minss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_min_ss(a: __m128, b: __m128) -> __m128 {
     minss(a, b)
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`, and return the corresponding minimum values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_min_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(minps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
     minps(a, b)
 }
@@ -154,28 +202,37 @@ pub unsafe fn _mm_min_ps(a: __m128, b: __m128) -> __m128 {
 /// Compare the first single-precision (32-bit) floating-point element of `a`
 /// and `b`, and return the maximum value in the first element of the return
 /// value, the other elements are copied from `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(maxss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_max_ss(a: __m128, b: __m128) -> __m128 {
     maxss(a, b)
 }
 
 /// Compare packed single-precision (32-bit) floating-point elements in `a` and
 /// `b`, and return the corresponding maximum values.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_max_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(maxps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_max_ps(a: __m128, b: __m128) -> __m128 {
     maxps(a, b)
 }
 
 /// Bitwise AND of packed single-precision (32-bit) floating-point elements.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_and_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `and` instructions, so ignore it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(andps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
     let b: __m128i = mem::transmute(b);
@@ -186,12 +243,15 @@ pub unsafe fn _mm_and_ps(a: __m128, b: __m128) -> __m128 {
 /// elements.
 ///
 /// Computes `!a & b` for each bit in `a` and `b`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_andnot_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `not` and `and` instructions, so ignore
 // it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(andnps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
     let b: __m128i = mem::transmute(b);
@@ -200,11 +260,14 @@ pub unsafe fn _mm_andnot_ps(a: __m128, b: __m128) -> __m128 {
 }
 
 /// Bitwise OR of packed single-precision (32-bit) floating-point elements.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_or_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `or` instructions, so we ignore it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(orps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
     let b: __m128i = mem::transmute(b);
@@ -213,11 +276,14 @@ pub unsafe fn _mm_or_ps(a: __m128, b: __m128) -> __m128 {
 
 /// Bitwise exclusive OR of packed single-precision (32-bit) floating-point
 /// elements.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_xor_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 // i586 only seems to generate plain `xor` instructions, so we ignore it.
 #[cfg_attr(all(test, any(target_arch = "x86_64", target_feature = "sse2")),
            assert_instr(xorps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_xor_ps(a: __m128, b: __m128) -> __m128 {
     let a: __m128i = mem::transmute(a);
     let b: __m128i = mem::transmute(b);
@@ -227,9 +293,12 @@ pub unsafe fn _mm_xor_ps(a: __m128, b: __m128) -> __m128 {
 /// Compare the lowest `f32` of both inputs for equality. The lowest 32 bits of
 /// the result will be `0xffffffff` if the two inputs are equal, or `0`
 /// otherwise. The upper 96 bits of the result are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpeq_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpeqss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpeq_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 0)
 }
@@ -238,9 +307,12 @@ pub unsafe fn _mm_cmpeq_ss(a: __m128, b: __m128) -> __m128 {
 /// of the result will be `0xffffffff` if `a.extract(0)` is less than
 /// `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are the
 /// upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmplt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmplt_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 1)
 }
@@ -249,9 +321,12 @@ pub unsafe fn _mm_cmplt_ss(a: __m128, b: __m128) -> __m128 {
 /// 32 bits of the result will be `0xffffffff` if `a.extract(0)` is less than
 /// or equal `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmple_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpless))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmple_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 2)
 }
@@ -260,9 +335,12 @@ pub unsafe fn _mm_cmple_ss(a: __m128, b: __m128) -> __m128 {
 /// bits of the result will be `0xffffffff` if `a.extract(0)` is greater
 /// than `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpgt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpgt_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 1), [4, 1, 2, 3])
 }
@@ -271,9 +349,12 @@ pub unsafe fn _mm_cmpgt_ss(a: __m128, b: __m128) -> __m128 {
 /// lowest 32 bits of the result will be `0xffffffff` if `a.extract(0)` is
 /// greater than or equal `b.extract(0)`, or `0` otherwise. The upper 96 bits
 /// of the result are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpge_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpless))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpge_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 2), [4, 1, 2, 3])
 }
@@ -282,9 +363,12 @@ pub unsafe fn _mm_cmpge_ss(a: __m128, b: __m128) -> __m128 {
 /// of the result will be `0xffffffff` if `a.extract(0)` is not equal to
 /// `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are the
 /// upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpneq_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpneqss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpneq_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 4)
 }
@@ -293,9 +377,12 @@ pub unsafe fn _mm_cmpneq_ss(a: __m128, b: __m128) -> __m128 {
 /// bits of the result will be `0xffffffff` if `a.extract(0)` is not less than
 /// `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are the
 /// upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpnlt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnlt_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 5)
 }
@@ -304,9 +391,12 @@ pub unsafe fn _mm_cmpnlt_ss(a: __m128, b: __m128) -> __m128 {
 /// lowest 32 bits of the result will be `0xffffffff` if `a.extract(0)` is not
 /// less than or equal to `b.extract(0)`, or `0` otherwise. The upper 96 bits
 /// of the result are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpnle_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnless))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnle_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 6)
 }
@@ -315,9 +405,12 @@ pub unsafe fn _mm_cmpnle_ss(a: __m128, b: __m128) -> __m128 {
 /// bits of the result will be `0xffffffff` if `a.extract(0)` is not greater
 /// than `b.extract(0)`, or `0` otherwise. The upper 96 bits of the result are
 /// the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpngt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpngt_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 5), [4, 1, 2, 3])
 }
@@ -326,9 +419,12 @@ pub unsafe fn _mm_cmpngt_ss(a: __m128, b: __m128) -> __m128 {
 /// lowest 32 bits of the result will be `0xffffffff` if `a.extract(0)` is not
 /// greater than or equal to `b.extract(0)`, or `0` otherwise. The upper 96
 /// bits of the result are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpnge_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnless))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnge_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, cmpss(b, a, 6), [4, 1, 2, 3])
 }
@@ -337,9 +433,12 @@ pub unsafe fn _mm_cmpnge_ss(a: __m128, b: __m128) -> __m128 {
 /// the result will be `0xffffffff` if neither of `a.extract(0)` or
 /// `b.extract(0)` is a NaN, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpord_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpordss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpord_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 7)
 }
@@ -348,9 +447,12 @@ pub unsafe fn _mm_cmpord_ss(a: __m128, b: __m128) -> __m128 {
 /// of the result will be `0xffffffff` if any of `a.extract(0)` or
 /// `b.extract(0)` is a NaN, or `0` otherwise. The upper 96 bits of the result
 /// are the upper 96 bits of `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpunord_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpunordss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpunord_ss(a: __m128, b: __m128) -> __m128 {
     cmpss(a, b, 3)
 }
@@ -358,9 +460,12 @@ pub unsafe fn _mm_cmpunord_ss(a: __m128, b: __m128) -> __m128 {
 /// Compare each of the four floats in `a` to the corresponding element in `b`.
 /// The result in the output vector will be `0xffffffff` if the input elements
 /// were equal, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpeq_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpeqps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpeq_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 0)
 }
@@ -368,9 +473,12 @@ pub unsafe fn _mm_cmpeq_ps(a: __m128, b: __m128) -> __m128 {
 /// Compare each of the four floats in `a` to the corresponding element in `b`.
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is less than the corresponding element in `b`, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmplt_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmplt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 1)
 }
@@ -379,9 +487,12 @@ pub unsafe fn _mm_cmplt_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is less than or equal to the corresponding element in `b`, or `0`
 /// otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmple_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpleps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmple_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 2)
 }
@@ -389,9 +500,12 @@ pub unsafe fn _mm_cmple_ps(a: __m128, b: __m128) -> __m128 {
 /// Compare each of the four floats in `a` to the corresponding element in `b`.
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is greater than the corresponding element in `b`, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpgt_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpltps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpgt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 1)
 }
@@ -400,9 +514,12 @@ pub unsafe fn _mm_cmpgt_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is greater than or equal to the corresponding element in `b`, or `0`
 /// otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpge_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpleps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpge_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 2)
 }
@@ -410,9 +527,12 @@ pub unsafe fn _mm_cmpge_ps(a: __m128, b: __m128) -> __m128 {
 /// Compare each of the four floats in `a` to the corresponding element in `b`.
 /// The result in the output vector will be `0xffffffff` if the input elements
 /// are *not* equal, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpneq_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpneqps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpneq_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 4)
 }
@@ -421,9 +541,12 @@ pub unsafe fn _mm_cmpneq_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is *not* less than the corresponding element in `b`, or `0`
 /// otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpnlt_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnlt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 5)
 }
@@ -432,9 +555,12 @@ pub unsafe fn _mm_cmpnlt_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is *not* less than or equal to the corresponding element in `b`, or
 /// `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpnle_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnleps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnle_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(a, b, 6)
 }
@@ -443,9 +569,12 @@ pub unsafe fn _mm_cmpnle_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is *not* greater than the corresponding element in `b`, or `0`
 /// otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpngt_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnltps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpngt_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 5)
 }
@@ -454,9 +583,12 @@ pub unsafe fn _mm_cmpngt_ps(a: __m128, b: __m128) -> __m128 {
 /// The result in the output vector will be `0xffffffff` if the input element
 /// in `a` is *not* greater than or equal to the corresponding element in `b`,
 /// or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpnge_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpnleps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpnge_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 6)
 }
@@ -465,9 +597,12 @@ pub unsafe fn _mm_cmpnge_ps(a: __m128, b: __m128) -> __m128 {
 /// Returns four floats that have one of two possible bit patterns. The element
 /// in the output vector will be `0xffffffff` if the input elements in `a` and
 /// `b` are ordered (i.e., neither of them is a NaN), or 0 otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpord_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpordps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpord_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 7)
 }
@@ -476,27 +611,36 @@ pub unsafe fn _mm_cmpord_ps(a: __m128, b: __m128) -> __m128 {
 /// Returns four floats that have one of two possible bit patterns. The element
 /// in the output vector will be `0xffffffff` if the input elements in `a` and
 /// `b` are unordered (i.e., at least on of them is a NaN), or 0 otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cmpunord_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cmpunordps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cmpunord_ps(a: __m128, b: __m128) -> __m128 {
     cmpps(b, a, 3)
 }
 
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if they are equal, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comieq_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_comieq_ss(a: __m128, b: __m128) -> i32 {
     comieq_ss(a, b)
 }
 
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if the value from `a` is less than the one from `b`, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comilt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_comilt_ss(a: __m128, b: __m128) -> i32 {
     comilt_ss(a, b)
 }
@@ -504,9 +648,12 @@ pub unsafe fn _mm_comilt_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if the value from `a` is less than or equal to the one from `b`, or `0`
 /// otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comile_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_comile_ss(a: __m128, b: __m128) -> i32 {
     comile_ss(a, b)
 }
@@ -514,9 +661,12 @@ pub unsafe fn _mm_comile_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if the value from `a` is greater than the one from `b`, or `0`
 /// otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comigt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_comigt_ss(a: __m128, b: __m128) -> i32 {
     comigt_ss(a, b)
 }
@@ -524,18 +674,24 @@ pub unsafe fn _mm_comigt_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if the value from `a` is greater than or equal to the one from `b`, or
 /// `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comige_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_comige_ss(a: __m128, b: __m128) -> i32 {
     comige_ss(a, b)
 }
 
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if they are *not* equal, or `0` otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_comineq_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(comiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_comineq_ss(a: __m128, b: __m128) -> i32 {
     comineq_ss(a, b)
 }
@@ -543,9 +699,12 @@ pub unsafe fn _mm_comineq_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if they are equal, or `0` otherwise. This instruction will not signal
 /// an exception if either argument is a quiet NaN.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ucomieq_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ucomieq_ss(a: __m128, b: __m128) -> i32 {
     ucomieq_ss(a, b)
 }
@@ -554,9 +713,12 @@ pub unsafe fn _mm_ucomieq_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is less than the one from `b`, or `0` otherwise.
 /// This instruction will not signal an exception if either argument is a quiet
 /// NaN.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ucomilt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ucomilt_ss(a: __m128, b: __m128) -> i32 {
     ucomilt_ss(a, b)
 }
@@ -565,9 +727,12 @@ pub unsafe fn _mm_ucomilt_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is less than or equal to the one from `b`, or `0`
 /// otherwise. This instruction will not signal an exception if either argument
 /// is a quiet NaN.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ucomile_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ucomile_ss(a: __m128, b: __m128) -> i32 {
     ucomile_ss(a, b)
 }
@@ -576,9 +741,12 @@ pub unsafe fn _mm_ucomile_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is greater than the one from `b`, or `0`
 /// otherwise. This instruction will not signal an exception if either argument
 /// is a quiet NaN.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ucomigt_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ucomigt_ss(a: __m128, b: __m128) -> i32 {
     ucomigt_ss(a, b)
 }
@@ -587,9 +755,12 @@ pub unsafe fn _mm_ucomigt_ss(a: __m128, b: __m128) -> i32 {
 /// `1` if the value from `a` is greater than or equal to the one from `b`, or
 /// `0` otherwise. This instruction will not signal an exception if either
 /// argument is a quiet NaN.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ucomige_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ucomige_ss(a: __m128, b: __m128) -> i32 {
     ucomige_ss(a, b)
 }
@@ -597,9 +768,12 @@ pub unsafe fn _mm_ucomige_ss(a: __m128, b: __m128) -> i32 {
 /// Compare two 32-bit floats from the low-order bits of `a` and `b`. Returns
 /// `1` if they are *not* equal, or `0` otherwise. This instruction will not
 /// signal an exception if either argument is a quiet NaN.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_ucomineq_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ucomiss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_ucomineq_ss(a: __m128, b: __m128) -> i32 {
     ucomineq_ss(a, b)
 }
@@ -612,17 +786,23 @@ pub unsafe fn _mm_ucomineq_ss(a: __m128, b: __m128) -> i32 {
 /// unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTSS2SI` instruction (with 32 bit output).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtss_si32)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtss_si32(a: __m128) -> i32 {
     cvtss2si(a)
 }
 
 /// Alias for [`_mm_cvtss_si32`](fn._mm_cvtss_si32.html).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_ss2si)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvt_ss2si(a: __m128) -> i32 {
     _mm_cvtss_si32(a)
 }
@@ -637,26 +817,35 @@ pub unsafe fn _mm_cvt_ss2si(a: __m128) -> i32 {
 /// exception if unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTTSS2SI` instruction (with 32 bit output).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttss_si32)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvttss_si32(a: __m128) -> i32 {
     cvttss2si(a)
 }
 
 /// Alias for [`_mm_cvttss_si32`](fn._mm_cvttss_si32.html).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtt_ss2si)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtt_ss2si(a: __m128) -> i32 {
     _mm_cvttss_si32(a)
 }
 
 /// Extract the lowest 32 bit float from the input vector.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtss_f32)
 #[inline]
 #[target_feature(enable = "sse")]
 // No point in using assert_instrs. In Unix x86_64 calling convention this is a
 // no-op, and on Windows it's just a `mov`.
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtss_f32(a: __m128) -> f32 {
     simd_extract(a, 0)
 }
@@ -666,42 +855,57 @@ pub unsafe fn _mm_cvtss_f32(a: __m128) -> f32 {
 ///
 /// This intrinsic corresponds to the `CVTSI2SS` instruction (with 32 bit
 /// input).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi32_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi32_ss(a: __m128, b: i32) -> __m128 {
     cvtsi2ss(a, b)
 }
 
 /// Alias for [`_mm_cvtsi32_ss`](fn._mm_cvtsi32_ss.html).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvt_si2ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvt_si2ss(a: __m128, b: i32) -> __m128 {
     _mm_cvtsi32_ss(a, b)
 }
 
 /// Construct a `__m128` with the lowest element set to `a` and the rest set to
 /// zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_set_ss(a: f32) -> __m128 {
     __m128(a, 0.0, 0.0, 0.0)
 }
 
 /// Construct a `__m128` with all element set to `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set1_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_set1_ps(a: f32) -> __m128 {
     __m128(a, a, a, a)
 }
 
 /// Alias for [`_mm_set1_ps`](fn._mm_set1_ps.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set_ps1)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_set_ps1(a: f32) -> __m128 {
     _mm_set1_ps(a)
 }
@@ -723,9 +927,12 @@ pub unsafe fn _mm_set_ps1(a: f32) -> __m128 {
 /// ```text
 /// let v = _mm_set_ps(d, c, b, a);
 /// ```
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_set_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpcklps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
     __m128(d, c, b, a)
 }
@@ -738,19 +945,25 @@ pub unsafe fn _mm_set_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
 /// ```text
 /// assert_eq!(__m128::new(a, b, c, d), _mm_setr_ps(a, b, c, d));
 /// ```
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_setr_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(unpcklps))]
 // On a 32-bit architecture it just copies the operands from the stack.
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_setr_ps(a: f32, b: f32, c: f32, d: f32) -> __m128 {
     __m128(a, b, c, d)
 }
 
 /// Construct a `__m128` with all elements initialized to zero.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_setzero_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(xorps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_setzero_ps() -> __m128 {
     __m128(0.0, 0.0, 0.0, 0.0)
 }
@@ -760,10 +973,13 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 ///
 /// The lower half of result takes values from `a` and the higher half from
 /// `b`. Mask is split to 2 control bits each to index the element from inputs.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(shufps, mask = 3))]
 #[rustc_args_required_const(2)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
     let mask = (mask & 0xFF) as u8;
 
@@ -812,27 +1028,36 @@ pub unsafe fn _mm_shuffle_ps(a: __m128, b: __m128, mask: u32) -> __m128 {
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements
 /// from the higher half of `a` and `b`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_unpackhi_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpckhps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpackhi_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [2, 6, 3, 7])
 }
 
 /// Unpack and interleave single-precision (32-bit) floating-point elements
 /// from the lower half of `a` and `b`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_unpacklo_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(unpcklps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [0, 4, 1, 5])
 }
 
 /// Combine higher half of `a` and `b`. The highwe half of `b` occupies the
 /// lower half of result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movehl_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movhlps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
     // TODO; figure why this is a different instruction on Windows?
     simd_shuffle4(a, b, [6, 7, 2, 3])
@@ -840,9 +1065,12 @@ pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 
 /// Combine lower half of `a` and `b`. The lower half of `b` occupies the
 /// higher half of result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movelh_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movlhps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [0, 1, 4, 5])
 }
@@ -851,9 +1079,12 @@ pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
 ///
 /// The mask is stored in the 4 least significant bits of the return value.
 /// All other bits are set to `0`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movemask_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movmskps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
     movmskps(a)
 }
@@ -973,9 +1204,12 @@ pub unsafe fn _mm_loadl_pi(a: __m128, p: *const __m64) -> __m128 {
 /// elements set to zero.
 ///
 /// This corresponds to instructions `VMOVSS` / `MOVSS`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_load_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_load_ss(p: *const f32) -> __m128 {
     __m128(*p, 0.0, 0.0, 0.0)
 }
@@ -985,18 +1219,24 @@ pub unsafe fn _mm_load_ss(p: *const f32) -> __m128 {
 ///
 /// This corresponds to instructions `VMOVSS` / `MOVSS` followed by some
 /// shuffling.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_load1_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_load1_ps(p: *const f32) -> __m128 {
     let a = *p;
     __m128(a, a, a, a)
 }
 
 /// Alias for [`_mm_load1_ps`](fn._mm_load1_ps.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_load_ps1)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
     _mm_load1_ps(p)
 }
@@ -1009,9 +1249,12 @@ pub unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
 /// memory.
 ///
 /// This corresponds to instructions `VMOVAPS` / `MOVAPS`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_load_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
     *(p as *const __m128)
 }
@@ -1023,9 +1266,12 @@ pub unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
 /// may be faster.
 ///
 /// This corresponds to instructions `VMOVUPS` / `MOVUPS`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadu_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movups))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
     // Note: Using `*p` would require `f32` alignment, but `movups` has no
     // alignment restrictions.
@@ -1057,9 +1303,12 @@ pub unsafe fn _mm_loadu_ps(p: *const f32) -> __m128 {
 ///
 /// This corresponds to instructions `VMOVAPS` / `MOVAPS` followed by some
 /// shuffling.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadr_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
     let a = _mm_load_ps(p);
     simd_shuffle4(a, a, [3, 2, 1, 0])
@@ -1124,9 +1373,12 @@ pub unsafe fn _mm_storel_pi(p: *mut __m64, a: __m128) {
 /// Store the lowest 32 bit float of `a` into memory.
 ///
 /// This intrinsic corresponds to the `MOVSS` instruction.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
     *p = simd_extract(a, 0);
 }
@@ -1147,18 +1399,24 @@ pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
 /// *p.offset(2) = x;
 /// *p.offset(3) = x;
 /// ```
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store1_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle4(a, a, [0, 0, 0, 0]);
     *(p as *mut __m128) = b;
 }
 
 /// Alias for [`_mm_store1_ps`](fn._mm_store1_ps.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store_ps1)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
     _mm_store1_ps(p, a);
 }
@@ -1172,9 +1430,12 @@ pub unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
 /// memory.
 ///
 /// This corresponds to instructions `VMOVAPS` / `MOVAPS`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
     *(p as *mut __m128) = a;
 }
@@ -1184,9 +1445,12 @@ pub unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
 /// faster.
 ///
 /// This corresponds to instructions `VMOVUPS` / `MOVUPS`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeu_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movups))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
     ptr::copy_nonoverlapping(
         &a as *const __m128 as *const u8,
@@ -1209,9 +1473,12 @@ pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
 /// *p.offset(2) = a.extract(1);
 /// *p.offset(3) = a.extract(0);
 /// ```
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storer_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle4(a, a, [3, 2, 1, 0]);
     *(p as *mut __m128) = b;
@@ -1224,9 +1491,12 @@ pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
 /// ```text
 /// _mm_move_ss(a, b) == a.replace(0, b.extract(0))
 /// ```
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_move_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [4, 1, 2, 3])
 }
@@ -1237,9 +1507,12 @@ pub unsafe fn _mm_move_ss(a: __m128, b: __m128) -> __m128 {
 /// Guarantees that every store instruction that precedes, in program order, is
 /// globally visible before any store instruction which follows the fence in
 /// program order.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sfence)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(sfence))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sfence() {
     sfence()
 }
@@ -1247,9 +1520,12 @@ pub unsafe fn _mm_sfence() {
 /// Get the unsigned 32-bit value of the MXCSR control and status register.
 ///
 /// For more info see [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_getcsr)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(stmxcsr))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_getcsr() -> u32 {
     let mut result = 0_i32;
     stmxcsr((&mut result) as *mut _ as *mut i8);
@@ -1381,114 +1657,160 @@ pub unsafe fn _mm_getcsr() -> u32 {
 /// _MM_SET_FLUSH_ZERO_MODE(_MM_FLUSH_ZERO_ON); // turn on
 /// ```
 ///
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_setcsr)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(ldmxcsr))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_setcsr(val: u32) {
     ldmxcsr(&val as *const _ as *const i8);
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_INVALID: u32 = 0x0001;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_DENORM: u32 = 0x0002;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_DIV_ZERO: u32 = 0x0004;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_OVERFLOW: u32 = 0x0008;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_UNDERFLOW: u32 = 0x0010;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_INEXACT: u32 = 0x0020;
 /// See [`_MM_GET_EXCEPTION_STATE`](fn._MM_GET_EXCEPTION_STATE.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_EXCEPT_MASK: u32 = 0x003f;
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_INVALID: u32 = 0x0080;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_DENORM: u32 = 0x0100;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_DIV_ZERO: u32 = 0x0200;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_OVERFLOW: u32 = 0x0400;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_UNDERFLOW: u32 = 0x0800;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_INEXACT: u32 = 0x1000;
 /// See [`_MM_GET_EXCEPTION_MASK`](fn._MM_GET_EXCEPTION_MASK.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_MASK_MASK: u32 = 0x1f80;
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_ROUND_NEAREST: u32 = 0x0000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_ROUND_DOWN: u32 = 0x2000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_ROUND_UP: u32 = 0x4000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_ROUND_TOWARD_ZERO: u32 = 0x6000;
 
 /// See [`_MM_GET_ROUNDING_MODE`](fn._MM_GET_ROUNDING_MODE.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_ROUND_MASK: u32 = 0x6000;
 
 /// See [`_MM_GET_FLUSH_ZERO_MODE`](fn._MM_GET_FLUSH_ZERO_MODE.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_FLUSH_ZERO_MASK: u32 = 0x8000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_FLUSH_ZERO_ON: u32 = 0x8000;
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_FLUSH_ZERO_OFF: u32 = 0x0000;
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_GET_EXCEPTION_MASK)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_GET_EXCEPTION_MASK() -> u32 {
     _mm_getcsr() & _MM_MASK_MASK
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_GET_EXCEPTION_STATE)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_GET_EXCEPTION_STATE() -> u32 {
     _mm_getcsr() & _MM_EXCEPT_MASK
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_GET_FLUSH_ZERO_MODE)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_GET_FLUSH_ZERO_MODE() -> u32 {
     _mm_getcsr() & _MM_FLUSH_ZERO_MASK
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_GET_ROUNDING_MODE)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_GET_ROUNDING_MODE() -> u32 {
     _mm_getcsr() & _MM_ROUND_MASK
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_SET_EXCEPTION_MASK)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_SET_EXCEPTION_MASK(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_MASK_MASK) | x)
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_SET_EXCEPTION_STATE)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_SET_EXCEPTION_STATE(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_EXCEPT_MASK) | x)
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_SET_FLUSH_ZERO_MODE)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
     let val = (_mm_getcsr() & !_MM_FLUSH_ZERO_MASK) | x;
     // println!("setting csr={:x}", val);
@@ -1496,23 +1818,30 @@ pub unsafe fn _MM_SET_FLUSH_ZERO_MODE(x: u32) {
 }
 
 /// See [`_mm_setcsr`](fn._mm_setcsr.html)
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_SET_ROUNDING_MODE)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_SET_ROUNDING_MODE(x: u32) {
     _mm_setcsr((_mm_getcsr() & !_MM_ROUND_MASK) | x)
 }
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_HINT_T0: i32 = 3;
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_HINT_T1: i32 = 2;
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_HINT_T2: i32 = 1;
 
 /// See [`_mm_prefetch`](fn._mm_prefetch.html).
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub const _MM_HINT_NTA: i32 = 0;
 
 /// Fetch the cache line that contains address `p` using the given `strategy`.
@@ -1551,6 +1880,8 @@ pub const _MM_HINT_NTA: i32 = 0;
 /// * Prefetching may also fail if there are not enough memory-subsystem
 ///   resources (e.g., request buffers).
 ///
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_prefetch)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(prefetcht0, strategy = _MM_HINT_T0))]
@@ -1558,6 +1889,7 @@ pub const _MM_HINT_NTA: i32 = 0;
 #[cfg_attr(test, assert_instr(prefetcht2, strategy = _MM_HINT_T2))]
 #[cfg_attr(test, assert_instr(prefetchnta, strategy = _MM_HINT_NTA))]
 #[rustc_args_required_const(1)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
     // The `strategy` must be a compile-time constant, so we use a short form
     // of `constify_imm8!` for now.
@@ -1577,8 +1909,11 @@ pub unsafe fn _mm_prefetch(p: *const i8, strategy: i32) {
 }
 
 /// Return vector of type __m128 with undefined elements.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_undefined_ps)
 #[inline]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_undefined_ps() -> __m128 {
     __m128(
         mem::uninitialized(),
@@ -1589,9 +1924,12 @@ pub unsafe fn _mm_undefined_ps() -> __m128 {
 }
 
 /// Transpose the 4x4 matrix formed by 4 rows of __m128 in place.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_MM_TRANSPOSE4_PS)
 #[inline]
 #[allow(non_snake_case)]
 #[target_feature(enable = "sse")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _MM_TRANSPOSE4_PS(
     row0: &mut __m128, row1: &mut __m128, row2: &mut __m128, row3: &mut __m128
 ) {
@@ -1720,9 +2058,12 @@ extern "C" {
 ///
 /// `mem_addr` must be aligned on a 16-byte boundary or a general-protection
 /// exception _may_ be generated.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_stream_ps)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movntps))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
     intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
 }

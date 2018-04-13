@@ -24,9 +24,12 @@ extern "C" {
 /// [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTSS2SI` instruction (with 64 bit output).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtss_si64)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtss2si))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
     cvtss2si64(a)
 }
@@ -40,9 +43,12 @@ pub unsafe fn _mm_cvtss_si64(a: __m128) -> i64 {
 /// point exception if unmasked (see [`_mm_setcsr`](fn._mm_setcsr.html)).
 ///
 /// This corresponds to the `CVTTSS2SI` instruction (with 64 bit output).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvttss_si64)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvttss2si))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
     cvttss2si64(a)
 }
@@ -52,9 +58,12 @@ pub unsafe fn _mm_cvttss_si64(a: __m128) -> i64 {
 ///
 /// This intrinsic corresponds to the `CVTSI2SS` instruction (with 64 bit
 /// input).
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi64_ss)
 #[inline]
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(cvtsi2ss))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi64_ss(a: __m128, b: i64) -> __m128 {
     cvtsi642ss(a, b)
 }

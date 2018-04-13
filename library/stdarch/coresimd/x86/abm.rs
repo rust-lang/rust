@@ -23,17 +23,23 @@ use stdsimd_test::assert_instr;
 /// Counts the leading most significant zero bits.
 ///
 /// When the operand is zero, it returns its size in bits.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_lzcnt_u32)
 #[inline]
 #[target_feature(enable = "lzcnt")]
 #[cfg_attr(test, assert_instr(lzcnt))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _lzcnt_u32(x: u32) -> u32 {
     x.leading_zeros()
 }
 
 /// Counts the bits that are set.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_popcnt32)
 #[inline]
 #[target_feature(enable = "popcnt")]
 #[cfg_attr(test, assert_instr(popcnt))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _popcnt32(x: i32) -> i32 {
     x.count_ones() as i32
 }

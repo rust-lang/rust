@@ -70,6 +70,7 @@ pub fn _bextr2_u64(a: u64, control: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcfill))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcfill_u32(x: u32) -> u32 {
     x & (x.wrapping_add(1))
 }
@@ -81,6 +82,7 @@ pub unsafe fn _blcfill_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcfill))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcfill_u64(x: u64) -> u64 {
     x & (x.wrapping_add(1))
 }
@@ -91,6 +93,7 @@ pub unsafe fn _blcfill_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blci))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blci_u32(x: u32) -> u32 {
     x | !(x.wrapping_add(1))
 }
@@ -102,6 +105,7 @@ pub unsafe fn _blci_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blci))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blci_u64(x: u64) -> u64 {
     x | !(x.wrapping_add(1))
 }
@@ -112,6 +116,7 @@ pub unsafe fn _blci_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcic))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcic_u32(x: u32) -> u32 {
     !x & (x.wrapping_add(1))
 }
@@ -123,6 +128,7 @@ pub unsafe fn _blcic_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcic))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcic_u64(x: u64) -> u64 {
     !x & (x.wrapping_add(1))
 }
@@ -134,6 +140,7 @@ pub unsafe fn _blcic_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcmsk))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcmsk_u32(x: u32) -> u32 {
     x ^ (x.wrapping_add(1))
 }
@@ -146,6 +153,7 @@ pub unsafe fn _blcmsk_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcmsk_u64(x: u64) -> u64 {
     x ^ (x.wrapping_add(1))
 }
@@ -156,6 +164,7 @@ pub unsafe fn _blcmsk_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcs))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcs_u32(x: u32) -> u32 {
     x | (x.wrapping_add(1))
 }
@@ -167,6 +176,7 @@ pub unsafe fn _blcs_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blcs))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blcs_u64(x: u64) -> u64 {
     x | x.wrapping_add(1)
 }
@@ -177,6 +187,7 @@ pub unsafe fn _blcs_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsfill))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsfill_u32(x: u32) -> u32 {
     x | (x.wrapping_sub(1))
 }
@@ -188,6 +199,7 @@ pub unsafe fn _blsfill_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsfill))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsfill_u64(x: u64) -> u64 {
     x | (x.wrapping_sub(1))
 }
@@ -198,6 +210,7 @@ pub unsafe fn _blsfill_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsic))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsic_u32(x: u32) -> u32 {
     !x | (x.wrapping_sub(1))
 }
@@ -209,6 +222,7 @@ pub unsafe fn _blsic_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(blsic))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _blsic_u64(x: u64) -> u64 {
     !x | (x.wrapping_sub(1))
 }
@@ -220,6 +234,7 @@ pub unsafe fn _blsic_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
     !x | (x.wrapping_add(1))
 }
@@ -232,6 +247,7 @@ pub unsafe fn _t1mskc_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(t1mskc))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _t1mskc_u64(x: u64) -> u64 {
     !x | (x.wrapping_add(1))
 }
@@ -243,6 +259,7 @@ pub unsafe fn _t1mskc_u64(x: u64) -> u64 {
 #[inline]
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(tzmsk))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _tzmsk_u32(x: u32) -> u32 {
     !x & (x.wrapping_sub(1))
 }
@@ -255,6 +272,7 @@ pub unsafe fn _tzmsk_u32(x: u32) -> u32 {
 #[target_feature(enable = "tbm")]
 #[cfg_attr(test, assert_instr(tzmsk))]
 #[cfg(not(target_arch = "x86"))] // generates lots of instructions
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _tzmsk_u64(x: u64) -> u64 {
     !x & (x.wrapping_sub(1))
 }

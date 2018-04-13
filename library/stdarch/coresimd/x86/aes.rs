@@ -29,41 +29,56 @@ extern "C" {
 }
 
 /// Perform one round of an AES decryption flow on data (state) in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesdec_si128)
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesdec))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_aesdec_si128(a: __m128i, round_key: __m128i) -> __m128i {
     aesdec(a, round_key)
 }
 
 /// Perform the last round of an AES decryption flow on data (state) in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesdeclast_si128)
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesdeclast))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_aesdeclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
     aesdeclast(a, round_key)
 }
 
 /// Perform one round of an AES encryption flow on data (state) in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesenc_si128)
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesenc))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_aesenc_si128(a: __m128i, round_key: __m128i) -> __m128i {
     aesenc(a, round_key)
 }
 
 /// Perform the last round of an AES encryption flow on data (state) in `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesenclast_si128)
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesenclast))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_aesenclast_si128(a: __m128i, round_key: __m128i) -> __m128i {
     aesenclast(a, round_key)
 }
 
 /// Perform the `InvMixColumns` transformation on `a`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aesimc_si128)
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aesimc))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
     aesimc(a)
 }
@@ -73,10 +88,13 @@ pub unsafe fn _mm_aesimc_si128(a: __m128i) -> __m128i {
 /// Assist in expanding the AES cipher key by computing steps towards
 /// generating a round key for encryption cipher using data from `a` and an
 /// 8-bit round constant `imm8`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_aeskeygenassist_si128)
 #[inline]
 #[target_feature(enable = "aes")]
 #[cfg_attr(test, assert_instr(aeskeygenassist, imm8 = 0))]
 #[rustc_args_required_const(1)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_aeskeygenassist_si128(a: __m128i, imm8: i32) -> __m128i {
     macro_rules! call {
         ($imm8:expr) => {

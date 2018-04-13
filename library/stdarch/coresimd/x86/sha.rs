@@ -26,9 +26,12 @@ use stdsimd_test::assert_instr;
 /// Perform an intermediate calculation for the next four SHA1 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
 /// and returning the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha1msg1_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1msg1))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha1msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha1msg1(a.as_i32x4(), b.as_i32x4()))
 }
@@ -36,9 +39,12 @@ pub unsafe fn _mm_sha1msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// Perform the final calculation for the next four SHA1 message values
 /// (unsigned 32-bit integers) using the intermediate result in `a` and the
 /// previous message values in `b`, and returns the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha1msg2_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1msg2))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha1msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha1msg2(a.as_i32x4(), b.as_i32x4()))
 }
@@ -46,9 +52,12 @@ pub unsafe fn _mm_sha1msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// Calculate SHA1 state variable E after four rounds of operation from the
 /// current SHA1 state variable `a`, add that value to the scheduled values
 /// (unsigned 32-bit integers) in `b`, and returns the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha1nexte_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1nexte))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha1nexte(a.as_i32x4(), b.as_i32x4()))
 }
@@ -58,10 +67,13 @@ pub unsafe fn _mm_sha1nexte_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// (unsigned 32-bit integers), and state variable E from `b`, and return the
 /// updated SHA1 state (A,B,C,D). `func` contains the logic functions and round
 /// constants.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha1rnds4_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha1rnds4, func = 0))]
 #[rustc_args_required_const(2)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha1rnds4_epu32(
     a: __m128i, b: __m128i, func: i32
 ) -> __m128i {
@@ -79,9 +91,12 @@ pub unsafe fn _mm_sha1rnds4_epu32(
 /// Perform an intermediate calculation for the next four SHA256 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
 /// and return the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha256msg1_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256msg1))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha256msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha256msg1(a.as_i32x4(), b.as_i32x4()))
 }
@@ -89,9 +104,12 @@ pub unsafe fn _mm_sha256msg1_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// Perform the final calculation for the next four SHA256 message values
 /// (unsigned 32-bit integers) using previous message values from `a` and `b`,
 /// and return the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha256msg2_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256msg2))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute(sha256msg2(a.as_i32x4(), b.as_i32x4()))
 }
@@ -101,9 +119,12 @@ pub unsafe fn _mm_sha256msg2_epu32(a: __m128i, b: __m128i) -> __m128i {
 /// pre-computed sum of the next 2 round message values (unsigned 32-bit
 /// integers) and the corresponding round constants from `k`, and store the
 /// updated SHA256 state (A,B,E,F) in dst.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_sha256rnds2_epu32)
 #[inline]
 #[target_feature(enable = "sha")]
 #[cfg_attr(test, assert_instr(sha256rnds2))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_sha256rnds2_epu32(
     a: __m128i, b: __m128i, k: __m128i
 ) -> __m128i {

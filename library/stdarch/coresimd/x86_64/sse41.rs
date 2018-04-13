@@ -8,11 +8,14 @@ use mem;
 use stdsimd_test::assert_instr;
 
 /// Extract an 64-bit integer from `a` selected with `imm8`
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi64)
 #[inline]
 #[target_feature(enable = "sse4.1")]
 // TODO: Add test for Windows
 #[cfg_attr(test, assert_instr(pextrq, imm8 = 1))]
 #[rustc_args_required_const(1)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {
     let imm8 = (imm8 & 1) as u32;
     simd_extract(a.as_i64x2(), imm8)
@@ -20,10 +23,13 @@ pub unsafe fn _mm_extract_epi64(a: __m128i, imm8: i32) -> i64 {
 
 /// Return a copy of `a` with the 64-bit integer from `i` inserted at a
 /// location specified by `imm8`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_insert_epi64)
 #[inline]
 #[target_feature(enable = "sse4.1")]
 #[cfg_attr(test, assert_instr(pinsrq, imm8 = 0))]
 #[rustc_args_required_const(2)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_insert_epi64(a: __m128i, i: i64, imm8: i32) -> __m128i {
     mem::transmute(simd_insert(a.as_i64x2(), (imm8 & 1) as u32, i))
 }

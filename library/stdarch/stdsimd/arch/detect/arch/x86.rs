@@ -16,8 +16,70 @@
 //! in a global `AtomicUsize` variable. The query is performed by just checking
 //! whether the feature bit in this global variable is set or cleared.
 
+/// A macro to test at *runtime* whether a CPU feature is available on
+/// x86/x86-64 platforms.
+///
+/// This macro is provided in the standard library and will detect at runtime
+/// whether the specified CPU feature is detected. This does *not* resolve at
+/// compile time unless the specified feature is already enabled for the entire
+/// crate. Runtime detection currently relies mostly on the `cpuid` instruction.
+///
+/// This macro only takes one argument which is a string literal of the feature
+/// being tested for. The feature names supported are the lowercase versions of
+/// the ones defined by Intel in [their documentation][docs].
+///
+/// ## Supported arguments
+///
+/// This macro supports the same names that `#[target_feature]` supports. Unlike
+/// `#[target_feature]`, however, this macro does not support names separated
+/// with a comma. Instead testing for multiple features must be done through
+/// separate macro invocations for now.
+///
+/// Supported arguments are:
+///
+/// * `"aes"`
+/// * `"pclmulqdq"`
+/// * `"rdrand"`
+/// * `"rdseed"`
+/// * `"tsc"`
+/// * `"mmx"`
+/// * `"sse"`
+/// * `"sse2"`
+/// * `"sse3"`
+/// * `"ssse3"`
+/// * `"sse4.1"`
+/// * `"sse4.2"`
+/// * `"sse4a"`
+/// * `"sha"`
+/// * `"avx"`
+/// * `"avx2"`
+/// * `"avx512f"`
+/// * `"avx512cd"`
+/// * `"avx512er"`
+/// * `"avx512pf"`
+/// * `"avx512bw"`
+/// * `"avx512dq"`
+/// * `"avx512vl"`
+/// * `"avx512ifma"`
+/// * `"avx512vbmi"`
+/// * `"avx512vpopcntdq"`
+/// * `"fma"`
+/// * `"bmi1"`
+/// * `"bmi2"`
+/// * `"abm"`
+/// * `"lzcnt"`
+/// * `"tbm"`
+/// * `"popcnt"`
+/// * `"fxsr"`
+/// * `"xsave"`
+/// * `"xsaveopt"`
+/// * `"xsaves"`
+/// * `"xsavec"`
+///
+/// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
 #[macro_export]
-#[unstable(feature = "stdsimd", issue = "0")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
+#[allow_internal_unstable]
 macro_rules! is_x86_feature_detected {
     ("aes") => {
         cfg!(target_feature = "aes") || $crate::arch::detect::check_for(

@@ -343,30 +343,38 @@
 ///     }
 /// }
 /// ```
-#[unstable(feature = "stdsimd", issue = "0")]
+#[stable(feature = "simd_arch", since = "1.27.0")]
 pub mod arch {
     #[cfg(all(not(dox), target_arch = "x86"))]
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use coresimd::arch::x86;
 
     #[cfg(all(not(dox), target_arch = "x86_64"))]
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use coresimd::arch::x86_64;
 
     #[cfg(all(not(dox), target_arch = "arm"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub use coresimd::arch::arm;
 
     #[cfg(all(not(dox), target_arch = "aarch64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub use coresimd::arch::aarch64;
 
     #[cfg(target_arch = "wasm32")]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub use coresimd::arch::wasm32;
 
     #[cfg(all(not(dox), target_arch = "mips"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub use coresimd::arch::mips;
 
     #[cfg(all(not(dox), target_arch = "mips64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub use coresimd::arch::mips64;
 
     #[doc(hidden)] // unstable implementation detail
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub mod detect;
 
     /// Platform-specific intrinsics for the `x86` platform.
@@ -378,6 +386,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/x86/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "x86"))]
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86 {}
 
     /// Platform-specific intrinsics for the `x86_64` platform.
@@ -389,6 +398,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/x86_64/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "x86_64"))]
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub mod x86_64 {}
 
     /// Platform-specific intrinsics for the `arm` platform.
@@ -400,6 +410,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/arm/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "arm"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub mod arm {}
 
     /// Platform-specific intrinsics for the `aarch64` platform.
@@ -411,6 +422,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/aarch64/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "aarch64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub mod aarch64 {}
 
     /// Platform-specific intrinsics for the `mips` platform.
@@ -422,6 +434,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/mips/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "mips"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub mod mips {}
 
     /// Platform-specific intrinsics for the `mips64` platform.
@@ -433,6 +446,7 @@ pub mod arch {
     /// [libcore]: ../../../core/arch/mips64/index.html
     #[cfg(dox)]
     #[doc(cfg(target_arch = "mips64"))]
+    #[unstable(feature = "stdsimd", issue = "0")]
     pub mod mips64 {}
 }
 

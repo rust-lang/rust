@@ -10,14 +10,19 @@ use stdsimd_test::assert_instr;
 /// Result of the `cpuid` instruction.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
 #[cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub struct CpuidResult {
     /// EAX register.
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub eax: u32,
     /// EBX register.
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub ebx: u32,
     /// ECX register.
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub ecx: u32,
     /// EDX register.
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub edx: u32,
 }
 
@@ -46,6 +51,7 @@ pub struct CpuidResult {
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
 #[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
     let mut r = mem::uninitialized::<CpuidResult>();
     if cfg!(target_arch = "x86") {
@@ -66,6 +72,7 @@ pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
 /// See [`__cpuid_count`](fn.__cpuid_count.html).
 #[inline]
 #[cfg_attr(test, assert_instr(cpuid))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
     __cpuid_count(leaf, 0)
 }
@@ -114,6 +121,7 @@ pub fn has_cpuid() -> bool {
 /// See also [`__cpuid`](fn.__cpuid.html) and
 /// [`__cpuid_count`](fn.__cpuid_count.html).
 #[inline]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __get_cpuid_max(leaf: u32) -> (u32, u32) {
     let CpuidResult { eax, ebx, .. } = __cpuid(leaf);
     (eax, ebx)

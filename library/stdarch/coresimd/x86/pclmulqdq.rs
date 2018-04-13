@@ -21,6 +21,8 @@ extern "C" {
 ///
 /// The immediate byte is used for determining which halves of `a` and `b`
 /// should be used. Immediate bits other than 0 and 4 are ignored.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_clmulepi64_si128)
 #[inline]
 #[target_feature(enable = "pclmulqdq")]
 #[cfg_attr(all(test, not(target_os = "linux")),
@@ -34,6 +36,7 @@ extern "C" {
 #[cfg_attr(all(test, target_os = "linux"),
            assert_instr(pclmulhqhqdq, imm8 = 17))]
 #[rustc_args_required_const(2)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_clmulepi64_si128(
     a: __m128i, b: __m128i, imm8: i32
 ) -> __m128i {

@@ -19,10 +19,13 @@ use mem;
 
 /// Copy `a` to result, and insert the 64-bit integer `i` into result
 /// at the location specified by `index`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insert_epi64)
 #[inline]
 #[rustc_args_required_const(2)]
 #[target_feature(enable = "avx")]
 // This intrinsic has no corresponding instruction.
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insert_epi64(a: __m256i, i: i64, index: i32) -> __m256i {
     mem::transmute(simd_insert(a.as_i64x4(), (index as u32) & 3, i))
 }

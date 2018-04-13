@@ -29,9 +29,12 @@ extern "C" {
 ///
 /// The format of the XSAVE area is detailed in Section 13.4, “XSAVE Area,” of
 /// Intel® 64 and IA-32 Architectures Software Developer’s Manual, Volume 1.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xsave64)
 #[inline]
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xsave64))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsave64(mem_addr: *mut u8, save_mask: u64) {
     xsave64(
         mem_addr,
@@ -46,9 +49,12 @@ pub unsafe fn _xsave64(mem_addr: *mut u8, save_mask: u64) {
 /// State is restored based on bits [62:0] in `rs_mask`, `XCR0`, and
 /// `mem_addr.HEADER.XSTATE_BV`. `mem_addr` must be aligned on a 64-byte
 /// boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xrstor64)
 #[inline]
 #[target_feature(enable = "xsave")]
 #[cfg_attr(test, assert_instr(xrstor64))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xrstor64(mem_addr: *const u8, rs_mask: u64) {
     xrstor64(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }
@@ -60,9 +66,12 @@ pub unsafe fn _xrstor64(mem_addr: *const u8, rs_mask: u64) {
 /// `mem_addr` must be aligned on a 64-byte boundary. The hardware may optimize
 /// the manner in which data is saved. The performance of this instruction will
 /// be equal to or better than using the `XSAVE64` instruction.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xsaveopt64)
 #[inline]
 #[target_feature(enable = "xsave,xsaveopt")]
 #[cfg_attr(test, assert_instr(xsaveopt64))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsaveopt64(mem_addr: *mut u8, save_mask: u64) {
     xsaveopt64(
         mem_addr,
@@ -77,9 +86,12 @@ pub unsafe fn _xsaveopt64(mem_addr: *mut u8, save_mask: u64) {
 /// `xsavec` differs from `xsave` in that it uses compaction and that it may
 /// use init optimization. State is saved based on bits [62:0] in `save_mask`
 /// and `XCR0`. `mem_addr` must be aligned on a 64-byte boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xsavec64)
 #[inline]
 #[target_feature(enable = "xsave,xsavec")]
 #[cfg_attr(test, assert_instr(xsavec64))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsavec64(mem_addr: *mut u8, save_mask: u64) {
     xsavec64(
         mem_addr,
@@ -95,9 +107,12 @@ pub unsafe fn _xsavec64(mem_addr: *mut u8, save_mask: u64) {
 /// corresponding to bits set in `IA32_XSS` `MSR` and that it may use the
 /// modified optimization. State is saved based on bits [62:0] in `save_mask`
 /// and `XCR0`. `mem_addr` must be aligned on a 64-byte boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xsaves64)
 #[inline]
 #[target_feature(enable = "xsave,xsaves")]
 #[cfg_attr(test, assert_instr(xsaves64))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xsaves64(mem_addr: *mut u8, save_mask: u64) {
     xsaves64(
         mem_addr,
@@ -115,9 +130,12 @@ pub unsafe fn _xsaves64(mem_addr: *mut u8, save_mask: u64) {
 /// State is restored based on bits [62:0] in `rs_mask`, `XCR0`, and
 /// `mem_addr.HEADER.XSTATE_BV`. `mem_addr` must be aligned on a 64-byte
 /// boundary.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xrstors64)
 #[inline]
 #[target_feature(enable = "xsave,xsaves")]
 #[cfg_attr(test, assert_instr(xrstors64))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _xrstors64(mem_addr: *const u8, rs_mask: u64) {
     xrstors64(mem_addr, (rs_mask >> 32) as u32, rs_mask as u32);
 }

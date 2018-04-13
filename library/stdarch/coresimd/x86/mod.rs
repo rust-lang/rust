@@ -33,7 +33,8 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![feature(stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -83,7 +84,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -105,6 +106,7 @@ types! {
     /// # if is_x86_feature_detected!("sse2") { unsafe { foo() } }
     /// # }
     /// ```
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m128i(i64, i64);
 
     /// 128-bit wide set of four `f32` types, x86-specific
@@ -126,7 +128,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -148,6 +150,7 @@ types! {
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m128(f32, f32, f32, f32);
 
     /// 128-bit wide set of two `f64` types, x86-specific
@@ -169,7 +172,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -191,6 +194,7 @@ types! {
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m128d(f64, f64);
 
     /// 256-bit wide integer vector type, x86-specific
@@ -216,7 +220,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -238,6 +242,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m256i(i64, i64, i64, i64);
 
     /// 256-bit wide set of eight `f32` types, x86-specific
@@ -259,7 +264,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -281,6 +286,7 @@ types! {
     /// # if is_x86_feature_detected!("sse") { unsafe { foo() } }
     /// # }
     /// ```
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m256(f32, f32, f32, f32, f32, f32, f32, f32);
 
     /// 256-bit wide set of four `f64` types, x86-specific
@@ -302,7 +308,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(cfg_target_feature, target_feature, stdsimd)]
+    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -324,6 +330,7 @@ types! {
     /// # if is_x86_feature_detected!("avx") { unsafe { foo() } }
     /// # }
     /// ```
+    #[stable(feature = "simd_x86", since = "1.27.0")]
     pub struct __m256d(f64, f64, f64, f64);
 }
 
@@ -334,6 +341,7 @@ pub use self::test::*;
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub(crate) trait m128iExt: Sized {
     fn as_m128i(self) -> __m128i;
 
@@ -387,6 +395,7 @@ impl m128iExt for __m128i {
 
 #[doc(hidden)]
 #[allow(non_camel_case_types)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub(crate) trait m256iExt: Sized {
     fn as_m256i(self) -> __m256i;
 
@@ -590,8 +599,8 @@ pub use self::avx2::*;
 
 mod abm;
 pub use self::abm::*;
-mod bmi;
-pub use self::bmi::*;
+mod bmi1;
+pub use self::bmi1::*;
 
 mod bmi2;
 pub use self::bmi2::*;

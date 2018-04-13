@@ -14,10 +14,13 @@ use stdsimd_test::assert_instr;
 
 /// Read a hardware generated 16-bit random value and store the result in val.
 /// Return 1 if a random value was generated, and 0 otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand16_step)
 #[inline]
 #[target_feature(enable = "rdrand")]
 #[cfg_attr(test, assert_instr(rdrand))]
 #[cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
     let (v, flag) = x86_rdrand16_step();
     *val = v;
@@ -26,10 +29,13 @@ pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
 
 /// Read a hardware generated 32-bit random value and store the result in val.
 /// Return 1 if a random value was generated, and 0 otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdrand32_step)
 #[inline]
 #[target_feature(enable = "rdrand")]
 #[cfg_attr(test, assert_instr(rdrand))]
 #[cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _rdrand32_step(val: &mut u32) -> i32 {
     let (v, flag) = x86_rdrand32_step();
     *val = v;
@@ -38,9 +44,12 @@ pub unsafe fn _rdrand32_step(val: &mut u32) -> i32 {
 
 /// Read a 16-bit NIST SP800-90B and SP800-90C compliant random value and store
 /// in val. Return 1 if a random value was generated, and 0 otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdseed16_step)
 #[inline]
 #[target_feature(enable = "rdseed")]
 #[cfg_attr(test, assert_instr(rdseed))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _rdseed16_step(val: &mut u16) -> i32 {
     let (v, flag) = x86_rdseed16_step();
     *val = v;
@@ -49,9 +58,12 @@ pub unsafe fn _rdseed16_step(val: &mut u16) -> i32 {
 
 /// Read a 32-bit NIST SP800-90B and SP800-90C compliant random value and store
 /// in val. Return 1 if a random value was generated, and 0 otherwise.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_rdseed32_step)
 #[inline]
 #[target_feature(enable = "rdseed")]
 #[cfg_attr(test, assert_instr(rdseed))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _rdseed32_step(val: &mut u32) -> i32 {
     let (v, flag) = x86_rdseed32_step();
     *val = v;

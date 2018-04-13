@@ -21,9 +21,12 @@ extern "C" {
 ///
 /// [fxsave]: http://www.felixcloutier.com/x86/FXSAVE.html
 /// [fxrstor]: http://www.felixcloutier.com/x86/FXRSTOR.html
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_fxsave)
 #[inline]
 #[target_feature(enable = "fxsr")]
 #[cfg_attr(test, assert_instr(fxsave))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _fxsave(mem_addr: *mut u8) {
     fxsave(mem_addr)
 }
@@ -42,9 +45,12 @@ pub unsafe fn _fxsave(mem_addr: *mut u8) {
 ///
 /// [fxsave]: http://www.felixcloutier.com/x86/FXSAVE.html
 /// [fxrstor]: http://www.felixcloutier.com/x86/FXRSTOR.html
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_fxrstor)
 #[inline]
 #[target_feature(enable = "fxsr")]
 #[cfg_attr(test, assert_instr(fxrstor))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _fxrstor(mem_addr: *const u8) {
     fxrstor(mem_addr)
 }

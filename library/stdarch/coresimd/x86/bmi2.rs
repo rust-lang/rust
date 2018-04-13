@@ -17,11 +17,14 @@ use stdsimd_test::assert_instr;
 ///
 /// Unsigned multiplication of `a` with `b` returning a pair `(lo, hi)` with
 /// the low half and the high half of the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mulx_u32)
 #[inline]
 // LLVM BUG (should be mulxl): https://bugs.llvm.org/show_bug.cgi?id=34232
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(imul))]
 #[cfg_attr(all(test, target_arch = "x86"), assert_instr(mulx))]
 #[target_feature(enable = "bmi2")]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
     let result: u64 = (a as u64) * (b as u64);
     *hi = (result >> 32) as u32;
@@ -29,27 +32,36 @@ pub unsafe fn _mulx_u32(a: u32, b: u32, hi: &mut u32) -> u32 {
 }
 
 /// Zero higher bits of `a` >= `index`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bzhi_u32)
 #[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(bzhi))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _bzhi_u32(a: u32, index: u32) -> u32 {
     x86_bmi2_bzhi_32(a, index)
 }
 
 /// Scatter contiguous low order bits of `a` to the result at the positions
 /// specified by the `mask`.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_pdep_u32)
 #[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pdep))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _pdep_u32(a: u32, mask: u32) -> u32 {
     x86_bmi2_pdep_32(a, mask)
 }
 
 /// Gathers the bits of `x` specified by the `mask` into the contiguous low
 /// order bit positions of the result.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_pext_u32)
 #[inline]
 #[target_feature(enable = "bmi2")]
 #[cfg_attr(test, assert_instr(pext))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _pext_u32(a: u32, mask: u32) -> u32 {
     x86_bmi2_pext_32(a, mask)
 }

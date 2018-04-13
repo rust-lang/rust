@@ -6,8 +6,11 @@
 use stdsimd_test::assert_instr;
 
 /// Return an integer with the reversed byte order of x
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bswap64)
 #[inline]
 #[cfg_attr(test, assert_instr(bswap))]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _bswap64(x: i64) -> i64 {
     bswap_i64(x)
 }

@@ -1,8 +1,11 @@
 //! `i386` intrinsics
 
 /// Reads EFLAGS.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__readeflags)
 #[cfg(target_arch = "x86")]
 #[inline(always)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __readeflags() -> u32 {
     let eflags: u32;
     asm!("pushfd; popl $0" : "=r"(eflags) : : : "volatile");
@@ -10,8 +13,11 @@ pub unsafe fn __readeflags() -> u32 {
 }
 
 /// Reads EFLAGS.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__readeflags)
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __readeflags() -> u64 {
     let eflags: u64;
     asm!("pushfq; popq $0" : "=r"(eflags) : : : "volatile");
@@ -19,15 +25,21 @@ pub unsafe fn __readeflags() -> u64 {
 }
 
 /// Write EFLAGS.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__writeeflags)
 #[cfg(target_arch = "x86")]
 #[inline(always)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __writeeflags(eflags: u32) {
     asm!("pushl $0; popfd" : : "r"(eflags) : "cc", "flags" : "volatile");
 }
 
 /// Write EFLAGS.
+///
+/// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=__writeeflags)
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
+#[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __writeeflags(eflags: u64) {
     asm!("pushq $0; popfq" : : "r"(eflags) : "cc", "flags" : "volatile");
 }
