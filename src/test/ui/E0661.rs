@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-stage1
+
 #![feature(asm)]
 
 fn main() {
     let a;
     asm!("nop" : "r"(a));
+    //~^ ERROR E0661
 }
