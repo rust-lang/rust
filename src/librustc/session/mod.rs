@@ -26,7 +26,7 @@ use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{Lrc, Lock, LockCell, OneThread, Once};
+use rustc_data_structures::sync::{Lrc, Lock, LockCell, OneThread, Once, RwLock};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -83,8 +83,8 @@ pub struct Session {
 
     // FIXME: lint_store and buffered_lints are not thread-safe,
     // but are only used in a single thread
-    pub lint_store: OneThread<RefCell<lint::LintStore>>,
-    pub buffered_lints: OneThread<RefCell<Option<lint::LintBuffer>>>,
+    pub lint_store: RwLock<lint::LintStore>,
+    pub buffered_lints: Lock<Option<lint::LintBuffer>>,
 
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
@@ -1091,8 +1091,8 @@ pub fn build_session_(
         default_sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: OneThread::new(RefCell::new(lint::LintStore::new())),
-        buffered_lints: OneThread::new(RefCell::new(Some(lint::LintBuffer::new()))),
+        lint_store: RwLock::new(lint::LintStore::new()),
+        buffered_lints: Lock::new(Some(lint::LintBuffer::new())),
         one_time_diagnostics: RefCell::new(FxHashSet()),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
