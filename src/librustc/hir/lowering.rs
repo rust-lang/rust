@@ -780,8 +780,9 @@ impl<'a> LoweringContext<'a> {
                 _ => None,
             }),
             |this| {
+                let itctx = ImplTraitContext::Universal(parent_id);
                 this.collect_in_band_defs(parent_id, anonymous_lifetime_mode, |this| {
-                    (this.lower_generics(generics), f(this))
+                    (this.lower_generics(generics, itctx), f(this))
                 })
             },
         );
@@ -1043,7 +1044,11 @@ impl<'a> LoweringContext<'a> {
                 }),
                 |this| {
                     hir::TyBareFn(P(hir::BareFnTy {
-                        generic_params: this.lower_generic_params(&f.generic_params, &NodeMap()),
+                        generic_params: this.lower_generic_params(
+                            &f.generic_params,
+                            &NodeMap(),
+                            ImplTraitContext::Disallowed,
+                        ),
                         unsafety: this.lower_unsafety(f.unsafety),
                         abi: f.abi,
                         decl: this.lower_fn_decl(&f.decl, None, false),
@@ -1784,7 +1789,12 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_ty_param(&mut self, tp: &TyParam, add_bounds: &[TyParamBound]) -> hir::TyParam {
+    fn lower_ty_param(
+        &mut self,
+        tp: &TyParam,
+        add_bounds: &[TyParamBound],
+        itctx: ImplTraitContext,
+    ) -> hir::TyParam {
         let mut name = self.lower_ident(tp.ident);
 
         // Don't expose `Self` (recovered "keyword used as ident" parse error).
@@ -1794,7 +1804,6 @@ impl<'a> LoweringContext<'a> {
             name = Symbol::gensym("Self");
         }
 
-        let itctx = ImplTraitContext::Universal(self.resolver.definitions().local_def_id(tp.id));
         let mut bounds = self.lower_bounds(&tp.bounds, itctx);
         if !add_bounds.is_empty() {
             bounds = bounds
@@ -1879,6 +1888,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         params: &Vec<GenericParam>,
         add_bounds: &NodeMap<Vec<TyParamBound>>,
+        itctx: ImplTraitContext,
     ) -> hir::HirVec<hir::GenericParam> {
         params
             .iter()
@@ -1889,12 +1899,13 @@ impl<'a> LoweringContext<'a> {
                 GenericParam::Type(ref ty_param) => hir::GenericParam::Type(self.lower_ty_param(
                     ty_param,
                     add_bounds.get(&ty_param.id).map_or(&[][..], |x| &x),
+                    itctx,
                 )),
             })
             .collect()
     }
 
-    fn lower_generics(&mut self, g: &Generics) -> hir::Generics {
+    fn lower_generics(&mut self, g: &Generics, itctx: ImplTraitContext) -> hir::Generics {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
         // FIXME: This could probably be done with less rightward drift. Also looks like two control
         //        paths where report_error is called are also the only paths that advance to after
@@ -1947,7 +1958,7 @@ impl<'a> LoweringContext<'a> {
         }
 
         hir::Generics {
-            params: self.lower_generic_params(&g.params, &add_bounds),
+            params: self.lower_generic_params(&g.params, &add_bounds, itctx),
             where_clause: self.lower_where_clause(&g.where_clause),
             span: g.span,
         }
@@ -1981,6 +1992,7 @@ impl<'a> LoweringContext<'a> {
                             bound_generic_params: this.lower_generic_params(
                                 bound_generic_params,
                                 &NodeMap(),
+                                ImplTraitContext::Disallowed,
                             ),
                             bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::Disallowed),
                             bounds: bounds
@@ -2064,7 +2076,8 @@ impl<'a> LoweringContext<'a> {
         p: &PolyTraitRef,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef {
-        let bound_generic_params = self.lower_generic_params(&p.bound_generic_params, &NodeMap());
+        let bound_generic_params =
+            self.lower_generic_params(&p.bound_generic_params, &NodeMap(), itctx);
         let trait_ref = self.with_parent_impl_lifetime_defs(
             &bound_generic_params
                 .iter()
@@ -2217,7 +2230,7 @@ impl<'a> LoweringContext<'a> {
             ItemKind::GlobalAsm(ref ga) => hir::ItemGlobalAsm(self.lower_global_asm(ga)),
             ItemKind::Ty(ref t, ref generics) => hir::ItemTy(
                 self.lower_ty(t, ImplTraitContext::Disallowed),
-                self.lower_generics(generics),
+                self.lower_generics(generics, ImplTraitContext::Disallowed),
             ),
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemEnum(
                 hir::EnumDef {
@@ -2227,15 +2240,21 @@ impl<'a> LoweringContext<'a> {
                         .map(|x| self.lower_variant(x))
                         .collect(),
                 },
-                self.lower_generics(generics),
+                self.lower_generics(generics, ImplTraitContext::Disallowed),
             ),
             ItemKind::Struct(ref struct_def, ref generics) => {
                 let struct_def = self.lower_variant_data(struct_def);
-                hir::ItemStruct(struct_def, self.lower_generics(generics))
+                hir::ItemStruct(
+                    struct_def,
+                    self.lower_generics(generics, ImplTraitContext::Disallowed),
+                )
             }
             ItemKind::Union(ref vdata, ref generics) => {
                 let vdata = self.lower_variant_data(vdata);
-                hir::ItemUnion(vdata, self.lower_generics(generics))
+                hir::ItemUnion(
+                    vdata,
+                    self.lower_generics(generics, ImplTraitContext::Disallowed),
+                )
             }
             ItemKind::Impl(
                 unsafety,
@@ -2314,13 +2333,13 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemTrait(
                     self.lower_is_auto(is_auto),
                     self.lower_unsafety(unsafety),
-                    self.lower_generics(generics),
+                    self.lower_generics(generics, ImplTraitContext::Disallowed),
                     bounds,
                     items,
                 )
             }
             ItemKind::TraitAlias(ref generics, ref bounds) => hir::ItemTraitAlias(
-                self.lower_generics(generics),
+                self.lower_generics(generics, ImplTraitContext::Disallowed),
                 self.lower_bounds(bounds, ImplTraitContext::Disallowed),
             ),
             ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
@@ -2455,7 +2474,7 @@ impl<'a> LoweringContext<'a> {
 
             let (generics, node) = match i.node {
                 TraitItemKind::Const(ref ty, ref default) => (
-                    this.lower_generics(&i.generics),
+                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                     hir::TraitItemKind::Const(
                         this.lower_ty(ty, ImplTraitContext::Disallowed),
                         default
@@ -2496,7 +2515,7 @@ impl<'a> LoweringContext<'a> {
                     )
                 }
                 TraitItemKind::Type(ref bounds, ref default) => (
-                    this.lower_generics(&i.generics),
+                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                     hir::TraitItemKind::Type(
                         this.lower_bounds(bounds, ImplTraitContext::Disallowed),
                         default
@@ -2553,7 +2572,7 @@ impl<'a> LoweringContext<'a> {
                 ImplItemKind::Const(ref ty, ref expr) => {
                     let body_id = this.lower_body(None, |this| this.lower_expr(expr));
                     (
-                        this.lower_generics(&i.generics),
+                        this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                         hir::ImplItemKind::Const(
                             this.lower_ty(ty, ImplTraitContext::Disallowed),
                             body_id,
@@ -2584,7 +2603,7 @@ impl<'a> LoweringContext<'a> {
                     )
                 }
                 ImplItemKind::Type(ref ty) => (
-                    this.lower_generics(&i.generics),
+                    this.lower_generics(&i.generics, ImplTraitContext::Disallowed),
                     hir::ImplItemKind::Type(this.lower_ty(ty, ImplTraitContext::Disallowed)),
                 ),
                 ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
