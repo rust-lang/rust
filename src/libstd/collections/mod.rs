@@ -424,13 +424,13 @@
 #[doc(hidden)]
 pub use ops::Bound;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::{BinaryHeap, BTreeMap, BTreeSet};
+pub use alloc_crate::{BinaryHeap, BTreeMap, BTreeSet};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::{LinkedList, VecDeque};
+pub use alloc_crate::{LinkedList, VecDeque};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::{binary_heap, btree_map, btree_set};
+pub use alloc_crate::{binary_heap, btree_map, btree_set};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::{linked_list, vec_deque};
+pub use alloc_crate::{linked_list, vec_deque};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::hash_map::HashMap;
@@ -446,7 +446,7 @@ pub mod range {
 }
 
 #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-pub use alloc::allocator::CollectionAllocErr;
+pub use heap::CollectionAllocErr;
 
 mod hash;
 

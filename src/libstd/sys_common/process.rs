@@ -14,7 +14,7 @@
 use ffi::{OsStr, OsString};
 use env;
 use collections::BTreeMap;
-use alloc::borrow::Borrow;
+use borrow::Borrow;
 
 pub trait EnvKey:
     From<OsString> + Into<OsString> +

@@ -31,7 +31,7 @@ use sys::stdio;
 use sys::cvt;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::process::{CommandEnv, EnvKey};
-use alloc::borrow::Borrow;
+use borrow::Borrow;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command

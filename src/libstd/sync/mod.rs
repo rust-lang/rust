@@ -18,7 +18,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc::arc::{Arc, Weak};
+pub use alloc_crate::arc::{Arc, Weak};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
 

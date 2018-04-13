@@ -21,7 +21,6 @@ use core::sync::atomic::Ordering::{Acquire, Relaxed, Release, SeqCst};
 use core::borrow;
 use core::fmt;
 use core::cmp::Ordering;
-use core::heap::{Alloc, Layout};
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val, uninitialized};
 use core::ops::Deref;
@@ -32,7 +31,7 @@ use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
 
-use heap::{Heap, box_free};
+use alloc::{Global, Alloc, Layout, box_free};
 use boxed::Box;
 use string::String;
 use vec::Vec;
@@ -513,15 +512,13 @@ impl<T: ?Sized> Arc<T> {
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        let ptr = self.ptr.as_ptr();
-
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
         ptr::drop_in_place(&mut self.ptr.as_mut().data);
 
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
-            Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+            Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()))
         }
     }
 
@@ -555,11 +552,11 @@ impl<T: ?Sized> Arc<T> {
 
         let layout = Layout::for_value(&*fake_ptr);
 
-        let mem = Heap.alloc(layout)
-            .unwrap_or_else(|e| Heap.oom(e));
+        let mem = Global.alloc(layout)
+            .unwrap_or_else(|_| Global.oom());
 
         // Initialize the real ArcInner
-        let inner = set_data_ptr(ptr as *mut T, mem) as *mut ArcInner<T>;
+        let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut ArcInner<T>;
 
         ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
         ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
@@ -626,7 +623,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
         // In the event of a panic, elements that have been written
         // into the new ArcInner will be dropped, then the memory freed.
         struct Guard<T> {
-            mem: *mut u8,
+            mem: NonNull<u8>,
             elems: *mut T,
             layout: Layout,
             n_elems: usize,
@@ -640,7 +637,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
                     let slice = from_raw_parts_mut(self.elems, self.n_elems);
                     ptr::drop_in_place(slice);
 
-                    Heap.dealloc(self.mem, self.layout.clone());
+                    Global.dealloc(self.mem.as_opaque(), self.layout.clone());
                 }
             }
         }
@@ -656,7 +653,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             let elems = &mut (*ptr).data as *mut [T] as *mut T;
 
             let mut guard = Guard{
-                mem: mem,
+                mem: NonNull::new_unchecked(mem),
                 elems: elems,
                 layout: layout,
                 n_elems: 0,
@@ -1148,8 +1145,6 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// assert!(other_weak_foo.upgrade().is_none());
     /// ```
     fn drop(&mut self) {
-        let ptr = self.ptr.as_ptr();
-
         // If we find out that we were the last weak pointer, then its time to
         // deallocate the data entirely. See the discussion in Arc::drop() about
         // the memory orderings
@@ -1161,7 +1156,7 @@ impl<T: ?Sized> Drop for Weak<T> {
         if self.inner().weak.fetch_sub(1, Release) == 1 {
             atomic::fence(Acquire);
             unsafe {
-                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr))
+                Global.dealloc(self.ptr.as_opaque(), Layout::for_value(self.ptr.as_ref()))
             }
         }
     }

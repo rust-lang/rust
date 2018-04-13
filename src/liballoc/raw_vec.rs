@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use alloc::{Alloc, Layout, Global};
 use core::cmp;
-use core::heap::{Alloc, Layout};
 use core::mem;
 use core::ops::Drop;
-use core::ptr::{self, Unique};
+use core::ptr::{self, NonNull, Unique};
 use core::slice;
-use heap::Heap;
 use super::boxed::Box;
 use super::allocator::CollectionAllocErr;
 use super::allocator::CollectionAllocErr::*;
@@ -47,7 +46,7 @@ use super::allocator::CollectionAllocErr::*;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Alloc = Heap> {
+pub struct RawVec<T, A: Alloc = Global> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
@@ -91,7 +90,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // handles ZSTs and `cap = 0` alike
             let ptr = if alloc_size == 0 {
-                mem::align_of::<T>() as *mut u8
+                NonNull::<T>::dangling().as_opaque()
             } else {
                 let align = mem::align_of::<T>();
                 let result = if zeroed {
@@ -101,12 +100,12 @@ impl<T, A: Alloc> RawVec<T, A> {
                 };
                 match result {
                     Ok(ptr) => ptr,
-                    Err(err) => a.oom(err),
+                    Err(_) => a.oom(),
                 }
             };
 
             RawVec {
-                ptr: Unique::new_unchecked(ptr as *mut _),
+                ptr: ptr.cast().into(),
                 cap,
                 a,
             }
@@ -114,14 +113,14 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, Heap> {
+impl<T> RawVec<T, Global> {
     /// Creates the biggest possible RawVec (on the system heap)
     /// without allocating. If T has positive size, then this makes a
     /// RawVec with capacity 0. If T has 0 size, then it makes a
     /// RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
     pub fn new() -> Self {
-        Self::new_in(Heap)
+        Self::new_in(Global)
     }
 
     /// Creates a RawVec (on the system heap) with exactly the
@@ -141,13 +140,13 @@ impl<T> RawVec<T, Heap> {
     /// Aborts on OOM
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        RawVec::allocate_in(cap, false, Heap)
+        RawVec::allocate_in(cap, false, Global)
     }
 
     /// Like `with_capacity` but guarantees the buffer is zeroed.
     #[inline]
     pub fn with_capacity_zeroed(cap: usize) -> Self {
-        RawVec::allocate_in(cap, true, Heap)
+        RawVec::allocate_in(cap, true, Global)
     }
 }
 
@@ -168,7 +167,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, Heap> {
+impl<T> RawVec<T, Global> {
     /// Reconstitutes a RawVec from a pointer, capacity.
     ///
     /// # Undefined Behavior
@@ -180,7 +179,7 @@ impl<T> RawVec<T, Heap> {
         RawVec {
             ptr: Unique::new_unchecked(ptr),
             cap,
-            a: Heap,
+            a: Global,
         }
     }
 
@@ -310,14 +309,13 @@ impl<T, A: Alloc> RawVec<T, A> {
                     // `from_size_align_unchecked`.
                     let new_cap = 2 * self.cap;
                     let new_size = new_cap * elem_size;
-                    let new_layout = Layout::from_size_align_unchecked(new_size, cur.align());
                     alloc_guard(new_size).expect("capacity overflow");
-                    let ptr_res = self.a.realloc(self.ptr.as_ptr() as *mut u8,
+                    let ptr_res = self.a.realloc(NonNull::from(self.ptr).as_opaque(),
                                                  cur,
-                                                 new_layout);
+                                                 new_size);
                     match ptr_res {
-                        Ok(ptr) => (new_cap, Unique::new_unchecked(ptr as *mut T)),
-                        Err(e) => self.a.oom(e),
+                        Ok(ptr) => (new_cap, ptr.cast().into()),
+                        Err(_) => self.a.oom(),
                     }
                 }
                 None => {
@@ -326,7 +324,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
                     match self.a.alloc_array::<T>(new_cap) {
                         Ok(ptr) => (new_cap, ptr.into()),
-                        Err(e) => self.a.oom(e),
+                        Err(_) => self.a.oom(),
                     }
                 }
             };
@@ -371,9 +369,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             let new_cap = 2 * self.cap;
             let new_size = new_cap * elem_size;
             alloc_guard(new_size).expect("capacity overflow");
-            let ptr = self.ptr() as *mut _;
-            let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
+            match self.a.grow_in_place(NonNull::from(self.ptr).as_opaque(), old_layout, new_size) {
                 Ok(_) => {
                     // We can't directly divide `size`.
                     self.cap = new_cap;
@@ -423,19 +419,19 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // Nothing we can really do about these checks :(
             let new_cap = used_cap.checked_add(needed_extra_cap).ok_or(CapacityOverflow)?;
-            let new_layout = Layout::array::<T>(new_cap).ok_or(CapacityOverflow)?;
+            let new_layout = Layout::array::<T>(new_cap).map_err(|_| CapacityOverflow)?;
 
             alloc_guard(new_layout.size())?;
 
             let res = match self.current_layout() {
                 Some(layout) => {
-                    let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    debug_assert!(new_layout.align() == layout.align());
+                    self.a.realloc(NonNull::from(self.ptr).as_opaque(), layout, new_layout.size())
                 }
                 None => self.a.alloc(new_layout),
             };
 
-            self.ptr = Unique::new_unchecked(res? as *mut T);
+            self.ptr = res?.cast().into();
             self.cap = new_cap;
 
             Ok(())
@@ -445,7 +441,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve_exact(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.try_reserve_exact(used_cap, needed_extra_cap) {
             Err(CapacityOverflow) => panic!("capacity overflow"),
-            Err(AllocErr(e)) => self.a.oom(e),
+            Err(AllocErr) => self.a.oom(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -531,20 +527,20 @@ impl<T, A: Alloc> RawVec<T, A> {
             }
 
             let new_cap = self.amortized_new_size(used_cap, needed_extra_cap)?;
-            let new_layout = Layout::array::<T>(new_cap).ok_or(CapacityOverflow)?;
+            let new_layout = Layout::array::<T>(new_cap).map_err(|_| CapacityOverflow)?;
 
              // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size())?;
 
             let res = match self.current_layout() {
                 Some(layout) => {
-                    let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    debug_assert!(new_layout.align() == layout.align());
+                    self.a.realloc(NonNull::from(self.ptr).as_opaque(), layout, new_layout.size())
                 }
                 None => self.a.alloc(new_layout),
             };
 
-            self.ptr = Unique::new_unchecked(res? as *mut T);
+            self.ptr = res?.cast().into();
             self.cap = new_cap;
 
             Ok(())
@@ -555,7 +551,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub fn reserve(&mut self, used_cap: usize, needed_extra_cap: usize) {
         match self.try_reserve(used_cap, needed_extra_cap) {
             Err(CapacityOverflow) => panic!("capacity overflow"),
-            Err(AllocErr(e)) => self.a.oom(e),
+            Err(AllocErr) => self.a.oom(),
             Ok(()) => { /* yay */ }
          }
      }
@@ -601,11 +597,12 @@ impl<T, A: Alloc> RawVec<T, A> {
             // (regardless of whether `self.cap - used_cap` wrapped).
             // Therefore we can safely call grow_in_place.
 
-            let ptr = self.ptr() as *mut _;
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size()).expect("capacity overflow");
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
+            match self.a.grow_in_place(
+                NonNull::from(self.ptr).as_opaque(), old_layout, new_layout.size(),
+            ) {
                 Ok(_) => {
                     self.cap = new_cap;
                     true
@@ -665,12 +662,11 @@ impl<T, A: Alloc> RawVec<T, A> {
                 let new_size = elem_size * amount;
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
-                let new_layout = Layout::from_size_align_unchecked(new_size, align);
-                match self.a.realloc(self.ptr.as_ptr() as *mut u8,
+                match self.a.realloc(NonNull::from(self.ptr).as_opaque(),
                                      old_layout,
-                                     new_layout) {
-                    Ok(p) => self.ptr = Unique::new_unchecked(p as *mut T),
-                    Err(err) => self.a.oom(err),
+                                     new_size) {
+                    Ok(p) => self.ptr = p.cast().into(),
+                    Err(_) => self.a.oom(),
                 }
             }
             self.cap = amount;
@@ -678,7 +674,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-impl<T> RawVec<T, Heap> {
+impl<T> RawVec<T, Global> {
     /// Converts the entire buffer into `Box<[T]>`.
     ///
     /// While it is not *strictly* Undefined Behavior to call
@@ -702,8 +698,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         let elem_size = mem::size_of::<T>();
         if elem_size != 0 {
             if let Some(layout) = self.current_layout() {
-                let ptr = self.ptr() as *mut u8;
-                self.a.dealloc(ptr, layout);
+                self.a.dealloc(NonNull::from(self.ptr).as_opaque(), layout);
             }
         }
     }
@@ -739,6 +734,7 @@ fn alloc_guard(alloc_size: usize) -> Result<(), CollectionAllocErr> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::Opaque;
 
     #[test]
     fn allocator_param() {
@@ -758,18 +754,18 @@ mod tests {
         // before allocation attempts start failing.
         struct BoundedAlloc { fuel: usize }
         unsafe impl Alloc for BoundedAlloc {
-            unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+            unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
                 let size = layout.size();
                 if size > self.fuel {
-                    return Err(AllocErr::Unsupported { details: "fuel exhausted" });
+                    return Err(AllocErr);
                 }
-                match Heap.alloc(layout) {
+                match Global.alloc(layout) {
                     ok @ Ok(_) => { self.fuel -= size; ok }
                     err @ Err(_) => err,
                 }
             }
-            unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
-                Heap.dealloc(ptr, layout)
+            unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
+                Global.dealloc(ptr, layout)
             }
         }
 

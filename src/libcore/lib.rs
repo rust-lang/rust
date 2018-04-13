@@ -75,6 +75,7 @@
 #![feature(custom_attribute)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
+#![feature(extern_types)]
 #![feature(fn_must_use)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
@@ -184,7 +185,14 @@ pub mod unicode;
 
 /* Heap memory allocator trait */
 #[allow(missing_docs)]
-pub mod heap;
+pub mod alloc;
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+#[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
+/// Use the `alloc` module instead.
+pub mod heap {
+    pub use alloc::*;
+}
 
 // note: does not need to be public
 mod iter_private;

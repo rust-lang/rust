@@ -41,14 +41,13 @@
 // - A node of length `n` has `n` keys, `n` values, and (in an internal node) `n + 1` edges.
 //   This implies that even an empty internal node has at least one edge.
 
-use core::heap::{Alloc, Layout};
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
+use alloc::{Global, Alloc, Layout};
 use boxed::Box;
-use heap::Heap;
 
 const B: usize = 6;
 pub const MIN_LEN: usize = B - 1;
@@ -237,7 +236,7 @@ impl<K, V> Root<K, V> {
     pub fn pop_level(&mut self) {
         debug_assert!(self.height > 0);
 
-        let top = self.node.ptr.as_ptr() as *mut u8;
+        let top = self.node.ptr;
 
         self.node = unsafe {
             BoxedNode::from_ptr(self.as_mut()
@@ -250,7 +249,7 @@ impl<K, V> Root<K, V> {
         self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
-            Heap.dealloc(top, Layout::new::<InternalNode<K, V>>());
+            Global.dealloc(NonNull::from(top).as_opaque(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -434,9 +433,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
             marker::Edge
         >
     > {
-        let ptr = self.as_leaf() as *const LeafNode<K, V> as *const u8 as *mut u8;
+        let node = self.node;
         let ret = self.ascend().ok();
-        Heap.dealloc(ptr, Layout::new::<LeafNode<K, V>>());
+        Global.dealloc(node.as_opaque(), Layout::new::<LeafNode<K, V>>());
         ret
     }
 }
@@ -455,9 +454,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
             marker::Edge
         >
     > {
-        let ptr = self.as_internal() as *const InternalNode<K, V> as *const u8 as *mut u8;
+        let node = self.node;
         let ret = self.ascend().ok();
-        Heap.dealloc(ptr, Layout::new::<InternalNode<K, V>>());
+        Global.dealloc(node.as_opaque(), Layout::new::<InternalNode<K, V>>());
         ret
     }
 }
@@ -1239,13 +1238,13 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                     ).correct_parent_link();
                 }
 
-                Heap.dealloc(
-                    right_node.node.as_ptr() as *mut u8,
+                Global.dealloc(
+                    right_node.node.as_opaque(),
                     Layout::new::<InternalNode<K, V>>(),
                 );
             } else {
-                Heap.dealloc(
-                    right_node.node.as_ptr() as *mut u8,
+                Global.dealloc(
+                    right_node.node.as_opaque(),
                     Layout::new::<LeafNode<K, V>>(),
                 );
             }
