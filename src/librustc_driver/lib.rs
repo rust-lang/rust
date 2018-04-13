@@ -25,6 +25,7 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(set_stdio)]
 #![feature(rustc_stack_internals)]
+#![feature(no_debug)]
 
 extern crate arena;
 extern crate getopts;
@@ -230,6 +231,9 @@ fn load_backend_from_dylib(path: &Path) -> fn() -> Box<TransCrate> {
 
 pub fn get_trans(sess: &Session) -> Box<TransCrate> {
     static INIT: Once = ONCE_INIT;
+
+    #[allow(deprecated)]
+    #[no_debug]
     static mut LOAD: fn() -> Box<TransCrate> = || unreachable!();
 
     INIT.call_once(|| {
