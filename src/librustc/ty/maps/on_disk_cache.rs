@@ -201,7 +201,6 @@ impl<'sess> OnDiskCache<'sess> {
                 predicate_shorthands: FxHashMap(),
                 expn_info_shorthands: FxHashMap(),
                 interpret_allocs: FxHashMap(),
-                interpret_alloc_ids: FxHashSet(),
                 interpret_allocs_inverse: Vec::new(),
                 codemap: CachingCodemapView::new(tcx.sess.codemap()),
                 file_to_file_index,
@@ -284,7 +283,12 @@ impl<'sess> OnDiskCache<'sess> {
                 let mut interpret_alloc_index = Vec::new();
                 let mut n = 0;
                 loop {
-                    let new_n = encoder.interpret_alloc_ids.len();
+                    let new_n = encoder.interpret_allocs_inverse.len();
+                    // if we have found new ids, serialize those, too
+                    if n == new_n {
+                        // otherwise, abort
+                        break;
+                    }
                     for idx in n..new_n {
                         let id = encoder.interpret_allocs_inverse[idx];
                         let pos = AbsoluteBytePos::new(encoder.position());
@@ -294,11 +298,6 @@ impl<'sess> OnDiskCache<'sess> {
                             tcx,
                             id,
                         )?;
-                    }
-                    // if we have found new ids, serialize those, too
-                    if n == new_n {
-                        // otherwise, abort
-                        break;
                     }
                     n = new_n;
                 }
@@ -802,7 +801,6 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
-    interpret_alloc_ids: FxHashSet<interpret::AllocId>,
     codemap: CachingCodemapView<'tcx>,
     file_to_file_index: FxHashMap<*const FileMap, FileMapIndex>,
 }
@@ -839,14 +837,15 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<
     where E: 'enc + ty_codec::TyEncoder
 {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        let index = if self.interpret_alloc_ids.insert(*alloc_id) {
-            let idx = self.interpret_alloc_ids.len() - 1;
-            assert_eq!(idx, self.interpret_allocs_inverse.len());
-            self.interpret_allocs_inverse.push(*alloc_id);
-            assert!(self.interpret_allocs.insert(*alloc_id, idx).is_none());
-            idx
-        } else {
-            self.interpret_allocs[alloc_id]
+        use std::collections::hash_map::Entry;
+        let index = match self.interpret_allocs.entry(*alloc_id) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                let idx = self.interpret_allocs_inverse.len();
+                self.interpret_allocs_inverse.push(*alloc_id);
+                e.insert(idx);
+                idx
+            },
         };
 
         index.encode(self)

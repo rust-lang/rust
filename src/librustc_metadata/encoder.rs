@@ -29,7 +29,7 @@ use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
 
 use rustc::session::config::{self, CrateTypeProcMacro};
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
@@ -62,7 +62,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
 
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
     interpret_allocs_inverse: Vec<interpret::AllocId>,
-    interpret_alloc_ids: FxHashSet<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     filemap_cache: Lrc<FileMap>,
@@ -199,14 +198,15 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
-        let index = if self.interpret_alloc_ids.insert(*alloc_id) {
-            let idx = self.interpret_alloc_ids.len() - 1;
-            assert_eq!(idx, self.interpret_allocs_inverse.len());
-            self.interpret_allocs_inverse.push(*alloc_id);
-            assert!(self.interpret_allocs.insert(*alloc_id, idx).is_none());
-            idx
-        } else {
-            self.interpret_allocs[alloc_id]
+        use std::collections::hash_map::Entry;
+        let index = match self.interpret_allocs.entry(*alloc_id) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                let idx = self.interpret_allocs_inverse.len();
+                self.interpret_allocs_inverse.push(*alloc_id);
+                e.insert(idx);
+                idx
+            },
         };
 
         index.encode(self)
@@ -456,7 +456,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let mut n = 0;
             trace!("beginning to encode alloc ids");
             loop {
-                let new_n = self.interpret_alloc_ids.len();
+                let new_n = self.interpret_allocs_inverse.len();
                 // if we have found new ids, serialize those, too
                 if n == new_n {
                     // otherwise, abort
@@ -487,7 +487,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
         let has_default_lib_allocator =
             attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
-        let has_global_allocator = tcx.sess.has_global_allocator.get();
+        let has_global_allocator = *tcx.sess.has_global_allocator.get();
 
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -1792,7 +1792,6 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
             interpret_allocs: Default::default(),
             interpret_allocs_inverse: Default::default(),
-            interpret_alloc_ids: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.
