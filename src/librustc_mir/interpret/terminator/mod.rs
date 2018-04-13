@@ -37,7 +37,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ref targets,
                 ..
             } => {
-                // FIXME(CTFE): forbid branching
                 let discr_val = self.eval_operand(discr)?;
                 let discr_prim = self.value_to_primval(discr_val)?;
 
@@ -45,8 +44,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, &const_int) in values.iter().enumerate() {
-                    let prim = PrimVal::Bytes(const_int);
-                    if discr_prim.to_bytes()? == prim.to_bytes()? {
+                    if discr_prim.to_bytes()? == const_int {
                         target_block = targets[index];
                         break;
                     }

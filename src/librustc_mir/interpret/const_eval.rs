@@ -400,14 +400,14 @@ pub fn const_val_field<'a, 'tcx>(
     }
 }
 
-pub fn const_discr<'a, 'tcx>(
+pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
     value: Value,
     ty: Ty<'tcx>,
-) -> EvalResult<'tcx, u128> {
-    trace!("const_discr: {:?}, {:?}, {:?}", instance, value, ty);
+) -> EvalResult<'tcx, usize> {
+    trace!("const_variant_index: {:?}, {:?}, {:?}", instance, value, ty);
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let (ptr, align) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => {
@@ -421,7 +421,7 @@ pub fn const_discr<'a, 'tcx>(
         Value::ByRef(ptr, align) => (ptr, align),
     };
     let place = Place::from_primval_ptr(ptr, align);
-    ecx.read_discriminant_value(place, ty)
+    ecx.read_discriminant_as_variant_index(place, ty)
 }
 
 pub fn const_eval_provider<'a, 'tcx>(

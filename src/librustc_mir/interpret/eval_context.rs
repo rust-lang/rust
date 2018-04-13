@@ -743,28 +743,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             Discriminant(ref place) => {
                 let ty = self.place_ty(place);
-                let layout = self.layout_of(ty)?;
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant_value(place, ty)?;
-                match layout.variants {
-                    layout::Variants::Single { index } => {
-                        assert_eq!(discr_val, index as u128);
-                    }
-                    layout::Variants::Tagged { .. } |
-                    layout::Variants::NicheFilling { .. } => {
-                        if let ty::TyAdt(adt_def, _) = ty.sty {
-                            trace!("Read discriminant {}, valid discriminants {:?}", discr_val, adt_def.discriminants(*self.tcx).collect::<Vec<_>>());
-                            if adt_def.discriminants(*self.tcx).all(|v| {
-                                discr_val != v.val
-                            })
-                            {
-                                return err!(InvalidDiscriminant);
-                            }
-                        } else {
-                            bug!("rustc only generates Rvalue::Discriminant for enums");
-                        }
-                    }
-                }
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
             }
         }
@@ -837,13 +817,39 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
+    /// reads a tag and produces the corresponding variant index
+    pub fn read_discriminant_as_variant_index(
+        &mut self,
+        place: Place,
+        ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, usize> {
+        let layout = self.layout_of(ty)?;
+        match layout.variants {
+            ty::layout::Variants::Single { index } => Ok(index),
+            ty::layout::Variants::Tagged { .. } => {
+                let discr_val = self.read_discriminant_value(place, ty)?;
+                ty
+                    .ty_adt_def()
+                    .expect("tagged layout for non adt")
+                    .discriminants(self.tcx.tcx)
+                    .position(|var| var.val == discr_val)
+                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant.into())
+            }
+            ty::layout::Variants::NicheFilling { .. } => {
+                let discr_val = self.read_discriminant_value(place, ty)?;
+                assert_eq!(discr_val as usize as u128, discr_val);
+                Ok(discr_val as usize)
+            },
+        }
+    }
+
     pub fn read_discriminant_value(
         &mut self,
         place: Place,
         ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, u128> {
         let layout = self.layout_of(ty)?;
-        //trace!("read_discriminant_value {:#?}", layout);
+        trace!("read_discriminant_value {:#?}", layout);
 
         match layout.variants {
             layout::Variants::Single { index } => {
@@ -854,13 +860,34 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
 
         let (discr_place, discr) = self.place_field(place, mir::Field::new(0), layout)?;
+        trace!("discr place: {:?}, {:?}", discr_place, discr);
         let raw_discr = self.value_to_primval(ValTy {
             value: self.read_place(discr_place)?,
             ty: discr.ty
         })?;
         let discr_val = match layout.variants {
             layout::Variants::Single { .. } => bug!(),
-            layout::Variants::Tagged { .. } => raw_discr.to_bytes()?,
+            // FIXME: should we catch invalid discriminants here?
+            layout::Variants::Tagged { .. } => {
+                if discr.ty.is_signed() {
+                    let i = raw_discr.to_bytes()? as i128;
+                    // going from layout tag type to typeck discriminant type
+                    // requires first sign extending with the layout discriminant
+                    let amt = 128 - discr.size.bits();
+                    let sexted = (i << amt) >> amt;
+                    // and then zeroing with the typeck discriminant type
+                    let discr_ty = ty
+                        .ty_adt_def().expect("tagged layout corresponds to adt")
+                        .repr
+                        .discr_type();
+                    let discr_ty = layout::Integer::from_attr(self.tcx.tcx, discr_ty);
+                    let amt = 128 - discr_ty.size().bits();
+                    let truncatee = sexted as u128;
+                    (truncatee << amt) >> amt
+                } else {
+                    raw_discr.to_bytes()?
+                }
+            },
             layout::Variants::NicheFilling {
                 dataful_variant,
                 ref niche_variants,
@@ -910,10 +937,17 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                layout::Abi::Uninhabited);
                 }
             }
-            layout::Variants::Tagged { .. } => {
+            layout::Variants::Tagged { ref discr, .. } => {
                 let discr_val = dest_ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(*self.tcx, variant_index)
                     .val;
+
+                // raw discriminants for enums are isize or bigger during
+                // their computation, but the in-memory tag is the smallest possible
+                // representation
+                let size = discr.value.size(self.tcx.tcx).bits();
+                let amt = 128 - size;
+                let discr_val = (discr_val << amt) >> amt;
 
                 let (discr_dest, discr) = self.place_field(dest, mir::Field::new(0), layout)?;
                 self.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr.ty)?;
@@ -1145,19 +1179,18 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     _ if primval.is_undef() => false,
                     _ => bug!("write_value_to_ptr: invalid ByVal layout: {:#?}", layout)
                 };
-                self.memory.write_primval(dest.to_ptr()?, dest_align, primval, layout.size.bytes(), signed)
+                self.memory.write_primval(dest, dest_align, primval, layout.size.bytes(), signed)
             }
             Value::ByValPair(a_val, b_val) => {
-                let ptr = dest.to_ptr()?;
                 trace!("write_value_to_ptr valpair: {:#?}", layout);
                 let (a, b) = match layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
                     _ => bug!("write_value_to_ptr: invalid ByValPair layout: {:#?}", layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
-                let a_ptr = ptr;
+                let a_ptr = dest;
                 let b_offset = a_size.abi_align(b.align(&self));
-                let b_ptr = ptr.offset(b_offset.bytes(), &self)?.into();
+                let b_ptr = dest.offset(b_offset.bytes(), &self)?.into();
                 // TODO: What about signedess?
                 self.memory.write_primval(a_ptr, dest_align, a_val, a_size.bytes(), false)?;
                 self.memory.write_primval(b_ptr, dest_align, b_val, b_size.bytes(), false)
