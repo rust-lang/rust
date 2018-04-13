@@ -315,6 +315,56 @@ impl f64 {
         unsafe { intrinsics::fmaf64(self, a, b) }
     }
 
+    /// Calculates Euclidean division, the matching method for `mod_euc`.
+    ///
+    /// This computes the integer `n` such that
+    /// `self = n * rhs + self.mod_euc(rhs)`.
+    /// In other words, the result is `self / rhs` rounded to the integer `n`
+    /// such that `self >= n * rhs`.
+    ///
+    /// ```
+    /// #![feature(euclidean_division)]
+    /// let a: f64 = 7.0;
+    /// let b = 4.0;
+    /// assert_eq!(a.div_euc(b), 1.0); // 7.0 > 4.0 * 1.0
+    /// assert_eq!((-a).div_euc(b), -2.0); // -7.0 >= 4.0 * -2.0
+    /// assert_eq!(a.div_euc(-b), -1.0); // 7.0 >= -4.0 * -1.0
+    /// assert_eq!((-a).div_euc(-b), 2.0); // -7.0 >= -4.0 * 2.0
+    /// ```
+    #[inline]
+    #[unstable(feature = "euclidean_division", issue = "49048")]
+    pub fn div_euc(self, rhs: f64) -> f64 {
+        let q = (self / rhs).trunc();
+        if self % rhs < 0.0 {
+            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
+        }
+        q
+    }
+
+    /// Calculates the Euclidean modulo (self mod rhs), which is never negative.
+    ///
+    /// In particular, the result `n` satisfies `0 <= n < rhs.abs()`.
+    ///
+    /// ```
+    /// #![feature(euclidean_division)]
+    /// let a: f64 = 7.0;
+    /// let b = 4.0;
+    /// assert_eq!(a.mod_euc(b), 3.0);
+    /// assert_eq!((-a).mod_euc(b), 1.0);
+    /// assert_eq!(a.mod_euc(-b), 3.0);
+    /// assert_eq!((-a).mod_euc(-b), 1.0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "euclidean_division", issue = "49048")]
+    pub fn mod_euc(self, rhs: f64) -> f64 {
+        let r = self % rhs;
+        if r < 0.0 {
+            r + rhs.abs()
+        } else {
+            r
+        }
+    }
+
     /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
