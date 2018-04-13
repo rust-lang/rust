@@ -65,7 +65,6 @@ pub enum EvalErrorKind<'tcx> {
     Intrinsic(String),
     OverflowingMath,
     InvalidChar(u128),
-    ExecutionTimeLimitReached,
     StackFrameLimitReached,
     OutOfTls,
     TlsOutOfBounds,
@@ -188,8 +187,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "mir not found",
             InvalidChar(..) =>
                 "tried to interpret an invalid 32-bit value as a char",
-            ExecutionTimeLimitReached =>
-                "the expression was too complex to be evaluated or resulted in an infinite loop",
             StackFrameLimitReached =>
                 "reached the configured maximum number of stack frames",
             OutOfTls =>
