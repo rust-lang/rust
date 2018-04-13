@@ -564,7 +564,8 @@ tool_extended!((self, builder),
             target: self.target,
             extra_features: Vec::new(),
         });
-        if clippy.is_some() {
+        let channel = &builder.config.channel;
+        if clippy.is_some() && channel != "stable" && channel != "beta" {
             self.extra_features.push("clippy".to_owned());
         }
         builder.ensure(native::Openssl {
