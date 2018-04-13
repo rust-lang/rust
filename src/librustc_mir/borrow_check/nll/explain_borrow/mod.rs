@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use borrow_check::{Context, MirBorrowckCtxt};
 use borrow_check::nll::region_infer::{Cause, RegionInferenceContext};
+use borrow_check::{Context, MirBorrowckCtxt};
 use dataflow::BorrowData;
-use rustc::mir::{Local, Location, Mir};
 use rustc::mir::visit::{MirVisitable, PlaceContext, Visitor};
+use rustc::mir::{Local, Location, Mir};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use util::liveness::{self, DefUse, LivenessMode};
@@ -59,17 +59,29 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                     Cause::DropVar(local, location) => {
                         match find_drop_use(mir, regioncx, borrow, location, local) {
-                            Some(p) => {
-                                let local_name = mir.local_decls[local].name.unwrap();
+                            Some(p) => match &mir.local_decls[local].name {
+                                Some(local_name) => {
+                                    err.span_label(
+                                        mir.source_info(p).span,
+                                        format!(
+                                            "borrow later used here, when `{}` is dropped",
+                                            local_name
+                                        ),
+                                    );
+                                }
+                                None => {
+                                    err.span_label(
+                                        mir.local_decls[local].source_info.span,
+                                        "borrow may end up in a temporary, created here",
+                                    );
 
-                                err.span_label(
-                                    mir.source_info(p).span,
-                                    format!(
-                                        "borrow later used here, when `{}` is dropped",
-                                        local_name
-                                    ),
-                                );
-                            }
+                                    err.span_label(
+                                        mir.source_info(p).span,
+                                        "temporary later dropped here, \
+                                         potentially using the reference",
+                                    );
+                                }
+                            },
 
                             None => {
                                 span_bug!(
