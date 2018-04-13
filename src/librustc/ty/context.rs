@@ -173,10 +173,10 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                 return ty;
             }
             let global_interner = global_interners.map(|interners| {
-                interners.type_.borrow_mut()
+                (interners.type_.borrow_mut(), &interners.arena)
             });
-            if let Some(ref interner) = global_interner {
-                if let Some(&Interned(ty)) = interner.get(&st) {
+            if let Some((ref type_, _)) = global_interner {
+                if let Some(&Interned(ty)) = type_.get(&st) {
                     return ty;
                 }
             }
@@ -192,18 +192,18 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             // determine that all contents are in the global tcx.
             // See comments on Lift for why we can't use that.
             if !flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-                if let Some(interner) = global_interners {
+                if let Some((mut type_, arena)) = global_interner {
                     let ty_struct: TyS<'gcx> = unsafe {
                         mem::transmute(ty_struct)
                     };
-                    let ty: Ty<'gcx> = interner.arena.alloc(ty_struct);
-                    global_interner.unwrap().insert(Interned(ty));
+                    let ty: Ty<'gcx> = arena.alloc(ty_struct);
+                    type_.insert(Interned(ty));
                     return ty;
                 }
             } else {
                 // Make sure we don't end up with inference
                 // types/regions in the global tcx.
-                if global_interners.is_none() {
+                if global_interner.is_none() {
                     drop(interner);
                     bug!("Attempted to intern `{:?}` which contains \
                           inference types/regions in the global type context",
