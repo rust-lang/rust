@@ -1639,10 +1639,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                             } else {
                                                 self.get_default_err_msg(place)
                                             };
+                                            let sp = self.mir.source_info(locations[0]).span;
+                                            let mut to_suggest_span = String::new();
+                                            if let Ok(src) =
+                                                self.tcx.sess.codemap().span_to_snippet(sp) {
+                                                    to_suggest_span = src[1..].to_string();
+                                            };
                                             err_info = Some((
-                                                self.mir.source_info(locations[0]).span,
+                                                    sp,
                                                     "consider changing this to be a \
-                                                    mutable reference: `&mut`", item_msg,
+                                                    mutable reference",
+                                                    to_suggest_span,
+                                                    item_msg,
                                                     self.get_primary_err_msg(base)));
                                         }
                                 },
@@ -1652,9 +1660,15 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         _ => {},
                     }
 
-                    if let Some((err_help_span, err_help_stmt, item_msg, sec_span)) = err_info {
+                    if let Some((err_help_span,
+                                 err_help_stmt,
+                                 to_suggest_span,
+                                 item_msg,
+                                 sec_span)) = err_info {
                         let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
-                        err.span_suggestion(err_help_span, err_help_stmt, format!(""));
+                        err.span_suggestion(err_help_span,
+                                            err_help_stmt,
+                                            format!("&mut {}", to_suggest_span));
                         if place != place_err {
                             err.span_label(span, sec_span);
                         }
