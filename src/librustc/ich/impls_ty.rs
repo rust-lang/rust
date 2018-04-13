@@ -550,7 +550,6 @@ for ::mir::interpret::EvalError<'gcx> {
             InvalidPointerMath |
             ReadUndefBytes |
             DeadLocal |
-            ExecutionTimeLimitReached |
             StackFrameLimitReached |
             OutOfTls |
             TlsOutOfBounds |
