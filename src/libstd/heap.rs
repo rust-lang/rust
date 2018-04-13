@@ -21,7 +21,7 @@ pub use core::heap::*;
 #[allow(unused_attributes)]
 pub mod __default_lib_allocator {
     use super::{System, Layout, Alloc, AllocErr};
-    use ptr;
+    use ptr::{self, NonNull};
 
     // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
@@ -36,7 +36,7 @@ pub mod __default_lib_allocator {
                                      err: *mut u8) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         match System.alloc(layout) {
-            Ok(p) => p,
+            Ok(p) => p.as_ptr(),
             Err(e) => {
                 ptr::write(err as *mut AllocErr, e);
                 0 as *mut u8
@@ -55,7 +55,8 @@ pub mod __default_lib_allocator {
     pub unsafe extern fn __rdl_dealloc(ptr: *mut u8,
                                        size: usize,
                                        align: usize) {
-        System.dealloc(ptr, Layout::from_size_align_unchecked(size, align))
+        System.dealloc(NonNull::new_unchecked(ptr),
+                       Layout::from_size_align_unchecked(size, align))
     }
 
     #[no_mangle]
@@ -78,8 +79,8 @@ pub mod __default_lib_allocator {
                                        err: *mut u8) -> *mut u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.realloc(ptr, old_layout, new_layout) {
-            Ok(p) => p,
+        match System.realloc(NonNull::new_unchecked(ptr), old_layout, new_layout) {
+            Ok(p) => p.as_ptr(),
             Err(e) => {
                 ptr::write(err as *mut AllocErr, e);
                 0 as *mut u8
@@ -94,7 +95,7 @@ pub mod __default_lib_allocator {
                                             err: *mut u8) -> *mut u8 {
         let layout = Layout::from_size_align_unchecked(size, align);
         match System.alloc_zeroed(layout) {
-            Ok(p) => p,
+            Ok(p) => p.as_ptr(),
             Err(e) => {
                 ptr::write(err as *mut AllocErr, e);
                 0 as *mut u8
@@ -112,7 +113,7 @@ pub mod __default_lib_allocator {
         match System.alloc_excess(layout) {
             Ok(p) => {
                 *excess = p.1;
-                p.0
+                p.0.as_ptr()
             }
             Err(e) => {
                 ptr::write(err as *mut AllocErr, e);
@@ -132,10 +133,10 @@ pub mod __default_lib_allocator {
                                               err: *mut u8) -> *mut u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.realloc_excess(ptr, old_layout, new_layout) {
+        match System.realloc_excess(NonNull::new_unchecked(ptr), old_layout, new_layout) {
             Ok(p) => {
                 *excess = p.1;
-                p.0
+                p.0.as_ptr()
             }
             Err(e) => {
                 ptr::write(err as *mut AllocErr, e);
@@ -153,7 +154,7 @@ pub mod __default_lib_allocator {
                                              new_align: usize) -> u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.grow_in_place(ptr, old_layout, new_layout) {
+        match System.grow_in_place(NonNull::new_unchecked(ptr), old_layout, new_layout) {
             Ok(()) => 1,
             Err(_) => 0,
         }
@@ -168,7 +169,7 @@ pub mod __default_lib_allocator {
                                                new_align: usize) -> u8 {
         let old_layout = Layout::from_size_align_unchecked(old_size, old_align);
         let new_layout = Layout::from_size_align_unchecked(new_size, new_align);
-        match System.shrink_in_place(ptr, old_layout, new_layout) {
+        match System.shrink_in_place(NonNull::new_unchecked(ptr), old_layout, new_layout) {
             Ok(()) => 1,
             Err(_) => 0,
         }

@@ -98,6 +98,7 @@
 #![feature(fundamental)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
+#![feature(nonnull_cast)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]

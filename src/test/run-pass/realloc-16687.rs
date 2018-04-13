@@ -16,7 +16,7 @@
 #![feature(heap_api, allocator_api)]
 
 use std::heap::{Heap, Alloc, Layout};
-use std::ptr;
+use std::ptr::{self, NonNull};
 
 fn main() {
     unsafe {
@@ -56,7 +56,7 @@ unsafe fn test_triangle() -> bool {
             println!("allocate({:?}) = {:?}", layout, ret);
         }
 
-        ret
+        ret.as_ptr()
     }
 
     unsafe fn deallocate(ptr: *mut u8, layout: Layout) {
@@ -64,7 +64,7 @@ unsafe fn test_triangle() -> bool {
             println!("deallocate({:?}, {:?}", ptr, layout);
         }
 
-        Heap.dealloc(ptr, layout);
+        Heap.dealloc(NonNull::new_unchecked(ptr), layout);
     }
 
     unsafe fn reallocate(ptr: *mut u8, old: Layout, new: Layout) -> *mut u8 {
@@ -72,14 +72,14 @@ unsafe fn test_triangle() -> bool {
             println!("reallocate({:?}, old={:?}, new={:?})", ptr, old, new);
         }
 
-        let ret = Heap.realloc(ptr, old.clone(), new.clone())
+        let ret = Heap.realloc(NonNull::new_unchecked(ptr), old.clone(), new.clone())
             .unwrap_or_else(|e| Heap.oom(e));
 
         if PRINT {
             println!("reallocate({:?}, old={:?}, new={:?}) = {:?}",
                      ptr, old, new, ret);
         }
-        ret
+        ret.as_ptr()
     }
 
     fn idx_to_size(i: usize) -> usize { (i+1) * 10 }

@@ -30,15 +30,16 @@ looks like:
 #![feature(global_allocator, allocator_api, heap_api)]
 
 use std::heap::{Alloc, System, Layout, AllocErr};
+use std::ptr::NonNull;
 
 struct MyAllocator;
 
 unsafe impl<'a> Alloc for &'a MyAllocator {
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         System.alloc(layout)
     }
 
-    unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
         System.dealloc(ptr, layout)
     }
 }

@@ -237,7 +237,7 @@ impl<K, V> Root<K, V> {
     pub fn pop_level(&mut self) {
         debug_assert!(self.height > 0);
 
-        let top = self.node.ptr.as_ptr() as *mut u8;
+        let top = self.node.ptr;
 
         self.node = unsafe {
             BoxedNode::from_ptr(self.as_mut()
@@ -250,7 +250,7 @@ impl<K, V> Root<K, V> {
         self.as_mut().as_leaf_mut().parent = ptr::null();
 
         unsafe {
-            Heap.dealloc(top, Layout::new::<InternalNode<K, V>>());
+            Heap.dealloc(NonNull::from(top).cast(), Layout::new::<InternalNode<K, V>>());
         }
     }
 }
@@ -434,9 +434,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
             marker::Edge
         >
     > {
-        let ptr = self.as_leaf() as *const LeafNode<K, V> as *const u8 as *mut u8;
+        let node = self.node;
         let ret = self.ascend().ok();
-        Heap.dealloc(ptr, Layout::new::<LeafNode<K, V>>());
+        Heap.dealloc(node.cast(), Layout::new::<LeafNode<K, V>>());
         ret
     }
 }
@@ -455,9 +455,9 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Internal> {
             marker::Edge
         >
     > {
-        let ptr = self.as_internal() as *const InternalNode<K, V> as *const u8 as *mut u8;
+        let node = self.node;
         let ret = self.ascend().ok();
-        Heap.dealloc(ptr, Layout::new::<InternalNode<K, V>>());
+        Heap.dealloc(node.cast(), Layout::new::<InternalNode<K, V>>());
         ret
     }
 }
@@ -1240,12 +1240,12 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
                 }
 
                 Heap.dealloc(
-                    right_node.node.as_ptr() as *mut u8,
+                    right_node.node.cast(),
                     Layout::new::<InternalNode<K, V>>(),
                 );
             } else {
                 Heap.dealloc(
-                    right_node.node.as_ptr() as *mut u8,
+                    right_node.node.cast(),
                     Layout::new::<LeafNode<K, V>>(),
                 );
             }

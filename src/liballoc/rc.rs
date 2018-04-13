@@ -672,7 +672,7 @@ impl<T: ?Sized> Rc<T> {
             .unwrap_or_else(|e| Heap.oom(e));
 
         // Initialize the real RcBox
-        let inner = set_data_ptr(ptr as *mut T, mem) as *mut RcBox<T>;
+        let inner = set_data_ptr(ptr as *mut T, mem.as_ptr()) as *mut RcBox<T>;
 
         ptr::write(&mut (*inner).strong, Cell::new(1));
         ptr::write(&mut (*inner).weak, Cell::new(1));
@@ -738,7 +738,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
         // In the event of a panic, elements that have been written
         // into the new RcBox will be dropped, then the memory freed.
         struct Guard<T> {
-            mem: *mut u8,
+            mem: NonNull<u8>,
             elems: *mut T,
             layout: Layout,
             n_elems: usize,
@@ -768,7 +768,7 @@ impl<T: Clone> RcFromSlice<T> for Rc<[T]> {
             let elems = &mut (*ptr).value as *mut [T] as *mut T;
 
             let mut guard = Guard{
-                mem: mem,
+                mem: NonNull::new_unchecked(mem),
                 elems: elems,
                 layout: layout,
                 n_elems: 0,
@@ -835,8 +835,6 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_ptr();
-
             self.dec_strong();
             if self.strong() == 0 {
                 // destroy the contained object
@@ -847,7 +845,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
                 self.dec_weak();
 
                 if self.weak() == 0 {
-                    Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
+                    Heap.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
                 }
             }
         }
@@ -1267,13 +1265,11 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = self.ptr.as_ptr();
-
             self.dec_weak();
             // the weak count starts at 1, and will only go to zero if all
             // the strong pointers have disappeared.
             if self.weak() == 0 {
-                Heap.dealloc(ptr as *mut u8, Layout::for_value(&*ptr));
+                Heap.dealloc(self.ptr.cast(), Layout::for_value(self.ptr.as_ref()));
             }
         }
     }

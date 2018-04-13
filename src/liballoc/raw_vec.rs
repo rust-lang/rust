@@ -12,7 +12,7 @@ use core::cmp;
 use core::heap::{Alloc, Layout};
 use core::mem;
 use core::ops::Drop;
-use core::ptr::{self, Unique};
+use core::ptr::{self, NonNull, Unique};
 use core::slice;
 use heap::Heap;
 use super::boxed::Box;
@@ -91,7 +91,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             // handles ZSTs and `cap = 0` alike
             let ptr = if alloc_size == 0 {
-                mem::align_of::<T>() as *mut u8
+                NonNull::<T>::dangling().cast()
             } else {
                 let align = mem::align_of::<T>();
                 let result = if zeroed {
@@ -106,7 +106,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             };
 
             RawVec {
-                ptr: Unique::new_unchecked(ptr as *mut _),
+                ptr: ptr.cast().into(),
                 cap,
                 a,
             }
@@ -312,11 +312,11 @@ impl<T, A: Alloc> RawVec<T, A> {
                     let new_size = new_cap * elem_size;
                     let new_layout = Layout::from_size_align_unchecked(new_size, cur.align());
                     alloc_guard(new_size).expect("capacity overflow");
-                    let ptr_res = self.a.realloc(self.ptr.as_ptr() as *mut u8,
+                    let ptr_res = self.a.realloc(NonNull::from(self.ptr).cast(),
                                                  cur,
                                                  new_layout);
                     match ptr_res {
-                        Ok(ptr) => (new_cap, Unique::new_unchecked(ptr as *mut T)),
+                        Ok(ptr) => (new_cap, ptr.cast().into()),
                         Err(e) => self.a.oom(e),
                     }
                 }
@@ -371,9 +371,8 @@ impl<T, A: Alloc> RawVec<T, A> {
             let new_cap = 2 * self.cap;
             let new_size = new_cap * elem_size;
             alloc_guard(new_size).expect("capacity overflow");
-            let ptr = self.ptr() as *mut _;
             let new_layout = Layout::from_size_align_unchecked(new_size, old_layout.align());
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
+            match self.a.grow_in_place(NonNull::from(self.ptr).cast(), old_layout, new_layout) {
                 Ok(_) => {
                     // We can't directly divide `size`.
                     self.cap = new_cap;
@@ -429,13 +428,12 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let res = match self.current_layout() {
                 Some(layout) => {
-                    let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    self.a.realloc(NonNull::from(self.ptr).cast(), layout, new_layout)
                 }
                 None => self.a.alloc(new_layout),
             };
 
-            self.ptr = Unique::new_unchecked(res? as *mut T);
+            self.ptr = res?.cast().into();
             self.cap = new_cap;
 
             Ok(())
@@ -538,13 +536,12 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let res = match self.current_layout() {
                 Some(layout) => {
-                    let old_ptr = self.ptr.as_ptr() as *mut u8;
-                    self.a.realloc(old_ptr, layout, new_layout)
+                    self.a.realloc(NonNull::from(self.ptr).cast(), layout, new_layout)
                 }
                 None => self.a.alloc(new_layout),
             };
 
-            self.ptr = Unique::new_unchecked(res? as *mut T);
+            self.ptr = res?.cast().into();
             self.cap = new_cap;
 
             Ok(())
@@ -601,11 +598,10 @@ impl<T, A: Alloc> RawVec<T, A> {
             // (regardless of whether `self.cap - used_cap` wrapped).
             // Therefore we can safely call grow_in_place.
 
-            let ptr = self.ptr() as *mut _;
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
             // FIXME: may crash and burn on over-reserve
             alloc_guard(new_layout.size()).expect("capacity overflow");
-            match self.a.grow_in_place(ptr, old_layout, new_layout) {
+            match self.a.grow_in_place(NonNull::from(self.ptr).cast(), old_layout, new_layout) {
                 Ok(_) => {
                     self.cap = new_cap;
                     true
@@ -666,10 +662,10 @@ impl<T, A: Alloc> RawVec<T, A> {
                 let align = mem::align_of::<T>();
                 let old_layout = Layout::from_size_align_unchecked(old_size, align);
                 let new_layout = Layout::from_size_align_unchecked(new_size, align);
-                match self.a.realloc(self.ptr.as_ptr() as *mut u8,
+                match self.a.realloc(NonNull::from(self.ptr).cast(),
                                      old_layout,
                                      new_layout) {
-                    Ok(p) => self.ptr = Unique::new_unchecked(p as *mut T),
+                    Ok(p) => self.ptr = p.cast().into(),
                     Err(err) => self.a.oom(err),
                 }
             }
@@ -702,8 +698,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         let elem_size = mem::size_of::<T>();
         if elem_size != 0 {
             if let Some(layout) = self.current_layout() {
-                let ptr = self.ptr() as *mut u8;
-                self.a.dealloc(ptr, layout);
+                self.a.dealloc(NonNull::from(self.ptr).cast(), layout);
             }
         }
     }
@@ -758,7 +753,7 @@ mod tests {
         // before allocation attempts start failing.
         struct BoundedAlloc { fuel: usize }
         unsafe impl Alloc for BoundedAlloc {
-            unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
+            unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
                 let size = layout.size();
                 if size > self.fuel {
                     return Err(AllocErr::Unsupported { details: "fuel exhausted" });
@@ -768,7 +763,7 @@ mod tests {
                     err @ Err(_) => err,
                 }
             }
-            unsafe fn dealloc(&mut self, ptr: *mut u8, layout: Layout) {
+            unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
                 Heap.dealloc(ptr, layout)
             }
         }
