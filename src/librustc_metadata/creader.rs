@@ -367,14 +367,6 @@ impl<'a> CrateLoader<'a> {
         let cmeta = self.cstore.get_crate_data(cnum);
         let mut old_extern_crate = cmeta.extern_crate.borrow_mut();
 
-        fn path_len_reverse(src: ExternCrateSource) -> cmp::Reverse<usize> {
-            cmp::Reverse(match src {
-                ExternCrateSource::Extern { path_len, .. } |
-                ExternCrateSource::Use { path_len } => path_len,
-                _ => usize::max_value(),
-            })
-        }
-
         // Prefer:
         // - something over nothing (tuple.0);
         // - direct extern crate to indirect (tuple.1);
@@ -382,14 +374,14 @@ impl<'a> CrateLoader<'a> {
         let new_rank = (
             true,
             extern_crate.direct,
-            path_len_reverse(extern_crate.src),
+            cmp::Reverse(extern_crate.path_len),
         );
         let old_rank = match *old_extern_crate {
             None => (false, false, cmp::Reverse(usize::max_value())),
             Some(ref c) => (
                 true,
                 c.direct,
-                path_len_reverse(c.src),
+                cmp::Reverse(c.path_len),
             ),
         };
         if old_rank >= new_rank {
@@ -1089,8 +1081,9 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 self.update_extern_crate(
                     cnum,
                     ExternCrate {
-                        src: ExternCrateSource::Extern { def_id, path_len },
+                        src: ExternCrateSource::Extern(def_id),
                         span: item.span,
+                        path_len,
                         direct: true,
                     },
                     &mut FxHashSet(),
@@ -1116,6 +1109,8 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             ExternCrate {
                 src: ExternCrateSource::Path,
                 span,
+                // to have the least priority in `update_extern_crate`
+                path_len: usize::max_value(),
                 direct: true,
             },
             &mut FxHashSet(),
@@ -1141,8 +1136,9 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         self.update_extern_crate(
             cnum,
             ExternCrate {
-                src: ExternCrateSource::Use { path_len },
+                src: ExternCrateSource::Use,
                 span,
+                path_len,
                 direct: true,
             },
             &mut FxHashSet(),

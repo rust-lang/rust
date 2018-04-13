@@ -104,7 +104,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if cnum != LOCAL_CRATE {
                     let opt_extern_crate = self.extern_crate(cnum.as_def_id());
                     if let Some(ExternCrate {
-                        src: ExternCrateSource::Extern { def_id, .. },
+                        src: ExternCrateSource::Extern(def_id),
                         direct: true,
                         ..
                     }) = *opt_extern_crate
@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             if cur_def.index == CRATE_DEF_INDEX {
                 match *self.extern_crate(cur_def) {
                     Some(ExternCrate {
-                        src: ExternCrateSource::Extern { def_id, .. },
+                        src: ExternCrateSource::Extern(def_id),
                         direct: true,
                         ..
                     }) => {

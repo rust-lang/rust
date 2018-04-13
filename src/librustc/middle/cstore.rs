@@ -153,6 +153,10 @@ pub struct ExternCrate {
     /// span of the extern crate that caused this to be loaded
     pub span: Span,
 
+    /// Number of links to reach the extern;
+    /// used to select the extern with the shortest path
+    pub path_len: usize,
+
     /// If true, then this crate is the crate named by the extern
     /// crate referenced above. If false, then this crate is a dep
     /// of the crate.
@@ -162,21 +166,14 @@ pub struct ExternCrate {
 #[derive(Copy, Clone, Debug)]
 pub enum ExternCrateSource {
     /// Crate is loaded by `extern crate`.
-    Extern {
+    Extern(
         /// def_id of the item in the current crate that caused
         /// this crate to be loaded; note that there could be multiple
         /// such ids
-        def_id: DefId,
-
-        /// Number of links to reach the extern crate `def_id`
-        /// declaration; used to select the extern crate with the shortest
-        /// path
-        path_len: usize,
-    },
+        DefId,
+    ),
     // Crate is loaded by `use`.
-    Use {
-        path_len: usize,
-    },
+    Use,
     /// Crate is implicitly loaded by an absolute or an `extern::` path.
     Path,
 }
