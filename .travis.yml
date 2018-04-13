@@ -176,6 +176,8 @@ matrix:
       if: branch = auto
     - env: IMAGE=x86_64-gnu-distcheck
       if: branch = auto
+    - env: IMAGE=mingw-check
+      if: type = pull_request OR branch = auto
 
     - stage: publish toolstate
       if: branch = master AND type = push

@@ -23,6 +23,7 @@ use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
 
+use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::fold::TypeVisitor;
@@ -41,7 +42,7 @@ use std::ffi::CString;
 use std::fmt::Write;
 use std::ptr;
 use std::path::{Path, PathBuf};
-use syntax::{ast, attr};
+use syntax::ast;
 use syntax::symbol::{Interner, InternedString, Symbol};
 use syntax_pos::{self, Span, FileName};
 
@@ -1644,11 +1645,17 @@ pub fn create_global_var_metadata(cx: &CodegenCx,
     }
 
     let tcx = cx.tcx;
-    let no_mangle = attr::contains_name(&tcx.get_attrs(def_id), "no_mangle");
+    let attrs = tcx.trans_fn_attrs(def_id);
+
+    if attrs.flags.contains(TransFnAttrFlags::NO_DEBUG) {
+        return;
+    }
+
+    let no_mangle = attrs.flags.contains(TransFnAttrFlags::NO_MANGLE);
     // We may want to remove the namespace scope if we're in an extern block, see:
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952
     let var_scope = get_namespace_for_item(cx, def_id);
-    let span = cx.tcx.def_span(def_id);
+    let span = tcx.def_span(def_id);
 
     let (file_metadata, line_number) = if span != syntax_pos::DUMMY_SP {
         let loc = span_start(cx, span);

@@ -459,7 +459,7 @@ impl Step for RustdocTheme {
     }
 
     fn run(self, builder: &Builder) {
-        let rustdoc = builder.rustdoc(self.compiler.host);
+        let rustdoc = builder.out.join("bootstrap/debug/rustdoc");
         let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
         cmd.arg(rustdoc.to_str().unwrap())
            .arg(builder.src.join("src/librustdoc/html/static/themes").to_str().unwrap())
@@ -875,7 +875,7 @@ impl Step for Compiletest {
         if build.config.rust_debuginfo_tests {
             flags.push("-g".to_string());
         }
-        flags.push("-Zmiri -Zunstable-options".to_string());
+        flags.push("-Zunstable-options".to_string());
         flags.push(build.config.cmd.rustc_args().join(" "));
 
         if let Some(linker) = build.linker(target) {
