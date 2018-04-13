@@ -176,9 +176,9 @@ pub fn format_expr(
                 capture, movability, fn_decl, body, expr.span, context, shape,
             )
         }
-        ast::ExprKind::Try(..)
-        | ast::ExprKind::Field(..)
-        | ast::ExprKind::MethodCall(..) => rewrite_chain(expr, context, shape),
+        ast::ExprKind::Try(..) | ast::ExprKind::Field(..) | ast::ExprKind::MethodCall(..) => {
+            rewrite_chain(expr, context, shape)
+        }
         ast::ExprKind::Mac(ref mac) => {
             rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
                 wrap_str(

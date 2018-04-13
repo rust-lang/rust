@@ -393,8 +393,9 @@ fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext) -> Option<ast::Exp
         ast::ExprKind::MethodCall(_, ref expressions) => {
             Some(convert_try(&expressions[0], context))
         }
-        | ast::ExprKind::Field(ref subexpr, _)
-        | ast::ExprKind::Try(ref subexpr) => Some(convert_try(subexpr, context)),
+        ast::ExprKind::Field(ref subexpr, _) | ast::ExprKind::Try(ref subexpr) => {
+            Some(convert_try(subexpr, context))
+        }
         _ => None,
     }
 }
