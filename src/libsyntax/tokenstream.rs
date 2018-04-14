@@ -118,7 +118,7 @@ impl TokenTree {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
             (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
                 dl.delim == dl2.delim &&
-                dl.stream().trees().zip(dl2.stream().trees()).all(|(tt, tt2)| tt.eq_unspanned(&tt2))
+                dl.stream().eq_unspanned(&dl2.stream())
             }
             (_, _) => false,
         }
@@ -240,12 +240,14 @@ impl TokenStream {
 
     /// Compares two TokenStreams, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
-        for (t1, t2) in self.trees().zip(other.trees()) {
+        let mut t1 = self.trees();
+        let mut t2 = other.trees();
+        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.eq_unspanned(&t2) {
                 return false;
             }
         }
-        true
+        t1.next().is_none() && t2.next().is_none()
     }
 
     /// Precondition: `self` consists of a single token tree.
