@@ -840,6 +840,9 @@ pub trait Read {
                                          of where errors happen is currently \
                                          unclear and may change",
                issue = "27802")]
+    #[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
+        https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
+    #[allow(deprecated)]
     fn chars(self) -> Chars<Self> where Self: Sized {
         Chars { inner: self }
     }
@@ -2010,16 +2013,22 @@ impl<R: Read> Iterator for Bytes<R> {
 /// [chars]: trait.Read.html#method.chars
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
            issue = "27802")]
+#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
+    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
 #[derive(Debug)]
+#[allow(deprecated)]
 pub struct Chars<R> {
     inner: R,
 }
 
 /// An enumeration of possible errors that can be generated from the `Chars`
 /// adapter.
-#[derive(Debug)]
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
            issue = "27802")]
+#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
+    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
+#[derive(Debug)]
+#[allow(deprecated)]
 pub enum CharsError {
     /// Variant representing that the underlying stream was read successfully
     /// but it did not contain valid utf8 data.
@@ -2031,6 +2040,7 @@ pub enum CharsError {
 
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
            issue = "27802")]
+#[allow(deprecated)]
 impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
@@ -2063,6 +2073,7 @@ impl<R: Read> Iterator for Chars<R> {
 
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
            issue = "27802")]
+#[allow(deprecated)]
 impl std_error::Error for CharsError {
     fn description(&self) -> &str {
         match *self {
@@ -2080,6 +2091,7 @@ impl std_error::Error for CharsError {
 
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars",
            issue = "27802")]
+#[allow(deprecated)]
 impl fmt::Display for CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

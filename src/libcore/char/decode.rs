@@ -17,11 +17,17 @@ use super::from_u32_unchecked;
 /// An iterator over an iterator of bytes of the characters the bytes represent
 /// as UTF-8
 #[unstable(feature = "decode_utf8", issue = "33906")]
+#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
+    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
 #[derive(Clone, Debug)]
+#[allow(deprecated)]
 pub struct DecodeUtf8<I: Iterator<Item = u8>>(::iter::Peekable<I>);
 
 /// Decodes an `Iterator` of bytes as UTF-8.
 #[unstable(feature = "decode_utf8", issue = "33906")]
+#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
+    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
+#[allow(deprecated)]
 #[inline]
 pub fn decode_utf8<I: IntoIterator<Item = u8>>(i: I) -> DecodeUtf8<I::IntoIter> {
     DecodeUtf8(i.into_iter().peekable())
@@ -29,10 +35,14 @@ pub fn decode_utf8<I: IntoIterator<Item = u8>>(i: I) -> DecodeUtf8<I::IntoIter> 
 
 /// `<DecodeUtf8 as Iterator>::next` returns this for an invalid input sequence.
 #[unstable(feature = "decode_utf8", issue = "33906")]
+#[rustc_deprecated(since = "1.27.0", reason = "Use str::from_utf8 instead:
+    https://doc.rust-lang.org/nightly/std/str/struct.Utf8Error.html#examples")]
 #[derive(PartialEq, Eq, Debug)]
+#[allow(deprecated)]
 pub struct InvalidSequence(());
 
 #[unstable(feature = "decode_utf8", issue = "33906")]
+#[allow(deprecated)]
 impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
     type Item = Result<char, InvalidSequence>;
     #[inline]
@@ -127,6 +137,7 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
 }
 
 #[unstable(feature = "decode_utf8", issue = "33906")]
+#[allow(deprecated)]
 impl<I: FusedIterator<Item = u8>> FusedIterator for DecodeUtf8<I> {}
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.

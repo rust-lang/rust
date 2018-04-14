@@ -364,6 +364,7 @@ fn eu_iterator_specializations() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_decode_utf8() {
     macro_rules! assert_decode_utf8 {
         ($input_bytes: expr, $expected_str: expr) => {
