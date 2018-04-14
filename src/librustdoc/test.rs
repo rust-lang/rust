@@ -28,7 +28,7 @@ use rustc::session::config::{OutputType, OutputTypes, Externs};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use tempdir::TempDir;
-use rustc_driver::{self, driver, Compilation};
+use rustc_driver::{self, driver, target_features, Compilation};
 use rustc_driver::driver::phase_2_configure_and_expand;
 use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
@@ -96,8 +96,10 @@ pub fn run(input_path: &Path,
     let trans = rustc_driver::get_trans(&sess);
     let cstore = CStore::new(trans.metadata_loader());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    sess.parse_sess.config =
-        config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+
+    let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+    target_features::add_configuration(&mut cfg, &sess, &*trans);
+    sess.parse_sess.config = cfg;
 
     let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
                                                       &sess,
@@ -271,8 +273,11 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
-    sess.parse_sess.config =
-        config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+
+    let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+    target_features::add_configuration(&mut cfg, &sess, &*trans);
+    sess.parse_sess.config = cfg;
+
     let out = Some(outdir.lock().unwrap().path().to_path_buf());
 
     if no_run {

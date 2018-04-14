@@ -16,7 +16,7 @@
 
 extern crate system_allocator;
 
-use std::heap::System;
+use std::alloc::System;
 
 #[global_allocator]
 static A: System = System;

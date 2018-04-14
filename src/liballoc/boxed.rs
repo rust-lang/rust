@@ -55,8 +55,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use raw_vec::RawVec;
-
 use core::any::Any;
 use core::borrow;
 use core::cmp::Ordering;
@@ -68,6 +66,8 @@ use core::mem::{self, Pin};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
 use core::convert::From;
+
+use raw_vec::RawVec;
 use str::from_boxed_utf8_unchecked;
 
 /// A pointer type for heap allocation.

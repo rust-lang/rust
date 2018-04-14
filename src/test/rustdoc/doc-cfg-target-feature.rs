@@ -8,12 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z thinlto -C codegen-units=2
-// min-llvm-version 4.0
+// only-x86_64
+// compile-flags:--test
+// should-fail
+// no-system-llvm
 
-#![feature(allocator_api, global_allocator)]
+// #49723: rustdoc didn't add target features when extracting or running doctests
 
-#[global_allocator]
-static A: std::alloc::System = std::alloc::System;
+#![feature(doc_cfg)]
 
-fn main() {}
+/// Foo
+///
+/// # Examples
+///
+/// ```
+/// #![feature(cfg_target_feature)]
+///
+/// #[cfg(target_feature = "sse")]
+/// assert!(false);
+/// ```
+#[doc(cfg(target_feature = "sse"))]
+pub unsafe fn foo() {}

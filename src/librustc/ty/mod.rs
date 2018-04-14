@@ -728,7 +728,7 @@ pub struct TypeParameterDef {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct RegionParameterDef {
-    pub name: Name,
+    pub name: InternedString,
     pub def_id: DefId,
     pub index: u32,
 

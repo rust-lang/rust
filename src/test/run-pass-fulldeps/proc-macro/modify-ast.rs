@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// no-prefer-dynamic
+// aux-build:modify-ast.rs
 
-#![feature(global_allocator, allocator_api)]
-#![crate_type = "rlib"]
+#![feature(proc_macro)]
 
-use std::alloc::System;
+extern crate modify_ast;
 
-#[global_allocator]
-static A: System = System;
+use modify_ast::*;
+
+#[derive(Foo)]
+pub struct MyStructc {
+    #[cfg_attr(my_cfg, foo)]
+    _a: i32,
+}
+
+macro_rules! a {
+    ($i:item) => ($i)
+}
+
+a! {
+    #[assert1]
+    pub fn foo() {}
+}
+
+fn main() {
+    let _a = MyStructc { _a: 0 };
+    foo();
+}

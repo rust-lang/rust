@@ -55,7 +55,7 @@ fn main() {
 ```
 
 And that's it! The `#[global_allocator]` attribute is applied to a `static`
-which implements the `Alloc` trait in the `std::heap` module. Note, though,
+which implements the `Alloc` trait in the `std::alloc` module. Note, though,
 that the implementation is defined for `&MyAllocator`, not just `MyAllocator`.
 You may wish, however, to also provide `Alloc for MyAllocator` for other use
 cases.

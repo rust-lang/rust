@@ -66,11 +66,11 @@ use core::ptr;
 use core::str::pattern::Pattern;
 use core::str::lossy;
 
+use alloc::CollectionAllocErr;
 use borrow::{Cow, ToOwned};
+use boxed::Box;
 use str::{self, from_boxed_utf8_unchecked, FromStr, Utf8Error, Chars};
 use vec::Vec;
-use boxed::Box;
-use super::allocator::CollectionAllocErr;
 
 /// A UTF-8 encoded, growable string.
 ///
