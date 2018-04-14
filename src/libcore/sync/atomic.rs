@@ -1360,8 +1360,7 @@ Returns the previous value.
 # Examples
 
 ```
-", $extra_feature, "#![feature(atomic_nand)]
-
+", $extra_feature, "
 use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};
 
 let foo = ", stringify!($atomic_type), "::new(0x13);
@@ -1555,7 +1554,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i8", "../../../std/primitive.i8.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -1568,7 +1567,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "u8", "../../../std/primitive.u8.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -1581,7 +1580,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i16", "../../../std/primitive.i16.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -1594,7 +1593,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "u16", "../../../std/primitive.u16.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -1607,7 +1606,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i32", "../../../std/primitive.i32.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -1620,7 +1619,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "u32", "../../../std/primitive.u32.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -1633,7 +1632,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "i64", "../../../std/primitive.i64.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_min, atomic_max,
@@ -1646,7 +1645,7 @@ atomic_int! {
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
     unstable(feature = "integer_atomics", issue = "32976"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    unstable(feature = "integer_atomics", issue = "32976"),
     "u64", "../../../std/primitive.u64.html",
     "#![feature(integer_atomics)]\n\n",
     atomic_umin, atomic_umax,
@@ -1659,7 +1658,7 @@ atomic_int!{
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
     stable(feature = "atomic_from", since = "1.23.0"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    stable(feature = "atomic_nand", since = "1.27.0"),
     "isize", "../../../std/primitive.isize.html",
     "",
     atomic_min, atomic_max,
@@ -1672,7 +1671,7 @@ atomic_int!{
     stable(feature = "atomic_debug", since = "1.3.0"),
     stable(feature = "atomic_access", since = "1.15.0"),
     stable(feature = "atomic_from", since = "1.23.0"),
-    unstable(feature = "atomic_nand", issue = "13226"),
+    stable(feature = "atomic_nand", since = "1.27.0"),
     "usize", "../../../std/primitive.usize.html",
     "",
     atomic_umin, atomic_umax,
