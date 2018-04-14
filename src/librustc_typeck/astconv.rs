@@ -100,7 +100,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap())
+            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap()).as_str()
         };
 
         let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
