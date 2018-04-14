@@ -962,38 +962,38 @@ enum TypeParameters<'a, 'b> {
                       RibKind<'a>),
 }
 
-// The rib kind controls the translation of local
-// definitions (`Def::Local`) to upvars (`Def::Upvar`).
+/// The rib kind controls the translation of local
+/// definitions (`Def::Local`) to upvars (`Def::Upvar`).
 #[derive(Copy, Clone, Debug)]
 enum RibKind<'a> {
-    // No translation needs to be applied.
+    /// No translation needs to be applied.
     NormalRibKind,
 
-    // We passed through a closure scope at the given node ID.
-    // Translate upvars as appropriate.
+    /// We passed through a closure scope at the given node ID.
+    /// Translate upvars as appropriate.
     ClosureRibKind(NodeId /* func id */),
 
-    // We passed through an impl or trait and are now in one of its
-    // methods or associated types. Allow references to ty params that impl or trait
-    // binds. Disallow any other upvars (including other ty params that are
-    // upvars).
+    /// We passed through an impl or trait and are now in one of its
+    /// methods or associated types. Allow references to ty params that impl or trait
+    /// binds. Disallow any other upvars (including other ty params that are
+    /// upvars).
     TraitOrImplItemRibKind,
 
-    // We passed through an item scope. Disallow upvars.
+    /// We passed through an item scope. Disallow upvars.
     ItemRibKind,
 
-    // We're in a constant item. Can't refer to dynamic stuff.
+    /// We're in a constant item. Can't refer to dynamic stuff.
     ConstantItemRibKind,
 
-    // We passed through a module.
+    /// We passed through a module.
     ModuleRibKind(Module<'a>),
 
-    // We passed through a `macro_rules!` statement
+    /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
 
-    // All bindings in this rib are type parameters that can't be used
-    // from the default of a type parameter because they're not declared
-    // before said type parameter. Also see the `visit_generics` override.
+    /// All bindings in this rib are type parameters that can't be used
+    /// from the default of a type parameter because they're not declared
+    /// before said type parameter. Also see the `visit_generics` override.
     ForwardTyParamBanRibKind,
 }
 
@@ -1198,7 +1198,7 @@ impl<'a> fmt::Debug for ModuleData<'a> {
     }
 }
 
-// Records a possibly-private value, type, or module definition.
+/// Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
@@ -1408,36 +1408,36 @@ pub struct Resolver<'a> {
 
     prelude: Option<Module<'a>>,
 
-    // n.b. This is used only for better diagnostics, not name resolution itself.
+    /// n.b. This is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
 
-    // Names of fields of an item `DefId` accessible with dot syntax.
-    // Used for hints during error reporting.
+    /// Names of fields of an item `DefId` accessible with dot syntax.
+    /// Used for hints during error reporting.
     field_names: FxHashMap<DefId, Vec<Name>>,
 
-    // All imports known to succeed or fail.
+    /// All imports known to succeed or fail.
     determined_imports: Vec<&'a ImportDirective<'a>>,
 
-    // All non-determined imports.
+    /// All non-determined imports.
     indeterminate_imports: Vec<&'a ImportDirective<'a>>,
 
-    // The module that represents the current item scope.
+    /// The module that represents the current item scope.
     current_module: Module<'a>,
 
-    // The current set of local scopes for types and values.
-    // FIXME #4948: Reuse ribs to avoid allocation.
+    /// The current set of local scopes for types and values.
+    /// FIXME #4948: Reuse ribs to avoid allocation.
     ribs: PerNS<Vec<Rib<'a>>>,
 
-    // The current set of local scopes, for labels.
+    /// The current set of local scopes, for labels.
     label_ribs: Vec<Rib<'a>>,
 
-    // The trait that the current context can refer to.
+    /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
 
-    // The current self type if inside an impl (used for better errors).
+    /// The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
 
-    // The idents for the primitive types.
+    /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
     def_map: DefMap,
@@ -1446,20 +1446,20 @@ pub struct Resolver<'a> {
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
 
-    // A map from nodes to anonymous modules.
-    // Anonymous modules are pseudo-modules that are implicitly created around items
-    // contained within blocks.
-    //
-    // For example, if we have this:
-    //
-    //  fn f() {
-    //      fn g() {
-    //          ...
-    //      }
-    //  }
-    //
-    // There will be an anonymous module created around `g` with the ID of the
-    // entry block for `f`.
+    /// A map from nodes to anonymous modules.
+    /// Anonymous modules are pseudo-modules that are implicitly created around items
+    /// contained within blocks.
+    ///
+    /// For example, if we have this:
+    ///
+    ///  fn f() {
+    ///      fn g() {
+    ///          ...
+    ///      }
+    ///  }
+    ///
+    /// There will be an anonymous module created around `g` with the ID of the
+    /// entry block for `f`.
     block_map: NodeMap<Module<'a>>,
     module_map: FxHashMap<DefId, Module<'a>>,
     extern_module_map: FxHashMap<(DefId, bool /* MacrosOnly? */), Module<'a>>,
@@ -1487,7 +1487,8 @@ pub struct Resolver<'a> {
 
     arenas: &'a ResolverArenas<'a>,
     dummy_binding: &'a NameBinding<'a>,
-    use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
+    /// true if `#![feature(use_extern_macros)]`
+    use_extern_macros: bool,
 
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Ident>,
@@ -1501,29 +1502,29 @@ pub struct Resolver<'a> {
     pub whitelisted_legacy_custom_derives: Vec<Name>,
     pub found_unresolved_macro: bool,
 
-    // List of crate local macros that we need to warn about as being unused.
-    // Right now this only includes macro_rules! macros, and macros 2.0.
+    /// List of crate local macros that we need to warn about as being unused.
+    /// Right now this only includes macro_rules! macros, and macros 2.0.
     unused_macros: FxHashSet<DefId>,
 
-    // Maps the `Mark` of an expansion to its containing module or block.
+    /// Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
 
-    // Avoid duplicated errors for "name already defined".
+    /// Avoid duplicated errors for "name already defined".
     name_already_seen: FxHashMap<Name, Span>,
 
-    // If `#![feature(proc_macro)]` is set
+    /// If `#![feature(proc_macro)]` is set
     proc_macro_enabled: bool,
 
-    // A set of procedural macros imported by `#[macro_use]` that have already been warned about
+    /// A set of procedural macros imported by `#[macro_use]` that have already been warned about
     warned_proc_macros: FxHashSet<Name>,
 
     potentially_unused_imports: Vec<&'a ImportDirective<'a>>,
 
-    // This table maps struct IDs into struct constructor IDs,
-    // it's not used during normal resolution, only for better error reporting.
+    /// This table maps struct IDs into struct constructor IDs,
+    /// it's not used during normal resolution, only for better error reporting.
     struct_constructors: DefIdMap<(Def, ty::Visibility)>,
 
-    // Only used for better errors on `fn(): fn()`
+    /// Only used for better errors on `fn(): fn()`
     current_type_ascription: Vec<Span>,
 
     injected_crate: Option<Module<'a>>,
