@@ -46,12 +46,12 @@ use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
 
-use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
+use boxed::Box;
+use slice::{SliceConcatExt, SliceIndex};
 use string::String;
 use vec::Vec;
-use slice::{SliceConcatExt, SliceIndex};
-use boxed::Box;
+use vec_deque::VecDeque;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{FromStr, Utf8Error};

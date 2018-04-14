@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc::{Alloc, Layout, Global};
 use core::cmp;
 use core::mem;
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
-use super::boxed::Box;
-use super::allocator::CollectionAllocErr;
-use super::allocator::CollectionAllocErr::*;
+
+use alloc::{Alloc, Layout, Global};
+use alloc::CollectionAllocErr;
+use alloc::CollectionAllocErr::*;
+use boxed::Box;
 
 /// A low-level utility for more ergonomically allocating, reallocating, and deallocating
 /// a buffer of memory on the heap without having to worry about all the corner cases

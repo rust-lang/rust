@@ -14,6 +14,6 @@
 #![feature(allocator_api, global_allocator)]
 
 #[global_allocator]
-static A: std::heap::System = std::heap::System;
+static A: std::alloc::System = std::alloc::System;
 
 fn main() {}
