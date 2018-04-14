@@ -17,7 +17,7 @@ use hir::map::definitions::DefPathHash;
 use ich::{CachingCodemapView, Fingerprint};
 use mir::{self, interpret};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock, HashMapExt, Once};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
@@ -57,17 +57,17 @@ pub struct OnDiskCache<'sess> {
 
     // This field collects all Diagnostics emitted during the current
     // compilation session.
-    current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
+    current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
-    cnum_map: RefCell<Option<IndexVec<CrateNum, Option<CrateNum>>>>,
+    cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
 
     codemap: &'sess CodeMap,
     file_index_to_stable_id: FxHashMap<FileMapIndex, StableFilemapId>,
 
     // These two fields caches that are populated lazily during decoding.
-    file_index_to_file: RefCell<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
-    synthetic_expansion_infos: RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
+    file_index_to_file: Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
+    synthetic_expansion_infos: Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
@@ -140,14 +140,14 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: data,
             file_index_to_stable_id: footer.file_index_to_stable_id,
-            file_index_to_file: RefCell::new(FxHashMap()),
+            file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: footer.prev_cnums,
-            cnum_map: RefCell::new(None),
+            cnum_map: Once::new(),
             codemap: sess.codemap(),
-            current_diagnostics: RefCell::new(FxHashMap()),
+            current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
-            synthetic_expansion_infos: RefCell::new(FxHashMap()),
+            synthetic_expansion_infos: Lock::new(FxHashMap()),
             interpret_alloc_cache: RefCell::new(FxHashMap::default()),
             interpret_alloc_size: RefCell::new(FxHashMap::default()),
         }
@@ -157,14 +157,14 @@ impl<'sess> OnDiskCache<'sess> {
         OnDiskCache {
             serialized_data: Vec::new(),
             file_index_to_stable_id: FxHashMap(),
-            file_index_to_file: RefCell::new(FxHashMap()),
+            file_index_to_file: Lock::new(FxHashMap()),
             prev_cnums: vec![],
-            cnum_map: RefCell::new(None),
+            cnum_map: Once::new(),
             codemap,
-            current_diagnostics: RefCell::new(FxHashMap()),
+            current_diagnostics: Lock::new(FxHashMap()),
             query_result_index: FxHashMap(),
             prev_diagnostics_index: FxHashMap(),
-            synthetic_expansion_infos: RefCell::new(FxHashMap()),
+            synthetic_expansion_infos: Lock::new(FxHashMap()),
             interpret_alloc_cache: RefCell::new(FxHashMap::default()),
             interpret_alloc_size: RefCell::new(FxHashMap::default()),
         }
@@ -383,18 +383,16 @@ impl<'sess> OnDiskCache<'sess> {
             return None
         };
 
-        // Initialize the cnum_map if it is not initialized yet.
-        if self.cnum_map.borrow().is_none() {
-            let mut cnum_map = self.cnum_map.borrow_mut();
-            *cnum_map = Some(Self::compute_cnum_map(tcx, &self.prev_cnums[..]));
-        }
-        let cnum_map = self.cnum_map.borrow();
+        // Initialize the cnum_map using the value from the thread which finishes the closure first
+        self.cnum_map.init_nonlocking_same(|| {
+            Self::compute_cnum_map(tcx, &self.prev_cnums[..])
+        });
 
         let mut decoder = CacheDecoder {
             tcx,
             opaque: opaque::Decoder::new(&self.serialized_data[..], pos.to_usize()),
             codemap: self.codemap,
-            cnum_map: cnum_map.as_ref().unwrap(),
+            cnum_map: self.cnum_map.get(),
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             synthetic_expansion_infos: &self.synthetic_expansion_infos,
@@ -458,8 +456,8 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     opaque: opaque::Decoder<'x>,
     codemap: &'x CodeMap,
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
-    synthetic_expansion_infos: &'x RefCell<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
-    file_index_to_file: &'x RefCell<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
+    synthetic_expansion_infos: &'x Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
+    file_index_to_file: &'x Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
     interpret_alloc_cache: &'x RefCell<FxHashMap<usize, interpret::AllocId>>,
     interpret_alloc_size: &'x RefCell<FxHashMap<usize, usize>>,
@@ -557,7 +555,8 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
         }
 
         let ty = or_insert_with(self)?;
-        tcx.rcache.borrow_mut().insert(cache_key, ty);
+        // This may overwrite the entry, but it should overwrite with the same value
+        tcx.rcache.borrow_mut().insert_same(cache_key, ty);
         Ok(ty)
     }
 
