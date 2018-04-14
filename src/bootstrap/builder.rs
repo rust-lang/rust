@@ -154,18 +154,17 @@ impl StepDescription {
             eprintln!("{:?} not skipped for {:?} -- not in {:?}", pathset,
                 self.name, builder.config.exclude);
         }
-        let build = builder.build;
-        let hosts = &build.hosts;
+        let hosts = &builder.hosts;
 
         // Determine the targets participating in this rule.
         let targets = if self.only_hosts {
-            if !build.config.run_host_only {
+            if !builder.config.run_host_only {
                 return; // don't run anything
             } else {
-                &build.hosts
+                &builder.hosts
             }
         } else {
-            &build.targets
+            &builder.targets
         };
 
         for host in hosts {
@@ -476,7 +475,7 @@ impl<'a> Builder<'a> {
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
         self.sysroot_libdir(compiler, compiler.host)
-            .with_file_name(self.build.config.rust_codegen_backends_dir.clone())
+            .with_file_name(self.config.rust_codegen_backends_dir.clone())
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that
@@ -486,7 +485,7 @@ impl<'a> Builder<'a> {
     /// Windows.
     pub fn rustc_libdir(&self, compiler: Compiler) -> PathBuf {
         if compiler.is_snapshot(self) {
-            self.build.rustc_snapshot_libdir()
+            self.rustc_snapshot_libdir()
         } else {
             self.sysroot(compiler).join(libdir(&compiler.host))
         }
@@ -523,12 +522,12 @@ impl<'a> Builder<'a> {
         let compiler = self.compiler(self.top_stage, host);
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
            .env("RUSTC_SYSROOT", self.sysroot(compiler))
-           .env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.build.build))
-           .env("CFG_RELEASE_CHANNEL", &self.build.config.channel)
+           .env("RUSTDOC_LIBDIR", self.sysroot_libdir(compiler, self.config.build))
+           .env("CFG_RELEASE_CHANNEL", &self.config.channel)
            .env("RUSTDOC_REAL", self.rustdoc(host))
-           .env("RUSTDOC_CRATE_VERSION", self.build.rust_version())
+           .env("RUSTDOC_CRATE_VERSION", self.rust_version())
            .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = self.build.linker(host) {
+        if let Some(linker) = self.linker(host) {
             cmd.env("RUSTC_TARGET_LINKER", linker);
         }
         cmd
@@ -609,17 +608,17 @@ impl<'a> Builder<'a> {
              .env("TEST_MIRI", self.config.test_miri.to_string())
              .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir());
 
-        if let Some(host_linker) = self.build.linker(compiler.host) {
+        if let Some(host_linker) = self.linker(compiler.host) {
             cargo.env("RUSTC_HOST_LINKER", host_linker);
         }
-        if let Some(target_linker) = self.build.linker(target) {
+        if let Some(target_linker) = self.linker(target) {
             cargo.env("RUSTC_TARGET_LINKER", target_linker);
         }
         if let Some(ref error_format) = self.config.rustc_error_format {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
         if cmd != "build" && cmd != "check" {
-            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.build)));
+            cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.config.build)));
         }
 
         if mode == Mode::Tool {
@@ -677,7 +676,7 @@ impl<'a> Builder<'a> {
         //
         // If LLVM support is disabled we need to use the snapshot compiler to compile
         // build scripts, as the new compiler doesn't support executables.
-        if mode == Mode::Libstd || !self.build.config.llvm_enabled {
+        if mode == Mode::Libstd || !self.config.llvm_enabled {
             cargo.env("RUSTC_SNAPSHOT", &self.initial_rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
@@ -761,7 +760,7 @@ impl<'a> Builder<'a> {
         }
 
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
-        cargo.env("RUSTDOC_CRATE_VERSION", self.build.rust_version());
+        cargo.env("RUSTDOC_CRATE_VERSION", self.rust_version());
 
         // Environment variables *required* throughout the build
         //
@@ -769,7 +768,7 @@ impl<'a> Builder<'a> {
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target);
 
         // Set this for all builds to make sure doc builds also get it.
-        cargo.env("CFG_RELEASE_CHANNEL", &self.build.config.channel);
+        cargo.env("CFG_RELEASE_CHANNEL", &self.config.channel);
 
         // This one's a bit tricky. As of the time of this writing the compiler
         // links to the `winapi` crate on crates.io. This crate provides raw
@@ -854,7 +853,7 @@ impl<'a> Builder<'a> {
                 panic!(out);
             }
             if let Some(out) = self.cache.get(&step) {
-                self.build.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
+                self.verbose(&format!("{}c {:?}", "  ".repeat(stack.len()), step));
 
                 {
                     let mut graph = self.graph.borrow_mut();
@@ -869,7 +868,7 @@ impl<'a> Builder<'a> {
 
                 return out;
             }
-            self.build.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
+            self.verbose(&format!("{}> {:?}", "  ".repeat(stack.len()), step));
             stack.push(Box::new(step.clone()));
         }
 
@@ -899,7 +898,7 @@ impl<'a> Builder<'a> {
 
         self.parent.set(prev_parent);
 
-        if self.build.config.print_step_timings && dur > Duration::from_millis(100) {
+        if self.config.print_step_timings && dur > Duration::from_millis(100) {
             println!("[TIMING] {:?} -- {}.{:03}",
                      step,
                      dur.as_secs(),
@@ -911,7 +910,7 @@ impl<'a> Builder<'a> {
             let cur_step = stack.pop().expect("step stack empty");
             assert_eq!(cur_step.downcast_ref(), Some(&step));
         }
-        self.build.verbose(&format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
+        self.verbose(&format!("{}< {:?}", "  ".repeat(self.stack.borrow().len()), step));
         self.cache.put(step, out.clone());
         out
     }

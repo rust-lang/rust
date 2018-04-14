@@ -12,7 +12,7 @@
 
 use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, add_to_sysroot};
 use builder::{RunConfig, Builder, ShouldRun, Step};
-use {Build, Compiler, Mode};
+use {Compiler, Mode};
 use cache::Interned;
 use std::path::PathBuf;
 
@@ -36,24 +36,23 @@ impl Step for Std {
     }
 
     fn run(self, builder: &Builder) {
-        let build = builder.build;
         let target = self.target;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, builder.config.build);
 
-        let out_dir = build.stage_out(compiler, Mode::Libstd);
-        build.clear_if_dirty(&out_dir, &builder.rustc(compiler));
+        let out_dir = builder.stage_out(compiler, Mode::Libstd);
+        builder.clear_if_dirty(&out_dir, &builder.rustc(compiler));
         let mut cargo = builder.cargo(compiler, Mode::Libstd, target, "check");
         std_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = build.fold_output(|| format!("stage{}-std", compiler.stage));
+        let _folder = builder.fold_output(|| format!("stage{}-std", compiler.stage));
         println!("Checking std artifacts ({} -> {})", &compiler.host, target);
-        run_cargo(build,
+        run_cargo(builder,
                   &mut cargo,
-                  &libstd_stamp(build, compiler, target),
+                  &libstd_stamp(builder, compiler, target),
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
-        add_to_sysroot(&build, &libdir, &libstd_stamp(build, compiler, target));
+        add_to_sysroot(&builder, &libdir, &libstd_stamp(builder, compiler, target));
     }
 }
 
@@ -83,26 +82,25 @@ impl Step for Rustc {
     /// the `compiler` targeting the `target` architecture. The artifacts
     /// created will also be linked into the sysroot directory.
     fn run(self, builder: &Builder) {
-        let build = builder.build;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
 
         let stage_out = builder.stage_out(compiler, Mode::Librustc);
-        build.clear_if_dirty(&stage_out, &libstd_stamp(build, compiler, target));
-        build.clear_if_dirty(&stage_out, &libtest_stamp(build, compiler, target));
+        builder.clear_if_dirty(&stage_out, &libstd_stamp(builder, compiler, target));
+        builder.clear_if_dirty(&stage_out, &libtest_stamp(builder, compiler, target));
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
-        rustc_cargo(build, &mut cargo);
+        rustc_cargo(builder, &mut cargo);
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc", compiler.stage));
+        let _folder = builder.fold_output(|| format!("stage{}-rustc", compiler.stage));
         println!("Checking compiler artifacts ({} -> {})", &compiler.host, target);
-        run_cargo(build,
+        run_cargo(builder,
                   &mut cargo,
-                  &librustc_stamp(build, compiler, target),
+                  &librustc_stamp(builder, compiler, target),
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
-        add_to_sysroot(&build, &libdir, &librustc_stamp(build, compiler, target));
+        add_to_sysroot(&builder, &libdir, &librustc_stamp(builder, compiler, target));
     }
 }
 
@@ -126,41 +124,40 @@ impl Step for Test {
     }
 
     fn run(self, builder: &Builder) {
-        let build = builder.build;
         let target = self.target;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, builder.config.build);
 
-        let out_dir = build.stage_out(compiler, Mode::Libtest);
-        build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
+        let out_dir = builder.stage_out(compiler, Mode::Libtest);
+        builder.clear_if_dirty(&out_dir, &libstd_stamp(builder, compiler, target));
         let mut cargo = builder.cargo(compiler, Mode::Libtest, target, "check");
-        test_cargo(build, &compiler, target, &mut cargo);
+        test_cargo(builder, &compiler, target, &mut cargo);
 
-        let _folder = build.fold_output(|| format!("stage{}-test", compiler.stage));
+        let _folder = builder.fold_output(|| format!("stage{}-test", compiler.stage));
         println!("Checking test artifacts ({} -> {})", &compiler.host, target);
-        run_cargo(build,
+        run_cargo(builder,
                   &mut cargo,
-                  &libtest_stamp(build, compiler, target),
+                  &libtest_stamp(builder, compiler, target),
                   true);
 
         let libdir = builder.sysroot_libdir(compiler, target);
-        add_to_sysroot(&build, &libdir, &libtest_stamp(build, compiler, target));
+        add_to_sysroot(builder, &libdir, &libtest_stamp(builder, compiler, target));
     }
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-pub fn libstd_stamp(build: &Build, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    build.cargo_out(compiler, Mode::Libstd, target).join(".libstd-check.stamp")
+pub fn libstd_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Libstd, target).join(".libstd-check.stamp")
 }
 
 /// Cargo's output path for libtest in a given stage, compiled by a particular
 /// compiler for the specified target.
-pub fn libtest_stamp(build: &Build, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    build.cargo_out(compiler, Mode::Libtest, target).join(".libtest-check.stamp")
+pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Libtest, target).join(".libtest-check.stamp")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular
 /// compiler for the specified target.
-pub fn librustc_stamp(build: &Build, compiler: Compiler, target: Interned<String>) -> PathBuf {
-    build.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
+pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
 }
