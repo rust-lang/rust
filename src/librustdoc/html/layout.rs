@@ -131,6 +131,10 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                     Search functions by type signature (e.g. \
                     <code>vec -> usize</code> or <code>* -> vec</code>)\
                 </p>\
+                <p>\
+                    Search multiple things at once by splitting your query with comma (e.g. \
+                    <code>str,u8</code> or <code>String,struct:Vec,test</code>)\
+                </p>\
             </div>\
         </div>\
     </aside>\
