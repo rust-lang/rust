@@ -263,7 +263,7 @@
 #debuginfo-only-std = false
 
 # Enable debuginfo for the extended tools: cargo, rls, rustfmt
-# Adding debuginfo increases their sizes by a factor of 3-4.
+# Adding debuginfo makes them several times larger.
 #debuginfo-tools = false
 
 # Whether or not jemalloc is built and enabled

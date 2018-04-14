@@ -624,7 +624,7 @@ impl<'a> Builder<'a> {
 
         if mode == Mode::Tool {
             // Tools like cargo and rls don't get debuginfo by default right now, but this can be
-            // enabled in the config.  Adding debuginfo increases their sizes by a factor of 3-4.
+            // enabled in the config.  Adding debuginfo makes them several times larger.
             if self.config.rust_debuginfo_tools {
                 cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
                 cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
