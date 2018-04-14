@@ -565,7 +565,7 @@ impl Token {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
@@ -589,6 +589,22 @@ pub enum Nonterminal {
     NtGenerics(ast::Generics),
     NtWhereClause(ast::WhereClause),
     NtArg(ast::Arg),
+}
+
+impl PartialEq for Nonterminal {
+    fn eq(&self, rhs: &Self) -> bool {
+        match (self, rhs) {
+            (NtIdent(ident_lhs, is_raw_lhs), NtIdent(ident_rhs, is_raw_rhs)) =>
+                ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs,
+            (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
+            (NtTT(tt_lhs), NtTT(tt_rhs)) => tt_lhs == tt_rhs,
+            // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
+            // correctly based on data from AST. This will prevent them from matching each other
+            // in macros. The comparison will become possible only when each nonterminal has an
+            // attached token stream from which it was parsed.
+            _ => false,
+        }
+    }
 }
 
 impl fmt::Debug for Nonterminal {
