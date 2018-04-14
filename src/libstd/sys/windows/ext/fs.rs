@@ -255,7 +255,7 @@ pub trait OpenOptionsExt {
     /// [Impersonation Levels]:
     ///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa379572.aspx
     #[stable(feature = "open_options_ext", since = "1.10.0")]
-    fn security_qos_flags(&mut self, flags: u32) -> &mut OpenOptions;
+    fn security_qos_flags(&mut self, flags: u32) -> &mut Self;
 }
 
 #[stable(feature = "open_options_ext", since = "1.10.0")]
