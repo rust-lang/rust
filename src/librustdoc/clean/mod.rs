@@ -1800,12 +1800,16 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         // Bounds in the type_params and lifetimes fields are repeated in the
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
-        let stripped_typarams = gens.types_depr().filter_map(|tp| {
-            if tp.name == keywords::SelfType.name().as_str() {
-                assert_eq!(tp.index, 0);
-                None
+        let stripped_typarams = gens.params.iter().filter_map(|param| {
+            if let ty::GenericParamDef::Type(ty) = param {
+                if ty.name == keywords::SelfType.name().as_str() {
+                    assert_eq!(ty.index, 0);
+                    None
+                } else {
+                    Some(ty.clean(cx))
+                }
             } else {
-                Some(tp.clean(cx))
+                None
             }
         }).collect::<Vec<_>>();
 

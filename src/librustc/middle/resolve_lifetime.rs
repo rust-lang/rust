@@ -1659,8 +1659,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     .entry(def_id)
                     .or_insert_with(|| {
                         tcx.generics_of(def_id)
-                            .types_depr()
-                            .map(|def| def.object_lifetime_default)
+                            .params
+                            .iter()
+                            .filter_map(|param| {
+                                param.get_type().and_then(|ty| Some(ty.object_lifetime_default))
+                            })
                             .collect()
                     })
             };

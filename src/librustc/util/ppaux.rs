@@ -25,6 +25,7 @@ use util::nodemap::{FxHashSet, FxHashMap};
 use std::cell::Cell;
 use std::fmt;
 use std::usize;
+use std::iter;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
@@ -335,17 +336,21 @@ impl PrintContext {
             }
 
             if !verbose {
-                if generics.types_depr().last().map_or(false, |def| def.has_default) {
-                    if let Some(substs) = tcx.lift(&substs) {
-                        let tps = substs.types().rev().skip(child_types);
-                        for (def, actual) in generics.types_depr().rev().zip(tps) {
-                            if !def.has_default {
-                                break;
+                let mut type_params =
+                    generics.params.iter().rev().filter_map(|param| param.get_type());
+                if let Some(last_ty) = type_params.next() {
+                    if last_ty.has_default {
+                        if let Some(substs) = tcx.lift(&substs) {
+                            let mut tps = substs.types().rev().skip(child_types);
+                            let zipped = iter::once((last_ty, tps.next().unwrap()))
+                                              .chain(type_params.zip(tps));
+                            for (ty, actual) in zipped {
+                                if !ty.has_default ||
+                                        tcx.type_of(ty.def_id).subst(tcx, substs) != actual {
+                                    break;
+                                }
+                                num_supplied_defaults += 1;
                             }
-                            if tcx.type_of(def.def_id).subst(tcx, substs) != actual {
-                                break;
-                            }
-                            num_supplied_defaults += 1;
                         }
                     }
                 }

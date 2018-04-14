@@ -291,8 +291,12 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let name = tcx.item_name(trait_ref.def_id);
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
-        let generic_map = generics.types_depr().map(|param| {
-            (param.name.to_string(), trait_ref.substs.type_for_def(param).to_string())
+        let generic_map = generics.params.iter().filter_map(|param| {
+            if let Some(ty) = param.get_type() {
+                Some((ty.name.to_string(), trait_ref.substs.type_for_def(&ty).to_string()))
+            } else {
+                None
+            }
         }).collect::<FxHashMap<String, String>>();
 
         let parser = Parser::new(&self.0);

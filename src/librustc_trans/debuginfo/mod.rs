@@ -429,7 +429,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         });
         names.extend(generics.params.iter().map(|param| {
             match param {
-                GenericParamDef::Lifetime(lt) => (Kind::Lifetime, lt.name.as_str()),
+                GenericParamDef::Lifetime(lt) => (Kind::Lifetime, lt.name),
                 GenericParamDef::Type(ty) => (Kind::Type, ty.name),
             }
         }));

@@ -847,16 +847,6 @@ impl<'a, 'gcx, 'tcx> Generics {
         count
     }
 
-    pub fn types_depr(&self) -> impl DoubleEndedIterator<Item = &TypeParamDef> {
-        self.params.iter().filter_map(|p| {
-            if let GenericParamDef::Type(ty) = p {
-                Some(ty)
-            } else {
-                None
-            }
-        })
-    }
-
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         if self.params.iter().any(|p| p.get_type().is_some()) {
             return true;
