@@ -108,8 +108,7 @@ declare_clippy_lint! {
 /// implements `IntoIterator`, so that possibly one value will be iterated,
 /// leading to some hard to find bugs. No one will want to write such code
 /// [except to win an Underhanded Rust
-/// Contest](https://www.reddit.
-/// com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
+/// Contest](https://www.reddit.com/r/rust/comments/3hb0wm/underhanded_rust_contest/cu5yuhr).
 ///
 /// **Known problems:** None.
 ///
