@@ -157,7 +157,8 @@ function main(argv) {
     // execQuery first parameter is built in getQuery (which takes in the search input).
     // execQuery last parameter is built in buildIndex.
     // buildIndex requires the hashmap from search-index.
-    var functionsToLoad = ["levenshtein", "validateResult", "getQuery", "buildIndex", "execQuery"];
+    var functionsToLoad = ["levenshtein", "validateResult", "getQuery", "buildIndex", "execQuery",
+                           "execSearch"];
 
     finalJS += 'window = { "currentCrate": "std" };\n';
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
@@ -174,7 +175,7 @@ function main(argv) {
                                'exports.QUERY = QUERY;exports.EXPECTED = EXPECTED;');
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;
-        var results = loaded.execQuery(loaded.getQuery(query), index);
+        var results = loaded.execSearch(loaded.getQuery(query), index);
         process.stdout.write('Checking "' + file + '" ... ');
         var error_text = [];
         for (var key in expected) {
