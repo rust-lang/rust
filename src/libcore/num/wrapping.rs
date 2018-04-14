@@ -630,6 +630,99 @@ macro_rules! wrapping_int_impl {
 
 wrapping_int_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
+macro_rules! wrapping_int_impl_signed {
+    ($($t:ty)*) => ($(
+        impl Wrapping<$t> {
+            /// Computes the absolute value of `self`.
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn abs(self) -> Wrapping<$t> {
+                Wrapping(self.0.wrapping_abs())
+            }
+
+            /// Returns a number representing sign of `self`.
+            ///
+            /// - `0` if the number is zero
+            /// - `1` if the number is positive
+            /// - `-1` if the number is negative
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn signum(self) -> Wrapping<$t> {
+                Wrapping(self.0.signum())
+            }
+
+            /// Returns `true` if `self` is positive and `false` if the number is zero or
+            /// negative.
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn is_positive(self) -> bool {
+                self.0.is_positive()
+            }
+
+            /// Returns `true` if `self` is negative and `false` if the number is zero or
+            /// positive.
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn is_negative(self) -> bool {
+                self.0.is_negative()
+            }
+        }
+    )*)
+}
+
+wrapping_int_impl_signed! { isize i8 i16 i32 i64 i128 }
+
+macro_rules! wrapping_int_impl_unsigned {
+    ($($t:ty)*) => ($(
+        impl Wrapping<$t> {
+            /// Returns `true` if and only if `self == 2^k` for some `k`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            ///
+            /// use std::num::Wrapping;
+            ///
+            /// assert!(Wrapping(16_u32).is_power_of_two());
+            /// assert!(!Wrapping(10_u64).is_power_of_two());
+            /// assert!(!Wrapping(0_usize).is_power_of_two());
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn is_power_of_two(self) -> bool {
+                self.0.is_power_of_two()
+            }
+
+            /// Returns the smallest power of two greater than or equal to `n`. If
+            /// the next power of two is greater than the type's maximum value,
+            /// the return value is wrapped to `0`.
+            ///
+            /// # Examples
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(wrapping_int_impl)]
+            ///
+            /// use std::num::Wrapping;
+            ///
+            /// assert_eq!(Wrapping(2_u32).next_power_of_two(), Wrapping(2));
+            /// assert_eq!(Wrapping(3_u64).next_power_of_two(), Wrapping(4));
+            /// assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
+            /// ```
+            #[inline]
+            #[unstable(feature = "wrapping_int_impl", issue = "32463")]
+            pub fn next_power_of_two(self) -> Self {
+                Wrapping(self.0.wrapping_next_power_of_two())
+            }
+        }
+    )*)
+}
+
+wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
