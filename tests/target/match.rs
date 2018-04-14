@@ -481,16 +481,6 @@ fn issue_2152() {
     }
 }
 
-// #2462
-// Preserve a `|` at the beginning of a match arm.
-fn match_with_beginning_vert() {
-    let x = Foo::A;
-    match x {
-        | Foo::A | Foo::B => println!("AB"),
-        | Foo::C => println!("C"),
-    }
-}
-
 // #2376
 // Preserve block around expressions with condition.
 fn issue_2376() {
@@ -511,5 +501,20 @@ fn issue_2376() {
                 x = Some(10);
             }
         }
+    }
+}
+
+// #2621
+// Strip leading `|` in match arm patterns
+fn issue_2621() {
+    let x = Foo::A;
+    match x {
+        Foo::A => println!("No vert single condition"),
+        Foo::B | Foo::C => println!("Center vert two conditions"),
+        Foo::D => println!("Preceding vert single condition"),
+        Foo::E | Foo::F => println!("Preceding vert over two lines"),
+        Foo::G | Foo::H => println!("Trailing vert over two lines"),
+        // Comment on its own line
+        Foo::I => println!("With comment"), // Comment after line
     }
 }
