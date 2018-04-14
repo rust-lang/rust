@@ -586,7 +586,7 @@ impl Config {
         };
         config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
         config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
-        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(default);
+        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(false);
 
         let default = debug == Some(true);
         config.debug_jemalloc = debug_jemalloc.unwrap_or(default);
