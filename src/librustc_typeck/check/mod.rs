@@ -5094,8 +5094,8 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for param in generics.params.iter() {
         let key = match param {
-            hir::GenericParamDef::Type(_) => ty::Kind::Type,
-            hir::GenericParamDef::Lifetime(_) => ty::Kind::Lifetime,
+            hir::GenericParam::Type(_) => ty::Kind::Type,
+            hir::GenericParam::Lifetime(_) => ty::Kind::Lifetime,
         };
         *param_counts.get_mut(&key).unwrap() += 1;
     }

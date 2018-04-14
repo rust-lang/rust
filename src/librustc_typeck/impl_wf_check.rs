@@ -119,13 +119,13 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               .zip(impl_hir_generics.params.iter()) {
         match (ty_param, hir_param) {
             // Disallow ANY unconstrained type parameters.
-            (ty::GenericParamDef::Type(ty_ty), hir::GenericParamDef::Type(hir_ty)) => {
+            (ty::GenericParamDef::Type(ty_ty), hir::GenericParam::Type(hir_ty)) => {
                 let param_ty = ty::ParamTy::for_def(ty_ty);
                 if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
                     report_unused_parameter(tcx, hir_ty.span, "type", &param_ty.to_string());
                 }
             }
-            (ty::GenericParamDef::Lifetime(ty_lt), hir::GenericParamDef::Lifetime(hir_lt)) => {
+            (ty::GenericParamDef::Lifetime(ty_lt), hir::GenericParam::Lifetime(hir_lt)) => {
                 let param = ctp::Parameter::from(ty_lt.to_early_bound_region_data());
                 if lifetimes_in_associated_types.contains(&param) && // (*)
                     !input_parameters.contains(&param) {
