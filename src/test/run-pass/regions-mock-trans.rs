@@ -12,7 +12,7 @@
 
 #![feature(allocator_api)]
 
-use std::heap::{Alloc, Heap, Layout};
+use std::alloc::{Alloc, Heap, Layout};
 use std::ptr::NonNull;
 
 struct arena(());

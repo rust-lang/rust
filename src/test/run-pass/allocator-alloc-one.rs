@@ -10,7 +10,7 @@
 
 #![feature(allocator_api, nonnull)]
 
-use std::heap::{Heap, Alloc};
+use std::alloc::{Heap, Alloc};
 
 fn main() {
     unsafe {

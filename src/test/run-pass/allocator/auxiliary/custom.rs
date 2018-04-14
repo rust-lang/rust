@@ -13,7 +13,7 @@
 #![feature(heap_api, allocator_api)]
 #![crate_type = "rlib"]
 
-use std::heap::{GlobalAlloc, System, Layout, Opaque};
+use std::alloc::{GlobalAlloc, System, Layout, Opaque};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct A(pub AtomicUsize);
