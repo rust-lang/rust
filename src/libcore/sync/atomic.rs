@@ -1425,8 +1425,8 @@ assert_eq!(foo.load(Ordering::SeqCst), 0b011110);
 
             doc_comment! {
                 concat!("Fetches the value, and applies a function to it that returns an optional
-new value. Returns a `Result` (`Ok(_)` if the function returned `Some(_)`, else `Err(_)`) of the
-previous value.
+new value. Returns a `Result` of `Ok(previous_value)` if the function returned `Some(_)`, else
+`Err(previous_value)`.
 
 Note: This may call the function multiple times if the value has been changed from other threads in
 the meantime, as long as the function returns `Some(_)`, but the function will have been applied
