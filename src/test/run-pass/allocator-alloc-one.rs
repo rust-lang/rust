@@ -10,15 +10,15 @@
 
 #![feature(allocator_api, nonnull)]
 
-use std::alloc::{Heap, Alloc};
+use std::alloc::{Alloc, Global};
 
 fn main() {
     unsafe {
-        let ptr = Heap.alloc_one::<i32>().unwrap_or_else(|_| {
-            Heap.oom()
+        let ptr = Global.alloc_one::<i32>().unwrap_or_else(|_| {
+            Global.oom()
         });
         *ptr.as_ptr() = 4;
         assert_eq!(*ptr.as_ptr(), 4);
-        Heap.dealloc_one(ptr);
+        Global.dealloc_one(ptr);
     }
 }
