@@ -590,7 +590,7 @@ declare_features! (
     // Allows #[target_feature(...)]
     (accepted, target_feature, "1.27.0", None, None),
     // Trait object syntax with `dyn` prefix
-    (accepted, dyn_trait, "1.22.0", Some(44662), None),
+    (accepted, dyn_trait, "1.27.0", Some(44662), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
