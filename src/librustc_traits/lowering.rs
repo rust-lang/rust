@@ -124,13 +124,13 @@ crate fn program_clauses_for<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
         hir::map::Node::NodeItem(item) => match item.node {
             hir::ItemTrait(..) => program_clauses_for_trait(tcx, def_id),
             hir::ItemImpl(..) => program_clauses_for_impl(tcx, def_id),
-            _ => Lrc::new(vec![]),
+            _ => Lrc::new(tcx.mk_clauses(iter::empty::<Clause>())),
         }
         hir::map::Node::NodeImplItem(item) => {
             if let hir::ImplItemKind::Type(..) = item.node {
                 program_clauses_for_associated_type_value(tcx, def_id)
             } else {
-                Lrc::new(vec![])
+                Lrc::new(tcx.mk_clauses(iter::empty::<Clause>()))
             }
         },
 
@@ -247,7 +247,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
 pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_id: DefId,
-) -> Lrc<Vec<Clause<'tcx>>> {
+) -> Lrc<&'tcx Slice<Clause<'tcx>>> {
     // Rule Normalize-From-Impl (see rustc guide)
     //
     // ```impl<P0..Pn> Trait<A1..An> for A0
@@ -289,9 +289,11 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     // `Normalize(... -> T) :- ...`
     let clause = ProgramClause {
         goal: normalize_goal,
-        hypotheses: where_clauses.into_iter().map(|wc| wc.into()).collect(),
+        hypotheses: tcx.mk_goals(
+            where_clauses.into_iter().map(|wc| Goal::from_poly_domain_goal(wc, tcx))
+        ),
     };
-    Lrc::new(vec![Clause::ForAll(ty::Binder::dummy(clause))])
+    Lrc::new(tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause)))))
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
