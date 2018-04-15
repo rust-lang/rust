@@ -32,7 +32,7 @@ use hir::print::Nested;
 use hir::svh::Svh;
 use util::nodemap::{DefIdMap, FxHashMap};
 
-use arena::TypedArena;
+use arena::SyncTypedArena;
 use std::io;
 use ty::TyCtxt;
 
@@ -219,7 +219,7 @@ impl<'hir> MapEntry<'hir> {
 pub struct Forest {
     krate: Crate,
     pub dep_graph: DepGraph,
-    inlined_bodies: TypedArena<Body>
+    inlined_bodies: SyncTypedArena<Body>
 }
 
 impl Forest {
@@ -227,7 +227,7 @@ impl Forest {
         Forest {
             krate,
             dep_graph: dep_graph.clone(),
-            inlined_bodies: TypedArena::new()
+            inlined_bodies: SyncTypedArena::new()
         }
     }
 

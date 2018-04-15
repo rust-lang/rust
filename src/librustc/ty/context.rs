@@ -57,7 +57,7 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
-use arena::{TypedArena, DroplessArena};
+use arena::{TypedArena, SyncDroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::any::Any;
@@ -82,14 +82,14 @@ use hir;
 
 pub struct AllArenas<'tcx> {
     pub global: GlobalArenas<'tcx>,
-    pub interner: DroplessArena,
+    pub interner: SyncDroplessArena,
 }
 
 impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
             global: GlobalArenas::new(),
-            interner: DroplessArena::new(),
+            interner: SyncDroplessArena::new(),
         }
     }
 }
@@ -129,7 +129,7 @@ type InternedSet<'tcx, T> = Lock<FxHashSet<Interned<'tcx, T>>>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc are allocated from
-    arena: &'tcx DroplessArena,
+    arena: &'tcx SyncDroplessArena,
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
@@ -146,7 +146,7 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx DroplessArena) -> CtxtInterners<'tcx> {
+    fn new(arena: &'tcx SyncDroplessArena) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
@@ -1554,7 +1554,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
     pub fn enter_local<F, R>(
         &self,
-        arena: &'tcx DroplessArena,
+        arena: &'tcx SyncDroplessArena,
         f: F
     ) -> R
     where
