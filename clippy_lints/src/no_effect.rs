@@ -56,7 +56,6 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
         Expr_::ExprType(ref inner, _) |
         Expr_::ExprUnary(_, ref inner) |
         Expr_::ExprField(ref inner, _) |
-        Expr_::ExprTupField(ref inner, _) |
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => has_no_effect(cx, inner),
         Expr_::ExprStruct(_, ref fields, ref base) => {
@@ -143,7 +142,6 @@ fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Exp
         Expr_::ExprType(ref inner, _) |
         Expr_::ExprUnary(_, ref inner) |
         Expr_::ExprField(ref inner, _) |
-        Expr_::ExprTupField(ref inner, _) |
         Expr_::ExprAddrOf(_, ref inner) |
         Expr_::ExprBox(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         Expr_::ExprStruct(_, ref fields, ref base) => if has_drop(cx, expr) {

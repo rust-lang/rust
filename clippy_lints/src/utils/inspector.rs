@@ -274,12 +274,6 @@ fn print_expr(cx: &LateContext, expr: &hir::Expr, indent: usize) {
             println!("{}struct expr:", ind);
             print_expr(cx, e, indent + 1);
         },
-        hir::ExprTupField(ref e, ref idx) => {
-            println!("{}TupField", ind);
-            println!("{}field index: {}", ind, idx.node);
-            println!("{}tuple expr:", ind);
-            print_expr(cx, e, indent + 1);
-        },
         hir::ExprIndex(ref arr, ref idx) => {
             println!("{}Index", ind);
             println!("{}array expr:", ind);

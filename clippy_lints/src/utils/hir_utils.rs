@@ -131,7 +131,6 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     && over(lf, rf, |l, r| self.eq_field(l, r))
             },
             (&ExprTup(ref l_tup), &ExprTup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
-            (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => li.node == ri.node && self.eq_expr(le, re),
             (&ExprUnary(l_op, ref le), &ExprUnary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprArray(ref l), &ExprArray(ref r)) => self.eq_exprs(l, r),
             (&ExprWhile(ref lc, ref lb, ref ll), &ExprWhile(ref rc, ref rb, ref rl)) => {
@@ -495,13 +494,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_) -> _ = ExprTup;
                 c.hash(&mut self.s);
                 self.hash_exprs(tup);
-            },
-            ExprTupField(ref le, li) => {
-                let c: fn(_, _) -> _ = ExprTupField;
-                c.hash(&mut self.s);
-
-                self.hash_expr(le);
-                li.node.hash(&mut self.s);
             },
             ExprType(ref e, ref _ty) => {
                 let c: fn(_, _) -> _ = ExprType;
