@@ -444,6 +444,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         infinite_iter::MAYBE_INFINITE_ITER,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
         map_unit_fn::OPTION_MAP_UNIT_FN,
+        map_unit_fn::RESULT_MAP_UNIT_FN,
         matches::SINGLE_MATCH_ELSE,
         methods::FILTER_MAP,
         methods::OPTION_MAP_UNWRAP_OR,
