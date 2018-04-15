@@ -40,11 +40,10 @@ impl LintPass for Pass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprAssign(ref target, _) = expr.node {
-            match target.node {
-                ExprField(ref base, _) => if is_temporary(base) && !is_adjusted(cx, base) {
+            if let ExprField(ref base, _) = target.node {
+                if is_temporary(base) && !is_adjusted(cx, base) {
                     span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
-                },
-                _ => (),
+                }
             }
         }
     }
