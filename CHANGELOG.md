@@ -710,6 +710,7 @@ All notable changes to this project will be documented in this file.
 [`nonsensical_open_options`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#nonsensical_open_options
 [`not_unsafe_ptr_arg_deref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref
 [`ok_expect`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ok_expect
+[`map_unit_fn`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_unit_fn
 [`op_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#op_ref
 [`option_map_or_none`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_or_none
 [`option_map_unwrap_or`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_unwrap_or
