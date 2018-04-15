@@ -2223,7 +2223,7 @@ pub trait Iterator {
         Sum::sum(self)
     }
 
-    /// Iterates over the entire iterator, multiplying all the elements
+    /// Iterates over the entire iterator, multiplying all the elements.
     ///
     /// An empty iterator returns the one value of the type.
     ///
