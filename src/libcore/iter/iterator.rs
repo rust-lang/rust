@@ -2251,6 +2251,32 @@ pub trait Iterator {
         Product::product(self)
     }
 
+    /// Eagerly consume the iterator, evaluating all the elements.
+    ///
+    /// This is primarily useful for evaluating the effects of an iterator that
+    /// has previously been created. To evaluate the effects of an iterator
+    /// immediately, it is likely better to use [`for_each`].
+    ///
+    /// [`for_each`]: #method.for_each
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Prepare an iterator with side effects...
+    /// let count_aloud = 1..=10.map(|x| println!("{}", x));
+    ///
+    /// // ...
+    ///
+    /// // Trigger the effects!
+    /// count_aloud.exhaust();
+    ///
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_exhaust", issue = "44546")]
+    fn exhaust(self) where Self: Sized {
+        for _ in self {}
+    }
+
     /// Lexicographically compares the elements of this `Iterator` with those
     /// of another.
     #[stable(feature = "iter_order", since = "1.5.0")]
