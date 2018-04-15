@@ -938,16 +938,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn read_global_as_value(&self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        if gid.promoted.is_none() {
-            let cached = self
+        if self.tcx.is_static(gid.instance.def_id()).is_some() {
+            let alloc_id = self
                 .tcx
                 .interpret_interner
-                .get_cached(gid.instance.def_id());
-            if let Some(alloc_id) = cached {
-                let layout = self.layout_of(ty)?;
-                let ptr = MemoryPointer::new(alloc_id, 0);
-                return Ok(Value::ByRef(ptr.into(), layout.align))
-            }
+                .cache_static(gid.instance.def_id());
+            let layout = self.layout_of(ty)?;
+            let ptr = MemoryPointer::new(alloc_id, 0);
+            return Ok(Value::ByRef(ptr.into(), layout.align))
         }
         let cv = self.const_eval(gid)?;
         self.const_to_value(&cv.val, ty)

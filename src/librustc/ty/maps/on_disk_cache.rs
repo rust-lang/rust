@@ -77,12 +77,11 @@ pub struct OnDiskCache<'sess> {
     // `serialized_data`.
     prev_diagnostics_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
-    // A cache to ensure we don't read allocations twice
-    interpret_alloc_cache: RefCell<FxHashMap<usize, interpret::AllocId>>,
+    // Alloc indices to memory location map
+    prev_interpret_alloc_index: Vec<AbsoluteBytePos>,
 
-    // A map from positions to size of the serialized allocation
-    // so we can skip over already processed allocations
-    interpret_alloc_size: RefCell<FxHashMap<usize, usize>>,
+    /// Deserialization: A cache to ensure we don't read allocations twice
+    interpret_alloc_cache: RefCell<FxHashMap<usize, interpret::AllocId>>,
 }
 
 // This type is used only for (de-)serialization.
@@ -92,6 +91,8 @@ struct Footer {
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     query_result_index: EncodedQueryResultIndex,
     diagnostics_index: EncodedQueryResultIndex,
+    // the location of all allocations
+    interpret_alloc_index: Vec<AbsoluteBytePos>,
 }
 
 type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
@@ -148,8 +149,8 @@ impl<'sess> OnDiskCache<'sess> {
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_diagnostics_index: footer.diagnostics_index.into_iter().collect(),
             synthetic_expansion_infos: Lock::new(FxHashMap()),
+            prev_interpret_alloc_index: footer.interpret_alloc_index,
             interpret_alloc_cache: RefCell::new(FxHashMap::default()),
-            interpret_alloc_size: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -165,8 +166,8 @@ impl<'sess> OnDiskCache<'sess> {
             query_result_index: FxHashMap(),
             prev_diagnostics_index: FxHashMap(),
             synthetic_expansion_infos: Lock::new(FxHashMap()),
+            prev_interpret_alloc_index: Vec::new(),
             interpret_alloc_cache: RefCell::new(FxHashMap::default()),
-            interpret_alloc_size: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -199,7 +200,8 @@ impl<'sess> OnDiskCache<'sess> {
                 type_shorthands: FxHashMap(),
                 predicate_shorthands: FxHashMap(),
                 expn_info_shorthands: FxHashMap(),
-                interpret_alloc_shorthands: FxHashMap(),
+                interpret_allocs: FxHashMap(),
+                interpret_allocs_inverse: Vec::new(),
                 codemap: CachingCodemapView::new(tcx.sess.codemap()),
                 file_to_file_index,
             };
@@ -277,6 +279,31 @@ impl<'sess> OnDiskCache<'sess> {
                 diagnostics_index
             };
 
+            let interpret_alloc_index = {
+                let mut interpret_alloc_index = Vec::new();
+                let mut n = 0;
+                loop {
+                    let new_n = encoder.interpret_allocs_inverse.len();
+                    // if we have found new ids, serialize those, too
+                    if n == new_n {
+                        // otherwise, abort
+                        break;
+                    }
+                    for idx in n..new_n {
+                        let id = encoder.interpret_allocs_inverse[idx];
+                        let pos = AbsoluteBytePos::new(encoder.position());
+                        interpret_alloc_index.push(pos);
+                        interpret::specialized_encode_alloc_id(
+                            &mut encoder,
+                            tcx,
+                            id,
+                        )?;
+                    }
+                    n = new_n;
+                }
+                interpret_alloc_index
+            };
+
             let sorted_cnums = sorted_cnums_including_local_crate(tcx);
             let prev_cnums: Vec<_> = sorted_cnums.iter().map(|&cnum| {
                 let crate_name = tcx.original_crate_name(cnum).as_str().to_string();
@@ -291,6 +318,7 @@ impl<'sess> OnDiskCache<'sess> {
                 prev_cnums,
                 query_result_index,
                 diagnostics_index,
+                interpret_alloc_index,
             })?;
 
             // Encode the position of the footer as the last 8 bytes of the
@@ -396,8 +424,8 @@ impl<'sess> OnDiskCache<'sess> {
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             synthetic_expansion_infos: &self.synthetic_expansion_infos,
+            prev_interpret_alloc_index: &self.prev_interpret_alloc_index,
             interpret_alloc_cache: &self.interpret_alloc_cache,
-            interpret_alloc_size: &self.interpret_alloc_size,
         };
 
         match decode_tagged(&mut decoder, dep_node_index) {
@@ -460,7 +488,8 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     file_index_to_file: &'x Lock<FxHashMap<FileMapIndex, Lrc<FileMap>>>,
     file_index_to_stable_id: &'x FxHashMap<FileMapIndex, StableFilemapId>,
     interpret_alloc_cache: &'x RefCell<FxHashMap<usize, interpret::AllocId>>,
-    interpret_alloc_size: &'x RefCell<FxHashMap<usize, usize>>,
+    /// maps from index in the cache file to location in the cache file
+    prev_interpret_alloc_index: &'x [AbsoluteBytePos],
 }
 
 impl<'a, 'tcx, 'x> CacheDecoder<'a, 'tcx, 'x> {
@@ -584,36 +613,29 @@ implement_ty_decoder!( CacheDecoder<'a, 'tcx, 'x> );
 impl<'a, 'tcx, 'x> SpecializedDecoder<interpret::AllocId> for CacheDecoder<'a, 'tcx, 'x> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
         let tcx = self.tcx;
-        let pos = TyDecoder::position(self);
-        trace!("specialized_decode_alloc_id: {:?}", pos);
-        if let Some(cached) = self.interpret_alloc_cache.borrow().get(&pos).cloned() {
-            // if there's no end position we are currently deserializing a recursive
-            // allocation
-            if let Some(end) = self.interpret_alloc_size.borrow().get(&pos).cloned() {
-                trace!("{} already cached as {:?}", pos, cached);
-                // skip ahead
-                self.opaque.set_position(end);
-                return Ok(cached)
-            }
+        let idx = usize::decode(self)?;
+        trace!("loading index {}", idx);
+
+        if let Some(cached) = self.interpret_alloc_cache.borrow().get(&idx).cloned() {
+            trace!("loading alloc id {:?} from alloc_cache", cached);
+            return Ok(cached);
         }
-        let id = interpret::specialized_decode_alloc_id(
-            self,
-            tcx,
-            pos,
-            |this, pos, alloc_id| {
-                assert!(this.interpret_alloc_cache.borrow_mut().insert(pos, alloc_id).is_none());
-            },
-            |this, shorthand| {
-                // need to load allocation
-                this.with_position(shorthand, |this| interpret::AllocId::decode(this))
-            }
-        )?;
-        assert!(self
-            .interpret_alloc_size
-            .borrow_mut()
-            .insert(pos, TyDecoder::position(self))
-            .is_none());
-        Ok(id)
+        let pos = self.prev_interpret_alloc_index[idx].to_usize();
+        trace!("loading position {}", pos);
+        self.with_position(pos, |this| {
+            interpret::specialized_decode_alloc_id(
+                this,
+                tcx,
+                |this, alloc_id| {
+                    trace!("caching idx {} for alloc id {} at position {}", idx, alloc_id, pos);
+                    assert!(this
+                        .interpret_alloc_cache
+                        .borrow_mut()
+                        .insert(idx, alloc_id)
+                        .is_none());
+                },
+            )
+        })
     }
 }
 impl<'a, 'tcx, 'x> SpecializedDecoder<Span> for CacheDecoder<'a, 'tcx, 'x> {
@@ -777,7 +799,8 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
     type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
     expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
-    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
+    interpret_allocs: FxHashMap<interpret::AllocId, usize>,
+    interpret_allocs_inverse: Vec<interpret::AllocId>,
     codemap: CachingCodemapView<'tcx>,
     file_to_file_index: FxHashMap<*const FileMap, FileMapIndex>,
 }
@@ -815,26 +838,17 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<interpret::AllocId> for CacheEncoder<
 {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
-        let tcx = self.tcx;
-        let pos = self.position();
-        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
-            Entry::Occupied(entry) => Some(entry.get().clone()),
-            Entry::Vacant(entry) => {
-                // ensure that we don't place any AllocIds at the very beginning
-                // of the metadata file, because that would end up making our indices
-                // not special. It is essentially impossible for that to happen,
-                // but let's make sure
-                assert!(pos >= interpret::SHORTHAND_START);
-                entry.insert(pos);
-                None
+        let index = match self.interpret_allocs.entry(*alloc_id) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                let idx = self.interpret_allocs_inverse.len();
+                self.interpret_allocs_inverse.push(*alloc_id);
+                e.insert(idx);
+                idx
             },
         };
-        interpret::specialized_encode_alloc_id(
-            self,
-            tcx,
-            *alloc_id,
-            shorthand,
-        )
+
+        index.encode(self)
     }
 }
 

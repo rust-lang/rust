@@ -59,7 +59,9 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
-    interpret_alloc_shorthands: FxHashMap<interpret::AllocId, usize>,
+
+    interpret_allocs: FxHashMap<interpret::AllocId, usize>,
+    interpret_allocs_inverse: Vec<interpret::AllocId>,
 
     // This is used to speed up Span encoding.
     filemap_cache: Lrc<FileMap>,
@@ -197,25 +199,17 @@ impl<'a, 'tcx> SpecializedEncoder<Ty<'tcx>> for EncodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedEncoder<interpret::AllocId> for EncodeContext<'a, 'tcx> {
     fn specialized_encode(&mut self, alloc_id: &interpret::AllocId) -> Result<(), Self::Error> {
         use std::collections::hash_map::Entry;
-        let tcx = self.tcx;
-        let pos = self.position();
-        let shorthand = match self.interpret_alloc_shorthands.entry(*alloc_id) {
-            Entry::Occupied(entry) => Some(entry.get().clone()),
-            Entry::Vacant(entry) => {
-                // ensure that we don't place any AllocIds at the very beginning
-                // of the metadata file, because that would end up making our indices
-                // not special. This is essentially impossible, but let's make sure
-                assert!(pos >= interpret::SHORTHAND_START);
-                entry.insert(pos);
-                None
+        let index = match self.interpret_allocs.entry(*alloc_id) {
+            Entry::Occupied(e) => *e.get(),
+            Entry::Vacant(e) => {
+                let idx = self.interpret_allocs_inverse.len();
+                self.interpret_allocs_inverse.push(*alloc_id);
+                e.insert(idx);
+                idx
             },
         };
-        interpret::specialized_encode_alloc_id(
-            self,
-            tcx,
-            *alloc_id,
-            shorthand,
-        )
+
+        index.encode(self)
     }
 }
 
@@ -271,7 +265,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 start - min_end
             }
             LazyState::Previous(last_min_end) => {
-                assert!(last_min_end <= position);
+                assert!(
+                    last_min_end <= position,
+                    "make sure that the calls to `lazy*` \
+                    are in the same order as the metadata fields",
+                );
                 position - last_min_end
             }
         };
@@ -445,21 +443,52 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             IsolatedEncoder::encode_wasm_custom_sections,
             &wasm_custom_sections);
 
-        // Encode and index the items.
+        let tcx = self.tcx;
+
+        // Encode the items.
         i = self.position();
         let items = self.encode_info_for_items();
         let item_bytes = self.position() - i;
 
+        // Encode the allocation index
+        let interpret_alloc_index = {
+            let mut interpret_alloc_index = Vec::new();
+            let mut n = 0;
+            trace!("beginning to encode alloc ids");
+            loop {
+                let new_n = self.interpret_allocs_inverse.len();
+                // if we have found new ids, serialize those, too
+                if n == new_n {
+                    // otherwise, abort
+                    break;
+                }
+                trace!("encoding {} further alloc ids", new_n - n);
+                for idx in n..new_n {
+                    let id = self.interpret_allocs_inverse[idx];
+                    let pos = self.position() as u32;
+                    interpret_alloc_index.push(pos);
+                    interpret::specialized_encode_alloc_id(
+                        self,
+                        tcx,
+                        id,
+                    ).unwrap();
+                }
+                n = new_n;
+            }
+            self.lazy_seq(interpret_alloc_index)
+        };
+
+        // Index the items
         i = self.position();
         let index = items.write_index(&mut self.opaque.cursor);
         let index_bytes = self.position() - i;
 
-        let tcx = self.tcx;
         let link_meta = self.link_meta;
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
         let has_default_lib_allocator =
             attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
+
         let root = self.lazy(&CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
             extra_filename: tcx.sess.opts.cg.extra_filename.clone(),
@@ -491,6 +520,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             impls,
             exported_symbols,
             wasm_custom_sections,
+            interpret_alloc_index,
             index,
         });
 
@@ -1760,7 +1790,8 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
             filemap_cache: tcx.sess.codemap().files()[0].clone(),
-            interpret_alloc_shorthands: Default::default(),
+            interpret_allocs: Default::default(),
+            interpret_allocs_inverse: Default::default(),
         };
 
         // Encode the rustc version string in a predictable location.

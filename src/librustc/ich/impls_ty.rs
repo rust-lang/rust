@@ -398,12 +398,12 @@ impl_stable_hash_for!(struct mir::interpret::MemoryPointer {
 
 enum AllocDiscriminant {
     Alloc,
-    ExternStatic,
+    Static,
     Function,
 }
 impl_stable_hash_for!(enum self::AllocDiscriminant {
     Alloc,
-    ExternStatic,
+    Static,
     Function
 });
 
@@ -414,24 +414,25 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
         hasher: &mut StableHasher<W>,
     ) {
         ty::tls::with_opt(|tcx| {
+            trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            if let Some(alloc) = tcx.interpret_interner.get_alloc(*self) {
+            if let Some(def_id) = tcx.interpret_interner.get_static(*self) {
+                AllocDiscriminant::Static.hash_stable(hcx, hasher);
+                trace!("hashing {:?} as static {:?}", *self, def_id);
+                def_id.hash_stable(hcx, hasher);
+            } else if let Some(alloc) = tcx.interpret_interner.get_alloc(*self) {
                 AllocDiscriminant::Alloc.hash_stable(hcx, hasher);
                 if hcx.alloc_id_recursion_tracker.insert(*self) {
-                    tcx
-                        .interpret_interner
-                        .get_corresponding_static_def_id(*self)
-                        .hash_stable(hcx, hasher);
+                    trace!("hashing {:?} as alloc {:#?}", *self, alloc);
                     alloc.hash_stable(hcx, hasher);
                     assert!(hcx.alloc_id_recursion_tracker.remove(self));
+                } else {
+                    trace!("skipping hashing of {:?} due to recursion", *self);
                 }
             } else if let Some(inst) = tcx.interpret_interner.get_fn(*self) {
+                trace!("hashing {:?} as fn {:#?}", *self, inst);
                 AllocDiscriminant::Function.hash_stable(hcx, hasher);
                 inst.hash_stable(hcx, hasher);
-            } else if let Some(def_id) = tcx.interpret_interner
-                                            .get_corresponding_static_def_id(*self) {
-                AllocDiscriminant::ExternStatic.hash_stable(hcx, hasher);
-                def_id.hash_stable(hcx, hasher);
             } else {
                 bug!("no allocation for {}", self);
             }

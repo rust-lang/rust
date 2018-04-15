@@ -956,18 +956,16 @@ struct InterpretInternerInner<'tcx> {
     /// Allows obtaining const allocs via a unique identifier
     alloc_by_id: FxHashMap<interpret::AllocId, &'tcx interpret::Allocation>,
 
-    /// Reverse map of `alloc_cache`
-    global_cache: FxHashMap<interpret::AllocId, DefId>,
+    /// Allows obtaining static def ids via a unique id
+    statics: FxHashMap<interpret::AllocId, DefId>,
 
     /// The AllocId to assign to the next new regular allocation.
     /// Always incremented, never gets smaller.
     next_id: interpret::AllocId,
 
-    /// Allows checking whether a static already has an allocation
-    ///
-    /// This is only important for detecting statics referring to themselves
-    // FIXME(oli-obk) move it to the EvalContext?
-    alloc_cache: FxHashMap<DefId, interpret::AllocId>,
+    /// Inverse map of `statics`
+    /// Used so we don't allocate a new pointer every time we need one
+    static_cache: FxHashMap<DefId, interpret::AllocId>,
 
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
     /// allocations for string and bytestring literals.
@@ -1001,30 +999,25 @@ impl<'tcx> InterpretInterner<'tcx> {
         self.inner.borrow().alloc_by_id.get(&id).cloned()
     }
 
-    pub fn get_cached(
+    pub fn cache_static(
         &self,
         static_id: DefId,
-    ) -> Option<interpret::AllocId> {
-        self.inner.borrow().alloc_cache.get(&static_id).cloned()
-    }
-
-    pub fn cache(
-        &self,
-        static_id: DefId,
-        alloc_id: interpret::AllocId,
-    ) {
-        let mut inner = self.inner.borrow_mut();
-        inner.global_cache.insert(alloc_id, static_id);
-        if let Some(old) = inner.alloc_cache.insert(static_id, alloc_id) {
-            bug!("tried to cache {:?}, but was already existing as {:#?}", static_id, old);
+    ) -> interpret::AllocId {
+        if let Some(alloc_id) = self.inner.borrow().static_cache.get(&static_id).cloned() {
+            return alloc_id;
         }
+        let alloc_id = self.reserve();
+        let mut inner = self.inner.borrow_mut();
+        inner.static_cache.insert(static_id, alloc_id);
+        inner.statics.insert(alloc_id, static_id);
+        alloc_id
     }
 
-    pub fn get_corresponding_static_def_id(
+    pub fn get_static(
         &self,
         ptr: interpret::AllocId,
     ) -> Option<DefId> {
-        self.inner.borrow().global_cache.get(&ptr).cloned()
+        self.inner.borrow().statics.get(&ptr).cloned()
     }
 
     pub fn intern_at_reserved(

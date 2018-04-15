@@ -1142,7 +1142,7 @@ fn collect_miri<'a, 'tcx>(
     alloc_id: AllocId,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
-    if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(alloc_id) {
+    if let Some(did) = tcx.interpret_interner.get_static(alloc_id) {
         let instance = Instance::mono(tcx, did);
         if should_monomorphize_locally(tcx, &instance) {
             trace!("collecting static {:?}", did);
