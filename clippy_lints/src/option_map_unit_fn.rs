@@ -89,18 +89,27 @@ fn reduce_unit_expression<'a>(cx: &LateContext, expr: &'a hir::Expr) -> Option<S
         hir::ExprBlock(ref block) => {
             match (&block.stmts[..], block.expr.as_ref()) {
                 (&[], Some(inner_expr)) => {
-                    // Reduce `{ X }` to `X`
+                    // If block only contains an expression,
+                    // reduce `{ X }` to `X`
                     reduce_unit_expression(cx, inner_expr)
                 },
                 (&[ref inner_stmt], None) => {
-                    // Reduce `{ X; }` to `X` or `X;`
+                    // If block only contains statements,
+                    // reduce `{ X; }` to `X` or `X;`
                     match inner_stmt.node {
                         hir::StmtDecl(ref d, _) => Some(d.span),
                         hir::StmtExpr(ref e, _) => Some(e.span),
                         hir::StmtSemi(_, _) => Some(inner_stmt.span),
                     }
                 },
-                _ => None,
+                _ => {
+                    // For closures that contain multiple statements
+                    // it's difficult to get a correct suggestion span
+                    // for all cases (multi-line closures specifically)
+                    //
+                    // We do not attempt to build a suggestion for those right now.
+                    None
+                }
             }
         },
         _ => None,
@@ -142,25 +151,36 @@ fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_ar
                            OPTION_MAP_UNIT_FN,
                            expr.span,
                            msg,
-                           |db| { db.span_suggestion(stmt.span, "try this", suggestion); });
+                           |db| { db.span_approximate_suggestion(stmt.span, "try this", suggestion); });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = "called `map(f)` on an Option value where `f` is a unit closure";
+
+        enum Suggestion {
+            Full(String),
+            Approx(String)
+        }
+
         let suggestion = if let Some(expr_span) = reduce_unit_expression(cx, closure_expr) {
-            format!("if let Some({0}) = {1} {{ {2} }}",
-                    snippet(cx, binding.pat.span, "_"),
-                    snippet(cx, var_arg.span, "_"),
-                    snippet(cx, expr_span, "_"))
+            Suggestion::Full(
+                format!("if let Some({0}) = {1} {{ {2} }}",
+                        snippet(cx, binding.pat.span, "_"),
+                        snippet(cx, var_arg.span, "_"),
+                        snippet(cx, expr_span, "_"))
+            )
         } else {
-            format!("if let Some({0}) = {1} {{ ... }}",
-                    snippet(cx, binding.pat.span, "_"),
-                    snippet(cx, var_arg.span, "_"))
+            Suggestion::Approx(
+                format!("if let Some({0}) = {1} {{ ... }}",
+                        snippet(cx, binding.pat.span, "_"),
+                        snippet(cx, var_arg.span, "_"))
+            )
         };
 
-        span_lint_and_then(cx,
-                           OPTION_MAP_UNIT_FN,
-                           expr.span,
-                           msg,
-                           |db| { db.span_suggestion(stmt.span, "try this", suggestion); });
+        span_lint_and_then(cx, OPTION_MAP_UNIT_FN, expr.span, msg, |db| {
+            match suggestion {
+                Suggestion::Full(sugg) => db.span_suggestion(stmt.span, "try this", sugg),
+                Suggestion::Approx(sugg) => db.span_approximate_suggestion(stmt.span, "try this", sugg),
+            };
+        });
     }
 }
 

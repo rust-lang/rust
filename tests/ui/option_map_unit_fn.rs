@@ -78,4 +78,12 @@ fn main() {
     x.field.map(|value| { do_nothing(value); do_nothing(value) });
 
     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+
+    // Suggestion for the let block should be `{ ... }` as it's too difficult to build a
+    // proper suggestion for these cases
+    x.field.map(|value| {
+        do_nothing(value);
+        do_nothing(value)
+    });
+    x.field.map(|value| { do_nothing(value); do_nothing(value); });
 }

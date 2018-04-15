@@ -152,5 +152,27 @@ error: called `map(f)` on an Option value where `f` is a unit closure
    |     |
    |     help: try this: `if let Some(value) = x.field { ... }`
 
-error: aborting due to 19 previous errors
+error: called `map(f)` on an Option value where `f` is a unit closure
+  --> $DIR/option_map_unit_fn.rs:84:5
+   |
+84 |        x.field.map(|value| {
+   |   _____^
+   |  |_____|
+   | ||
+85 | ||         do_nothing(value);
+86 | ||         do_nothing(value)
+87 | ||     });
+   | ||______^- help: try this: `if let Some(value) = x.field { ... }`
+   | |_______|
+   |
+
+error: called `map(f)` on an Option value where `f` is a unit closure
+  --> $DIR/option_map_unit_fn.rs:88:5
+   |
+88 |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
+   |     |
+   |     help: try this: `if let Some(value) = x.field { ... }`
+
+error: aborting due to 21 previous errors
 
