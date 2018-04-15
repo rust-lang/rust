@@ -112,6 +112,8 @@ mod prim_bool { }
 ///
 /// # `!` and generics
 ///
+/// ## Infalliable errors
+///
 /// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
 /// trait:
 ///
@@ -140,9 +142,59 @@ mod prim_bool { }
 /// [`Ok`] variant. This illustrates another behaviour of `!` - it can be used to "delete" certain
 /// enum variants from generic types like `Result`.
 ///
+/// ## Infinite loops
+///
+/// While [`Result<T, !>`] is very useful for removing errors, `!` can also be used to removed
+/// successes as well. If we think of [`Result<T, !>`] as "if this function returns, it has not
+/// errored," we get a very intuitive idea of [`Result<!, E>`] as well: if the function returns, it
+/// *has* errored.
+///
+/// For example, consider the case of a simple web server, which can be simplified to:
+///
+/// ```ignore (hypothetical-example)
+/// loop {
+///     let (client, request) = get_request().expect("disconnected");
+///     let response = request.process();
+///     response.send(client);
+/// }
+/// ```
+///
+/// Currently, this isn't ideal, because we simply panic whenever we fail to get a new connection.
+/// Instead, we'd like to keep track of this error, like this:
+///
+/// ```ignore (hypothetical-example)
+/// loop {
+///     match get_request() {
+///         Err(err) => break err,
+///         Ok((client, request)) => {
+///             let response = request.process();
+///             response.send(client);
+///         },
+///     }
+/// }
+/// ```
+///
+/// Now, when the server disconnects, we exit the loop with an error instead of panicking. While it
+/// might be intuitive to simply return the error, we might want to wrap it in a [`Result<!, E>`] 
+/// instead:
+///
+/// ```ignore (hypothetical-example)
+/// fn server_loop() -> Result<!, ConnectionError> {
+///     Ok(loop {
+///         let (client, request) = get_request()?;
+///         let response = request.process();
+///         response.send(client);
+///     })
+/// }
+/// ```
+///
+/// Now, we can use `?` instead of `match`, and the return type makes a lot more sense: if the loop
+/// ever stops, it means that an error occurred.
+///
 /// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
 /// [`Result<String, !>`]: result/enum.Result.html
 /// [`Result<T, !>`]: result/enum.Result.html
+/// [`Result<!, E>`]: result/enum.Result.html
 /// [`Ok`]: result/enum.Result.html#variant.Ok
 /// [`String`]: string/struct.String.html
 /// [`Err`]: result/enum.Result.html#variant.Err
