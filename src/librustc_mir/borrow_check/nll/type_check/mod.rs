@@ -14,20 +14,20 @@
 use borrow_check::nll::region_infer::Cause;
 use borrow_check::nll::region_infer::ClosureRegionRequirementsExt;
 use borrow_check::nll::universal_regions::UniversalRegions;
+use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
 use dataflow::MaybeInitializedPlaces;
-use dataflow::move_paths::MoveData;
 use rustc::hir::def_id::DefId;
-use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
-use rustc::traits::{self, Normalized, TraitEngine};
+use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
+use rustc::mir::tcx::PlaceTy;
+use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::*;
 use rustc::traits::query::NoSolution;
+use rustc::traits::{self, Normalized, TraitEngine};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeVariants};
-use rustc::mir::*;
-use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor};
 use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -61,8 +61,8 @@ macro_rules! span_mirbug_and_err {
     })
 }
 
-mod liveness;
 mod input_output;
+mod liveness;
 
 /// Type checks the given `mir` in the context of the inference
 /// context `infcx`. Returns any region constraints that have yet to
@@ -275,7 +275,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         tcx.predicates_of(def_id).instantiate(tcx, substs);
                     let predicates =
                         type_checker.normalize(&instantiated_predicates.predicates, location);
-                    type_checker.prove_predicates(&predicates, location);
+                    type_checker.prove_predicates(predicates.iter().cloned(), location);
                 }
 
                 value.ty
@@ -763,9 +763,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             StatementKind::UserAssertTy(ref c_ty, ref local) => {
                 let local_ty = mir.local_decls()[*local].ty;
-                let (ty, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
-                    stmt.source_info.span, c_ty);
-                debug!("check_stmt: user_assert_ty ty={:?} local_ty={:?}", ty, local_ty);
+                let (ty, _) = self.infcx
+                    .instantiate_canonical_with_fresh_inference_vars(stmt.source_info.span, c_ty);
+                debug!(
+                    "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
+                    ty, local_ty
+                );
                 if let Err(terr) = self.eq_types(ty, local_ty, location.at_self()) {
                     span_mirbug!(
                         self,
@@ -894,6 +897,11 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 );
                 let sig = self.normalize(&sig, term_location);
                 self.check_call_dest(mir, term, &sig, destination, term_location);
+
+                self.prove_predicates(
+                    sig.inputs().iter().map(|ty| ty::Predicate::WellFormed(ty)),
+                    term_location,
+                );
 
                 // The ordinary liveness rules will ensure that all
                 // regions in the type of the callee are live here. We
@@ -1508,28 +1516,35 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
         let predicates = self.normalize(&instantiated_predicates.predicates, location);
         debug!("prove_aggregate_predicates: predicates={:?}", predicates);
-        self.prove_predicates(&predicates, location);
+        self.prove_predicates(predicates.iter().cloned(), location);
     }
 
     fn prove_trait_ref(&mut self, trait_ref: ty::TraitRef<'tcx>, location: Location) {
         self.prove_predicates(
-            &[
-                ty::Predicate::Trait(trait_ref.to_poly_trait_ref().to_poly_trait_predicate()),
-            ],
+            [ty::Predicate::Trait(
+                trait_ref.to_poly_trait_ref().to_poly_trait_predicate(),
+            )].iter()
+                .cloned(),
             location,
         );
     }
 
-    fn prove_predicates(&mut self, predicates: &[ty::Predicate<'tcx>], location: Location) {
+    fn prove_predicates(
+        &mut self,
+        predicates: impl IntoIterator<Item = ty::Predicate<'tcx>>,
+        location: Location,
+    ) {
+        let mut predicates_iter = predicates.into_iter();
+
         debug!(
             "prove_predicates(predicates={:?}, location={:?})",
-            predicates, location
+            predicates_iter.by_ref().collect::<Vec<_>>(),
+            location
         );
         self.fully_perform_op(location.at_self(), |this| {
             let cause = this.misc(this.last_span);
-            let obligations = predicates
-                .iter()
-                .map(|&p| traits::Obligation::new(cause.clone(), this.param_env, p))
+            let obligations = predicates_iter
+                .map(|p| traits::Obligation::new(cause.clone(), this.param_env, p))
                 .collect();
             Ok(InferOk {
                 value: (),
