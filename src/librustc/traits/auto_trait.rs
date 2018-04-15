@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Support code for rustdoc and external tools . You really don't
+//! want to be using this unless you need to.
+
 use super::*;
 
 use std::collections::hash_map::Entry;
