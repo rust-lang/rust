@@ -344,9 +344,9 @@ pub fn check_for_substitution<'a>(reader: &StringReader<'a>,
         match ASCII_ARRAY.iter().find(|&&(c, _)| c == ascii_char) {
             Some(&(ascii_char, ascii_name)) => {
                 let msg =
-                    format!("unicode character '{}' ({}) looks like '{}' ({}), but it's not",
+                    format!("Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
                             ch, u_name, ascii_char, ascii_name);
-                err.span_help(span, &msg);
+                err.span_suggestion(span, &msg, ascii_char.to_string());
             },
             None => {
                 let msg = format!("substitution character not found for '{}'", ch);
