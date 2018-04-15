@@ -1048,7 +1048,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::LookupDeprecationEntry => {
             force!(lookup_deprecation_entry, def_id!());
         }
-        DepKind::ItemBodyNestedBodies => { force!(item_body_nested_bodies, def_id!()); }
         DepKind::ConstIsRvaluePromotableToStatic => {
             force!(const_is_rvalue_promotable_to_static, def_id!());
         }
@@ -1063,6 +1062,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
         DepKind::TransFnAttrs => { force!(trans_fn_attrs, def_id!()); }
         DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
+        DepKind::RenderedConst => { force!(rendered_const, def_id!()); }
         DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
         DepKind::IsPanicRuntime => { force!(is_panic_runtime, krate!()); }
         DepKind::IsCompilerBuiltins => { force!(is_compiler_builtins, krate!()); }
@@ -1119,7 +1119,6 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::GetLangItems => { force!(get_lang_items, LOCAL_CRATE); }
         DepKind::DefinedLangItems => { force!(defined_lang_items, krate!()); }
         DepKind::MissingLangItems => { force!(missing_lang_items, krate!()); }
-        DepKind::ExternConstBody => { force!(extern_const_body, def_id!()); }
         DepKind::VisibleParentMap => { force!(visible_parent_map, LOCAL_CRATE); }
         DepKind::MissingExternCrateItem => {
             force!(missing_extern_crate_item, krate!());

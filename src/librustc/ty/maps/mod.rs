@@ -17,9 +17,8 @@ use hir::svh::Svh;
 use infer::canonical::{self, Canonical};
 use lint;
 use middle::borrowck::BorrowCheckResult;
-use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary,
-                     ExternBodyNestedBodies, ForeignModule};
-use middle::cstore::{NativeLibraryKind, DepKind, CrateSource, ExternConstBody};
+use middle::cstore::{ExternCrate, LinkagePreference, NativeLibrary, ForeignModule};
+use middle::cstore::{NativeLibraryKind, DepKind, CrateSource};
 use middle::privacy::AccessLevels;
 use middle::reachable::ReachableSet;
 use middle::region;
@@ -254,9 +253,11 @@ define_maps! { <'tcx>
     [] fn item_attrs: ItemAttrs(DefId) -> Lrc<[ast::Attribute]>,
     [] fn trans_fn_attrs: trans_fn_attrs(DefId) -> TransFnAttrs,
     [] fn fn_arg_names: FnArgNames(DefId) -> Vec<ast::Name>,
+    /// Gets the rendered value of the specified constant or associated constant.
+    /// Used by rustdoc.
+    [] fn rendered_const: RenderedConst(DefId) -> String,
     [] fn impl_parent: ImplParent(DefId) -> Option<DefId>,
     [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
-    [] fn item_body_nested_bodies: ItemBodyNestedBodies(DefId) -> ExternBodyNestedBodies,
     [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
     [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Lrc<ItemLocalSet>,
     [] fn is_mir_available: IsMirAvailable(DefId) -> bool,
@@ -376,7 +377,6 @@ define_maps! { <'tcx>
     [] fn get_lang_items: get_lang_items_node(CrateNum) -> Lrc<LanguageItems>,
     [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Lrc<Vec<(DefId, usize)>>,
     [] fn missing_lang_items: MissingLangItems(CrateNum) -> Lrc<Vec<LangItem>>,
-    [] fn extern_const_body: ExternConstBody(DefId) -> ExternConstBody<'tcx>,
     [] fn visible_parent_map: visible_parent_map_node(CrateNum)
         -> Lrc<DefIdMap<DefId>>,
     [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
