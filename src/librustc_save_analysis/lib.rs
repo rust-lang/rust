@@ -115,7 +115,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let span = match *self.tcx.extern_crate(n.as_def_id()) {
                 Some(ExternCrate { span, .. }) => span,
                 None => {
-                    bug!("no data for crate {}", n);
+                    debug!("Skipping crate {}, no data", n);
+                    continue;
                 }
             };
             let lo_loc = self.span_utils.sess.codemap().lookup_char_pos(span.lo());
