@@ -23,8 +23,7 @@ impl HasOption {
     }
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-fn main() {
+fn option_map_unit_fn() {
     let x = HasOption { field: Some(10) };
 
     x.field.map(plus_one);
@@ -95,4 +94,7 @@ fn main() {
     // Should suggest `if let Some(_y) ...` to not override the existing foo variable
     let y = Some(42);
     y.map(do_nothing);
+}
+
+fn main() {
 }

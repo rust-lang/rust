@@ -19,7 +19,7 @@ pub struct Pass;
 /// **Example:**
 ///
 /// ```rust
-/// let x : Option<&str> = do_stuff();
+/// let x: Option<&str> = do_stuff();
 /// x.map(log_err_msg);
 /// x.map(|msg| log_err_msg(format_msg(msg)))
 /// ```
@@ -27,7 +27,7 @@ pub struct Pass;
 /// The correct use would be:
 ///
 /// ```rust
-/// let x : Option<&str> = do_stuff();
+/// let x: Option<&str> = do_stuff();
 /// if let Some(msg) = x {
 ///     log_err_msg(msg)
 /// }
