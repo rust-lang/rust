@@ -162,9 +162,6 @@ declare_features! (
     // OIBIT specific features
     (active, optin_builtin_traits, "1.0.0", Some(13231), None),
 
-    // macro re-export needs more discussion and stabilization
-    (active, macro_reexport, "1.0.0", Some(29638), None),
-
     // Allows use of #[staged_api]
     // rustc internal
     (active, staged_api, "1.0.0", None, None),
@@ -484,6 +481,8 @@ declare_features! (
     (removed, simd, "1.0.0", Some(27731), None),
     // Merged into `slice_patterns`
     (removed, advanced_slice_patterns, "1.0.0", Some(23121), None),
+    // Subsumed by `use`
+    (removed, macro_reexport, "1.0.0", Some(29638), None),
 );
 
 declare_features! (
@@ -673,7 +672,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("forbid", Normal, Ungated),
     ("deny", Normal, Ungated),
 
-    ("macro_reexport", Normal, Ungated),
     ("macro_use", Normal, Ungated),
     ("macro_export", Normal, Ungated),
     ("plugin_registrar", Normal, Ungated),
@@ -1515,11 +1513,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if i.ident.name == "_" {
                     gate_feature_post!(&self, underscore_imports, i.span,
                                        "renaming extern crates with `_` is unstable");
-                }
-                if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
-                    gate_feature_post!(&self, macro_reexport, attr.span,
-                                       "macros re-exports are experimental \
-                                        and possibly buggy");
                 }
             }
 
