@@ -8,11 +8,11 @@ use utils::paths;
 #[derive(Clone)]
 pub struct Pass;
 
-/// **What it does:** Checks for usage of `Option.map(f)` where f is a function
+/// **What it does:** Checks for usage of `option.map(f)` where f is a function
 /// or closure that returns the unit type.
 ///
 /// **Why is this bad?** Readability, this can be written more clearly with
-/// an if statement
+/// an if let statement
 ///
 /// **Known problems:** None.
 ///
@@ -38,14 +38,14 @@ pub struct Pass;
 declare_clippy_lint! {
     pub OPTION_MAP_UNIT_FN,
     complexity,
-    "using `Option.map(f)`, where f is a function or closure that returns ()"
+    "using `option.map(f)`, where f is a function or closure that returns ()"
 }
 
-/// **What it does:** Checks for usage of `Result.map(f)` where f is a function
+/// **What it does:** Checks for usage of `result.map(f)` where f is a function
 /// or closure that returns the unit type.
 ///
 /// **Why is this bad?** Readability, this can be written more clearly with
-/// an if statement
+/// an if let statement
 ///
 /// **Known problems:** None.
 ///
@@ -71,7 +71,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub RESULT_MAP_UNIT_FN,
     complexity,
-    "using `Result.map(f)`, where f is a function or closure that returns ()"
+    "using `result.map(f)`, where f is a function or closure that returns ()"
 }
 
 
@@ -215,33 +215,21 @@ fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_ar
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
 
-        enum Suggestion {
-            Full(String),
-            Approx(String)
-        }
-
-        let suggestion = if let Some(expr_span) = reduce_unit_expression(cx, closure_expr) {
-            Suggestion::Full(
-                format!("if let {0}({1}) = {2} {{ {3} }}",
-                        variant,
-                        snippet(cx, binding.pat.span, "_"),
-                        snippet(cx, var_arg.span, "_"),
-                        snippet(cx, expr_span, "_"))
-            )
-        } else {
-            Suggestion::Approx(
-                format!("if let {0}({1}) = {2} {{ ... }}",
-                        variant,
-                        snippet(cx, binding.pat.span, "_"),
-                        snippet(cx, var_arg.span, "_"))
-            )
-        };
-
         span_lint_and_then(cx, lint, expr.span, &msg, |db| {
-            match suggestion {
-                Suggestion::Full(sugg) => db.span_suggestion(stmt.span, "try this", sugg),
-                Suggestion::Approx(sugg) => db.span_approximate_suggestion(stmt.span, "try this", sugg),
-            };
+            if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
+                let suggestion = format!("if let {0}({1}) = {2} {{ {3} }}",
+                                        variant,
+                                        snippet(cx, binding.pat.span, "_"),
+                                        snippet(cx, var_arg.span, "_"),
+                                        snippet(cx, reduced_expr_span, "_"));
+                db.span_suggestion(stmt.span, "try this", suggestion);
+            } else {
+                let suggestion = format!("if let {0}({1}) = {2} {{ ... }}",
+                                        variant,
+                                        snippet(cx, binding.pat.span, "_"),
+                                        snippet(cx, var_arg.span, "_"));
+                db.span_approximate_suggestion(stmt.span, "try this", suggestion);
+            }
         });
     }
 }
