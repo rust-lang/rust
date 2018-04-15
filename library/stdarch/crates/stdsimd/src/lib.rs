@@ -18,7 +18,7 @@
 extern crate cfg_if;
 extern crate coresimd;
 extern crate libc;
-extern crate std as _std;
+extern crate std as __do_not_use_this_import;
 
 #[cfg(test)]
 #[macro_use(println, print)]
@@ -30,8 +30,10 @@ mod stdsimd;
 pub use stdsimd::*;
 
 #[allow(unused_imports)]
-use _std::fs;
+use __do_not_use_this_import::fs;
 #[allow(unused_imports)]
-use _std::io;
+use __do_not_use_this_import::io;
 #[allow(unused_imports)]
-use _std::prelude;
+use __do_not_use_this_import::prelude;
+#[allow(unused_imports)]
+use __do_not_use_this_import::mem;

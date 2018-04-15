@@ -1,4 +1,5 @@
 //! Parses /proc/cpuinfo
+#![cfg_attr(not(target_arch = "arm"), allow(dead_code))]
 
 use prelude::v1::*;
 use fs::File;

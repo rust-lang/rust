@@ -7,12 +7,9 @@ use coresimd::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use coresimd::arch::x86_64::*;
 
-#[path = "cache.rs"]
-mod cache;
-#[path = "bit.rs"]
-mod bit;
-
 use arch::detect::Feature;
+use arch::detect::cache;
+use arch::detect::bit;
 
 /// Performs run-time feature detection.
 pub fn check_for(x: Feature) -> bool {

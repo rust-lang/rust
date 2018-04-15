@@ -56,6 +56,9 @@ cfg_if! {
 }
 pub use self::arch::Feature;
 
+mod cache;
+mod bit;
+
 cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         // On x86/x86_64 no OS specific functionality is required.

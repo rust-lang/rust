@@ -1,13 +1,9 @@
 //! Run-time feature detection for ARM on Linux.
 
-#[path = "../cache.rs"]
-mod cache;
-#[path = "auxvec.rs"]
-mod auxvec;
-#[path = "cpuinfo.rs"]
-mod cpuinfo;
-
 use arch::detect::Feature;
+use arch::detect::cache;
+use super::auxvec;
+use super::cpuinfo;
 
 /// Performs run-time feature detection.
 pub fn check_for(x: Feature) -> bool {

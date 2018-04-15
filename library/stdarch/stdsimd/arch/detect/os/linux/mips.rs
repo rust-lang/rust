@@ -1,13 +1,9 @@
 //! Run-time feature detection for MIPS on Linux.
 
-#[path = "../cache.rs"]
-mod cache;
-#[path = "../bit.rs"]
-mod bit;
-#[path = "auxvec.rs"]
-mod auxvec;
-
 use arch::detect::Feature;
+use arch::detect::cache;
+use arch::detect::bit;
+use super::auxvec;
 
 /// Performs run-time feature detection.
 pub fn check_for(x: Feature) -> bool {

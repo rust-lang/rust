@@ -1,9 +1,10 @@
 //! Parses ELF auxiliary vectors.
+#![cfg_attr(not(target_arch = "aarch64"), allow(dead_code))]
 
-use core::mem;
-use _std::prelude::v1::*;
-use _std::fs::File;
-use _std::io::Read;
+use mem;
+use prelude::v1::*;
+use fs::File;
+use io::Read;
 
 /// Key to access the CPU Hardware capabilities bitfield.
 pub const AT_HWCAP: usize = 16;
@@ -68,6 +69,7 @@ pub fn auxv() -> Result<AuxVec, ()> {
                 }
             }
         }
+        drop(hwcap);
     }
     // If calling getauxval fails, try to read the auxiliary vector from
     // its file:
@@ -144,6 +146,7 @@ fn auxv_from_buf(buf: &[usize; 64]) -> Result<AuxVec, ()> {
             return Ok(AuxVec { hwcap, hwcap2 });
         }
     }
+    drop(buf);
     Err(())
 }
 
@@ -179,7 +182,7 @@ mod tests {
 
     // FIXME: on mips/mips64 getauxval returns 0, and /proc/self/auxv
     // does not always contain the AT_HWCAP key under qemu.
-    #[cfg(not(any(target_arch = "mips", target_arch = "mips64")))]
+    #[cfg(not(any(target_arch = "mips", target_arch = "mips64", target_arch = "powerpc")))]
     #[test]
     fn auxv_crate() {
         let v = auxv();

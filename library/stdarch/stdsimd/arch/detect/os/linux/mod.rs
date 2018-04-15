@@ -1,5 +1,8 @@
 //! Run-time feature detection on Linux
 
+mod auxvec;
+mod cpuinfo;
+
 cfg_if! {
     if #[cfg(target_arch = "aarch64")] {
         mod aarch64;
