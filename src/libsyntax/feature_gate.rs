@@ -1228,10 +1228,9 @@ fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue
         GateIssue::Library(lib) => lib,
     };
 
-    let explanation = if let Some(n) = issue {
-        format!("{} (see issue #{})", explain, n)
-    } else {
-        explain.to_owned()
+    let explanation = match issue {
+        None | Some(0) => explain.to_owned(),
+        Some(n) => format!("{} (see issue #{})", explain, n)
     };
 
     let mut err = match level {
