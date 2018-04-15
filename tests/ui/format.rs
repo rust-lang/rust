@@ -12,15 +12,19 @@ fn main() {
     format!("foo");
 
     format!("{}", "foo");
-    format!("{:?}", "foo"); // we only want to warn about `{}`
-    format!("{:+}", "foo"); // we only want to warn about `{}`
+    format!("{:?}", "foo"); // don't warn about debug
+    format!("{:8}", "foo");
+    format!("{:+}", "foo"); // warn when the format makes no difference
+    format!("{:<}", "foo"); // warn when the format makes no difference
     format!("foo {}", "bar");
     format!("{} bar", "foo");
 
     let arg: String = "".to_owned();
     format!("{}", arg);
-    format!("{:?}", arg); // we only want to warn about `{}`
-    format!("{:+}", arg); // we only want to warn about `{}`
+    format!("{:?}", arg); // don't warn about debug
+    format!("{:8}", arg);
+    format!("{:+}", arg); // warn when the format makes no difference
+    format!("{:<}", arg); // warn when the format makes no difference
     format!("foo {}", arg);
     format!("{} bar", arg);
 
