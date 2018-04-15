@@ -145,7 +145,14 @@ impl Layout {
     /// Constructs a `Layout` suitable for holding a value of type `T`.
     pub fn new<T>() -> Self {
         let (size, align) = size_align::<T>();
-        Layout::from_size_align(size, align).unwrap()
+        // Note that the align is guaranteed by rustc to be a power of two and
+        // the size+align combo is guaranteed to fit in our address space. As a
+        // result use the unchecked constructor here to avoid inserting code
+        // that panics if it isn't optimized well enough.
+        debug_assert!(Layout::from_size_align(size, align).is_ok());
+        unsafe {
+            Layout::from_size_align_unchecked(size, align)
+        }
     }
 
     /// Produces layout describing a record that could be used to
@@ -153,7 +160,11 @@ impl Layout {
     /// or other unsized type like a slice).
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        Layout::from_size_align(size, align).unwrap()
+        // See rationale in `new` for why this us using an unsafe variant below
+        debug_assert!(Layout::from_size_align(size, align).is_ok());
+        unsafe {
+            Layout::from_size_align_unchecked(size, align)
+        }
     }
 
     /// Creates a layout describing the record that can hold a value
@@ -234,12 +245,7 @@ impl Layout {
             .ok_or(LayoutErr { private: () })?;
         let alloc_size = padded_size.checked_mul(n)
             .ok_or(LayoutErr { private: () })?;
-
-        // We can assume that `self.align` is a power-of-two.
-        // Furthermore, `alloc_size` has already been rounded up
-        // to a multiple of `self.align`; therefore, the call to
-        // `Layout::from_size_align` below should never panic.
-        Ok((Layout::from_size_align(alloc_size, self.align).unwrap(), padded_size))
+        Ok((Layout::from_size_align(alloc_size, self.align)?, padded_size))
     }
 
     /// Creates a layout describing the record for `self` followed by
