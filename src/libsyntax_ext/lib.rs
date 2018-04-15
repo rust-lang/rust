@@ -18,6 +18,8 @@
 #![feature(decl_macro)]
 #![feature(str_escape)]
 
+#![cfg_attr(not(stage0), feature(rustc_diagnostic_macros))]
+
 extern crate fmt_macros;
 #[macro_use]
 extern crate syntax;
@@ -25,6 +27,9 @@ extern crate syntax_pos;
 extern crate proc_macro;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
+
+#[cfg(not(stage0))]
+mod diagnostics;
 
 mod assert;
 mod asm;
