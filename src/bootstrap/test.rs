@@ -919,10 +919,8 @@ impl Step for Compiletest {
             if build.config.rust_debuginfo_tests {
                 flags.push("-g".to_string());
             }
-            flags.push("-Zmiri -Zunstable-options".to_string());
-        } else {
-            flags.push("-Zunstable-options".to_string());
         }
+        flags.push("-Zunstable-options".to_string());
         flags.push(build.config.cmd.rustc_args().join(" "));
 
         if let Some(linker) = build.linker(target) {
