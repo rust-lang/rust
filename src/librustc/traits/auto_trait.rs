@@ -55,7 +55,7 @@ impl<A> AutoTraitResult<A> {
 pub struct AutoTraitInfo<'cx> {
     pub full_user_env: ty::ParamEnv<'cx>,
     pub region_data: RegionConstraintData<'cx>,
-    pub names_map: FxHashMap<String, String>,
+    pub names_map: FxHashSet<String>,
     pub vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
@@ -206,12 +206,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 )
             });
 
-            let names_map: FxHashMap<String, String> = generics
+            let names_map: FxHashSet<String> = generics
                 .regions
                 .iter()
-                .map(|l| (l.name.to_string(), l.name.to_string()))
-                // TODO(twk): Lifetime branding and why is this map a set?!
-                //     l.clean(self.cx) was present in the original code
+                .map(|l| l.name.to_string())
                 .collect();
 
             let body_ids: FxHashSet<_> = infcx

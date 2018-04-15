@@ -290,7 +290,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     let names_map =
                         info.names_map
                             .drain()
-                            .map(|(name, lifetime)| (name, Lifetime(lifetime)))
+                            .map(|name| (name.clone(), Lifetime(name)))
                             .collect();
                     let lifetime_predicates =
                         self.handle_lifetimes(&region_data, &names_map);
