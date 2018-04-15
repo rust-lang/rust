@@ -252,7 +252,7 @@ pub struct MethodDef<'a> {
     pub explicit_self: Option<Option<PtrTy<'a>>>,
 
     /// Arguments other than the self argument
-    pub args: Vec<Ty<'a>>,
+    pub args: Vec<(Ty<'a>, &'a str)>,
 
     /// Return type
     pub ret_ty: Ty<'a>,
@@ -915,9 +915,9 @@ impl<'a> MethodDef<'a> {
             explicit_self
         });
 
-        for (i, ty) in self.args.iter().enumerate() {
+        for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(&format!("__arg_{}", i));
+            let ident = cx.ident_of(name).gensym();
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
