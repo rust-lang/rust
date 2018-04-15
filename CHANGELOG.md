@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.194
+* Rustup to *rustc 1.27.0-nightly (bd40cbbe1 2018-04-14)*
+* New lints: [`cast_ptr_alignment`], [`transmute_ptr_to_ptr`], [`write_literal`], [`write_with_newline`], [`writeln_empty_string`]
+
 ## 0.0.193
 * Rustup to *rustc 1.27.0-nightly (eeea94c11 2018-04-06)*
 
@@ -571,6 +575,7 @@ All notable changes to this project will be documented in this file.
 [`cast_possible_truncation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_possible_truncation
 [`cast_possible_wrap`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_possible_wrap
 [`cast_precision_loss`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_precision_loss
+[`cast_ptr_alignment`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_ptr_alignment
 [`cast_sign_loss`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_sign_loss
 [`char_lit_as_u8`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#char_lit_as_u8
 [`chars_last_cmp`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#chars_last_cmp
@@ -769,6 +774,7 @@ All notable changes to this project will be documented in this file.
 [`transmute_int_to_bool`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_int_to_bool
 [`transmute_int_to_char`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_int_to_char
 [`transmute_int_to_float`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_int_to_float
+[`transmute_ptr_to_ptr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_ptr_to_ptr
 [`transmute_ptr_to_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref
 [`trivial_regex`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#trivial_regex
 [`type_complexity`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#type_complexity
@@ -802,6 +808,9 @@ All notable changes to this project will be documented in this file.
 [`while_immutable_condition`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_immutable_condition
 [`while_let_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_loop
 [`while_let_on_iterator`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_on_iterator
+[`write_literal`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#write_literal
+[`write_with_newline`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#write_with_newline
+[`writeln_empty_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#writeln_empty_string
 [`wrong_pub_self_convention`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#wrong_pub_self_convention
 [`wrong_self_convention`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#wrong_self_convention
 [`wrong_transmute`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#wrong_transmute
