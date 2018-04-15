@@ -258,7 +258,7 @@ pub struct CharSearcher<'a> {
 
     /// `finger` is the current byte index of the forward search.
     /// Imagine that it exists before the byte at its index, i.e.
-    /// haystack[finger] is the first byte of the slice we must inspect during
+    /// `haystack[finger]` is the first byte of the slice we must inspect during
     /// forward searching
     finger: usize,
     /// `finger_back` is the current byte index of the reverse search.
