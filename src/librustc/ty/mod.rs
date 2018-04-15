@@ -794,12 +794,8 @@ impl GenericParamDef {
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to hir::Generics.
 ///
-/// Note that in the presence of a `Self` parameter, the ordering here
-/// is different from the ordering in a Substs. Substs are ordered as
-///     Self, *Regions, *Other Type Params, (...child generics)
-/// while this struct is ordered as
-///     regions = Regions
-///     types = [Self, *Other Type Params]
+/// The ordering of parameters is the same as in Subst (excluding child generics):
+/// Self (optionally), Lifetime params..., Type params...
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Generics {
     pub parent: Option<DefId>,
@@ -865,8 +861,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                         -> &'tcx RegionParamDef
     {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            // We're currently assuming that lifetimes precede other generic parameters.
-            match self.params[index as usize - self.has_self as usize] {
+            match self.params[index as usize] {
                 ty::GenericParamDef::Lifetime(ref lt) => lt,
                 _ => bug!("expected region parameter, but found another generic parameter")
             }
@@ -881,7 +876,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                       param: &ParamTy,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
                       -> &TypeParamDef {
-        if let Some(idx) = param.idx.checked_sub(self.parent_count as u32) {
+        if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
             // non-Self type parameters are always offset by exactly
             // `self.regions.len()`. In the absence of a Self, this is obvious,
             // but even in the presence of a `Self` we just have to "compensate"
@@ -912,11 +907,11 @@ impl<'a, 'gcx, 'tcx> Generics {
             let type_param_offset = self.param_counts()[&Kind::Lifetime];
 
             let has_self = self.has_self && self.parent.is_none();
-            let is_separated_self = type_param_offset != 0 && idx == 0 && has_self;
+            let is_separated_self = type_param_offset != 0 && index == 0 && has_self;
 
-            if let Some(_) = (idx as usize).checked_sub(type_param_offset) {
+            if let Some(_) = (index as usize).checked_sub(type_param_offset) {
                 assert!(!is_separated_self, "found a Self after type_param_offset");
-                match self.params[idx as usize] {
+                match self.params[index as usize] {
                     ty::GenericParamDef::Type(ref ty) => ty,
                     _ => bug!("expected type parameter, but found another generic parameter")
                 }

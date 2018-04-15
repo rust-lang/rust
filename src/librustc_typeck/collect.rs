@@ -927,7 +927,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     });
 
-    let mut types: Vec<_> = opt_self.into_iter().chain(types).collect();
+    let mut types: Vec<_> = types.into_iter().collect();
 
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
@@ -966,13 +966,17 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         });
     }
 
-    let type_param_to_index = types.iter()
-                                   .map(|param| (param.def_id, param.index))
-                                   .collect();
+    let type_param_to_index = opt_self.iter()
+                                      .chain(types.iter())
+                                      .map(|ty| (ty.def_id, ty.index))
+                                      .collect();
 
+    let opt_self = opt_self.into_iter().map(|ty| ty::GenericParamDef::Type(ty));
     let lifetimes = regions.into_iter().map(|lt| ty::GenericParamDef::Lifetime(lt));
     let types = types.into_iter().map(|ty| ty::GenericParamDef::Type(ty));
-    let params = lifetimes.chain(types).collect();
+    let params = opt_self.chain(lifetimes)
+                         .chain(types)
+                         .collect();
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,
