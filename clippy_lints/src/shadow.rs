@@ -306,7 +306,7 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
         return;
     }
     match expr.node {
-        ExprUnary(_, ref e) | ExprField(ref e, _) | ExprTupField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e) => {
+        ExprUnary(_, ref e) | ExprField(ref e, _) | ExprAddrOf(_, ref e) | ExprBox(ref e) => {
             check_expr(cx, e, bindings)
         },
         ExprBlock(ref block) | ExprLoop(ref block, _, _) => check_block(cx, block, bindings),

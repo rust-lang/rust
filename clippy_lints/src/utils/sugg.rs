@@ -69,7 +69,6 @@ impl<'a> Sugg<'a> {
                 hir::ExprRet(..) |
                 hir::ExprStruct(..) |
                 hir::ExprTup(..) |
-                hir::ExprTupField(..) |
                 hir::ExprWhile(..) => Sugg::NonParen(snippet),
                 hir::ExprAssign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
                 hir::ExprAssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
@@ -121,7 +120,6 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Struct(..) |
             ast::ExprKind::Try(..) |
             ast::ExprKind::Tup(..) |
-            ast::ExprKind::TupField(..) |
             ast::ExprKind::Array(..) |
             ast::ExprKind::While(..) |
             ast::ExprKind::WhileLet(..) => Sugg::NonParen(snippet),

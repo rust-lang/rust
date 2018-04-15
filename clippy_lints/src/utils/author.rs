@@ -371,14 +371,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = obj_pat;
                 self.visit_expr(object);
             },
-            Expr_::ExprTupField(ref object, ref field_id) => {
-                let obj_pat = self.next("object");
-                let field_id_pat = self.next("field_id");
-                println!("TupField(ref {}, ref {}) = {};", obj_pat, field_id_pat, current);
-                println!("    if {}.node == {}", field_id_pat, field_id.node);
-                self.current = obj_pat;
-                self.visit_expr(object);
-            },
             Expr_::ExprIndex(ref object, ref index) => {
                 let object_pat = self.next("object");
                 let index_pat = self.next("index");

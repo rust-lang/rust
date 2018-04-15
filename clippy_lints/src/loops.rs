@@ -602,7 +602,6 @@ fn never_loop_expr(expr: &Expr, main_loop_id: &NodeId) -> NeverLoopResult {
         ExprCast(ref e, _) |
         ExprType(ref e, _) |
         ExprField(ref e, _) |
-        ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
         ExprStruct(_, _, Some(ref e)) |
         ExprRepeat(ref e, _) => never_loop_expr(e, main_loop_id),
