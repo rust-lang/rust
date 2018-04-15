@@ -1075,9 +1075,16 @@ impl<'a> StringReader<'a> {
                 self.bump();
             }
             if self.scan_digits(10, 10) == 0 {
-                self.err_span_(self.pos,
-                               self.next_pos,
-                               "expected at least one digit in exponent")
+                let mut err = self.struct_span_fatal(
+                    self.pos, self.next_pos,
+                    "expected at least one digit in exponent"
+                );
+                if let Some(ch) = self.ch {
+                    // check for e.g. Unicode minus '−' (Issue #49746)
+                    unicode_chars::check_for_substitution(self, ch, &mut err);
+                }
+                err.emit();
+                FatalError.raise();
             }
         }
     }
