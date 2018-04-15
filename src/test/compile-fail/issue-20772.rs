@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait T : Iterator<Item=Self::Item>
-//~^ ERROR cyclic dependency detected
+//~^ ERROR cycle detected
 //~| ERROR associated type `Item` not found for `Self`
 {}
 

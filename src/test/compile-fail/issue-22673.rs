@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait Expr : PartialEq<Self::Item> {
-    //~^ ERROR: cyclic dependency detected
+    //~^ ERROR: cycle detected
     type Item;
 }
 

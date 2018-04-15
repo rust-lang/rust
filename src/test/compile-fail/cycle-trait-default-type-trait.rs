@@ -12,7 +12,7 @@
 // again references the trait.
 
 trait Foo<X = Box<Foo>> {
-    //~^ ERROR cyclic dependency detected
+    //~^ ERROR cycle detected
 }
 
 fn main() { }

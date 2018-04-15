@@ -13,6 +13,6 @@ pub trait ToNbt<T> {
 }
 
 impl ToNbt<Self> {}
-//~^ ERROR cyclic dependency detected
+//~^ ERROR cycle detected
 
 fn main() {}

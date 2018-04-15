@@ -17,7 +17,7 @@
 #![feature(specialization)]
 
 trait Trait<T> { type Assoc; }
-//~^ cyclic dependency detected [E0391]
+//~^ cycle detected
 
 impl<T> Trait<T> for Vec<T> {
     type Assoc = ();

@@ -40,8 +40,7 @@ fn after() -> impl Fn(i32) {
 // independently resolved and only require the concrete
 // return type, which can't depend on the obligation.
 fn cycle1() -> impl Clone {
-    //~^ ERROR cyclic dependency detected
-    //~| cyclic reference
+    //~^ ERROR cycle detected
     send(cycle2().clone());
 
     Rc::new(Cell::new(5))

@@ -1,15 +1,10 @@
-error[E0391]: cyclic dependency detected
+error[E0391]: cycle detected when processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`
   --> $DIR/issue-23305.rs:15:12
    |
 LL | impl ToNbt<Self> {}
-   |            ^^^^ cyclic reference
+   |            ^^^^
    |
-note: the cycle begins when processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`...
-  --> $DIR/issue-23305.rs:15:1
-   |
-LL | impl ToNbt<Self> {}
-   | ^^^^^^^^^^^^^^^^
-   = note: ...which then again requires processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`, completing the cycle.
+   = note: ...which again requires processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`, completing the cycle
 
 error: aborting due to previous error
 
