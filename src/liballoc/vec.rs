@@ -638,7 +638,6 @@ impl<T> Vec<T> {
     /// assert_eq!(slice.into_vec().capacity(), 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[inline(always)]
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         unsafe {
             self.shrink_to_fit();
