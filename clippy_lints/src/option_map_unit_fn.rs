@@ -133,6 +133,20 @@ fn unit_closure<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'a hir::Expr) -> Op
     None
 }
 
+/// Builds a name for the let binding variable (var_arg)
+///
+/// `x.field` => `x_field`
+/// `y` => `_y`
+///
+/// Anything else will return `_`.
+fn let_binding_name(cx: &LateContext, var_arg: &hir::Expr) -> String {
+    match &var_arg.node {
+        hir::ExprField(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
+        hir::ExprPath(_) => format!("_{}", snippet(cx, var_arg.span, "")),
+        _ => "_".to_string()
+    }
+}
+
 fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_args: &[hir::Expr]) {
     let var_arg = &map_args[0];
     let fn_arg = &map_args[1];
@@ -143,7 +157,8 @@ fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_ar
 
     if is_unit_function(cx, fn_arg) {
         let msg = "called `map(f)` on an Option value where `f` is a unit function";
-        let suggestion = format!("if let Some(...) = {0} {{ {1}(...) }}",
+        let suggestion = format!("if let Some({0}) = {1} {{ {2}(...) }}",
+                                 let_binding_name(cx, var_arg),
                                  snippet(cx, var_arg.span, "_"),
                                  snippet(cx, fn_arg.span, "_"));
 

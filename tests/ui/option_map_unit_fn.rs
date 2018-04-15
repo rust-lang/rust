@@ -86,4 +86,13 @@ fn main() {
         do_nothing(value)
     });
     x.field.map(|value| { do_nothing(value); do_nothing(value); });
+
+    // The following should suggest `if let Some(_X) ...` as it's difficult to generate a proper let variable name for them
+    Some(42).map(diverge);
+    "12".parse::<i32>().ok().map(diverge);
+    Some(plus_one(1)).map(do_nothing);
+
+    // Should suggest `if let Some(_y) ...` to not override the existing foo variable
+    let y = Some(42);
+    y.map(do_nothing);
 }
