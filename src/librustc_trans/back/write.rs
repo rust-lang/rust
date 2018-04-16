@@ -848,6 +848,7 @@ unsafe fn embed_bitcode(cgcx: &CodegenContext,
     };
     llvm::LLVMSetSection(llglobal, section.as_ptr() as *const _);
     llvm::LLVMRustSetLinkage(llglobal, llvm::Linkage::PrivateLinkage);
+    llvm::LLVMSetGlobalConstant(llglobal, llvm::True);
 
     let llconst = C_bytes_in_context(llcx, &[]);
     let llglobal = llvm::LLVMAddGlobal(
