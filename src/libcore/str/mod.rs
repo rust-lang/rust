@@ -2100,18 +2100,13 @@ mod traits {
         fn index(self, slice: &str) -> &Self::Output {
             assert!(self.end != usize::max_value(),
                 "attempted to index str up to maximum usize");
-            let end = self.end + 1;
-            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, 0, end))
+            (..self.end+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
             assert!(self.end != usize::max_value(),
                 "attempted to index str up to maximum usize");
-            if slice.is_char_boundary(self.end) {
-                unsafe { self.get_unchecked_mut(slice) }
-            } else {
-                super::slice_error_fail(slice, 0, self.end + 1)
-            }
+            (..self.end+1).index_mut(slice)
         }
     }
 
