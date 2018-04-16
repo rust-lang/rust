@@ -57,7 +57,8 @@ pub fn maybe_inject_crates_ref(mut krate: ast::Crate, alt_std_name: Option<&str>
         &["std"]
     };
 
-    for name in names {
+    // .rev() to preserve ordering above in combination with insert(0, ...)
+    for name in names.iter().rev() {
         krate.module.items.insert(0, P(ast::Item {
             attrs: vec![attr::mk_attr_outer(DUMMY_SP,
                                             attr::mk_attr_id(),
