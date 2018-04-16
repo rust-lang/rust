@@ -138,31 +138,31 @@ To keep each code block testable, we want the whole program in each block, but
 we don't want the reader to see every line every time.  Here's what we put in
 our source code:
 
-```text
-    First, we set `x` to five:
+``````markdown
+First, we set `x` to five:
 
-    ```
-    let x = 5;
-    # let y = 6;
-    # println!("{}", x + y);
-    ```
-
-    Next, we set `y` to six:
-
-    ```
-    # let x = 5;
-    let y = 6;
-    # println!("{}", x + y);
-    ```
-
-    Finally, we print the sum of `x` and `y`:
-
-    ```
-    # let x = 5;
-    # let y = 6;
-    println!("{}", x + y);
-    ```
 ```
+let x = 5;
+# let y = 6;
+# println!("{}", x + y);
+```
+
+Next, we set `y` to six:
+
+```
+# let x = 5;
+let y = 6;
+# println!("{}", x + y);
+```
+
+Finally, we print the sum of `x` and `y`:
+
+```
+# let x = 5;
+# let y = 6;
+println!("{}", x + y);
+```
+``````
 
 By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
