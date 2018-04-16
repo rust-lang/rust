@@ -70,7 +70,7 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     }; MAX_NB_FRAMES];
     let (nb_frames, context) = unwind_backtrace(&mut frames)?;
     let filtered_frames = filter_frames(&frames[..nb_frames], &context, format);
-    if filtered_frames.len() != nb_frames {
+    if format != PrintFormat::Full {
         writeln!(w, "note: Some details are omitted, \
                      run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
     }
@@ -128,20 +128,18 @@ fn should_show_frame(frame: &Frame, context: &BacktraceContext) -> bool {
 /// Returns the frames to show as a Vec.
 /// If the bool is true the frame is on the edge between showing and not showing.
 fn filter_frames<'a>(frames: &'a [Frame],
-                     context: &BacktraceContext,
-                     format: PrintFormat) -> Vec<(usize, &'a Frame)>
+                     context: &'a BacktraceContext,
+                     format: PrintFormat) -> impl Iterator<Item=(usize, &'a Frame)> + 'a
 {
     if format == PrintFormat::Full {
-        return frames.iter().enumerate().collect();
+        return FilterFrames::Pass(frames.iter().enumerate());
     }
 
-    let mut frames_iter = frames
+    let frames_iter = frames
         .iter()
-        .enumerate()
-        .peekable()
-        .take_while(|frame| {
+        .take_while(move |frame| {
             let mut is_after_begin_short_backtrace = false;
-            let _ = resolve_symname(*frame, |symname| {
+            let _ = resolve_symname(**frame, |symname| {
                 if let Some(mangled_symbol_name) = symname {
                     // Use grep to find the concerned functions
                     if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
@@ -151,26 +149,52 @@ fn filter_frames<'a>(frames: &'a [Frame],
                 Ok(())
             }, context);
             !is_after_begin_short_backtrace
-        });
+        })
+        .enumerate()
+        .peekable();
 
-    let mut filtered_frames = Vec::new();
-    let mut show_prev_frame = false;
-
-    while let Some((i, frame)) = frames_iter.next() {
-        let show_cur_frame = should_show_frame(frame, context);
-        let show_next_frame = frames_iter
-            .peek()
-            .map(|&(_, frame)| should_show_frame(frame, context))
-            .unwrap_or(false);
-        if show_prev_frame || show_cur_frame || show_next_frame {
-            filtered_frames.push((i, frame));
-        }
-        show_prev_frame = show_cur_frame;
+    FilterFrames::Filter {
+        show_prev_frame: false,
+        context: context,
+        iter: frames_iter,
     }
-
-    filtered_frames
 }
 
+enum FilterFrames<'a, I: ::iter::Iterator<Item=(usize, &'a Frame)>> {
+    Filter {
+        show_prev_frame: bool,
+        context: &'a BacktraceContext,
+        iter: ::iter::Peekable<I>,
+    },
+    Pass(::iter::Enumerate<::slice::Iter<'a, Frame>>),
+}
+
+impl<'a, I: ::iter::Iterator<Item=(usize, &'a Frame)>> ::iter::Iterator for FilterFrames<'a, I> {
+    type Item = (usize, &'a Frame);
+
+    fn next(&mut self) -> Option<(usize, &'a Frame)> {
+        match *self {
+            FilterFrames::Filter { ref mut show_prev_frame, ref mut context, ref mut iter } => {
+                while let Some((i, frame)) = iter.next() {
+                    let show_cur_frame = should_show_frame(frame, context);
+                    let show_next_frame = iter
+                        .peek()
+                        .map(|&(_, frame)| should_show_frame(frame, context))
+                        .unwrap_or(false);
+                    if *show_prev_frame || show_cur_frame || show_next_frame {
+                        *show_prev_frame = show_cur_frame;
+                        return Some((i, frame));
+                    }
+                    *show_prev_frame = show_cur_frame;
+                }
+                None
+            }
+            FilterFrames::Pass(ref mut iter) => {
+                iter.next()
+            }
+        }
+    }
+}
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
 #[inline(never)]

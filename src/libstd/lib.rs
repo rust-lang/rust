@@ -255,6 +255,7 @@
 #![feature(char_internals)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
+#![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
