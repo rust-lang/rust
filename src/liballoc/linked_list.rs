@@ -1019,7 +1019,7 @@ impl<'a, T, F> Drop for DrainFilter<'a, T, F>
     where F: FnMut(&mut T) -> bool,
 {
     fn drop(&mut self) {
-        for _ in self { }
+        self.for_each(drop);
     }
 }
 

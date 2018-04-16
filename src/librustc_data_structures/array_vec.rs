@@ -207,7 +207,7 @@ pub struct Iter<A: Array> {
 
 impl<A: Array> Drop for Iter<A> {
     fn drop(&mut self) {
-        for _ in self {}
+        self.for_each(drop);
     }
 }
 
@@ -251,7 +251,7 @@ impl<'a, A: Array> Iterator for Drain<'a, A> {
 impl<'a, A: Array> Drop for Drain<'a, A> {
     fn drop(&mut self) {
         // exhaust self first
-        while let Some(_) = self.next() {}
+        self.for_each(drop);
 
         if self.tail_len > 0 {
             unsafe {

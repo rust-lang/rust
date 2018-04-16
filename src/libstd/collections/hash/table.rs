@@ -1124,7 +1124,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 
 impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
     fn drop(&mut self) {
-        for _ in self {}
+        self.for_each(drop);
     }
 }
 

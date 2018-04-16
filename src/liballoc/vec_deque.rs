@@ -2250,7 +2250,7 @@ unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
 #[stable(feature = "drain", since = "1.6.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        for _ in self.by_ref() {}
+        self.for_each(drop);
 
         let source_deque = unsafe { self.deque.as_mut() };
 
