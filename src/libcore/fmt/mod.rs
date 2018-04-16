@@ -1212,7 +1212,11 @@ impl<'a> Formatter<'a> {
             // truncation. However other flags like `fill`, `width` and `align`
             // must act as always.
             if let Some((i, _)) = s.char_indices().skip(max).next() {
-                &s[..i]
+                // LLVM here can't prove that `..i` won't panic `&s[..i]`, but
+                // we know that it can't panic. Use `get` + `unwrap_or` to avoid
+                // `unsafe` and otherwise don't emit any panic-related code
+                // here.
+                s.get(..i).unwrap_or(&s)
             } else {
                 &s
             }

@@ -52,7 +52,7 @@ pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
 // now hopefully.
 #[no_mangle]
 #[rustc_std_internal_symbol]
-pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
+pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
     abort();
 
     #[cfg(any(unix, target_os = "cloudabi"))]

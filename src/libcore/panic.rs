@@ -49,11 +49,17 @@ impl<'a> PanicInfo<'a> {
                           and related macros",
                 issue = "0")]
     #[doc(hidden)]
-    pub fn internal_constructor(payload: &'a (Any + Send),
-                                message: Option<&'a fmt::Arguments<'a>>,
+    #[inline]
+    pub fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
                                 location: Location<'a>)
                                 -> Self {
-        PanicInfo { payload, location, message }
+        PanicInfo { payload: &(), location, message }
+    }
+
+    #[doc(hidden)]
+    #[inline]
+    pub fn set_payload(&mut self, info: &'a (Any + Send)) {
+        self.payload = info;
     }
 
     /// Returns the payload associated with the panic.
@@ -250,4 +256,14 @@ impl<'a> fmt::Display for Location<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
     }
+}
+
+/// An internal trait used by libstd to pass data from libstd to `panic_unwind`
+/// and other panic runtimes. Not intended to be stabilized any time soon, do
+/// not use.
+#[unstable(feature = "std_internals", issue = "0")]
+#[doc(hidden)]
+pub unsafe trait BoxMeUp {
+    fn box_me_up(&mut self) -> *mut (Any + Send);
+    fn get(&mut self) -> &(Any + Send);
 }

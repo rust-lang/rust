@@ -28,6 +28,16 @@
 use sync::Once;
 use sys;
 
+macro_rules! rtabort {
+    ($($t:tt)*) => (::sys_common::util::abort(format_args!($($t)*)))
+}
+
+macro_rules! rtassert {
+    ($e:expr) => (if !$e {
+        rtabort!(concat!("assertion failed: ", stringify!($e)));
+    })
+}
+
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;
@@ -99,10 +109,6 @@ pub trait FromInner<Inner> {
 /// to be run.
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
     if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
-}
-
-macro_rules! rtabort {
-    ($($t:tt)*) => (::sys_common::util::abort(format_args!($($t)*)))
 }
 
 /// One-time runtime cleanup.
