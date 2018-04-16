@@ -2718,7 +2718,7 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Compute the bounds on Self and the type parameters.
 
     let bounds = tcx.predicates_of(def_id).instantiate_identity(tcx);
-    let predicates = bounds.predicates;
+    let mut predicates = bounds.predicates;
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
@@ -2731,6 +2731,22 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // every fn once during type checking, and we'll abort if there
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
+
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    debug!("param_env: handling def_id={:?}, id={:?}", def_id, id);
+
+    if let Some(hir::map::NodeItem(item)) = tcx.hir.find(id) {
+        debug!("  param_env: self node: {:?}", item.node);
+        if let hir::ItemTrait(..) = item.node {
+            debug!("    param_env: self is trait!");
+            let trait_ref = ty::TraitRef {
+                def_id: def_id,
+                substs: Substs::identity_for_item(tcx, def_id)
+            };
+            predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
+        }
+    }
+    debug!("  param_env predicates: {:?}", predicates);
 
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
                                              traits::Reveal::UserFacing);

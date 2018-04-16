@@ -30,7 +30,6 @@ use super::{Inherited, FnCtxt};
 /// - impl_m_span: span to use for reporting errors
 /// - trait_m: the method in the trait
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
-
 pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m: &ty::AssociatedItem,
                                      impl_m_span: Span,

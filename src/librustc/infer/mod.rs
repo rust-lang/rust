@@ -750,13 +750,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                       -> UnitResult<'tcx>
         where T: at::ToTrace<'tcx>
     {
+        debug!("can_sub({:?}, {:?})", a, b);
         let origin = &ObligationCause::dummy();
-        self.probe(|_| {
+        let result = self.probe(|_| {
             self.at(origin, param_env).sub(a, b).map(|InferOk { obligations: _, .. }| {
                 // Ignore obligations, since we are unrolling
                 // everything anyway.
             })
-        })
+        });
+        debug!("can_sub({:?}, {:?}) returning {:?}", a, b, result);
+        result
     }
 
     pub fn can_eq<T>(&self,
@@ -766,13 +769,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                       -> UnitResult<'tcx>
         where T: at::ToTrace<'tcx>
     {
+        debug!("can_eq({:?}, {:?})", a, b);
         let origin = &ObligationCause::dummy();
-        self.probe(|_| {
+        let result = self.probe(|_| {
             self.at(origin, param_env).eq(a, b).map(|InferOk { obligations: _, .. }| {
                 // Ignore obligations, since we are unrolling
                 // everything anyway.
             })
-        })
+        });
+        debug!("can_eq({:?}, {:?}) returning {:?}", a, b, result);
+        result
     }
 
     pub fn sub_regions(&self,

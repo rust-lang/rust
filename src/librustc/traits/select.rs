@@ -1934,9 +1934,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // attempt to evaluate recursive bounds to see if they are
     // satisfied.
 
-    /// Returns true if `candidate_i` should be dropped in favor of
-    /// `candidate_j`.  Generally speaking we will drop duplicate
-    /// candidates and prefer where-clause candidates.
     /// Returns true if `victim` should be dropped in favor of
     /// `other`.  Generally speaking we will drop duplicate
     /// candidates and prefer where-clause candidates.
