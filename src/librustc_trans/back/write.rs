@@ -293,7 +293,8 @@ impl ModuleConfig {
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
         let embed_bitcode = sess.target.target.options.embed_bitcode ||
-            sess.opts.debugging_opts.embed_bitcode;
+                            sess.opts.debugging_opts.embed_bitcode ||
+                            sess.opts.debugging_opts.cross_lang_lto;
         if embed_bitcode {
             match sess.opts.optimize {
                 config::OptLevel::No |

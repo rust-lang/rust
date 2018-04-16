@@ -1293,6 +1293,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "make the current crate share its generic instantiations"),
     chalk: bool = (false, parse_bool, [TRACKED],
           "enable the experimental Chalk-based trait solving engine"),
+    cross_lang_lto: bool = (false, parse_bool, [TRACKED],
+          "generate build artifacts that are compatible with linker-based LTO."),
 }
 
 pub fn default_lib_output() -> CrateType {
