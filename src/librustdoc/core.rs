@@ -42,7 +42,7 @@ use clean;
 use clean::Clean;
 use html::render::RenderInfo;
 
-pub use rustc::session::config::Input;
+pub use rustc::session::config::{Input, CodegenOptions};
 pub use rustc::session::search_paths::SearchPaths;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
@@ -125,7 +125,8 @@ pub fn run_core(search_paths: SearchPaths,
                 allow_warnings: bool,
                 crate_name: Option<String>,
                 force_unstable_if_unmarked: bool,
-                edition: Edition) -> (clean::Crate, RenderInfo)
+                edition: Edition,
+                cg: CodegenOptions) -> (clean::Crate, RenderInfo)
 {
     // Parse, resolve, and typecheck the given crate.
 
@@ -143,6 +144,7 @@ pub fn run_core(search_paths: SearchPaths,
         crate_types: vec![config::CrateTypeRlib],
         lint_opts: if !allow_warnings { vec![(warning_lint, lint::Allow)] } else { vec![] },
         lint_cap: Some(lint::Allow),
+        cg,
         externs,
         target_triple: triple.unwrap_or(host_triple),
         // Ensure that rustdoc works even if rustc is feature-staged

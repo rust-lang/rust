@@ -61,7 +61,8 @@ use std::sync::mpsc::channel;
 use syntax::edition::Edition;
 use externalfiles::ExternalHtml;
 use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options, Externs};
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, Externs, CodegenOptions};
+use rustc::session::config::{nightly_options, build_codegen_options};
 use rustc_back::target::TargetTriple;
 
 #[macro_use]
@@ -154,6 +155,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
         }),
         stable("plugin-path", |o| {
             o.optmulti("", "plugin-path", "directory to load plugins from", "DIR")
+        }),
+        stable("C", |o| {
+            o.optmulti("C", "codegen", "pass a codegen option to rustc", "OPT[=VALUE]")
         }),
         stable("passes", |o| {
             o.optmulti("", "passes",
@@ -441,14 +445,16 @@ pub fn main_args(args: &[String]) -> isize {
         }
     };
 
+    let cg = build_codegen_options(&matches, ErrorOutputType::default());
+
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
-                                  display_warnings, linker, edition)
+                                  display_warnings, linker, edition, cg)
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
-                             maybe_sysroot, display_warnings, linker, edition)
+                             maybe_sysroot, display_warnings, linker, edition, cg)
         }
         (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),
@@ -458,7 +464,7 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     let output_format = matches.opt_str("w");
-    let res = acquire_input(PathBuf::from(input), externs, edition, &matches, move |out| {
+    let res = acquire_input(PathBuf::from(input), externs, edition, cg, &matches, move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
@@ -500,14 +506,15 @@ fn print_error<T>(error_message: T) where T: Display {
 fn acquire_input<R, F>(input: PathBuf,
                        externs: Externs,
                        edition: Edition,
+                       cg: CodegenOptions,
                        matches: &getopts::Matches,
                        f: F)
                        -> Result<R, String>
 where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
-        Some("rust") => Ok(rust_input(input, externs, edition, matches, f)),
+        Some("rust") => Ok(rust_input(input, externs, edition, cg, matches, f)),
         Some(s) => Err(format!("unknown input format: {}", s)),
-        None => Ok(rust_input(input, externs, edition, matches, f))
+        None => Ok(rust_input(input, externs, edition, cg, matches, f))
     }
 }
 
@@ -536,6 +543,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
 fn rust_input<R, F>(cratefile: PathBuf,
                     externs: Externs,
                     edition: Edition,
+                    cg: CodegenOptions,
                     matches: &getopts::Matches,
                     f: F) -> R
 where R: 'static + Send,
@@ -589,7 +597,7 @@ where R: 'static + Send,
         let (mut krate, renderinfo) =
             core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
                            display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked, edition);
+                           force_unstable_if_unmarked, edition, cg);
 
         info!("finished with rustc");
 
