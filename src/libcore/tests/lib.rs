@@ -38,7 +38,7 @@
 #![feature(trusted_len)]
 #![feature(try_trait)]
 #![feature(exact_chunks)]
-#![feature(atomic_nand)]
+#![cfg_attr(stage0, feature(atomic_nand))]
 #![feature(reverse_bits)]
 #![feature(inclusive_range_fields)]
 #![feature(iterator_find_map)]
