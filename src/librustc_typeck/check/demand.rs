@@ -502,10 +502,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             &format!("{}, producing the closest possible value",
                                                      msg),
                                             cast_suggestion);
-                        err.warn("casting here will cause undefined behavior if the value is \
-                                  finite but larger or smaller than the largest or smallest \
-                                  finite value representable by `f32` (this is a bug and will be \
-                                  fixed)");
                     }
                     true
                 }
