@@ -560,7 +560,7 @@ impl<'a, 'b> Context<'a, 'b> {
         // of each variable because we don't want to move out of the arguments
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
-            let name = self.ecx.ident_of(&format!("__arg{}", i));
+            let name = self.ecx.ident_of(&format!("arg{}", i));
             let span =
                 DUMMY_SP.with_ctxt(e.span.ctxt().apply_mark(self.ecx.current_expansion.mark));
             pats.push(self.ecx.pat_ident(span, name));
@@ -571,7 +571,7 @@ impl<'a, 'b> Context<'a, 'b> {
         }
         for pos in self.count_args {
             let name = self.ecx.ident_of(&match pos {
-                Exact(i) => format!("__arg{}", i),
+                Exact(i) => format!("arg{}", i),
                 _ => panic!("should never happen"),
             });
             let span = match pos {
