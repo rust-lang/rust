@@ -132,7 +132,7 @@ const fn foo(x: u32, y: u32) -> u32 {
         y - x
     }
 }
-const AB: u32 = foo(x, y);
+const AB: u32 = foo(X, Y);
 ```
 
 Since the const fn's `x` and `y` arguments are unknown, they cannot be const
