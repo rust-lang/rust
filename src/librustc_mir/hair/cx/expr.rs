@@ -292,7 +292,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        hir::ExprBlock(ref blk) => ExprKind::Block { body: &blk },
+        hir::ExprBlock(ref blk, _) => ExprKind::Block { body: &blk },
 
         hir::ExprAssign(ref lhs, ref rhs) => {
             ExprKind::Assign {

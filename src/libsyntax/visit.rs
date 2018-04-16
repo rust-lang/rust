@@ -736,7 +736,10 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
                              expression.span,
                              expression.id)
         }
-        ExprKind::Block(ref block) => visitor.visit_block(block),
+        ExprKind::Block(ref block, ref opt_label) => {
+            walk_list!(visitor, visit_label, opt_label);
+            visitor.visit_block(block);
+        }
         ExprKind::Assign(ref left_hand_expression, ref right_hand_expression) => {
             visitor.visit_expr(left_hand_expression);
             visitor.visit_expr(right_hand_expression);

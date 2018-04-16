@@ -1256,7 +1256,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                                   folder.fold_expr(body),
                                   folder.new_span(span))
             }
-            ExprKind::Block(blk) => ExprKind::Block(folder.fold_block(blk)),
+            ExprKind::Block(blk, opt_label) => {
+                ExprKind::Block(folder.fold_block(blk),
+                                opt_label.map(|label| folder.fold_label(label)))
+            }
             ExprKind::Assign(el, er) => {
                 ExprKind::Assign(folder.fold_expr(el), folder.fold_expr(er))
             }

@@ -499,7 +499,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&rhs);
             }
 
-            hir::ExprBlock(ref blk) => {
+            hir::ExprBlock(ref blk, _) => {
                 self.walk_block(&blk);
             }
 

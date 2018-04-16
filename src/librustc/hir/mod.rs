@@ -1381,8 +1381,8 @@ pub enum Expr_ {
     /// This may also be a generator literal, indicated by the final boolean,
     /// in that case there is an GeneratorClause.
     ExprClosure(CaptureClause, P<FnDecl>, BodyId, Span, Option<GeneratorMovability>),
-    /// A block (`{ ... }`)
-    ExprBlock(P<Block>),
+    /// A block (`'label: { ... }`)
+    ExprBlock(P<Block>, Option<Label>),
 
     /// An assignment (`a = foo()`)
     ExprAssign(P<Expr>, P<Expr>),

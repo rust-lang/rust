@@ -934,7 +934,7 @@ impl Expr {
     /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
     /// condition.
     pub fn returns(&self) -> bool {
-        if let ExprKind::Block(ref block) = self.node {
+        if let ExprKind::Block(ref block, _) = self.node {
             match block.stmts.last().map(|last_stmt| &last_stmt.node) {
                 // implicit return
                 Some(&StmtKind::Expr(_)) => true,
@@ -1121,8 +1121,8 @@ pub enum ExprKind {
     ///
     /// The final span is the span of the argument block `|...|`
     Closure(CaptureBy, Movability, P<FnDecl>, P<Expr>, Span),
-    /// A block (`{ ... }`)
-    Block(P<Block>),
+    /// A block (`'label: { ... }`)
+    Block(P<Block>, Option<Label>),
     /// A catch block (`catch { ... }`)
     Catch(P<Block>),
 

@@ -589,7 +589,7 @@ impl_stable_hash_for!(enum hir::Expr_ {
     ExprLoop(body, label, loop_src),
     ExprMatch(matchee, arms, match_src),
     ExprClosure(capture_clause, decl, body_id, span, gen),
-    ExprBlock(blk),
+    ExprBlock(blk, label),
     ExprAssign(lhs, rhs),
     ExprAssignOp(op, lhs, rhs),
     ExprField(owner, field_name),
