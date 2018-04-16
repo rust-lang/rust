@@ -378,12 +378,6 @@ declare_features! (
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109), None),
 
-    // allow `'_` placeholder lifetimes
-    (active, underscore_lifetimes, "1.22.0", Some(44524), None),
-
-    // Default match binding modes (RFC 2005)
-    (active, match_default_bindings, "1.22.0", Some(42640), None),
-
     // Trait object syntax with `dyn` prefix
     (active, dyn_trait, "1.22.0", Some(44662), Some(Edition::Edition2018)),
 

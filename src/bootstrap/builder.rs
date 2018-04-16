@@ -622,10 +622,14 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.build.build)));
         }
 
-        if mode != Mode::Tool {
-            // Tools don't get debuginfo right now, e.g. cargo and rls don't
-            // get compiled with debuginfo.
-            // Adding debuginfo increases their sizes by a factor of 3-4.
+        if mode == Mode::Tool {
+            // Tools like cargo and rls don't get debuginfo by default right now, but this can be
+            // enabled in the config.  Adding debuginfo makes them several times larger.
+            if self.config.rust_debuginfo_tools {
+                cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
+                cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
+            }
+        } else {
             cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string());
             cargo.env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
             cargo.env("RUSTC_FORCE_UNSTABLE", "1");

@@ -583,7 +583,9 @@ impl<T> Vec<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        self.buf.shrink_to_fit(self.len);
+        if self.capacity() != self.len {
+            self.buf.shrink_to_fit(self.len);
+        }
     }
 
     /// Shrinks the capacity of the vector with a lower bound.

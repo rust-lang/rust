@@ -94,6 +94,7 @@ pub struct Config {
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
     pub rust_debuginfo_only_std: bool,
+    pub rust_debuginfo_tools: bool,
     pub rust_rpath: bool,
     pub rustc_parallel_queries: bool,
     pub rustc_default_linker: Option<String>,
@@ -282,6 +283,7 @@ struct Rust {
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
     debuginfo_only_std: Option<bool>,
+    debuginfo_tools: Option<bool>,
     experimental_parallel_queries: Option<bool>,
     debug_jemalloc: Option<bool>,
     use_jemalloc: Option<bool>,
@@ -462,6 +464,7 @@ impl Config {
         let mut llvm_assertions = None;
         let mut debuginfo_lines = None;
         let mut debuginfo_only_std = None;
+        let mut debuginfo_tools = None;
         let mut debug = None;
         let mut debug_jemalloc = None;
         let mut debuginfo = None;
@@ -499,6 +502,7 @@ impl Config {
             debuginfo = rust.debuginfo;
             debuginfo_lines = rust.debuginfo_lines;
             debuginfo_only_std = rust.debuginfo_only_std;
+            debuginfo_tools = rust.debuginfo_tools;
             optimize = rust.optimize;
             ignore_git = rust.ignore_git;
             debug_jemalloc = rust.debug_jemalloc;
@@ -582,6 +586,7 @@ impl Config {
         };
         config.rust_debuginfo_lines = debuginfo_lines.unwrap_or(default);
         config.rust_debuginfo_only_std = debuginfo_only_std.unwrap_or(default);
+        config.rust_debuginfo_tools = debuginfo_tools.unwrap_or(false);
 
         let default = debug == Some(true);
         config.debug_jemalloc = debug_jemalloc.unwrap_or(default);
