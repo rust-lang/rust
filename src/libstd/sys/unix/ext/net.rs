@@ -1053,7 +1053,7 @@ impl UnixDatagram {
 
     /// Create an unnamed pair of connected sockets.
     ///
-    /// Returns two `UnixDatagrams`s which are connected to each other.
+    /// Returns two `UnixDatagram`s which are connected to each other.
     ///
     /// # Examples
     ///
