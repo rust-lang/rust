@@ -1389,8 +1389,8 @@ fn num_overlap(a_start: usize, a_end: usize, b_start: usize, b_end:usize, inclus
     } else {
         0
     };
-    (b_start..b_end + extra).contains(a_start) ||
-    (a_start..a_end + extra).contains(b_start)
+    (b_start..b_end + extra).contains(&a_start) ||
+    (a_start..a_end + extra).contains(&b_start)
 }
 fn overlaps(a1: &Annotation, a2: &Annotation, padding: usize) -> bool {
     num_overlap(a1.start_col, a1.end_col + padding, a2.start_col, a2.end_col, false)

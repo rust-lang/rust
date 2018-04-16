@@ -259,18 +259,18 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// True if `r` is a member of this set of universal regions.
     pub fn is_universal_region(&self, r: RegionVid) -> bool {
-        (FIRST_GLOBAL_INDEX..self.num_universals).contains(r.index())
+        (FIRST_GLOBAL_INDEX..self.num_universals).contains(&r.index())
     }
 
     /// Classifies `r` as a universal region, returning `None` if this
     /// is not a member of this set of universal regions.
     pub fn region_classification(&self, r: RegionVid) -> Option<RegionClassification> {
         let index = r.index();
-        if (FIRST_GLOBAL_INDEX..self.first_extern_index).contains(index) {
+        if (FIRST_GLOBAL_INDEX..self.first_extern_index).contains(&index) {
             Some(RegionClassification::Global)
-        } else if (self.first_extern_index..self.first_local_index).contains(index) {
+        } else if (self.first_extern_index..self.first_local_index).contains(&index) {
             Some(RegionClassification::External)
-        } else if (self.first_local_index..self.num_universals).contains(index) {
+        } else if (self.first_local_index..self.num_universals).contains(&index) {
             Some(RegionClassification::Local)
         } else {
             None

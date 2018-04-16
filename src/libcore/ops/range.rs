@@ -100,17 +100,28 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!(!(3..5).contains(2));
-    /// assert!( (3..5).contains(3));
-    /// assert!( (3..5).contains(4));
-    /// assert!(!(3..5).contains(5));
+    /// use std::f32;
     ///
-    /// assert!(!(3..3).contains(3));
-    /// assert!(!(3..2).contains(3));
+    /// assert!(!(3..5).contains(&2));
+    /// assert!( (3..5).contains(&3));
+    /// assert!( (3..5).contains(&4));
+    /// assert!(!(3..5).contains(&5));
+    ///
+    /// assert!(!(3..3).contains(&3));
+    /// assert!(!(3..2).contains(&3));
+    ///
+    /// assert!( (0.0..1.0).contains(&0.5));
+    /// assert!(!(0.0..1.0).contains(&f32::NAN));
+    /// assert!(!(0.0..f32::NAN).contains(&0.5));
+    /// assert!(!(f32::NAN..1.0).contains(&0.5));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
-    pub fn contains(&self, item: Idx) -> bool {
-        (self.start <= item) && (item < self.end)
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized + PartialOrd<Idx>,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
     /// Returns `true` if the range contains no items.
@@ -179,7 +190,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -188,12 +198,23 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!(!(3..).contains(2));
-    /// assert!( (3..).contains(3));
-    /// assert!( (3..).contains(1_000_000_000));
+    /// use std::f32;
+    ///
+    /// assert!(!(3..).contains(&2));
+    /// assert!( (3..).contains(&3));
+    /// assert!( (3..).contains(&1_000_000_000));
+    ///
+    /// assert!( (0.0..).contains(&0.5));
+    /// assert!(!(0.0..).contains(&f32::NAN));
+    /// assert!(!(f32::NAN..).contains(&0.5));
     /// ```
-    pub fn contains(&self, item: Idx) -> bool {
-        (self.start <= item)
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized + PartialOrd<Idx>,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 }
 
@@ -250,7 +271,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     }
 }
 
-#[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
 impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// Returns `true` if `item` is contained in the range.
     ///
@@ -259,12 +279,23 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!( (..5).contains(-1_000_000_000));
-    /// assert!( (..5).contains(4));
-    /// assert!(!(..5).contains(5));
+    /// use std::f32;
+    ///
+    /// assert!( (..5).contains(&-1_000_000_000));
+    /// assert!( (..5).contains(&4));
+    /// assert!(!(..5).contains(&5));
+    ///
+    /// assert!( (..1.0).contains(&0.5));
+    /// assert!(!(..1.0).contains(&f32::NAN));
+    /// assert!(!(..f32::NAN).contains(&0.5));
     /// ```
-    pub fn contains(&self, item: Idx) -> bool {
-        (item < self.end)
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized + PartialOrd<Idx>,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 }
 
@@ -318,18 +349,29 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!(!(3..=5).contains(2));
-    /// assert!( (3..=5).contains(3));
-    /// assert!( (3..=5).contains(4));
-    /// assert!( (3..=5).contains(5));
-    /// assert!(!(3..=5).contains(6));
+    /// use std::f32;
     ///
-    /// assert!( (3..=3).contains(3));
-    /// assert!(!(3..=2).contains(3));
+    /// assert!(!(3..=5).contains(&2));
+    /// assert!( (3..=5).contains(&3));
+    /// assert!( (3..=5).contains(&4));
+    /// assert!( (3..=5).contains(&5));
+    /// assert!(!(3..=5).contains(&6));
+    ///
+    /// assert!( (3..=3).contains(&3));
+    /// assert!(!(3..=2).contains(&3));
+    ///
+    /// assert!( (0.0..=1.0).contains(&1.0));
+    /// assert!(!(0.0..=1.0).contains(&f32::NAN));
+    /// assert!(!(0.0..=f32::NAN).contains(&0.0));
+    /// assert!(!(f32::NAN..=1.0).contains(&1.0));
     /// ```
     #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
-    pub fn contains(&self, item: Idx) -> bool {
-        self.start <= item && item <= self.end
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized + PartialOrd<Idx>,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 
     /// Returns `true` if the range contains no items.
@@ -431,12 +473,23 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// ```
     /// #![feature(range_contains)]
     ///
-    /// assert!( (..=5).contains(-1_000_000_000));
-    /// assert!( (..=5).contains(5));
-    /// assert!(!(..=5).contains(6));
+    /// use std::f32;
+    ///
+    /// assert!( (..=5).contains(&-1_000_000_000));
+    /// assert!( (..=5).contains(&5));
+    /// assert!(!(..=5).contains(&6));
+    ///
+    /// assert!( (..=1.0).contains(&1.0));
+    /// assert!(!(..=1.0).contains(&f32::NAN));
+    /// assert!(!(..=f32::NAN).contains(&0.5));
     /// ```
-    pub fn contains(&self, item: Idx) -> bool {
-        (item <= self.end)
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    pub fn contains<U>(&self, item: &U) -> bool
+    where
+        Idx: PartialOrd<U>,
+        U: ?Sized + PartialOrd<Idx>,
+    {
+        <Self as RangeBounds<Idx>>::contains(self, item)
     }
 }
 
@@ -537,6 +590,42 @@ pub trait RangeBounds<T: ?Sized> {
     /// # }
     /// ```
     fn end(&self) -> Bound<&T>;
+
+
+    /// Returns `true` if `item` is contained in the range.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_contains)]
+    ///
+    /// use std::f32;
+    ///
+    /// assert!( (3..5).contains(&4));
+    /// assert!(!(3..5).contains(&2));
+    ///
+    /// assert!( (0.0..1.0).contains(&0.5));
+    /// assert!(!(0.0..1.0).contains(&f32::NAN));
+    /// assert!(!(0.0..f32::NAN).contains(&0.5));
+    /// assert!(!(f32::NAN..1.0).contains(&0.5));
+    #[unstable(feature = "range_contains", reason = "recently added as per RFC", issue = "32311")]
+    fn contains<U>(&self, item: &U) -> bool
+    where
+        T: PartialOrd<U>,
+        U: ?Sized + PartialOrd<T>,
+    {
+        (match self.start() {
+            Included(ref start) => *start <= item,
+            Excluded(ref start) => *start < item,
+            Unbounded => true,
+        })
+        &&
+        (match self.end() {
+            Included(ref end) => item <= *end,
+            Excluded(ref end) => item < *end,
+            Unbounded => true,
+        })
+    }
 }
 
 use self::Bound::{Excluded, Included, Unbounded};
