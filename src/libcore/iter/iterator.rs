@@ -2223,7 +2223,7 @@ pub trait Iterator {
         Sum::sum(self)
     }
 
-    /// Iterates over the entire iterator, multiplying all the elements
+    /// Iterates over the entire iterator, multiplying all the elements.
     ///
     /// An empty iterator returns the one value of the type.
     ///
@@ -2249,6 +2249,32 @@ pub trait Iterator {
               P: Product<Self::Item>,
     {
         Product::product(self)
+    }
+
+    /// Eagerly consume the iterator, evaluating all the elements.
+    ///
+    /// This is primarily useful for evaluating the effects of an iterator that
+    /// has previously been created. To evaluate the effects of an iterator
+    /// immediately, it is likely better to use [`for_each`].
+    ///
+    /// [`for_each`]: #method.for_each
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // Prepare an iterator with side effects...
+    /// let count_aloud = 1..=10.map(|x| println!("{}", x));
+    ///
+    /// // ...
+    ///
+    /// // Trigger the effects!
+    /// count_aloud.exhaust();
+    ///
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_exhaust", issue = "44546")]
+    fn exhaust(self) where Self: Sized {
+        for _ in self {}
     }
 
     /// Lexicographically compares the elements of this `Iterator` with those
