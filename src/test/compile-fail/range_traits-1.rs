@@ -15,35 +15,27 @@ struct AllTheRanges {
     a: Range<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ ERROR binary operation `<` cannot be applied to type
-    //~^^^^ ERROR binary operation `>` cannot be applied to type
+    //~^^^ the trait bound
     b: RangeTo<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ ERROR binary operation `<` cannot be applied to type
-    //~^^^^ ERROR binary operation `>` cannot be applied to type
+    //~^^^ no method named `partial_cmp`
     c: RangeFrom<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ ERROR binary operation `<` cannot be applied to type
-    //~^^^^ ERROR binary operation `>` cannot be applied to type
+    //~^^^ the trait bound
     d: RangeFull,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ ERROR binary operation `<` cannot be applied to type
-    //~^^^^ ERROR binary operation `>` cannot be applied to type
+    //~^^^ no method named `partial_cmp`
     e: RangeInclusive<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ ERROR binary operation `<` cannot be applied to type
-    //~^^^^ ERROR binary operation `>` cannot be applied to type
+    //~^^^ the trait bound
     f: RangeToInclusive<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ ERROR binary operation `<` cannot be applied to type
-    //~^^^^ ERROR binary operation `>` cannot be applied to type
-    //~^^^^^ ERROR binary operation `<=` cannot be applied to type
-    //~^^^^^^ ERROR binary operation `>=` cannot be applied to type
+    //~^^^ no method named `partial_cmp`
 }
 
 fn main() {}

@@ -18,9 +18,6 @@ enum Enum {
    A(
      Error //~ ERROR
 //~^ ERROR
-//~^^ ERROR
-//~^^^ ERROR
-//~^^^^ ERROR
      )
 }
 

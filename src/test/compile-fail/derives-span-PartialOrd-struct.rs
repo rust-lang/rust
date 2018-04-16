@@ -17,9 +17,6 @@ struct Error;
 struct Struct {
     x: Error //~ ERROR
 //~^ ERROR
-//~^^ ERROR
-//~^^^ ERROR
-//~^^^^ ERROR
 }
 
 fn main() {}

@@ -122,7 +122,7 @@ traits = {
 
 for (trait, supers, errs) in [('Clone', [], 1),
                               ('PartialEq', [], 2),
-                              ('PartialOrd', ['PartialEq'], 5),
+                              ('PartialOrd', ['PartialEq'], 2),
                               ('Eq', ['PartialEq'], 1),
                               ('Ord', ['Eq', 'PartialOrd', 'PartialEq'], 1),
                               ('Debug', [], 1),
