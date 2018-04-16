@@ -1096,8 +1096,8 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// This corresponds to the `MOVHPS` / `MOVHPD` / `VMOVHPD` instructions.
 ///
 /// ```rust
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature, stdsimd)]
+/// # #![cfg_attr(not(dox), feature(cfg_target_feature))]
+/// # #![cfg_attr(not(dox), feature(target_feature, stdsimd))]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
 /// # extern crate std as real_std;
@@ -1152,8 +1152,8 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// This corresponds to the `MOVLPS` / `MOVLDP` / `VMOVLDP` instructions.
 ///
 /// ```rust
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature, stdsimd)]
+/// # #![cfg_attr(not(dox), feature(cfg_target_feature))]
+/// # #![cfg_attr(not(dox), feature(target_feature, stdsimd))]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
 /// # extern crate std as real_std;
