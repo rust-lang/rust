@@ -1,5 +1,16 @@
+error[E0597]: `*cell` does not live long enough
+  --> $DIR/dropck.rs:19:40
+   |
+LL |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
+   |                                        ^^^^ borrowed value does not live long enough
+...
+LL | }
+   | - `*cell` dropped here while still borrowed
+   |
+   = note: values in a scope are dropped in the opposite order they are created
+
 error[E0597]: `ref_` does not live long enough
-  --> $DIR/dropck.rs:23:18
+  --> $DIR/dropck.rs:24:18
    |
 LL |     gen = || {
    |           -- capture occurs here
@@ -12,6 +23,6 @@ LL | }
    |
    = note: values in a scope are dropped in the opposite order they are created
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0597`.

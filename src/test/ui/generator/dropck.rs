@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(generators, generator_trait, box_leak, rustc_attrs)]
+#![feature(generators, generator_trait, box_leak)]
 
 use std::cell::RefCell;
 use std::ops::Generator;
 
-fn main() { #![rustc_error] // rust-lang/rust#49855
+fn main() {
     let (cell, mut gen);
     cell = Box::new(RefCell::new(0));
     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
+    //~^ ERROR `*cell` does not live long enough [E0597]
     // the upvar is the non-dropck `&mut Option<Ref<'a, i32>>`.
     gen = || {
         // but the generator can use it to drop a `Ref<'a, i32>`.
