@@ -140,14 +140,18 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        cmd_finder.must_have(build.cc(*target));
-        if let Some(ar) = build.ar(*target) {
-            cmd_finder.must_have(ar);
+        if !build.config.dry_run {
+            cmd_finder.must_have(build.cc(*target));
+            if let Some(ar) = build.ar(*target) {
+                cmd_finder.must_have(ar);
+            }
         }
     }
 
     for host in &build.hosts {
-        cmd_finder.must_have(build.cxx(*host).unwrap());
+        if !build.config.dry_run {
+            cmd_finder.must_have(build.cxx(*host).unwrap());
+        }
 
         // The msvc hosts don't use jemalloc, turn it off globally to
         // avoid packaging the dummy liballoc_jemalloc on that platform.
