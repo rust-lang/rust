@@ -252,10 +252,7 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::ExternCrate(orig_name) => {
-                self.crate_loader.process_item(item, &self.definitions);
-
-                // n.b. we don't need to look at the path option here, because cstore already did
-                let crate_id = self.cstore.extern_mod_stmt_cnum_untracked(item.id).unwrap();
+                let crate_id = self.crate_loader.process_extern_crate(item, &self.definitions);
                 let module =
                     self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(module);
@@ -302,7 +299,8 @@ impl<'a> Resolver<'a> {
                 self.current_module = module;
             }
 
-            ItemKind::ForeignMod(..) => self.crate_loader.process_item(item, &self.definitions),
+            // Handled in `rustc_metadata::{native_libs,link_args}`
+            ItemKind::ForeignMod(..) => {}
 
             // These items live in the value namespace.
             ItemKind::Static(_, m, _) => {

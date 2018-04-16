@@ -25,7 +25,7 @@ use rustc_back::PanicStrategy;
 use rustc_back::target::TargetTriple;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
-use rustc::middle::cstore::{validate_crate_name, ExternCrate};
+use rustc::middle::cstore::{validate_crate_name, ExternCrate, ExternCrateSource};
 use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
@@ -371,12 +371,19 @@ impl<'a> CrateLoader<'a> {
         // - something over nothing (tuple.0);
         // - direct extern crate to indirect (tuple.1);
         // - shorter paths to longer (tuple.2).
-        let new_rank = (true, extern_crate.direct, !extern_crate.path_len);
+        let new_rank = (
+            true,
+            extern_crate.direct,
+            cmp::Reverse(extern_crate.path_len),
+        );
         let old_rank = match *old_extern_crate {
-            None => (false, false, !0),
-            Some(ref c) => (true, c.direct, !c.path_len),
+            None => (false, false, cmp::Reverse(usize::max_value())),
+            Some(ref c) => (
+                true,
+                c.direct,
+                cmp::Reverse(c.path_len),
+            ),
         };
-
         if old_rank >= new_rank {
             return; // no change needed
         }
@@ -1053,7 +1060,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         }
     }
 
-    fn process_item(&mut self, item: &ast::Item, definitions: &Definitions) {
+    fn process_extern_crate(&mut self, item: &ast::Item, definitions: &Definitions) -> CrateNum {
         match item.node {
             ast::ItemKind::ExternCrate(orig_name) => {
                 debug!("resolving extern crate stmt. ident: {} orig_name: {:?}",
@@ -1079,17 +1086,72 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
 
                 let def_id = definitions.opt_local_def_id(item.id).unwrap();
                 let path_len = definitions.def_path(def_id.index).data.len();
-
-                let extern_crate = ExternCrate { def_id, span: item.span, direct: true, path_len };
-                self.update_extern_crate(cnum, extern_crate, &mut FxHashSet());
+                self.update_extern_crate(
+                    cnum,
+                    ExternCrate {
+                        src: ExternCrateSource::Extern(def_id),
+                        span: item.span,
+                        path_len,
+                        direct: true,
+                    },
+                    &mut FxHashSet(),
+                );
                 self.cstore.add_extern_mod_stmt_cnum(item.id, cnum);
+                cnum
             }
-            _ => {}
+            _ => bug!(),
         }
     }
 
-    fn resolve_crate_from_path(&mut self, name: Symbol, span: Span) -> CrateNum {
-        self.resolve_crate(&None, name, name, None, None, span, PathKind::Crate,
-                           DepKind::Explicit).0
+    fn process_path_extern(
+        &mut self,
+        name: Symbol,
+        span: Span,
+    ) -> CrateNum {
+        let cnum = self.resolve_crate(
+            &None, name, name, None, None, span, PathKind::Crate, DepKind::Explicit
+        ).0;
+
+        self.update_extern_crate(
+            cnum,
+            ExternCrate {
+                src: ExternCrateSource::Path,
+                span,
+                // to have the least priority in `update_extern_crate`
+                path_len: usize::max_value(),
+                direct: true,
+            },
+            &mut FxHashSet(),
+        );
+
+        cnum
+    }
+
+    fn process_use_extern(
+        &mut self,
+        name: Symbol,
+        span: Span,
+        id: ast::NodeId,
+        definitions: &Definitions,
+    ) -> CrateNum {
+        let cnum = self.resolve_crate(
+            &None, name, name, None, None, span, PathKind::Crate, DepKind::Explicit
+        ).0;
+
+        let def_id = definitions.opt_local_def_id(id).unwrap();
+        let path_len = definitions.def_path(def_id.index).data.len();
+
+        self.update_extern_crate(
+            cnum,
+            ExternCrate {
+                src: ExternCrateSource::Use,
+                span,
+                path_len,
+                direct: true,
+            },
+            &mut FxHashSet(),
+        );
+
+        cnum
     }
 }

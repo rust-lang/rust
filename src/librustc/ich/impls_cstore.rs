@@ -47,10 +47,16 @@ impl_stable_hash_for!(enum middle::cstore::LinkagePreference {
 });
 
 impl_stable_hash_for!(struct middle::cstore::ExternCrate {
-    def_id,
+    src,
     span,
-    direct,
-    path_len
+    path_len,
+    direct
+});
+
+impl_stable_hash_for!(enum middle::cstore::ExternCrateSource {
+    Extern(def_id),
+    Use,
+    Path,
 });
 
 impl_stable_hash_for!(struct middle::cstore::CrateSource {
