@@ -5,7 +5,6 @@ use rustc::mir;
 use rustc::ty::{self, TyCtxt, Ty, Instance};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::ty::subst::Subst;
-use rustc::util::nodemap::FxHashSet;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
@@ -110,53 +109,38 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
         }
         span = mir.span;
         let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
-        let alloc = tcx.interpret_interner.get_cached(cid.instance.def_id());
-        let is_static = tcx.is_static(cid.instance.def_id()).is_some();
-        let alloc = match alloc {
-            Some(alloc) => {
-                assert!(cid.promoted.is_none());
-                assert!(param_env.caller_bounds.is_empty());
-                alloc
-            },
-            None => {
-                assert!(!layout.is_unsized());
-                let ptr = ecx.memory.allocate(
-                    layout.size.bytes(),
-                    layout.align,
-                    None,
-                )?;
-                if is_static {
-                    tcx.interpret_interner.cache(cid.instance.def_id(), ptr.alloc_id);
-                }
-                let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-                let mutability = tcx.is_static(cid.instance.def_id());
-                let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
-                    Mutability::Mutable
-                } else {
-                    Mutability::Immutable
-                };
-                let cleanup = StackPopCleanup::MarkStatic(mutability);
-                let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
-                let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
-                trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
-                assert!(mir.arg_count == 0);
-                ecx.push_stack_frame(
-                    cid.instance,
-                    mir.span,
-                    mir,
-                    Place::from_ptr(ptr, layout.align),
-                    cleanup,
-                )?;
-
-                while ecx.step()? {}
-                ptr.alloc_id
-            }
+        assert!(!layout.is_unsized());
+        let ptr = ecx.memory.allocate(
+            layout.size.bytes(),
+            layout.align,
+            None,
+        )?;
+        let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
+        let mutability = tcx.is_static(cid.instance.def_id());
+        let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
+            Mutability::Mutable
+        } else {
+            Mutability::Immutable
         };
-        let ptr = MemoryPointer::new(alloc, 0).into();
+        let cleanup = StackPopCleanup::MarkStatic(mutability);
+        let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
+        let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
+        trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
+        assert!(mir.arg_count == 0);
+        ecx.push_stack_frame(
+            cid.instance,
+            mir.span,
+            mir,
+            Place::from_ptr(ptr, layout.align),
+            cleanup,
+        )?;
+
+        while ecx.step()? {}
+        let ptr = ptr.into();
         // always try to read the value and report errors
         let value = match ecx.try_read_value(ptr, layout.align, layout.ty)? {
             // if it's a constant (so it needs no address, directly compute its value)
-            Some(val) if !is_static => val,
+            Some(val) if tcx.is_static(cid.instance.def_id()).is_none() => val,
             // point at the allocation
             _ => Value::ByRef(ptr, layout.align),
         };
@@ -340,21 +324,10 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         cid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, AllocId> {
-        let alloc = ecx
-                    .tcx
-                    .interpret_interner
-                    .get_cached(cid.instance.def_id());
-        // Don't evaluate when already cached to prevent cycles
-        if let Some(alloc) = alloc {
-            return Ok(alloc)
-        }
-        // ensure the static is computed
-        ecx.const_eval(cid)?;
         Ok(ecx
             .tcx
             .interpret_interner
-            .get_cached(cid.instance.def_id())
-            .expect("uncached static"))
+            .cache_static(cid.instance.def_id()))
     }
 
     fn box_alloc<'a>(
@@ -460,16 +433,7 @@ pub fn const_eval_provider<'a, 'tcx>(
     let def_id = cid.instance.def.def_id();
 
     if tcx.is_foreign_item(def_id) {
-        let id = tcx.interpret_interner.get_cached(def_id);
-        let id = match id {
-            // FIXME: due to caches this shouldn't happen, add some assertions
-            Some(id) => id,
-            None => {
-                let id = tcx.interpret_interner.reserve();
-                tcx.interpret_interner.cache(def_id, id);
-                id
-            },
-        };
+        let id = tcx.interpret_interner.cache_static(def_id);
         let ty = tcx.type_of(def_id);
         let layout = tcx.layout_of(key.param_env.and(ty)).unwrap();
         let ptr = MemoryPointer::new(id, 0);
@@ -505,13 +469,7 @@ pub fn const_eval_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.map(|(miri_value, ptr, miri_ty)| {
-        if tcx.is_static(def_id).is_some() {
-            if let Ok(ptr) = ptr.primval.to_ptr() {
-                let mut seen = FxHashSet::default();
-                create_depgraph_edges(tcx, ptr.alloc_id, &mut seen);
-            }
-        }
+    res.map(|(miri_value, _, miri_ty)| {
         tcx.mk_const(ty::Const {
             val: ConstVal::Value(miri_value),
             ty: miri_ty,
@@ -527,36 +485,4 @@ pub fn const_eval_provider<'a, 'tcx>(
             span,
         }
     })
-}
-
-// This function creates dep graph edges from statics to all referred to statics.
-// This is necessary, because the `const_eval` query cannot directly call itself
-// for other statics, because we cannot prevent recursion in queries.
-//
-// see test/incremental/static_refering_to_other_static2/issue.rs for an example
-// where not creating those edges would cause static A, which refers to static B
-// to point to the old allocation of static B, even though B has changed.
-//
-// In the future we will want to remove this funcion in favour of a system that
-// makes sure that statics don't need to have edges to other statics as long as
-// they are only referring by reference and not inspecting the other static's body.
-fn create_depgraph_edges<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    alloc_id: AllocId,
-    seen: &mut FxHashSet<AllocId>,
-) {
-    trace!("create_depgraph_edges: {:?}, {:?}", alloc_id, seen);
-    if seen.insert(alloc_id) {
-        trace!("seen: {:?}, {:?}", alloc_id, seen);
-        if let Some(alloc) = tcx.interpret_interner.get_alloc(alloc_id) {
-            trace!("get_alloc: {:?}, {:?}, {:?}", alloc_id, seen, alloc);
-            for (_, &reloc) in &alloc.relocations {
-                if let Some(did) = tcx.interpret_interner.get_corresponding_static_def_id(reloc) {
-                    trace!("get_corresponding: {:?}, {:?}, {:?}, {:?}, {:?}", alloc_id, seen, alloc, did, reloc);
-                    let _ = tcx.maybe_optimized_mir(did);
-                }
-                create_depgraph_edges(tcx, reloc, seen);
-            }
-        }
-    }
 }
