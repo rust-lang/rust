@@ -552,6 +552,12 @@ impl<'a> Builder<'a> {
              .arg("--target")
              .arg(target);
 
+        // Set a flag for `check` so that certain build scripts can do less work
+        // (e.g. not building/requiring LLVM).
+        if cmd == "check" {
+            cargo.env("RUST_CHECK", "1");
+        }
+
         // If we were invoked from `make` then that's already got a jobserver
         // set up for us so no need to tell Cargo about jobs all over again.
         if env::var_os("MAKEFLAGS").is_none() && env::var_os("MFLAGS").is_none() {

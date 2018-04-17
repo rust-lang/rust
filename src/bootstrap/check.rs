@@ -11,7 +11,6 @@
 //! Implementation of compiling the compiler and standard library, in "check" mode.
 
 use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env, add_to_sysroot};
-use compile::build_codegen_backend;
 use builder::{RunConfig, Builder, ShouldRun, Step};
 use {Compiler, Mode};
 use cache::{INTERNER, Interned};
@@ -138,11 +137,11 @@ impl Step for CodegenBackend {
         let backend = self.backend;
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
-        let mut features = build.rustc_features().to_string();
+        let features = build.rustc_features().to_string();
         cargo.arg("--manifest-path").arg(build.src.join("src/librustc_trans/Cargo.toml"));
         rustc_cargo_env(build, &mut cargo);
 
-        features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
+        // We won't build LLVM if it's not available, as it shouldn't affect `check`.
 
         let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
         run_cargo(build,
