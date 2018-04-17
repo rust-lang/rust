@@ -201,21 +201,27 @@ fn cs_op(less: bool,
         cx.expr_path(cx.path_global(span, cx.std_path(&["cmp", "Ordering", name])))
     };
 
-    let par_cmp = |cx: &mut ExtCtxt, span: Span, self_f: P<Expr>, other_fs: &[P<Expr>]| {
+    let par_cmp = |cx: &mut ExtCtxt, span, self_f: P<Expr>, other_fs: &[P<Expr>], default| {
         let other_f = match (other_fs.len(), other_fs.get(0)) {
             (1, Some(o_f)) => o_f,
             _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
         };
 
-        // `self.fi.partial_cmp(other.fi)`
-        let cmp = cx.expr_method_call(span,
-                                      cx.expr_addr_of(span, self_f),
-                                      Ident::from_str("partial_cmp"),
-                                      vec![cx.expr_addr_of(span, other_f.clone())]);
+        // `PartialOrd::partial_cmp(self.fi, other.fi)`
+        let cmp_path = cx.expr_path(cx.path_global(span, cx.std_path(&["cmp",
+                                                                       "PartialOrd",
+                                                                       "partial_cmp"])));
+        let cmp = cx.expr_call(span,
+                               cmp_path,
+                               vec![cx.expr_addr_of(span, self_f),
+                                    cx.expr_addr_of(span, other_f.clone())]);
 
-        let default = ordering_path(cx, "Equal");
-        // `_.unwrap_or(Ordering::Equal)`
-        cx.expr_method_call(span, cmp, Ident::from_str("unwrap_or"), vec![default])
+        let default = ordering_path(cx, default);
+        // `Option::unwrap_or(_, Ordering::Equal)`
+        let unwrap_path = cx.expr_path(cx.path_global(span, cx.std_path(&["option",
+                                                                          "Option",
+                                                                          "unwrap_or"])));
+        cx.expr_call(span, unwrap_path, vec![cmp, default])
     };
 
     let fold = cs_fold1(false, // need foldr
@@ -244,7 +250,7 @@ fn cs_op(less: bool,
             // layers of pointers, if the type includes pointers.
 
             // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Equal)`
-            let par_cmp = par_cmp(cx, span, self_f, other_fs);
+            let par_cmp = par_cmp(cx, span, self_f, other_fs, "Equal");
 
             // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Equal).then_with(...)`
             cx.expr_method_call(span,
@@ -254,7 +260,10 @@ fn cs_op(less: bool,
         },
         |cx, args| {
             match args {
-                Some((span, self_f, other_fs)) => par_cmp(cx, span, self_f, other_fs),
+                Some((span, self_f, other_fs)) => {
+                    let opposite = if less { "Greater" } else { "Less" };
+                    par_cmp(cx, span, self_f, other_fs, opposite)
+                },
                 None => cx.expr_bool(span, inclusive)
             }
         },

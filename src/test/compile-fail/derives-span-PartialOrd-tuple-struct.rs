@@ -16,7 +16,6 @@ struct Error;
 #[derive(PartialOrd,PartialEq)]
 struct Struct(
     Error //~ ERROR
-//~^ ERROR
 );
 
 fn main() {}

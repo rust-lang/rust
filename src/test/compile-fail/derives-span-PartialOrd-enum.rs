@@ -17,7 +17,6 @@ struct Error;
 enum Enum {
    A(
      Error //~ ERROR
-//~^ ERROR
      )
 }
 

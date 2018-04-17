@@ -15,27 +15,21 @@ struct AllTheRanges {
     a: Range<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ the trait bound
     b: RangeTo<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ no method named `partial_cmp`
     c: RangeFrom<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ the trait bound
     d: RangeFull,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ no method named `partial_cmp`
     e: RangeInclusive<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ the trait bound
     f: RangeToInclusive<usize>,
     //~^ ERROR PartialOrd
     //~^^ ERROR Ord
-    //~^^^ no method named `partial_cmp`
 }
 
 fn main() {}
