@@ -1288,7 +1288,6 @@ fn get_concurrency() -> usize {
 
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
-
     // Remove tests that don't match the test filter
     filtered = match opts.filter {
         None => filtered,

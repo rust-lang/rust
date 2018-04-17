@@ -61,7 +61,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// # Conversions
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
-/// the traits which `OsString` implements for conversions from/to native representations.
+/// the traits which `OsString` implements for [conversions] from/to native representations.
 ///
 /// [`OsStr`]: struct.OsStr.html
 /// [`&OsStr`]: struct.OsStr.html
@@ -74,6 +74,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// [`new`]: #method.new
 /// [`push`]: #method.push
 /// [`as_os_str`]: #method.as_os_str
+/// [conversions]: index.html#conversions
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
@@ -89,7 +90,7 @@ pub struct OsString {
 /// references; the latter are owned strings.
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
-/// the traits which `OsStr` implements for conversions from/to native representations.
+/// the traits which `OsStr` implements for [conversions] from/to native representations.
 ///
 /// [`OsString`]: struct.OsString.html
 /// [`&str`]: ../primitive.str.html

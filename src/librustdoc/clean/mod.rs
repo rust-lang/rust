@@ -1178,6 +1178,10 @@ enum PathKind {
     Type,
 }
 
+fn resolution_failure(cx: &DocContext, path_str: &str) {
+    cx.sess().warn(&format!("[{}] cannot be resolved, ignoring it...", path_str));
+}
+
 impl Clean<Attributes> for [ast::Attribute] {
     fn clean(&self, cx: &DocContext) -> Attributes {
         let mut attrs = Attributes::from_ast(cx.sess().diagnostic(), self);
@@ -1228,6 +1232,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(def) = resolve(cx, path_str, true) {
                                 def
                             } else {
+                                resolution_failure(cx, path_str);
                                 // this could just be a normal link or a broken link
                                 // we could potentially check if something is
                                 // "intra-doc-link-like" and warn in that case
@@ -1238,6 +1243,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Ok(def) = resolve(cx, path_str, false) {
                                 def
                             } else {
+                                resolution_failure(cx, path_str);
                                 // this could just be a normal link
                                 continue;
                             }
@@ -1282,6 +1288,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             } else if let Ok(value_def) = resolve(cx, path_str, true) {
                                 value_def
                             } else {
+                                resolution_failure(cx, path_str);
                                 // this could just be a normal link
                                 continue;
                             }
@@ -1290,6 +1297,7 @@ impl Clean<Attributes> for [ast::Attribute] {
                             if let Some(def) = macro_resolve(cx, path_str) {
                                 (def, None)
                             } else {
+                                resolution_failure(cx, path_str);
                                 continue
                             }
                         }

@@ -514,6 +514,41 @@ impl Step for RustdocJS {
     }
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocUi {
+    pub host: Interned<String>,
+    pub target: Interned<String>,
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocUi {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.path("src/test/rustdoc-ui")
+    }
+
+    fn make_run(run: RunConfig) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.host);
+        run.builder.ensure(RustdocUi {
+            host: run.host,
+            target: run.target,
+            compiler,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "ui",
+            suite: "rustdoc-ui",
+        })
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
@@ -851,8 +886,12 @@ impl Step for Compiletest {
         cmd.arg("--run-lib-path").arg(builder.sysroot_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
 
+        let is_rustdoc_ui = suite.ends_with("rustdoc-ui");
+
         // Avoid depending on rustdoc when we don't need it.
-        if mode == "rustdoc" || (mode == "run-make" && suite.ends_with("fulldeps")) {
+        if mode == "rustdoc" ||
+           (mode == "run-make" && suite.ends_with("fulldeps")) ||
+           (mode == "ui" && is_rustdoc_ui) {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler.host));
         }
 
@@ -868,12 +907,18 @@ impl Step for Compiletest {
             cmd.arg("--nodejs").arg(nodejs);
         }
 
-        let mut flags = vec!["-Crpath".to_string()];
-        if build.config.rust_optimize_tests {
-            flags.push("-O".to_string());
-        }
-        if build.config.rust_debuginfo_tests {
-            flags.push("-g".to_string());
+        let mut flags = if is_rustdoc_ui {
+            Vec::new()
+        } else {
+            vec!["-Crpath".to_string()]
+        };
+        if !is_rustdoc_ui {
+            if build.config.rust_optimize_tests {
+                flags.push("-O".to_string());
+            }
+            if build.config.rust_debuginfo_tests {
+                flags.push("-g".to_string());
+            }
         }
         flags.push("-Zunstable-options".to_string());
         flags.push(build.config.cmd.rustc_args().join(" "));

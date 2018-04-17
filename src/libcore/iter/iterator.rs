@@ -998,7 +998,7 @@ pub trait Iterator {
     /// an extra layer of indirection. `flat_map()` will remove this extra layer
     /// on its own.
     ///
-    /// You can think of [`flat_map(f)`][flat_map] as the semantic equivalent
+    /// You can think of `flat_map(f)` as the semantic equivalent
     /// of [`map`]ping, and then [`flatten`]ing as in `map(f).flatten()`.
     ///
     /// Another way of thinking about `flat_map()`: [`map`]'s closure returns
