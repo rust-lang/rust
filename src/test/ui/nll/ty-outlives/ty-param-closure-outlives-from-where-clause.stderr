@@ -1,10 +1,10 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:45:9
    |
 LL |         require(&x, &y)
    |         ^^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:79:9
    |
 LL |         require(&x, &y)
@@ -19,7 +19,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         //
 LL | |         // See `correct_region`, which explains the point of this
 ...  |
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
    |
@@ -40,7 +40,7 @@ LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         //
 LL | |         // See `correct_region`, which explains the point of this
 ...  |
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
    |
@@ -109,7 +109,7 @@ LL |       with_signature(a, b, |x, y| {
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
    |
@@ -130,7 +130,7 @@ LL |       with_signature(a, b, |x, y| {
 LL | |         //~^ ERROR the parameter type `T` may not live long enough
 LL | |         // See `correct_region`
 LL | |         require(&x, &y)
-LL | |         //~^ WARNING not reporting region error due to -Znll
+LL | |         //~^ WARNING not reporting region error due to nll
 LL | |     })
    | |_____^
    |

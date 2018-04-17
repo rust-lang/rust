@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: ast lxl nll
+// revisions: ast nll
 //[ast]compile-flags:
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
-//[g2p]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll -Z two-phase-beyond-autoref
+//[g2p]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref
 // the above revision is disabled until two-phase-beyond-autoref support is better
 
 // This is a test checking that when we limit two-phase borrows to
@@ -69,44 +68,38 @@ fn overloaded_call_traits() {
 
     fn twice_ten_sm<F: FnMut(i32) -> i32>(f: &mut F) {
         f(f(10));
-        //[lxl]~^     ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~^^   ERROR cannot borrow `*f` as mutable more than once at a time
-        //[g2p]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
-        //[ast]~^^^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[nll]~^   ERROR cannot borrow `*f` as mutable more than once at a time
+        //[g2p]~^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[ast]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_si<F: Fn(i32) -> i32>(f: &mut F) {
         f(f(10));
     }
     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
         f(f(10));
-        //[lxl]~^    ERROR use of moved value: `*f`
-        //[nll]~^^   ERROR use of moved value: `*f`
-        //[g2p]~^^^  ERROR use of moved value: `*f`
-        //[ast]~^^^^ ERROR use of moved value: `*f`
+        //[nll]~^   ERROR use of moved value: `*f`
+        //[g2p]~^^  ERROR use of moved value: `*f`
+        //[ast]~^^^ ERROR use of moved value: `*f`
     }
 
     fn twice_ten_om(f: &mut FnMut(i32) -> i32) {
         f(f(10));
-        //[lxl]~^    ERROR cannot borrow `*f` as mutable more than once at a time
-        //[nll]~^^   ERROR cannot borrow `*f` as mutable more than once at a time
-        //[g2p]~^^^  ERROR cannot borrow `*f` as mutable more than once at a time
-        //[ast]~^^^^ ERROR cannot borrow `*f` as mutable more than once at a time
+        //[nll]~^   ERROR cannot borrow `*f` as mutable more than once at a time
+        //[g2p]~^^  ERROR cannot borrow `*f` as mutable more than once at a time
+        //[ast]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_oi(f: &mut Fn(i32) -> i32) {
         f(f(10));
     }
     fn twice_ten_oo(f: Box<FnOnce(i32) -> i32>) {
         f(f(10));
-        //[lxl]~^             ERROR cannot move a value of type
-        //[lxl]~^^            ERROR cannot move a value of type
-        //[lxl]~^^^           ERROR use of moved value: `*f`
-        //[nll]~^^^^          ERROR cannot move a value of type
-        //[nll]~^^^^^         ERROR cannot move a value of type
-        //[nll]~^^^^^^        ERROR use of moved value: `*f`
-        //[g2p]~^^^^^^^       ERROR cannot move a value of type
-        //[g2p]~^^^^^^^^      ERROR cannot move a value of type
-        //[g2p]~^^^^^^^^^     ERROR use of moved value: `*f`
-        //[ast]~^^^^^^^^^^    ERROR use of moved value: `*f`
+        //[nll]~^          ERROR cannot move a value of type
+        //[nll]~^^         ERROR cannot move a value of type
+        //[nll]~^^^        ERROR use of moved value: `*f`
+        //[g2p]~^^^^       ERROR cannot move a value of type
+        //[g2p]~^^^^^      ERROR cannot move a value of type
+        //[g2p]~^^^^^^     ERROR use of moved value: `*f`
+        //[ast]~^^^^^^^    ERROR use of moved value: `*f`
     }
 
     twice_ten_sm(&mut |x| x + 1);
@@ -144,10 +137,9 @@ fn coerce_unsized() {
 
     // This is not okay.
     double_access(&mut a, &a);
-    //[lxl]~^    ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
-    //[nll]~^^   ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
-    //[g2p]~^^^  ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
-    //[ast]~^^^^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
+    //[nll]~^   ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
+    //[g2p]~^^  ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
+    //[ast]~^^^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
 
     // But this is okay.
     a.m(a.i(10));
@@ -173,16 +165,14 @@ impl IndexMut<i32> for I {
 fn coerce_index_op() {
     let mut i = I(10);
     i[i[3]] = 4;
-    //[lxl]~^   ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    //[nll]~^^  ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    //[ast]~^^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
+    //[nll]~^  ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
+    //[ast]~^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
 
     i[3] = i[4];
 
     i[i[3]] = i[4];
-    //[lxl]~^   ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    //[nll]~^^  ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    //[ast]~^^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
+    //[nll]~^  ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
+    //[ast]~^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
 }
 
 fn main() {

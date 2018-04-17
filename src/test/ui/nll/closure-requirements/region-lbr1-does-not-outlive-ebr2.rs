@@ -13,11 +13,11 @@
 // a variety of errors from the older, AST-based machinery (notably
 // borrowck), and then we get the NLL error at the end.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 fn foo<'a, 'b>(x: &'a u32, y: &'b u32) -> &'b u32 {
     &*x
-        //~^ WARN not reporting region error due to -Znll
+        //~^ WARN not reporting region error due to nll
         //~| ERROR lifetime mismatch
 }
 

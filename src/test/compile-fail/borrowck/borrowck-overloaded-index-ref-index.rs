@@ -71,4 +71,5 @@ fn main() {
     s[2] = 20;
     //[ast]~^ ERROR cannot assign to immutable indexed content
     //[mir]~^^ ERROR cannot assign to immutable item
+    drop(rs);
 }

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+// compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 // This is the third counter-example from Niko's blog post
 // smallcultfollowing.com/babysteps/blog/2017/03/01/nested-method-calls-via-two-phase-borrowing/
@@ -26,8 +24,7 @@ fn main() {
     vec.get({
 
         vec.push(2);
-        //[lxl]~^ ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
-        //[nll]~^^   ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
+        //~^ ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
 
         0
     });

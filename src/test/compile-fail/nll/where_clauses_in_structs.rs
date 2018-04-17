@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z borrowck=mir -Z nll
+// compile-flags: -Z borrowck=mir
 
 #![allow(dead_code)]
 
@@ -22,7 +22,7 @@ struct Foo<'a: 'b, 'b> {
 fn bar<'a, 'b>(x: Cell<&'a u32>, y: Cell<&'b u32>) {
     Foo { x, y };
     //~^ ERROR lifetime mismatch [E0623]
-    //~| WARNING not reporting region error due to -Znll
+    //~| WARNING not reporting region error due to nll
 }
 
 fn main() {}

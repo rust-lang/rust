@@ -17,14 +17,14 @@
 
 fn main() {
     let mut x = 1;
-    let mut addr;
+    let mut addr = vec![];
     loop {
         match 1 {
-            1 => { addr = &mut x; } //[ast]~ ERROR [E0499]
+            1 => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
             //[mir]~^ ERROR [E0499]
-            2 => { addr = &mut x; } //[ast]~ ERROR [E0499]
+            2 => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
             //[mir]~^ ERROR [E0499]
-            _ => { addr = &mut x; } //[ast]~ ERROR [E0499]
+            _ => { addr.push(&mut x); } //[ast]~ ERROR [E0499]
             //[mir]~^ ERROR [E0499]
         }
     }

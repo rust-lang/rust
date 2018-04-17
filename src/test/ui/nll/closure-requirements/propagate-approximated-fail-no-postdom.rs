@@ -11,7 +11,7 @@
 // Test where we fail to approximate due to demanding a postdom
 // relationship between our upper bounds.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![feature(rustc_attrs)]
 
@@ -53,7 +53,7 @@ fn supply<'a, 'b, 'c>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>, cell_c: Cell
         |_outlives1, _outlives2, _outlives3, x, y| {
             // Only works if 'x: 'y:
             let p = x.get();
-            //~^ WARN not reporting region error due to -Znll
+            //~^ WARN not reporting region error due to nll
             //~| ERROR does not outlive free region
             demand_y(x, y, p)
         },

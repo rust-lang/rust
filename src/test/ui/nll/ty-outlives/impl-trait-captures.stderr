@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/impl-trait-captures.rs:21:5
    |
 LL |     x

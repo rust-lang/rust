@@ -1991,7 +1991,7 @@ impl Location {
         Location { block: self.block, statement_index: self.statement_index + 1 }
     }
 
-    pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
+    pub fn dominates(&self, other: Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
         } else {

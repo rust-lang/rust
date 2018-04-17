@@ -1,22 +1,22 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/projection-two-region-trait-bound-closure.rs:49:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/projection-two-region-trait-bound-closure.rs:60:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/projection-two-region-trait-bound-closure.rs:81:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/projection-two-region-trait-bound-closure.rs:109:39
    |
 LL |     with_signature(cell, t, |cell, t| require(cell, t));

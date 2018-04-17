@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 // Tests closures that propagate an outlives relationship to their
 // creator where the subject is a projection with no regions (`<T as
@@ -34,7 +34,7 @@ where
     T: Iterator,
 {
     with_signature(x, |mut y| Box::new(y.next()))
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 
@@ -52,7 +52,7 @@ where
     T: 'b + Iterator,
 {
     with_signature(x, |mut y| Box::new(y.next()))
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR the associated type `<T as std::iter::Iterator>::Item` may not live long enough
 }
 

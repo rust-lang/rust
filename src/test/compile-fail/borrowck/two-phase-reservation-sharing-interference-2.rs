@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: lxl nll
-//[lxl]compile-flags: -Z borrowck=mir -Z two-phase-borrows
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+// compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 // This is similar to two-phase-reservation-sharing-interference.rs
 // in that it shows a reservation that overlaps with a shared borrow.
@@ -26,12 +24,11 @@
 #![feature(rustc_attrs)]
 
 #[rustc_error]
-fn main() { //[nll]~ ERROR compilation successful
+fn main() { //~ ERROR compilation successful
     let mut v = vec![0, 1, 2];
     let shared = &v;
 
     v.push(shared.len());
-    //[lxl]~^  ERROR cannot borrow `v` as mutable because it is also borrowed as immutable [E0502]
 
     assert_eq!(v, [0, 1, 2, 3]);
 }

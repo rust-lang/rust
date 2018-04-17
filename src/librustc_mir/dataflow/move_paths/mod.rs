@@ -65,9 +65,6 @@ pub(crate) mod indexes {
 
     /// Index into Borrows.locations
     new_index!(BorrowIndex, "bw");
-
-    /// Index into Reservations/Activations bitvector
-    new_index!(ReserveOrActivateIndex, "ra");
 }
 
 pub use self::indexes::MovePathIndex;

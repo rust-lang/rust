@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-// compile-flags:-Zborrowck=compare -Znll
+// compile-flags:-Zborrowck=compare
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

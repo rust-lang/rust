@@ -22,6 +22,7 @@ fn double_mut_borrow<T>(x: &mut Box<T>) {
     let z = borrow_mut(x);
     //[ast]~^ ERROR cannot borrow `*x` as mutable more than once at a time
     //[mir]~^^ ERROR cannot borrow `*x` as mutable more than once at a time
+    drop((y, z));
 }
 
 fn double_imm_borrow(x: &mut Box<i32>) {
@@ -30,6 +31,7 @@ fn double_imm_borrow(x: &mut Box<i32>) {
     **x += 1;
     //[ast]~^ ERROR cannot assign to `**x` because it is borrowed
     //[mir]~^^ ERROR cannot assign to `**x` because it is borrowed
+    drop((y, z));
 }
 
 fn double_mut_borrow2<T>(x: &mut Box<T>) {

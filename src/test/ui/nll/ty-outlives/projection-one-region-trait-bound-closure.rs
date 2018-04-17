@@ -14,7 +14,7 @@
 // case, the best way to satisfy the trait bound is to show that `'b:
 // 'a`, which can be done in various ways.
 
-// compile-flags:-Znll -Zborrowck=mir -Zverbose
+// compile-flags:-Zborrowck=mir -Zverbose
 
 #![allow(warnings)]
 #![feature(dyn_trait)]
@@ -46,7 +46,7 @@ where
     T: Anything<'b>,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR does not outlive free region
 }
 
@@ -57,7 +57,7 @@ where
     'a: 'a,
 {
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR does not outlive free region
 }
 
@@ -78,7 +78,7 @@ where
     // can do better here with a more involved verification step.
 
     with_signature(cell, t, |cell, t| require(cell, t));
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| ERROR does not outlive free region
 }
 

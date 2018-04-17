@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Znll -Zborrowck=mir
+// compile-flags:-Zborrowck=mir
 
 #![allow(warnings)]
 #![feature(dyn_trait)]
@@ -20,7 +20,7 @@ where
     T: Debug,
 {
     x
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| the parameter type `T` may not live long enough
 }
 
@@ -36,7 +36,7 @@ where
     T: 'b + Debug,
 {
     x
-    //~^ WARNING not reporting region error due to -Znll
+    //~^ WARNING not reporting region error due to nll
     //~| the parameter type `T` may not live long enough
 }
 

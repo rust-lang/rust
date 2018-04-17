@@ -1,10 +1,10 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-fn.rs:22:5
    |
 LL |     x
    |     ^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-fn.rs:38:5
    |
 LL |     x

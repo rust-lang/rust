@@ -1,10 +1,10 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/projection-no-regions-fn.rs:24:5
    |
 LL |     Box::new(x.next())
    |     ^^^^^^^^^^^^^^^^^^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/projection-no-regions-fn.rs:40:5
    |
 LL |     Box::new(x.next())

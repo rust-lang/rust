@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ty-param-fn-body.rs:30:5
    |
 LL |     outlives(cell, t)

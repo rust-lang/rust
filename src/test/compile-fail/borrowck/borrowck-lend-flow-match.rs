@@ -24,9 +24,10 @@ fn separate_arms() {
             // fact no outstanding loan of x!
             x = Some(0);
         }
-        Some(ref __isize) => {
+        Some(ref r) => {
             x = Some(1); //[ast]~ ERROR cannot assign
-                         //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+            //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+            drop(r);
         }
     }
     x.clone(); // just to prevent liveness warnings

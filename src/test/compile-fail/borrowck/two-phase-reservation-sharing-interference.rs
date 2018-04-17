@@ -10,15 +10,13 @@
 
 // ignore-tidy-linelength
 
-// revisions: lxl_beyond nll_beyond nll_target
+// revisions: nll_beyond nll_target
 
 // The following revisions are disabled due to missing support from two-phase beyond autorefs
-//[lxl_beyond]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref
-//[lxl_beyond] should-fail
-//[nll_beyond]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref -Z nll
+//[nll_beyond]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref
 //[nll_beyond] should-fail
 
-//[nll_target]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z nll
+//[nll_target]compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 // This is a corner case that the current implementation is (probably)
 // treating more conservatively than is necessary. But it also does
@@ -46,9 +44,8 @@ fn main() {
         // with the shared borrow. But in the current implementation,
         // its an error.
         delay = &mut vec;
-        //[lxl_beyond]~^   ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
-        //[nll_beyond]~^^  ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
-        //[nll_target]~^^^ ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
+        //[nll_beyond]~^  ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
+        //[nll_target]~^^ ERROR cannot borrow `vec` as mutable because it is also borrowed as immutable
 
         shared[0];
     }
