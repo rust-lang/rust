@@ -756,7 +756,9 @@ impl<'a> Builder<'a> {
             }
         }
 
-        if mode == Mode::Libstd && self.config.extended && compiler.is_final_stage(self) {
+        if cmd == "build" && mode == Mode::Libstd
+            && self.config.extended && compiler.is_final_stage(self)
+        {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
