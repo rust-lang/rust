@@ -419,6 +419,15 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
     if testfile.is_dir() {
         return;
     }
+
+    let comment = if testfile.to_string_lossy().ends_with(".rs") {
+        "//"
+    } else {
+        "#"
+    };
+
+    let comment_with_brace = comment.to_string() + "[";
+
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
@@ -428,10 +437,11 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
         let ln = ln.trim();
         if ln.starts_with("fn") || ln.starts_with("mod") {
             return;
-        } else if ln.starts_with("//[") {
+        } else if ln.starts_with(&comment_with_brace) {
             // A comment like `//[foo]` is specific to revision `foo`
             if let Some(close_brace) = ln.find(']') {
-                let lncfg = &ln[3..close_brace];
+                let open_brace = ln.find('[').unwrap();
+                let lncfg = &ln[open_brace + 1 .. close_brace];
                 let matches = match cfg {
                     Some(s) => s == &lncfg[..],
                     None => false,
@@ -440,11 +450,11 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut FnMut(&str)) {
                     it(ln[(close_brace + 1) ..].trim_left());
                 }
             } else {
-                panic!("malformed condition directive: expected `//[foo]`, found `{}`",
-                       ln)
+                panic!("malformed condition directive: expected `{}foo]`, found `{}`",
+                        comment_with_brace, ln)
             }
-        } else if ln.starts_with("//") {
-            it(ln[2..].trim_left());
+        } else if ln.starts_with(comment) {
+            it(ln[comment.len() ..].trim_left());
         }
     }
     return;
