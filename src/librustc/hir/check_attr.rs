@@ -308,7 +308,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_used(&self, item: &hir::Item, target: Target) {
         for attr in &item.attrs {
-            if attr.name().map(|name| name == "used").unwrap_or(false) && target != Target::Static {
+            if attr.name() == "used" && target != Target::Static {
                 self.tcx.sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }

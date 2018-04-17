@@ -216,7 +216,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Path {
                                           hasher: &mut StableHasher<W>) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
-            segment.identifier.name.hash_stable(hcx, hasher);
+            segment.ident.name.hash_stable(hcx, hasher);
         }
     }
 }

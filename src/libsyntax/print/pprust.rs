@@ -719,12 +719,12 @@ pub trait PrintState<'a> {
             if i > 0 {
                 self.writer().word("::")?
             }
-            if segment.identifier.name != keywords::CrateRoot.name() &&
-               segment.identifier.name != keywords::DollarCrate.name()
+            if segment.ident.name != keywords::CrateRoot.name() &&
+               segment.ident.name != keywords::DollarCrate.name()
             {
-                self.writer().word(&segment.identifier.name.as_str())?;
-            } else if segment.identifier.name == keywords::DollarCrate.name() {
-                self.print_dollar_crate(segment.identifier.ctxt)?;
+                self.writer().word(&segment.ident.name.as_str())?;
+            } else if segment.ident.name == keywords::DollarCrate.name() {
+                self.print_dollar_crate(segment.ident.span.ctxt())?;
             }
         }
         Ok(())
@@ -773,15 +773,15 @@ pub trait PrintState<'a> {
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         match item.node {
-            ast::MetaItemKind::Word => self.print_attribute_path(&item.name)?,
+            ast::MetaItemKind::Word => self.print_attribute_path(&item.ident)?,
             ast::MetaItemKind::NameValue(ref value) => {
-                self.print_attribute_path(&item.name)?;
+                self.print_attribute_path(&item.ident)?;
                 self.writer().space()?;
                 self.word_space("=")?;
                 self.print_literal(value)?;
             }
             ast::MetaItemKind::List(ref items) => {
-                self.print_attribute_path(&item.name)?;
+                self.print_attribute_path(&item.ident)?;
                 self.popen()?;
                 self.commasep(Consistent,
                               &items[..],

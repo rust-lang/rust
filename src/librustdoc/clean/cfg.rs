@@ -438,7 +438,7 @@ mod test {
 
     fn dummy_meta_item_word(name: &str) -> MetaItem {
         MetaItem {
-            name: Path::from_ident(DUMMY_SP, Ident::from_str(name)),
+            ident: Path::from_ident(Ident::from_str(name)),
             node: MetaItemKind::Word,
             span: DUMMY_SP,
         }
@@ -447,7 +447,7 @@ mod test {
     macro_rules! dummy_meta_item_list {
         ($name:ident, [$($list:ident),* $(,)*]) => {
             MetaItem {
-                name: Path::from_ident(DUMMY_SP, Ident::from_str(stringify!($name))),
+                ident: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
                     $(
                         dummy_spanned(NestedMetaItemKind::MetaItem(
@@ -461,7 +461,7 @@ mod test {
 
         ($name:ident, [$($list:expr),* $(,)*]) => {
             MetaItem {
-                name: Path::from_ident(DUMMY_SP, Ident::from_str(stringify!($name))),
+                ident: Path::from_ident(Ident::from_str(stringify!($name))),
                 node: MetaItemKind::List(vec![
                     $(
                         dummy_spanned(NestedMetaItemKind::MetaItem($list)),
@@ -601,7 +601,7 @@ mod test {
             assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
             let mi = MetaItem {
-                name: Path::from_ident(DUMMY_SP, Ident::from_str("all")),
+                ident: Path::from_ident(Ident::from_str("all")),
                 node: MetaItemKind::NameValue(dummy_spanned(LitKind::Str(
                     Symbol::intern("done"),
                     StrStyle::Cooked,
@@ -636,7 +636,7 @@ mod test {
     fn test_parse_err() {
         with_globals(|| {
             let mi = MetaItem {
-                name: Path::from_ident(DUMMY_SP, Ident::from_str("foo")),
+                ident: Path::from_ident(Ident::from_str("foo")),
                 node: MetaItemKind::NameValue(dummy_spanned(LitKind::Bool(false))),
                 span: DUMMY_SP,
             };

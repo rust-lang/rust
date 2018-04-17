@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         };
         Ok(if let Some(meta) = meta {
             self.bump();
-            (meta.name, meta.node.tokens(meta.span))
+            (meta.ident, meta.node.tokens(meta.span))
         } else {
             (self.parse_path(PathStyle::Mod)?, self.parse_tokens())
         })
@@ -225,10 +225,10 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.span;
-        let name = self.parse_path(PathStyle::Mod)?;
+        let ident = self.parse_path(PathStyle::Mod)?;
         let node = self.parse_meta_item_kind()?;
         let span = lo.to(self.prev_span);
-        Ok(ast::MetaItem { name, node, span })
+        Ok(ast::MetaItem { ident, node, span })
     }
 
     pub fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {

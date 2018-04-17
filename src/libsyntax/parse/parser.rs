@@ -1955,17 +1955,17 @@ impl<'a> Parser<'a> {
     /// Like `parse_path`, but also supports parsing `Word` meta items into paths for back-compat.
     /// This is used when parsing derive macro paths in `#[derive]` attributes.
     pub fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, ast::Path> {
-        let meta_name = match self.token {
+        let meta_ident = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(meta.name.clone()),
+                    ast::MetaItemKind::Word => Some(meta.ident.clone()),
                     _ => None,
                 },
                 _ => None,
             },
             _ => None,
         };
-        if let Some(path) = meta_name {
+        if let Some(path) = meta_ident {
             self.bump();
             return Ok(path);
         }

@@ -3284,7 +3284,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let name = attr.ident.name;
+    let name = attr.name();
 
     if attr.is_word() {
         Some(format!("{}", name))

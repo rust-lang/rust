@@ -1683,7 +1683,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
                 early_error(ErrorOutputType::default(), &msg)
             }
 
-            (meta_item.ident.name, meta_item.value_str())
+            (meta_item.name(), meta_item.value_str())
         })
         .collect::<ast::CrateConfig>()
 }

@@ -702,7 +702,7 @@ impl<'a> Resolver<'a> {
                 match attr.meta_item_list() {
                     Some(names) => for attr in names {
                         if let Some(word) = attr.word() {
-                            imports.imports.push((word.ident.name, attr.span()));
+                            imports.imports.push((word.name(), attr.span()));
                         } else {
                             span_err!(self.session, attr.span(), E0466, "bad macro import");
                         }
