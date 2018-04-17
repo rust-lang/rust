@@ -37,7 +37,7 @@ use errors::DiagnosticBuilder;
 use syntax_pos::{self, Span};
 use syntax_pos::symbol::InternedString;
 use util::nodemap::FxHashMap;
-use arena::DroplessArena;
+use arena::SyncDroplessArena;
 
 use self::combine::CombineFields;
 use self::higher_ranked::HrMatchResult;
@@ -407,7 +407,7 @@ impl fmt::Display for FixupError {
 /// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(InferCtxt<'b, 'gcx, 'tcx>).
 pub struct InferCtxtBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
-    arena: DroplessArena,
+    arena: SyncDroplessArena,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
 }
 
@@ -415,7 +415,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
-            arena: DroplessArena::new(),
+            arena: SyncDroplessArena::new(),
             fresh_tables: None,
 
         }

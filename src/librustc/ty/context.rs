@@ -57,12 +57,11 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
-use arena::{TypedArena, DroplessArena};
+use arena::{TypedArena, SyncDroplessArena};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, Lock};
 use std::any::Any;
 use std::borrow::Borrow;
-use std::cell::Cell;
 use std::cmp::Ordering;
 use std::collections::hash_map::{self, Entry};
 use std::hash::{Hash, Hasher};
@@ -83,14 +82,14 @@ use hir;
 
 pub struct AllArenas<'tcx> {
     pub global: GlobalArenas<'tcx>,
-    pub interner: DroplessArena,
+    pub interner: SyncDroplessArena,
 }
 
 impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
             global: GlobalArenas::new(),
-            interner: DroplessArena::new(),
+            interner: SyncDroplessArena::new(),
         }
     }
 }
@@ -130,7 +129,7 @@ type InternedSet<'tcx, T> = Lock<FxHashSet<Interned<'tcx, T>>>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc are allocated from
-    arena: &'tcx DroplessArena,
+    arena: &'tcx SyncDroplessArena,
 
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
@@ -147,7 +146,7 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx DroplessArena) -> CtxtInterners<'tcx> {
+    fn new(arena: &'tcx SyncDroplessArena) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
             type_: Default::default(),
@@ -174,10 +173,10 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                 return ty;
             }
             let global_interner = global_interners.map(|interners| {
-                interners.type_.borrow_mut()
+                (interners.type_.borrow_mut(), &interners.arena)
             });
-            if let Some(ref interner) = global_interner {
-                if let Some(&Interned(ty)) = interner.get(&st) {
+            if let Some((ref type_, _)) = global_interner {
+                if let Some(&Interned(ty)) = type_.get(&st) {
                     return ty;
                 }
             }
@@ -193,18 +192,18 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             // determine that all contents are in the global tcx.
             // See comments on Lift for why we can't use that.
             if !flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-                if let Some(interner) = global_interners {
+                if let Some((mut type_, arena)) = global_interner {
                     let ty_struct: TyS<'gcx> = unsafe {
                         mem::transmute(ty_struct)
                     };
-                    let ty: Ty<'gcx> = interner.arena.alloc(ty_struct);
-                    global_interner.unwrap().insert(Interned(ty));
+                    let ty: Ty<'gcx> = arena.alloc(ty_struct);
+                    type_.insert(Interned(ty));
                     return ty;
                 }
             } else {
                 // Make sure we don't end up with inference
                 // types/regions in the global tcx.
-                if global_interners.is_none() {
+                if global_interner.is_none() {
                     drop(interner);
                     bug!("Attempted to intern `{:?}` which contains \
                           inference types/regions in the global type context",
@@ -915,9 +914,6 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
-    /// Used to prevent layout from recursing too deeply.
-    pub layout_depth: Cell<usize>,
-
     stability_interner: Lock<FxHashSet<&'tcx attr::Stability>>,
 
     pub interpret_interner: InterpretInterner<'tcx>,
@@ -1292,7 +1288,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             crate_name: Symbol::intern(crate_name),
             data_layout,
             layout_interner: Lock::new(FxHashSet()),
-            layout_depth: Cell::new(0),
             stability_interner: Lock::new(FxHashSet()),
             interpret_interner: Default::default(),
             tx_to_llvm_workers: Lock::new(tx),
@@ -1559,7 +1554,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
     /// Call the closure with a local `TyCtxt` using the given arena.
     pub fn enter_local<F, R>(
         &self,
-        arena: &'tcx DroplessArena,
+        arena: &'tcx SyncDroplessArena,
         f: F
     ) -> R
     where
@@ -1574,6 +1569,7 @@ impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
             let new_icx = ty::tls::ImplicitCtxt {
                 tcx,
                 query: icx.query.clone(),
+                layout_depth: icx.layout_depth,
             };
             ty::tls::enter_context(&new_icx, |new_icx| {
                 f(new_icx.tcx)
@@ -1768,6 +1764,9 @@ pub mod tls {
         /// The current query job, if any. This is updated by start_job in
         /// ty::maps::plumbing when executing a query
         pub query: Option<Lrc<maps::QueryJob<'gcx>>>,
+
+        /// Used to prevent layout from recursing too deeply.
+        pub layout_depth: usize,
     }
 
     // A thread local value which stores a pointer to the current ImplicitCtxt
@@ -1853,6 +1852,7 @@ pub mod tls {
             let icx = ImplicitCtxt {
                 tcx,
                 query: None,
+                layout_depth: 0,
             };
             enter_context(&icx, |_| {
                 f(tcx)

@@ -66,6 +66,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "arena"
 version = "0.0.0"
+dependencies = [
+ "rustc_data_structures 0.0.0",
+]
 
 [[package]]
 name = "arrayvec"
