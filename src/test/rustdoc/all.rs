@@ -28,3 +28,11 @@ pub union Union {
 pub const CONST: u32 = 0;
 pub static STATIC: &str = "baguette";
 pub fn function() {}
+
+mod private_module {
+    pub struct ReexportedStruct;
+}
+
+// @has foo/all.html '//a[@href="struct.ReexportedStruct.html"]' 'ReexportedStruct'
+// @!has foo/all.html 'private_module'
+pub use private_module::ReexportedStruct;
