@@ -1121,7 +1121,7 @@ impl ExitCode {
 }
 
 impl Child {
-    /// Forces the child process to exit.  If the child has already exited, an [`InvalidInput`]
+    /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
     /// error is returned.
     ///
     /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function,
