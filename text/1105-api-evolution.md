@@ -22,6 +22,10 @@ The RFC covers only API issues; other issues related to language features,
 lints, type inference, command line arguments, Cargo, and so on are considered
 out of scope.
 
+The stability promise specifically does *not* apply to unstable features,
+even if they are accidentally usable on the Stable release channel
+under certain conditions such as because of bugs in the compiler.
+
 # Motivation
 
 Both Rust and its library ecosystem have adopted [semver](http://semver.org/), a
