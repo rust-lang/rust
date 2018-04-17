@@ -278,8 +278,8 @@ macro_rules! declare_keywords {(
 // NB: leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max
 // of the reserved words, and thus tagged as "reserved".
-// After modifying this list adjust `is_special_ident`, `is_used_keyword`/`is_unused_keyword`,
-// this should be rarely necessary though if the keywords are kept in alphabetic order.
+// After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`
+// velow
 declare_keywords! {
     // Special reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
@@ -325,6 +325,9 @@ declare_keywords! {
     (37, Use,                "use")
     (38, Where,              "where")
     (39, While,              "while")
+    // edition-gated used keywords go here
+    // be sure to update is_used_keyword and
+    // is_future_edition_keyword_* below
 
     // Keywords reserved for future use.
     (40, Abstract,           "abstract")
@@ -343,17 +346,66 @@ declare_keywords! {
     (53, Unsized,            "unsized")
     (54, Virtual,            "virtual")
     (55, Yield,              "yield")
+    // edition-gated reserved keywords
+    // be sure to update is_unused_keyword and
+    // is_future_edition_keyword_* below
+    (56, Async,              "async") // Rust 2018+ only
 
     // Special lifetime names
-    (56, UnderscoreLifetime, "'_")
-    (57, StaticLifetime,     "'static")
+    (57, UnderscoreLifetime, "'_")
+    (58, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (58, Auto,               "auto")
-    (59, Catch,              "catch")
-    (60, Default,            "default")
-    (61, Dyn,                "dyn")
-    (62, Union,              "union")
+    (59, Auto,               "auto")
+    (60, Catch,              "catch")
+    (61, Default,            "default")
+    (62, Dyn,                "dyn")
+    (63, Union,              "union")
+}
+
+impl Ident {
+    // Returns true for reserved identifiers used internally for elided lifetimes,
+    // unnamed method parameters, crate root module, error recovery etc.
+    #[inline]
+    pub fn is_special(self) -> bool {
+        self.name <= self::keywords::Underscore.name()
+    }
+
+    /// Returns `true` if the token is a keyword used in the language, for
+    /// at least one edition.
+    ///
+    /// Keywords from future editions will be lexed as if they were raw identifiers
+    /// so they will not reach this step.
+    #[inline]
+    pub fn is_used_keyword(self) -> bool {
+        self.name >= self::keywords::As.name() && self.name <= self::keywords::While.name()
+    }
+
+    /// Returns `true` if the token is a keyword reserved for possible future use, for
+    /// at least one edition.
+    #[inline]
+    pub fn is_unused_keyword(self) -> bool {
+        self.name >= self::keywords::Abstract.name() && self.name <= self::keywords::Async.name()
+    }
+
+
+    /// Returns `true` if the token is either a special identifier or a keyword.
+    #[inline]
+    pub fn is_reserved(self) -> bool {
+        self.is_special() || self.is_used_keyword() || self.is_unused_keyword()
+    }
+}
+
+impl Symbol {
+    #[inline]
+    pub fn is_future_edition_keyword_2015(self) -> bool {
+        self == self::keywords::Async.name()
+    }
+
+    #[inline]
+    pub fn is_future_edition_keyword_2018(self) -> bool {
+        false
+    }
 }
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.
