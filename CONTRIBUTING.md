@@ -2,6 +2,13 @@
 
 Hello fellow Rustacean! Great to see your interest in compiler internals and lints!
 
+Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document explains how
+you can contribute and how to get started.
+If you have any questions about contributing or need help with anything, feel free to ask questions on issues or
+visit the `#clippy` IRC channel on `irc.mozilla.org`.
+
+All contributors are expected to follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
+
 ## Getting started
 
 High level approach:
@@ -56,7 +63,7 @@ of this.
 
 There is also the internal `author` lint to generate clippy code that detects the offending pattern. It does not work for all of the Rust syntax, but can give a good starting point.
 
-Create a new UI test with the pattern you want to match:
+First, create a new UI test file in the `tests/ui/` directory with the pattern you want to match:
 
 ```rust
 // ./tests/ui/my_lint.rs
@@ -71,7 +78,7 @@ fn main() {
 ```
 
 Now you run `TESTNAME=ui/my_lint cargo test --test compile-test` to produce
-the file with the generated code:
+a `.stdout` file with the generated code:
 
 ```rust
 // ./tests/ui/my_lint.stdout
@@ -86,6 +93,8 @@ if_chain! {
     }
 }
 ```
+
+If the command was executed successfully, you can copy the code over to where you are implementing your lint.
 
 #### Documentation
 
@@ -140,17 +149,10 @@ enabled as a plugin:
 
 ## Contributions
 
-Clippy welcomes contributions from everyone.
-
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
 
 All code in this repository is under the [Mozilla Public License, 2.0](https://www.mozilla.org/MPL/2.0/)
-
-## Conduct
-
-We follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
-
 
 <!-- adapted from https://github.com/servo/servo/blob/master/CONTRIBUTING.md -->
