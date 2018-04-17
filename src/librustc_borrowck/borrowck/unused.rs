@@ -62,7 +62,8 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                     None => span_bug!(span, "missing binding mode"),
                 };
                 match bm {
-                    ty::BindByValue(hir::MutMutable) => {}
+                    // allow `fn(mut self: &mut self)` so we can desugar `fn(&mut self)` to that
+                    ty::BindByValue(hir::MutMutable) if name.as_str() != "self" => {}
                     _ => return,
                 }
 

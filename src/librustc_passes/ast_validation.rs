@@ -82,6 +82,9 @@ impl<'a> AstValidator<'a> {
             match arg.pat.node {
                 PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), _, None) |
                 PatKind::Wild => {}
+                // allow `fn(mut self: &mut self)` so we can desugar `fn(&mut self)` to that
+                PatKind::Ident(BindingMode::ByValue(Mutability::Mutable), ref ident, None)
+                    if ident.name.as_str() == "self" => {}
                 PatKind::Ident(BindingMode::ByValue(Mutability::Mutable), _, None) =>
                     report_err(arg.pat.span, true),
                 _ => report_err(arg.pat.span, false),
