@@ -248,14 +248,37 @@ pub fn format_expr(
                 }
             }
 
+            fn needs_space_after_range(rhs: &ast::Expr) -> bool {
+                match rhs.node {
+                    // Don't format `.. ..` into `....`, which is invalid.
+                    //
+                    // This check is unnecessary for `lhs`, because a range
+                    // starting from another range needs parentheses as `(x ..) ..`
+                    // (`x .. ..` is a range from `x` to `..`).
+                    ast::ExprKind::Range(None, _, _) => true,
+                    _ => false,
+                }
+            }
+
+            let default_sp_delim = |lhs: Option<&ast::Expr>, rhs: Option<&ast::Expr>| {
+                let space_if = |b: bool| if b { " " } else { "" };
+
+                format!(
+                    "{}{}{}",
+                    lhs.map(|lhs| space_if(needs_space_before_range(context, lhs)))
+                        .unwrap_or(""),
+                    delim,
+                    rhs.map(|rhs| space_if(needs_space_after_range(rhs)))
+                        .unwrap_or(""),
+                )
+            };
+
             match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
                 (Some(lhs), Some(rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
                         format!(" {} ", delim)
-                    } else if needs_space_before_range(context, lhs) {
-                        format!(" {}", delim)
                     } else {
-                        delim.to_owned()
+                        default_sp_delim(Some(lhs), Some(rhs))
                     };
                     rewrite_pair(
                         &*lhs,
@@ -270,7 +293,7 @@ pub fn format_expr(
                     let sp_delim = if context.config.spaces_around_ranges() {
                         format!("{} ", delim)
                     } else {
-                        delim.to_owned()
+                        default_sp_delim(None, Some(rhs))
                     };
                     rewrite_unary_prefix(context, &sp_delim, &*rhs, shape)
                 }
@@ -278,7 +301,7 @@ pub fn format_expr(
                     let sp_delim = if context.config.spaces_around_ranges() {
                         format!(" {}", delim)
                     } else {
-                        delim.to_owned()
+                        default_sp_delim(Some(lhs), None)
                     };
                     rewrite_unary_suffix(context, &sp_delim, &*lhs, shape)
                 }
