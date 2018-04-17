@@ -174,12 +174,12 @@ pub fn provide(providers: &mut Providers) {
             // rustdoc needs to be able to document functions that use all the features, so
             // whitelist them all
             Lrc::new(llvm_util::all_known_features()
-                .map(|c| c.to_string())
+                .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
                 .collect())
         } else {
             Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
                 .iter()
-                .map(|c| c.to_string())
+                .map(|&(a, b)| (a.to_string(), b.map(|s| s.to_string())))
                 .collect())
         }
     };

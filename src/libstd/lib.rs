@@ -526,7 +526,7 @@ mod coresimd {
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(all(not(stage0), not(test)))]
 pub use stdsimd::simd;
-#[unstable(feature = "stdsimd", issue = "48556")]
+#[stable(feature = "simd_arch", since = "1.27.0")]
 #[cfg(all(not(stage0), not(test)))]
 pub use stdsimd::arch;
 

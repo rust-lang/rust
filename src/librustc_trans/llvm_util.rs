@@ -15,6 +15,7 @@ use rustc::session::Session;
 use rustc::session::config::PrintRequest;
 use libc::c_int;
 use std::ffi::CString;
+use syntax::feature_gate::UnstableFeatures;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Once;
@@ -82,40 +83,95 @@ unsafe fn configure_llvm(sess: &Session) {
 // to LLVM or the feature detection code will walk past the end of the feature
 // array, leading to crashes.
 
-const ARM_WHITELIST: &'static [&'static str] = &["neon", "v7", "vfp2", "vfp3", "vfp4"];
+const ARM_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("neon", Some("arm_target_feature")),
+    ("v7", Some("arm_target_feature")),
+    ("vfp2", Some("arm_target_feature")),
+    ("vfp3", Some("arm_target_feature")),
+    ("vfp4", Some("arm_target_feature")),
+];
 
-const AARCH64_WHITELIST: &'static [&'static str] = &["fp", "neon", "sve", "crc", "crypto",
-                                                     "ras", "lse", "rdm", "fp16", "rcpc",
-                                                     "dotprod", "v8.1a", "v8.2a", "v8.3a"];
+const AARCH64_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("fp", Some("aarch64_target_feature")),
+    ("neon", Some("aarch64_target_feature")),
+    ("sve", Some("aarch64_target_feature")),
+    ("crc", Some("aarch64_target_feature")),
+    ("crypto", Some("aarch64_target_feature")),
+    ("ras", Some("aarch64_target_feature")),
+    ("lse", Some("aarch64_target_feature")),
+    ("rdm", Some("aarch64_target_feature")),
+    ("fp16", Some("aarch64_target_feature")),
+    ("rcpc", Some("aarch64_target_feature")),
+    ("dotprod", Some("aarch64_target_feature")),
+    ("v8.1a", Some("aarch64_target_feature")),
+    ("v8.2a", Some("aarch64_target_feature")),
+    ("v8.3a", Some("aarch64_target_feature")),
+];
 
-const X86_WHITELIST: &'static [&'static str] = &["aes", "avx", "avx2", "avx512bw",
-                                                 "avx512cd", "avx512dq", "avx512er",
-                                                 "avx512f", "avx512ifma", "avx512pf",
-                                                 "avx512vbmi", "avx512vl", "avx512vpopcntdq",
-                                                 "bmi1", "bmi2", "fma", "fxsr",
-                                                 "lzcnt", "mmx", "pclmulqdq",
-                                                 "popcnt", "rdrand", "rdseed",
-                                                 "sha",
-                                                 "sse", "sse2", "sse3", "sse4.1",
-                                                 "sse4.2", "sse4a", "ssse3",
-                                                 "tbm", "xsave", "xsavec",
-                                                 "xsaveopt", "xsaves"];
+const X86_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("aes", None),
+    ("avx", None),
+    ("avx2", None),
+    ("avx512bw", Some("avx512_target_feature")),
+    ("avx512cd", Some("avx512_target_feature")),
+    ("avx512dq", Some("avx512_target_feature")),
+    ("avx512er", Some("avx512_target_feature")),
+    ("avx512f", Some("avx512_target_feature")),
+    ("avx512ifma", Some("avx512_target_feature")),
+    ("avx512pf", Some("avx512_target_feature")),
+    ("avx512vbmi", Some("avx512_target_feature")),
+    ("avx512vl", Some("avx512_target_feature")),
+    ("avx512vpopcntdq", Some("avx512_target_feature")),
+    ("bmi1", None),
+    ("bmi2", None),
+    ("fma", None),
+    ("fxsr", None),
+    ("lzcnt", None),
+    ("mmx", Some("mmx_target_feature")),
+    ("pclmulqdq", None),
+    ("popcnt", None),
+    ("rdrand", None),
+    ("rdseed", None),
+    ("sha", None),
+    ("sse", None),
+    ("sse2", None),
+    ("sse3", None),
+    ("sse4.1", None),
+    ("sse4.2", None),
+    ("sse4a", Some("sse4a_target_feature")),
+    ("ssse3", None),
+    ("tbm", Some("tbm_target_feature")),
+    ("xsave", None),
+    ("xsavec", None),
+    ("xsaveopt", None),
+    ("xsaves", None),
+];
 
-const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx", "hvx-double"];
+const HEXAGON_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("hvx", Some("hexagon_target_feature")),
+    ("hvx-double", Some("hexagon_target_feature")),
+];
 
-const POWERPC_WHITELIST: &'static [&'static str] = &["altivec",
-                                                     "power8-altivec", "power9-altivec",
-                                                     "power8-vector", "power9-vector",
-                                                     "vsx"];
+const POWERPC_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("altivec", Some("powerpc_target_feature")),
+    ("power8-altivec", Some("powerpc_target_feature")),
+    ("power9-altivec", Some("powerpc_target_feature")),
+    ("power8-vector", Some("powerpc_target_feature")),
+    ("power9-vector", Some("powerpc_target_feature")),
+    ("vsx", Some("powerpc_target_feature")),
+];
 
-const MIPS_WHITELIST: &'static [&'static str] = &["fp64", "msa"];
+const MIPS_WHITELIST: &[(&str, Option<&str>)] = &[
+    ("fp64", Some("mips_target_feature")),
+    ("msa", Some("mips_target_feature")),
+];
 
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primtives may be documented.
 ///
 /// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
 /// iterator!
-pub fn all_known_features() -> impl Iterator<Item=&'static str> {
+pub fn all_known_features() -> impl Iterator<Item=(&'static str, Option<&'static str>)> {
     ARM_WHITELIST.iter().cloned()
         .chain(AARCH64_WHITELIST.iter().cloned())
         .chain(X86_WHITELIST.iter().cloned())
@@ -144,6 +200,13 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
     let target_machine = create_target_machine(sess, true);
     target_feature_whitelist(sess)
         .iter()
+        .filter_map(|&(feature, gate)| {
+            if UnstableFeatures::from_environment().is_nightly_build() || gate.is_none() {
+                Some(feature)
+            } else {
+                None
+            }
+        })
         .filter(|feature| {
             let llvm_feature = to_llvm_feature(sess, feature);
             let cstr = CString::new(llvm_feature).unwrap();
@@ -152,7 +215,9 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
         .map(|feature| Symbol::intern(feature)).collect()
 }
 
-pub fn target_feature_whitelist(sess: &Session) -> &'static [&'static str] {
+pub fn target_feature_whitelist(sess: &Session)
+    -> &'static [(&'static str, Option<&'static str>)]
+{
     match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "aarch64" => AARCH64_WHITELIST,

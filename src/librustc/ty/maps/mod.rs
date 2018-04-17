@@ -437,7 +437,7 @@ define_maps! { <'tcx>
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
 
     [] fn target_features_whitelist:
-        target_features_whitelist_node(CrateNum) -> Lrc<FxHashSet<String>>,
+        target_features_whitelist_node(CrateNum) -> Lrc<FxHashMap<String, Option<String>>>,
 
     // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
     [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)

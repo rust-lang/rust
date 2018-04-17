@@ -68,7 +68,6 @@
 #![feature(asm)]
 #![feature(associated_type_defaults)]
 #![feature(attr_literals)]
-#![feature(cfg_target_feature)]
 #![feature(cfg_target_has_atomic)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
@@ -96,10 +95,20 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
-#![feature(target_feature)]
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+
+#![cfg_attr(not(stage0), feature(mmx_target_feature))]
+#![cfg_attr(not(stage0), feature(tbm_target_feature))]
+#![cfg_attr(not(stage0), feature(sse4a_target_feature))]
+#![cfg_attr(not(stage0), feature(arm_target_feature))]
+#![cfg_attr(not(stage0), feature(powerpc_target_feature))]
+#![cfg_attr(not(stage0), feature(mips_target_feature))]
+#![cfg_attr(not(stage0), feature(aarch64_target_feature))]
+
+#![cfg_attr(stage0, feature(target_feature))]
+#![cfg_attr(stage0, feature(cfg_target_feature))]
 
 #[prelude_import]
 #[allow(unused)]
@@ -204,6 +213,20 @@ mod unit;
 // things like SIMD and such. Note that the actual source for all this lies in a
 // different repository, rust-lang-nursery/stdsimd. That's why the setup here is
 // a bit wonky.
+#[allow(unused_macros)]
+macro_rules! test_v16 { ($item:item) => {}; }
+#[allow(unused_macros)]
+macro_rules! test_v32 { ($item:item) => {}; }
+#[allow(unused_macros)]
+macro_rules! test_v64 { ($item:item) => {}; }
+#[allow(unused_macros)]
+macro_rules! test_v128 { ($item:item) => {}; }
+#[allow(unused_macros)]
+macro_rules! test_v256 { ($item:item) => {}; }
+#[allow(unused_macros)]
+macro_rules! test_v512 { ($item:item) => {}; }
+#[allow(unused_macros)]
+macro_rules! vector_impl { ($([$f:ident, $($args:tt)*]),*) => { $($f!($($args)*);)* } }
 #[path = "../stdsimd/coresimd/mod.rs"]
 #[allow(missing_docs, missing_debug_implementations, dead_code)]
 #[unstable(feature = "stdsimd", issue = "48556")]
@@ -213,6 +236,6 @@ mod coresimd;
 #[unstable(feature = "stdsimd", issue = "48556")]
 #[cfg(not(stage0))]
 pub use coresimd::simd;
-#[unstable(feature = "stdsimd", issue = "48556")]
+#[stable(feature = "simd_arch", since = "1.27.0")]
 #[cfg(not(stage0))]
 pub use coresimd::arch;
