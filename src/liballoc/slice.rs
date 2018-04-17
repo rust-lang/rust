@@ -1702,8 +1702,6 @@ impl<T> [T] {
     /// Swapping two elements across slices:
     ///
     /// ```
-    /// #![feature(swap_with_slice)]
-    ///
     /// let mut slice1 = [0, 0];
     /// let mut slice2 = [1, 2, 3, 4];
     ///
@@ -1719,8 +1717,6 @@ impl<T> [T] {
     /// a compile failure:
     ///
     /// ```compile_fail
-    /// #![feature(swap_with_slice)]
-    ///
     /// let mut slice = [1, 2, 3, 4, 5];
     /// slice[..2].swap_with_slice(&mut slice[3..]); // compile fail!
     /// ```
@@ -1729,8 +1725,6 @@ impl<T> [T] {
     /// mutable sub-slices from a slice:
     ///
     /// ```
-    /// #![feature(swap_with_slice)]
-    ///
     /// let mut slice = [1, 2, 3, 4, 5];
     ///
     /// {
@@ -1742,7 +1736,7 @@ impl<T> [T] {
     /// ```
     ///
     /// [`split_at_mut`]: #method.split_at_mut
-    #[unstable(feature = "swap_with_slice", issue = "44030")]
+    #[stable(feature = "swap_with_slice", since = "1.27.0")]
     pub fn swap_with_slice(&mut self, other: &mut [T]) {
         core_slice::SliceExt::swap_with_slice(self, other)
     }

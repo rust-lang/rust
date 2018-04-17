@@ -223,7 +223,7 @@ pub trait SliceExt {
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
 
-    #[unstable(feature = "swap_with_slice", issue = "44030")]
+    #[stable(feature = "swap_with_slice", since = "1.27.0")]
     fn swap_with_slice(&mut self, src: &mut [Self::Item]);
 
     #[stable(feature = "sort_unstable", since = "1.20.0")]
