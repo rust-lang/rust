@@ -116,7 +116,7 @@ pub use core::slice::{Iter, IterMut};
 pub use core::slice::{SplitMut, ChunksMut, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
@@ -888,7 +888,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_rsplit)]
     ///
     /// let slice = [11, 22, 33, 0, 44, 55];
     /// let mut iter = slice.rsplit(|num| *num == 0);
@@ -902,8 +901,6 @@ impl<T> [T] {
     /// slice will be the first (or last) item returned by the iterator.
     ///
     /// ```
-    /// #![feature(slice_rsplit)]
-    ///
     /// let v = &[0, 1, 1, 2, 3, 5, 8];
     /// let mut it = v.rsplit(|n| *n % 2 == 0);
     /// assert_eq!(it.next().unwrap(), &[]);
@@ -912,7 +909,7 @@ impl<T> [T] {
     /// assert_eq!(it.next().unwrap(), &[]);
     /// assert_eq!(it.next(), None);
     /// ```
-    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
     pub fn rsplit<F>(&self, pred: F) -> RSplit<T, F>
         where F: FnMut(&T) -> bool
@@ -927,8 +924,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_rsplit)]
-    ///
     /// let mut v = [100, 400, 300, 200, 600, 500];
     ///
     /// let mut count = 0;
@@ -939,7 +934,7 @@ impl<T> [T] {
     /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
     /// ```
     ///
-    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
     pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<T, F>
         where F: FnMut(&T) -> bool

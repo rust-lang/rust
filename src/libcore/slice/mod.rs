@@ -86,7 +86,7 @@ pub trait SliceExt {
     fn split<P>(&self, pred: P) -> Split<Self::Item, P>
         where P: FnMut(&Self::Item) -> bool;
 
-    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
     fn rsplit<P>(&self, pred: P) -> RSplit<Self::Item, P>
         where P: FnMut(&Self::Item) -> bool;
 
@@ -169,7 +169,7 @@ pub trait SliceExt {
     fn split_mut<P>(&mut self, pred: P) -> SplitMut<Self::Item, P>
         where P: FnMut(&Self::Item) -> bool;
 
-    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
     fn rsplit_mut<P>(&mut self, pred: P) -> RSplitMut<Self::Item, P>
         where P: FnMut(&Self::Item) -> bool;
 
@@ -1840,13 +1840,13 @@ impl<'a, T, P> FusedIterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
 ///
 /// [`rsplit`]: ../../std/primitive.slice.html#method.rsplit
 /// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 #[derive(Clone)] // Is this correct, or does it incorrectly require `T: Clone`?
 pub struct RSplit<'a, T:'a, P> where P: FnMut(&T) -> bool {
     inner: Split<'a, T, P>
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RSplit")
@@ -1856,7 +1856,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for RSplit<'a, T, P> where P: FnMut(&
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> Iterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a [T];
 
@@ -1871,7 +1871,7 @@ impl<'a, T, P> Iterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> DoubleEndedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1879,7 +1879,7 @@ impl<'a, T, P> DoubleEndedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bo
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> SplitIter for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a [T]> {
@@ -1887,7 +1887,7 @@ impl<'a, T, P> SplitIter for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> FusedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An iterator over the subslices of the vector which are separated
@@ -1897,12 +1897,12 @@ impl<'a, T, P> FusedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {}
 ///
 /// [`rsplit_mut`]: ../../std/primitive.slice.html#method.rsplit_mut
 /// [slices]: ../../std/primitive.slice.html
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub struct RSplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
     inner: SplitMut<'a, T, P>
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("RSplitMut")
@@ -1912,7 +1912,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for RSplitMut<'a, T, P> where P: FnMu
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> SplitIter for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn finish(&mut self) -> Option<&'a mut [T]> {
@@ -1920,7 +1920,7 @@ impl<'a, T, P> SplitIter for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> Iterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a mut [T];
 
@@ -1935,7 +1935,7 @@ impl<'a, T, P> Iterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> DoubleEndedIterator for RSplitMut<'a, T, P> where
     P: FnMut(&T) -> bool,
 {
@@ -1945,7 +1945,7 @@ impl<'a, T, P> DoubleEndedIterator for RSplitMut<'a, T, P> where
     }
 }
 
-#[unstable(feature = "slice_rsplit", issue = "41020")]
+#[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<'a, T, P> FusedIterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {}
 
 /// An private iterator over subslices separated by elements that

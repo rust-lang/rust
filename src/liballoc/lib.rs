@@ -108,7 +108,6 @@
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
 #![feature(slice_get_slice)]
-#![feature(slice_rsplit)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(str_internals)]
