@@ -845,10 +845,10 @@ impl Session {
     /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
-        assert!(self.query_threads() == 1);
         let mut ret = true;
         match self.optimization_fuel_crate {
             Some(ref c) if c == crate_name => {
+                assert!(self.query_threads() == 1);
                 let fuel = self.optimization_fuel_limit.get();
                 ret = fuel != 0;
                 if fuel == 0 && !self.out_of_fuel.get() {
@@ -862,6 +862,7 @@ impl Session {
         }
         match self.print_fuel_crate {
             Some(ref c) if c == crate_name => {
+                assert!(self.query_threads() == 1);
                 self.print_fuel.set(self.print_fuel.get() + 1);
             }
             _ => {}
