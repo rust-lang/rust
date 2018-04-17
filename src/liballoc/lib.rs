@@ -99,7 +99,6 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
-#![feature(nonnull_cast)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
