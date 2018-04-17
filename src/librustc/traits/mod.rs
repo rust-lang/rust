@@ -266,6 +266,7 @@ pub enum DomainGoal<'tcx> {
     WellFormed(WhereClauseAtom<'tcx>),
     FromEnv(WhereClauseAtom<'tcx>),
     WellFormedTy(Ty<'tcx>),
+    Normalize(ty::ProjectionPredicate<'tcx>),
     FromEnvTy(Ty<'tcx>),
     RegionOutlives(ty::RegionOutlivesPredicate<'tcx>),
     TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
