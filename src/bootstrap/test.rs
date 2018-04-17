@@ -1019,7 +1019,7 @@ impl Step for Compiletest {
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run && suite == "run-make-fulldeps" {
+            if !builder.config.dry_run && mode == "run-make" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc").arg(builder.cc(target))
@@ -1030,15 +1030,26 @@ impl Step for Compiletest {
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
+
+                // Add the llvm/bin directory to PATH since it contains lots of
+                // useful, platform-independent tools
+                let llvm_bin_path = llvm_config.parent()
+                    .expect("Expected llvm-config to be contained in directory");
+                assert!(llvm_bin_path.is_dir());
+                let old_path = env::var_os("PATH").unwrap_or_default();
+                let new_path = env::join_paths(iter::once(llvm_bin_path.to_path_buf())
+                                               .chain(env::split_paths(&old_path)))
+                               .expect("");
+                cmd.env("PATH", new_path);
             }
         }
-        if suite == "run-make-fulldeps" && !builder.config.llvm_enabled {
+        if mode == "run-make" && !builder.config.llvm_enabled {
             builder.info(
                 &format!("Ignoring run-make test suite as they generally don't work without LLVM"));
             return;
         }
 
-        if suite != "run-make-fulldeps" {
+        if mode != "run-make" {
             cmd.arg("--cc").arg("")
                .arg("--cxx").arg("")
                .arg("--cflags").arg("")

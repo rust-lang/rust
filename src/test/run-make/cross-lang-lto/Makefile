@@ -11,7 +11,7 @@ ifeq ($(UNAME),Darwin)
 endif
 
 
-OBJDUMP=$(HOST_RPATH_DIR)/../../llvm/bin/llvm-objdump
+OBJDUMP=llvm-objdump
 SECTION_HEADERS=$(OBJDUMP) -section-headers
 
 BUILD_LIB=$(RUSTC) lib.rs -Copt-level=2 -Z cross-lang-lto -Ccodegen-units=1
