@@ -4,11 +4,11 @@ error: program clause dump
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Implemented(Self: Foo<'a, 'b, S, T, U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
    = note: FromEnv(S: std::fmt::Debug) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
    = note: FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: Implemented(Self: Foo<'a, 'b, S, T, U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
    = note: RegionOutlives('a : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
    = note: TypeOutlives(U : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
 

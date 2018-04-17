@@ -382,13 +382,22 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
                     .sess
                     .struct_span_err(attr.span, "program clause dump");
 
-                for clause in clauses.iter() {
-                    // Skip the top-level binder for a less verbose output
-                    let program_clause = match clause {
-                        Clause::Implies(program_clause) => program_clause,
-                        Clause::ForAll(program_clause) => program_clause.skip_binder(),
-                    };
-                    err.note(&format!("{}", program_clause));
+                let mut strings: Vec<_> = clauses
+                    .iter()
+                    .map(|clause| {
+                        // Skip the top-level binder for a less verbose output
+                        let program_clause = match clause {
+                            Clause::Implies(program_clause) => program_clause,
+                            Clause::ForAll(program_clause) => program_clause.skip_binder(),
+                        };
+                        format!("{}", program_clause)
+                    })
+                    .collect();
+
+                strings.sort();
+
+                for string in strings {
+                    err.note(&string);
                 }
 
                 err.emit();
