@@ -23,6 +23,7 @@ use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
+use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
 
@@ -30,7 +31,7 @@ use abi::Abi;
 use common::CodegenCx;
 use builder::Builder;
 use monomorphize::Instance;
-use rustc::ty::{self, ParamEnv, Ty};
+use rustc::ty::{self, ParamEnv, Ty, InstanceDef};
 use rustc::mir;
 use rustc::session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use rustc::util::nodemap::{DefIdMap, FxHashMap, FxHashSet};
@@ -210,13 +211,12 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         return FunctionDebugContext::DebugInfoDisabled;
     }
 
-    for attr in instance.def.attrs(cx.tcx).iter() {
-        if attr.check_name("no_debug") {
+    if let InstanceDef::Item(def_id) = instance.def {
+        if cx.tcx.trans_fn_attrs(def_id).flags.contains(TransFnAttrFlags::NO_DEBUG) {
             return FunctionDebugContext::FunctionWithoutDebugInfo;
         }
     }
 
-    let containing_scope = get_containing_scope(cx, instance);
     let span = mir.span;
 
     // This can be the case for functions inlined from another crate
@@ -226,6 +226,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 
     let def_id = instance.def_id();
+    let containing_scope = get_containing_scope(cx, instance);
     let loc = span_start(cx, span);
     let file_metadata = file_metadata(cx, &loc.file.name, def_id.krate);
 
