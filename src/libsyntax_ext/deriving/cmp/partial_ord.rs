@@ -213,8 +213,8 @@ fn cs_op(less: bool,
                                       Ident::from_str("partial_cmp"),
                                       vec![cx.expr_addr_of(span, other_f.clone())]);
 
-        let default = ordering_path(cx, if less { "Greater" } else { "Less" });
-        // `_.unwrap_or(Ordering::Greater/Less)`
+        let default = ordering_path(cx, "Equal");
+        // `_.unwrap_or(Ordering::Equal)`
         cx.expr_method_call(span, cmp, Ident::from_str("unwrap_or"), vec![default])
     };
 
@@ -225,8 +225,8 @@ fn cs_op(less: bool,
             // `ast::lt`
             //
             // ```
-            // self.f1.partial_cmp(other.f1).unwrap_or(Ordering::Greater)
-            //     .then_with(|| self.f2.partial_cmp(other.f2).unwrap_or(Ordering::Greater))
+            // self.f1.partial_cmp(other.f1).unwrap_or(Ordering::Equal)
+            //     .then_with(|| self.f2.partial_cmp(other.f2).unwrap_or(Ordering::Equal))
             // == Ordering::Less
             // ```
             //
@@ -234,8 +234,8 @@ fn cs_op(less: bool,
             // `ast::le`
             //
             // ```
-            // self.f1.partial_cmp(other.f1).unwrap_or(Ordering::Greater)
-            //     .then_with(|| self.f2.partial_cmp(other.f2).unwrap_or(Ordering::Greater))
+            // self.f1.partial_cmp(other.f1).unwrap_or(Ordering::Equal)
+            //     .then_with(|| self.f2.partial_cmp(other.f2).unwrap_or(Ordering::Equal))
             // != Ordering::Greater
             // ```
             //
@@ -243,10 +243,10 @@ fn cs_op(less: bool,
             // get use the binops to avoid auto-deref dereferencing too many
             // layers of pointers, if the type includes pointers.
 
-            // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Greater/Less)`
+            // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Equal)`
             let par_cmp = par_cmp(cx, span, self_f, other_fs);
 
-            // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Greater/Less).then_with(...)`
+            // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Equal).then_with(...)`
             cx.expr_method_call(span,
                                 par_cmp,
                                 Ident::from_str("then_with"),
@@ -255,7 +255,7 @@ fn cs_op(less: bool,
         |cx, args| {
             match args {
                 Some((span, self_f, other_fs)) => par_cmp(cx, span, self_f, other_fs),
-                None => ordering_path(cx, if less { "Less" } else { "Equal" })
+                None => cx.expr_bool(span, inclusive)
             }
         },
         Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
@@ -276,8 +276,8 @@ fn cs_op(less: bool,
         substr);
 
     match *substr.fields {
-        EnumMatching(..) |
-        Struct(..) => {
+        EnumMatching(.., ref all_fields) |
+        Struct(.., ref all_fields) if !all_fields.is_empty() => {
             let ordering = ordering_path(cx, if less ^ inclusive { "Less" } else { "Greater" });
             let comp_op = if inclusive { BinOpKind::Ne } else { BinOpKind::Eq };
 
