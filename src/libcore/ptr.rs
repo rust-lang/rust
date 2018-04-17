@@ -166,8 +166,6 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// Basic usage:
 ///
 /// ```
-/// #![feature(swap_nonoverlapping)]
-///
 /// use std::ptr;
 ///
 /// let mut x = [1, 2, 3, 4];
@@ -181,7 +179,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// assert_eq!(y, [1, 2, 9]);
 /// ```
 #[inline]
-#[unstable(feature = "swap_nonoverlapping", issue = "42818")]
+#[stable(feature = "swap_nonoverlapping", since = "1.27.0")]
 pub unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
     let x = x as *mut u8;
     let y = y as *mut u8;
