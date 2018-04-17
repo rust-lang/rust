@@ -1299,14 +1299,78 @@
             printTab(currentTab);
         }
 
-        function search(e) {
-            var query,
-                obj, i, len,
-                results = {"in_args": [], "returned": [], "others": []},
-                resultIndex;
-            var params = getQueryStringParams();
+        function execSearch(query, searchWords) {
+            var queries = query.raw.split(",");
+            var results = {
+                'in_args': [],
+                'returned': [],
+                'others': [],
+            };
 
-            query = getQuery(document.getElementsByClassName('search-input')[0].value);
+            for (var i = 0; i < queries.length; ++i) {
+                var query = queries[i].trim();
+                if (query.length !== 0) {
+                    var tmp = execQuery(getQuery(query), searchWords);
+
+                    results['in_args'].push(tmp['in_args']);
+                    results['returned'].push(tmp['returned']);
+                    results['others'].push(tmp['others']);
+                }
+            }
+            if (queries.length > 1) {
+                function getSmallest(arrays, positions) {
+                    var start = null;
+
+                    for (var it = 0; it < positions.length; ++it) {
+                        if (arrays[it].length > positions[it] &&
+                            (start === null || start > arrays[it][positions[it]].lev)) {
+                            start = arrays[it][positions[it]].lev;
+                        }
+                    }
+                    return start;
+                }
+
+                function mergeArrays(arrays) {
+                    var ret = [];
+                    var positions = [];
+
+                    for (var x = 0; x < arrays.length; ++x) {
+                        positions.push(0);
+                    }
+                    while (ret.length < MAX_RESULTS) {
+                        var smallest = getSmallest(arrays, positions);
+                        if (smallest === null) {
+                            break;
+                        }
+                        for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
+                            if (arrays[x].length > positions[x] &&
+                                    arrays[x][positions[x]].lev === smallest) {
+                                ret.push(arrays[x][positions[x]]);
+                                positions[x] += 1;
+                            }
+                        }
+                    }
+                    return ret;
+                }
+
+                return {
+                    'in_args': mergeArrays(results['in_args']),
+                    'returned': mergeArrays(results['returned']),
+                    'others': mergeArrays(results['others']),
+                };
+            } else {
+                return {
+                    'in_args': results['in_args'][0],
+                    'returned': results['returned'][0],
+                    'others': results['others'][0],
+                };
+            }
+        }
+
+        function search(e) {
+            var params = getQueryStringParams();
+            var query = getQuery(document.getElementsByClassName('search-input')[0].value);
+
             if (e) {
                 e.preventDefault();
             }
@@ -1328,8 +1392,7 @@
                 }
             }
 
-            results = execQuery(query, index);
-            showResults(results);
+            showResults(execSearch(query, index));
         }
 
         function buildIndex(rawSearchIndex) {
