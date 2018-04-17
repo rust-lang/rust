@@ -137,7 +137,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_from_micros)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_micros(1_000_002);
@@ -145,7 +144,7 @@ impl Duration {
     /// assert_eq!(1, duration.as_secs());
     /// assert_eq!(2000, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_from_micros", issue = "44400")]
+    #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[inline]
     pub const fn from_micros(micros: u64) -> Duration {
         Duration {
