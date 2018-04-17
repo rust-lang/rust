@@ -1521,9 +1521,6 @@ impl String {
     /// and replaces it with the given string.
     /// The given string doesn't need to be the same length as the range.
     ///
-    /// Note: Unlike [`Vec::splice`], the replacement happens eagerly, and this
-    /// method does not return the removed chars.
-    ///
     /// # Panics
     ///
     /// Panics if the starting point or end point do not lie on a [`char`]
