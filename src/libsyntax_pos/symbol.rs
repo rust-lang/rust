@@ -336,24 +336,23 @@ declare_keywords! {
     (46, Offsetof,           "offsetof")
     (47, Override,           "override")
     (48, Priv,               "priv")
-    (49, Proc,               "proc")
-    (50, Pure,               "pure")
-    (51, Sizeof,             "sizeof")
-    (52, Typeof,             "typeof")
-    (53, Unsized,            "unsized")
-    (54, Virtual,            "virtual")
-    (55, Yield,              "yield")
+    (49, Pure,               "pure")
+    (50, Sizeof,             "sizeof")
+    (51, Typeof,             "typeof")
+    (52, Unsized,            "unsized")
+    (53, Virtual,            "virtual")
+    (54, Yield,              "yield")
 
     // Special lifetime names
-    (56, UnderscoreLifetime, "'_")
-    (57, StaticLifetime,     "'static")
+    (55, UnderscoreLifetime, "'_")
+    (56, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (58, Auto,               "auto")
-    (59, Catch,              "catch")
-    (60, Default,            "default")
-    (61, Dyn,                "dyn")
-    (62, Union,              "union")
+    (57, Auto,               "auto")
+    (58, Catch,              "catch")
+    (59, Default,            "default")
+    (60, Dyn,                "dyn")
+    (61, Union,              "union")
 }
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.

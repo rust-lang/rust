@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+const QUERY = 'str,u8';
 
-// Test that we generate obsolete syntax errors around usages of `proc`.
-
-fn foo(p: proc()) { } //~ ERROR expected type, found reserved keyword `proc`
-
-fn bar() { proc() 1; } //~ ERROR expected expression, found reserved keyword `proc`
-
-fn main() { }
+const EXPECTED = {
+    'others': [
+        { 'path': 'std', 'name': 'str' },
+        { 'path': 'std', 'name': 'u8' },
+        { 'path': 'std::ffi', 'name': 'CStr' },
+        { 'path': 'std::simd', 'name': 'u8x2' },
+    ],
+};
