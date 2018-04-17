@@ -385,26 +385,11 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn global_item_with_linkage<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        instance: ty::Instance<'tcx>,
-        mutability: Mutability,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _instance: ty::Instance<'tcx>,
+        _mutability: Mutability,
     ) -> EvalResult<'tcx> {
-        // FIXME: check that it's `#[linkage = "extern_weak"]`
-        trace!("Initializing an extern global with NULL");
-        let ptr_size = ecx.memory.pointer_size();
-        let ptr_align = ecx.tcx.data_layout.pointer_align;
-        let ptr = ecx.memory.allocate(
-            ptr_size,
-            ptr_align,
-            None,
-        )?;
-        ecx.memory.write_ptr_sized_unsigned(ptr, ptr_align, PrimVal::Bytes(0))?;
-        ecx.memory.mark_static_initialized(ptr.alloc_id, mutability)?;
-        ecx.tcx.interpret_interner.cache(
-            instance.def_id(),
-            ptr.alloc_id,
-        );
-        Ok(())
+        panic!("remove this function from rustc");
     }
 
     fn check_locks<'a>(

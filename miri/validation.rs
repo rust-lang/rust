@@ -638,7 +638,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
         }
 
-        let res = do catch {
+        let res: EvalResult<'tcx> = do catch {
             match query.ty.sty {
                 TyInt(_) | TyUint(_) | TyRawPtr(_) => {
                     if mode.acquiring() {
@@ -648,7 +648,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                         // FIXME: It would be great to rule out Undef here, but that doesn't actually work.
                         // Passing around undef data is a thing that e.g. Vec::extend_with does.
                     }
-                    Ok(())
                 }
                 TyBool | TyFloat(_) | TyChar => {
                     if mode.acquiring() {
@@ -657,9 +656,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                         val.to_bytes()?;
                         // TODO: Check if these are valid bool/float/codepoint/UTF-8
                     }
-                    Ok(())
                 }
-                TyNever => err!(ValidationFailure(format!("The empty type is never valid."))),
+                TyNever => return err!(ValidationFailure(format!("The empty type is never valid."))),
                 TyRef(region,
                     ty::TypeAndMut {
                         ty: pointee_ty,
@@ -680,29 +678,26 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             _ => {}
                         }
                     }
-                    self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)
+                    self.validate_ptr(val, query.place.0, pointee_ty, query.re, query.mutbl, mode)?;
                 }
                 TyAdt(adt, _) if adt.is_box() => {
                     let val = self.read_place(query.place.1)?;
-                    self.validate_ptr(val, query.place.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)
+                    self.validate_ptr(val, query.place.0, query.ty.boxed_ty(), query.re, query.mutbl, mode)?;
                 }
                 TyFnPtr(_sig) => {
                     let ptr = self.read_place(query.place.1)?;
                     let ptr = self.into_ptr(ptr)?.to_ptr()?;
                     self.memory.get_fn(ptr)?;
                     // TODO: Check if the signature matches (should be the same check as what terminator/mod.rs already does on call?).
-                    Ok(())
                 }
                 TyFnDef(..) => {
                     // This is a zero-sized type with all relevant data sitting in the type.
                     // There is nothing to validate.
-                    Ok(())
                 }
 
                 // Compound types
                 TyStr => {
                     // TODO: Validate strings
-                    Ok(())
                 }
                 TySlice(elem_ty) => {
                     let len = match query.place.1 {
@@ -725,7 +720,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             mode,
                         )?;
                     }
-                    Ok(())
                 }
                 TyArray(elem_ty, len) => {
                     let len_val = match len.val {
@@ -751,7 +745,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             mode,
                         )?;
                     }
-                    Ok(())
                 }
                 TyDynamic(_data, _region) => {
                     // Check that this is a valid vtable
@@ -770,7 +763,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     // on them directly.  We cannot, in general, even acquire any locks as the trait object *could*
                     // contain an UnsafeCell.  If we call functions to get access to data, we will validate
                     // their return values.  So, it doesn't seem like there's anything else to do.
-                    Ok(())
                 }
                 TyAdt(adt, _) => {
                     if Some(adt.did) == self.tcx.tcx.lang_items().unsafe_cell_type() &&
@@ -804,19 +796,17 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                                 self.validate_fields(
                                     ValidationQuery { place, ..query },
                                     mode,
-                                )
+                                )?;
                             } else {
                                 // No fields, nothing left to check.  Downcasting may fail, e.g. in case of a CEnum.
-                                Ok(())
                             }
                         }
                         AdtKind::Struct => {
-                            self.validate_fields(query, mode)
+                            self.validate_fields(query, mode)?;
                         }
                         AdtKind::Union => {
                             // No guarantees are provided for union types.
                             // TODO: Make sure that all access to union fields is unsafe; otherwise, we may have some checking to do (but what exactly?)
-                            Ok(())
                         }
                     }
                 }
@@ -825,10 +815,10 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     // TODO: Check if the signature matches for `TyClosure`
                     // (should be the same check as what terminator/mod.rs already does on call?).
                     // Is there other things we can/should check?  Like vtable pointers?
-                    self.validate_fields(query, mode)
+                    self.validate_fields(query, mode)?;
                 }
                 // FIXME: generators aren't validated right now
-                TyGenerator(..) => Ok(()),
+                TyGenerator(..) => {},
                 _ => bug!("We already established that this is a type we support. ({})", query.ty),
             }
         };
@@ -840,7 +830,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             // release if it is.  But of course that can't even always be statically determined.
             Err(EvalError { kind: EvalErrorKind::ReadUndefBytes, .. })
                 if mode == ValidationMode::ReleaseUntil(None) => {
-                return Ok(());
+                Ok(())
             }
             res => res,
         }
