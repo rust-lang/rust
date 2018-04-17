@@ -1272,21 +1272,21 @@ separated by a newline).
 - **Possible values**: `true`, `false`
 - **Stable**: No
 
-#### `false` (default):
+#### `true` (default):
 
 ```rust
-use lorem;
-use ipsum;
 use dolor;
+use ipsum;
+use lorem;
 use sit;
 ```
 
-#### `true`:
+#### `false`:
 
 ```rust
-use dolor;
-use ipsum;
 use lorem;
+use ipsum;
+use dolor;
 use sit;
 ```
 
