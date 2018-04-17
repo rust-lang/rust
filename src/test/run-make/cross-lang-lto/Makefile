@@ -1,8 +1,11 @@
+
+# min-llvm-version 4.0
+
+-include ../../run-make-fulldeps/tools.mk
+
 # This test makes sure that the expected .llvmbc sections for use by
 # linker-based LTO are available in object files when compiling with
 # -Z cross-lang-lto
-
--include ../../run-make-fulldeps/tools.mk
 
 LLVMBC_SECTION_NAME=\\.llvmbc
 
