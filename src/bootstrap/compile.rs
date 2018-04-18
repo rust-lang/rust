@@ -667,7 +667,7 @@ impl Step for CodegenBackend {
                    codegen_backend.display(),
                    f.display());
         }
-        let stamp = codegen_backend_stamp(build, compiler, target, backend);
+        let stamp = codegen_backend_stamp(builder, compiler, target, backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
         t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
     }

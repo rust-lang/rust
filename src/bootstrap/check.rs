@@ -131,22 +131,21 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder) {
-        let build = builder.build;
-        let compiler = builder.compiler(0, build.build);
+        let compiler = builder.compiler(0, builder.config.build);
         let target = self.target;
         let backend = self.backend;
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
-        let features = build.rustc_features().to_string();
-        cargo.arg("--manifest-path").arg(build.src.join("src/librustc_trans/Cargo.toml"));
-        rustc_cargo_env(build, &mut cargo);
+        let features = builder.rustc_features().to_string();
+        cargo.arg("--manifest-path").arg(builder.src.join("src/librustc_trans/Cargo.toml"));
+        rustc_cargo_env(builder, &mut cargo);
 
         // We won't build LLVM if it's not available, as it shouldn't affect `check`.
 
-        let _folder = build.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
-        run_cargo(build,
+        let _folder = builder.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+        run_cargo(builder,
                   cargo.arg("--features").arg(features),
-                  &codegen_backend_stamp(build, compiler, target, backend),
+                  &codegen_backend_stamp(builder, compiler, target, backend),
                   true);
     }
 }
@@ -211,10 +210,10 @@ pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<St
 
 /// Cargo's output path for librustc_trans in a given stage, compiled by a particular
 /// compiler for the specified target and backend.
-fn codegen_backend_stamp(build: &Build,
+fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
                          backend: Interned<String>) -> PathBuf {
-    build.cargo_out(compiler, Mode::Librustc, target)
+    builder.cargo_out(compiler, Mode::Librustc, target)
          .join(format!(".librustc_trans-{}-check.stamp", backend))
 }
