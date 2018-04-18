@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use abi::{ArgAttribute, FnType, LayoutExt, PassMode, Reg, RegKind};
-use common::CodegenCx;
-
-use rustc::ty::layout::{self, TyLayout};
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use rustc_target::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
 pub enum Flavor {
@@ -19,16 +18,18 @@ pub enum Flavor {
     Fastcall
 }
 
-fn is_single_fp_element<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                  layout: TyLayout<'tcx>) -> bool {
+fn is_single_fp_element<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>) -> bool
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     match layout.abi {
-        layout::Abi::Scalar(ref scalar) => {
+        abi::Abi::Scalar(ref scalar) => {
             match scalar.value {
-                layout::F32 | layout::F64 => true,
+                abi::F32 | abi::F64 => true,
                 _ => false
             }
         }
-        layout::Abi::Aggregate { .. } => {
+        abi::Abi::Aggregate { .. } => {
             if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
                 is_single_fp_element(cx, layout.field(cx, 0))
             } else {
@@ -39,9 +40,10 @@ fn is_single_fp_element<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                  fty: &mut FnType<'tcx>,
-                                  flavor: Flavor) {
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>, flavor: Flavor) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
+{
     if !fty.ret.is_ignore() {
         if fty.ret.layout.is_aggregate() {
             // Returning a structure. Most often, this will use
@@ -51,7 +53,7 @@ pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             // Some links:
             // http://www.angelcode.com/dev/callconv/callconv.html
             // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
-            let t = &cx.sess().target.target;
+            let t = cx.target_spec();
             if t.options.abi_return_struct_as_int {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.

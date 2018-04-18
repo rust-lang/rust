@@ -12,9 +12,7 @@
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
 use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
-use context::CodegenCx;
-
-use rustc::ty::layout::{self, TyLayout, Size};
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
 
 /// Classification of "eightbyte" components.
 // NB: the order of the variants is from general to specific,
@@ -33,13 +31,16 @@ struct Memory;
 const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
-fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
-                          -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory> {
-    fn classify<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                          layout: TyLayout<'tcx>,
-                          cls: &mut [Option<Class>],
-                          off: Size)
-                          -> Result<(), Memory> {
+fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
+                          -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory> 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
+    fn classify<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>,
+                          cls: &mut [Option<Class>], off: Size) -> Result<(), Memory> 
+        where Ty: TyLayoutMethods<'a, C> + Copy,
+            C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+    {
         if !off.is_abi_aligned(layout.align) {
             if !layout.is_zst() {
                 return Err(Memory);
@@ -48,31 +49,31 @@ fn classify_arg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &ArgType<'tcx>)
         }
 
         let mut c = match layout.abi {
-            layout::Abi::Uninhabited => return Ok(()),
+            abi::Abi::Uninhabited => return Ok(()),
 
-            layout::Abi::Scalar(ref scalar) => {
+            abi::Abi::Scalar(ref scalar) => {
                 match scalar.value {
-                    layout::Int(..) |
-                    layout::Pointer => Class::Int,
-                    layout::F32 |
-                    layout::F64 => Class::Sse
+                    abi::Int(..) |
+                    abi::Pointer => Class::Int,
+                    abi::F32 |
+                    abi::F64 => Class::Sse
                 }
             }
 
-            layout::Abi::Vector { .. } => Class::Sse,
+            abi::Abi::Vector { .. } => Class::Sse,
 
-            layout::Abi::ScalarPair(..) |
-            layout::Abi::Aggregate { .. } => {
+            abi::Abi::ScalarPair(..) |
+            abi::Abi::Aggregate { .. } => {
                 match layout.variants {
-                    layout::Variants::Single { .. } => {
+                    abi::Variants::Single { .. } => {
                         for i in 0..layout.fields.count() {
                             let field_off = off + layout.fields.offset(i);
                             classify(cx, layout.field(cx, i), cls, field_off)?;
                         }
                         return Ok(());
                     }
-                    layout::Variants::Tagged { .. } |
-                    layout::Variants::NicheFilling { .. } => return Err(Memory),
+                    abi::Variants::Tagged { .. } |
+                    abi::Variants::NicheFilling { .. } => return Err(Memory),
                 }
             }
 
@@ -178,11 +179,14 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
     target
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 
-    let mut x86_64_ty = |arg: &mut ArgType<'tcx>, is_arg: bool| {
+    let mut x86_64_ty = |arg: &mut ArgType<'a, Ty>, is_arg: bool| {
         let mut cls_or_mem = classify_arg(cx, arg);
 
         let mut needed_int = 0;

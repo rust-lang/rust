@@ -397,6 +397,16 @@ pub struct Target {
     pub options: TargetOptions,
 }
 
+pub trait HasTargetSpec: Copy {
+    fn target_spec(&self) -> &Target;
+}
+
+impl<'a> HasTargetSpec for &'a Target {
+    fn target_spec(&self) -> &Target {
+        self
+    }
+}
+
 /// Optional aspects of a target specification.
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,

@@ -784,18 +784,18 @@ pub trait LayoutOf {
     fn layout_of(self, ty: Self::Ty) -> Self::TyLayout;
 }
 
-pub trait TyLayoutMethods<'a, C: LayoutOf>: Sized {
+pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
     fn for_variant(this: TyLayout<'a, Self>, cx: C, variant_index: usize) -> TyLayout<'a, Self>;
     fn field(this: TyLayout<'a, Self>, cx: C, i: usize) -> C::TyLayout;
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
     pub fn for_variant<C>(self, cx: C, variant_index: usize) -> Self
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf {
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::for_variant(self, cx, variant_index)
     }
     pub fn field<C>(self, cx: C, i: usize) -> C::TyLayout 
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf {
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::field(self, cx, i)
     }
 }

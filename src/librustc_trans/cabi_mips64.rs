@@ -9,13 +9,12 @@
 // except according to those terms.
 
 use abi::{ArgAttribute, ArgType, CastTarget, FnType, LayoutExt, PassMode, Reg, RegKind, Uniform};
-use context::CodegenCx;
-use rustc::ty::layout::{self, Size};
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
 
-fn extend_integer_width_mips(arg: &mut ArgType, bits: u64) {
+fn extend_integer_width_mips<Ty>(arg: &mut ArgType<Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
-    if let layout::Abi::Scalar(ref scalar) = arg.layout.abi {
-        if let layout::Int(i, signed) = scalar.value {
+    if let abi::Abi::Scalar(ref scalar) = arg.layout.abi {
+        if let abi::Int(i, signed) = scalar.value {
             if !signed && i.size().bits() == 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
                     attrs.set(ArgAttribute::SExt);
@@ -28,18 +27,24 @@ fn extend_integer_width_mips(arg: &mut ArgType, bits: u64) {
     arg.extend_integer_width_to(bits);
 }
 
-fn float_reg<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &ArgType<'tcx>, i: usize) -> Option<Reg> {
+fn float_reg<'a, Ty, C>(cx: C, ret: &ArgType<'a, Ty>, i: usize) -> Option<Reg> 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     match ret.layout.field(cx, i).abi {
-        layout::Abi::Scalar(ref scalar) => match scalar.value {
-            layout::F32 => Some(Reg::f32()),
-            layout::F64 => Some(Reg::f64()),
+        abi::Abi::Scalar(ref scalar) => match scalar.value {
+            abi::F32 => Some(Reg::f32()),
+            abi::F64 => Some(Reg::f64()),
             _ => None
         },
         _ => None
     }
 }
 
-fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !ret.layout.is_aggregate() {
         extend_integer_width_mips(ret, 64);
         return;
@@ -52,7 +57,7 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
         // use of float registers to structures (not unions) containing exactly one or two
         // float fields.
 
-        if let layout::FieldPlacement::Arbitrary { .. } = ret.layout.fields {
+        if let abi::FieldPlacement::Arbitrary { .. } = ret.layout.fields {
             if ret.layout.fields.count() == 1 {
                 if let Some(reg) = float_reg(cx, ret, 0) {
                     ret.cast_to(reg);
@@ -78,27 +83,30 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
     }
 }
 
-fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !arg.layout.is_aggregate() {
         extend_integer_width_mips(arg, 64);
         return;
     }
 
-    let dl = &cx.tcx.data_layout;
+    let dl = cx.data_layout();
     let size = arg.layout.size;
     let mut prefix = [None; 8];
     let mut prefix_index = 0;
 
     match arg.layout.fields {
-        layout::FieldPlacement::Array { .. } => {
+        abi::FieldPlacement::Array { .. } => {
             // Arrays are passed indirectly
             arg.make_indirect();
             return;
         }
-        layout::FieldPlacement::Union(_) => {
+        abi::FieldPlacement::Union(_) => {
             // Unions and are always treated as a series of 64-bit integer chunks
         },
-        layout::FieldPlacement::Arbitrary { .. } => {
+        abi::FieldPlacement::Arbitrary { .. } => {
             // Structures are split up into a series of 64-bit integer chunks, but any aligned
             // doubles not part of another aggregate are passed as floats.
             let mut last_offset = Size::from_bytes(0);
@@ -108,8 +116,8 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
                 let offset = arg.layout.fields.offset(i);
 
                 // We only care about aligned doubles
-                if let layout::Abi::Scalar(ref scalar) = field.abi {
-                    if let layout::F64 = scalar.value {
+                if let abi::Abi::Scalar(ref scalar) = field.abi {
+                    if let abi::F64 = scalar.value {
                         if offset.is_abi_aligned(dl.f64_align) {
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_abi_aligned(dl.f64_align));
@@ -143,7 +151,10 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
     });
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret);
     }

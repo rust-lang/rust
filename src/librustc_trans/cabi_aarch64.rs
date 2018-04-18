@@ -9,10 +9,13 @@
 // except according to those terms.
 
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-use context::CodegenCx;
+use rustc_target::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>)
-                                     -> Option<Uniform> {
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
+                                     -> Option<Uniform> 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
         let size = arg.layout.size;
 
@@ -38,7 +41,10 @@ fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgTyp
     })
 }
 
-fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
         return;
@@ -69,7 +75,10 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) 
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(32);
         return;
@@ -100,7 +109,10 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
     arg.make_indirect();
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !fty.ret.is_ignore() {
         classify_ret_ty(cx, &mut fty.ret);
     }

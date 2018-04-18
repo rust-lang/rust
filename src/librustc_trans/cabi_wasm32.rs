@@ -9,19 +9,18 @@
 // except according to those terms.
 
 use abi::{FnType, ArgType};
-use context::CodegenCx;
 
-fn classify_ret_ty<'a, 'tcx>(_cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
     ret.extend_integer_width_to(32);
 }
 
-fn classify_arg_ty(arg: &mut ArgType) {
+fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
     arg.extend_integer_width_to(32);
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(cx, &mut fty.ret);
+        classify_ret_ty(&mut fty.ret);
     }
 
     for arg in &mut fty.args {

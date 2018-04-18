@@ -31,6 +31,7 @@ use rustc::session::Session;
 use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
+use rustc_target::spec::{HasTargetSpec, Target};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -450,6 +451,12 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
 impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CodegenCx<'a, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
+    }
+}
+
+impl<'a, 'tcx> HasTargetSpec for &'a CodegenCx<'a, 'tcx> {
+    fn target_spec(&self) -> &Target {
+        &self.tcx.sess.target.target
     }
 }
 

@@ -19,7 +19,7 @@ use abi::{ArgType, FnType, LayoutExt};
 // returned by reference. To pass a structure or union by reference, the caller
 // places its address in the appropriate location: either in a register or on
 // the stack, according to its position in the argument list. (..)"
-fn classify_ret_ty(ret: &mut ArgType) {
+fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 32 {
         ret.make_indirect();
     } else {
@@ -27,7 +27,7 @@ fn classify_ret_ty(ret: &mut ArgType) {
     }
 }
 
-fn classify_arg_ty(arg: &mut ArgType) {
+fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
     if arg.layout.is_aggregate() && arg.layout.size.bits() > 32 {
         arg.make_indirect();
     } else {
@@ -35,7 +35,7 @@ fn classify_arg_ty(arg: &mut ArgType) {
     }
 }
 
-pub fn compute_abi_info(fty: &mut FnType) {
+pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(&mut fty.ret);
     }

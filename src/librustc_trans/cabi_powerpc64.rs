@@ -13,8 +13,8 @@
 // need to be fixed when PowerPC vector support is added.
 
 use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-use context::CodegenCx;
-use rustc::ty::layout;
+
+use rustc_target::abi::{Align, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {
@@ -23,10 +23,11 @@ enum ABI {
 }
 use self::ABI::*;
 
-fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                      arg: &mut ArgType<'tcx>,
-                                      abi: ABI)
-                                     -> Option<Uniform> {
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>, abi: ABI) 
+                                       -> Option<Uniform>
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{                                   
     arg.layout.homogeneous_aggregate(cx).and_then(|unit| {
         // ELFv1 only passes one-member aggregates transparently.
         // ELFv2 passes up to eight uniquely addressable members.
@@ -52,7 +53,10 @@ fn is_homogeneous_aggregate<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     })
 }
 
-fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>, abi: ABI) {
+fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<'a, Ty>, abi: ABI)
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
         return;
@@ -92,7 +96,10 @@ fn classify_ret_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, ret: &mut ArgType<'tcx>, 
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>, abi: ABI) {
+fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>, abi: ABI)
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
@@ -112,7 +119,7 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>, 
             if size.bits() <= 64 {
                 (Reg { kind: RegKind::Integer, size }, size)
             } else {
-                let align = layout::Align::from_bits(64, 64).unwrap();
+                let align = Align::from_bits(64, 64).unwrap();
                 (Reg::i64(), size.abi_align(align))
             }
         },
@@ -128,11 +135,13 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>, 
     });
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
-    let abi = match cx.sess().target.target.target_endian.as_str() {
-        "big" => ELFv1,
-        "little" => ELFv2,
-        _ => unimplemented!(),
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>)
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
+    let abi = match cx.data_layout().endian {
+        Endian::Big => ELFv1,
+        Endian::Little => ELFv2,
     };
 
     if !fty.ret.is_ignore() {

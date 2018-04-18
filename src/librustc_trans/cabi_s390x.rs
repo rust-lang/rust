@@ -12,11 +12,12 @@
 // for a pre-z13 machine or using -mno-vx.
 
 use abi::{FnType, ArgType, LayoutExt, Reg};
-use context::CodegenCx;
 
-use rustc::ty::layout::{self, TyLayout};
+use rustc_target::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn classify_ret_ty(ret: &mut ArgType) {
+fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<Ty>) 
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
+{
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
         ret.extend_integer_width_to(64);
     } else {
@@ -24,16 +25,18 @@ fn classify_ret_ty(ret: &mut ArgType) {
     }
 }
 
-fn is_single_fp_element<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                                  layout: TyLayout<'tcx>) -> bool {
+fn is_single_fp_element<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>) -> bool
+    where Ty: TyLayoutMethods<'a, C>,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     match layout.abi {
-        layout::Abi::Scalar(ref scalar) => {
+        abi::Abi::Scalar(ref scalar) => {
             match scalar.value {
-                layout::F32 | layout::F64 => true,
+                abi::F32 | abi::F64 => true,
                 _ => false
             }
         }
-        layout::Abi::Aggregate { .. } => {
+        abi::Abi::Aggregate { .. } => {
             if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
                 is_single_fp_element(cx, layout.field(cx, 0))
             } else {
@@ -44,7 +47,10 @@ fn is_single_fp_element<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     }
 }
 
-fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !arg.layout.is_aggregate() && arg.layout.size.bits() <= 64 {
         arg.extend_integer_width_to(64);
         return;
@@ -67,7 +73,10 @@ fn classify_arg_ty<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, arg: &mut ArgType<'tcx>) 
     }
 }
 
-pub fn compute_abi_info<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, fty: &mut FnType<'tcx>) {
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+    where Ty: TyLayoutMethods<'a, C> + Copy,
+          C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
+{
     if !fty.ret.is_ignore() {
         classify_ret_ty(&mut fty.ret);
     }

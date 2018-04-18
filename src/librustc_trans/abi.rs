@@ -36,8 +36,10 @@ use mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 
+use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
+use rustc_target::spec::HasTargetSpec;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf, Size, TyLayout};
+use rustc::ty::layout;
 
 use libc::c_uint;
 use std::cmp;
@@ -142,12 +144,13 @@ impl LlvmType for Reg {
     }
 }
 
-pub trait LayoutExt<'tcx> {
+pub trait LayoutExt<'a, Ty>: Sized {
     fn is_aggregate(&self) -> bool;
-    fn homogeneous_aggregate<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<Reg>;
+    fn homogeneous_aggregate<C>(&self, cx: C) -> Option<Reg>
+        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self> + Copy;
 }
 
-impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
+impl<'a, Ty> LayoutExt<'a, Ty> for TyLayout<'a, Ty> {
     fn is_aggregate(&self) -> bool {
         match self.abi {
             layout::Abi::Uninhabited |
@@ -158,7 +161,9 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
         }
     }
 
-    fn homogeneous_aggregate<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<Reg> {
+    fn homogeneous_aggregate<C>(&self, cx: C) -> Option<Reg> 
+        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self> + Copy
+    {
         match self.abi {
             layout::Abi::Uninhabited => None,
 
@@ -280,8 +285,8 @@ impl LlvmType for CastTarget {
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
 #[derive(Debug)]
-pub struct ArgType<'tcx> {
-    pub layout: TyLayout<'tcx>,
+pub struct ArgType<'tcx, Ty = ty::Ty<'tcx>> {
+    pub layout: TyLayout<'tcx, Ty>,
 
     /// Dummy argument, which is emitted before the real argument.
     pub pad: Option<Reg>,
@@ -289,8 +294,8 @@ pub struct ArgType<'tcx> {
     pub mode: PassMode,
 }
 
-impl<'a, 'tcx> ArgType<'tcx> {
-    fn new(layout: TyLayout<'tcx>) -> ArgType<'tcx> {
+impl<'a, 'tcx, Ty> ArgType<'tcx, Ty> {
+    fn new(layout: TyLayout<'tcx, Ty>) -> Self {
         ArgType {
             layout,
             pad: None,
@@ -364,7 +369,9 @@ impl<'a, 'tcx> ArgType<'tcx> {
     pub fn is_ignore(&self) -> bool {
         self.mode == PassMode::Ignore
     }
+}
 
+impl<'a, 'tcx> ArgType<'tcx> {
     /// Get the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e. the result of `type_of::type_of`.
     pub fn memory_ty(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
@@ -451,12 +458,12 @@ impl<'a, 'tcx> ArgType<'tcx> {
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
 #[derive(Debug)]
-pub struct FnType<'tcx> {
+pub struct FnType<'tcx, Ty = ty::Ty<'tcx>> {
     /// The LLVM types of each argument.
-    pub args: Vec<ArgType<'tcx>>,
+    pub args: Vec<ArgType<'tcx, Ty>>,
 
     /// LLVM return type.
-    pub ret: ArgType<'tcx>,
+    pub ret: ArgType<'tcx, Ty>,
 
     pub variadic: bool,
 
@@ -474,7 +481,7 @@ impl<'a, 'tcx> FnType<'tcx> {
 
     pub fn new(cx: &CodegenCx<'a, 'tcx>,
                sig: ty::FnSig<'tcx>,
-               extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+               extra_args: &[Ty<'tcx>]) -> Self {
         let mut fn_ty = FnType::unadjusted(cx, sig, extra_args);
         fn_ty.adjust_for_abi(cx, sig.abi);
         fn_ty
@@ -482,7 +489,7 @@ impl<'a, 'tcx> FnType<'tcx> {
 
     pub fn new_vtable(cx: &CodegenCx<'a, 'tcx>,
                       sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+                      extra_args: &[Ty<'tcx>]) -> Self {
         let mut fn_ty = FnType::unadjusted(cx, sig, extra_args);
         // Don't pass the vtable, it's not an argument of the virtual fn.
         {
@@ -507,7 +514,7 @@ impl<'a, 'tcx> FnType<'tcx> {
 
     pub fn unadjusted(cx: &CodegenCx<'a, 'tcx>,
                       sig: ty::FnSig<'tcx>,
-                      extra_args: &[Ty<'tcx>]) -> FnType<'tcx> {
+                      extra_args: &[Ty<'tcx>]) -> Self {
         debug!("FnType::unadjusted({:?}, {:?})", sig, extra_args);
 
         use self::Abi::*;
@@ -569,7 +576,7 @@ impl<'a, 'tcx> FnType<'tcx> {
         // Handle safe Rust thin and fat pointers.
         let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
                                       scalar: &layout::Scalar,
-                                      layout: TyLayout<'tcx>,
+                                      layout: TyLayout<'tcx, Ty<'tcx>>,
                                       offset: Size,
                                       is_return: bool| {
             // Booleans are always an i1 that needs to be zero-extended.
@@ -742,7 +749,18 @@ impl<'a, 'tcx> FnType<'tcx> {
             return;
         }
 
-        match &cx.sess().target.target.arch[..] {
+        if let Err(msg) = self.adjust_for_cabi(cx, abi) {
+            cx.sess().fatal(&msg);
+        }
+    }
+}
+
+impl<'a, Ty> FnType<'a, Ty> {
+    fn adjust_for_cabi<C>(&mut self, cx: C, abi: Abi) -> Result<(), String>
+        where Ty: TyLayoutMethods<'a, C> + Copy,
+              C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
+    {
+        match &cx.target_spec().arch[..] {
             "x86" => {
                 let flavor = if abi == Abi::Fastcall {
                     cabi_x86::Flavor::Fastcall
@@ -753,7 +771,7 @@ impl<'a, 'tcx> FnType<'tcx> {
             },
             "x86_64" => if abi == Abi::SysV64 {
                 cabi_x86_64::compute_abi_info(cx, self);
-            } else if abi == Abi::Win64 || cx.sess().target.target.options.is_like_windows {
+            } else if abi == Abi::Win64 || cx.target_spec().options.is_like_windows {
                 cabi_x86_win64::compute_abi_info(self);
             } else {
                 cabi_x86_64::compute_abi_info(cx, self);
@@ -767,10 +785,10 @@ impl<'a, 'tcx> FnType<'tcx> {
             "s390x" => cabi_s390x::compute_abi_info(cx, self),
             "asmjs" => cabi_asmjs::compute_abi_info(cx, self),
             "wasm32" => {
-                if cx.sess().opts.target_triple.triple().contains("emscripten") {
+                if cx.target_spec().llvm_target.contains("emscripten") {
                     cabi_asmjs::compute_abi_info(cx, self)
                 } else {
-                    cabi_wasm32::compute_abi_info(cx, self)
+                    cabi_wasm32::compute_abi_info(self)
                 }
             }
             "msp430" => cabi_msp430::compute_abi_info(self),
@@ -779,14 +797,18 @@ impl<'a, 'tcx> FnType<'tcx> {
             "nvptx" => cabi_nvptx::compute_abi_info(self),
             "nvptx64" => cabi_nvptx64::compute_abi_info(self),
             "hexagon" => cabi_hexagon::compute_abi_info(self),
-            a => cx.sess().fatal(&format!("unrecognized arch \"{}\" in target specification", a))
+            a => return Err(format!("unrecognized arch \"{}\" in target specification", a))
         }
 
         if let PassMode::Indirect(ref mut attrs) = self.ret.mode {
             attrs.set(ArgAttribute::StructRet);
         }
-    }
 
+        Ok(())
+    }
+}
+
+impl<'a, 'tcx> FnType<'tcx> {
     pub fn llvm_type(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
         let mut llargument_tys = Vec::new();
 
