@@ -143,7 +143,7 @@ impl ExpansionKind {
     }
 
     fn expect_from_annotatables<I: IntoIterator<Item = Annotatable>>(self, items: I) -> Expansion {
-        let items = items.into_iter();
+        let mut items = items.into_iter();
         match self {
             ExpansionKind::Items =>
                 Expansion::Items(items.map(Annotatable::expect_item).collect()),
@@ -153,7 +153,14 @@ impl ExpansionKind {
                 Expansion::TraitItems(items.map(Annotatable::expect_trait_item).collect()),
             ExpansionKind::ForeignItems =>
                 Expansion::ForeignItems(items.map(Annotatable::expect_foreign_item).collect()),
-            _ => unreachable!(),
+            ExpansionKind::Stmts => Expansion::Stmts(items.map(Annotatable::expect_stmt).collect()),
+            ExpansionKind::Expr => Expansion::Expr(
+                items.next().expect("expected exactly one expression").expect_expr()
+            ),
+            ExpansionKind::OptExpr =>
+                Expansion::OptExpr(items.next().map(Annotatable::expect_expr)),
+            ExpansionKind::Pat | ExpansionKind::Ty =>
+                panic!("patterns and types aren't annotatable"),
         }
     }
 }
@@ -886,14 +893,15 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         self.collect(kind, InvocationKind::Attr { attr, traits, item })
     }
 
-    // If `item` is an attr invocation, remove and return the macro attribute.
+    /// If `item` is an attr invocation, remove and return the macro attribute and derive traits.
     fn classify_item<T>(&mut self, mut item: T) -> (Option<ast::Attribute>, Vec<Path>, T)
         where T: HasAttrs,
     {
         let (mut attr, mut traits) = (None, Vec::new());
 
         item = item.map_attrs(|mut attrs| {
-            if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs) {
+            if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs,
+                                                                                     true) {
                 attr = Some(legacy_attr_invoc);
                 return attrs;
             }
@@ -908,6 +916,28 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         (attr, traits, item)
     }
 
+    /// Alternative of `classify_item()` that ignores `#[derive]` so invocations fallthrough
+    /// to the unused-attributes lint (making it an error on statements and expressions
+    /// is a breaking change)
+    fn classify_nonitem<T: HasAttrs>(&mut self, mut item: T) -> (Option<ast::Attribute>, T) {
+        let mut attr = None;
+
+        item = item.map_attrs(|mut attrs| {
+            if let Some(legacy_attr_invoc) = self.cx.resolver.find_legacy_attr_invoc(&mut attrs,
+                                                                                     false) {
+                attr = Some(legacy_attr_invoc);
+                return attrs;
+            }
+
+            if self.cx.ecfg.proc_macro_enabled() {
+                attr = find_attr_invoc(&mut attrs);
+            }
+            attrs
+        });
+
+        (attr, item)
+    }
+
     fn configure<T: HasAttrs>(&mut self, node: T) -> Option<T> {
         self.cfg.configure(node)
     }
@@ -918,6 +948,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let features = self.cx.ecfg.features.unwrap();
         for attr in attrs.iter() {
             feature_gate::check_attribute(attr, self.cx.parse_sess, features);
+
+            // macros are expanded before any lint passes so this warning has to be hardcoded
+            if attr.path == "derive" {
+                self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
+                    .note("this may become a hard error in a future release")
+                    .emit();
+            }
         }
     }
 
@@ -938,15 +975,16 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         let mut expr = self.cfg.configure_expr(expr).into_inner();
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
-        let (attr, derives, expr) = self.classify_item(expr);
+        // ignore derives so they remain unused
+        let (attr, expr) = self.classify_nonitem(expr);
 
-        if attr.is_some() || !derives.is_empty() {
+        if attr.is_some() {
             // collect the invoc regardless of whether or not attributes are permitted here
             // expansion will eat the attribute so it won't error later
             attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
 
             // ExpansionKind::Expr requires the macro to emit an expression
-            return self.collect_attr(attr, derives, Annotatable::Expr(P(expr)), ExpansionKind::Expr)
+            return self.collect_attr(attr, vec![], Annotatable::Expr(P(expr)), ExpansionKind::Expr)
                 .make_expr();
         }
 
@@ -962,12 +1000,13 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         let mut expr = configure!(self, expr).into_inner();
         expr.node = self.cfg.configure_expr_kind(expr.node);
 
-        let (attr, derives, expr) = self.classify_item(expr);
+        // ignore derives so they remain unused
+        let (attr, expr) = self.classify_nonitem(expr);
 
-        if attr.is_some() || !derives.is_empty() {
+        if attr.is_some() {
             attr.as_ref().map(|a| self.cfg.maybe_emit_expr_attr_err(a));
 
-            return self.collect_attr(attr, derives, Annotatable::Expr(P(expr)),
+            return self.collect_attr(attr, vec![], Annotatable::Expr(P(expr)),
                                      ExpansionKind::OptExpr)
                 .make_opt_expr();
         }
@@ -1001,7 +1040,14 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
         // we'll expand attributes on expressions separately
         if !stmt.is_expr() {
-            let (attr, derives, stmt_) = self.classify_item(stmt);
+            let (attr, derives, stmt_) = if stmt.is_item() {
+                self.classify_item(stmt)
+            } else {
+                // ignore derives on non-item statements so it falls through
+                // to the unused-attributes lint
+                let (attr, stmt) = self.classify_nonitem(stmt);
+                (attr, vec![], stmt)
+            };
 
             if attr.is_some() || !derives.is_empty() {
                 return self.collect_attr(attr, derives,
