@@ -33,6 +33,7 @@ shift
 
 while [[ "$1" != "" ]]; do
     STDERR_NAME="${1/%.rs/.stderr}"
+    STDERR_NLL_NAME="${1/%.rs/.nll.stderr}"
     STDOUT_NAME="${1/%.rs/.stdout}"
     shift
     if [ -f $BUILD_DIR/$STDOUT_NAME ] && \
@@ -44,5 +45,10 @@ while [[ "$1" != "" ]]; do
            ! (diff $BUILD_DIR/$STDERR_NAME $MYDIR/$STDERR_NAME >& /dev/null); then
         echo updating $MYDIR/$STDERR_NAME
         cp $BUILD_DIR/$STDERR_NAME $MYDIR/$STDERR_NAME
+    fi
+    if [ -f $BUILD_DIR/$STDERR_NLL_NAME ] && \
+           ! (diff $BUILD_DIR/$STDERR_NLL_NAME $MYDIR/$STDERR_NLL_NAME >& /dev/null); then
+        echo updating $MYDIR/$STDERR_NLL_NAME
+        cp $BUILD_DIR/$STDERR_NLL_NAME $MYDIR/$STDERR_NLL_NAME
     fi
 done

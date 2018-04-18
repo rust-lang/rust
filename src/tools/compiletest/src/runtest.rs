@@ -2811,7 +2811,7 @@ impl<'test> TestCx<'test> {
         normalized
     }
 
-    fn load_expected_output(&self, kind: &str) -> String {
+    fn expected_output_path(&self, kind: &str) -> PathBuf {
         let mut path = expected_output_path(&self.testpaths,
                                             self.revision,
                                             &self.config.compare_mode,
@@ -2822,6 +2822,11 @@ impl<'test> TestCx<'test> {
             path = expected_output_path(&self.testpaths, self.revision, &None, kind);
         }
 
+        path
+    }
+
+    fn load_expected_output(&self, kind: &str) -> String {
+        let path = self.expected_output_path(kind);
         if path.exists() {
             match self.load_expected_output_from_path(&path) {
                 Ok(x) => x,
@@ -2875,7 +2880,8 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let output_file = self.output_base_name().with_extension(kind);
+        let expected_output_path = self.expected_output_path(kind);
+        let output_file = self.output_base_name().with_file_name(&expected_output_path);
         match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
             Ok(()) => {}
             Err(e) => self.fatal(&format!(
