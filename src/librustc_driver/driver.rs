@@ -1155,6 +1155,10 @@ where
                 }
             });
 
+            time(sess, "dumping chalk-like clauses", || {
+                rustc_traits::lowering::dump_program_clauses(tcx);
+            });
+
             time(sess, "MIR effect checking", || {
                 for def_id in tcx.body_owners() {
                     mir::transform::check_unsafety::check_unsafety(tcx, def_id)
@@ -1177,10 +1181,6 @@ where
             });
 
             time(sess, "lint checking", || lint::check_crate(tcx));
-
-            time(sess, "dumping chalk-like clauses", || {
-                rustc_traits::lowering::dump_program_clauses(tcx)
-            });
 
             return Ok(f(tcx, analysis, rx, tcx.sess.compile_status()));
         },

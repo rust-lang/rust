@@ -1,44 +1,16 @@
-error: Implemented(Self: Foo<'a, 'b, S, T, U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+error: program clause dump
   --> $DIR/lower_trait_where_clause.rs:16:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
+LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-  --> $DIR/lower_trait_where_clause.rs:16:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: Implemented(Self: Foo<'a, 'b, S, T, U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: FromEnv(S: std::fmt::Debug) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: RegionOutlives('a : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: TypeOutlives(U : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
 
-error: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-  --> $DIR/lower_trait_where_clause.rs:16:1
-   |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: FromEnv(S: std::fmt::Debug) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-  --> $DIR/lower_trait_where_clause.rs:16:1
-   |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-  --> $DIR/lower_trait_where_clause.rs:16:1
-   |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: RegionOutlives('a : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-  --> $DIR/lower_trait_where_clause.rs:16:1
-   |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: TypeOutlives(U : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-  --> $DIR/lower_trait_where_clause.rs:16:1
-   |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<'a, 'b, S, T, U>) :-
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 7 previous errors
+error: aborting due to previous error
 

@@ -319,19 +319,32 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
     fn process_attrs(&mut self, node_id: ast::NodeId, attrs: &[ast::Attribute]) {
         let def_id = self.tcx.hir.local_def_id(node_id);
         for attr in attrs {
+            let mut clauses = None;
+
             if attr.check_name("rustc_dump_program_clauses") {
-                let clauses = self.tcx.program_clauses_for(def_id);
-                for clause in *clauses {
+                clauses = Some(self.tcx.program_clauses_for(def_id));
+            }
+
+            if attr.check_name("rustc_dump_env_program_clauses") {
+                let param_env = self.tcx.param_env(def_id);
+                clauses = Some(self.tcx.program_clauses_for_env(param_env));
+            }
+
+            if let Some(clauses) = clauses {
+                let mut err = self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "program clause dump");
+
+                for clause in clauses.iter() {
                     // Skip the top-level binder for a less verbose output
                     let program_clause = match clause {
                         Clause::Implies(program_clause) => program_clause,
                         Clause::ForAll(program_clause) => program_clause.skip_binder(),
                     };
-                    self.tcx
-                        .sess
-                        .struct_span_err(attr.span, &format!("{}", program_clause))
-                        .emit();
+                    err.note(&format!("{}", program_clause));
                 }
+
+                err.emit();
             }
         }
     }

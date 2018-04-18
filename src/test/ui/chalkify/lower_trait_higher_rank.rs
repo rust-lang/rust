@@ -10,10 +10,7 @@
 
 #![feature(rustc_attrs)]
 
-#[rustc_dump_program_clauses] //~ ERROR Implemented(Self: Foo<F>) :-
-                              //~| ERROR FromEnv
-                              //~| ERROR FromEnv
-                              //~| ERROR FromEnv
+#[rustc_dump_program_clauses] //~ ERROR program clause dump
 trait Foo<F> where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8
 {
     fn s(F) -> F;
