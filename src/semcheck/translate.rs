@@ -151,18 +151,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         orig.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
             match ty.sty {
                 TyAdt(&AdtDef { ref did, .. }, substs) if self.needs_translation(*did) => {
-                    /* if let Some((target_def_id, target_substs)) =
-                        self.translate_orig_substs(index_map, *did, substs)
-                    {
-                        let target_adt = self.tcx.adt_def(target_def_id);
-                        self.tcx.mk_adt(target_adt, target_substs)
-                    } else {
-                        ty
-                    } */
-
                     // we fold bottom-up, so the code above is invalid, as it assumes the
                     // substs (that have been folded already) are yet untranslated
-                    // TODO: fix other places as well?
                     if let Some(target_def_id) = (self.translate_orig)(self.id_mapping, *did) {
                         let target_adt = self.tcx.adt_def(target_def_id);
                         self.tcx.mk_adt(target_adt, substs)
@@ -174,6 +164,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     self.tcx.mk_ref(self.translate_region(region), type_and_mut)
                 },
                 TyFnDef(did, substs) => {
+                    // TODO: this might be buggy as *technically* the substs are
+                    // already translated (see TyAdt for a possible fix)
                     if let Some((target_def_id, target_substs)) =
                         self.translate_orig_substs(index_map, did, substs)
                     {
@@ -198,6 +190,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                 let did = trait_ref.skip_binder().def_id;
                                 let substs = trait_ref.skip_binder().substs;
 
+                                // TODO: here, the substs could also be already translated
                                 if let Some((target_def_id, target_substs)) =
                                     self.translate_orig_substs(index_map, did, substs)
                                 {
@@ -219,6 +212,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                     projection_pred.skip_binder().projection_ty.item_def_id;
                                 let substs = projection_pred.skip_binder().projection_ty.substs;
 
+                                // TODO: here, the substs could also be already translated
                                 if let Some((target_def_id, target_substs)) =
                                     self.translate_orig_substs(index_map, item_def_id, substs)
                                 {
