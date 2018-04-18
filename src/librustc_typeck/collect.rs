@@ -973,15 +973,9 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  .chain(types)
                                  .collect();
 
-    let param_def_id_to_index =
-        params.iter()
-              .map(|param| {
-                  match param {
-                      ty::GenericParamDef::Lifetime(lt) => (lt.def_id, lt.index),
-                      ty::GenericParamDef::Type(ty) => (ty.def_id, ty.index),
-                  }
-              })
-              .collect();
+    let param_def_id_to_index = params.iter()
+                                      .map(|param| (param.def_id(), param.index()))
+                                      .collect();
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,

@@ -767,7 +767,14 @@ impl GenericParamDef {
     pub fn index(&self) -> u32 {
         match self {
             GenericParamDef::Lifetime(lt) => lt.index,
-            GenericParamDef::Type(ty)     => ty.index,
+            GenericParamDef::Type(ty) => ty.index,
+        }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        match self {
+            GenericParamDef::Lifetime(lt) => lt.def_id,
+            GenericParamDef::Type(ty) => ty.def_id,
         }
     }
 
@@ -795,7 +802,7 @@ pub struct Generics {
     pub parent_count: usize,
     pub params: Vec<GenericParamDef>,
 
-    /// Reverse map to each `TypeParamDef`'s `index` field
+    /// Reverse map to the `index` field of each `GenericParamDef`'s inner type
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
@@ -824,18 +831,6 @@ impl<'a, 'gcx, 'tcx> Generics {
         }
 
         param_counts
-    }
-
-    pub fn type_params_without_defaults(&self) -> usize {
-        let mut count = 0;
-        for param in self.params.iter() {
-            if let GenericParamDef::Type(ty) = param {
-                if !ty.has_default {
-                    count += 1
-                }
-            }
-        }
-        count
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {

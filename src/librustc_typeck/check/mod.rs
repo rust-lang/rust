@@ -4925,8 +4925,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let type_params_offset
                     = (generics.parent.is_none() && generics.has_self) as usize;
                 let type_params = param_counts.types - type_params_offset;
+                let type_params_without_defaults = {
+                    let mut count = 0;
+                    for param in generics.params.iter() {
+                        if let ty::GenericParamDef::Type(ty) = param {
+                            if !ty.has_default {
+                                count += 1
+                            }
+                        }
+                    }
+                    count
+                };
                 let type_params_barring_defaults =
-                    generics.type_params_without_defaults() - type_params_offset;
+                    type_params_without_defaults - type_params_offset;
 
                 (type_params_barring_defaults, type_params, param_counts.lifetimes)
             });

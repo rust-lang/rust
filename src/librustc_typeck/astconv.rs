@@ -225,11 +225,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let type_params_offset = self_ty.is_some() as usize;
         let ty_param_defs = param_counts.types - type_params_offset;
         if !infer_types || num_types_provided > ty_param_defs {
+            let type_params_without_defaults = {
+                let mut count = 0;
+                for param in decl_generics.params.iter() {
+                    if let ty::GenericParamDef::Type(ty) = param {
+                        if !ty.has_default {
+                            count += 1
+                        }
+                    }
+                }
+                count
+            };
+
             check_type_argument_count(tcx,
                 span,
                 num_types_provided,
                 ty_param_defs,
-                decl_generics.type_params_without_defaults() - type_params_offset);
+                type_params_without_defaults - type_params_offset);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);

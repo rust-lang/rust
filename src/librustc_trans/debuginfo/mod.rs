@@ -25,7 +25,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray, DIFlags};
 use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::GenericParamDef;
 
 use abi::Abi;
@@ -195,12 +195,6 @@ pub fn finalize(cx: &CodegenCx) {
         llvm::LLVMRustAddModuleFlag(cx.llmod, ptr as *const _,
                                     llvm::LLVMRustDebugMetadataVersion());
     };
-}
-
-#[derive(PartialEq, Eq, Hash)]
-pub enum Kind {
-    Lifetime,
-    Type,
 }
 
 /// Creates the function-specific debug context.
@@ -398,26 +392,24 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         // Again, only create type information if full debuginfo is enabled
         let template_params: Vec<_> = if cx.sess().opts.debuginfo == FullDebugInfo {
             let names = get_parameter_names(cx, generics);
-            let names = names.iter().flat_map(|(kind, param)| {
-                if kind == &Kind::Type {
-                    Some(param)
+            substs.iter().zip(names).filter_map(|(kind, name)| {
+                if let UnpackedKind::Type(ty) = kind.unpack() {
+                    let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                    let actual_type_metadata =
+                        type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
+                    let name = CString::new(name.as_str().as_bytes()).unwrap();
+                    Some(unsafe {
+                        llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                            DIB(cx),
+                            ptr::null_mut(),
+                            name.as_ptr(),
+                            actual_type_metadata,
+                            file_metadata,
+                            0,
+                            0)
+                    })
                 } else {
                     None
-                }
-            });
-            substs.types().zip(names).map(|(ty, name)| {
-                let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-                let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                let name = CString::new(name.as_str().as_bytes()).unwrap();
-                unsafe {
-                    llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
-                        DIB(cx),
-                        ptr::null_mut(),
-                        name.as_ptr(),
-                        actual_type_metadata,
-                        file_metadata,
-                        0,
-                        0)
                 }
             }).collect()
         } else {
@@ -429,14 +421,14 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     fn get_parameter_names(cx: &CodegenCx,
                            generics: &ty::Generics)
-                           -> Vec<(Kind, InternedString)> {
+                           -> Vec<InternedString> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
         names.extend(generics.params.iter().map(|param| {
             match param {
-                GenericParamDef::Lifetime(lt) => (Kind::Lifetime, lt.name),
-                GenericParamDef::Type(ty) => (Kind::Type, ty.name),
+                GenericParamDef::Lifetime(lt) => lt.name,
+                GenericParamDef::Type(ty) => ty.name,
             }
         }));
         names

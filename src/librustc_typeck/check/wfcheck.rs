@@ -662,7 +662,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
                      .collect();
 
     for method_param in generics.params.iter() {
-        // Shadowing is currently permitted with lifetimes.
+        // Shadowing is checked in resolve_lifetime.
         if let GenericParamDef::Lifetime(_) = method_param {
             continue;
         }
