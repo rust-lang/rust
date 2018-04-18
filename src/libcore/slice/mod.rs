@@ -1696,6 +1696,28 @@ impl<T> [T] {
                 self.as_mut_ptr(), other.as_mut_ptr(), self.len());
         }
     }
+
+    // #[unstable(feature = "slice_align_to", issue = "44488")]
+    // pub fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
+    //     // First, find at what point do we split between the first and 2nd slice.
+    //     let x = self.as_ptr();
+    //     let offset = x.align_offset(::mem::align_of::<U>());
+    //     if offset > x * ::mem::size_of::<T>() {
+    //         return (self, [], []);
+    //     }
+
+    // }
+
+    // #[unstable(feature = "slice_align_to", issue = "44488")]
+    // pub fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
+    // }
+}}
+
+#[lang = "slice"]
+#[cfg(not(test))]
+#[cfg(not(stage0))]
+impl<T> [T] {
+    slice_core_methods!();
 }
 
 #[lang = "slice_u8"]

@@ -1463,15 +1463,26 @@ extern "rust-intrinsic" {
     /// source as well as std's catch implementation.
     pub fn try(f: fn(*mut u8), data: *mut u8, local_ptr: *mut u8) -> i32;
 
-    /// Computes the byte offset that needs to be applied to `ptr` in order to
-    /// make it aligned to `align`.
-    /// If it is not possible to align `ptr`, the implementation returns
+    #[cfg(stage0)]
+    /// docs my friends, its friday!
+    pub fn align_offset(ptr: *const (), align: usize) -> usize;
+
+    /// Computes the offset that needs to be applied to the pointer in order to make it aligned to
+    /// `align`.
+    ///
+    /// If it is not possible to align the pointer, the implementation returns
     /// `usize::max_value()`.
     ///
-    /// There are no guarantees whatsover that offsetting the pointer will not
-    /// overflow or go beyond the allocation that `ptr` points into.
-    /// It is up to the caller to ensure that the returned offset is correct
-    /// in all terms other than alignment.
+    /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
+    /// used with the `offset` or `offset_to` methods.
+    ///
+    /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
+    /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
+    /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// # Unsafety
+    ///
+    /// `align` must be a power-of-two.
     ///
     /// # Examples
     ///
@@ -1485,7 +1496,7 @@ extern "rust-intrinsic" {
     /// # unsafe {
     /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
     /// let ptr = &x[n] as *const u8;
-    /// let offset = align_offset(ptr as *const (), align_of::<u16>());
+    /// let offset = align_offset(ptr, align_of::<u16>());
     /// if offset < x.len() - n - 1 {
     ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
     ///     assert_ne!(*u16_ptr, 500);
@@ -1495,7 +1506,8 @@ extern "rust-intrinsic" {
     /// }
     /// # } }
     /// ```
-    pub fn align_offset(ptr: *const (), align: usize) -> usize;
+    #[cfg(not(stage0))]
+    pub fn align_offset<T>(ptr: *const T, align: usize) -> usize;
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.

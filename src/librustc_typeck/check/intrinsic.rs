@@ -315,8 +315,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             "align_offset" => {
-                let ptr_ty = tcx.mk_imm_ptr(tcx.mk_nil());
-                (0, vec![ptr_ty, tcx.types.usize], tcx.types.usize)
+                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.types.usize], tcx.types.usize)
             },
 
             "nontemporal_store" => {

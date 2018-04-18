@@ -25,6 +25,7 @@ use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
+use rustc::middle::lang_items::AlignOffsetLangItem;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use builder::Builder;
@@ -390,16 +391,29 @@ pub fn codegen_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         }
 
         "align_offset" => {
-            // `ptr as usize`
-            let ptr_val = bx.ptrtoint(args[0].immediate(), bx.cx.isize_ty);
-            // `ptr_val % align`
-            let align = args[1].immediate();
-            let offset = bx.urem(ptr_val, align);
+            let (ptr, align) = (args[0].immediate(), args[1].immediate());
+            let stride_of_t = bx.cx.layout_of(substs.type_at(0)).size_and_align().0.bytes();
+            let stride = C_usize(bx.cx, stride_of_t);
             let zero = C_null(bx.cx.isize_ty);
-            // `offset == 0`
-            let is_zero = bx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
-            // `if offset == 0 { 0 } else { align - offset }`
-            bx.select(is_zero, zero, bx.sub(align, offset))
+            let max = C_int(cx.isize_ty, -1); // -1isize (wherein I cheat horribly to make !0usize)
+
+            if stride_of_t <= 1 {
+                // offset = ptr as usize % align => offset = ptr as usize & (align - 1)
+                let modmask = bx.sub(align, C_usize(bx.cx, 1));
+                let offset = bx.and(bx.ptrtoint(ptr, bx.cx.isize_ty), modmask);
+                let is_zero = bx.icmp(llvm::IntPredicate::IntEQ, offset, zero);
+                // if offset == 0 { 0 } else { if stride_of_t == 1 { align - offset } else { !0 } }
+                bx.select(is_zero, zero, if stride_of_t == 1 {
+                    bx.sub(align, offset)
+                } else {
+                    max
+                })
+            } else {
+                let did = ::common::langcall(bx.tcx(), Some(span), "", AlignOffsetLangItem);
+                let instance = ty::Instance::mono(bx.tcx(), did);
+                let llfn = ::callee::get_fn(bx.cx, instance);
+                bx.call(llfn, &[ptr, align, stride], None)
+            }
         }
         name if name.starts_with("simd_") => {
             match generic_simd_intrinsic(bx, name,
