@@ -118,6 +118,20 @@ impl Annotatable {
         }
     }
 
+    pub fn expect_stmt(self) -> ast::Stmt {
+        match self {
+            Annotatable::Stmt(stmt) => stmt.into_inner(),
+            _ => panic!("expected statement"),
+        }
+    }
+
+    pub fn expect_expr(self) -> P<ast::Expr> {
+        match self {
+            Annotatable::Expr(expr) => expr,
+            _ => panic!("expected expression"),
+        }
+    }
+
     pub fn derive_allowed(&self) -> bool {
         match *self {
             Annotatable::Item(ref item) => match item.node {

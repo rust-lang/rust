@@ -143,7 +143,7 @@ impl ExpansionKind {
     }
 
     fn expect_from_annotatables<I: IntoIterator<Item = Annotatable>>(self, items: I) -> Expansion {
-        let items = items.into_iter();
+        let mut items = items.into_iter();
         match self {
             ExpansionKind::Items =>
                 Expansion::Items(items.map(Annotatable::expect_item).collect()),
@@ -153,7 +153,14 @@ impl ExpansionKind {
                 Expansion::TraitItems(items.map(Annotatable::expect_trait_item).collect()),
             ExpansionKind::ForeignItems =>
                 Expansion::ForeignItems(items.map(Annotatable::expect_foreign_item).collect()),
-            _ => unreachable!(),
+            ExpansionKind::Stmts => Expansion::Stmts(items.map(Annotatable::expect_stmt).collect()),
+            ExpansionKind::Expr => Expansion::Expr(
+                items.next().expect("expected exactly one expression").expect_expr()
+            ),
+            ExpansionKind::OptExpr =>
+                Expansion::OptExpr(items.next().map(Annotatable::expect_expr)),
+            ExpansionKind::Pat | ExpansionKind::Ty =>
+                panic!("patterns and types aren't annotatable"),
         }
     }
 }
