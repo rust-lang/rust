@@ -777,13 +777,6 @@ impl GenericParamDef {
             GenericParamDef::Type(ty) => ty.def_id,
         }
     }
-
-    pub fn get_type(&self) -> Option<TypeParamDef> {
-        match *self {
-            GenericParamDef::Type(ty) => Some(ty),
-            _ => None,
-        }
-    }
 }
 
 pub struct GenericParamCount {
@@ -834,7 +827,12 @@ impl<'a, 'gcx, 'tcx> Generics {
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        if self.params.iter().any(|p| p.get_type().is_some()) {
+        if self.params.iter().any(|param| {
+            match *param {
+                GenericParamDef::Type(_) => true,
+                GenericParamDef::Lifetime(_) => false
+            }
+        }) {
             return true;
         }
         if let Some(parent_def_id) = self.parent {

@@ -10,7 +10,7 @@
 
 use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, GenericParamDef};
 use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
@@ -728,8 +728,18 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut error_found = false;
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| param.get_type());
-    let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| param.get_type());
+    let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| {
+        match *param {
+            GenericParamDef::Type(ty) => Some(ty),
+            GenericParamDef::Lifetime(_) => None,
+        }
+    });
+    let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| {
+        match *param {
+            GenericParamDef::Type(ty) => Some(ty),
+            GenericParamDef::Lifetime(_) => None,
+        }
+    });
     for (impl_ty, trait_ty) in impl_m_type_params.zip(trait_m_type_params) {
         if impl_ty.synthetic != trait_ty.synthetic {
             let impl_node_id = tcx.hir.as_local_node_id(impl_ty.def_id).unwrap();

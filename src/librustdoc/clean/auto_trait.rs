@@ -860,7 +860,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         ty.bounds.insert(0, TyParamBound::maybe_sized(self.cx));
                     }
                 }
-                _ => {}
+                GenericParamDef::Lifetime(_) => {}
             }
         }
 

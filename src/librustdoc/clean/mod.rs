@@ -1725,10 +1725,9 @@ pub enum GenericParamDef {
 
 impl GenericParamDef {
     pub fn is_synthetic_type_param(&self) -> bool {
-        if let GenericParamDef::Type(ref t) = *self {
-            t.synthetic.is_some()
-        } else {
-            false
+        match self {
+            GenericParamDef::Type(ty) => ty.synthetic.is_some(),
+            GenericParamDef::Lifetime(_) => false,
         }
     }
 }

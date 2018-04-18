@@ -19,7 +19,7 @@ use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount};
+use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDef};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -337,7 +337,12 @@ impl PrintContext {
 
             if !verbose {
                 let mut type_params =
-                    generics.params.iter().rev().filter_map(|param| param.get_type());
+                    generics.params.iter().rev().filter_map(|param| {
+                        match *param {
+                            GenericParamDef::Type(ty) => Some(ty),
+                            GenericParamDef::Lifetime(_) => None,
+                        }
+                    });
                 if let Some(last_ty) = type_params.next() {
                     if last_ty.has_default {
                         if let Some(substs) = tcx.lift(&substs) {

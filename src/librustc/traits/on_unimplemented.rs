@@ -254,10 +254,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == name => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        if let GenericParamDef::Type(ty) = param {
-                            ty.name == s
-                        } else {
-                            false
+                        match *param {
+                            GenericParamDef::Type(ty) => ty.name == s,
+                            GenericParamDef::Lifetime(_) => false,
                         }
                     }) {
                         Some(_) => (),
@@ -292,10 +291,11 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
         let generic_map = generics.params.iter().filter_map(|param| {
-            if let Some(ty) = param.get_type() {
-                Some((ty.name.to_string(), trait_ref.substs.type_for_def(&ty).to_string()))
-            } else {
-                None
+            match *param {
+                GenericParamDef::Type(ty) => {
+                    Some((ty.name.to_string(), trait_ref.substs.type_for_def(&ty).to_string()))
+                },
+                GenericParamDef::Lifetime(_) => None
             }
         }).collect::<FxHashMap<String, String>>();
 

@@ -243,12 +243,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
           FT: FnMut(&ty::TypeParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
         for def in &defs.params {
             let param = match def {
-                ty::GenericParamDef::Lifetime(ref lt) => {
-                    mk_region(lt, substs).into()
-                }
-                ty::GenericParamDef::Type(ref ty) => {
-                    mk_type(ty, substs).into()
-                }
+                ty::GenericParamDef::Lifetime(ref lt) => mk_region(lt, substs).into(),
+                ty::GenericParamDef::Type(ref ty) => mk_type(ty, substs).into(),
             };
             assert_eq!(def.index() as usize, substs.len());
             substs.push(param);

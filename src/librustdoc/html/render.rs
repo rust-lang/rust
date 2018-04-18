@@ -1437,8 +1437,11 @@ impl DocFolder for Cache {
 impl<'a> Cache {
     fn generics(&mut self, generics: &clean::Generics) {
         for param in &generics.params {
-            if let clean::GenericParamDef::Type(ref typ) = *param {
-                self.typarams.insert(typ.did, typ.name.clone());
+            match *param {
+                clean::GenericParamDef::Type(ref typ) => {
+                    self.typarams.insert(typ.did, typ.name.clone());
+                }
+                clean::GenericParamDef::Lifetime(_) => {}
             }
         }
     }
