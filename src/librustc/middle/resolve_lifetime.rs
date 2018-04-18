@@ -20,7 +20,7 @@ use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use hir::map::Map;
 use hir::ItemLocalId;
 use hir::LifetimeName;
-use ty::{self, TyCtxt, GenericParamDef};
+use ty::{self, TyCtxt, GenericParamDefKind};
 
 use errors::DiagnosticBuilder;
 use rustc::lint;
@@ -1662,9 +1662,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             .params
                             .iter()
                             .filter_map(|param| {
-                                match *param {
-                                    GenericParamDef::Type(ty) => Some(ty.object_lifetime_default),
-                                    GenericParamDef::Lifetime(_) => None,
+                                match param.kind {
+                                    GenericParamDefKind::Type(ty) => {
+                                        Some(ty.object_lifetime_default)
+                                    }
+                                    GenericParamDefKind::Lifetime(_) => None,
                                 }
                             })
                             .collect()

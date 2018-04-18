@@ -43,7 +43,7 @@ pub trait AstConv<'gcx, 'tcx> {
                                  -> ty::GenericPredicates<'tcx>;
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
-    fn re_infer(&self, span: Span, _def: Option<&ty::RegionParamDef>)
+    fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)
                 -> Option<ty::Region<'tcx>>;
 
     /// What type should we use when a type is omitted?
@@ -51,7 +51,7 @@ pub trait AstConv<'gcx, 'tcx> {
 
     /// Same as ty_infer, but with a known type parameter definition.
     fn ty_infer_for_def(&self,
-                        _def: &ty::TypeParamDef,
+                        _def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
         self.ty_infer(span)
     }
@@ -95,7 +95,7 @@ const TRAIT_OBJECT_DUMMY_SELF: ty::TypeVariants<'static> = ty::TyInfer(ty::Fresh
 impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
-        def: Option<&ty::RegionParamDef>)
+        def: Option<&ty::GenericParamDef>)
         -> ty::Region<'tcx>
     {
         let tcx = self.tcx();
@@ -228,7 +228,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             let type_params_without_defaults = {
                 let mut count = 0;
                 for param in decl_generics.params.iter() {
-                    if let ty::GenericParamDef::Type(ty) = param {
+                    if let ty::GenericParamDefKind::Type(ty) = param.kind {
                         if !ty.has_default {
                             count += 1
                         }
@@ -245,9 +245,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
-        let default_needs_object_self = |p: &ty::TypeParamDef| {
-            if is_object && p.has_default {
-                if tcx.at(span).type_of(p.def_id).has_self_ty() {
+        let default_needs_object_self = |param: &ty::GenericParamDef| {
+            if is_object && param.to_type().has_default {
+                if tcx.at(span).type_of(param.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -284,7 +284,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     self.ty_infer(span)
                 };
                 ty_var
-            } else if def.has_default {
+            } else if def.to_type().has_default {
                 // No type parameter provided, but a default exists.
 
                 // If we are converting an object type, then the
@@ -998,7 +998,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let item_def_id = tcx.hir.local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
-                tcx.mk_param(index, tcx.hir.name(node_id).as_interned_str())
+                tcx.mk_ty_param(index, tcx.hir.name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).
@@ -1146,7 +1146,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 &mut substs, tcx, parent_generics,
                 &mut |def, _| tcx.mk_region(
                     ty::ReEarlyBound(def.to_early_bound_region_data())),
-                &mut |def, _| tcx.mk_param_from_def(def)
+                &mut |def, _| tcx.mk_ty_param_from_def(def)
             );
 
             // Replace all lifetimes with 'static

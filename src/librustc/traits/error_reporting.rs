@@ -35,7 +35,8 @@ use infer::type_variable::TypeVariableOrigin;
 use std::fmt;
 use syntax::ast;
 use session::DiagnosticMessageId;
-use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, GenericParamDef};
+use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::GenericParamDefKind;
 use ty::error::ExpectedFound;
 use ty::fast_reject;
 use ty::fold::TypeFolder;
@@ -378,10 +379,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push(("_Self".to_string(), Some(self.tcx.type_of(def.did).to_string())));
         }
 
-        for param in generics.params.iter().filter_map(|param| {
-            match *param {
-                GenericParamDef::Type(ty) => Some(ty),
-                GenericParamDef::Lifetime(_) => None,
+        for param in generics.params.iter().filter(|param| {
+            match param.kind {
+                GenericParamDefKind::Type(_) => true,
+                GenericParamDefKind::Lifetime(_) => false,
             }
         }) {
             let name = param.name.to_string();

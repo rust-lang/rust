@@ -26,7 +26,6 @@ use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArr
 use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::{Substs, UnpackedKind};
-use rustc::ty::GenericParamDef;
 
 use abi::Abi;
 use common::CodegenCx;
@@ -425,12 +424,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_parameter_names(cx, cx.tcx.generics_of(def_id))
         });
-        names.extend(generics.params.iter().map(|param| {
-            match param {
-                GenericParamDef::Lifetime(lt) => lt.name,
-                GenericParamDef::Type(ty) => ty.name,
-            }
-        }));
+        names.extend(generics.params.iter().map(|param| param.name));
         names
     }
 

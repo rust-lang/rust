@@ -27,7 +27,7 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, GenericParamDef};
+use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::maps::Providers;
 use rustc::ty::subst::UnpackedKind;
@@ -399,14 +399,14 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
 impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        for def in self.ev.tcx.generics_of(self.item_def_id).params.iter() {
-            match def {
-                GenericParamDef::Type(ty) => {
+        for param in self.ev.tcx.generics_of(self.item_def_id).params.iter() {
+            match param.kind {
+                GenericParamDefKind::Type(ty) => {
                     if ty.has_default {
-                        self.ev.tcx.type_of(ty.def_id).visit_with(self);
+                        self.ev.tcx.type_of(param.def_id).visit_with(self);
                     }
                 }
-                GenericParamDef::Lifetime(_) => {}
+                GenericParamDefKind::Lifetime(_) => {}
             }
         }
         self
@@ -1340,14 +1340,14 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        for def in self.tcx.generics_of(self.item_def_id).params.iter() {
-            match def {
-                GenericParamDef::Type(ty) => {
+        for param in self.tcx.generics_of(self.item_def_id).params.iter() {
+            match param.kind {
+                GenericParamDefKind::Type(ty) => {
                     if ty.has_default {
-                        self.tcx.type_of(ty.def_id).visit_with(self);
+                        self.tcx.type_of(param.def_id).visit_with(self);
                     }
                 }
-                GenericParamDef::Lifetime(_) => {}
+                GenericParamDefKind::Lifetime(_) => {}
             }
         }
         self

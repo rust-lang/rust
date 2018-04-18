@@ -2457,18 +2457,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(TyInfer(it))
     }
 
-    pub fn mk_param(self,
+    pub fn mk_ty_param(self,
                     index: u32,
                     name: InternedString) -> Ty<'tcx> {
         self.mk_ty(TyParam(ParamTy { idx: index, name: name }))
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_param(0, keywords::SelfType.name().as_interned_str())
+        self.mk_ty_param(0, keywords::SelfType.name().as_interned_str())
     }
 
-    pub fn mk_param_from_def(self, def: &ty::TypeParamDef) -> Ty<'tcx> {
-        self.mk_param(def.index, def.name)
+    pub fn mk_ty_param_from_def(self, def: &ty::GenericParamDef) -> Ty<'tcx> {
+        self.mk_ty_param(def.index, def.name)
     }
 
     pub fn mk_anon(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {

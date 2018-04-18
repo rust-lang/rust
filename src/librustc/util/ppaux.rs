@@ -19,7 +19,7 @@ use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use ty::{TyParam, TyRawPtr, TyRef, TyNever, TyTuple};
 use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, TyAnon};
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
-use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDef};
+use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -338,20 +338,21 @@ impl PrintContext {
             if !verbose {
                 let mut type_params =
                     generics.params.iter().rev().filter_map(|param| {
-                        match *param {
-                            GenericParamDef::Type(ty) => Some(ty),
-                            GenericParamDef::Lifetime(_) => None,
+                        match param.kind {
+                            GenericParamDefKind::Type(ty) => Some((param.def_id, ty.has_default)),
+                            GenericParamDefKind::Lifetime(_) => None,
                         }
                     });
                 if let Some(last_ty) = type_params.next() {
-                    if last_ty.has_default {
+                    let (_, has_default) = last_ty;
+                    if has_default {
                         if let Some(substs) = tcx.lift(&substs) {
-                            let mut tps = substs.types().rev().skip(child_types);
-                            let zipped = iter::once((last_ty, tps.next().unwrap()))
-                                              .chain(type_params.zip(tps));
-                            for (ty, actual) in zipped {
-                                if !ty.has_default ||
-                                        tcx.type_of(ty.def_id).subst(tcx, substs) != actual {
+                            let mut types = substs.types().rev().skip(child_types);
+                            let zipped = iter::once((last_ty, types.next().unwrap()))
+                                              .chain(type_params.zip(types));
+                            for ((def_id, has_default), actual) in zipped {
+                                if !has_default ||
+                                        tcx.type_of(def_id).subst(tcx, substs) != actual {
                                     break;
                                 }
                                 num_supplied_defaults += 1;
@@ -600,18 +601,14 @@ define_print! {
     }
 }
 
-impl fmt::Debug for ty::TypeParamDef {
+impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TypeParamDef({}, {:?}, {})",
-               self.name,
-               self.def_id,
-               self.index)
-    }
-}
-
-impl fmt::Debug for ty::RegionParamDef {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "RegionParamDef({}, {:?}, {})",
+        let type_name = match self.kind {
+            ty::GenericParamDefKind::Lifetime(_) => "Region",
+            ty::GenericParamDefKind::Type(_) => "Type",
+        };
+        write!(f, "{}({}, {:?}, {})",
+               type_name,
                self.name,
                self.def_id,
                self.index)

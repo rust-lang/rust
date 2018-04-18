@@ -709,11 +709,8 @@ pub enum IntVarValue {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct FloatVarValue(pub ast::FloatTy);
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct TypeParamDef {
-    pub name: InternedString,
-    pub def_id: DefId,
-    pub index: u32,
     pub has_default: bool,
     pub object_lifetime_default: ObjectLifetimeDefault,
 
@@ -725,30 +722,12 @@ pub struct TypeParamDef {
     pub synthetic: Option<hir::SyntheticTyParamKind>,
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct RegionParamDef {
-    pub name: InternedString,
-    pub def_id: DefId,
-    pub index: u32,
-
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
     /// won't be accessed during the parent type's `Drop` impl.
     pub pure_wrt_drop: bool,
-}
-
-impl RegionParamDef {
-    pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
-        ty::EarlyBoundRegion {
-            def_id: self.def_id,
-            index: self.index,
-            name: self.name,
-        }
-    }
-
-    pub fn to_bound_region(&self) -> ty::BoundRegion {
-        self.to_early_bound_region_data().to_bound_region()
-    }
 }
 
 impl ty::EarlyBoundRegion {
@@ -758,23 +737,53 @@ impl ty::EarlyBoundRegion {
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum GenericParamDef {
+pub enum GenericParamDefKind {
     Lifetime(RegionParamDef),
     Type(TypeParamDef),
 }
 
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub struct GenericParamDef {
+    pub name: InternedString,
+    pub def_id: DefId,
+    pub index: u32,
+    pub kind: GenericParamDefKind,
+}
+
 impl GenericParamDef {
-    pub fn index(&self) -> u32 {
-        match self {
-            GenericParamDef::Lifetime(lt) => lt.index,
-            GenericParamDef::Type(ty) => ty.index,
+    pub fn to_lifetime(&self) -> RegionParamDef {
+        match self.kind {
+            GenericParamDefKind::Lifetime(lt) => lt,
+            _ => bug!("cannot convert a non-lifetime to a lifetime")
         }
     }
 
-    pub fn def_id(&self) -> DefId {
-        match self {
-            GenericParamDef::Lifetime(lt) => lt.def_id,
-            GenericParamDef::Type(ty) => ty.def_id,
+    pub fn to_type(&self) -> TypeParamDef {
+        match self.kind {
+            GenericParamDefKind::Type(ty) => ty,
+            _ => bug!("cannot convert a non-type to a type")
+        }
+    }
+
+    pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
+        match self.kind {
+            GenericParamDefKind::Lifetime(_) => {
+                ty::EarlyBoundRegion {
+                    def_id: self.def_id,
+                    index: self.index,
+                    name: self.name,
+                }
+            }
+            _ => bug!("cannot convert a non-lifetime parameter def to an early bound region")
+        }
+    }
+
+    pub fn to_bound_region(&self) -> ty::BoundRegion {
+        match self.kind {
+            GenericParamDefKind::Lifetime(_) => {
+                self.to_early_bound_region_data().to_bound_region()
+            }
+            _ => bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
     }
 }
@@ -817,9 +826,9 @@ impl<'a, 'gcx, 'tcx> Generics {
         };
 
         for param in self.params.iter() {
-            match param {
-                GenericParamDef::Lifetime(_) => param_counts.lifetimes += 1,
-                GenericParamDef::Type(_) => param_counts.types += 1,
+            match param.kind {
+                GenericParamDefKind::Lifetime(_) => param_counts.lifetimes += 1,
+                GenericParamDefKind::Type(_) => param_counts.types += 1,
             };
         }
 
@@ -828,9 +837,9 @@ impl<'a, 'gcx, 'tcx> Generics {
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         if self.params.iter().any(|param| {
-            match *param {
-                GenericParamDef::Type(_) => true,
-                GenericParamDef::Lifetime(_) => false
+            match param.kind {
+                GenericParamDefKind::Type(_) => true,
+                GenericParamDefKind::Lifetime(_) => false
             }
         }) {
             return true;
@@ -846,11 +855,12 @@ impl<'a, 'gcx, 'tcx> Generics {
     pub fn region_param(&'tcx self,
                         param: &EarlyBoundRegion,
                         tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                        -> &'tcx RegionParamDef
+                        -> &'tcx GenericParamDef
     {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            match self.params[index as usize] {
-                ty::GenericParamDef::Lifetime(ref lt) => lt,
+            let ref param = self.params[index as usize];
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime(_) => param,
                 _ => bug!("expected region parameter, but found another generic parameter")
             }
         } else {
@@ -863,7 +873,7 @@ impl<'a, 'gcx, 'tcx> Generics {
     pub fn type_param(&'tcx self,
                       param: &ParamTy,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                      -> &TypeParamDef {
+                      -> &'tcx GenericParamDef {
         if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
             // non-Self type parameters are always offset by exactly
             // `self.regions.len()`. In the absence of a Self, this is obvious,
@@ -899,14 +909,16 @@ impl<'a, 'gcx, 'tcx> Generics {
 
             if let Some(_) = (index as usize).checked_sub(type_param_offset) {
                 assert!(!is_separated_self, "found a Self after type_param_offset");
-                match self.params[index as usize] {
-                    ty::GenericParamDef::Type(ref ty) => ty,
+                let ref param = self.params[index as usize];
+                match param.kind {
+                    ty::GenericParamDefKind::Type(_) => param,
                     _ => bug!("expected type parameter, but found another generic parameter")
                 }
             } else {
                 assert!(is_separated_self, "non-Self param before type_param_offset");
-                match self.params[type_param_offset] {
-                    ty::GenericParamDef::Type(ref ty) => ty,
+                let ref param = self.params[type_param_offset];
+                match param.kind {
+                    ty::GenericParamDefKind::Type(_) => param,
                     _ => bug!("expected type parameter, but found another generic parameter")
                 }
             }

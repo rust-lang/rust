@@ -1336,14 +1336,14 @@ impl Clean<TyParam> for hir::TyParam {
     }
 }
 
-impl<'tcx> Clean<TyParam> for ty::TypeParamDef {
+impl<'tcx> Clean<TyParam> for ty::GenericParamDef {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.renderinfo.borrow_mut().external_typarams.insert(self.def_id, self.name.clean(cx));
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
             bounds: vec![], // these are filled in from the where-clauses
-            default: if self.has_default {
+            default: if self.to_type().has_default {
                 Some(cx.tcx.type_of(self.def_id).clean(cx))
             } else {
                 None
@@ -1577,8 +1577,8 @@ impl Clean<Lifetime> for hir::LifetimeDef {
     }
 }
 
-impl Clean<Lifetime> for ty::RegionParamDef {
-    fn clean(&self, _: &DocContext) -> Lifetime {
+impl<'tcx> Clean<Lifetime> for ty::GenericParamDef {
+    fn clean(&self, _cx: &DocContext) -> Lifetime {
         Lifetime(self.name.to_string())
     }
 }
@@ -1800,17 +1800,17 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         // predicates field (see rustc_typeck::collect::ty_generics), so remove
         // them.
         let stripped_typarams = gens.params.iter().filter_map(|param| {
-            if let ty::GenericParamDef::Type(ty) = param {
-                if ty.name == keywords::SelfType.name().as_str() {
-                    assert_eq!(ty.index, 0);
+            if let ty::GenericParamDefKind::Type(_) = param.kind {
+                if param.name == keywords::SelfType.name().as_str() {
+                    assert_eq!(param.index, 0);
                     None
                 } else {
-                    Some(ty.clean(cx))
+                    Some(param.clean(cx))
                 }
             } else {
                 None
             }
-        }).collect::<Vec<_>>();
+        }).collect::<Vec<TyParam>>();
 
         let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
@@ -1855,8 +1855,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             params: gens.params
                         .iter()
                         .flat_map(|param| {
-                            if let ty::GenericParamDef::Lifetime(lt) = param {
-                                Some(GenericParamDef::Lifetime(lt.clean(cx)))
+                            if let ty::GenericParamDefKind::Lifetime(_) = param.kind {
+                                Some(GenericParamDef::Lifetime(param.clean(cx)))
                             } else {
                                 None
                             }

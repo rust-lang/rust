@@ -928,12 +928,12 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         ParamTy::new(0, keywords::SelfType.name().as_interned_str())
     }
 
-    pub fn for_def(def: &ty::TypeParamDef) -> ParamTy {
+    pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
         ParamTy::new(def.index, def.name)
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_param(self.idx, self.name)
+        tcx.mk_ty_param(self.idx, self.name)
     }
 
     pub fn is_self(&self) -> bool {

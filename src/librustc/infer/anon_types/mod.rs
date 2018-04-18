@@ -14,7 +14,7 @@ use infer::outlives::free_region_map::FreeRegionRelations;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast;
 use traits::{self, PredicateObligation};
-use ty::{self, Ty, TyCtxt, GenericParamDef};
+use ty::{self, Ty, TyCtxt, GenericParamDefKind};
 use ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use ty::outlives::Component;
 use ty::subst::{Kind, Substs, UnpackedKind};
@@ -313,16 +313,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // `['a]` for the first impl trait and `'b` for the
         // second.
         let mut least_region = None;
-        for region_def in abstract_type_generics.params.iter().filter_map(|param| {
-            if let GenericParamDef::Lifetime(lt) = param {
-                Some(lt)
+        for index in abstract_type_generics.params.iter().filter_map(|param| {
+            if let GenericParamDefKind::Lifetime(_) = param.kind {
+                // Find the index of this region in the list of substitutions.
+                Some(param.index as usize)
             } else {
                 None
             }
         }) {
-            // Find the index of this region in the list of substitutions.
-            let index = region_def.index as usize;
-
             // Get the value supplied for this region from the substs.
             let subst_arg = anon_defn.substs.region_at(index);
 

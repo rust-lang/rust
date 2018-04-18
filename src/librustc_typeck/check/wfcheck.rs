@@ -11,7 +11,7 @@
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
-use ty::GenericParamDef;
+use ty::GenericParamDefKind;
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
@@ -370,8 +370,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     let mut substituted_predicates = Vec::new();
 
     let generics = tcx.generics_of(def_id);
-    let is_our_default = |def: &ty::TypeParamDef| {
-        def.has_default && def.index >= generics.parent_count as u32
+    let is_our_default = |def: &ty::GenericParamDef| {
+        def.to_type().has_default && def.index >= generics.parent_count as u32
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
@@ -379,9 +379,9 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     // struct Foo<T = Vec<[u32]>> { .. }
     // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for d in generics.params.iter().filter_map(|param| {
-        if let GenericParamDef::Type(ty) = *param {
-            if is_our_default(&ty) {
-                return Some(ty.def_id);
+        if let GenericParamDefKind::Type(_) = param.kind {
+            if is_our_default(&param) {
+                return Some(param.def_id);
             }
         }
         None
@@ -654,21 +654,18 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     let impl_params: FxHashMap<_, _> =
         parent.params.iter()
                      .flat_map(|param| {
-                         match param {
-                             GenericParamDef::Lifetime(_) => None,
-                             GenericParamDef::Type(ty) => Some((ty.name, ty.def_id)),
+                         match param.kind {
+                             GenericParamDefKind::Lifetime(_) => None,
+                             GenericParamDefKind::Type(_) => Some((param.name, param.def_id)),
                          }
                      })
                      .collect();
 
     for method_param in generics.params.iter() {
-        // Shadowing is checked in resolve_lifetime.
-        if let GenericParamDef::Lifetime(_) = method_param {
-            continue;
-        }
-        let (name, def_id) = match method_param {
-            GenericParamDef::Lifetime(_) => continue,
-            GenericParamDef::Type(ty) => (ty.name, ty.def_id),
+        let (name, def_id) = match method_param.kind {
+            // Shadowing is checked in resolve_lifetime.
+            GenericParamDefKind::Lifetime(_) => continue,
+            GenericParamDefKind::Type(_) => (method_param.name, method_param.def_id),
         };
         if impl_params.contains_key(&name) {
             // Tighten up the span to focus on only the shadowing type

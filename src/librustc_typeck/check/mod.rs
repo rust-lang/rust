@@ -1730,7 +1730,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn re_infer(&self, span: Span, def: Option<&ty::RegionParamDef>)
+    fn re_infer(&self, span: Span, def: Option<&ty::GenericParamDef>)
                 -> Option<ty::Region<'tcx>> {
         let v = match def {
             Some(def) => infer::EarlyBoundRegion(span, def.name),
@@ -1744,7 +1744,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_infer_for_def(&self,
-                        ty_param_def: &ty::TypeParamDef,
+                        ty_param_def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
         self.type_var_for_def(span, ty_param_def)
     }
@@ -4805,7 +4805,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
-            } else if !infer_types && def.has_default {
+            } else if !infer_types && def.to_type().has_default {
                 // No type parameter provided, but a default exists.
                 let default = self.tcx.type_of(def.def_id);
                 self.normalize_ty(
@@ -4928,7 +4928,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let type_params_without_defaults = {
                     let mut count = 0;
                     for param in generics.params.iter() {
-                        if let ty::GenericParamDef::Type(ty) = param {
+                        if let ty::GenericParamDefKind::Type(ty) = param.kind {
                             if !ty.has_default {
                                 count += 1
                             }
@@ -5025,7 +5025,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let segment = segment.map(|(path_segment, generics)| {
             let explicit = !path_segment.infer_types;
             let impl_trait = generics.params.iter().any(|param| {
-                if let ty::GenericParamDef::Type(ty) = param {
+                if let ty::GenericParamDefKind::Type(ty) = param.kind {
                     if let Some(hir::SyntheticTyParamKind::ImplTrait) = ty.synthetic {
                         return true;
                     }

@@ -183,7 +183,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                              -> &'tcx Substs<'tcx> {
         Substs::for_item(tcx, def_id, |def, _| {
             tcx.mk_region(ty::ReEarlyBound(def.to_early_bound_region_data()))
-        }, |def, _| tcx.mk_param_from_def(def))
+        }, |def, _| tcx.mk_ty_param_from_def(def))
     }
 
     /// Creates a Substs for generic parameter definitions,
@@ -196,8 +196,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                             mut mk_region: FR,
                             mut mk_type: FT)
                             -> &'tcx Substs<'tcx>
-    where FR: FnMut(&ty::RegionParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::TypeParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
+    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
+          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
         let defs = tcx.generics_of(def_id);
         let mut substs = Vec::with_capacity(defs.count());
         Substs::fill_item(&mut substs, tcx, defs, &mut mk_region, &mut mk_type);
@@ -210,8 +210,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                              mut mk_region: FR,
                              mut mk_type: FT)
                              -> &'tcx Substs<'tcx>
-    where FR: FnMut(&ty::RegionParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::TypeParamDef, &[Kind<'tcx>]) -> Ty<'tcx>
+    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
+          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx>
     {
         let defs = tcx.generics_of(def_id);
         let mut result = Vec::with_capacity(defs.count());
@@ -225,8 +225,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                              defs: &ty::Generics,
                              mk_region: &mut FR,
                              mk_type: &mut FT)
-    where FR: FnMut(&ty::RegionParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::TypeParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
+    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
+          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
 
         if let Some(def_id) = defs.parent {
             let parent_defs = tcx.generics_of(def_id);
@@ -239,15 +239,15 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
                            defs: &ty::Generics,
                            mk_region: &mut FR,
                            mk_type: &mut FT)
-    where FR: FnMut(&ty::RegionParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
-          FT: FnMut(&ty::TypeParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
-        for def in &defs.params {
-            let param = match def {
-                ty::GenericParamDef::Lifetime(ref lt) => mk_region(lt, substs).into(),
-                ty::GenericParamDef::Type(ref ty) => mk_type(ty, substs).into(),
+    where FR: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> ty::Region<'tcx>,
+          FT: FnMut(&ty::GenericParamDef, &[Kind<'tcx>]) -> Ty<'tcx> {
+        for param in &defs.params {
+            let kind = match param.kind {
+                ty::GenericParamDefKind::Lifetime(_) => mk_region(param, substs).into(),
+                ty::GenericParamDefKind::Type(_) => mk_type(param, substs).into(),
             };
-            assert_eq!(def.index() as usize, substs.len());
-            substs.push(param);
+            assert_eq!(param.index as usize, substs.len());
+            substs.push(kind);
         }
     }
 
@@ -296,12 +296,12 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn type_for_def(&self, ty_param_def: &ty::TypeParamDef) -> Ty<'tcx> {
+    pub fn type_for_def(&self, ty_param_def: &ty::GenericParamDef) -> Ty<'tcx> {
         self.type_at(ty_param_def.index as usize)
     }
 
     #[inline]
-    pub fn region_for_def(&self, def: &ty::RegionParamDef) -> ty::Region<'tcx> {
+    pub fn region_for_def(&self, def: &ty::GenericParamDef) -> ty::Region<'tcx> {
         self.region_at(def.index as usize)
     }
 

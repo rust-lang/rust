@@ -228,12 +228,12 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         let mut types = vec![];
 
         for param in generics.params.iter() {
-            match param {
-                ty::GenericParamDef::Lifetime(lt) => {
-                    let name = if lt.name == "" {
+            match param.kind {
+                ty::GenericParamDefKind::Lifetime(_) => {
+                    let name = if param.name == "" {
                         hir::LifetimeName::Static
                     } else {
-                        hir::LifetimeName::Name(lt.name.as_symbol())
+                        hir::LifetimeName::Name(param.name.as_symbol())
                     };
 
                     lifetimes.push(hir::Lifetime {
@@ -242,8 +242,8 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                         name,
                     });
                 }
-                ty::GenericParamDef::Type(ty) => {
-                    types.push(P(self.ty_param_to_ty(ty.clone())));
+                ty::GenericParamDefKind::Type(_) => {
+                    types.push(P(self.ty_param_to_ty(param.clone())));
                 }
             }
         }
@@ -256,7 +256,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
         }
     }
 
-    fn ty_param_to_ty(&self, param: ty::TypeParamDef) -> hir::Ty {
+    fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,

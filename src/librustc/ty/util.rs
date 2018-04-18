@@ -505,12 +505,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             .filter(|&(_, &k)| {
                 match k.unpack() {
                     UnpackedKind::Lifetime(&ty::RegionKind::ReEarlyBound(ref ebr)) => {
-                        !impl_generics.region_param(ebr, self).pure_wrt_drop
+                        !impl_generics.region_param(ebr, self).to_lifetime().pure_wrt_drop
                     }
                     UnpackedKind::Type(&ty::TyS {
                         sty: ty::TypeVariants::TyParam(ref pt), ..
                     }) => {
-                        !impl_generics.type_param(pt, self).pure_wrt_drop
+                        !impl_generics.type_param(pt, self).to_type().pure_wrt_drop
                     }
                     UnpackedKind::Lifetime(_) | UnpackedKind::Type(_) => {
                         // not a type or region param - this should be reported

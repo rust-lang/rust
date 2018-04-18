@@ -11,7 +11,7 @@
 use fmt_macros::{Parser, Piece, Position};
 
 use hir::def_id::DefId;
-use ty::{self, TyCtxt, GenericParamDef};
+use ty::{self, TyCtxt, GenericParamDefKind};
 use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 
@@ -254,9 +254,9 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == name => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        match *param {
-                            GenericParamDef::Type(ty) => ty.name == s,
-                            GenericParamDef::Lifetime(_) => false,
+                        match param.kind {
+                            GenericParamDefKind::Type(_) => param.name == s,
+                            GenericParamDefKind::Lifetime(_) => false,
                         }
                     }) {
                         Some(_) => (),
@@ -291,11 +291,12 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
         let trait_str = tcx.item_path_str(trait_ref.def_id);
         let generics = tcx.generics_of(trait_ref.def_id);
         let generic_map = generics.params.iter().filter_map(|param| {
-            match *param {
-                GenericParamDef::Type(ty) => {
-                    Some((ty.name.to_string(), trait_ref.substs.type_for_def(&ty).to_string()))
+            match param.kind {
+                GenericParamDefKind::Type(_) => {
+                    Some((param.name.to_string(),
+                         trait_ref.substs.type_for_def(&param).to_string()))
                 },
-                GenericParamDef::Lifetime(_) => None
+                GenericParamDefKind::Lifetime(_) => None
             }
         }).collect::<FxHashMap<String, String>>();
 

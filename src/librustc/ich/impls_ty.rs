@@ -753,34 +753,23 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
     }
 }
 
-impl_stable_hash_for!(enum ty::GenericParamDef {
+impl_stable_hash_for!(enum ty::GenericParamDefKind {
     Lifetime(lt),
     Type(ty)
 });
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for ty::RegionParamDef {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::RegionParamDef {
-            name,
-            def_id,
-            index,
-            pure_wrt_drop
-        } = *self;
-
-        name.hash_stable(hcx, hasher);
-        def_id.hash_stable(hcx, hasher);
-        index.hash_stable(hcx, hasher);
-        pure_wrt_drop.hash_stable(hcx, hasher);
-    }
-}
-
-impl_stable_hash_for!(struct ty::TypeParamDef {
+impl_stable_hash_for!(struct ty::GenericParamDef {
     name,
     def_id,
     index,
+    kind
+});
+
+impl_stable_hash_for!(struct ty::RegionParamDef {
+    pure_wrt_drop
+});
+
+impl_stable_hash_for!(struct ty::TypeParamDef {
     has_default,
     object_lifetime_default,
     pure_wrt_drop,
