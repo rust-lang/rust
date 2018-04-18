@@ -51,7 +51,7 @@ macro_rules! provide {
         pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
-                                        QueryConfig>::Value
+                                        QueryConfig<$lt>>::Value
                 where T: IntoArgs,
             {
                 #[allow(unused_variables)]
