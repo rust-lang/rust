@@ -260,7 +260,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             self.param_env,
             def_id,
             substs,
-        ).ok_or(EvalErrorKind::TypeckError.into()) // turn error prop into a panic to expose associated type in const issue
+        ).ok_or_else(|| EvalErrorKind::TypeckError.into()) // turn error prop into a panic to expose associated type in const issue
     }
 
     pub(super) fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -279,9 +279,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         trace!("load mir {:?}", instance);
         match instance {
             ty::InstanceDef::Item(def_id) => {
-                self.tcx.maybe_optimized_mir(def_id).ok_or_else(|| {
+                self.tcx.maybe_optimized_mir(def_id).ok_or_else(||
                     EvalErrorKind::NoMirFor(self.tcx.item_path_str(def_id)).into()
-                })
+                )
             }
             _ => Ok(self.tcx.instance_mir(instance)),
         }
@@ -691,7 +691,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     self.param_env,
                                     def_id,
                                     substs,
-                                ).ok_or(EvalErrorKind::TypeckError.into());
+                                ).ok_or_else(|| EvalErrorKind::TypeckError.into());
                                 let fn_ptr = self.memory.create_fn_alloc(instance?);
                                 let valty = ValTy {
                                     value: Value::ByVal(PrimVal::Ptr(fn_ptr)),
@@ -1699,7 +1699,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
 impl<'mir, 'tcx> Frame<'mir, 'tcx> {
     pub fn get_local(&self, local: mir::Local) -> EvalResult<'tcx, Value> {
-        self.locals[local].ok_or(EvalErrorKind::DeadLocal.into())
+        self.locals[local].ok_or_else(|| EvalErrorKind::DeadLocal.into())
     }
 
     fn set_local(&mut self, local: mir::Local, value: Value) -> EvalResult<'tcx> {
