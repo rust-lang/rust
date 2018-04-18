@@ -1384,6 +1384,72 @@ impl<T: ?Sized> RcBoxPtr<T> for Weak<T> {
     }
 }
 
+mod fn_impls {
+    use super::Rc;
+
+    #[stable(feature = "shared_fn_impls", since = "1.26.0")]
+    impl<A, F: ?Sized + Fn<A>> Fn<A> for Rc<F> {
+        extern "rust-call" fn call(&self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
+
+    #[stable(feature = "shared_fn_impls", since = "1.26.0")]
+    impl<A, F: ?Sized + Fn<A>> FnMut<A> for Rc<F> {
+        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
+
+    #[stable(feature = "shared_fn_impls", since = "1.26.0")]
+    impl<A, F: ?Sized + Fn<A>> FnOnce<A> for Rc<F> {
+        type Output = F::Output;
+
+        extern "rust-call" fn call_once(self, args: A) -> F::Output {
+            (&*self).call(args)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::Rc;
+
+        #[test]
+        fn is_fn() {
+            use_fn(Rc::new(|x| x + 1));
+        }
+
+        #[test]
+        fn is_fn_mut() {
+            use_fn_mut(Rc::new(|x| x + 1));
+        }
+
+        #[test]
+        fn is_fn_once() {
+            use_fn_once(Rc::new(|x| x + 1));
+        }
+
+        #[test]
+        fn can_dyn_dispatch() {
+            let dyn_dispatch: Rc<Fn(u8) -> u8> = Rc::new(|x| x + 1);
+            use_fn(dyn_dispatch);
+        }
+
+        fn use_fn_once<F: FnOnce(u8) -> u8>(fun: F) {
+            assert_eq!(2, fun(1));
+        }
+
+        fn use_fn_mut<F: FnMut(u8) -> u8>(mut fun: F) {
+            assert_eq!(2, fun(1));
+            assert_eq!(3, fun(2));
+        }
+
+        fn use_fn<F: Fn(u8) -> u8>(fun: F) {
+            assert_eq!(2, fun(1));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Rc, Weak};

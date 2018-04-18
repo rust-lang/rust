@@ -122,9 +122,11 @@
 #![feature(exact_chunks)]
 #![feature(pointer_methods)]
 #![feature(inclusive_range_fields)]
+#![feature(fn_traits)]
+
 #![cfg_attr(stage0, feature(generic_param_attrs))]
 
-#![cfg_attr(not(test), feature(fn_traits, swap_with_slice, i128))]
+#![cfg_attr(not(test), feature(swap_with_slice, i128))]
 #![cfg_attr(test, feature(test))]
 
 // Allow testing this library

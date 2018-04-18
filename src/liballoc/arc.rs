@@ -1409,6 +1409,72 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     }
 }
 
+mod fn_impls {
+    use super::Arc;
+
+    #[stable(feature = "shared_fn_impls", since = "1.26.0")]
+    impl<A, F: ?Sized + Fn<A>> Fn<A> for Arc<F> {
+        extern "rust-call" fn call(&self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
+
+    #[stable(feature = "shared_fn_impls", since = "1.26.0")]
+    impl<A, F: ?Sized + Fn<A>> FnMut<A> for Arc<F> {
+        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
+
+    #[stable(feature = "shared_fn_impls", since = "1.26.0")]
+    impl<A, F: ?Sized + Fn<A>> FnOnce<A> for Arc<F> {
+        type Output = F::Output;
+
+        extern "rust-call" fn call_once(self, args: A) -> F::Output {
+            (&*self).call(args)
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::Arc;
+
+        #[test]
+        fn is_fn() {
+            use_fn(Arc::new(|x| x + 1));
+        }
+
+        #[test]
+        fn is_fn_mut() {
+            use_fn_mut(Arc::new(|x| x + 1));
+        }
+
+        #[test]
+        fn is_fn_once() {
+            use_fn_once(Arc::new(|x| x + 1));
+        }
+
+        #[test]
+        fn can_dyn_dispatch() {
+            let dyn_dispatch: Arc<Fn(u8) -> u8> = Arc::new(|x| x + 1);
+            use_fn(dyn_dispatch);
+        }
+
+        fn use_fn_once<F: FnOnce(u8) -> u8>(fun: F) {
+            assert_eq!(2, fun(1));
+        }
+
+        fn use_fn_mut<F: FnMut(u8) -> u8>(mut fun: F) {
+            assert_eq!(2, fun(1));
+            assert_eq!(3, fun(2));
+        }
+
+        fn use_fn<F: Fn(u8) -> u8>(fun: F) {
+            assert_eq!(2, fun(1));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::boxed::Box;
