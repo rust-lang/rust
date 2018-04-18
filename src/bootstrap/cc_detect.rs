@@ -79,8 +79,16 @@ pub fn find(build: &mut Build) {
         let mut cfg = cc::Build::new();
         cfg.cargo_metadata(false).opt_level(2).warnings(false).debug(false)
            .target(&target).host(&build.build);
-        if target.contains("msvc") {
-            cfg.static_crt(true);
+        match build.crt_static(target) {
+            Some(a) => { cfg.static_crt(a); }
+            None => {
+                if target.contains("msvc") {
+                    cfg.static_crt(true);
+                }
+                if target.contains("musl") {
+                    cfg.static_flag(true);
+                }
+            }
         }
 
         let config = build.config.target_config.get(&target);
@@ -97,8 +105,9 @@ pub fn find(build: &mut Build) {
             cc2ar(compiler.path(), &target)
         };
 
-        build.verbose(&format!("CC_{} = {:?}", &target, compiler.path()));
         build.cc.insert(target, compiler);
+        build.verbose(&format!("CC_{} = {:?}", &target, build.cc(target)));
+        build.verbose(&format!("CFLAGS_{} = {:?}", &target, build.cflags(target)));
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target, ar));
             build.ar.insert(target, ar);
