@@ -106,6 +106,27 @@ impl Annotatable {
         }
     }
 
+    pub fn expect_foreign_item(self) -> ast::ForeignItem {
+        match self {
+            Annotatable::ForeignItem(i) => i.into_inner(),
+            _ => panic!("expected foreign item")
+        }
+    }
+
+    pub fn expect_stmt(self) -> ast::Stmt {
+        match self {
+            Annotatable::Stmt(stmt) => stmt.into_inner(),
+            _ => panic!("expected statement"),
+        }
+    }
+
+    pub fn expect_expr(self) -> P<ast::Expr> {
+        match self {
+            Annotatable::Expr(expr) => expr,
+            _ => panic!("expected expression"),
+        }
+    }
+
     pub fn derive_allowed(&self) -> bool {
         match *self {
             Annotatable::Item(ref item) => match item.node {
@@ -631,7 +652,9 @@ pub trait Resolver {
 
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
-    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
+    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>, allow_derive: bool)
+                              -> Option<Attribute>;
+
     fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
@@ -657,7 +680,8 @@ impl Resolver for DummyResolver {
     fn add_builtin(&mut self, _ident: ast::Ident, _ext: Lrc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
-    fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
+    fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>, _allow_derive: bool)
+                              -> Option<Attribute> { None }
     fn resolve_invoc(&mut self, _invoc: &mut Invocation, _scope: Mark, _force: bool)
                      -> Result<Option<Lrc<SyntaxExtension>>, Determinacy> {
         Err(Determinacy::Determined)
