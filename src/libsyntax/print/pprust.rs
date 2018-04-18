@@ -234,11 +234,11 @@ pub fn token_to_string(tok: &Token) -> String {
                 token::Integer(c)        => c.to_string(),
                 token::Str_(s)           => format!("\"{}\"", s),
                 token::StrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
-                                                    delim=repeat("#", n),
+                                                    delim=repeat("#", n as usize),
                                                     string=s),
                 token::ByteStr(v)         => format!("b\"{}\"", v),
                 token::ByteStrRaw(s, n)   => format!("br{delim}\"{string}\"{delim}",
-                                                    delim=repeat("#", n),
+                                                    delim=repeat("#", n as usize),
                                                     string=s),
             };
 
@@ -660,7 +660,7 @@ pub trait PrintState<'a> {
             }
             ast::StrStyle::Raw(n) => {
                 (format!("r{delim}\"{string}\"{delim}",
-                         delim=repeat("#", n),
+                         delim=repeat("#", n as usize),
                          string=st))
             }
         };

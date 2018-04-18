@@ -163,9 +163,9 @@ impl<'a> Quote for &'a str {
     }
 }
 
-impl Quote for usize {
+impl Quote for u16 {
     fn quote(self) -> TokenStream {
-        TokenTree::from(Literal::usize_unsuffixed(self)).into()
+        TokenTree::from(Literal::u16_unsuffixed(self)).into()
     }
 }
 
@@ -197,7 +197,7 @@ macro_rules! literals {
     ($($i:ident),*; $($raw:ident),*) => {
         pub enum LiteralKind {
             $($i,)*
-            $($raw(usize),)*
+            $($raw(u16),)*
         }
 
         impl LiteralKind {

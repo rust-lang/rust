@@ -623,7 +623,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         ($name: expr, $suffix: expr, $content: expr $(, $count: expr)*) => {{
             let name = mk_name(cx, sp, ast::Ident::with_empty_ctxt($content));
             let inner = cx.expr_call(sp, mk_token_path(cx, sp, $name), vec![
-                name $(, cx.expr_usize(sp, $count))*
+                name $(, cx.expr_u16(sp, $count))*
             ]);
             let suffix = match $suffix {
                 Some(name) => cx.expr_some(sp, mk_name(cx, sp, ast::Ident::with_empty_ctxt(name))),
