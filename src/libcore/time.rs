@@ -137,7 +137,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_from_micros)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_micros(1_000_002);
@@ -145,7 +144,7 @@ impl Duration {
     /// assert_eq!(1, duration.as_secs());
     /// assert_eq!(2000, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_from_micros", issue = "44400")]
+    #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[inline]
     pub const fn from_micros(micros: u64) -> Duration {
         Duration {
@@ -159,7 +158,6 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_extras)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_nanos(1_000_000_123);
@@ -167,7 +165,7 @@ impl Duration {
     /// assert_eq!(1, duration.as_secs());
     /// assert_eq!(123, duration.subsec_nanos());
     /// ```
-    #[unstable(feature = "duration_extras", issue = "46507")]
+    #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
     pub const fn from_nanos(nanos: u64) -> Duration {
         Duration {
@@ -217,14 +215,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_extras)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_millis(5432);
     /// assert_eq!(duration.as_secs(), 5);
     /// assert_eq!(duration.subsec_millis(), 432);
     /// ```
-    #[unstable(feature = "duration_extras", issue = "46507")]
+    #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
     pub fn subsec_millis(&self) -> u32 { self.nanos / NANOS_PER_MILLI }
 
@@ -237,14 +234,13 @@ impl Duration {
     /// # Examples
     ///
     /// ```
-    /// #![feature(duration_extras, duration_from_micros)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::from_micros(1_234_567);
     /// assert_eq!(duration.as_secs(), 1);
     /// assert_eq!(duration.subsec_micros(), 234_567);
     /// ```
-    #[unstable(feature = "duration_extras", issue = "46507")]
+    #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
     pub fn subsec_micros(&self) -> u32 { self.nanos / NANOS_PER_MICRO }
 

@@ -99,7 +99,6 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
-#![feature(nonnull_cast)]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
@@ -108,7 +107,6 @@
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
 #![feature(slice_get_slice)]
-#![feature(slice_rsplit)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(str_internals)]
@@ -124,7 +122,7 @@
 #![feature(inclusive_range_fields)]
 #![cfg_attr(stage0, feature(generic_param_attrs))]
 
-#![cfg_attr(not(test), feature(fn_traits, swap_with_slice, i128))]
+#![cfg_attr(not(test), feature(fn_traits, i128))]
 #![cfg_attr(test, feature(test))]
 
 // Allow testing this library
