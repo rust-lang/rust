@@ -1239,8 +1239,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
         } else {
             for item in &m.items {
                 let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-                let param_counts = generics.param_counts();
-                if generics.params.len() - param_counts[&ty::Kind::Lifetime] != 0 {
+                if generics.params.len() - generics.param_counts().lifetimes != 0 {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     err.span_label(item.span, "can't have type parameters");
@@ -4800,7 +4799,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Skip over the lifetimes in the same segment.
             if let Some((_, generics)) = segment {
-                i -= generics.param_counts()[&ty::Kind::Lifetime];
+                i -= generics.param_counts().lifetimes;
             }
 
             if let Some(ast_ty) = types.get(i) {
@@ -4921,15 +4920,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided parameters.
         let (ty_non_def_req_len, ty_req_len, lt_req_len) =
             segment.map_or((0, 0, 0), |(_, generics)| {
-                let params_count = generics.param_counts();
+                let param_counts = generics.param_counts();
 
                 let type_params_offset
                     = (generics.parent.is_none() && generics.has_self) as usize;
-                let type_params = params_count[&ty::Kind::Type] - type_params_offset;
+                let type_params = param_counts.types - type_params_offset;
                 let type_params_barring_defaults =
                     generics.type_params_without_defaults() - type_params_offset;
 
-                (type_params_barring_defaults, type_params, params_count[&ty::Kind::Lifetime])
+                (type_params_barring_defaults, type_params, param_counts.lifetimes)
             });
 
         if types.len() > ty_req_len {
@@ -5088,22 +5087,12 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if generics.ty_params().next().is_none() { return; }
     let mut tps_used = vec![false; generics.ty_params().count()];
 
-    let mut param_counts = FxHashMap();
-    param_counts.insert(ty::Kind::Type, 0);
-    param_counts.insert(ty::Kind::Lifetime, 0);
-
-    for param in generics.params.iter() {
-        let key = match param {
-            hir::GenericParam::Type(_) => ty::Kind::Type,
-            hir::GenericParam::Lifetime(_) => ty::Kind::Lifetime,
-        };
-        *param_counts.get_mut(&key).unwrap() += 1;
-    }
+    let lifetime_count = generics.lifetimes().count();
 
     for leaf_ty in ty.walk() {
-        if let ty::TyParam(ty::ParamTy {idx, .. }) = leaf_ty.sty {
+        if let ty::TyParam(ty::ParamTy {idx, ..}) = leaf_ty.sty {
             debug!("Found use of ty param num {}", idx);
-            tps_used[idx as usize - param_counts[&ty::Kind::Lifetime]] = true;
+            tps_used[idx as usize - lifetime_count] = true;
         } else if let ty::TyError = leaf_ty.sty {
             // If there already another error, do not emit an error for not using a type Parameter
             assert!(tcx.sess.err_count() > 0);

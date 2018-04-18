@@ -13,7 +13,7 @@
 
 use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
-use rustc::ty::{self, TyCtxt, Ty, Kind};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::util::nodemap::FxHashMap;
 use require_same_types;
 
@@ -45,7 +45,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let i_n_tps = tcx.generics_of(def_id).param_counts()[&Kind::Type];
+    let i_n_tps = tcx.generics_of(def_id).param_counts().types;
     if i_n_tps != n_tps {
         let span = match it.node {
             hir::ForeignItemFn(_, _, ref generics) => generics.span,
@@ -346,7 +346,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let def_id = tcx.hir.local_def_id(it.id);
-    let i_n_tps = tcx.generics_of(def_id).param_counts()[&Kind::Type];
+    let i_n_tps = tcx.generics_of(def_id).param_counts().types;
     let name = it.name.as_str();
 
     let (n_tps, inputs, output) = match &*name {

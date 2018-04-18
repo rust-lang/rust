@@ -41,7 +41,7 @@ use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::def_id::DefIndexAddressSpace;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind, Kind};
+use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind, GenericParamCount};
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
@@ -2684,31 +2684,34 @@ impl Clean<Type> for hir::Ty {
                     let mut ty_substs = FxHashMap();
                     let mut lt_substs = FxHashMap();
                     provided_params.with_parameters(|provided_params| {
-                        let mut indices = FxHashMap();
+                        let mut indices = GenericParamCount {
+                            lifetimes: 0,
+                            types: 0
+                        };
                         for param in generics.params.iter() {
                             match param {
-                                hir::GenericParam::Type(ty_param) => {
-                                    let i = indices.entry(Kind::Type).or_insert(0);
-                                    let ty_param_def =
-                                        Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
-                                    if let Some(ty) = provided_params.types.get(*i).cloned() {
-                                        ty_substs.insert(ty_param_def, ty.into_inner().clean(cx));
-                                    } else if let Some(default) = ty_param.default.clone() {
-                                        ty_substs.insert(ty_param_def,
-                                                         default.into_inner().clean(cx));
-                                    }
-                                    *i += 1;
-                                }
                                 hir::GenericParam::Lifetime(lt_param) => {
-                                    let i = indices.entry(Kind::Type).or_insert(0);
-                                    if let Some(lt) = provided_params.lifetimes.get(*i).cloned() {
+                                    if let Some(lt) = provided_params.lifetimes
+                                        .get(indices.lifetimes).cloned() {
                                         if !lt.is_elided() {
                                             let lt_def_id =
                                                 cx.tcx.hir.local_def_id(lt_param.lifetime.id);
                                             lt_substs.insert(lt_def_id, lt.clean(cx));
                                         }
                                     }
-                                    *i += 1;
+                                    indices.lifetimes += 1;
+                                }
+                                hir::GenericParam::Type(ty_param) => {
+                                    let ty_param_def =
+                                        Def::TyParam(cx.tcx.hir.local_def_id(ty_param.id));
+                                    if let Some(ty) = provided_params.types
+                                        .get(indices.types).cloned() {
+                                        ty_substs.insert(ty_param_def, ty.into_inner().clean(cx));
+                                    } else if let Some(default) = ty_param.default.clone() {
+                                        ty_substs.insert(ty_param_def,
+                                                         default.into_inner().clean(cx));
+                                    }
+                                    indices.types += 1;
                                 }
                             }
                         }

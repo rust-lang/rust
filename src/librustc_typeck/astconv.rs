@@ -210,7 +210,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let decl_generics = tcx.generics_of(def_id);
         let param_counts = decl_generics.param_counts();
         let num_types_provided = parameters.types.len();
-        let expected_num_region_params = param_counts[&ty::Kind::Lifetime];
+        let expected_num_region_params = param_counts.lifetimes;
         let supplied_num_region_params = parameters.lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
             report_lifetime_number_error(tcx, span,
@@ -223,7 +223,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Check the number of type parameters supplied by the user.
         let type_params_offset = self_ty.is_some() as usize;
-        let ty_param_defs = param_counts[&ty::Kind::Type] - type_params_offset;
+        let ty_param_defs = param_counts.types - type_params_offset;
         if !infer_types || num_types_provided > ty_param_defs {
             check_type_argument_count(tcx,
                 span,
@@ -260,7 +260,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
-            let i = i - (param_counts[&ty::Kind::Lifetime] + type_params_offset);
+            let i = i - (param_counts.lifetimes + type_params_offset);
             if i < num_types_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])

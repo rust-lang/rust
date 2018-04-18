@@ -757,18 +757,6 @@ impl ty::EarlyBoundRegion {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum Kind {
-    Lifetime,
-    Type,
-}
-
-impl Kind {
-    pub fn iter<'a>() -> impl Iterator<Item = &'a Kind> {
-        [Kind::Lifetime, Kind::Type].into_iter()
-    }
-}
-
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum GenericParamDef {
     Lifetime(RegionParamDef),
@@ -789,6 +777,11 @@ impl GenericParamDef {
             _ => None,
         }
     }
+}
+
+pub struct GenericParamCount {
+    pub lifetimes: usize,
+    pub types: usize,
 }
 
 /// Information about the formal type/lifetime parameters associated
@@ -814,18 +807,20 @@ impl<'a, 'gcx, 'tcx> Generics {
         self.parent_count + self.params.len()
     }
 
-    pub fn param_counts(&self) -> FxHashMap<Kind, usize> {
-        let mut param_counts: FxHashMap<_, _> = FxHashMap();
-        Kind::iter().for_each(|kind| {
-            param_counts.insert(*kind, 0);
-        });
+    pub fn param_counts(&self) -> GenericParamCount {
+        // We could cache this as a property of `GenericParamCount`, but
+        // the aim is to refactor this away entirely eventually and the
+        // presence of this method will be a constant reminder.
+        let mut param_counts = GenericParamCount {
+            lifetimes: 0,
+            types: 0,
+        };
 
         for param in self.params.iter() {
-            let key = match param {
-                GenericParamDef::Type(_) => Kind::Type,
-                GenericParamDef::Lifetime(_) => Kind::Lifetime,
+            match param {
+                GenericParamDef::Lifetime(_) => param_counts.lifetimes += 1,
+                GenericParamDef::Type(_) => param_counts.types += 1,
             };
-            *param_counts.get_mut(&key).unwrap() += 1;
         }
 
         param_counts
@@ -904,7 +899,7 @@ impl<'a, 'gcx, 'tcx> Generics {
             // And it can be seen that in both cases, to move from a substs
             // offset to a generics offset you just have to offset by the
             // number of regions.
-            let type_param_offset = self.param_counts()[&Kind::Lifetime];
+            let type_param_offset = self.param_counts().lifetimes;
 
             let has_self = self.has_self && self.parent.is_none();
             let is_separated_self = type_param_offset != 0 && index == 0 && has_self;

@@ -26,7 +26,7 @@ use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArr
 use rustc::hir::TransFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum};
 use rustc::ty::subst::Substs;
-use rustc::ty::{Kind, GenericParamDef};
+use rustc::ty::GenericParamDef;
 
 use abi::Abi;
 use common::CodegenCx;
@@ -195,6 +195,12 @@ pub fn finalize(cx: &CodegenCx) {
         llvm::LLVMRustAddModuleFlag(cx.llmod, ptr as *const _,
                                     llvm::LLVMRustDebugMetadataVersion());
     };
+}
+
+#[derive(PartialEq, Eq, Hash)]
+pub enum Kind {
+    Lifetime,
+    Type,
 }
 
 /// Creates the function-specific debug context.
