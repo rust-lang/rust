@@ -15,20 +15,26 @@
 use dep_graph::{DepNodeIndex, DepNode, DepKind, DepNodeColor};
 use errors::DiagnosticBuilder;
 use errors::Level;
+use errors::Diagnostic;
+use errors::FatalError;
 use ty::tls;
 use ty::{TyCtxt};
 use ty::maps::Query;
+use ty::maps::config::QueryConfig;
 use ty::maps::config::QueryDescription;
-use ty::maps::job::{QueryResult, QueryInfo};
+use ty::maps::job::{QueryJob, QueryResult, QueryInfo};
 use ty::item_path;
 
+use util::common::{profq_msg, ProfileQueriesMsg};
+
 use rustc_data_structures::fx::{FxHashMap};
-use rustc_data_structures::sync::LockGuard;
-use std::marker::PhantomData;
+use rustc_data_structures::sync::{Lrc, Lock};
+use std::mem;
+use std::ptr;
+use std::collections::hash_map::Entry;
 use syntax_pos::Span;
 
-pub(super) struct QueryMap<'tcx, D: QueryDescription<'tcx>> {
-    phantom: PhantomData<(D, &'tcx ())>,
+pub struct QueryMap<'tcx, D: QueryConfig<'tcx> + ?Sized> {
     pub(super) map: FxHashMap<D::Key, QueryResult<'tcx, QueryValue<D::Value>>>,
 }
 
@@ -48,18 +54,157 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<'tcx, M: QueryDescription<'tcx>> QueryMap<'tcx, M> {
+impl<'tcx, M: QueryConfig<'tcx>> QueryMap<'tcx, M> {
     pub(super) fn new() -> QueryMap<'tcx, M> {
         QueryMap {
-            phantom: PhantomData,
             map: FxHashMap(),
         }
     }
 }
 
-pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
-    fn get_cache_internal<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                              -> LockGuard<'a, QueryMap<'tcx, Self>>;
+// If enabled, send a message to the profile-queries thread
+macro_rules! profq_msg {
+    ($tcx:expr, $msg:expr) => {
+        if cfg!(debug_assertions) {
+            if $tcx.sess.profile_queries() {
+                profq_msg($tcx.sess, $msg)
+            }
+        }
+    }
+}
+
+// If enabled, format a key using its debug string, which can be
+// expensive to compute (in terms of time).
+macro_rules! profq_key {
+    ($tcx:expr, $key:expr) => {
+        if cfg!(debug_assertions) {
+            if $tcx.sess.profile_queries_and_keys() {
+                Some(format!("{:?}", $key))
+            } else { None }
+        } else { None }
+    }
+}
+
+/// A type representing the responsibility to execute the job in the `job` field.
+/// This will poison the relevant query if dropped.
+pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
+    map: &'a Lock<QueryMap<'tcx, Q>>,
+    key: Q::Key,
+    job: Lrc<QueryJob<'tcx>>,
+}
+
+impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
+    /// Either gets a JobOwner corresponding the the query, allowing us to
+    /// start executing the query, or it returns with the result of the query.
+    /// If the query is executing elsewhere, this will wait for it.
+    /// If the query panicked, this will silently panic.
+    pub(super) fn try_get(
+        tcx: TyCtxt<'a, 'tcx, '_>,
+        span: Span,
+        key: &Q::Key,
+    ) -> TryGetJob<'a, 'tcx, Q> {
+        let map = Q::query_map(tcx);
+        loop {
+            let mut lock = map.borrow_mut();
+            let job = match lock.map.entry((*key).clone()) {
+                Entry::Occupied(entry) => {
+                    match *entry.get() {
+                        QueryResult::Started(ref job) => job.clone(),
+                        QueryResult::Complete(ref value) => {
+                            profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                            let result = Ok((value.value.clone(), value.index));
+                            return TryGetJob::JobCompleted(result);
+                        },
+                        QueryResult::Poisoned => FatalError.raise(),
+                    }
+                }
+                Entry::Vacant(entry) => {
+                    // No job entry for this query. Return a new one to be started later
+                    return tls::with_related_context(tcx, |icx| {
+                        let info = QueryInfo {
+                            span,
+                            query: Q::query(key.clone()),
+                        };
+                        let job = Lrc::new(QueryJob::new(info, icx.query.clone()));
+                        let owner = JobOwner {
+                            map,
+                            job: job.clone(),
+                            key: (*key).clone(),
+                        };
+                        entry.insert(QueryResult::Started(job));
+                        TryGetJob::NotYetStarted(owner)
+                    })
+                }
+            };
+            mem::drop(lock);
+
+            if let Err(cycle) = job.await(tcx, span) {
+                return TryGetJob::JobCompleted(Err(cycle));
+            }
+        }
+    }
+
+    /// Completes the query by updating the query map with the `result`,
+    /// signals the waiter and forgets the JobOwner, so it won't poison the query
+    pub(super) fn complete(self, result: &Q::Value, dep_node_index: DepNodeIndex) {
+        // We can move out of `self` here because we `mem::forget` it below
+        let key = unsafe { ptr::read(&self.key) };
+        let job = unsafe { ptr::read(&self.job) };
+        let map = self.map;
+
+        // Forget ourself so our destructor won't poison the query
+        mem::forget(self);
+
+        let value = QueryValue::new(result.clone(), dep_node_index);
+        map.borrow_mut().map.insert(key, QueryResult::Complete(value));
+
+        job.signal_complete();
+    }
+
+    /// Executes a job by changing the ImplicitCtxt to point to the
+    /// new query job while it executes. It returns the diagnostics
+    /// captured during execution and the actual result.
+    pub(super) fn start<'lcx, F, R>(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, 'lcx>,
+        compute: F)
+    -> (R, Vec<Diagnostic>)
+    where
+        F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'lcx>) -> R
+    {
+        // The TyCtxt stored in TLS has the same global interner lifetime
+        // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
+        // when accessing the ImplicitCtxt
+        let r = tls::with_related_context(tcx, move |icx| {
+            // Update the ImplicitCtxt to point to our new query job
+            let icx = tls::ImplicitCtxt {
+                tcx,
+                query: Some(self.job.clone()),
+                layout_depth: icx.layout_depth,
+                task: icx.task,
+            };
+
+            // Use the ImplicitCtxt while we execute the query
+            tls::enter_context(&icx, |icx| {
+                compute(icx.tcx)
+            })
+        });
+
+        // Extract the diagnostic from the job
+        let diagnostics = mem::replace(&mut *self.job.diagnostics.lock(), Vec::new());
+
+        (r, diagnostics)
+    }
+}
+
+impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
+    fn drop(&mut self) {
+        // Poison the query so jobs waiting on it panic
+        self.map.borrow_mut().map.insert(self.key.clone(), QueryResult::Poisoned);
+        // Also signal the completion of the job, so waiters
+        // will continue execution
+        self.job.signal_complete();
+    }
 }
 
 #[derive(Clone)]
@@ -70,14 +215,14 @@ pub(super) struct CycleError<'tcx> {
 }
 
 /// The result of `try_get_lock`
-pub(super) enum TryGetLock<'a, 'tcx: 'a, T, D: QueryDescription<'tcx> + 'a> {
+pub(super) enum TryGetJob<'a, 'tcx: 'a, D: QueryDescription<'tcx> + 'a> {
     /// The query is not yet started. Contains a guard to the map eventually used to start it.
-    NotYetStarted(LockGuard<'a, QueryMap<'tcx, D>>),
+    NotYetStarted(JobOwner<'a, 'tcx, D>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep node index
     /// if it succeeded or a cycle error if it failed
-    JobCompleted(Result<(T, DepNodeIndex), CycleError<'tcx>>),
+    JobCompleted(Result<(D::Value, DepNodeIndex), CycleError<'tcx>>),
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -182,29 +327,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-// If enabled, send a message to the profile-queries thread
-macro_rules! profq_msg {
-    ($tcx:expr, $msg:expr) => {
-        if cfg!(debug_assertions) {
-            if $tcx.sess.profile_queries() {
-                profq_msg($tcx.sess, $msg)
-            }
-        }
-    }
-}
-
-// If enabled, format a key using its debug string, which can be
-// expensive to compute (in terms of time).
-macro_rules! profq_key {
-    ($tcx:expr, $key:expr) => {
-        if cfg!(debug_assertions) {
-            if $tcx.sess.profile_queries_and_keys() {
-                Some(format!("{:?}", $key))
-            } else { None }
-        } else { None }
-    }
-}
-
 macro_rules! handle_cycle_error {
     ([][$this: expr]) => {{
         Value::from_cycle_error($this.global_tcx())
@@ -224,11 +346,7 @@ macro_rules! define_maps {
        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use dep_graph::DepNodeIndex;
-        use std::mem;
-        use errors::Diagnostic;
-        use errors::FatalError;
-        use rustc_data_structures::sync::{Lock, LockGuard};
-        use rustc_data_structures::OnDrop;
+        use rustc_data_structures::sync::Lock;
 
         define_map_struct! {
             tcx: $tcx,
@@ -303,15 +421,16 @@ macro_rules! define_maps {
             })*
         }
 
-        $(impl<$tcx> QueryConfig for queries::$name<$tcx> {
+        $(impl<$tcx> QueryConfig<$tcx> for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
-        }
 
-        impl<$tcx> GetCacheInternal<$tcx> for queries::$name<$tcx> {
-            fn get_cache_internal<'a>(tcx: TyCtxt<'a, $tcx, $tcx>)
-                                      -> LockGuard<'a, QueryMap<$tcx, Self>> {
-                tcx.maps.$name.borrow()
+            fn query(key: Self::Key) -> Query<'tcx> {
+                Query::$name(key)
+            }
+
+            fn query_map<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryMap<$tcx, Self>> {
+                &tcx.maps.$name
             }
         }
 
@@ -322,43 +441,6 @@ macro_rules! define_maps {
                 use dep_graph::DepConstructor::*;
 
                 DepNode::new(tcx, $node(*key))
-            }
-
-            /// Either get the lock of the query map, allowing us to
-            /// start executing the query, or it returns with the result of the query.
-            /// If the query already executed and panicked, this will fatal error / silently panic
-            fn try_get_lock(
-                tcx: TyCtxt<'a, $tcx, 'lcx>,
-                span: Span,
-                key: &$K
-            ) -> TryGetLock<'a, $tcx, $V, Self>
-            {
-                loop {
-                    let lock = tcx.maps.$name.borrow_mut();
-                    let job = if let Some(value) = lock.map.get(key) {
-                        match *value {
-                            QueryResult::Started(ref job) => Some(job.clone()),
-                            QueryResult::Complete(ref value) => {
-                                profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
-                                let result = Ok(((&value.value).clone(), value.index));
-                                return TryGetLock::JobCompleted(result);
-                            },
-                            QueryResult::Poisoned => FatalError.raise(),
-                        }
-                    } else {
-                        None
-                    };
-                    let job = if let Some(job) = job {
-                        job
-                    } else {
-                        return TryGetLock::NotYetStarted(lock);
-                    };
-                    mem::drop(lock);
-
-                    if let Err(cycle) = job.await(tcx, span) {
-                        return TryGetLock::JobCompleted(Err(cycle));
-                    }
-                }
             }
 
             fn try_get_with(tcx: TyCtxt<'a, $tcx, 'lcx>,
@@ -378,29 +460,21 @@ macro_rules! define_maps {
                     )
                 );
 
-                /// Get the lock used to start the query or
-                /// return the result of the completed query
-                macro_rules! get_lock_or_return {
-                    () => {{
-                        match Self::try_get_lock(tcx, span, &key) {
-                            TryGetLock::NotYetStarted(lock) => lock,
-                            TryGetLock::JobCompleted(result) => {
-                                return result.map(|(v, index)| {
-                                    tcx.dep_graph.read_index(index);
-                                    v
-                                })
-                            }
-                        }
-                    }}
-                }
-
-                let mut lock = get_lock_or_return!();
+                let job = match JobOwner::try_get(tcx, span, &key) {
+                    TryGetJob::NotYetStarted(job) => job,
+                    TryGetJob::JobCompleted(result) => {
+                        return result.map(|(v, index)| {
+                            tcx.dep_graph.read_index(index);
+                            v
+                        })
+                    }
+                };
 
                 // Fast path for when incr. comp. is off. `to_dep_node` is
                 // expensive for some DepKinds.
                 if !tcx.dep_graph.is_fully_enabled() {
                     let null_dep_node = DepNode::new_no_params(::dep_graph::DepKind::Null);
-                    return Self::force_with_lock(tcx, key, span, lock, null_dep_node)
+                    return Self::force_with_job(tcx, key, job, null_dep_node)
                                 .map(|(v, _)| v);
                 }
 
@@ -409,48 +483,37 @@ macro_rules! define_maps {
                 if dep_node.kind.is_anon() {
                     profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
 
-                    let res = Self::start_job(tcx, span, key, lock, |tcx| {
+                    let res = job.start(tcx, |tcx| {
                         tcx.dep_graph.with_anon_task(dep_node.kind, || {
                             Self::compute_result(tcx.global_tcx(), key)
                         })
-                    })?;
+                    });
 
                     profq_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
-                    let (((result, dep_node_index), diagnostics), job) = res;
+                    let ((result, dep_node_index), diagnostics) = res;
 
                     tcx.dep_graph.read_index(dep_node_index);
 
                     tcx.on_disk_query_result_cache
                        .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
 
-                    let value = QueryValue::new(Clone::clone(&result), dep_node_index);
-
-                    tcx.maps
-                       .$name
-                       .borrow_mut()
-                       .map
-                       .insert(key, QueryResult::Complete(value));
-
-                    job.signal_complete();
+                    job.complete(&result, dep_node_index);
 
                     return Ok(result);
                 }
 
                 if !dep_node.kind.is_input() {
-                    // try_mark_green_and_read may force queries. So we must drop our lock here
-                    mem::drop(lock);
                     if let Some(dep_node_index) = tcx.try_mark_green_and_read(&dep_node) {
                         profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                         return Self::load_from_disk_and_cache_in_memory(tcx,
                                                                         key,
-                                                                        span,
+                                                                        job,
                                                                         dep_node_index,
                                                                         &dep_node)
                     }
-                    lock = get_lock_or_return!();
                 }
 
-                match Self::force_with_lock(tcx, key, span, lock, dep_node) {
+                match Self::force_with_job(tcx, key, job, dep_node) {
                     Ok((result, dep_node_index)) => {
                         tcx.dep_graph.read_index(dep_node_index);
                         Ok(result)
@@ -483,75 +546,6 @@ macro_rules! define_maps {
                 }
             }
 
-            /// Creates a job for the query and updates the query map indicating that it started.
-            /// Then it changes ImplicitCtxt to point to the new query job while it executes.
-            /// If the query panics, this updates the query map to indicate so.
-            fn start_job<F, R>(tcx: TyCtxt<'_, $tcx, 'lcx>,
-                               span: Span,
-                               key: $K,
-                               mut map: LockGuard<'_, QueryMap<$tcx, Self>>,
-                               compute: F)
-                -> Result<((R, Vec<Diagnostic>), Lrc<QueryJob<$tcx>>), CycleError<$tcx>>
-                where F: for<'b> FnOnce(TyCtxt<'b, $tcx, 'lcx>) -> R
-            {
-                let query = Query::$name(Clone::clone(&key));
-
-                let entry = QueryInfo {
-                    span,
-                    query,
-                };
-
-                // The TyCtxt stored in TLS has the same global interner lifetime
-                // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
-                // when accessing the ImplicitCtxt
-                let (r, job) = ty::tls::with_related_context(tcx, move |icx| {
-                    let job = Lrc::new(QueryJob::new(entry, icx.query.clone()));
-
-                    // Store the job in the query map and drop the lock to allow
-                    // others to wait it
-                    map.map.entry(key).or_insert(QueryResult::Started(job.clone()));
-                    mem::drop(map);
-
-                    let r = {
-                        let on_drop = OnDrop(|| {
-                            // Poison the query so jobs waiting on it panic
-                            tcx.maps
-                            .$name
-                            .borrow_mut()
-                            .map
-                            .insert(key, QueryResult::Poisoned);
-                            // Also signal the completion of the job, so waiters
-                            // will continue execution
-                            job.signal_complete();
-                        });
-
-                        // Update the ImplicitCtxt to point to our new query job
-                        let icx = ty::tls::ImplicitCtxt {
-                            tcx,
-                            query: Some(job.clone()),
-                            layout_depth: icx.layout_depth,
-                            task: icx.task,
-                        };
-
-                        // Use the ImplicitCtxt while we execute the query
-                        let r = ty::tls::enter_context(&icx, |icx| {
-                            compute(icx.tcx)
-                        });
-
-                        mem::forget(on_drop);
-
-                        r
-                    };
-
-                    (r, job)
-                });
-
-                // Extract the diagnostic from the job
-                let diagnostics: Vec<_> = mem::replace(&mut *job.diagnostics.lock(), Vec::new());
-
-                Ok(((r, diagnostics), job))
-            }
-
             fn compute_result(tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> $V {
                 let provider = tcx.maps.providers[key.map_crate()].$name;
                 provider(tcx.global_tcx(), key)
@@ -559,7 +553,7 @@ macro_rules! define_maps {
 
             fn load_from_disk_and_cache_in_memory(tcx: TyCtxt<'a, $tcx, 'lcx>,
                                                   key: $K,
-                                                  span: Span,
+                                                  job: JobOwner<'a, $tcx, Self>,
                                                   dep_node_index: DepNodeIndex,
                                                   dep_node: &DepNode)
                                                   -> Result<$V, CycleError<$tcx>>
@@ -589,8 +583,8 @@ macro_rules! define_maps {
                     None
                 };
 
-                let (result, job) = if let Some(result) = result {
-                    (result, None)
+                let result = if let Some(result) = result {
+                    result
                 } else {
                     // We could not load a result from the on-disk cache, so
                     // recompute.
@@ -598,18 +592,14 @@ macro_rules! define_maps {
                     // The diagnostics for this query have already been
                     // promoted to the current session during
                     // try_mark_green(), so we can ignore them here.
-                    let ((result, _), job) = Self::start_job(tcx,
-                                                             span,
-                                                             key,
-                                                             tcx.maps.$name.borrow_mut(),
-                                                             |tcx| {
+                    let (result, _) = job.start(tcx, |tcx| {
                         // The dep-graph for this computation is already in
                         // place
                         tcx.dep_graph.with_ignore(|| {
                             Self::compute_result(tcx, key)
                         })
-                    })?;
-                    (result, Some(job))
+                    });
+                    result
                 };
 
                 // If -Zincremental-verify-ich is specified, re-hash results from
@@ -642,15 +632,7 @@ macro_rules! define_maps {
                     tcx.dep_graph.mark_loaded_from_cache(dep_node_index, true);
                 }
 
-                let value = QueryValue::new(Clone::clone(&result), dep_node_index);
-
-                tcx.maps
-                   .$name
-                   .borrow_mut()
-                   .map
-                   .insert(key, QueryResult::Complete(value));
-
-                job.map(|j| j.signal_complete());
+                job.complete(&result, dep_node_index);
 
                 Ok(result)
             }
@@ -663,21 +645,19 @@ macro_rules! define_maps {
                      -> Result<($V, DepNodeIndex), CycleError<$tcx>> {
                 // We may be concurrently trying both execute and force a query
                 // Ensure that only one of them runs the query
-                let lock = match Self::try_get_lock(tcx, span, &key) {
-                    TryGetLock::NotYetStarted(lock) => lock,
-                    TryGetLock::JobCompleted(result) => return result,
+                let job = match JobOwner::try_get(tcx, span, &key) {
+                    TryGetJob::NotYetStarted(job) => job,
+                    TryGetJob::JobCompleted(result) => return result,
                 };
-                Self::force_with_lock(tcx,
-                                      key,
-                                      span,
-                                      lock,
-                                      dep_node)
+                Self::force_with_job(tcx,
+                                     key,
+                                     job,
+                                     dep_node)
             }
 
-            fn force_with_lock(tcx: TyCtxt<'a, $tcx, 'lcx>,
+            fn force_with_job(tcx: TyCtxt<'a, $tcx, 'lcx>,
                                key: $K,
-                               span: Span,
-                               map: LockGuard<'_, QueryMap<$tcx, Self>>,
+                               job: JobOwner<'_, $tcx, Self>,
                                dep_node: DepNode)
                                -> Result<($V, DepNodeIndex), CycleError<$tcx>> {
                 // If the following assertion triggers, it can have two reasons:
@@ -692,11 +672,7 @@ macro_rules! define_maps {
                         key, dep_node);
 
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
-                let res = Self::start_job(tcx,
-                                          span,
-                                          key,
-                                          map,
-                                          |tcx| {
+                let res = job.start(tcx, |tcx| {
                     if dep_node.kind.is_eval_always() {
                         tcx.dep_graph.with_eval_always_task(dep_node,
                                                             tcx,
@@ -708,10 +684,10 @@ macro_rules! define_maps {
                                                 key,
                                                 Self::compute_result)
                     }
-                })?;
+                });
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderEnd);
 
-                let (((result, dep_node_index), diagnostics), job) = res;
+                let ((result, dep_node_index), diagnostics) = res;
 
                 if tcx.sess.opts.debugging_opts.query_dep_graph {
                     tcx.dep_graph.mark_loaded_from_cache(dep_node_index, false);
@@ -722,17 +698,7 @@ macro_rules! define_maps {
                        .store_diagnostics(dep_node_index, diagnostics);
                 }
 
-                let value = QueryValue::new(Clone::clone(&result), dep_node_index);
-
-                tcx.maps
-                   .$name
-                   .borrow_mut()
-                   .map
-                   .insert(key, QueryResult::Complete(value));
-
-                let job: Lrc<QueryJob> = job;
-
-                job.signal_complete();
+                job.complete(&result, dep_node_index);
 
                 Ok((result, dep_node_index))
             }

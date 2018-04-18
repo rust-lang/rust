@@ -15,18 +15,24 @@ use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTy
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::maps::queries;
+use ty::maps::Query;
+use ty::maps::QueryMap;
 
 use std::hash::Hash;
 use syntax_pos::symbol::InternedString;
+use rustc_data_structures::sync::Lock;
 
 /// Query configuration and description traits.
 
-pub trait QueryConfig {
+pub trait QueryConfig<'tcx> {
     type Key: Eq + Hash + Clone;
-    type Value;
+    type Value: Clone;
+
+    fn query(key: Self::Key) -> Query<'tcx>;
+    fn query_map<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryMap<'tcx, Self>>;
 }
 
-pub(super) trait QueryDescription<'tcx>: QueryConfig {
+pub(super) trait QueryDescription<'tcx>: QueryConfig<'tcx> {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
 
     #[inline]
@@ -41,7 +47,7 @@ pub(super) trait QueryDescription<'tcx>: QueryConfig {
     }
 }
 
-impl<'tcx, M: QueryConfig<Key=DefId>> QueryDescription<'tcx> for M {
+impl<'tcx, M: QueryConfig<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.item_path_str(def_id))

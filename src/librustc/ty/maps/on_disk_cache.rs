@@ -239,8 +239,8 @@ impl<'sess> OnDiskCache<'sess> {
                 encode_query_results::<specialization_graph_of, _>(tcx, enc, qri)?;
 
                 // const eval is special, it only encodes successfully evaluated constants
-                use ty::maps::plumbing::GetCacheInternal;
-                for (key, entry) in const_eval::get_cache_internal(tcx).map.iter() {
+                use ty::maps::QueryConfig;
+                for (key, entry) in const_eval::query_map(tcx).borrow().map.iter() {
                     use ty::maps::config::QueryDescription;
                     if const_eval::cache_on_disk(key.clone()) {
                         let entry = match *entry {
@@ -1124,7 +1124,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                               encoder: &mut CacheEncoder<'enc, 'a, 'tcx, E>,
                                               query_result_index: &mut EncodedQueryResultIndex)
                                               -> Result<(), E::Error>
-    where Q: super::plumbing::GetCacheInternal<'tcx>,
+    where Q: super::config::QueryDescription<'tcx>,
           E: 'enc + TyEncoder,
           Q::Value: Encodable,
 {
@@ -1133,7 +1133,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     time(tcx.sess, desc, || {
 
-    for (key, entry) in Q::get_cache_internal(tcx).map.iter() {
+    for (key, entry) in Q::query_map(tcx).borrow().map.iter() {
         if Q::cache_on_disk(key.clone()) {
             let entry = match *entry {
                 QueryResult::Complete(ref v) => v,
