@@ -402,11 +402,25 @@ fn test_str_get_maxinclusive() {
 }
 
 #[test]
+fn test_str_slice_rangetoinclusive_ok() {
+    let s = "abcαβγ";
+    assert_eq!(&s[..=2], "abc");
+    assert_eq!(&s[..=4], "abcα");
+}
+
+#[test]
+#[should_panic]
+fn test_str_slice_rangetoinclusive_notok() {
+    let s = "abcαβγ";
+    &s[..=3];
+}
+
+#[test]
 fn test_str_slicemut_rangetoinclusive_ok() {
     let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
-    &mut s[..=3]; // before alpha
-    &mut s[..=5]; // after alpha
+    assert_eq!(&mut s[..=2], "abc");
+    assert_eq!(&mut s[..=4], "abcα");
 }
 
 #[test]
@@ -414,7 +428,7 @@ fn test_str_slicemut_rangetoinclusive_ok() {
 fn test_str_slicemut_rangetoinclusive_notok() {
     let mut s = "abcαβγ".to_owned();
     let s: &mut str = &mut s;
-    &mut s[..=4]; // middle of alpha, which is 2 bytes long
+    &mut s[..=3];
 }
 
 #[test]
