@@ -740,7 +740,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
 
             // Reverse map to each `TypeParamDef`'s `index` field, from
             // `def_id.index` (`def_id.krate` is the same as the item's).
-            type_param_to_index: _, // Don't hash this
+            param_def_id_to_index: _, // Don't hash this
             has_self,
             has_late_bound_regions,
         } = *self;

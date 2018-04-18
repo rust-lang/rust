@@ -243,7 +243,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_owner = tcx.hir.ty_param_owner(param_id);
     let param_owner_def_id = tcx.hir.local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
-    let index = generics.type_param_to_index[&def_id];
+    let index = generics.param_def_id_to_index[&def_id];
     let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id).as_interned_str());
 
     // Don't look for bounds where the type parameter isn't in scope.
@@ -966,23 +966,28 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         });
     }
 
-    let type_param_to_index = opt_self.iter()
-                                      .chain(types.iter())
-                                      .map(|ty| (ty.def_id, ty.index))
-                                      .collect();
-
     let opt_self = opt_self.into_iter().map(|ty| ty::GenericParamDef::Type(ty));
     let lifetimes = regions.into_iter().map(|lt| ty::GenericParamDef::Lifetime(lt));
     let types = types.into_iter().map(|ty| ty::GenericParamDef::Type(ty));
-    let params = opt_self.chain(lifetimes)
-                         .chain(types)
-                         .collect();
+    let params: Vec<_> = opt_self.chain(lifetimes)
+                                 .chain(types)
+                                 .collect();
+
+    let param_def_id_to_index =
+        params.iter()
+              .map(|param| {
+                  match param {
+                      ty::GenericParamDef::Lifetime(lt) => (lt.def_id, lt.index),
+                      ty::GenericParamDef::Type(ty) => (ty.def_id, ty.index),
+                  }
+              })
+              .collect();
 
     tcx.alloc_generics(ty::Generics {
         parent: parent_def_id,
         parent_count,
         params,
-        type_param_to_index,
+        param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
     })

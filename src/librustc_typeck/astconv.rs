@@ -985,7 +985,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let item_id = tcx.hir.get_parent_node(node_id);
                 let item_def_id = tcx.hir.local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
-                let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id)];
+                let index = generics.param_def_id_to_index[&tcx.hir.local_def_id(node_id)];
                 tcx.mk_param(index, tcx.hir.name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
