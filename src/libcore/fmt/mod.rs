@@ -1579,10 +1579,10 @@ impl<'a> Formatter<'a> {
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
     ///         fmt.debug_struct("Foo")
-    ///             .field("bar", &self.bar)
-    ///             .field("baz", &self.baz)
-    ///             .field("addr", &format_args!("{}", self.addr))
-    ///             .finish()
+    ///            .field("bar", &self.bar)
+    ///            .field("baz", &self.baz)
+    ///            .field("addr", &format_args!("{}", self.addr))
+    ///            .finish()
     ///     }
     /// }
     ///
