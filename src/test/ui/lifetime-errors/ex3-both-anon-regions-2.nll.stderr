@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex3-both-anon-regions-2.rs:12:9
    |
 LL |     v = x; //~ ERROR lifetime mismatch

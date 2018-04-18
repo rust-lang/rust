@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/42701_one_named_and_one_anonymous.rs:20:9
    |
 LL |         &*x //~ ERROR explicit lifetime

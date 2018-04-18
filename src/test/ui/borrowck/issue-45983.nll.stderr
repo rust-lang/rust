@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/issue-45983.rs:17:27
    |
 LL |     give_any(|y| x = Some(y));

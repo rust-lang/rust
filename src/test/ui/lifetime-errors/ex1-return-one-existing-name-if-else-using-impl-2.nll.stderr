@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex1-return-one-existing-name-if-else-using-impl-2.rs:14:15
    |
 LL |    if x > y { x } else { y } //~ ERROR explicit lifetime

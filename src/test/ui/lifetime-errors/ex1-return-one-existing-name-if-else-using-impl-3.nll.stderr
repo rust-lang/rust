@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex1-return-one-existing-name-if-else-using-impl-3.rs:18:36
    |
 LL |     if true { &self.field } else { x } //~ ERROR explicit lifetime
