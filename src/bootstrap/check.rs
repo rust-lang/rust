@@ -12,7 +12,7 @@
 
 use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env, add_to_sysroot};
 use builder::{RunConfig, Builder, ShouldRun, Step};
-use tool::prepare_tool_cargo;
+use tool::{self, prepare_tool_cargo};
 use {Compiler, Mode};
 use cache::{INTERNER, Interned};
 use std::path::PathBuf;
@@ -232,6 +232,12 @@ impl Step for Rustdoc {
 
         let libdir = builder.sysroot_libdir(compiler, target);
         add_to_sysroot(&builder, &libdir, &rustdoc_stamp(builder, compiler, target));
+
+        builder.ensure(tool::CleanTools {
+            compiler,
+            target,
+            mode: Mode::Tool,
+        });
     }
 }
 
