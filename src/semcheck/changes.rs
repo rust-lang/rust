@@ -288,7 +288,7 @@ impl<'tcx> ChangeType<'tcx> {
             TypeParameterRemoved { .. } |
             VariantAdded |
             VariantRemoved |
-            VariantFieldAdded { .. } |
+            VariantFieldAdded { .. } | // TODO: this (and the two below) appear wrong
             VariantFieldRemoved { .. } |
             VariantStyleChanged { .. } |
             TypeChanged { .. } |
@@ -317,7 +317,6 @@ impl<'tcx> ChangeType<'tcx> {
 
     /// Get a detailed explanation of a change, and why it is categorized as-is.
     fn explanation(&self) -> &'static str {
-        // TODO: meaningful explanations
         match *self {
             ItemMadePublic =>
 "Adding an item to a module's public interface is generally a non-breaking
@@ -341,11 +340,16 @@ user code that tries to mutate them will break.",
             VarianceTightened =>
 "The variance of a type or region parameter in an item tightens iff <TODO>.",
             VarianceChanged { .. } =>
-"Switching the variance of a type or region parameter is breaking. <TODO>",
+"Switching the variance of a type or region parameter is breaking, if it goes
+from covariant to contravariant, or vice-versa.",
             RegionParameterAdded =>
-"Adding a new region parameter is a breaking change. <TODO>.",
+"Adding a new region parameter is a breaking change, because it can break
+explicit type annotations, as well as prevent region inference working as
+before.",
             RegionParameterRemoved =>
-"Removing a region parameter is a breaking change. <TODO>.",
+"Removing a region parameter is a breaking change, because it can break
+explicit type annotations, well as prevent region inference working as
+before.",
             TypeParameterAdded { defaulted: true } =>
 "Adding a new defaulted type parameter is a non-breaking change, because
 all old references to the item are still valid, provided that no type
@@ -365,9 +369,12 @@ on said enum can become non-exhaustive.",
 "Removing an enum variant is a braking change, because every old reference
 to the removed variant is rendered invalid.",
             VariantFieldAdded { public: _, total_public: _ } =>
-"Adding a field from a variant: <TODO>.",
+"Adding a field to an enum variant is breaking, as matches on the variant are
+invalidated. In case of structs, this only holds for public fields, or the
+first private field being added.",
             VariantFieldRemoved { public: _, total_public: _ } =>
-"Removing a field from a variant: <TODO>.",
+"Removing a field from an enum variant is breaking, as matches on the variant
+are invalidated. In case of structs, this only holds for public fields.",
             VariantStyleChanged { .. } =>
 "Changing the style of a variant is a breaking change, since most old
 references to it are rendered invalid: pattern matches and value
@@ -432,10 +439,12 @@ parametrized) type is a breaking change in some specific situations,
 as name clashes with other trait implementations in user code can be
 caused.",
             AssociatedItemAdded =>
-"Adding a new associated item is a breaking change in some specific
-situations, <TODO>.",
+"Adding a new item to an inherent impl is a breaking change in some
+specific situations, for example if this causes name clashes with a trait
+method. This is rare enough to only be considered \"technically
+breaking\".",
             AssociatedItemRemoved =>
-"Removing an associated item is a breaking change, as all old
+"Removing an item from an inherent impl is a breaking change, as all old
 references to it become invalid.",
             Unknown => "No explanation for unknown changes.",
         }
