@@ -62,8 +62,7 @@ fn install_sh(
     stage: u32,
     host: Option<Interned<String>>
 ) {
-    let build = builder.build;
-    build.info(&format!("Install {} stage{} ({:?})", package, stage, host));
+    builder.info(&format!("Install {} stage{} ({:?})", package, stage, host));
 
     let prefix_default = PathBuf::from("/usr/local");
     let sysconfdir_default = PathBuf::from("/etc");
@@ -72,15 +71,15 @@ fn install_sh(
     let bindir_default = PathBuf::from("bin");
     let libdir_default = PathBuf::from("lib");
     let mandir_default = datadir_default.join("man");
-    let prefix = build.config.prefix.as_ref().map_or(prefix_default, |p| {
+    let prefix = builder.config.prefix.as_ref().map_or(prefix_default, |p| {
         fs::canonicalize(p).expect(&format!("could not canonicalize {}", p.display()))
     });
-    let sysconfdir = build.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
-    let datadir = build.config.datadir.as_ref().unwrap_or(&datadir_default);
-    let docdir = build.config.docdir.as_ref().unwrap_or(&docdir_default);
-    let bindir = build.config.bindir.as_ref().unwrap_or(&bindir_default);
-    let libdir = build.config.libdir.as_ref().unwrap_or(&libdir_default);
-    let mandir = build.config.mandir.as_ref().unwrap_or(&mandir_default);
+    let sysconfdir = builder.config.sysconfdir.as_ref().unwrap_or(&sysconfdir_default);
+    let datadir = builder.config.datadir.as_ref().unwrap_or(&datadir_default);
+    let docdir = builder.config.docdir.as_ref().unwrap_or(&docdir_default);
+    let bindir = builder.config.bindir.as_ref().unwrap_or(&bindir_default);
+    let libdir = builder.config.libdir.as_ref().unwrap_or(&libdir_default);
+    let mandir = builder.config.mandir.as_ref().unwrap_or(&mandir_default);
 
     let sysconfdir = prefix.join(sysconfdir);
     let datadir = prefix.join(datadir);
@@ -99,18 +98,18 @@ fn install_sh(
     let libdir = add_destdir(&libdir, &destdir);
     let mandir = add_destdir(&mandir, &destdir);
 
-    let empty_dir = build.out.join("tmp/empty_dir");
+    let empty_dir = builder.out.join("tmp/empty_dir");
 
     t!(fs::create_dir_all(&empty_dir));
     let package_name = if let Some(host) = host {
-        format!("{}-{}", pkgname(build, name), host)
+        format!("{}-{}", pkgname(builder, name), host)
     } else {
-        pkgname(build, name)
+        pkgname(builder, name)
     };
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(&empty_dir)
-        .arg(sanitize_sh(&tmpdir(build).join(&package_name).join("install.sh")))
+        .arg(sanitize_sh(&tmpdir(builder).join(&package_name).join("install.sh")))
         .arg(format!("--prefix={}", sanitize_sh(&prefix)))
         .arg(format!("--sysconfdir={}", sanitize_sh(&sysconfdir)))
         .arg(format!("--datadir={}", sanitize_sh(&datadir)))
@@ -119,7 +118,7 @@ fn install_sh(
         .arg(format!("--libdir={}", sanitize_sh(&libdir)))
         .arg(format!("--mandir={}", sanitize_sh(&mandir)))
         .arg("--disable-ldconfig");
-    build.run(&mut cmd);
+    builder.run(&mut cmd);
     t!(fs::remove_dir_all(&empty_dir));
 }
 
@@ -180,7 +179,7 @@ macro_rules! install {
                 run.builder.ensure($name {
                     stage: run.builder.top_stage,
                     target: run.target,
-                    host: run.builder.build.build,
+                    host: run.builder.config.build,
                 });
             }
 
@@ -197,7 +196,7 @@ install!((self, builder, _config),
         install_docs(builder, self.stage, self.target);
     };
     Std, "src/libstd", true, only_hosts: true, {
-        for target in &builder.build.targets {
+        for target in &builder.targets {
             builder.ensure(dist::Std {
                 compiler: builder.compiler(self.stage, self.host),
                 target: *target

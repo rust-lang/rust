@@ -29,7 +29,6 @@ use build_helper::output;
 use cmake;
 use cc;
 
-use Build;
 use util::{self, exe};
 use build_helper::up_to_date;
 use builder::{Builder, RunConfig, ShouldRun, Step};
@@ -60,39 +59,38 @@ impl Step for Llvm {
 
     /// Compile LLVM for `target`.
     fn run(self, builder: &Builder) -> PathBuf {
-        let build = builder.build;
         let target = self.target;
         let emscripten = self.emscripten;
 
         // If we're using a custom LLVM bail out here, but we can only use a
         // custom LLVM for the build triple.
         if !self.emscripten {
-            if let Some(config) = build.config.target_config.get(&target) {
+            if let Some(config) = builder.config.target_config.get(&target) {
                 if let Some(ref s) = config.llvm_config {
-                    check_llvm_version(build, s);
+                    check_llvm_version(builder, s);
                     return s.to_path_buf()
                 }
             }
         }
 
-        let rebuild_trigger = build.src.join("src/rustllvm/llvm-rebuild-trigger");
+        let rebuild_trigger = builder.src.join("src/rustllvm/llvm-rebuild-trigger");
         let mut rebuild_trigger_contents = String::new();
         t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
 
         let (out_dir, llvm_config_ret_dir) = if emscripten {
-            let dir = build.emscripten_llvm_out(target);
+            let dir = builder.emscripten_llvm_out(target);
             let config_dir = dir.join("bin");
             (dir, config_dir)
         } else {
-            let mut dir = build.llvm_out(build.config.build);
-            if !build.config.build.contains("msvc") || build.config.ninja {
+            let mut dir = builder.llvm_out(builder.config.build);
+            if !builder.config.build.contains("msvc") || builder.config.ninja {
                 dir.push("build");
             }
-            (build.llvm_out(target), dir.join("bin"))
+            (builder.llvm_out(target), dir.join("bin"))
         };
         let done_stamp = out_dir.join("llvm-finished-building");
         let build_llvm_config = llvm_config_ret_dir
-            .join(exe("llvm-config", &*build.config.build));
+            .join(exe("llvm-config", &*builder.config.build));
         if done_stamp.exists() {
             let mut done_contents = String::new();
             t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
@@ -104,17 +102,17 @@ impl Step for Llvm {
             }
         }
 
-        let _folder = build.fold_output(|| "llvm");
+        let _folder = builder.fold_output(|| "llvm");
         let descriptor = if emscripten { "Emscripten " } else { "" };
-        build.info(&format!("Building {}LLVM for {}", descriptor, target));
-        let _time = util::timeit(&build);
+        builder.info(&format!("Building {}LLVM for {}", descriptor, target));
+        let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
         // http://llvm.org/docs/CMake.html
         let root = if self.emscripten { "src/llvm-emscripten" } else { "src/llvm" };
-        let mut cfg = cmake::Config::new(build.src.join(root));
+        let mut cfg = cmake::Config::new(builder.src.join(root));
 
-        let profile = match (build.config.llvm_optimize, build.config.llvm_release_debuginfo) {
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
             (false, _) => "Debug",
             (true, false) => "Release",
             (true, true) => "RelWithDebInfo",
@@ -125,7 +123,7 @@ impl Step for Llvm {
         let llvm_targets = if self.emscripten {
             "JSBackend"
         } else {
-            match build.config.llvm_targets {
+            match builder.config.llvm_targets {
                 Some(ref s) => s,
                 None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;MSP430;Sparc;NVPTX;Hexagon",
             }
@@ -134,10 +132,10 @@ impl Step for Llvm {
         let llvm_exp_targets = if self.emscripten {
             ""
         } else {
-            &build.config.llvm_experimental_targets[..]
+            &builder.config.llvm_experimental_targets[..]
         };
 
-        let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
+        let assertions = if builder.config.llvm_assertions {"ON"} else {"OFF"};
 
         cfg.out_dir(&out_dir)
            .profile(profile)
@@ -151,7 +149,7 @@ impl Step for Llvm {
            .define("WITH_POLLY", "OFF")
            .define("LLVM_ENABLE_TERMINFO", "OFF")
            .define("LLVM_ENABLE_LIBEDIT", "OFF")
-           .define("LLVM_PARALLEL_COMPILE_JOBS", build.jobs().to_string())
+           .define("LLVM_PARALLEL_COMPILE_JOBS", builder.jobs().to_string())
            .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
@@ -183,22 +181,22 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
 
-        if let Some(num_linkers) = build.config.llvm_link_jobs {
+        if let Some(num_linkers) = builder.config.llvm_link_jobs {
             if num_linkers > 0 {
                 cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
             }
         }
 
         // http://llvm.org/docs/HowToCrossCompileLLVM.html
-        if target != build.build && !emscripten {
+        if target != builder.config.build && !emscripten {
             builder.ensure(Llvm {
-                target: build.build,
+                target: builder.config.build,
                 emscripten: false,
             });
             // FIXME: if the llvm root for the build triple is overridden then we
             //        should use llvm-tblgen from there, also should verify that it
             //        actually exists most of the time in normal installs of LLVM.
-            let host = build.llvm_out(build.build).join("bin/llvm-tblgen");
+            let host = builder.llvm_out(builder.config.build).join("bin/llvm-tblgen");
             cfg.define("CMAKE_CROSSCOMPILING", "True")
                .define("LLVM_TABLEGEN", &host);
 
@@ -208,10 +206,10 @@ impl Step for Llvm {
                cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
             }
 
-            cfg.define("LLVM_NATIVE_BUILD", build.llvm_out(build.build).join("build"));
+            cfg.define("LLVM_NATIVE_BUILD", builder.llvm_out(builder.config.build).join("build"));
         }
 
-        configure_cmake(build, target, &mut cfg, false);
+        configure_cmake(builder, target, &mut cfg, false);
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g. we just want a few components and a few
@@ -230,12 +228,12 @@ impl Step for Llvm {
     }
 }
 
-fn check_llvm_version(build: &Build, llvm_config: &Path) {
-    if !build.config.llvm_version_check {
+fn check_llvm_version(builder: &Builder, llvm_config: &Path) {
+    if !builder.config.llvm_version_check {
         return
     }
 
-    if build.config.dry_run {
+    if builder.config.dry_run {
         return;
     }
 
@@ -251,15 +249,15 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=3.9\n\n", version)
 }
 
-fn configure_cmake(build: &Build,
+fn configure_cmake(builder: &Builder,
                    target: Interned<String>,
                    cfg: &mut cmake::Config,
                    building_dist_binaries: bool) {
-    if build.config.ninja {
+    if builder.config.ninja {
         cfg.generator("Ninja");
     }
     cfg.target(&target)
-       .host(&build.config.build);
+       .host(&builder.config.build);
 
     let sanitize_cc = |cc: &Path| {
         if target.contains("msvc") {
@@ -272,29 +270,29 @@ fn configure_cmake(build: &Build,
     // MSVC with CMake uses msbuild by default which doesn't respect these
     // vars that we'd otherwise configure. In that case we just skip this
     // entirely.
-    if target.contains("msvc") && !build.config.ninja {
+    if target.contains("msvc") && !builder.config.ninja {
         return
     }
 
-    let cc = build.cc(target);
-    let cxx = build.cxx(target).unwrap();
+    let cc = builder.cc(target);
+    let cxx = builder.cxx(target).unwrap();
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
     if target.contains("msvc") &&
-       build.config.ninja &&
-       build.config.ccache.is_some() {
+       builder.config.ninja &&
+       builder.config.ccache.is_some() {
         let mut cc = env::current_exe().expect("failed to get cwd");
         cc.set_file_name("sccache-plus-cl.exe");
 
        cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
           .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
        cfg.env("SCCACHE_PATH",
-               build.config.ccache.as_ref().unwrap())
+               builder.config.ccache.as_ref().unwrap())
           .env("SCCACHE_TARGET", target);
 
     // If ccache is configured we inform the build a little differently hwo
     // to invoke ccache while also invoking our compilers.
-    } else if let Some(ref ccache) = build.config.ccache {
+    } else if let Some(ref ccache) = builder.config.ccache {
        cfg.define("CMAKE_C_COMPILER", ccache)
           .define("CMAKE_C_COMPILER_ARG1", sanitize_cc(cc))
           .define("CMAKE_CXX_COMPILER", ccache)
@@ -304,16 +302,16 @@ fn configure_cmake(build: &Build,
           .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx));
     }
 
-    cfg.build_arg("-j").build_arg(build.jobs().to_string());
-    cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
-    let mut cxxflags = build.cflags(target).join(" ");
+    cfg.build_arg("-j").build_arg(builder.jobs().to_string());
+    cfg.define("CMAKE_C_FLAGS", builder.cflags(target).join(" "));
+    let mut cxxflags = builder.cflags(target).join(" ");
     if building_dist_binaries {
-        if build.config.llvm_static_stdcpp && !target.contains("windows") {
+        if builder.config.llvm_static_stdcpp && !target.contains("windows") {
             cxxflags.push_str(" -static-libstdc++");
         }
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
-    if let Some(ar) = build.ar(target) {
+    if let Some(ar) = builder.ar(target) {
         if ar.is_absolute() {
             // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
@@ -349,26 +347,25 @@ impl Step for Lld {
             return PathBuf::from("lld-out-dir-test-gen");
         }
         let target = self.target;
-        let build = builder.build;
 
         let llvm_config = builder.ensure(Llvm {
             target: self.target,
             emscripten: false,
         });
 
-        let out_dir = build.lld_out(target);
+        let out_dir = builder.lld_out(target);
         let done_stamp = out_dir.join("lld-finished-building");
         if done_stamp.exists() {
             return out_dir
         }
 
-        let _folder = build.fold_output(|| "lld");
-        build.info(&format!("Building LLD for {}", target));
-        let _time = util::timeit(&build);
+        let _folder = builder.fold_output(|| "lld");
+        builder.info(&format!("Building LLD for {}", target));
+        let _time = util::timeit(&builder);
         t!(fs::create_dir_all(&out_dir));
 
-        let mut cfg = cmake::Config::new(build.src.join("src/tools/lld"));
-        configure_cmake(build, target, &mut cfg, true);
+        let mut cfg = cmake::Config::new(builder.src.join("src/tools/lld"));
+        configure_cmake(builder, target, &mut cfg, true);
 
         cfg.out_dir(&out_dir)
            .profile("Release")
@@ -404,16 +401,15 @@ impl Step for TestHelpers {
         if builder.config.dry_run {
             return;
         }
-        let build = builder.build;
         let target = self.target;
-        let dst = build.test_helpers_out(target);
-        let src = build.src.join("src/test/auxiliary/rust_test_helpers.c");
+        let dst = builder.test_helpers_out(target);
+        let src = builder.src.join("src/test/auxiliary/rust_test_helpers.c");
         if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
             return
         }
 
-        let _folder = build.fold_output(|| "build_test_helpers");
-        build.info(&format!("Building test helpers"));
+        let _folder = builder.fold_output(|| "build_test_helpers");
+        builder.info(&format!("Building test helpers"));
         t!(fs::create_dir_all(&dst));
         let mut cfg = cc::Build::new();
 
@@ -421,20 +417,20 @@ impl Step for TestHelpers {
         // extra configuration, so inform gcc of these compilers. Note, though, that
         // on MSVC we still need gcc's detection of env vars (ugh).
         if !target.contains("msvc") {
-            if let Some(ar) = build.ar(target) {
+            if let Some(ar) = builder.ar(target) {
                 cfg.archiver(ar);
             }
-            cfg.compiler(build.cc(target));
+            cfg.compiler(builder.cc(target));
         }
 
         cfg.cargo_metadata(false)
            .out_dir(&dst)
            .target(&target)
-           .host(&build.build)
+           .host(&builder.config.build)
            .opt_level(0)
            .warnings(false)
            .debug(false)
-           .file(build.src.join("src/test/auxiliary/rust_test_helpers.c"))
+           .file(builder.src.join("src/test/auxiliary/rust_test_helpers.c"))
            .compile("rust_test_helpers");
     }
 }
@@ -459,9 +455,8 @@ impl Step for Openssl {
         if builder.config.dry_run {
             return;
         }
-        let build = builder.build;
         let target = self.target;
-        let out = match build.openssl_dir(target) {
+        let out = match builder.openssl_dir(target) {
             Some(dir) => dir,
             None => return,
         };
@@ -497,7 +492,8 @@ impl Step for Openssl {
                 }
 
                 // Ensure the hash is correct.
-                let mut shasum = if target.contains("apple") || build.build.contains("netbsd") {
+                let mut shasum = if target.contains("apple") ||
+                    builder.config.build.contains("netbsd") {
                     let mut cmd = Command::new("shasum");
                     cmd.arg("-a").arg("256");
                     cmd
@@ -530,10 +526,10 @@ impl Step for Openssl {
             t!(fs::rename(&tmp, &tarball));
         }
         let obj = out.join(format!("openssl-{}", OPENSSL_VERS));
-        let dst = build.openssl_install_dir(target).unwrap();
+        let dst = builder.openssl_install_dir(target).unwrap();
         drop(fs::remove_dir_all(&obj));
         drop(fs::remove_dir_all(&dst));
-        build.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
+        builder.run(Command::new("tar").arg("zxf").arg(&tarball).current_dir(&out));
 
         let mut configure = Command::new("perl");
         configure.arg(obj.join("Configure"));
@@ -583,8 +579,8 @@ impl Step for Openssl {
             _ => panic!("don't know how to configure OpenSSL for {}", target),
         };
         configure.arg(os);
-        configure.env("CC", build.cc(target));
-        for flag in build.cflags(target) {
+        configure.env("CC", builder.cc(target));
+        for flag in builder.cflags(target) {
             configure.arg(flag);
         }
         // There is no specific os target for android aarch64 or x86_64,
@@ -596,7 +592,7 @@ impl Step for Openssl {
         if target == "sparc64-unknown-netbsd" {
             // Need -m64 to get assembly generated correctly for sparc64.
             configure.arg("-m64");
-            if build.build.contains("netbsd") {
+            if builder.config.build.contains("netbsd") {
                 // Disable sparc64 asm on NetBSD builders, it uses
                 // m4(1)'s -B flag, which NetBSD m4 does not support.
                 configure.arg("no-asm");
@@ -609,12 +605,12 @@ impl Step for Openssl {
             configure.arg("no-asm");
         }
         configure.current_dir(&obj);
-        build.info(&format!("Configuring openssl for {}", target));
-        build.run_quiet(&mut configure);
-        build.info(&format!("Building openssl for {}", target));
-        build.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
-        build.info(&format!("Installing openssl for {}", target));
-        build.run_quiet(Command::new("make").arg("install").arg("-j1").current_dir(&obj));
+        builder.info(&format!("Configuring openssl for {}", target));
+        builder.run_quiet(&mut configure);
+        builder.info(&format!("Building openssl for {}", target));
+        builder.run_quiet(Command::new("make").arg("-j1").current_dir(&obj));
+        builder.info(&format!("Installing openssl for {}", target));
+        builder.run_quiet(Command::new("make").arg("install").arg("-j1").current_dir(&obj));
 
         let mut f = t!(File::create(&stamp));
         t!(f.write_all(OPENSSL_VERS.as_bytes()));
