@@ -13,7 +13,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use utils::{comparisons, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
-            multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
+            match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
             span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
 use utils::paths;
 use consts::{constant, Constant};
@@ -981,6 +981,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi());
                 if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi());
                 if from_align < to_align;
+                // with c_void, we inherently need to trust the user
+                if ! (
+                    match_type(cx, from_ptr_ty.ty, &paths::C_VOID)
+                    || match_type(cx, from_ptr_ty.ty, &paths::C_VOID_LIBC)
+                );
                 then {
                     span_lint(
                         cx,

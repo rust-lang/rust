@@ -1,5 +1,9 @@
 //! Test casts for alignment issues
 
+#![feature(libc)]
+
+extern crate libc;
+
 #[warn(cast_ptr_alignment)]
 #[allow(no_effect, unnecessary_operation, cast_lossless)]
 fn main() {
@@ -16,4 +20,7 @@ fn main() {
     // cast to less-strictly-aligned type
     (&1u16 as *const u16) as *const u8;
     (&mut 1u16 as *mut u16) as *mut u8;
+    // For c_void, we should trust the user. See #2677
+    (&1u32 as *const u32 as *const std::os::raw::c_void) as *const u32;
+    (&1u32 as *const u32 as *const libc::c_void) as *const u32;
 }
