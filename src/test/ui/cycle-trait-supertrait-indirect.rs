@@ -15,10 +15,9 @@ trait A: B {
 }
 
 trait B: C {
+    //~^ ERROR cycle detected
 }
 
 trait C: B { }
-    //~^ ERROR cyclic dependency detected
-    //~| cyclic reference
 
 fn main() { }

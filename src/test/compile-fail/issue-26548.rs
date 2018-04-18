@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: cyclic dependency detected
-// note-pattern: the cycle begins when computing layout of
-// note-pattern: ...which then requires computing layout of
-// note-pattern: ...which then again requires computing layout of
-
+// error-pattern: cycle detected when computing layout of
+// note-pattern: ...which requires computing layout of
+// note-pattern: ...which again requires computing layout of
 
 trait Mirror { type It: ?Sized; }
 impl<T: ?Sized> Mirror for T { type It = Self; }

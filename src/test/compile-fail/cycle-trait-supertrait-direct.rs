@@ -11,7 +11,7 @@
 // Test a supertrait cycle where a trait extends itself.
 
 trait Chromosome: Chromosome {
-    //~^ ERROR cyclic dependency detected
+    //~^ ERROR cycle detected
 }
 
 fn main() { }

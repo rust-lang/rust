@@ -28,33 +28,29 @@ note: required by `send`
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0391]: cyclic dependency detected
-  --> $DIR/auto-trait-leak.rs:42:1
-   |
-LL | fn cycle1() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ cyclic reference
-   |
-note: the cycle begins when processing `cycle1`...
+error[E0391]: cycle detected when processing `cycle1`
   --> $DIR/auto-trait-leak.rs:42:1
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which then requires processing `cycle2::{{impl-Trait}}`...
-  --> $DIR/auto-trait-leak.rs:50:16
+   |
+note: ...which requires processing `cycle2::{{impl-Trait}}`...
+  --> $DIR/auto-trait-leak.rs:49:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
-note: ...which then requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:50:1
+note: ...which requires processing `cycle2`...
+  --> $DIR/auto-trait-leak.rs:49:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which then requires processing `cycle1::{{impl-Trait}}`...
+note: ...which requires processing `cycle1::{{impl-Trait}}`...
   --> $DIR/auto-trait-leak.rs:42:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
-   = note: ...which then again requires processing `cycle1`, completing the cycle.
+   = note: ...which again requires processing `cycle1`, completing the cycle
+note: cycle used when type-checking all item bodies
 
 error: aborting due to 3 previous errors
 

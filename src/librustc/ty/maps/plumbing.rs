@@ -17,6 +17,7 @@ use errors::DiagnosticBuilder;
 use errors::Level;
 use ty::tls;
 use ty::{TyCtxt};
+use ty::maps::Query;
 use ty::maps::config::QueryDescription;
 use ty::maps::job::{QueryResult, QueryInfo};
 use ty::item_path;
@@ -63,7 +64,8 @@ pub(super) trait GetCacheInternal<'tcx>: QueryDescription<'tcx> + Sized {
 
 #[derive(Clone)]
 pub(super) struct CycleError<'tcx> {
-    pub(super) span: Span,
+    /// The query and related span which uses the cycle
+    pub(super) usage: Option<(Span, Query<'tcx>)>,
     pub(super) cycle: Vec<QueryInfo<'tcx>>,
 }
 
@@ -79,32 +81,40 @@ pub(super) enum TryGetLock<'a, 'tcx: 'a, T, D: QueryDescription<'tcx> + 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub(super) fn report_cycle(self, CycleError { span, cycle: stack }: CycleError)
+    pub(super) fn report_cycle(self, CycleError { usage, cycle: stack }: CycleError<'gcx>)
         -> DiagnosticBuilder<'a>
     {
         assert!(!stack.is_empty());
+
+        let fix_span = |span: Span, query: &Query<'gcx>| {
+            self.sess.codemap().def_span(query.default_span(self, span))
+        };
 
         // Disable naming impls with types in this path, since that
         // sometimes cycles itself, leading to extra cycle errors.
         // (And cycle errors around impls tend to occur during the
         // collect/coherence phases anyhow.)
         item_path::with_forced_impl_filename_line(|| {
-            let span = self.sess.codemap().def_span(span);
-            let mut err =
-                struct_span_err!(self.sess, span, E0391,
-                                 "cyclic dependency detected");
-            err.span_label(span, "cyclic reference");
+            let span = fix_span(stack[1 % stack.len()].span, &stack[0].query);
+            let mut err = struct_span_err!(self.sess,
+                                           span,
+                                           E0391,
+                                           "cycle detected when {}",
+                                           stack[0].query.describe(self));
 
-            err.span_note(self.sess.codemap().def_span(stack[0].span),
-                          &format!("the cycle begins when {}...", stack[0].query.describe(self)));
-
-            for &QueryInfo { span, ref query, .. } in &stack[1..] {
-                err.span_note(self.sess.codemap().def_span(span),
-                              &format!("...which then requires {}...", query.describe(self)));
+            for i in 1..stack.len() {
+                let query = &stack[i].query;
+                let span = fix_span(stack[(i + 1) % stack.len()].span, query);
+                err.span_note(span, &format!("...which requires {}...", query.describe(self)));
             }
 
-            err.note(&format!("...which then again requires {}, completing the cycle.",
+            err.note(&format!("...which again requires {}, completing the cycle",
                               stack[0].query.describe(self)));
+
+            if let Some((span, query)) = usage {
+                err.span_note(fix_span(span, &query),
+                              &format!("cycle used when {}", query.describe(self)));
+            }
 
             return err
         })
@@ -266,6 +276,22 @@ macro_rules! define_maps {
                     r
                 }
             }
+
+            // FIXME(eddyb) Get more valid Span's on queries.
+            pub fn default_span(&self, tcx: TyCtxt<'_, $tcx, '_>, span: Span) -> Span {
+                if span != DUMMY_SP {
+                    return span;
+                }
+                // The def_span query is used to calculate default_span,
+                // so exit to avoid infinite recursion
+                match *self {
+                    Query::def_span(..) => return span,
+                    _ => ()
+                }
+                match *self {
+                    $(Query::$name(key) => key.default_span(tcx),)*
+                }
+            }
         }
 
         pub mod queries {
@@ -303,7 +329,7 @@ macro_rules! define_maps {
             /// If the query already executed and panicked, this will fatal error / silently panic
             fn try_get_lock(
                 tcx: TyCtxt<'a, $tcx, 'lcx>,
-                mut span: Span,
+                span: Span,
                 key: &$K
             ) -> TryGetLock<'a, $tcx, $V, Self>
             {
@@ -329,13 +355,6 @@ macro_rules! define_maps {
                     };
                     mem::drop(lock);
 
-                    // This just matches the behavior of `try_get_with` so the span when
-                    // we await matches the span we would use when executing.
-                    // See the FIXME there.
-                    if span == DUMMY_SP && stringify!($name) != "def_span" {
-                        span = key.default_span(tcx);
-                    }
-
                     if let Err(cycle) = job.await(tcx, span) {
                         return TryGetLock::JobCompleted(Err(cycle));
                     }
@@ -343,7 +362,7 @@ macro_rules! define_maps {
             }
 
             fn try_get_with(tcx: TyCtxt<'a, $tcx, 'lcx>,
-                            mut span: Span,
+                            span: Span,
                             key: $K)
                             -> Result<$V, CycleError<$tcx>>
             {
@@ -376,18 +395,6 @@ macro_rules! define_maps {
                 }
 
                 let mut lock = get_lock_or_return!();
-
-                // FIXME(eddyb) Get more valid Span's on queries.
-                // def_span guard is necessary to prevent a recursive loop,
-                // default_span calls def_span query internally.
-                if span == DUMMY_SP && stringify!($name) != "def_span" {
-                    // This might deadlock if we hold the map lock since we might be
-                    // waiting for the def_span query and switch to some other fiber
-                    // So we drop the lock here and reacquire it
-                    mem::drop(lock);
-                    span = key.default_span(tcx);
-                    lock = get_lock_or_return!();
-                }
 
                 // Fast path for when incr. comp. is off. `to_dep_node` is
                 // expensive for some DepKinds.

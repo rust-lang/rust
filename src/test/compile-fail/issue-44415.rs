@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern: cycle detected when computing layout of
+
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 
@@ -15,7 +17,6 @@ use std::intrinsics;
 
 struct Foo {
     bytes: [u8; unsafe { intrinsics::size_of::<Foo>() }],
-    //~^ ERROR cyclic dependency detected
     x: usize,
 }
 

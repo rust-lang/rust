@@ -1,30 +1,21 @@
-error[E0391]: cyclic dependency detected
-  --> $DIR/issue-36163.rs:14:9
-   |
-LL |     B = A, //~ ERROR E0391
-   |         ^ cyclic reference
-   |
-note: the cycle begins when const-evaluating `Foo::B::{{initializer}}`...
+error[E0391]: cycle detected when const-evaluating `Foo::B::{{initializer}}`
   --> $DIR/issue-36163.rs:14:9
    |
 LL |     B = A, //~ ERROR E0391
    |         ^
-note: ...which then requires processing `Foo::B::{{initializer}}`...
+   |
+note: ...which requires processing `Foo::B::{{initializer}}`...
   --> $DIR/issue-36163.rs:14:9
    |
 LL |     B = A, //~ ERROR E0391
    |         ^
-note: ...which then requires const-evaluating `A`...
-  --> $DIR/issue-36163.rs:11:1
-   |
-LL | const A: isize = Foo::B as isize;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: ...which then requires computing layout of `Foo`...
+note: ...which requires const-evaluating `A`...
   --> $DIR/issue-36163.rs:11:18
    |
 LL | const A: isize = Foo::B as isize;
    |                  ^^^^^^
-   = note: ...which then again requires const-evaluating `Foo::B::{{initializer}}`, completing the cycle.
+note: ...which requires computing layout of `Foo`...
+   = note: ...which again requires const-evaluating `Foo::B::{{initializer}}`, completing the cycle
 
 error: aborting due to previous error
 
