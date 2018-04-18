@@ -765,7 +765,7 @@ impl_stable_hash_for!(struct ty::GenericParamDef {
     kind
 });
 
-impl_stable_hash_for!(struct ty::RegionParamDef {
+impl_stable_hash_for!(struct ty::LifetimeParamDef {
     pure_wrt_drop
 });
 

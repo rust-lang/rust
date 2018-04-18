@@ -892,7 +892,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             name: l.lifetime.name.name().as_interned_str(),
             index: own_start + i as u32,
             def_id: tcx.hir.local_def_id(l.lifetime.id),
-            kind: ty::GenericParamDefKind::Lifetime(ty::RegionParamDef {
+            kind: ty::GenericParamDefKind::Lifetime(ty::LifetimeParamDef {
                 pure_wrt_drop: l.pure_wrt_drop,
             }),
         }

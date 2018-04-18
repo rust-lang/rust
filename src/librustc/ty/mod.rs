@@ -723,7 +723,7 @@ pub struct TypeParamDef {
 }
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct RegionParamDef {
+pub struct LifetimeParamDef {
     /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
     /// on generic parameter `'a`, asserts data of lifetime `'a`
     /// won't be accessed during the parent type's `Drop` impl.
@@ -738,7 +738,7 @@ impl ty::EarlyBoundRegion {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum GenericParamDefKind {
-    Lifetime(RegionParamDef),
+    Lifetime(LifetimeParamDef),
     Type(TypeParamDef),
 }
 
@@ -751,7 +751,7 @@ pub struct GenericParamDef {
 }
 
 impl GenericParamDef {
-    pub fn to_lifetime(&self) -> RegionParamDef {
+    pub fn to_lifetime(&self) -> LifetimeParamDef {
         match self.kind {
             GenericParamDefKind::Lifetime(lt) => lt,
             _ => bug!("cannot convert a non-lifetime to a lifetime")
