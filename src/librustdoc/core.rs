@@ -35,7 +35,7 @@ use errors::emitter::{Emitter, EmitterWriter};
 
 use std::cell::{RefCell, Cell};
 use std::mem;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
 use std::path::PathBuf;
 
@@ -163,7 +163,7 @@ pub fn run_core(search_paths: SearchPaths,
     };
 
     let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
-    let emitter: Box<dyn Emitter> = match error_format {
+    let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(color_config) => Box::new(
             EmitterWriter::stderr(
                 color_config,

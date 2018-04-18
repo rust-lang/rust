@@ -28,7 +28,7 @@ use rustc_metadata::cstore::CStore;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{OutputFilenames, OutputTypes};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use syntax;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -88,13 +88,13 @@ impl Emitter for ExpectErrorEmitter {
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
+fn errors(msgs: &[&str]) -> (Box<Emitter + sync::Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
-    (box ExpectErrorEmitter { messages: v } as Box<Emitter + Send>, msgs.len())
+    (box ExpectErrorEmitter { messages: v } as Box<Emitter + sync::Send>, msgs.len())
 }
 
 fn test_env<F>(source_string: &str,
-               args: (Box<Emitter + Send>, usize),
+               args: (Box<Emitter + sync::Send>, usize),
                body: F)
     where F: FnOnce(Env)
 {
@@ -104,7 +104,7 @@ fn test_env<F>(source_string: &str,
 }
 
 fn test_env_impl<F>(source_string: &str,
-                    (emitter, expected_err_count): (Box<Emitter + Send>, usize),
+                    (emitter, expected_err_count): (Box<Emitter + sync::Send>, usize),
                     body: F)
     where F: FnOnce(Env)
 {

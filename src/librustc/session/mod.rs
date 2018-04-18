@@ -26,7 +26,7 @@ use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
 
-use rustc_data_structures::sync::{Lrc, Lock, LockCell, OneThread, Once, RwLock};
+use rustc_data_structures::sync::{self, Lrc, Lock, LockCell, OneThread, Once, RwLock};
 
 use syntax::ast::NodeId;
 use errors::{self, DiagnosticBuilder, DiagnosticId};
@@ -89,7 +89,7 @@ pub struct Session {
     /// Set of (DiagnosticId, Option<Span>, message) tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
-    pub one_time_diagnostics: RefCell<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
+    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub plugin_attributes: OneThread<RefCell<Vec<(String, AttributeType)>>>,
     pub crate_types: Once<Vec<config::CrateType>>,
@@ -929,7 +929,7 @@ impl Session {
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
-        self.opts.debugging_opts.teach && !self.parse_sess.span_diagnostic.code_emitted(code)
+        self.opts.debugging_opts.teach && self.parse_sess.span_diagnostic.must_teach(code)
     }
 
     /// Are we allowed to use features from the Rust 2018 edition?
@@ -983,7 +983,7 @@ pub fn build_session_with_codemap(
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
-    let emitter: Box<dyn Emitter> =
+    let emitter: Box<dyn Emitter + sync::Send> =
         match (sopts.error_format, emitter_dest) {
             (config::ErrorOutputType::HumanReadable(color_config), None) => Box::new(
                 EmitterWriter::stderr(
@@ -1091,7 +1091,7 @@ pub fn build_session_(
         working_dir,
         lint_store: RwLock::new(lint::LintStore::new()),
         buffered_lints: Lock::new(Some(lint::LintBuffer::new())),
-        one_time_diagnostics: RefCell::new(FxHashSet()),
+        one_time_diagnostics: Lock::new(FxHashSet()),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
         crate_types: Once::new(),
@@ -1188,7 +1188,7 @@ pub enum IncrCompSession {
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    let emitter: Box<dyn Emitter> = match output {
+    let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
@@ -1203,7 +1203,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let emitter: Box<dyn Emitter> = match output {
+    let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, None, false, false))
         }
