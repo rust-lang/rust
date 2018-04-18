@@ -543,7 +543,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::named_region_map<'tcx> {
 
 impl<'tcx> QueryDescription<'tcx> for queries::is_late_bound_map<'tcx> {
     fn describe(_tcx: TyCtxt, _: DefIndex) -> String {
-        format!("testing if a region is late boudn")
+        format!("testing if a region is late bound")
     }
 }
 
