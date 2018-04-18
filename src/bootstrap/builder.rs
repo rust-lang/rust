@@ -310,7 +310,7 @@ impl<'a> Builder<'a> {
                 tool::Compiletest, tool::RemoteTestServer, tool::RemoteTestClient,
                 tool::RustInstaller, tool::Cargo, tool::Rls, tool::Rustdoc, tool::Clippy,
                 native::Llvm, tool::Rustfmt, tool::Miri, native::Lld),
-            Kind::Check => describe!(check::Std, check::Test, check::Rustc, check::CodegenBackend),
+            Kind::Check => describe!(check::Std, check::Test, check::Rustc, check::CodegenBackend, check::Rustdoc),
             Kind::Test => describe!(test::Tidy, test::Bootstrap, test::Ui, test::RunPass,
                 test::CompileFail, test::ParseFail, test::RunFail, test::RunPassValgrind,
                 test::MirOpt, test::Codegen, test::CodegenUnits, test::Incremental, test::Debuginfo,
