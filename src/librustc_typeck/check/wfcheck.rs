@@ -19,6 +19,7 @@ use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 
 use syntax::ast;
+use syntax::ast::NodeId;
 use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
 use errors::{DiagnosticBuilder, DiagnosticId};
@@ -111,10 +112,10 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
             check_item_fn(tcx, item);
         }
         hir::ItemStatic(..) => {
-            check_item_type(tcx, item);
+            check_item_type(tcx, item.id);
         }
         hir::ItemConst(..) => {
-            check_item_type(tcx, item);
+            check_item_type(tcx, item.id);
         }
         hir::ItemStruct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
@@ -139,6 +140,17 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         }
         hir::ItemTrait(..) => {
             check_trait(tcx, item);
+        }
+        hir::ItemForeignMod(ref foreign_mod) => {
+            for foreign_item in foreign_mod.items.iter() {
+                match foreign_item.node {
+                    hir::ForeignItemStatic(..) => {
+                        check_item_type(tcx, foreign_item.id);
+                        check_item_sized(tcx, foreign_item.id);
+                    },
+                    _ => {}
+                }
+            }
         }
         _ => {}
     }
@@ -208,9 +220,9 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-fn for_item<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, item: &hir::Item)
+fn for_item<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: NodeId)
                     -> CheckWfFcxBuilder<'a, 'gcx, 'tcx> {
-    for_id(tcx, item.id, item.span)
+    for_id(tcx, id, tcx.hir.span(id))
 }
 
 fn for_id<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>, id: ast::NodeId, span: Span)
@@ -229,7 +241,7 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 item: &hir::Item, all_sized: bool, mut lookup_fields: F)
     where F: for<'fcx, 'gcx, 'tcx2> FnMut(&FnCtxt<'fcx, 'gcx, 'tcx2>) -> Vec<AdtVariant<'tcx2>>
 {
-    for_item(tcx, item).with_fcx(|fcx, fcx_tcx| {
+    for_item(tcx, item.id).with_fcx(|fcx, fcx_tcx| {
         let variants = lookup_fields(fcx);
         let def_id = fcx.tcx.hir.local_def_id(item.id);
         let packed = fcx.tcx.adt_def(def_id).repr.packed();
@@ -283,14 +295,14 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     let trait_def_id = tcx.hir.local_def_id(item.id);
-    for_item(tcx, item).with_fcx(|fcx, _| {
+    for_item(tcx, item.id).with_fcx(|fcx, _| {
         check_where_clauses(tcx, fcx, item.span, trait_def_id);
         vec![]
     });
 }
 
 fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
-    for_item(tcx, item).with_fcx(|fcx, tcx| {
+    for_item(tcx, item.id).with_fcx(|fcx, tcx| {
         let def_id = fcx.tcx.hir.local_def_id(item.id);
         let sig = fcx.tcx.fn_sig(def_id);
         let sig = fcx.normalize_associated_types_in(item.span, &sig);
@@ -301,16 +313,34 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     })
 }
 
+pub fn check_item_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) {
+    for_item(tcx, id).with_fcx(|fcx, _this| {
+        let span = tcx.hir.span(id);
+        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(id));
+        let item_ty = fcx.normalize_associated_types_in(span, &ty);
+
+        fcx.register_bound(
+            item_ty,
+            fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                traits::ObligationCause::new(span,
+                    fcx.body_id,
+                    traits::SizedReturnType
+                )
+        );
+
+        vec![] // no implied bounds in a const etc
+    });
+}
+
 fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    item: &hir::Item)
+                    id: NodeId)
 {
-    debug!("check_item_type: {:?}", item);
+    for_item(tcx, id).with_fcx(|fcx, _this| {
+        let span = tcx.hir.span(id);
+        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(id));
+        let item_ty = fcx.normalize_associated_types_in(span, &ty);
 
-    for_item(tcx, item).with_fcx(|fcx, _this| {
-        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
-        let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
-
-        fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
+        fcx.register_wf_obligation(item_ty, span, ObligationCauseCode::MiscObligation);
 
         vec![] // no implied bounds in a const etc
     });
@@ -321,9 +351,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ast_self_ty: &hir::Ty,
                 ast_trait_ref: &Option<hir::TraitRef>)
 {
-    debug!("check_impl: {:?}", item);
-
-    for_item(tcx, item).with_fcx(|fcx, tcx| {
+    for_item(tcx, item.id).with_fcx(|fcx, tcx| {
         let item_def_id = fcx.tcx.hir.local_def_id(item.id);
 
         match *ast_trait_ref {
