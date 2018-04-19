@@ -1798,7 +1798,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
 fn is_iterable_array(ty: Ty) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(_, n) => (0..=32).contains(n.val.to_raw_bits().expect("array length")),
+        ty::TyArray(_, n) => (0..=32).contains(&n.val.to_raw_bits().expect("array length")),
         _ => false,
     }
 }
