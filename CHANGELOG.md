@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.195
+* Rustup to *rustc 1.27.0-nightly (ac3c2288f 2018-04-18)*
+
 ## 0.0.194
 * Rustup to *rustc 1.27.0-nightly (bd40cbbe1 2018-04-14)*
 * New lints: [`cast_ptr_alignment`], [`transmute_ptr_to_ptr`], [`write_literal`], [`write_with_newline`], [`writeln_empty_string`]
@@ -710,9 +713,9 @@ All notable changes to this project will be documented in this file.
 [`nonsensical_open_options`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#nonsensical_open_options
 [`not_unsafe_ptr_arg_deref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#not_unsafe_ptr_arg_deref
 [`ok_expect`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ok_expect
-[`map_unit_fn`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#map_unit_fn
 [`op_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#op_ref
 [`option_map_or_none`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_or_none
+[`option_map_unit_fn`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_unit_fn
 [`option_map_unwrap_or`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_unwrap_or
 [`option_map_unwrap_or_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_map_unwrap_or_else
 [`option_option`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#option_option
@@ -741,6 +744,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_pattern`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_pattern
 [`regex_macro`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#regex_macro
 [`replace_consts`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#replace_consts
+[`result_map_unit_fn`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_map_unit_fn
 [`result_map_unwrap_or_else`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_map_unwrap_or_else
 [`result_unwrap_used`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#result_unwrap_used
 [`reverse_range_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#reverse_range_loop

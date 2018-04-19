@@ -129,8 +129,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn str_span(base: Span, c: regex_syntax::ast::Span, offset: usize) -> Span {
-    let offset = offset as u32;
+fn str_span(base: Span, c: regex_syntax::ast::Span, offset: u16) -> Span {
+    let offset = u32::from(offset);
     let end = base.lo() + BytePos(c.end.offset as u32 + offset);
     let start = base.lo() + BytePos(c.start.offset as u32 + offset);
     assert!(start <= end);

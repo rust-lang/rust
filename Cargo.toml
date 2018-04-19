@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.194"
+version = "0.0.195"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
@@ -37,7 +37,7 @@ path = "src/driver.rs"
 
 [dependencies]
 # begin automatic update
-clippy_lints = { version = "0.0.194", path = "clippy_lints" }
+clippy_lints = { version = "0.0.195", path = "clippy_lints" }
 # end automatic update
 regex = "0.2"
 semver = "0.9"
