@@ -316,6 +316,7 @@
 #![feature(doc_spotlight)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(windows, feature(used))]
+#![feature(doc_alias)]
 
 #![default_lib_allocator]
 

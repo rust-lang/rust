@@ -19,7 +19,7 @@ use clean;
 /// discriminants. JavaScript then is used to decode them into the original value.
 /// Consequently, every change to this type should be synchronized to
 /// the `itemTypes` mapping table in `static/main.js`.
-#[derive(Copy, PartialEq, Clone)]
+#[derive(Copy, PartialEq, Clone, Debug)]
 pub enum ItemType {
     Module          = 0,
     ExternCrate     = 1,

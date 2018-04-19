@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #[doc(primitive = "bool")]
+#[doc(alias = "true")]
+#[doc(alias = "false")]
 //
 /// The boolean type.
 ///
@@ -68,6 +70,7 @@
 mod prim_bool { }
 
 #[doc(primitive = "never")]
+#[doc(alias = "!")]
 //
 /// The `!` type, also called "never".
 ///
