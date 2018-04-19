@@ -98,6 +98,7 @@
 #![feature(unboxed_closures)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
+#![feature(doc_alias)]
 
 #![cfg_attr(not(stage0), feature(mmx_target_feature))]
 #![cfg_attr(not(stage0), feature(tbm_target_feature))]

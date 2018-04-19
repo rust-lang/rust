@@ -502,6 +502,9 @@ mod prim_pointer { }
 mod prim_array { }
 
 #[doc(primitive = "slice")]
+#[doc(alias = "[")]
+#[doc(alias = "]")]
+#[doc(alias = "[]")]
 //
 /// A dynamically-sized view into a contiguous sequence, `[T]`.
 ///
@@ -600,6 +603,9 @@ mod prim_slice { }
 mod prim_str { }
 
 #[doc(primitive = "tuple")]
+#[doc(alias = "(")]
+#[doc(alias = ")")]
+#[doc(alias = "()")]
 //
 /// A finite heterogeneous sequence, `(T, U, ..)`.
 ///
@@ -822,6 +828,7 @@ mod prim_isize { }
 mod prim_usize { }
 
 #[doc(primitive = "reference")]
+#[doc(alias = "&")]
 //
 /// References, both shared and mutable.
 ///

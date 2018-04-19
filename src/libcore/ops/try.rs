@@ -28,6 +28,7 @@
                that implement `{Try}`",
       label="the `?` operator cannot be applied to type `{Self}`")
 )]
+#[doc(alias = "?")]
 pub trait Try {
     /// The type of this value when viewed as successful.
     #[unstable(feature = "try_trait", issue = "42327")]
