@@ -21,6 +21,8 @@ use attribute_with_error::foo;
 fn test1() {
     let a: i32 = "foo";
     //~^ ERROR: mismatched types
+    let b: i32 = "f'oo";
+    //~^ ERROR: mismatched types
 }
 
 fn test2() {
