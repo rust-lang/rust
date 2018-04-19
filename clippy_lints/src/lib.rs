@@ -133,6 +133,7 @@ pub mod identity_conversion;
 pub mod identity_op;
 pub mod if_let_redundant_pattern_matching;
 pub mod if_not_else;
+pub mod infallible_destructuring_match;
 pub mod infinite_iter;
 pub mod inline_fn_without_body;
 pub mod int_plus_one;
@@ -407,6 +408,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
+    reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
 
 
     reg.register_lint_group("clippy_restriction", vec![
@@ -522,6 +524,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         identity_conversion::IDENTITY_CONVERSION,
         identity_op::IDENTITY_OP,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         infinite_iter::INFINITE_ITER,
         inline_fn_without_body::INLINE_FN_WITHOUT_BODY,
         int_plus_one::INT_PLUS_ONE,
@@ -688,6 +691,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,
+        infallible_destructuring_match::INFALLIBLE_DESTRUCTURING_MATCH,
         len_zero::LEN_WITHOUT_IS_EMPTY,
         len_zero::LEN_ZERO,
         let_if_seq::USELESS_LET_IF_SEQ,

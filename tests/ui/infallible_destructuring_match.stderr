@@ -1,0 +1,28 @@
+error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
+  --> $DIR/infallible_destructuring_match.rs:16:5
+   |
+16 | /     let data = match wrapper {
+17 | |         SingleVariantEnum::Variant(i) => i,
+18 | |     };
+   | |______^ help: try this: `let SingleVariantEnum::Variant(data) = wrapper;`
+   |
+   = note: `-D infallible-destructuring-match` implied by `-D warnings`
+
+error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
+  --> $DIR/infallible_destructuring_match.rs:37:5
+   |
+37 | /     let data = match wrapper {
+38 | |         TupleStruct(i) => i,
+39 | |     };
+   | |______^ help: try this: `let TupleStruct(data) = wrapper;`
+
+error: you seem to be trying to use match to destructure a single infallible pattern. Consider using `let`
+  --> $DIR/infallible_destructuring_match.rs:58:5
+   |
+58 | /     let data = match wrapper {
+59 | |         Ok(i) => i,
+60 | |     };
+   | |______^ help: try this: `let Ok(data) = wrapper;`
+
+error: aborting due to 3 previous errors
+
