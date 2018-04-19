@@ -32,8 +32,8 @@ crate fn evaluate_obligation<'tcx>(
 
         match selcx.evaluate_obligation_recursively(&obligation) {
             Ok(result) => result,
-            Err(OverflowError(o)) => {
-                infcx.report_overflow_error(&o, true)
+            Err(OverflowError) => {
+                infcx.report_overflow_error(&obligation, true)
             }
         }
     })

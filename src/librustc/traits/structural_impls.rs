@@ -177,7 +177,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
             super::ConstEvalFailure(ref err) => {
                 tcx.lift(err).map(super::ConstEvalFailure)
             }
-            super::Overflow(_) => bug!() // FIXME: ape ConstEvalFailure?
+            super::Overflow => bug!() // FIXME: ape ConstEvalFailure?
         }
     }
 }

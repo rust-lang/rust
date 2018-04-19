@@ -831,7 +831,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.struct_error(self.tcx, span, "constant expression")
             }
 
-            Overflow(_) => {
+            Overflow => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
         };
