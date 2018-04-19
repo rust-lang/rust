@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::traits::{EvaluationResult, Obligation, ObligationCause,
-                    OverflowError, SelectionContext};
+                    OverflowError, SelectionContext, TraitQueryMode};
 use rustc::traits::query::CanonicalPredicateGoal;
 use rustc::ty::{ParamEnvAnd, TyCtxt};
 use syntax::codemap::DUMMY_SP;
@@ -27,7 +27,7 @@ crate fn evaluate_obligation<'tcx>(
             _canonical_inference_vars,
         ) = infcx.instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &goal);
 
-        let mut selcx = SelectionContext::new(&infcx);
+        let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
         let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
 
         match selcx.evaluate_obligation_recursively(&obligation) {

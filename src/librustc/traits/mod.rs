@@ -74,6 +74,19 @@ pub enum IntercrateMode {
     Fixed
 }
 
+// The mode that trait queries run in
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum TraitQueryMode {
+    // Standard/un-canonicalized queries get accurate
+    // spans etc. passed in and hence can do reasonable
+    // error reporting on their own.
+    Standard,
+    // Canonicalized queries get dummy spans and hence
+    // must generally propagate errors to
+    // pre-canonicalization callsites.
+    Canonical,
+}
+
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
 /// which the vtable must be found.  The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of

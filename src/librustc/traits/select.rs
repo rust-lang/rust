@@ -17,7 +17,7 @@ use self::EvaluationResult::*;
 
 use super::coherence::{self, Conflict};
 use super::DerivedObligationCause;
-use super::IntercrateMode;
+use super::{IntercrateMode, TraitQueryMode};
 use super::project;
 use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
@@ -87,7 +87,12 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     /// Controls whether or not to filter out negative impls when selecting.
     /// This is used in librustdoc to distinguish between the lack of an impl
     /// and a negative impl
-    allow_negative_impls: bool
+    allow_negative_impls: bool,
+
+    /// The mode that trait queries run in, which informs our error handling
+    /// policy. In essence, canonicalized queries need their errors propagated
+    /// rather than immediately reported because we do not have accurate spans.
+    query_mode: TraitQueryMode,
 }
 
 #[derive(Clone, Debug)]
@@ -440,6 +445,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -452,6 +458,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: Some(mode),
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -464,6 +471,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
+            query_mode: TraitQueryMode::Standard,
+        }
+    }
+
+    pub fn with_query_mode(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+                           query_mode: TraitQueryMode) -> SelectionContext<'cx, 'gcx, 'tcx> {
+        debug!("with_query_mode({:?})", query_mode);
+        SelectionContext {
+            infcx,
+            freshener: infcx.freshener(),
+            intercrate: None,
+            intercrate_ambiguity_causes: None,
+            allow_negative_impls: false,
+            query_mode,
         }
     }
 
@@ -548,17 +569,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
 
+        // `select` is currently only called in standard query mode
+        assert!(self.query_mode == TraitQueryMode::Standard);
+
         let candidate = match self.candidate_from_obligation(&stack) {
-            Err(SelectionError::Overflow(o)) =>
-                self.infcx().report_overflow_error(&o, true),
+            Err(SelectionError::Overflow(_)) =>
+                bug!("Overflow should be caught earlier in standard query mode"),
             Err(e) => { return Err(e); },
             Ok(None) => { return Ok(None); },
             Ok(Some(candidate)) => candidate
         };
 
         match self.confirm_candidate(obligation, candidate) {
-            Err(SelectionError::Overflow(o)) =>
-                self.infcx().report_overflow_error(&o, true),
+            Err(SelectionError::Overflow(_)) =>
+                bug!("Overflow should be caught earlier in standard query mode"),
             Err(e) => Err(e),
             Ok(candidate) => Ok(Some(candidate))
         }
@@ -582,10 +606,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         debug!("predicate_may_hold_fatal({:?})",
                obligation);
 
-        match self.evaluate_obligation_recursively(obligation) {
-            Ok(result) => result.may_apply(),
-            Err(OverflowError(o)) => self.infcx().report_overflow_error(&o, true)
-        }
+        // This fatal query is a stopgap that should only be used in standard mode,
+        // where we do not expect overflow to be propagated.
+        assert!(self.query_mode == TraitQueryMode::Standard);
+
+        self.evaluate_obligation_recursively(obligation)
+            .expect("Overflow should be caught earlier in standard query mode")
+            .may_apply()
     }
 
     /// Evaluates whether the obligation `obligation` can be satisfied and returns
@@ -1024,7 +1051,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // not update) the cache.
         let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
         if stack.obligation.recursion_depth >= recursion_limit {
-            return Err(Overflow(stack.obligation.clone()));
+            match self.query_mode {
+                TraitQueryMode::Standard => {
+                    self.infcx().report_overflow_error(&stack.obligation, true);
+                },
+                TraitQueryMode::Canonical => {
+                    return Err(Overflow(stack.obligation.clone()));
+                },
+            }
         }
 
         // Check the cache. Note that we skolemize the trait-ref
