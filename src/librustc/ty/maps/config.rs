@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use dep_graph::SerializedDepNodeIndex;
+use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
@@ -19,20 +20,31 @@ use ty::maps::Query;
 use ty::maps::QueryMap;
 
 use std::hash::Hash;
+use std::fmt::Debug;
 use syntax_pos::symbol::InternedString;
 use rustc_data_structures::sync::Lock;
+use rustc_data_structures::stable_hasher::HashStable;
+use ich::StableHashingContext;
 
 /// Query configuration and description traits.
 
 pub trait QueryConfig<'tcx> {
-    type Key: Eq + Hash + Clone;
-    type Value: Clone;
+    const NAME: &'static str;
+
+    type Key: Eq + Hash + Clone + Debug;
+    type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;
 
     fn query(key: Self::Key) -> Query<'tcx>;
     fn query_map<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryMap<'tcx, Self>>;
+
+    fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
+
+    fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value;
+
+    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
 }
 
-pub(super) trait QueryDescription<'tcx>: QueryConfig<'tcx> {
+pub trait QueryDescription<'tcx>: QueryConfig<'tcx> {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
 
     #[inline]
