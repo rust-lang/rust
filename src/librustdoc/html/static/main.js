@@ -1212,11 +1212,13 @@
                 array.forEach(function(item) {
                     var name, type, href, displayPath;
 
-                    if (shown.indexOf(item.ty) !== -1) {
+                    var id_ty = item.ty + item.path + item.name;
+                    if (shown.indexOf(id_ty) !== -1) {
                         return;
                     }
 
-                    shown.push(item.ty);
+                    console.log(item);
+                    shown.push(id_ty);
                     name = item.name;
                     type = itemTypes[item.ty];
 
