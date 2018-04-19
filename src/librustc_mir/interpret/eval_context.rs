@@ -1679,21 +1679,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        let layout = self.layout_of(ty)?;
-        let size = layout.size.bits();
-        assert!(layout.abi.is_signed());
-        // sign extend
-        let amt = 128 - size;
-        // shift the unsigned value to the left
-        // and back to the right as signed (essentially fills with FF on the left)
-        Ok((((value << amt) as i128) >> amt) as u128)
+        super::sign_extend(self.tcx.tcx, value, ty)
     }
 
     pub fn truncate(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        let size = self.layout_of(ty)?.size.bits();
-        let amt = 128 - size;
-        // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
-        Ok((value << amt) >> amt)
+        super::truncate(self.tcx.tcx, value, ty)
     }
 }
 

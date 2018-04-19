@@ -16,7 +16,7 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use interpret::{const_val_field, const_discr};
+use interpret::{const_val_field, const_discr, self};
 
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Field, BorrowKind, Mutability};
@@ -372,7 +372,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     (PatternKind::Constant { value: lo },
                      PatternKind::Constant { value: hi }) => {
                         use std::cmp::Ordering;
-                        match (end, compare_const_vals(&lo.val, &hi.val, ty).unwrap()) {
+                        match (end, compare_const_vals(self.tcx, &lo.val, &hi.val, ty).unwrap()) {
                             (RangeEnd::Excluded, Ordering::Less) =>
                                 PatternKind::Range { lo, hi, end },
                             (RangeEnd::Excluded, _) => {
@@ -1076,7 +1076,12 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
     }
 }
 
-pub fn compare_const_vals(a: &ConstVal, b: &ConstVal, ty: Ty) -> Option<Ordering> {
+pub fn compare_const_vals<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    a: &ConstVal,
+    b: &ConstVal,
+    ty: Ty<'tcx>,
+) -> Option<Ordering> {
     use rustc_const_math::ConstFloat;
     trace!("compare_const_vals: {:?}, {:?}", a, b);
     use rustc::mir::interpret::{Value, PrimVal};
@@ -1096,7 +1101,11 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal, ty: Ty) -> Option<Ordering
                     // FIXME(oli-obk): report cmp errors?
                     l.try_cmp(r).ok()
                 },
-                ty::TyInt(_) => Some((a as i128).cmp(&(b as i128))),
+                ty::TyInt(_) => {
+                    let a = interpret::sign_extend(tcx, a, ty).expect("layout error for TyInt");
+                    let b = interpret::sign_extend(tcx, b, ty).expect("layout error for TyInt");
+                    Some((a as i128).cmp(&(b as i128)))
+                },
                 _ => Some(a.cmp(&b)),
             }
         },
