@@ -873,9 +873,13 @@ themePicker.onclick = function() {{
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!("{{'crate':'{}','ty':'{}','name':'{}','path':'{}','parent':{}}}",
-                krate, item.ty, item.name, item.path,
-                if let Some(p) = item.parent_idx { p.to_string() } else { "null".to_owned() })
+        format!("{{'crate':'{}','ty':{},'name':'{}','path':'{}'{}}}",
+                krate, item.ty as usize, item.name, item.path,
+                if let Some(p) = item.parent_idx {
+                    format!(",'parent':{}", p)
+                } else {
+                    String::new()
+                })
     }
 
     let dst = cx.dst.join("aliases.js");
