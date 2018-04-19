@@ -17,7 +17,7 @@ use syntax::codemap::DUMMY_SP;
 crate fn evaluate_obligation<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalPredicateGoal<'tcx>,
-) -> EvaluationResult {
+) -> Result<EvaluationResult, OverflowError> {
     tcx.infer_ctxt().enter(|ref infcx| {
         let (
             ParamEnvAnd {
@@ -30,11 +30,6 @@ crate fn evaluate_obligation<'tcx>(
         let mut selcx = SelectionContext::with_query_mode(&infcx, TraitQueryMode::Canonical);
         let obligation = Obligation::new(ObligationCause::dummy(), param_env, predicate);
 
-        match selcx.evaluate_obligation_recursively(&obligation) {
-            Ok(result) => result,
-            Err(OverflowError) => {
-                infcx.report_overflow_error(&obligation, true)
-            }
-        }
+        selcx.evaluate_obligation_recursively(&obligation)
     })
 }

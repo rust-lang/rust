@@ -425,6 +425,8 @@ impl_stable_hash_for!(enum self::EvaluationResult {
 /// Indicates that trait evaluation caused overflow.
 pub struct OverflowError;
 
+impl_stable_hash_for!(struct OverflowError { });
+
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(OverflowError: OverflowError) -> SelectionError<'tcx> {
         SelectionError::Overflow
@@ -568,20 +570,23 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
 
-        // `select` is currently only called in standard query mode
-        assert!(self.query_mode == TraitQueryMode::Standard);
-
         let candidate = match self.candidate_from_obligation(&stack) {
-            Err(SelectionError::Overflow) =>
-                bug!("Overflow should be caught earlier in standard query mode"),
+            Err(SelectionError::Overflow) => {
+                // In standard mode, overflow must have been caught and reported
+                // earlier.
+                assert!(self.query_mode == TraitQueryMode::Canonical);
+                return Err(SelectionError::Overflow);
+            },
             Err(e) => { return Err(e); },
             Ok(None) => { return Ok(None); },
             Ok(Some(candidate)) => candidate
         };
 
         match self.confirm_candidate(obligation, candidate) {
-            Err(SelectionError::Overflow) =>
-                bug!("Overflow should be caught earlier in standard query mode"),
+            Err(SelectionError::Overflow) => {
+                assert!(self.query_mode == TraitQueryMode::Canonical);
+                return Err(SelectionError::Overflow);
+            },
             Err(e) => Err(e),
             Ok(candidate) => Ok(Some(candidate))
         }

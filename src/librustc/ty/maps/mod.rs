@@ -436,8 +436,9 @@ define_maps! { <'tcx>
 
     /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or
     /// `infcx.predicate_must_hold()` instead.
-    [] fn evaluate_obligation:
-        EvaluateObligation(CanonicalPredicateGoal<'tcx>) -> traits::EvaluationResult,
+    [] fn evaluate_obligation: EvaluateObligation(
+        CanonicalPredicateGoal<'tcx>
+    ) -> Result<traits::EvaluationResult, traits::OverflowError>,
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
