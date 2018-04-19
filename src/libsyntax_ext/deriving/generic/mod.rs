@@ -1240,7 +1240,7 @@ impl<'a> MethodDef<'a> {
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
-                cx.ident_of(&vi_suffix[..])
+                cx.ident_of(&vi_suffix[..]).gensym()
             })
             .collect::<Vec<ast::Ident>>();
 
@@ -1616,7 +1616,7 @@ impl<'a> TraitDef<'a> {
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
-            let ident = cx.ident_of(&format!("{}_{}", prefix, i));
+            let ident = cx.ident_of(&format!("{}_{}", prefix, i)).gensym();
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries {

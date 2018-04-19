@@ -123,7 +123,7 @@ pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
 }
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-    let test_id = cx.ident_of("__cmp");
+    let test_id = cx.ident_of("cmp").gensym();
     let ordering = cx.path_global(span, cx.std_path(&["cmp", "Ordering", "Equal"]));
     let ordering_expr = cx.expr_path(ordering.clone());
     let equals_expr = cx.expr_some(span, ordering_expr);

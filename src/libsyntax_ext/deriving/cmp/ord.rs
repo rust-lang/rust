@@ -64,7 +64,7 @@ pub fn ordering_collapsed(cx: &mut ExtCtxt,
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-    let test_id = cx.ident_of("__cmp");
+    let test_id = cx.ident_of("cmp").gensym();
     let equals_path = cx.path_global(span, cx.std_path(&["cmp", "Ordering", "Equal"]));
 
     let cmp_path = cx.std_path(&["cmp", "Ord", "cmp"]);
