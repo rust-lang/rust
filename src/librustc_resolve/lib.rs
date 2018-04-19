@@ -3189,7 +3189,7 @@ impl<'a> Resolver<'a> {
            path[0].name != keywords::CrateRoot.name() &&
            path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
-                match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span, Some(id)) {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), false, span, None) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
                     PathResult::Module(module) => module.def().unwrap(),
                     _ => return Some(result),
@@ -3209,7 +3209,8 @@ impl<'a> Resolver<'a> {
                     opt_ns: Option<Namespace>, // `None` indicates a module path
                     record_used: bool,
                     path_span: Span,
-                    _node_id: Option<NodeId>)
+                    node_id: Option<NodeId>) // None indicates that we don't care about linting
+                                             // `::module` paths
                     -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
@@ -3327,6 +3328,30 @@ impl<'a> Resolver<'a> {
                         return PathResult::Failed(ident.span,
                                                   format!("Not a module `{}`", ident),
                                                   is_last);
+                    }
+
+                    if let Some(id) = node_id {
+                        if i == 1 && self.session.features_untracked().crate_in_paths
+                                  && !self.session.rust_2018() {
+                            let prev_name = path[0].name;
+                            if prev_name == keywords::Extern.name() ||
+                               prev_name == keywords::CrateRoot.name() {
+                                let mut is_crate = false;
+                                if let NameBindingKind::Import { directive: d, .. } = binding.kind {
+                                    if let ImportDirectiveSubclass::ExternCrate(..) = d.subclass {
+                                        is_crate = true;
+                                    }
+                                }
+
+                                if !is_crate {
+                                    self.session.buffer_lint(
+                                        lint::builtin::ABSOLUTE_PATH_STARTING_WITH_MODULE,
+                                        id, path_span,
+                                        "Fully-qualified paths must start with `self`, `super`,
+                                        `crate`, or an external crate name in the 2018 edition");
+                                }
+                            }
+                        }
                     }
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,

@@ -255,6 +255,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub ABSOLUTE_PATH_STARTING_WITH_MODULE,
+    Allow,
+    "fully qualified paths that start with a module name \
+     instead of `crate`, `self`, or an extern crate name"
+}
+
+declare_lint! {
     pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
     Warn,
     "floating-point literals cannot be used in patterns"
@@ -314,6 +321,7 @@ impl LintPass for HardwiredLints {
             TYVAR_BEHIND_RAW_POINTER,
             ELIDED_LIFETIME_IN_PATH,
             BARE_TRAIT_OBJECT,
+            ABSOLUTE_PATH_STARTING_WITH_MODULE,
             UNSTABLE_NAME_COLLISION,
         )
     }
