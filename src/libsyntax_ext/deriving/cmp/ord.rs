@@ -77,9 +77,9 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
     // ::std::cmp::Ordering::Equal => {
     // ...
     // }
-    // __cmp => __cmp
+    // cmp => cmp
     // },
-    // __cmp => __cmp
+    // cmp => cmp
     // }
     //
     cs_fold(// foldr nests the if-elses correctly, leaving the first field
@@ -88,7 +88,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
             |cx, span, old, self_f, other_fs| {
         // match new {
         //     ::std::cmp::Ordering::Equal => old,
-        //     __cmp => __cmp
+        //     cmp => cmp
         // }
 
         let new = {

@@ -1004,10 +1004,10 @@ impl<'a> MethodDef<'a> {
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///     fn eq(&self, other: &A) -> bool {
     ///         match *self {
     ///             A {x: ref __self_0_0, y: ref __self_0_1} => {
-    ///                 match *__arg_1 {
+    ///                 match *other {
     ///                     A {x: ref __self_1_0, y: ref __self_1_1} => {
     ///                         __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
     ///                     }
@@ -1020,10 +1020,10 @@ impl<'a> MethodDef<'a> {
     /// // or if A is repr(packed) - note fields are matched by-value
     /// // instead of by-reference.
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///     fn eq(&self, other: &A) -> bool {
     ///         match *self {
     ///             A {x: __self_0_0, y: __self_0_1} => {
-    ///                 match __arg_1 {
+    ///                 match other {
     ///                     A {x: __self_1_0, y: __self_1_1} => {
     ///                         __self_0_0.eq(&__self_1_0) && __self_0_1.eq(&__self_1_1)
     ///                     }
@@ -1134,14 +1134,14 @@ impl<'a> MethodDef<'a> {
     /// // is equivalent to
     ///
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> ::bool {
-    ///         match (&*self, &*__arg_1) {
+    ///     fn eq(&self, other: &A) -> ::bool {
+    ///         match (&*self, &*other) {
     ///             (&A1, &A1) => true,
     ///             (&A2(ref self_0),
     ///              &A2(ref __arg_1_0)) => (*self_0).eq(&(*__arg_1_0)),
     ///             _ => {
     ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
-    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0, A2(..) => 1 };
+    ///                 let __arg_1_vi = match *other { A1(..) => 0, A2(..) => 1 };
     ///                 false
     ///             }
     ///         }
