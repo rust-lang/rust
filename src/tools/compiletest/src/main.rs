@@ -26,6 +26,7 @@ extern crate regex;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate test;
+extern crate rustfix;
 
 use std::env;
 use std::ffi::OsString;
@@ -52,6 +53,7 @@ pub mod common;
 pub mod errors;
 mod raise_fd_limit;
 mod read2;
+mod autofix;
 
 fn main() {
     env_logger::init();
