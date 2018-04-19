@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex3-both-anon-regions-return-type-is-anon.rs:17:5
    |
 LL |     x //~ ERROR lifetime mismatch

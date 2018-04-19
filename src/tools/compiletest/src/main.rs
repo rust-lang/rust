@@ -626,7 +626,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
 
     // Debugging emscripten code doesn't make sense today
     let ignore = early_props.ignore
-        || (!up_to_date(config, testpaths, &early_props) && config.compare_mode.is_none())
+        || !up_to_date(config, testpaths, &early_props)
         || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
             && config.target.contains("emscripten");
 
@@ -642,10 +642,15 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
 }
 
 fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
+    let mode_suffix = match config.compare_mode {
+        Some(ref mode) => format!("-{}", mode.to_str()),
+        None => format!(""),
+    };
     let stamp_name = format!(
-        "{}-{}.stamp",
+        "{}-{}{}.stamp",
         testpaths.file.file_name().unwrap().to_str().unwrap(),
-        config.stage_id
+        config.stage_id,
+        mode_suffix
     );
     config
         .build_base
@@ -728,7 +733,11 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
     let path = PathBuf::from(config.src_base.file_name().unwrap())
         .join(&testpaths.relative_dir)
         .join(&testpaths.file.file_name().unwrap());
-    test::DynTestName(format!("[{}] {}", config.mode, path.display()))
+    let mode_suffix = match config.compare_mode {
+        Some(ref mode) => format!(" ({})", mode.to_str()),
+        None => format!(""),
+    };
+    test::DynTestName(format!("[{}{}] {}", config.mode, mode_suffix, path.display()))
 }
 
 pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {

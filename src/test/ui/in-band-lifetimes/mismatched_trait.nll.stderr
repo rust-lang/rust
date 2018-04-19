@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/mismatched_trait.rs:16:9
    |
 LL |         y //~ ERROR explicit lifetime required

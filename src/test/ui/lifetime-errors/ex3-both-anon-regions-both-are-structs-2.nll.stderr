@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:16:11
    |
 LL |     x.b = y.b; //~ ERROR lifetime mismatch

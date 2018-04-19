@@ -538,6 +538,7 @@ impl Step for RustdocUi {
             target: self.target,
             mode: "ui",
             suite: "rustdoc-ui",
+            compare_mode: None,
         })
     }
 }
@@ -590,6 +591,14 @@ macro_rules! default_test {
     }
 }
 
+macro_rules! default_test_with_compare_mode {
+    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr,
+                   compare_mode: $compare_mode:expr }) => {
+        test_with_compare_mode!($name { path: $path, mode: $mode, suite: $suite, default: true,
+                                        host: false, compare_mode: $compare_mode });
+    }
+}
+
 macro_rules! host_test {
     ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr }) => {
         test!($name { path: $path, mode: $mode, suite: $suite, default: true, host: true });
@@ -597,12 +606,29 @@ macro_rules! host_test {
 }
 
 macro_rules! test {
+    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr, default: $default:expr,
+                   host: $host:expr }) => {
+        test_definitions!($name { path: $path, mode: $mode, suite: $suite, default: $default,
+                                  host: $host, compare_mode: None });
+    }
+}
+
+macro_rules! test_with_compare_mode {
+    ($name:ident { path: $path:expr, mode: $mode:expr, suite: $suite:expr, default: $default:expr,
+                   host: $host:expr, compare_mode: $compare_mode:expr }) => {
+        test_definitions!($name { path: $path, mode: $mode, suite: $suite, default: $default,
+                                  host: $host, compare_mode: Some($compare_mode) });
+    }
+}
+
+macro_rules! test_definitions {
     ($name:ident {
         path: $path:expr,
         mode: $mode:expr,
         suite: $suite:expr,
         default: $default:expr,
-        host: $host:expr
+        host: $host:expr,
+        compare_mode: $compare_mode:expr
     }) => {
         #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
         pub struct $name {
@@ -634,16 +660,18 @@ macro_rules! test {
                     target: self.target,
                     mode: $mode,
                     suite: $suite,
+                    compare_mode: $compare_mode,
                 })
             }
         }
     }
 }
 
-default_test!(Ui {
+default_test_with_compare_mode!(Ui {
     path: "src/test/ui",
     mode: "ui",
-    suite: "ui"
+    suite: "ui",
+    compare_mode: "nll"
 });
 
 default_test!(RunPass {
@@ -804,6 +832,7 @@ struct Compiletest {
     target: Interned<String>,
     mode: &'static str,
     suite: &'static str,
+    compare_mode: Option<&'static str>,
 }
 
 impl Step for Compiletest {
@@ -823,6 +852,7 @@ impl Step for Compiletest {
         let target = self.target;
         let mode = self.mode;
         let suite = self.suite;
+        let compare_mode = self.compare_mode;
 
         // Skip codegen tests if they aren't enabled in configuration.
         if !builder.config.codegen_tests && suite == "codegen" {
@@ -1044,6 +1074,15 @@ impl Step for Compiletest {
                  suite, mode, &compiler.host, target));
         let _time = util::timeit(&builder);
         try_run(builder, &mut cmd);
+
+        if let Some(compare_mode) = compare_mode {
+            cmd.arg("--compare-mode").arg(compare_mode);
+            let _folder = builder.fold_output(|| format!("test_{}_{}", suite, compare_mode));
+            builder.info(&format!("Check compiletest suite={} mode={} compare_mode={} ({} -> {})",
+                                  suite, mode, compare_mode, &compiler.host, target));
+            let _time = util::timeit(&builder);
+            try_run(builder, &mut cmd);
+        }
     }
 }
 

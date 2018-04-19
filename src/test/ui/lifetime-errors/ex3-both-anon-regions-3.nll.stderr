@@ -1,10 +1,10 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex3-both-anon-regions-3.rs:12:13
    |
 LL |     z.push((x,y)); //~ ERROR lifetime mismatch
    |             ^
 
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex3-both-anon-regions-3.rs:12:15
    |
 LL |     z.push((x,y)); //~ ERROR lifetime mismatch

@@ -1,10 +1,10 @@
-error[E0594]: cannot assign to immutable item `fancy_ref.num`
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/E0389.rs:18:5
    |
+LL |     let fancy_ref = &(&mut fancy);
+   |                     ------------- help: consider changing this to be a mutable reference: `&mut (&mut fancy)`
 LL |     fancy_ref.num = 6; //~ ERROR E0389
-   |     ^^^^^^^^^^^^^^^^^ cannot mutate
-   |
-   = note: Value not mutable causing this error: `*fancy_ref`
+   |     ^^^^^^^^^^^^^^^^^ `fancy_ref` is a `&` reference, so the data it refers to cannot be written
 
 error: aborting due to previous error
 

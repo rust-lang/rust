@@ -1,4 +1,4 @@
-warning: not reporting region error due to -Znll
+warning: not reporting region error due to nll
   --> $DIR/ex2c-push-inference-variable.rs:16:13
    |
 LL |     let z = Ref { data: y.data };

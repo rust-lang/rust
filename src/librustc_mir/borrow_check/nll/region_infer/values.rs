@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::ty::RegionVid;
+use rustc::ty::{self, RegionVid};
 use syntax::codemap::Span;
 
 use super::{Cause, CauseExt, TrackCauses};
@@ -263,7 +263,17 @@ impl RegionValues {
             if let Some(causes) = &mut self.causes {
                 let cause = make_cause(causes);
                 let old_cause = causes.get_mut(&(r, i)).unwrap();
-                if cause < **old_cause {
+                // #49998: compare using root cause alone to avoid
+                // useless traffic from similar outlives chains.
+
+                let overwrite = if ty::tls::with(|tcx| {
+                    tcx.sess.opts.debugging_opts.nll_subminimal_causes
+                }) {
+                    cause.root_cause() < old_cause.root_cause()
+                } else {
+                    cause < **old_cause
+                };
+                if overwrite {
                     *old_cause = Rc::new(cause);
                     return true;
                 }

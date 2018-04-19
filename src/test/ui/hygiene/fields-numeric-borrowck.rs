@@ -7,10 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(rustc_attrs)]
 struct S(u8);
 
-fn main() {
+fn main() { #![rustc_error] // rust-lang/rust#49855
     let mut s = S(0);
     let borrow1 = &mut s.0;
     let S { 0: ref mut borrow2 } = s;
