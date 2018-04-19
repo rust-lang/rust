@@ -589,12 +589,84 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
             if let Some(&TyCastKind::CoercionCast) = cx.tables()
-                                                       .cast_kinds()
-                                                       .get(source.hir_id) {
+                                                    .cast_kinds()
+                                                    .get(source.hir_id) {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
             } else {
-                ExprKind::Cast { source: source.to_ref() }
+                // check whether this is casting an enum variant discriminant
+                // to prevent cycles, we refer to the discriminant initializer
+                // which is always an integer and thus doesn't need to know the
+                // enum's layout (or its tag type) to compute it during const eval
+                // Example:
+                // enum Foo {
+                //     A,
+                //     B = A as isize + 4,
+                // }
+                // The correct solution would be to add symbolic computations to miri,
+                // so we wouldn't have to compute and store the actual value
+                let var = if let hir::ExprPath(ref qpath) = source.node {
+                    let def = cx.tables().qpath_def(qpath, source.hir_id);
+                    cx
+                        .tables()
+                        .node_id_to_type(source.hir_id)
+                        .ty_adt_def()
+                        .and_then(|adt_def| {
+                        match def {
+                            Def::VariantCtor(variant_id, CtorKind::Const) => {
+                                let idx = adt_def.variant_index_with_id(variant_id);
+                                let (d, o) = adt_def.discriminant_def_for_variant(idx);
+                                use rustc::ty::util::IntTypeExt;
+                                let ty = adt_def.repr.discr_type().to_ty(cx.tcx());
+                                Some((d, o, ty))
+                            }
+                            _ => None,
+                        }
+                    })
+                } else {
+                    None
+                };
+                let source = if let Some((did, offset, ty)) = var {
+                    let mk_const = |val| Expr {
+                        temp_lifetime,
+                        ty,
+                        span: expr.span,
+                        kind: ExprKind::Literal {
+                            literal: Literal::Value {
+                                value: cx.tcx().mk_const(ty::Const {
+                                    val,
+                                    ty,
+                                }),
+                            },
+                        },
+                    }.to_ref();
+                    let offset = mk_const(
+                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(offset as u128))),
+                    );
+                    match did {
+                        Some(did) => {
+                            // in case we are offsetting from a computed discriminant
+                            // and not the beginning of discriminants (which is always `0`)
+                            let substs = Substs::identity_for_item(cx.tcx(), did);
+                            let lhs = mk_const(ConstVal::Unevaluated(did, substs));
+                            let bin = ExprKind::Binary {
+                                op: BinOp::Add,
+                                lhs,
+                                rhs: offset,
+                            };
+                            Expr {
+                                temp_lifetime,
+                                ty,
+                                span: expr.span,
+                                kind: bin,
+                            }.to_ref()
+                        },
+                        None => offset,
+                    }
+                } else {
+                    source.to_ref()
+                };
+                ExprKind::Cast { source }
             }
         }
         hir::ExprType(ref source, _) => return source.make_mirror(cx),
