@@ -144,6 +144,7 @@ function main(argv) {
     var toolchain = argv[2];
 
     var mainJs = readFile("build/" + toolchain + "/doc/main.js");
+    var ALIASES = readFile("build/" + toolchain + "/doc/aliases.js");
     var searchIndex = readFile("build/" + toolchain + "/doc/search-index.js").split("\n");
     if (searchIndex[searchIndex.length - 1].length === 0) {
         searchIndex.pop();
@@ -161,6 +162,7 @@ function main(argv) {
                            "execSearch"];
 
     finalJS += 'window = { "currentCrate": "std" };\n';
+    finalJS += ALIASES;
     finalJS += loadThings(arraysToLoad, 'array', extractArrayVariable, mainJs);
     finalJS += loadThings(variablesToLoad, 'variable', extractVariable, mainJs);
     finalJS += loadThings(functionsToLoad, 'function', extractFunction, mainJs);
