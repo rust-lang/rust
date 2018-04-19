@@ -108,8 +108,6 @@ pub struct Session {
 
     /// The maximum number of stackframes allowed in const eval
     pub const_eval_stack_frame_limit: Cell<usize>,
-    /// The maximum number miri steps per constant
-    pub const_eval_step_limit: Cell<usize>,
 
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
@@ -1146,7 +1144,6 @@ pub fn build_session_(
         recursion_limit: Cell::new(64),
         type_length_limit: Cell::new(1048576),
         const_eval_stack_frame_limit: Cell::new(100),
-        const_eval_step_limit: Cell::new(1_000_000),
         next_node_id: Cell::new(NodeId::new(1)),
         injected_allocator: Cell::new(None),
         allocator_kind: Cell::new(None),

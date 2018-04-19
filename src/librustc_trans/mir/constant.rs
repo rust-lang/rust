@@ -50,7 +50,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                 let static_ = cx
                     .tcx
                     .interpret_interner
-                    .get_corresponding_static_def_id(ptr.alloc_id);
+                    .get_static(ptr.alloc_id);
                 let base_addr = if let Some(def_id) = static_ {
                     assert!(cx.tcx.is_static(def_id).is_some());
                     consts::get_static(cx, def_id)
@@ -126,18 +126,17 @@ pub fn trans_static_initializer<'a, 'tcx>(
         promoted: None
     };
     let param_env = ty::ParamEnv::reveal_all();
-    cx.tcx.const_eval(param_env.and(cid))?;
+    let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
-    let alloc_id = cx
-        .tcx
-        .interpret_interner
-        .get_cached(def_id)
-        .expect("global not cached");
+    let ptr = match static_.val {
+        ConstVal::Value(MiriValue::ByRef(ptr, _)) => ptr,
+        _ => bug!("static const eval returned {:#?}", static_),
+    };
 
     let alloc = cx
         .tcx
         .interpret_interner
-        .get_alloc(alloc_id)
+        .get_alloc(ptr.primval.to_ptr().expect("static has integer pointer").alloc_id)
         .expect("miri allocation never successfully created");
     Ok(global_initializer(cx, alloc))
 }

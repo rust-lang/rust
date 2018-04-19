@@ -985,15 +985,17 @@ fn slice_pat_covered_by_constructor(tcx: TyCtxt, _span: Span,
     Ok(true)
 }
 
-fn constructor_covered_by_range(ctor: &Constructor,
-                                from: &ConstVal, to: &ConstVal,
-                                end: RangeEnd,
-                                ty: Ty)
-                                -> Result<bool, ErrorReported> {
+fn constructor_covered_by_range<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ctor: &Constructor,
+    from: &ConstVal, to: &ConstVal,
+    end: RangeEnd,
+    ty: Ty<'tcx>,
+) -> Result<bool, ErrorReported> {
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, from, to, ty);
-    let cmp_from = |c_from| compare_const_vals(c_from, from, ty)
+    let cmp_from = |c_from| compare_const_vals(tcx, c_from, from, ty)
         .map(|res| res != Ordering::Less);
-    let cmp_to = |c_to| compare_const_vals(c_to, to, ty);
+    let cmp_to = |c_to| compare_const_vals(tcx, c_to, to, ty);
     macro_rules! some_or_ok {
         ($e:expr) => {
             match $e {
@@ -1105,6 +1107,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                 },
                 _ => {
                     match constructor_covered_by_range(
+                        cx.tcx,
                         constructor, &value.val, &value.val, RangeEnd::Included,
                         value.ty,
                             ) {
@@ -1118,6 +1121,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
 
         PatternKind::Range { lo, hi, ref end } => {
             match constructor_covered_by_range(
+                cx.tcx,
                 constructor, &lo.val, &hi.val, end.clone(), lo.ty,
             ) {
                 Ok(true) => Some(vec![]),

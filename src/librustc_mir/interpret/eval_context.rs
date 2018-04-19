@@ -45,7 +45,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'mir, 'tcx>> {
     /// The maximum number of terminators that may be evaluated.
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
-    pub(crate) steps_remaining: usize,
+    pub(crate) terminators_remaining: usize,
 }
 
 /// A stack frame.
@@ -195,7 +195,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
             stack_limit: tcx.sess.const_eval_stack_frame_limit.get(),
-            steps_remaining: tcx.sess.const_eval_step_limit.get(),
+            terminators_remaining: 1_000_000,
         }
     }
 
@@ -538,7 +538,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             Aggregate(ref kind, ref operands) => {
-                self.inc_step_counter_and_check_limit(operands.len())?;
+                self.inc_step_counter_and_check_limit(operands.len());
 
                 let (dest, active_field_index) = match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, _, active_field_index) => {
@@ -929,16 +929,14 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn read_global_as_value(&self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
-        if gid.promoted.is_none() {
-            let cached = self
+        if self.tcx.is_static(gid.instance.def_id()).is_some() {
+            let alloc_id = self
                 .tcx
                 .interpret_interner
-                .get_cached(gid.instance.def_id());
-            if let Some(alloc_id) = cached {
-                let layout = self.layout_of(ty)?;
-                let ptr = MemoryPointer::new(alloc_id, 0);
-                return Ok(Value::ByRef(ptr.into(), layout.align))
-            }
+                .cache_static(gid.instance.def_id());
+            let layout = self.layout_of(ty)?;
+            let ptr = MemoryPointer::new(alloc_id, 0);
+            return Ok(Value::ByRef(ptr.into(), layout.align))
         }
         let cv = self.const_eval(gid)?;
         self.const_to_value(&cv.val, ty)
@@ -1672,21 +1670,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn sign_extend(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        let layout = self.layout_of(ty)?;
-        let size = layout.size.bits();
-        assert!(layout.abi.is_signed());
-        // sign extend
-        let amt = 128 - size;
-        // shift the unsigned value to the left
-        // and back to the right as signed (essentially fills with FF on the left)
-        Ok((((value << amt) as i128) >> amt) as u128)
+        super::sign_extend(self.tcx.tcx, value, ty)
     }
 
     pub fn truncate(&self, value: u128, ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
-        let size = self.layout_of(ty)?.size.bits();
-        let amt = 128 - size;
-        // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
-        Ok((value << amt) >> amt)
+        super::truncate(self.tcx.tcx, value, ty)
     }
 }
 
