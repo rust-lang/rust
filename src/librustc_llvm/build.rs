@@ -28,6 +28,12 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
 }
 
 fn main() {
+    if env::var_os("RUST_CHECK").is_some() {
+        // If we're just running `check`, there's no need for LLVM to be built.
+        println!("cargo:rerun-if-env-changed=RUST_CHECK");
+        return;
+    }
+
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
         .map(PathBuf::from)

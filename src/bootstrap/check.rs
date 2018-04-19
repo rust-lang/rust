@@ -10,10 +10,10 @@
 
 //! Implementation of compiling the compiler and standard library, in "check" mode.
 
-use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, add_to_sysroot};
+use compile::{run_cargo, std_cargo, test_cargo, rustc_cargo, rustc_cargo_env, add_to_sysroot};
 use builder::{RunConfig, Builder, ShouldRun, Step};
 use {Compiler, Mode};
-use cache::Interned;
+use cache::{INTERNER, Interned};
 use std::path::PathBuf;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -105,6 +105,52 @@ impl Step for Rustc {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct CodegenBackend {
+    pub target: Interned<String>,
+    pub backend: Interned<String>,
+}
+
+impl Step for CodegenBackend {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun) -> ShouldRun {
+        run.all_krates("rustc_trans")
+    }
+
+    fn make_run(run: RunConfig) {
+        let backend = run.builder.config.rust_codegen_backends.get(0);
+        let backend = backend.cloned().unwrap_or_else(|| {
+            INTERNER.intern_str("llvm")
+        });
+        run.builder.ensure(CodegenBackend {
+            target: run.target,
+            backend,
+        });
+    }
+
+    fn run(self, builder: &Builder) {
+        let compiler = builder.compiler(0, builder.config.build);
+        let target = self.target;
+        let backend = self.backend;
+
+        let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
+        let features = builder.rustc_features().to_string();
+        cargo.arg("--manifest-path").arg(builder.src.join("src/librustc_trans/Cargo.toml"));
+        rustc_cargo_env(builder, &mut cargo);
+
+        // We won't build LLVM if it's not available, as it shouldn't affect `check`.
+
+        let _folder = builder.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+        run_cargo(builder,
+                  cargo.arg("--features").arg(features),
+                  &codegen_backend_stamp(builder, compiler, target, backend),
+                  true);
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Test {
     pub target: Interned<String>,
 }
@@ -160,4 +206,14 @@ pub fn libtest_stamp(builder: &Builder, compiler: Compiler, target: Interned<Str
 /// compiler for the specified target.
 pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<String>) -> PathBuf {
     builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
+}
+
+/// Cargo's output path for librustc_trans in a given stage, compiled by a particular
+/// compiler for the specified target and backend.
+fn codegen_backend_stamp(builder: &Builder,
+                         compiler: Compiler,
+                         target: Interned<String>,
+                         backend: Interned<String>) -> PathBuf {
+    builder.cargo_out(compiler, Mode::Librustc, target)
+         .join(format!(".librustc_trans-{}-check.stamp", backend))
 }
