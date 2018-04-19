@@ -165,7 +165,7 @@ impl<'a> WorkInfo<'a> {
 /// Obtain the two versions of the crate to be analyzed as specified by command line arguments
 /// and/or defaults, and dispatch the actual analysis.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
-fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
+fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()> {
     debug!("running cargo-semver");
     fn parse_arg(opt: &str) -> CargoResult<NameAndVersion> {
         let mut split = opt.split(':');
@@ -239,6 +239,7 @@ fn do_main(config: &Config, matches: &Matches) -> CargoResult<()> {
         .arg("-")
         .stdin(Stdio::piped())
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
+        .env("RUST_SEMVER_VERBOSE", format!("{}", explain))
         .spawn()
         .map_err(|e| Error(format!("could not spawn rustc: {}", e)))?;
 
@@ -287,6 +288,7 @@ fn main() {
 
     opts.optflag("h", "help", "print this message and exit");
     opts.optflag("V", "version", "print version information and exit");
+    opts.optflag("e", "explain", "print detailed error explanations");
     opts.optflag("d", "debug", "print command to debug and exit");
     opts.optopt("s", "stable-path", "use local path as stable/old crate", "PATH");
     opts.optopt("c", "current-path", "use local path as current/new crate", "PATH");
@@ -329,7 +331,7 @@ fn main() {
         err(&config, Error(msg.to_owned()).into());
     }
 
-    if let Err(e) = do_main(&config, &matches) {
+    if let Err(e) = do_main(&config, &matches, matches.opt_present("e")) {
         err(&config, e);
     }
 }

@@ -75,14 +75,17 @@ struct SemVerVerCompilerCalls {
     default: RustcDefaultCalls,
     /// The version of the old crate.
     version: String,
+    /// The output mode.
+    verbose: bool,
 }
 
 impl SemVerVerCompilerCalls {
     /// Construct a new compilation wrapper, given a version string.
-    pub fn new(version: String) -> SemVerVerCompilerCalls {
+    pub fn new(version: String, verbose: bool) -> SemVerVerCompilerCalls {
         SemVerVerCompilerCalls {
             default: RustcDefaultCalls,
-            version: version,
+            version,
+            verbose,
         }
     }
 }
@@ -135,10 +138,7 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
         let old_callback =
             std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
         let version = self.version.clone();
-
-        let verbose = std::env::var("RUST_SEMVER_VERBOSE")
-            .ok()
-            .map_or(false, |s| s == "true");
+        let verbose = self.verbose;
 
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");
@@ -197,7 +197,9 @@ fn main() {
             "no_version".to_owned()
         };
 
-        let mut cc = SemVerVerCompilerCalls::new(version);
+        let verbose = std::env::var("RUST_SEMVER_VERBOSE") == Ok("true".to_string());
+
+        let mut cc = SemVerVerCompilerCalls::new(version, verbose);
         rustc_driver::run_compiler(&args, &mut cc, None, None)
     });
 
