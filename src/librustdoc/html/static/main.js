@@ -1072,11 +1072,6 @@
                 type = matches[1].replace(/^const$/, 'constant');
                 query = query.substring(matches[0].length);
             }
-            // In case we just get a '!' as input, we can assume that the user is looking for the
-            // `Never` primitive type.
-            if (raw === '!') {
-                query = 'Never';
-            }
 
             return {
                 raw: raw,
