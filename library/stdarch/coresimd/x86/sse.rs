@@ -2212,7 +2212,7 @@ pub unsafe fn _m_pavgw(a: __m64, b: __m64) -> __m64 {
 /// Subtracts the corresponding 8-bit unsigned integer values of the two
 /// 64-bit vector operands and computes the absolute value for each of the
 /// difference. Then sum of the 8 absolute differences is written to the
-/// bits [15:0] of the destination; the remaining bits [63:16] are cleared.
+/// bits `[15:0]` of the destination; the remaining bits `[63:16]` are cleared.
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(psadbw))]
@@ -2223,7 +2223,7 @@ pub unsafe fn _mm_sad_pu8(a: __m64, b: __m64) -> __m64 {
 /// Subtracts the corresponding 8-bit unsigned integer values of the two
 /// 64-bit vector operands and computes the absolute value for each of the
 /// difference. Then sum of the 8 absolute differences is written to the
-/// bits [15:0] of the destination; the remaining bits [63:16] are cleared.
+/// bits `[15:0]` of the destination; the remaining bits `[63:16]` are cleared.
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(psadbw))]
@@ -2231,7 +2231,7 @@ pub unsafe fn _m_psadbw(a: __m64, b: __m64) -> __m64 {
     _mm_sad_pu8(a, b)
 }
 
-/// Converts two elements of a 64-bit vector of [2 x i32] into two
+/// Converts two elements of a 64-bit vector of `[2 x i32]` into two
 /// floating point values and writes them to the lower 64-bits of the
 /// destination. The remaining higher order elements of the destination are
 /// copied from the corresponding elements in the first operand.
@@ -2242,7 +2242,7 @@ pub unsafe fn _mm_cvtpi32_ps(a: __m128, b: __m64) -> __m128 {
     cvtpi2ps(a, b)
 }
 
-/// Converts two elements of a 64-bit vector of [2 x i32] into two
+/// Converts two elements of a 64-bit vector of `[2 x i32]` into two
 /// floating point values and writes them to the lower 64-bits of the
 /// destination. The remaining higher order elements of the destination are
 /// copied from the corresponding elements in the first operand.
@@ -2304,7 +2304,7 @@ pub unsafe fn _mm_cvtpu16_ps(a: __m64) -> __m128 {
 }
 
 /// Converts the two 32-bit signed integer values from each 64-bit vector
-/// operand of [2 x i32] into a 128-bit vector of [4 x float].
+/// operand of `[2 x i32]` into a 128-bit vector of `[4 x float]`.
 #[inline]
 #[target_feature(enable = "sse,mmx")]
 #[cfg_attr(test, assert_instr(cvtpi2ps))]
@@ -2343,7 +2343,7 @@ pub unsafe fn _m_maskmovq(a: __m64, mask: __m64, mem_addr: *mut i8) {
     _mm_maskmove_si64(a, mask, mem_addr)
 }
 
-/// Extracts 16-bit element from a 64-bit vector of [4 x i16] and
+/// Extracts 16-bit element from a 64-bit vector of `[4 x i16]` and
 /// returns it, as specified by the immediate integer operand.
 #[inline]
 #[target_feature(enable = "sse,mmx")]
@@ -2358,7 +2358,7 @@ pub unsafe fn _mm_extract_pi16(a: __m64, imm2: i32) -> i32 {
     constify_imm2!(imm2, call)
 }
 
-/// Extracts 16-bit element from a 64-bit vector of [4 x i16] and
+/// Extracts 16-bit element from a 64-bit vector of `[4 x i16]` and
 /// returns it, as specified by the immediate integer operand.
 #[inline]
 #[target_feature(enable = "sse,mmx")]
@@ -2373,7 +2373,7 @@ pub unsafe fn _m_pextrw(a: __m64, imm2: i32) -> i32 {
     constify_imm2!(imm2, call)
 }
 
-/// Copies data from the 64-bit vector of [4 x i16] to the destination,
+/// Copies data from the 64-bit vector of `[4 x i16]` to the destination,
 /// and inserts the lower 16-bits of an integer operand at the 16-bit offset
 /// specified by the immediate operand `n`.
 #[inline]
@@ -2389,7 +2389,7 @@ pub unsafe fn _mm_insert_pi16(a: __m64, d: i32, imm2: i32) -> __m64 {
     constify_imm2!(imm2, call)
 }
 
-/// Copies data from the 64-bit vector of [4 x i16] to the destination,
+/// Copies data from the 64-bit vector of `[4 x i16]` to the destination,
 /// and inserts the lower 16-bits of an integer operand at the 16-bit offset
 /// specified by the immediate operand `n`.
 #[inline]

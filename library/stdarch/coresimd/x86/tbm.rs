@@ -44,8 +44,8 @@ pub fn _bextr_u64(a: u64, start: u64, len: u64) -> u64 {
 /// Extracts bits of `a` specified by `control` into
 /// the least significant bits of the result.
 ///
-/// Bits [7,0] of `control` specify the index to the first bit in the range to
-/// be extracted, and bits [15,8] specify the length of the range.
+/// Bits `[7,0]` of `control` specify the index to the first bit in the range to
+/// be extracted, and bits `[15,8]` specify the length of the range.
 #[inline]
 #[target_feature(enable = "tbm")]
 pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
@@ -55,8 +55,8 @@ pub fn _bextr2_u32(a: u32, control: u32) -> u32 {
 /// Extracts bits of `a` specified by `control` into
 /// the least significant bits of the result.
 ///
-/// Bits [7,0] of `control` specify the index to the first bit in the range to
-/// be extracted, and bits [15,8] specify the length of the range.
+/// Bits `[7,0]` of `control` specify the index to the first bit in the range to
+/// be extracted, and bits `[15,8]` specify the length of the range.
 #[inline]
 #[target_feature(enable = "tbm")]
 pub fn _bextr2_u64(a: u64, control: u64) -> u64 {

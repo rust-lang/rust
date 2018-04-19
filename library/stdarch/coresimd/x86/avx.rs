@@ -1950,7 +1950,7 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *const __m256i, a: __m256i) {
     intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
 }
 
-/// Moves double-precision values from a 256-bit vector of [4 x double]
+/// Moves double-precision values from a 256-bit vector of `[4 x double]`
 /// to a 32-byte aligned memory location. To minimize caching, the data is
 /// flagged as non-temporal (unlikely to be used again soon).
 ///
@@ -1964,7 +1964,7 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *const f64, a: __m256d) {
 }
 
 /// Moves single-precision floating point values from a 256-bit vector
-/// of [8 x float] to a 32-byte aligned memory location. To minimize
+/// of `[8 x float]` to a 32-byte aligned memory location. To minimize
 /// caching, the data is flagged as non-temporal (unlikely to be used again
 /// soon).
 ///
@@ -2791,8 +2791,8 @@ pub unsafe fn _mm256_castsi128_si256(a: __m128i) -> __m256i {
     mem::transmute(dst)
 }
 
-/// Constructs a 256-bit floating-point vector of [8 x float] from a
-/// 128-bit floating-point vector of [4 x float]. The lower 128 bits contain
+/// Constructs a 256-bit floating-point vector of `[8 x float]` from a
+/// 128-bit floating-point vector of `[4 x float]`. The lower 128 bits contain
 /// the value of the source vector. The upper 128 bits are set to zero.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_zextps128_ps256)
@@ -2821,8 +2821,8 @@ pub unsafe fn _mm256_zextsi128_si256(a: __m128i) -> __m256i {
     mem::transmute(dst)
 }
 
-/// Constructs a 256-bit floating-point vector of [4 x double] from a
-/// 128-bit floating-point vector of [2 x double]. The lower 128 bits
+/// Constructs a 256-bit floating-point vector of `[4 x double]` from a
+/// 128-bit floating-point vector of `[2 x double]`. The lower 128 bits
 /// contain the value of the source vector. The upper 128 bits are set
 /// to zero.
 ///
@@ -3045,7 +3045,7 @@ pub unsafe fn _mm256_storeu2_m128i(
     _mm_storeu_si128(hiaddr, hi);
 }
 
-/// Returns the first element of the input vector of [8 x float].
+/// Returns the first element of the input vector of `[8 x float]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtss_f32)
 #[inline]

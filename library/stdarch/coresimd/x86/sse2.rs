@@ -2561,7 +2561,7 @@ pub unsafe fn _mm_load_sd(mem_addr: *const f64) -> __m128d {
 }
 
 /// Loads a double-precision value into the high-order bits of a 128-bit
-/// vector of [2 x double]. The low-order bits are copied from the low-order
+/// vector of `[2 x double]`. The low-order bits are copied from the low-order
 /// bits of the first operand.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadh_pd)
@@ -2574,7 +2574,7 @@ pub unsafe fn _mm_loadh_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 }
 
 /// Loads a double-precision value into the low-order bits of a 128-bit
-/// vector of [2 x double]. The high-order bits are copied from the
+/// vector of `[2 x double]`. The high-order bits are copied from the
 /// high-order bits of the first operand.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_loadl_pd)
@@ -2586,7 +2586,7 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
     _mm_setr_pd(*mem_addr, simd_extract(a, 1))
 }
 
-/// Stores a 128-bit floating point vector of [2 x double] to a 128-bit
+/// Stores a 128-bit floating point vector of `[2 x double]` to a 128-bit
 /// aligned memory location.
 /// To minimize caching, the data is flagged as non-temporal (unlikely to be
 /// used again soon).
@@ -2600,7 +2600,7 @@ pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
     intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
 }
 
-/// Stores the lower 64 bits of a 128-bit vector of [2 x double] to a
+/// Stores the lower 64 bits of a 128-bit vector of `[2 x double]` to a
 /// memory location.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store_sd)
@@ -2678,7 +2678,7 @@ pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
     *(mem_addr as *mut __m128d) = b;
 }
 
-/// Stores the upper 64 bits of a 128-bit vector of [2 x double] to a
+/// Stores the upper 64 bits of a 128-bit vector of `[2 x double]` to a
 /// memory location.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeh_pd)
@@ -2690,7 +2690,7 @@ pub unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract(a, 1);
 }
 
-/// Stores the lower 64 bits of a 128-bit vector of [2 x double] to a
+/// Stores the lower 64 bits of a 128-bit vector of `[2 x double]` to a
 /// memory location.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storel_pd)
@@ -2760,8 +2760,8 @@ pub unsafe fn _mm_loadu_pd(mem_addr: *const f64) -> __m128d {
     dst
 }
 
-/// Constructs a 128-bit floating-point vector of [2 x double] from two
-/// 128-bit vector parameters of [2 x double], using the immediate-value
+/// Constructs a 128-bit floating-point vector of `[2 x double]` from two
+/// 128-bit vector parameters of `[2 x double]`, using the immediate-value
 /// parameter as a specifier.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_shuffle_pd)
@@ -2779,7 +2779,7 @@ pub unsafe fn _mm_shuffle_pd(a: __m128d, b: __m128d, imm8: i32) -> __m128d {
     }
 }
 
-/// Constructs a 128-bit floating-point vector of [2 x double]. The lower
+/// Constructs a 128-bit floating-point vector of `[2 x double]`. The lower
 /// 64 bits are set to the lower 64 bits of the second parameter. The upper
 /// 64 bits are set to the upper 64 bits of the first parameter.
 ///
@@ -2792,8 +2792,8 @@ pub unsafe fn _mm_move_sd(a: __m128d, b: __m128d) -> __m128d {
     _mm_setr_pd(simd_extract(b, 0), simd_extract(a, 1))
 }
 
-/// Casts a 128-bit floating-point vector of [2 x double] into a 128-bit
-/// floating-point vector of [4 x float].
+/// Casts a 128-bit floating-point vector of `[2 x double]` into a 128-bit
+/// floating-point vector of `[4 x float]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_castpd_ps)
 #[inline]
@@ -2803,7 +2803,7 @@ pub unsafe fn _mm_castpd_ps(a: __m128d) -> __m128 {
     mem::transmute(a)
 }
 
-/// Casts a 128-bit floating-point vector of [2 x double] into a 128-bit
+/// Casts a 128-bit floating-point vector of `[2 x double]` into a 128-bit
 /// integer vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_castpd_si128)
@@ -2814,8 +2814,8 @@ pub unsafe fn _mm_castpd_si128(a: __m128d) -> __m128i {
     mem::transmute::<i64x2, _>(simd_cast(a))
 }
 
-/// Casts a 128-bit floating-point vector of [4 x float] into a 128-bit
-/// floating-point vector of [2 x double].
+/// Casts a 128-bit floating-point vector of `[4 x float]` into a 128-bit
+/// floating-point vector of `[2 x double]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_castps_pd)
 #[inline]
@@ -2825,7 +2825,7 @@ pub unsafe fn _mm_castps_pd(a: __m128) -> __m128d {
     mem::transmute(a)
 }
 
-/// Casts a 128-bit floating-point vector of [4 x float] into a 128-bit
+/// Casts a 128-bit floating-point vector of `[4 x float]` into a 128-bit
 /// integer vector.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_castps_si128)
@@ -2837,7 +2837,7 @@ pub unsafe fn _mm_castps_si128(a: __m128) -> __m128i {
 }
 
 /// Casts a 128-bit integer vector into a 128-bit floating-point vector
-/// of [2 x double].
+/// of `[2 x double]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_castsi128_pd)
 #[inline]
@@ -2848,7 +2848,7 @@ pub unsafe fn _mm_castsi128_pd(a: __m128i) -> __m128d {
 }
 
 /// Casts a 128-bit integer vector into a 128-bit floating-point vector
-/// of [4 x float].
+/// of `[4 x float]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_castsi128_ps)
 #[inline]
@@ -2881,8 +2881,8 @@ pub unsafe fn _mm_undefined_si128() -> __m128i {
 /// The resulting `__m128d` element is composed by the low-order values of
 /// the two `__m128d` interleaved input elements, i.e.:
 ///
-/// * The [127:64] bits are copied from the [127:64] bits of the second input
-/// * The [63:0] bits are copied from the [127:64] bits of the first input
+/// * The `[127:64]` bits are copied from the `[127:64]` bits of the second input
+/// * The `[63:0]` bits are copied from the `[127:64]` bits of the first input
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_unpackhi_pd)
 #[inline]
@@ -2896,8 +2896,8 @@ pub unsafe fn _mm_unpackhi_pd(a: __m128d, b: __m128d) -> __m128d {
 /// The resulting `__m128d` element is composed by the high-order values of
 /// the two `__m128d` interleaved input elements, i.e.:
 ///
-/// * The [127:64] bits are copied from the [63:0] bits of the second input
-/// * The [63:0] bits are copied from the [63:0] bits of the first input
+/// * The `[127:64]` bits are copied from the `[63:0]` bits of the second input
+/// * The `[63:0]` bits are copied from the `[63:0]` bits of the first input
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_unpacklo_pd)
 #[inline]
@@ -2937,8 +2937,8 @@ pub unsafe fn _mm_sub_si64(a: __m64, b: __m64) -> __m64 {
 }
 
 /// Converts the two signed 32-bit integer elements of a 64-bit vector of
-/// [2 x i32] into two double-precision floating-point values, returned in a
-/// 128-bit vector of [2 x double].
+/// `[2 x i32]` into two double-precision floating-point values, returned in a
+/// 128-bit vector of `[2 x double]`.
 #[inline]
 #[target_feature(enable = "sse2,mmx")]
 #[cfg_attr(test, assert_instr(cvtpi2pd))]
@@ -2946,7 +2946,7 @@ pub unsafe fn _mm_cvtpi32_pd(a: __m64) -> __m128d {
     cvtpi2pd(a)
 }
 
-/// Initializes both 64-bit values in a 128-bit vector of [2 x i64] with
+/// Initializes both 64-bit values in a 128-bit vector of `[2 x i64]` with
 /// the specified 64-bit integer values.
 #[inline]
 #[target_feature(enable = "sse2,mmx")]
@@ -2955,7 +2955,7 @@ pub unsafe fn _mm_set_epi64(e1: __m64, e0: __m64) -> __m128i {
     _mm_set_epi64x(mem::transmute(e1), mem::transmute(e0))
 }
 
-/// Initializes both values in a 128-bit vector of [2 x i64] with the
+/// Initializes both values in a 128-bit vector of `[2 x i64]` with the
 /// specified 64-bit value.
 #[inline]
 #[target_feature(enable = "sse2,mmx")]
@@ -2994,8 +2994,8 @@ pub unsafe fn _mm_movpi64_epi64(a: __m64) -> __m128i {
 }
 
 /// Converts the two double-precision floating-point elements of a
-/// 128-bit vector of [2 x double] into two signed 32-bit integer values,
-/// returned in a 64-bit vector of [2 x i32].
+/// 128-bit vector of `[2 x double]` into two signed 32-bit integer values,
+/// returned in a 64-bit vector of `[2 x i32]`.
 #[inline]
 #[target_feature(enable = "sse2,mmx")]
 #[cfg_attr(test, assert_instr(cvtpd2pi))]
@@ -3004,8 +3004,8 @@ pub unsafe fn _mm_cvtpd_pi32(a: __m128d) -> __m64 {
 }
 
 /// Converts the two double-precision floating-point elements of a
-/// 128-bit vector of [2 x double] into two signed 32-bit integer values,
-/// returned in a 64-bit vector of [2 x i32].
+/// 128-bit vector of `[2 x double]` into two signed 32-bit integer values,
+/// returned in a 64-bit vector of `[2 x i32]`.
 /// If the result of either conversion is inexact, the result is truncated
 /// (rounded towards zero) regardless of the current MXCSR setting.
 #[inline]

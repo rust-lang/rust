@@ -2506,7 +2506,7 @@ pub unsafe fn _mm256_mullo_epi32(a: __m256i, b: __m256i) -> __m256i {
 /// Multiply packed 16-bit integers in `a` and `b`, producing
 /// intermediate signed 32-bit integers. Truncate each intermediate
 /// integer to the 18 most significant bits, round by adding 1, and
-/// return bits [16:1]
+/// return bits `[16:1]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mulhrs_epi16)
 #[inline]
@@ -4001,7 +4001,7 @@ pub unsafe fn _mm256_extract_epi32(a: __m256i, imm8: i32) -> i32 {
     simd_extract(a.as_i32x8(), imm8)
 }
 
-/// Returns the first element of the input vector of [4 x double].
+/// Returns the first element of the input vector of `[4 x double]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtsd_f64)
 #[inline]
@@ -4012,7 +4012,7 @@ pub unsafe fn _mm256_cvtsd_f64(a: __m256d) -> f64 {
     simd_extract(a, 0)
 }
 
-/// Returns the first element of the input vector of [8 x i32].
+/// Returns the first element of the input vector of `[8 x i32]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_cvtsi256_si32)
 #[inline]

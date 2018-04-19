@@ -26,7 +26,7 @@ extern "C" {
 /// Perform a full or partial save of the enabled processor states to memory at
 /// `mem_addr`.
 ///
-/// State is saved based on bits [62:0] in `save_mask` and XCR0.
+/// State is saved based on bits `[62:0]` in `save_mask` and XCR0.
 /// `mem_addr` must be aligned on a 64-byte boundary.
 ///
 /// The format of the XSAVE area is detailed in Section 13.4, “XSAVE Area,” of
@@ -48,7 +48,7 @@ pub unsafe fn _xsave(mem_addr: *mut u8, save_mask: u64) {
 /// Perform a full or partial restore of the enabled processor states using
 /// the state information stored in memory at `mem_addr`.
 ///
-/// State is restored based on bits [62:0] in `rs_mask`, `XCR0`, and
+/// State is restored based on bits `[62:0]` in `rs_mask`, `XCR0`, and
 /// `mem_addr.HEADER.XSTATE_BV`. `mem_addr` must be aligned on a 64-byte
 /// boundary.
 ///
@@ -99,7 +99,7 @@ pub unsafe fn _xgetbv(xcr_no: u32) -> u64 {
 /// Perform a full or partial save of the enabled processor states to memory at
 /// `mem_addr`.
 ///
-/// State is saved based on bits [62:0] in `save_mask` and `XCR0`.
+/// State is saved based on bits `[62:0]` in `save_mask` and `XCR0`.
 /// `mem_addr` must be aligned on a 64-byte boundary. The hardware may optimize
 /// the manner in which data is saved. The performance of this instruction will
 /// be equal to or better than using the `XSAVE` instruction.
@@ -121,7 +121,7 @@ pub unsafe fn _xsaveopt(mem_addr: *mut u8, save_mask: u64) {
 /// at `mem_addr`.
 ///
 /// `xsavec` differs from `xsave` in that it uses compaction and that it may
-/// use init optimization. State is saved based on bits [62:0] in `save_mask`
+/// use init optimization. State is saved based on bits `[62:0]` in `save_mask`
 /// and `XCR0`. `mem_addr` must be aligned on a 64-byte boundary.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xsavec)
@@ -142,7 +142,7 @@ pub unsafe fn _xsavec(mem_addr: *mut u8, save_mask: u64) {
 ///
 /// `xsaves` differs from xsave in that it can save state components
 /// corresponding to bits set in `IA32_XSS` `MSR` and that it may use the
-/// modified optimization. State is saved based on bits [62:0] in `save_mask`
+/// modified optimization. State is saved based on bits `[62:0]` in `save_mask`
 /// and `XCR0`. `mem_addr` must be aligned on a 64-byte boundary.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_xsaves)
@@ -164,7 +164,7 @@ pub unsafe fn _xsaves(mem_addr: *mut u8, save_mask: u64) {
 /// `xrstors` differs from `xrstor` in that it can restore state components
 /// corresponding to bits set in the `IA32_XSS` `MSR`; `xrstors` cannot restore
 /// from an `xsave` area in which the extended region is in the standard form.
-/// State is restored based on bits [62:0] in `rs_mask`, `XCR0`, and
+/// State is restored based on bits `[62:0]` in `rs_mask`, `XCR0`, and
 /// `mem_addr.HEADER.XSTATE_BV`. `mem_addr` must be aligned on a 64-byte
 /// boundary.
 ///

@@ -24,8 +24,8 @@ extern "C" {
 
 /// Extracts the bit range specified by `y` from the lower 64 bits of `x`.
 ///
-/// The [13:8] bits of `y` specify the index of the bit-range to extract. The
-/// [5:0] bits of `y` specify the length of the bit-range to extract. All other
+/// The `[13:8]` bits of `y` specify the index of the bit-range to extract. The
+/// `[5:0]` bits of `y` specify the length of the bit-range to extract. All other
 /// bits are ignored.
 ///
 /// If the length is zero, it is interpreted as `64`. If the length and index

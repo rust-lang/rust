@@ -155,7 +155,7 @@ pub unsafe fn _mm_alignr_epi8(a: __m128i, b: __m128i, n: i32) -> __m128i {
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
-/// 128-bit vectors of [8 x i16].
+/// 128-bit vectors of `[8 x i16]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadd_epi16)
 #[inline]
@@ -167,7 +167,7 @@ pub unsafe fn _mm_hadd_epi16(a: __m128i, b: __m128i) -> __m128i {
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
-/// 128-bit vectors of [8 x i16]. Positive sums greater than 7FFFh are
+/// 128-bit vectors of `[8 x i16]`. Positive sums greater than 7FFFh are
 /// saturated to 7FFFh. Negative sums less than 8000h are saturated to 8000h.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadds_epi16)
@@ -180,7 +180,7 @@ pub unsafe fn _mm_hadds_epi16(a: __m128i, b: __m128i) -> __m128i {
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
-/// 128-bit vectors of [4 x i32].
+/// 128-bit vectors of `[4 x i32]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hadd_epi32)
 #[inline]
@@ -192,7 +192,7 @@ pub unsafe fn _mm_hadd_epi32(a: __m128i, b: __m128i) -> __m128i {
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
-/// packed 128-bit vectors of [8 x i16].
+/// packed 128-bit vectors of `[8 x i16]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hsub_epi16)
 #[inline]
@@ -204,7 +204,7 @@ pub unsafe fn _mm_hsub_epi16(a: __m128i, b: __m128i) -> __m128i {
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
-/// packed 128-bit vectors of [8 x i16]. Positive differences greater than
+/// packed 128-bit vectors of `[8 x i16]`. Positive differences greater than
 /// 7FFFh are saturated to 7FFFh. Negative differences less than 8000h are
 /// saturated to 8000h.
 ///
@@ -218,7 +218,7 @@ pub unsafe fn _mm_hsubs_epi16(a: __m128i, b: __m128i) -> __m128i {
 }
 
 /// Horizontally subtract the adjacent pairs of values contained in 2
-/// packed 128-bit vectors of [4 x i32].
+/// packed 128-bit vectors of `[4 x i32]`.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_hsub_epi32)
 #[inline]
@@ -246,7 +246,7 @@ pub unsafe fn _mm_maddubs_epi16(a: __m128i, b: __m128i) -> __m128i {
 
 /// Multiply packed 16-bit signed integer values, truncate the 32-bit
 /// product to the 18 most significant bits by right-shifting, round the
-/// truncated value by adding 1, and write bits [16:1] to the destination.
+/// truncated value by adding 1, and write bits `[16:1]` to the destination.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mulhrs_epi16)
 #[inline]
@@ -351,7 +351,7 @@ pub unsafe fn _mm_alignr_pi8(a: __m64, b: __m64, n: i32) -> __m64 {
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
-/// 64-bit vectors of [4 x i16].
+/// 64-bit vectors of `[4 x i16]`.
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
 #[cfg_attr(test, assert_instr(phaddw))]
@@ -360,7 +360,7 @@ pub unsafe fn _mm_hadd_pi16(a: __m64, b: __m64) -> __m64 {
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
-/// 64-bit vectors of [2 x i32].
+/// 64-bit vectors of `[2 x i32]`.
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
 #[cfg_attr(test, assert_instr(phaddd))]
@@ -369,7 +369,7 @@ pub unsafe fn _mm_hadd_pi32(a: __m64, b: __m64) -> __m64 {
 }
 
 /// Horizontally add the adjacent pairs of values contained in 2 packed
-/// 64-bit vectors of [4 x i16]. Positive sums greater than 7FFFh are
+/// 64-bit vectors of `[4 x i16]`. Positive sums greater than 7FFFh are
 /// saturated to 7FFFh. Negative sums less than 8000h are saturated to 8000h.
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
@@ -379,7 +379,7 @@ pub unsafe fn _mm_hadds_pi16(a: __m64, b: __m64) -> __m64 {
 }
 
 /// Horizontally subtracts the adjacent pairs of values contained in 2
-/// packed 64-bit vectors of [4 x i16].
+/// packed 64-bit vectors of `[4 x i16]`.
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
 #[cfg_attr(test, assert_instr(phsubw))]
@@ -388,7 +388,7 @@ pub unsafe fn _mm_hsub_pi16(a: __m64, b: __m64) -> __m64 {
 }
 
 /// Horizontally subtracts the adjacent pairs of values contained in 2
-/// packed 64-bit vectors of [2 x i32].
+/// packed 64-bit vectors of `[2 x i32]`.
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
 #[cfg_attr(test, assert_instr(phsubd))]
@@ -397,7 +397,7 @@ pub unsafe fn _mm_hsub_pi32(a: __m64, b: __m64) -> __m64 {
 }
 
 /// Horizontally subtracts the adjacent pairs of values contained in 2
-/// packed 64-bit vectors of [4 x i16]. Positive differences greater than
+/// packed 64-bit vectors of `[4 x i16]`. Positive differences greater than
 /// 7FFFh are saturated to 7FFFh. Negative differences less than 8000h are
 /// saturated to 8000h.
 #[inline]
@@ -421,7 +421,7 @@ pub unsafe fn _mm_maddubs_pi16(a: __m64, b: __m64) -> __m64 {
 
 /// Multiplies packed 16-bit signed integer values, truncates the 32-bit
 /// products to the 18 most significant bits by right-shifting, rounds the
-/// truncated value by adding 1, and writes bits [16:1] to the destination.
+/// truncated value by adding 1, and writes bits `[16:1]` to the destination.
 #[inline]
 #[target_feature(enable = "ssse3,mmx")]
 #[cfg_attr(test, assert_instr(pmulhrsw))]

@@ -28,8 +28,8 @@ pub unsafe fn _bextr_u64(a: u64, start: u32, len: u32) -> u64 {
 /// Extracts bits of `a` specified by `control` into
 /// the least significant bits of the result.
 ///
-/// Bits [7,0] of `control` specify the index to the first bit in the range to
-/// be extracted, and bits [15,8] specify the length of the range.
+/// Bits `[7,0]` of `control` specify the index to the first bit in the range to
+/// be extracted, and bits `[15,8]` specify the length of the range.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_bextr2_u64)
 #[inline]
