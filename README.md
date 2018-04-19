@@ -106,7 +106,7 @@ read data from stdin. Alternatively, you can use `cargo fmt` to format all
 binary and library targets of your crate.
 
 You'll probably want to specify the write mode. Currently, there are modes for
-`diff`, `replace`, `overwrite`, `display`, `coverage`, `checkstyle`, and `plain`.
+`check`, `diff`, `replace`, `overwrite`, `display`, `coverage`, `checkstyle`, and `plain`.
 
 * `overwrite` Is the default and overwrites the original files _without_ creating backups.
 * `replace` Overwrites the original files after creating backups of the files.
@@ -114,6 +114,9 @@ You'll probably want to specify the write mode. Currently, there are modes for
 * `plain` Also writes to stdout, but with no metadata.
 * `diff` Will print a diff between the original files and formatted files to stdout.
          Will also exit with an error code if there are any differences.
+* `check` Checks if the program's formatting matches what rustfmt would do. Silently exits
+          with code 0 if so, emits a diff and exits with code 1 if not. This option is
+          designed to be run in CI-like where a non-zero exit signifies incorrect formatting.
 * `checkstyle` Will output the lines that need to be corrected as a checkstyle XML file,
   that can be used by tools like Jenkins.
 

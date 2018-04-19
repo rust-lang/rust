@@ -120,7 +120,7 @@ create_config! {
     // Control options (changes the operation of rustfmt, rather than the formatting)
     write_mode: WriteMode, WriteMode::Overwrite, false,
         "What Write Mode to use when none is supplied: \
-         Replace, Overwrite, Display, Plain, Diff, Coverage";
+         Replace, Overwrite, Display, Plain, Diff, Coverage, Check";
     color: Color, Color::Auto, false,
         "What Color option to use when none is supplied: Always, Never, Auto";
     required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,

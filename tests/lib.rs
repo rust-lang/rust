@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+extern crate assert_cli;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -861,4 +862,30 @@ fn configuration_snippet_tests() {
     // Display results.
     println!("Ran {} configurations tests.", blocks.len());
     assert_eq!(failures, 0, "{} configurations tests failed", failures);
+}
+
+#[test]
+fn verify_check_works() {
+    assert_cli::Assert::command(&[
+        "cargo",
+        "run",
+        "--bin=rustfmt",
+        "--",
+        "--write-mode=check",
+        "src/bin/main.rs",
+    ]).succeeds()
+        .unwrap();
+}
+
+#[test]
+fn verify_diff_works() {
+    assert_cli::Assert::command(&[
+        "cargo",
+        "run",
+        "--bin=rustfmt",
+        "--",
+        "--write-mode=diff",
+        "src/bin/main.rs",
+    ]).succeeds()
+        .unwrap();
 }

@@ -14,6 +14,7 @@
 #![allow(stable_features)]
 #![feature(match_default_bindings)]
 #![feature(type_ascription)]
+#![feature(unicode_internals)]
 
 #[macro_use]
 extern crate derive_new;

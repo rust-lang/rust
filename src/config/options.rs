@@ -183,6 +183,9 @@ configuration_option_enum! { WriteMode:
     Checkstyle,
     // Output the changed lines (for internal value only)
     Modified,
+    // Checks if a diff can be generated. If so, rustfmt outputs a diff and quits with exit code 1.
+    // This option is designed to be run in CI where a non-zero exit signifies non-standard code formatting.
+    Check,
 }
 
 configuration_option_enum! { Color:
@@ -247,6 +250,12 @@ impl ::std::str::FromStr for WidthHeuristics {
 
     fn from_str(_: &str) -> Result<Self, Self::Err> {
         Err("WidthHeuristics is not parsable")
+    }
+}
+
+impl Default for WriteMode {
+    fn default() -> WriteMode {
+        WriteMode::Overwrite
     }
 }
 

@@ -30,7 +30,7 @@ use rustfmt::{run, FileName, Input, Summary};
 type FmtError = Box<error::Error + Send + Sync>;
 type FmtResult<T> = std::result::Result<T, FmtError>;
 
-const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|checkstyle]";
+const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|checkstyle|check]";
 
 /// Rustfmt operations.
 enum Operation {
@@ -303,6 +303,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let mut out = &mut stdout();
             checkstyle::output_header(&mut out, config.write_mode())?;
             let mut error_summary = Summary::default();
+
             for file in files {
                 if !file.exists() {
                     eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
@@ -350,22 +351,28 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
     }
 }
 
+fn determine_write_mode(opts: &Options) -> WriteMode {
+    let matches = opts.parse(env::args().skip(1)).unwrap();
+    let options = CliOptions::from_matches(&matches).unwrap();
+    match options.write_mode {
+        Some(m) => m,
+        None => WriteMode::default(),
+    }
+}
+
 fn main() {
     env_logger::init();
-
     let opts = make_opts();
+    // Only handles arguments passed in through the CLI.
+    let write_mode = determine_write_mode(&opts);
 
     let exit_code = match execute(&opts) {
         Ok(summary) => {
-            if summary.has_operational_errors() {
+            if summary.has_operational_errors()
+                || summary.has_diff && write_mode == WriteMode::Check
+                || summary.has_parsing_errors() || summary.has_formatting_errors()
+            {
                 1
-            } else if summary.has_parsing_errors() {
-                2
-            } else if summary.has_formatting_errors() {
-                3
-            } else if summary.has_diff {
-                // should only happen in diff mode
-                4
             } else {
                 assert!(summary.has_no_errors());
                 0
