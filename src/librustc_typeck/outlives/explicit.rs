@@ -8,21 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use hir::map as hir_map;
 use rustc::hir;
-use rustc::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::ty::maps::Providers;
-use rustc::ty::{self, CratePredicatesMap, TyCtxt};
-use rustc_data_structures::sync::Lrc;
+use rustc::ty::{self, TyCtxt};
 use util::nodemap::FxHashMap;
+
+use super::utils::*;
 
 pub fn explicit_predicates<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     crate_num: CrateNum,
-) -> FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>> {
-    assert_eq!(crate_num, LOCAL_CRATE);
-    let mut predicates: FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>> = FxHashMap();
+) -> FxHashMap<DefId, RequiredPredicates<'tcx>> {
+    let mut predicates = FxHashMap::default();
 
     // iterate over the entire crate
     tcx.hir.krate().visit_all_item_likes(&mut ExplicitVisitor {
@@ -36,7 +34,7 @@ pub fn explicit_predicates<'tcx>(
 
 pub struct ExplicitVisitor<'cx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
-    explicit_predicates: &'cx mut FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
+    explicit_predicates: &'cx mut FxHashMap<DefId, RequiredPredicates<'tcx>>,
     crate_num: CrateNum,
 }
 
@@ -47,13 +45,25 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for ExplicitVisitor<'cx, 'tcx> {
             index: item.hir_id.owner,
         };
 
-        let local_explicit_predicate = self.tcx.explicit_predicates_of(def_id);
+        let mut required_predicates = RequiredPredicates::default();
+        let local_explicit_predicate = self.tcx.explicit_predicates_of(def_id).predicates;
 
-        let filtered_predicates = local_explicit_predicate
-            .predicates
-            .into_iter()
-            .filter(|pred| match pred {
-                ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => true,
+        for pred in local_explicit_predicate.into_iter() {
+            match pred {
+                ty::Predicate::TypeOutlives(predicate) => {
+                    let ty::OutlivesPredicate(ref ty, ref reg) = predicate.skip_binder();
+                    insert_outlives_predicate(self.tcx, (*ty).into(), reg, &mut required_predicates)
+                }
+
+                ty::Predicate::RegionOutlives(predicate) => {
+                    let ty::OutlivesPredicate(ref reg1, ref reg2) = predicate.skip_binder();
+                    insert_outlives_predicate(
+                        self.tcx,
+                        (*reg1).into(),
+                        reg2,
+                        &mut required_predicates,
+                    )
+                }
 
                 ty::Predicate::Trait(..)
                 | ty::Predicate::Projection(..)
@@ -61,22 +71,14 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for ExplicitVisitor<'cx, 'tcx> {
                 | ty::Predicate::ObjectSafe(..)
                 | ty::Predicate::ClosureKind(..)
                 | ty::Predicate::Subtype(..)
-                | ty::Predicate::ConstEvaluatable(..) => false,
-            })
-            .collect();
-
-        match item.node {
-            hir::ItemStruct(..) | hir::ItemEnum(..) => {
-                self.tcx.adt_def(def_id);
+                | ty::Predicate::ConstEvaluatable(..) => (),
             }
-            _ => {}
         }
 
-        self.explicit_predicates
-            .insert(def_id, Lrc::new(filtered_predicates));
+        self.explicit_predicates.insert(def_id, required_predicates);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {}
+    fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem) {}
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {}
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {}
 }

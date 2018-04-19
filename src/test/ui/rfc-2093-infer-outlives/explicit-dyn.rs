@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test
-// compile-pass
-
+#![feature(dyn_trait)]
+#![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
-// Outlives requirementes are inferred (RFC 2093)
 
-trait MakeRef<'a>: 'a {
-    type Type;
+trait Trait<'x, T> where T: 'x {
 }
-impl<'a, T> MakeRef<'a> for Vec<T>
-where T: 'a,
+
+#[rustc_outlives]
+struct Foo<'a, A> //~ ERROR 19:1: 22:2: rustc_outlives
 {
-    type Type = &'a T;
-}
-// explicit-impl: T: 'a
-struct Foo<'a, T> {
-    foo: <Vec<T> as MakeRef<'a>>::Type,
+    foo: Box<dyn Trait<'a, A>>
 }
 
 fn main() {}

@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Needs an explicit where clause stating outlives condition. (RFC 2093)
+#![feature(dyn_trait)]
+#![feature(rustc_attrs)]
+#![feature(infer_outlives_requirements)]
 
-// Lifetime 'b needs to outlive lifetime 'a
-struct Foo<'a,'b,T> {
-    x: &'a &'b T //~ ERROR reference has a longer lifetime than the data it references [E0491]
+trait Trait<'x, 's, T> where T: 'x,
+      's: {
+}
+
+#[rustc_outlives]
+struct Foo<'a, 'b, A> //~ ERROR 20:1: 23:2: rustc_outlives
+{
+    foo: Box<dyn Trait<'a, 'b, A>>
 }
 
 fn main() {}
-

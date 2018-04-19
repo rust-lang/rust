@@ -795,6 +795,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                 attribute is an experimental \
                                                 feature",
                                                cfg_fn!(needs_panic_runtime))),
+    ("rustc_outlives", Normal, Gated(Stability::Unstable,
+                                     "rustc_attrs",
+                                     "the `#[rustc_outlives]` attribute \
+                                      is just used for rustc unit tests \
+                                      and will never be stable",
+                                     cfg_fn!(rustc_attrs))),
     ("rustc_variance", Normal, Gated(Stability::Unstable,
                                      "rustc_attrs",
                                      "the `#[rustc_variance]` attribute \

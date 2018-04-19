@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
+#![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
-// Outlives requirementes are inferred (RFC 2093)
+#![feature(untagged_unions)]
+#![allow(unions_with_drop_fields)]
 
-// multiple-regions: infer 'b: 'a
-struct MultiFoo<'a, 'b, T> {
-    x: &'a &'b T
+
+#[rustc_outlives]
+union Foo<'a, T> { //~ ERROR 18:1: 20:2: rustc_outlives
+    field1: Bar<'a, T>
+}
+
+// Type U needs to outlive lifetime 'b
+union Bar<'b, U> {
+    field2: &'b U
 }
 
 fn main() {}
-

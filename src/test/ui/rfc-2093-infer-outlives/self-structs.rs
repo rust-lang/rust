@@ -8,16 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Needs an explicit where clause stating outlives condition. (RFC 2093)
+#![feature(rustc_attrs)]
+#![feature(infer_outlives_requirements)]
 
-// Type U needs to outlive lifetime 'b.
-struct Foo<'b, U> {
-    bar: Bar<'b, U> //~ Error the parameter type `U` may not live long enough [E0309]
+#[rustc_outlives]
+struct Foo<'a, 'b, T> { //~ ERROR 15:1: 17:2: rustc_outlives
+    field1: Bar<'a, 'b, T>
 }
 
-struct Bar<'a, T> where T: 'a {
-    x: &'a (),
-    y: T,
-}
+trait Bar<'x, 's, U>
+    where U: 'x,
+    Self:'s
+{}
 
-fn main() { }
+fn main() {}

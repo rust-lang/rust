@@ -8,32 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
+#![feature(rustc_attrs)]
 #![feature(infer_outlives_requirements)]
-#![feature(untagged_unions)]
-#![allow(unions_with_drop_fields)]
 
-// Type T needs to outlive lifetime 'a. This is not reported due to
-// a compilation error in Bar.
-union Foo<'a, T> {
-    field1: Bar<'a, T>
+
+#[rustc_outlives]
+enum Foo<'a, T> { //~ ERROR 16:1: 19:2: rustc_outlives
+
+    One(Bar<'a, T>)
 }
 
-// Type U needs to outlive lifetime 'b
-union Bar<'b, U> {
+struct Bar<'b, U> {
     field2: &'b U
 }
 
-
-// Type K needs to outlive lifetime 'c.
-union Ying<'c, K> {
-    field1: &'c Yang<K>
-}
-
-union Yang<V> {
-    field2: V
-}
-
 fn main() {}
-
