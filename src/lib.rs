@@ -12,7 +12,7 @@ extern crate clippy_lints;
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    if let Ok(lint_store) = reg.sess.lint_store.try_borrow() {
+    reg.sess.lint_store.with_read_lock(|lint_store| {
         for (lint, _, _) in lint_store.get_lint_groups() {
             if lint == "clippy" {
                 reg.sess
@@ -21,7 +21,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                 return;
             }
         }
-    }
+    });
 
     clippy_lints::register_plugins(reg);
 }
