@@ -90,6 +90,7 @@ usage: cargo semver [options] [-- cargo options]
 Options:
     -h, --help          print this message and exit
     -V, --version       print version information and exit
+    -e, --explain       print detailed error explanations
     -d, --debug         print command to debug and exit
     -s, --stable-path PATH
                         use local path as stable/old crate
