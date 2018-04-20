@@ -786,7 +786,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
-        let unbound_input_types = stack.fresh_trait_ref.input_types().any(|ty| ty.is_fresh());
+        let unbound_input_types =
+            stack.fresh_trait_ref.skip_binder().input_types().any(|ty| ty.is_fresh());
         // this check was an imperfect workaround for a bug n the old
         // intercrate mode, it should be removed when that goes away.
         if unbound_input_types &&

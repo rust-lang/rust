@@ -574,16 +574,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
         self.skip_binder().def_id
     }
 
-    pub fn substs(&self) -> &'tcx Substs<'tcx> {
-        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
-        self.skip_binder().substs
-    }
-
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
-        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
-        self.skip_binder().input_types()
-    }
-
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
         // Note that we preserve binding levels
         Binder(ty::TraitPredicate { trait_ref: self.skip_binder().clone() })
@@ -634,11 +624,6 @@ pub type PolyExistentialTraitRef<'tcx> = Binder<ExistentialTraitRef<'tcx>>;
 impl<'tcx> PolyExistentialTraitRef<'tcx> {
     pub fn def_id(&self) -> DefId {
         self.skip_binder().def_id
-    }
-
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
-        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
-        self.skip_binder().input_types()
     }
 }
 

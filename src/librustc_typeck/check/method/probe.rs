@@ -1485,7 +1485,7 @@ impl<'tcx> Candidate<'tcx> {
                     // inference variables or other artifacts. This
                     // means they are safe to put into the
                     // `WhereClausePick`.
-                    assert!(!trait_ref.substs().needs_infer());
+                    assert!(!trait_ref.skip_binder().substs.needs_infer());
 
                     WhereClausePick(trait_ref.clone())
                 }
