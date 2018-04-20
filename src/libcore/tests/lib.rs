@@ -36,6 +36,7 @@
 #![feature(str_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
+#![feature(try_from)]
 #![feature(try_trait)]
 #![feature(exact_chunks)]
 #![cfg_attr(stage0, feature(atomic_nand))]
