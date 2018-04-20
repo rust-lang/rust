@@ -964,7 +964,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     let (msg, note) = if let UnstableFeatures::Disallow =
                             self.tcx.sess.opts.unstable_features {
                         (format!("calls in {}s are limited to \
-                                  struct and enum constructors",
+                                  tuple structs and tuple variants",
                                  self.mode),
                          Some("a limited form of compile-time function \
                                evaluation is available on a nightly \
@@ -972,7 +972,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     } else {
                         (format!("calls in {}s are limited \
                                   to constant functions, \
-                                  struct and enum constructors",
+                                  tuple structs and tuple variants",
                                  self.mode),
                          None)
                     };

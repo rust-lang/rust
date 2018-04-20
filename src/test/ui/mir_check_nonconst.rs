@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn xyz() -> u8 { 42 }
+#![allow(dead_code)]
 
-const NUM: u8 = xyz();
-//~^ ERROR calls in constants are limited to constant functions, tuple structs and tuple variants
-//~| ERROR constant evaluation error
-
-fn main() {
-    match 1 {
-        NUM => unimplemented!(),
-        _ => unimplemented!(),
-    }
+struct Foo { a: u8 }
+fn bar() -> Foo {
+    Foo { a: 5 }
 }
+
+static foo: Foo = bar();
+//~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants
+
+fn main() {}
