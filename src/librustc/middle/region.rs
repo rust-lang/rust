@@ -706,7 +706,7 @@ impl<'tcx> ScopeTree {
             // "Modeling closures" section of the README in
             // infer::region_constraints for more details.
             let a_root_scope = a_ancestors[a_index];
-            let b_root_scope = a_ancestors[a_index];
+            let b_root_scope = b_ancestors[b_index];
             return match (a_root_scope.data(), b_root_scope.data()) {
                 (ScopeData::Destruction(a_root_id),
                  ScopeData::Destruction(b_root_id)) => {
