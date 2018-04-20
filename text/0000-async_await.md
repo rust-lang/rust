@@ -238,7 +238,7 @@ fn foo<'a>(arg1: &'a str, arg2: &str) -> impl Future<Output = usize> + 'a {
     // do some initialization using arg2
 
     // closure which is evaluated immediately
-    async move {
+    move async {
          // asynchronous portion of the function
     }
 }
