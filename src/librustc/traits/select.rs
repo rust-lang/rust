@@ -1164,11 +1164,28 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
         }).collect();
 
+        debug!("winnowed to {} candidates for {:?}: {:?}",
+               candidates.len(),
+               stack,
+               candidates);
+
         // If there are STILL multiple candidate, we can further
         // reduce the list by dropping duplicates -- including
         // resolving specializations.
         if candidates.len() > 1 {
             let mut i = 0;
+            //candidates.retain(|c| {
+            //    match c.candidate {
+            //        ParamCandidate(poly_trait_ref) => {
+            //            if poly_trait_ref == stack.obligation.predicate.map_bound(|x| x.trait_ref) {
+            //                debug!("Dropping candidate (== obligation): {:?}", c);
+            //                return false;
+            //            }
+            //        }
+            //        _ => {}
+            //    }
+            //    true
+            //});
             while i < candidates.len() {
                 let is_dup =
                     (0..candidates.len())
