@@ -32,6 +32,39 @@ type FmtResult<T> = std::result::Result<T, FmtError>;
 
 const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|checkstyle|check]";
 
+fn main() {
+    env_logger::init();
+    let opts = make_opts();
+    // Only handles arguments passed in through the CLI.
+    let write_mode = determine_write_mode(&opts);
+
+    let exit_code = match execute(&opts) {
+        Ok(summary) => {
+            if summary.has_operational_errors()
+                || summary.has_diff && write_mode == WriteMode::Check
+                || summary.has_parsing_errors() || summary.has_formatting_errors()
+            {
+                1
+            } else {
+                assert!(summary.has_no_errors());
+                0
+            }
+        }
+        Err(e) => {
+            eprintln!("{}", e.to_string());
+            1
+        }
+    };
+    // Make sure standard output is flushed before we exit.
+    std::io::stdout().flush().unwrap();
+
+    // Exit with given exit code.
+    //
+    // NOTE: This immediately terminates the process without doing any cleanup,
+    // so make sure to finish all necessary cleanup before this is called.
+    std::process::exit(exit_code);
+}
+
 /// Rustfmt operations.
 enum Operation {
     /// Format files and their child modules.
@@ -277,78 +310,86 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             minimal_config_path,
         } => {
             let options = CliOptions::from_matches(&matches)?;
-
-            for f in options.file_lines.files() {
-                match *f {
-                    FileName::Real(ref f) if files.contains(f) => {}
-                    FileName::Real(_) => {
-                        eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
-                    }
-                    _ => eprintln!("Warning: Not a file '{}'", f),
-                }
-            }
-
-            let mut config = Config::default();
-            // Load the config path file if provided
-            if let Some(config_file) = config_path.as_ref() {
-                config = Config::from_toml_path(config_file.as_ref())?;
-            };
-
-            if options.verbose {
-                if let Some(path) = config_path.as_ref() {
-                    println!("Using rustfmt config file {}", path.display());
-                }
-            }
-
-            let mut out = &mut stdout();
-            checkstyle::output_header(&mut out, config.write_mode())?;
-            let mut error_summary = Summary::default();
-
-            for file in files {
-                if !file.exists() {
-                    eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
-                    error_summary.add_operational_error();
-                } else if file.is_dir() {
-                    eprintln!("Error: `{}` is a directory", file.to_str().unwrap());
-                    error_summary.add_operational_error();
-                } else {
-                    // Check the file directory if the config-path could not be read or not provided
-                    if config_path.is_none() {
-                        let (config_tmp, path_tmp) =
-                            Config::from_resolved_toml_path(file.parent().unwrap())?;
-                        if options.verbose {
-                            if let Some(path) = path_tmp.as_ref() {
-                                println!(
-                                    "Using rustfmt config file {} for {}",
-                                    path.display(),
-                                    file.display()
-                                );
-                            }
-                        }
-                        config = config_tmp;
-                    }
-
-                    if !config.version_meets_requirement(&mut error_summary) {
-                        break;
-                    }
-
-                    options.clone().apply_to(&mut config);
-                    error_summary.add(run(Input::File(file), &config));
-                }
-            }
-            checkstyle::output_footer(&mut out, config.write_mode())?;
-
-            // If we were given a path via dump-minimal-config, output any options
-            // that were used during formatting as TOML.
-            if let Some(path) = minimal_config_path {
-                let mut file = File::create(path)?;
-                let toml = config.used_options().to_toml()?;
-                file.write_all(toml.as_bytes())?;
-            }
-
-            Ok(error_summary)
+            format(files, config_path, minimal_config_path, options)
         }
     }
+}
+
+fn format(
+    files: Vec<PathBuf>,
+    config_path: Option<PathBuf>,
+    minimal_config_path: Option<String>,
+    options: CliOptions,
+) -> FmtResult<Summary> {
+    for f in options.file_lines.files() {
+        match *f {
+            FileName::Real(ref f) if files.contains(f) => {}
+            FileName::Real(_) => {
+                eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
+            }
+            _ => eprintln!("Warning: Not a file '{}'", f),
+        }
+    }
+
+    let mut config = Config::default();
+    // Load the config path file if provided
+    if let Some(config_file) = config_path.as_ref() {
+        config = Config::from_toml_path(config_file.as_ref())?;
+    };
+
+    if options.verbose {
+        if let Some(path) = config_path.as_ref() {
+            println!("Using rustfmt config file {}", path.display());
+        }
+    }
+
+    let mut out = &mut stdout();
+    checkstyle::output_header(&mut out, config.write_mode())?;
+    let mut error_summary = Summary::default();
+
+    for file in files {
+        if !file.exists() {
+            eprintln!("Error: file `{}` does not exist", file.to_str().unwrap());
+            error_summary.add_operational_error();
+        } else if file.is_dir() {
+            eprintln!("Error: `{}` is a directory", file.to_str().unwrap());
+            error_summary.add_operational_error();
+        } else {
+            // Check the file directory if the config-path could not be read or not provided
+            if config_path.is_none() {
+                let (config_tmp, path_tmp) =
+                    Config::from_resolved_toml_path(file.parent().unwrap())?;
+                if options.verbose {
+                    if let Some(path) = path_tmp.as_ref() {
+                        println!(
+                            "Using rustfmt config file {} for {}",
+                            path.display(),
+                            file.display()
+                        );
+                    }
+                }
+                config = config_tmp;
+            }
+
+            if !config.version_meets_requirement(&mut error_summary) {
+                break;
+            }
+
+            options.clone().apply_to(&mut config);
+            error_summary.add(run(Input::File(file), &config));
+        }
+    }
+    checkstyle::output_footer(&mut out, config.write_mode())?;
+
+    // If we were given a path via dump-minimal-config, output any options
+    // that were used during formatting as TOML.
+    if let Some(path) = minimal_config_path {
+        let mut file = File::create(path)?;
+        let toml = config.used_options().to_toml()?;
+        file.write_all(toml.as_bytes())?;
+    }
+
+    Ok(error_summary)
 }
 
 fn determine_write_mode(opts: &Options) -> WriteMode {
@@ -358,39 +399,6 @@ fn determine_write_mode(opts: &Options) -> WriteMode {
         Some(m) => m,
         None => WriteMode::default(),
     }
-}
-
-fn main() {
-    env_logger::init();
-    let opts = make_opts();
-    // Only handles arguments passed in through the CLI.
-    let write_mode = determine_write_mode(&opts);
-
-    let exit_code = match execute(&opts) {
-        Ok(summary) => {
-            if summary.has_operational_errors()
-                || summary.has_diff && write_mode == WriteMode::Check
-                || summary.has_parsing_errors() || summary.has_formatting_errors()
-            {
-                1
-            } else {
-                assert!(summary.has_no_errors());
-                0
-            }
-        }
-        Err(e) => {
-            eprintln!("{}", e.to_string());
-            1
-        }
-    };
-    // Make sure standard output is flushed before we exit.
-    std::io::stdout().flush().unwrap();
-
-    // Exit with given exit code.
-    //
-    // NOTE: This immediately terminates the process without doing any cleanup,
-    // so make sure to finish all necessary cleanup before this is called.
-    std::process::exit(exit_code);
 }
 
 fn print_usage_to_stdout(opts: &Options, reason: &str) {
