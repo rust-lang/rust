@@ -271,8 +271,16 @@ pub fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
         'u' => {
             assert_eq!(lit.as_bytes()[2], b'{');
             let idx = lit.find('}').unwrap();
-            let s = &lit[3..idx].chars().filter(|&c| c != '_').collect::<String>();
-            let v = u32::from_str_radix(&s, 16).unwrap();
+
+            // All digits and '_' are ascii, so treat each byte as a char.
+            let mut v: u32 = 0;
+            for c in lit[3..idx].bytes() {
+                let c = char::from(c);
+                if c != '_' {
+                    let x = c.to_digit(16).unwrap();
+                    v = v.checked_mul(16).unwrap().checked_add(x).unwrap();
+                }
+            }
             let c = char::from_u32(v).unwrap_or_else(|| {
                 if let Some((span, diag)) = diag {
                     let mut diag = diag.struct_span_err(span, "invalid unicode character escape");
