@@ -136,6 +136,8 @@ file. If you still have a `config.mk` file in your directory - from
 ### Building
 [building]: #building
 
+A default configuration shall use around 3.5 GB of disk space, whereas building a debug configuration may require more than 30 GB.
+
 Dependencies
 - [build dependencies](README.md#building-from-source)
 - `gdb` 6.2.0 minimum, 7.1 or later recommended for test builds

@@ -4,7 +4,7 @@ error[E0016]: blocks in constant functions are limited to items and tail express
 LL |     let mut sum = 0;
    |                   ^
 
-error[E0015]: calls in constant functions are limited to constant functions, struct and enum constructors
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
   --> $DIR/const-fn-error.rs:18:14
    |
 LL |     for i in 0..x {
