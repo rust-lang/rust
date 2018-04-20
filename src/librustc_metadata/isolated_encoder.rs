@@ -55,10 +55,4 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     {
         self.ecx.lazy_seq_ref(slice.iter())
     }
-
-    pub fn lazy_seq_ref_from_slice<T>(&mut self, slice: &[&T]) -> LazySeq<T>
-        where T: Encodable
-    {
-        self.ecx.lazy_seq_ref(slice.iter().map(|x| *x))
-    }
 }

@@ -44,7 +44,6 @@ extern crate rustc_data_structures;
 
 mod diagnostics;
 
-mod astencode;
 mod index_builder;
 mod index;
 mod encoder;

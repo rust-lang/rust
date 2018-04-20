@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use astencode;
 use index;
 
 use rustc::hir;
@@ -266,7 +265,6 @@ pub struct Entry<'tcx> {
     pub generics: Option<Lazy<ty::Generics>>,
     pub predicates: Option<Lazy<ty::GenericPredicates<'tcx>>>,
 
-    pub ast: Option<Lazy<astencode::Ast<'tcx>>>,
     pub mir: Option<Lazy<mir::Mir<'tcx>>>,
 }
 
@@ -283,13 +281,12 @@ impl_stable_hash_for!(struct Entry<'tcx> {
     variances,
     generics,
     predicates,
-    ast,
     mir
 });
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum EntryKind<'tcx> {
-    Const(u8),
+    Const(ConstQualif, Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -313,7 +310,7 @@ pub enum EntryKind<'tcx> {
     Impl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData<'tcx>>),
     AssociatedType(AssociatedContainer),
-    AssociatedConst(AssociatedContainer, u8),
+    AssociatedConst(AssociatedContainer, ConstQualif, Lazy<RenderedConst>),
 }
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
@@ -333,8 +330,9 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::Type => {
                 // Nothing else to hash here.
             }
-            EntryKind::Const(qualif) => {
+            EntryKind::Const(qualif, ref const_data) => {
                 qualif.hash_stable(hcx, hasher);
+                const_data.hash_stable(hcx, hasher);
             }
             EntryKind::Enum(ref repr_options) => {
                 repr_options.hash_stable(hcx, hasher);
@@ -375,11 +373,34 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::AssociatedType(associated_container) => {
                 associated_container.hash_stable(hcx, hasher);
             }
-            EntryKind::AssociatedConst(associated_container, qualif) => {
+            EntryKind::AssociatedConst(associated_container, qualif, _) => {
                 associated_container.hash_stable(hcx, hasher);
                 qualif.hash_stable(hcx, hasher);
             }
         }
+    }
+}
+
+/// Additional data for EntryKind::Const and EntryKind::AssociatedConst
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
+pub struct ConstQualif {
+    pub mir: u8,
+    pub ast_promotable: bool,
+}
+
+impl_stable_hash_for!(struct ConstQualif { mir, ast_promotable });
+
+/// Contains a constant which has been rendered to a String.
+/// Used by rustdoc.
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct RenderedConst(pub String);
+
+impl<'a> HashStable<StableHashingContext<'a>> for RenderedConst {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        self.0.hash_stable(hcx, hasher);
     }
 }
 

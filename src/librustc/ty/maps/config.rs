@@ -283,12 +283,6 @@ impl<'tcx> QueryDescription<'tcx> for queries::trait_of_item<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::item_body_nested_bodies<'tcx> {
-    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
-        format!("nested item bodies of `{}`", tcx.item_path_str(def_id))
-    }
-}
-
 impl<'tcx> QueryDescription<'tcx> for queries::const_is_rvalue_promotable_to_static<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("const checking if rvalue is promotable to static `{}`",

@@ -30,13 +30,10 @@ use syntax_pos::Span;
 use hir::*;
 use hir::print::Nested;
 use hir::svh::Svh;
-use util::nodemap::{DefIdMap, FxHashMap};
+use util::nodemap::FxHashMap;
 
-use arena::SyncTypedArena;
 use std::io;
 use ty::TyCtxt;
-
-use rustc_data_structures::sync::Lock;
 
 pub mod blocks;
 mod collector;
@@ -219,7 +216,6 @@ impl<'hir> MapEntry<'hir> {
 pub struct Forest {
     krate: Crate,
     pub dep_graph: DepGraph,
-    inlined_bodies: SyncTypedArena<Body>
 }
 
 impl Forest {
@@ -227,7 +223,6 @@ impl Forest {
         Forest {
             krate,
             dep_graph: dep_graph.clone(),
-            inlined_bodies: SyncTypedArena::new()
         }
     }
 
@@ -263,9 +258,6 @@ pub struct Map<'hir> {
     map: Vec<MapEntry<'hir>>,
 
     definitions: &'hir Definitions,
-
-    /// Bodies inlined from other crates are cached here.
-    inlined_bodies: Lock<DefIdMap<&'hir Body>>,
 
     /// The reverse mapping of `node_to_hir_id`.
     hir_to_node_id: FxHashMap<HirId, NodeId>,
@@ -923,21 +915,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn get_inlined_body_untracked(&self, def_id: DefId) -> Option<&'hir Body> {
-        self.inlined_bodies.borrow().get(&def_id).cloned()
-    }
-
-    pub fn intern_inlined_body(&self, def_id: DefId, body: Body) -> &'hir Body {
-        let mut inlined_bodies = self.inlined_bodies.borrow_mut();
-        if let Some(&b) = inlined_bodies.get(&def_id) {
-            debug_assert_eq!(&body, b);
-            return b;
-        }
-        let body = self.forest.inlined_bodies.alloc(body);
-        inlined_bodies.insert(def_id, body);
-        body
-    }
-
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
@@ -1195,7 +1172,6 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         map,
         hir_to_node_id,
         definitions,
-        inlined_bodies: Lock::new(DefIdMap()),
     };
 
     hir_id_validator::check_crate(&map);

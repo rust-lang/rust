@@ -22,19 +22,16 @@
 //! are *mostly* used as a part of that interface, but these should
 //! probably get a better home if someone can find one.
 
-use hir;
 use hir::def;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DefPathTable};
 use hir::svh::Svh;
-use ich;
 use ty::{self, TyCtxt};
 use session::{Session, CrateDisambiguator};
 use session::search_paths::PathKind;
 
 use std::any::Any;
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
@@ -207,26 +204,6 @@ pub trait MetadataLoader {
                           target: &Target,
                           filename: &Path)
                           -> Result<MetadataRef, String>;
-}
-
-#[derive(Clone)]
-pub struct ExternConstBody<'tcx> {
-    pub body: &'tcx hir::Body,
-
-    // It would require a lot of infrastructure to enable stable-hashing Bodies
-    // from other crates, so we hash on export and just store the fingerprint
-    // with them.
-    pub fingerprint: ich::Fingerprint,
-}
-
-#[derive(Clone)]
-pub struct ExternBodyNestedBodies {
-    pub nested_bodies: Lrc<BTreeMap<hir::BodyId, hir::Body>>,
-
-    // It would require a lot of infrastructure to enable stable-hashing Bodies
-    // from other crates, so we hash on export and just store the fingerprint
-    // with them.
-    pub fingerprint: ich::Fingerprint,
 }
 
 /// A store of Rust crates, through with their metadata

@@ -10,10 +10,7 @@
 
 //! Support for inlining external documentation into the current AST.
 
-use std::collections::BTreeMap;
-use std::io;
 use std::iter::once;
-use rustc_data_structures::sync::Lrc;
 
 use syntax::ast;
 use rustc::hir;
@@ -408,27 +405,8 @@ fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
     }
 }
 
-struct InlinedConst {
-    nested_bodies: Lrc<BTreeMap<hir::BodyId, hir::Body>>
-}
-
-impl hir::print::PpAnn for InlinedConst {
-    fn nested(&self, state: &mut hir::print::State, nested: hir::print::Nested)
-              -> io::Result<()> {
-        if let hir::print::Nested::Body(body) = nested {
-            state.print_expr(&self.nested_bodies[&body].value)
-        } else {
-            Ok(())
-        }
-    }
-}
-
 pub fn print_inlined_const(cx: &DocContext, did: DefId) -> String {
-    let body = cx.tcx.extern_const_body(did).body;
-    let inlined = InlinedConst {
-        nested_bodies: cx.tcx.item_body_nested_bodies(did).nested_bodies
-    };
-    hir::print::to_string(&inlined, |s| s.print_expr(&body.value))
+    cx.tcx.rendered_const(did)
 }
 
 fn build_const(cx: &DocContext, did: DefId) -> clean::Constant {
