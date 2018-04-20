@@ -1233,8 +1233,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "for every macro invocation, print its name and arguments"),
     debug_macros: bool = (false, parse_bool, [TRACKED],
           "emit line numbers debug info inside macros"),
-    enable_nonzeroing_move_hints: bool = (false, parse_bool, [TRACKED],
-          "force nonzeroing move optimization on"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
           "don't clear the hygiene data after analysis"),
     keep_ast: bool = (false, parse_bool, [UNTRACKED],
@@ -3151,10 +3149,6 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.force_overflow_checks = Some(true);
-        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-        opts = reference.clone();
-        opts.debugging_opts.enable_nonzeroing_move_hints = true;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
