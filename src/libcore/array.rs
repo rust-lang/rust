@@ -59,7 +59,7 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
 }
 
 /// The error type returned when a conversion from a slice to an array fails.
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromSliceError(());
 
@@ -148,7 +148,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable(feature = "try_from", since = "1.26.0")]
+            #[unstable(feature = "try_from", issue = "33417")]
             impl<'a, T> TryFrom<&'a [T]> for &'a [T; $N] {
                 type Error = TryFromSliceError;
 
@@ -162,7 +162,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[stable(feature = "try_from", since = "1.26.0")]
+            #[unstable(feature = "try_from", issue = "33417")]
             impl<'a, T> TryFrom<&'a mut [T]> for &'a mut [T; $N] {
                 type Error = TryFromSliceError;
 

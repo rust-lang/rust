@@ -43,6 +43,7 @@
 #![feature(step_trait)]
 #![feature(test)]
 #![feature(trusted_len)]
+#![feature(try_from)]
 #![feature(try_trait)]
 #![feature(exact_chunks)]
 #![feature(atomic_nand)]
