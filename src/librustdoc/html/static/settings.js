@@ -19,13 +19,6 @@
         return getCurrentValue('rustdoc-' + settingName);
     }
 
-    function replaceLogoHref() {
-        var elem = document.getElementsByClassName("sidebar-menu");
-        if (elem && elem.length > 0) {
-            elem[0].nextElementSibling.setAttribute('href', 'javascript:void');
-        }
-    }
-
     function setEvents() {
         var elems = document.getElementsByClassName("slider");
         if (!elems || elems.length === 0) {
@@ -44,7 +37,5 @@
         }
     }
 
-    // To remove possibility to come back to "something" by clicking on the logo.
-    replaceLogoHref();
     setEvents();
 })();

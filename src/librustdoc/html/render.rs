@@ -1643,23 +1643,25 @@ impl Context {
                                 &self.shared.themes),
                  &final_file);
 
-        // If the file already exists, no need to generate it again...
-        if !settings_file.is_file() {
-            let settings = Settings::new("./", &self.shared.resource_suffix);
-            page.title = "Rustdoc settings";
-            page.description = "Settings of Rustdoc";
-            page.root_path = "./";
+        // Generating settings page.
+        let settings = Settings::new("./", &self.shared.resource_suffix);
+        page.title = "Rustdoc settings";
+        page.description = "Settings of Rustdoc";
+        page.root_path = "./";
 
-            let mut w = BufWriter::new(try_err!(File::create(&settings_file), &settings_file));
-            let mut themes = self.shared.themes.clone();
-            let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'>".to_owned();
-            themes.push(PathBuf::from("settings.css"));
-            try_err!(layout::render(&mut w, &self.shared.layout,
-                                    &page, &sidebar, &settings,
-                                    self.shared.css_file_extension.is_some(),
-                                    &themes),
-                     &settings_file);
-        }
+        let mut w = BufWriter::new(try_err!(File::create(&settings_file), &settings_file));
+        let mut themes = self.shared.themes.clone();
+        let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
+        themes.push(PathBuf::from("settings.css"));
+        let mut layout = self.shared.layout.clone();
+        layout.krate = String::new();
+        layout.logo = String::new();
+        layout.favicon = String::new();
+        try_err!(layout::render(&mut w, &layout,
+                                &page, &sidebar, &settings,
+                                self.shared.css_file_extension.is_some(),
+                                &themes),
+                 &settings_file);
 
         Ok(())
     }
