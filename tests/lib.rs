@@ -337,7 +337,7 @@ fn print_mismatches_default_message(result: HashMap<PathBuf, Vec<Mismatch>>) {
     for (file_name, diff) in result {
         let mismatch_msg_formatter =
             |line_num| format!("\nMismatch at {}:{}:", file_name.display(), line_num);
-        print_diff(diff, &mismatch_msg_formatter, Color::Auto);
+        print_diff(diff, &mismatch_msg_formatter, &Default::default());
     }
 
     if let Some(mut t) = term::stdout() {
@@ -350,7 +350,7 @@ fn print_mismatches<T: Fn(u32) -> String>(
     mismatch_msg_formatter: T,
 ) {
     for (_file_name, diff) in result {
-        print_diff(diff, &mismatch_msg_formatter, Color::Auto);
+        print_diff(diff, &mismatch_msg_formatter, &Default::default());
     }
 
     if let Some(mut t) = term::stdout() {

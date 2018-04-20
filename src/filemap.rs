@@ -159,7 +159,7 @@ where
                 print_diff(
                     mismatch,
                     |line_num| format!("Diff in {} at line {}:", filename.display(), line_num),
-                    config.color(),
+                    config,
                 );
                 return Ok(has_diff);
             }
@@ -186,7 +186,7 @@ where
                 print_diff(
                     mismatch,
                     |line_num| format!("Diff in {} at line {}:", filename.display(), line_num),
-                    config.color(),
+                    config,
                 );
                 return Ok(has_diff);
             }

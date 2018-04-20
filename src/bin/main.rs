@@ -93,6 +93,7 @@ enum Operation {
 struct CliOptions {
     skip_children: Option<bool>,
     verbose: bool,
+    verbose_diff: bool,
     write_mode: Option<WriteMode>,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
@@ -104,6 +105,8 @@ impl CliOptions {
     fn from_matches(matches: &Matches) -> FmtResult<CliOptions> {
         let mut options = CliOptions::default();
         options.verbose = matches.opt_present("verbose");
+        options.verbose_diff = matches.opt_present("verbose-diff");
+
         let unstable_features = matches.opt_present("unstable-features");
         let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
             .map(|c| c == "nightly")
@@ -150,6 +153,7 @@ impl CliOptions {
 
     fn apply_to(self, config: &mut Config) {
         config.set().verbose(self.verbose);
+        config.set().verbose_diff(self.verbose_diff);
         config.set().file_lines(self.file_lines);
         config.set().unstable_features(self.unstable_features);
         if let Some(skip_children) = self.skip_children {
@@ -226,6 +230,11 @@ fn make_opts() -> Options {
         "file-lines",
         "Format specified line ranges. See README for more detail on the JSON format.",
         "JSON",
+    );
+    opts.optflag(
+        "",
+        "verbose-diff",
+        "Emit a more verbose diff, indicating the end of lines.",
     );
     opts.optflag("h", "help", "Show this message");
     opts.optflag("", "skip-children", "Don't reformat child modules");

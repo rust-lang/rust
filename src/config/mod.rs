@@ -143,6 +143,7 @@ create_config! {
 
     // Not user-facing
     verbose: bool, false, false, "Use verbose output";
+    verbose_diff: bool, false, false, "Emit verbose diffs";
     file_lines: FileLines, FileLines::all(), false,
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
          via the --file-lines option";

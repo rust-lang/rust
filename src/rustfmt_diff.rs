@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::Color;
+use config::{Color, Config};
 use diff;
 use std::collections::VecDeque;
 use std::io;
@@ -149,10 +149,13 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F, color: Color)
+pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F, config: &Config)
 where
     F: Fn(u32) -> String,
 {
+    let color = config.color();
+    let line_terminator = if config.verbose_diff() { "⏎" } else { "" };
+
     let mut writer = OutputWriter::new(color);
 
     for mismatch in diff {
@@ -161,13 +164,17 @@ where
 
         for line in mismatch.lines {
             match line {
-                DiffLine::Context(ref str) => writer.writeln(&format!(" {}⏎", str), None),
-                DiffLine::Expected(ref str) => {
-                    writer.writeln(&format!("+{}⏎", str), Some(term::color::GREEN))
+                DiffLine::Context(ref str) => {
+                    writer.writeln(&format!(" {}{}", str, line_terminator), None)
                 }
-                DiffLine::Resulting(ref str) => {
-                    writer.writeln(&format!("-{}⏎", str), Some(term::color::RED))
-                }
+                DiffLine::Expected(ref str) => writer.writeln(
+                    &format!("+{}{}", str, line_terminator),
+                    Some(term::color::GREEN),
+                ),
+                DiffLine::Resulting(ref str) => writer.writeln(
+                    &format!("-{}{}", str, line_terminator),
+                    Some(term::color::RED),
+                ),
             }
         }
     }
