@@ -1356,6 +1356,10 @@ fn execute_work_item(cgcx: &CodegenContext,
             // settings.
             let needs_lto = needs_lto && mtrans.kind != ModuleKind::Metadata;
 
+            // Don't run LTO passes when cross-lang LTO is enabled. The linker
+            // will do that for us in this case.
+            let needs_lto = needs_lto && !cgcx.opts.debugging_opts.cross_lang_lto;
+
             if needs_lto {
                 Ok(WorkItemResult::NeedsLTO(mtrans))
             } else {
