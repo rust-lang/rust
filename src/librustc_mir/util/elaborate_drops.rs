@@ -879,56 +879,19 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let tcx = self.tcx();
         let unit_temp = Place::Local(self.new_temp(tcx.mk_nil()));
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
-        let free_sig = tcx.fn_sig(free_func).skip_binder().clone();
-        let free_inputs = free_sig.inputs();
-        // If the box_free function takes a *mut T, transform the Box into
-        // such a pointer before calling box_free. Otherwise, pass it all
-        // the fields in the Box as individual arguments.
-        let (stmts, args) = if free_inputs.len() == 1 && free_inputs[0].is_mutable_pointer() {
-            let ty = substs.type_at(0);
-            let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
-                ty: ty,
-                mutbl: hir::Mutability::MutMutable
-            });
-            let ptr_ty = tcx.mk_mut_ptr(ty);
-            let ref_tmp = Place::Local(self.new_temp(ref_ty));
-            let ptr_tmp = Place::Local(self.new_temp(ptr_ty));
-            let stmts = vec![
-                self.assign(&ref_tmp, Rvalue::Ref(
-                    tcx.types.re_erased,
-                    BorrowKind::Mut { allow_two_phase_borrow: false },
-                    self.place.clone().deref()
-                )),
-                self.assign(&ptr_tmp, Rvalue::Cast(
-                    CastKind::Misc,
-                    Operand::Move(ref_tmp),
-                    ptr_ty,
-                )),
-            ];
-            (stmts, vec![Operand::Move(ptr_tmp)])
-        } else {
-            let args = adt.variants[0].fields.iter().enumerate().map(|(i, f)| {
-                let field = Field::new(i);
-                let field_ty = f.ty(self.tcx(), substs);
-                Operand::Move(self.place.clone().field(field, field_ty))
-            }).collect();
-            (vec![], args)
-        };
+        let args = adt.variants[0].fields.iter().enumerate().map(|(i, f)| {
+            let field = Field::new(i);
+            let field_ty = f.ty(self.tcx(), substs);
+            Operand::Move(self.place.clone().field(field, field_ty))
+        }).collect();
 
-        let free_block = BasicBlockData {
-            statements: stmts,
-            terminator: Some(Terminator {
-                kind: TerminatorKind::Call {
-                    func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
-                    args: args,
-                    destination: Some((unit_temp, target)),
-                    cleanup: None
-                }, // FIXME(#43234)
-                source_info: self.source_info,
-            }),
-            is_cleanup: unwind.is_cleanup()
-        };
-        let free_block = self.elaborator.patch().new_block(free_block);
+        let call = TerminatorKind::Call {
+            func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
+            args: args,
+            destination: Some((unit_temp, target)),
+            cleanup: None
+        }; // FIXME(#43234)
+        let free_block = self.new_block(unwind, call);
 
         let block_start = Location { block: free_block, statement_index: 0 };
         self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
