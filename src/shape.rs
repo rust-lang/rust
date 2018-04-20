@@ -197,14 +197,6 @@ impl Shape {
         }
     }
 
-    pub fn offset(width: usize, indent: Indent, offset: usize) -> Shape {
-        Shape {
-            width,
-            indent,
-            offset,
-        }
-    }
-
     pub fn visual_indent(&self, extra_width: usize) -> Shape {
         let alignment = self.offset + extra_width;
         Shape {

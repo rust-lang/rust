@@ -255,15 +255,6 @@ pub fn count_newlines(input: &str) -> usize {
     input.as_bytes().iter().filter(|&&c| c == b'\n').count()
 }
 
-macro_rules! msg {
-    ($($arg:tt)*) => (
-        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
-            Ok(_) => {},
-            Err(x) => panic!("Unable to write to stderr: {}", x),
-        }
-    )
-}
-
 // For format_missing and last_pos, need to use the source callsite (if applicable).
 // Required as generated code spans aren't guaranteed to follow on from the last span.
 macro_rules! source {

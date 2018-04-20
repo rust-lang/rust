@@ -14,23 +14,16 @@ extern crate env_logger;
 extern crate getopts;
 extern crate rustfmt_nightly as rustfmt;
 
+use std::env;
 use std::fs::File;
 use std::io::{self, stdout, Read, Write};
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use std::{env, error};
+use std::path::PathBuf;
 
 use getopts::{Matches, Options};
 
-use rustfmt::checkstyle;
-use rustfmt::config::file_lines::FileLines;
-use rustfmt::config::{get_toml_path, Color, Config, WriteMode};
-use rustfmt::{run, FileName, Input, Summary};
-
-type FmtError = Box<error::Error + Send + Sync>;
-type FmtResult<T> = std::result::Result<T, FmtError>;
-
-const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|checkstyle|check]";
+use rustfmt::{emit_post_matter, emit_pre_matter, load_config, CliOptions, Config, FmtResult,
+              WriteMode, WRITE_MODE_LIST};
+use rustfmt::{format_and_emit_report, FileName, Input, Summary};
 
 fn main() {
     env_logger::init();
@@ -66,7 +59,6 @@ enum Operation {
     /// Format files and their child modules.
     Format {
         files: Vec<PathBuf>,
-        config_path: Option<PathBuf>,
         minimal_config_path: Option<String>,
     },
     /// Print the help message.
@@ -82,103 +74,7 @@ enum Operation {
     /// No file specified, read from stdin
     Stdin {
         input: String,
-        config_path: Option<PathBuf>,
     },
-}
-
-/// Parsed command line options.
-#[derive(Clone, Debug, Default)]
-struct CliOptions {
-    skip_children: Option<bool>,
-    verbose: bool,
-    verbose_diff: bool,
-    write_mode: Option<WriteMode>,
-    color: Option<Color>,
-    file_lines: FileLines, // Default is all lines in all files.
-    unstable_features: bool,
-    error_on_unformatted: Option<bool>,
-}
-
-impl CliOptions {
-    fn from_matches(matches: &Matches) -> FmtResult<CliOptions> {
-        let mut options = CliOptions::default();
-        options.verbose = matches.opt_present("verbose");
-        options.verbose_diff = matches.opt_present("verbose-diff");
-
-        let unstable_features = matches.opt_present("unstable-features");
-        let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
-            .map(|c| c == "nightly")
-            .unwrap_or(false);
-        if unstable_features && !rust_nightly {
-            return Err(FmtError::from(
-                "Unstable features are only available on Nightly channel",
-            ));
-        } else {
-            options.unstable_features = unstable_features;
-        }
-
-        if let Some(ref write_mode) = matches.opt_str("write-mode") {
-            if let Ok(write_mode) = WriteMode::from_str(write_mode) {
-                options.write_mode = Some(write_mode);
-            } else {
-                return Err(FmtError::from(format!(
-                    "Invalid write-mode: {}, expected one of {}",
-                    write_mode, WRITE_MODE_LIST
-                )));
-            }
-        }
-
-        if let Some(ref color) = matches.opt_str("color") {
-            match Color::from_str(color) {
-                Ok(color) => options.color = Some(color),
-                _ => return Err(FmtError::from(format!("Invalid color: {}", color))),
-            }
-        }
-
-        if let Some(ref file_lines) = matches.opt_str("file-lines") {
-            options.file_lines = file_lines.parse()?;
-        }
-
-        if matches.opt_present("skip-children") {
-            options.skip_children = Some(true);
-        }
-        if matches.opt_present("error-on-unformatted") {
-            options.error_on_unformatted = Some(true);
-        }
-
-        Ok(options)
-    }
-
-    fn apply_to(self, config: &mut Config) {
-        config.set().verbose(self.verbose);
-        config.set().verbose_diff(self.verbose_diff);
-        config.set().file_lines(self.file_lines);
-        config.set().unstable_features(self.unstable_features);
-        if let Some(skip_children) = self.skip_children {
-            config.set().skip_children(skip_children);
-        }
-        if let Some(error_on_unformatted) = self.error_on_unformatted {
-            config.set().error_on_unformatted(error_on_unformatted);
-        }
-        if let Some(write_mode) = self.write_mode {
-            config.set().write_mode(write_mode);
-        }
-        if let Some(color) = self.color {
-            config.set().color(color);
-        }
-    }
-}
-
-/// read the given config file path recursively if present else read the project file path
-fn match_cli_path_or_file(
-    config_path: Option<PathBuf>,
-    input_file: &Path,
-) -> FmtResult<(Config, Option<PathBuf>)> {
-    if let Some(config_file) = config_path {
-        let toml = Config::from_toml_path(config_file.as_ref())?;
-        return Ok((toml, Some(config_file)));
-    }
-    Config::from_resolved_toml_path(input_file).map_err(FmtError::from)
 }
 
 fn make_opts() -> Options {
@@ -280,10 +176,10 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             }
             Ok((WriteMode::None, Summary::default()))
         }
-        Operation::Stdin { input, config_path } => {
+        Operation::Stdin { input } => {
             // try to read config from local directory
-            let (mut config, _) =
-                match_cli_path_or_file(config_path, &env::current_dir().unwrap())?;
+            let options = CliOptions::from_matches(&matches)?;
+            let (mut config, _) = load_config(None, Some(&options))?;
 
             // write_mode is always Plain for Stdin.
             config.set().write_mode(WriteMode::Plain);
@@ -300,57 +196,40 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             }
 
             let mut error_summary = Summary::default();
-            if config.version_meets_requirement(&mut error_summary) {
-                let mut out = &mut stdout();
-                checkstyle::output_header(&mut out, config.write_mode())?;
-                error_summary.add(run(Input::Text(input), &config));
-                checkstyle::output_footer(&mut out, config.write_mode())?;
+            emit_pre_matter(&config)?;
+            match format_and_emit_report(Input::Text(input), &config) {
+                Ok(summary) => error_summary.add(summary),
+                Err(_) => error_summary.add_operational_error(),
             }
+            emit_post_matter(&config)?;
 
             Ok((WriteMode::Plain, error_summary))
         }
         Operation::Format {
             files,
-            config_path,
             minimal_config_path,
         } => {
             let options = CliOptions::from_matches(&matches)?;
-            format(files, config_path, minimal_config_path, options)
+            format(files, minimal_config_path, options)
         }
     }
 }
 
 fn format(
     files: Vec<PathBuf>,
-    config_path: Option<PathBuf>,
     minimal_config_path: Option<String>,
     options: CliOptions,
 ) -> FmtResult<(WriteMode, Summary)> {
-    for f in options.file_lines.files() {
-        match *f {
-            FileName::Real(ref f) if files.contains(f) => {}
-            FileName::Real(_) => {
-                eprintln!("Warning: Extra file listed in file_lines option '{}'", f)
-            }
-            _ => eprintln!("Warning: Not a file '{}'", f),
-        }
-    }
+    options.verify_file_lines(&files);
+    let (config, config_path) = load_config(None, Some(&options))?;
 
-    let mut config = Config::default();
-    // Load the config path file if provided
-    if let Some(config_file) = config_path.as_ref() {
-        config = Config::from_toml_path(config_file.as_ref())?;
-    };
-
-    if options.verbose {
+    if config.verbose() {
         if let Some(path) = config_path.as_ref() {
             println!("Using rustfmt config file {}", path.display());
         }
     }
 
-    let write_mode = config.write_mode();
-    let mut out = &mut stdout();
-    checkstyle::output_header(&mut out, write_mode)?;
+    emit_pre_matter(&config)?;
     let mut error_summary = Summary::default();
 
     for file in files {
@@ -362,11 +241,11 @@ fn format(
             error_summary.add_operational_error();
         } else {
             // Check the file directory if the config-path could not be read or not provided
-            if config_path.is_none() {
-                let (config_tmp, path_tmp) =
-                    Config::from_resolved_toml_path(file.parent().unwrap())?;
-                if options.verbose {
-                    if let Some(path) = path_tmp.as_ref() {
+            let local_config = if config_path.is_none() {
+                let (local_config, config_path) =
+                    load_config(Some(file.parent().unwrap()), Some(&options))?;
+                if local_config.verbose() {
+                    if let Some(path) = config_path {
                         println!(
                             "Using rustfmt config file {} for {}",
                             path.display(),
@@ -374,18 +253,21 @@ fn format(
                         );
                     }
                 }
-                config = config_tmp;
-            }
+                local_config
+            } else {
+                config.clone()
+            };
 
-            if !config.version_meets_requirement(&mut error_summary) {
-                break;
+            match format_and_emit_report(Input::File(file), &local_config) {
+                Ok(summary) => error_summary.add(summary),
+                Err(_) => {
+                    error_summary.add_operational_error();
+                    break;
+                }
             }
-
-            options.clone().apply_to(&mut config);
-            error_summary.add(run(Input::File(file), &config));
         }
     }
-    checkstyle::output_footer(&mut out, write_mode)?;
+    emit_post_matter(&config)?;
 
     // If we were given a path via dump-minimal-config, output any options
     // that were used during formatting as TOML.
@@ -395,7 +277,7 @@ fn format(
         file.write_all(toml.as_bytes())?;
     }
 
-    Ok((write_mode, error_summary))
+    Ok((config.write_mode(), error_summary))
 }
 
 fn print_usage_to_stdout(opts: &Options, reason: &str) {
@@ -451,28 +333,6 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         return Ok(Operation::Version);
     }
 
-    let config_path_not_found = |path: &str| -> FmtResult<Operation> {
-        Err(FmtError::from(format!(
-            "Error: unable to find a config file for the given path: `{}`",
-            path
-        )))
-    };
-
-    // Read the config_path and convert to parent dir if a file is provided.
-    // If a config file cannot be found from the given path, return error.
-    let config_path: Option<PathBuf> = match matches.opt_str("config-path").map(PathBuf::from) {
-        Some(ref path) if !path.exists() => return config_path_not_found(path.to_str().unwrap()),
-        Some(ref path) if path.is_dir() => {
-            let config_file_path = get_toml_path(path)?;
-            if config_file_path.is_some() {
-                config_file_path
-            } else {
-                return config_path_not_found(path.to_str().unwrap());
-            }
-        }
-        path => path,
-    };
-
     // If no path is given, we won't output a minimal config.
     let minimal_config_path = matches.opt_str("dump-minimal-config");
 
@@ -481,10 +341,7 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         let mut buffer = String::new();
         io::stdin().read_to_string(&mut buffer)?;
 
-        return Ok(Operation::Stdin {
-            input: buffer,
-            config_path,
-        });
+        return Ok(Operation::Stdin { input: buffer });
     }
 
     let files: Vec<_> = matches
@@ -500,7 +357,6 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
 
     Ok(Operation::Format {
         files,
-        config_path,
         minimal_config_path,
     })
 }

@@ -31,16 +31,16 @@ pub struct Summary {
 }
 
 impl Summary {
-    pub fn mark_parse_time(&mut self) {
+    pub(crate) fn mark_parse_time(&mut self) {
         self.timer = self.timer.done_parsing();
     }
 
-    pub fn mark_format_time(&mut self) {
+    pub(crate) fn mark_format_time(&mut self) {
         self.timer = self.timer.done_formatting();
     }
 
     /// Returns the time it took to parse the source files in nanoseconds.
-    pub fn get_parse_time(&self) -> Option<Duration> {
+    pub(crate) fn get_parse_time(&self) -> Option<Duration> {
         match self.timer {
             Timer::DoneParsing(init, parse_time) | Timer::DoneFormatting(init, parse_time, _) => {
                 // This should never underflow since `Instant::now()` guarantees monotonicity.
@@ -52,7 +52,7 @@ impl Summary {
 
     /// Returns the time it took to go from the parsed AST to the formatted output. Parsing time is
     /// not included.
-    pub fn get_format_time(&self) -> Option<Duration> {
+    pub(crate) fn get_format_time(&self) -> Option<Duration> {
         match self.timer {
             Timer::DoneFormatting(_init, parse_time, format_time) => {
                 Some(format_time.duration_since(parse_time))
@@ -77,15 +77,15 @@ impl Summary {
         self.has_operational_errors = true;
     }
 
-    pub fn add_parsing_error(&mut self) {
+    pub(crate) fn add_parsing_error(&mut self) {
         self.has_parsing_errors = true;
     }
 
-    pub fn add_formatting_error(&mut self) {
+    pub(crate) fn add_formatting_error(&mut self) {
         self.has_formatting_errors = true;
     }
 
-    pub fn add_diff(&mut self) {
+    pub(crate) fn add_diff(&mut self) {
         self.has_diff = true;
     }
 

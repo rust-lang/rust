@@ -19,7 +19,11 @@
 #[macro_use]
 extern crate derive_new;
 extern crate diff;
+extern crate getopts;
 extern crate itertools;
+#[cfg(test)]
+#[macro_use]
+extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate regex;
@@ -33,6 +37,7 @@ extern crate toml;
 extern crate unicode_segmentation;
 
 use std::collections::HashMap;
+use std::error;
 use std::fmt;
 use std::io::{self, stdout, BufRead, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -53,21 +58,28 @@ use shape::Indent;
 use utils::use_colored_tty;
 use visitor::{FmtVisitor, SnippetProvider};
 
+pub use config::options::CliOptions;
 pub use config::summary::Summary;
-pub use config::Config;
+pub use config::{file_lines, load_config, Config, WriteMode};
+
+pub type FmtError = Box<error::Error + Send + Sync>;
+pub type FmtResult<T> = std::result::Result<T, FmtError>;
+
+pub const WRITE_MODE_LIST: &str =
+    "[replace|overwrite|display|plain|diff|coverage|checkstyle|check]";
 
 #[macro_use]
 mod utils;
 
 mod attr;
 mod chains;
-pub mod checkstyle;
+pub(crate) mod checkstyle;
 mod closures;
-pub mod codemap;
+pub(crate) mod codemap;
 mod comment;
-pub mod config;
+pub(crate) mod config;
 mod expr;
-pub mod filemap;
+pub(crate) mod filemap;
 mod imports;
 mod issues;
 mod items;
@@ -75,25 +87,27 @@ mod lists;
 mod macros;
 mod matches;
 mod missed_spans;
-pub mod modules;
+pub(crate) mod modules;
 mod overflow;
 mod patterns;
 mod reorder;
 mod rewrite;
-pub mod rustfmt_diff;
+pub(crate) mod rustfmt_diff;
 mod shape;
 mod spanned;
 mod string;
+#[cfg(test)]
+mod test;
 mod types;
 mod vertical;
-pub mod visitor;
+pub(crate) mod visitor;
 
 const STDIN: &str = "<stdin>";
 
 // A map of the files of a crate, with their new content
-pub type FileMap = Vec<FileRecord>;
+pub(crate) type FileMap = Vec<FileRecord>;
 
-pub type FileRecord = (FileName, String);
+pub(crate) type FileRecord = (FileName, String);
 
 #[derive(Clone, Copy)]
 pub enum ErrorKind {
@@ -123,7 +137,7 @@ impl fmt::Display for ErrorKind {
 }
 
 // Formatting errors that are identified *after* rustfmt has run.
-pub struct FormattingError {
+struct FormattingError {
     line: usize,
     kind: ErrorKind,
     is_comment: bool,
@@ -150,7 +164,7 @@ impl FormattingError {
     }
 
     // (space, target)
-    pub fn format_len(&self) -> (usize, usize) {
+    fn format_len(&self) -> (usize, usize) {
         match self.kind {
             ErrorKind::LineOverflow(found, max) => (max, found - max),
             ErrorKind::TrailingWhitespace => {
@@ -180,18 +194,18 @@ impl FormatReport {
         }
     }
 
-    pub fn warning_count(&self) -> usize {
+    fn warning_count(&self) -> usize {
         self.file_error_map
             .iter()
             .map(|(_, errors)| errors.len())
             .sum()
     }
 
-    pub fn has_warnings(&self) -> bool {
+    fn has_warnings(&self) -> bool {
         self.warning_count() > 0
     }
 
-    pub fn print_warnings_fancy(
+    fn print_warnings_fancy(
         &self,
         mut t: Box<term::Terminal<Output = io::Stderr>>,
     ) -> Result<(), term::Error> {
@@ -881,7 +895,10 @@ pub enum Input {
     Text(String),
 }
 
-pub fn run(input: Input, config: &Config) -> Summary {
+pub fn format_and_emit_report(input: Input, config: &Config) -> FmtResult<Summary> {
+    if !config.version_meets_requirement() {
+        return Err(FmtError::from("Version mismatch"));
+    }
     let out = &mut stdout();
     match format_input(input, config, Some(out)) {
         Ok((summary, _, report)) => {
@@ -896,22 +913,38 @@ pub fn run(input: Input, config: &Config) -> Summary {
                             Err(..) => panic!("Unable to write to stderr: {}", report),
                         }
                     }
-                    _ => msg!("{}", report),
+                    _ => eprintln!("{}", report),
                 }
             }
 
-            summary
+            Ok(summary)
         }
         Err((msg, mut summary)) => {
-            msg!("Error writing files: {}", msg);
+            eprintln!("Error writing files: {}", msg);
             summary.add_operational_error();
-            summary
+            Ok(summary)
         }
     }
 }
 
+pub fn emit_pre_matter(config: &Config) -> FmtResult<()> {
+    if config.write_mode() == WriteMode::Checkstyle {
+        let mut out = &mut stdout();
+        checkstyle::output_header(&mut out)?;
+    }
+    Ok(())
+}
+
+pub fn emit_post_matter(config: &Config) -> FmtResult<()> {
+    if config.write_mode() == WriteMode::Checkstyle {
+        let mut out = &mut stdout();
+        checkstyle::output_footer(&mut out)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
-mod test {
+mod unit_tests {
     use super::{format_code_block, format_snippet, Config};
 
     #[test]

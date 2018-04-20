@@ -54,6 +54,7 @@ impl Range {
         self.lo > self.hi
     }
 
+    #[allow(dead_code)]
     fn contains(self, other: Range) -> bool {
         if other.is_empty() {
             true
@@ -128,12 +129,12 @@ fn normalize_ranges(ranges: &mut HashMap<FileName, Vec<Range>>) {
 
 impl FileLines {
     /// Creates a `FileLines` that contains all lines in all files.
-    pub fn all() -> FileLines {
+    pub(crate) fn all() -> FileLines {
         FileLines(None)
     }
 
     /// Returns true if this `FileLines` contains all lines in all files.
-    pub fn is_all(&self) -> bool {
+    pub(crate) fn is_all(&self) -> bool {
         self.0.is_none()
     }
 
@@ -166,22 +167,23 @@ impl FileLines {
     }
 
     /// Returns true if `range` is fully contained in `self`.
-    pub fn contains(&self, range: &LineRange) -> bool {
+    #[allow(dead_code)]
+    pub(crate) fn contains(&self, range: &LineRange) -> bool {
         self.file_range_matches(range.file_name(), |r| r.contains(Range::from(range)))
     }
 
     /// Returns true if any lines in `range` are in `self`.
-    pub fn intersects(&self, range: &LineRange) -> bool {
+    pub(crate) fn intersects(&self, range: &LineRange) -> bool {
         self.file_range_matches(range.file_name(), |r| r.intersects(Range::from(range)))
     }
 
     /// Returns true if `line` from `file_name` is in `self`.
-    pub fn contains_line(&self, file_name: &FileName, line: usize) -> bool {
+    pub(crate) fn contains_line(&self, file_name: &FileName, line: usize) -> bool {
         self.file_range_matches(file_name, |r| r.lo <= line && r.hi >= line)
     }
 
     /// Returns true if any of the lines between `lo` and `hi` from `file_name` are in `self`.
-    pub fn intersects_range(&self, file_name: &FileName, lo: usize, hi: usize) -> bool {
+    pub(crate) fn intersects_range(&self, file_name: &FileName, lo: usize, hi: usize) -> bool {
         self.file_range_matches(file_name, |r| r.intersects(Range::new(lo, hi)))
     }
 }

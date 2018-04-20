@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use regex::Regex;
 use std::cell::Cell;
 use std::default::Default;
 use std::fs::File;
@@ -15,23 +16,22 @@ use std::io::{Error, ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use regex::Regex;
-
-#[macro_use]
-mod config_type;
-#[macro_use]
-mod options;
-
-pub mod file_lines;
-pub mod license;
-pub mod lists;
-pub mod summary;
+use {FmtError, FmtResult};
 
 use config::config_type::ConfigType;
 use config::file_lines::FileLines;
 pub use config::lists::*;
 pub use config::options::*;
-use config::summary::Summary;
+
+#[macro_use]
+pub mod config_type;
+#[macro_use]
+pub mod options;
+
+pub mod file_lines;
+pub mod license;
+pub mod lists;
+pub mod summary;
 
 /// This macro defines configuration options used in rustfmt. Each option
 /// is defined as follows:
@@ -151,10 +151,37 @@ create_config! {
         "'small' heuristic values";
 }
 
-/// Check for the presence of known config file names (`rustfmt.toml, `.rustfmt.toml`) in `dir`
-///
-/// Return the path if a config file exists, empty if no file exists, and Error for IO errors
-pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
+pub fn load_config(
+    file_path: Option<&Path>,
+    options: Option<&CliOptions>,
+) -> FmtResult<(Config, Option<PathBuf>)> {
+    let over_ride = match options {
+        Some(opts) => config_path(opts)?,
+        None => None,
+    };
+
+    let result = if let Some(over_ride) = over_ride {
+        Config::from_toml_path(over_ride.as_ref())
+            .map(|p| (p, Some(over_ride.to_owned())))
+            .map_err(FmtError::from)
+    } else if let Some(file_path) = file_path {
+        Config::from_resolved_toml_path(file_path).map_err(FmtError::from)
+    } else {
+        Ok((Config::default(), None))
+    };
+
+    result.map(|(mut c, p)| {
+        if let Some(options) = options {
+            options.clone().apply_to(&mut c);
+        }
+        (c, p)
+    })
+}
+
+// Check for the presence of known config file names (`rustfmt.toml, `.rustfmt.toml`) in `dir`
+//
+// Return the path if a config file exists, empty if no file exists, and Error for IO errors
+fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
     const CONFIG_FILE_NAMES: [&str; 2] = [".rustfmt.toml", "rustfmt.toml"];
     for config_file_name in &CONFIG_FILE_NAMES {
         let config_file = dir.join(config_file_name);
@@ -173,6 +200,30 @@ pub fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
         }
     }
     Ok(None)
+}
+
+fn config_path(options: &CliOptions) -> FmtResult<Option<PathBuf>> {
+    let config_path_not_found = |path: &str| -> FmtResult<Option<PathBuf>> {
+        Err(FmtError::from(format!(
+            "Error: unable to find a config file for the given path: `{}`",
+            path
+        )))
+    };
+
+    // Read the config_path and convert to parent dir if a file is provided.
+    // If a config file cannot be found from the given path, return error.
+    match options.config_path {
+        Some(ref path) if !path.exists() => config_path_not_found(path.to_str().unwrap()),
+        Some(ref path) if path.is_dir() => {
+            let config_file_path = get_toml_path(path)?;
+            if config_file_path.is_some() {
+                Ok(config_file_path)
+            } else {
+                config_path_not_found(path.to_str().unwrap())
+            }
+        }
+        ref path => Ok(path.to_owned()),
+    }
 }
 
 #[cfg(test)]

@@ -9,13 +9,6 @@
 // except according to those terms.
 
 extern crate assert_cli;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
-extern crate regex;
-extern crate rustfmt_nightly as rustfmt;
-extern crate term;
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -24,11 +17,11 @@ use std::iter::{Enumerate, Peekable};
 use std::path::{Path, PathBuf};
 use std::str::Chars;
 
-use rustfmt::config::summary::Summary;
-use rustfmt::config::{Color, Config, ReportTactic};
-use rustfmt::filemap::write_system_newlines;
-use rustfmt::rustfmt_diff::*;
-use rustfmt::*;
+use config::summary::Summary;
+use config::{Color, Config, ReportTactic};
+use filemap::write_system_newlines;
+use rustfmt_diff::*;
+use *;
 
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";

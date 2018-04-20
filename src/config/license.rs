@@ -82,8 +82,7 @@ impl TemplateParser {
     ///
     /// # Examples
     ///
-    /// ```
-    /// # use rustfmt_nightly::config::license::TemplateParser;
+    /// ```ignore
     /// assert_eq!(
     ///     TemplateParser::parse(
     ///         r"

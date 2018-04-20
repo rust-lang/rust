@@ -80,6 +80,7 @@ macro_rules! is_nightly_channel {
 
 macro_rules! create_config {
     ($($i:ident: $ty:ty, $def:expr, $stb:expr, $( $dstring:expr ),+ );+ $(;)*) => (
+        #[cfg(test)]
         use std::collections::HashSet;
         use std::io::Write;
 
@@ -150,7 +151,7 @@ macro_rules! create_config {
         }
 
         impl Config {
-            pub fn version_meets_requirement(&self, error_summary: &mut Summary) -> bool {
+            pub(crate) fn version_meets_requirement(&self) -> bool {
                 if self.was_set().required_version() {
                     let version = env!("CARGO_PKG_VERSION");
                     let required_version = self.required_version();
@@ -160,7 +161,6 @@ macro_rules! create_config {
                             version,
                             required_version,
                         );
-                        error_summary.add_formatting_error();
                         return false;
                     }
                 }
@@ -207,7 +207,8 @@ macro_rules! create_config {
             }
 
             /// Returns a hash set initialized with every user-facing config option name.
-            pub fn hash_set() -> HashSet<String> {
+            #[cfg(test)]
+            pub(crate) fn hash_set() -> HashSet<String> {
                 let mut hash_set = HashSet::new();
                 $(
                     hash_set.insert(stringify!($i).to_owned());
@@ -215,7 +216,7 @@ macro_rules! create_config {
                 hash_set
             }
 
-            pub fn is_valid_name(name: &str) -> bool {
+            pub(crate) fn is_valid_name(name: &str) -> bool {
                 match name {
                     $(
                         stringify!($i) => true,
@@ -224,7 +225,7 @@ macro_rules! create_config {
                 }
             }
 
-            pub fn from_toml(toml: &str, dir: &Path) -> Result<Config, String> {
+            pub(crate) fn from_toml(toml: &str, dir: &Path) -> Result<Config, String> {
                 let parsed: ::toml::Value =
                     toml.parse().map_err(|e| format!("Could not parse TOML: {}", e))?;
                 let mut err: String = String::new();
@@ -304,7 +305,7 @@ macro_rules! create_config {
             ///
             /// Return a `Config` if the config could be read and parsed from
             /// the file, Error otherwise.
-            pub fn from_toml_path(file_path: &Path) -> Result<Config, Error> {
+            pub(super) fn from_toml_path(file_path: &Path) -> Result<Config, Error> {
                 let mut file = File::open(&file_path)?;
                 let mut toml = String::new();
                 file.read_to_string(&mut toml)?;
@@ -321,7 +322,7 @@ macro_rules! create_config {
             ///
             /// Returns the `Config` to use, and the path of the project file if there was
             /// one.
-            pub fn from_resolved_toml_path(dir: &Path) -> Result<(Config, Option<PathBuf>), Error> {
+            pub(super) fn from_resolved_toml_path(dir: &Path) -> Result<(Config, Option<PathBuf>), Error> {
 
                 /// Try to find a project file in the given directory and its parents.
                 /// Returns the path of a the nearest project file if one exists,

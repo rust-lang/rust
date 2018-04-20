@@ -14,11 +14,12 @@ use std::fs::{self, File};
 use std::io::{self, BufWriter, Read, Write};
 use std::path::Path;
 
-use checkstyle::{output_checkstyle_file, output_footer, output_header};
+use checkstyle::output_checkstyle_file;
 use config::{Config, NewlineStyle, WriteMode};
 use rustfmt_diff::{make_diff, output_modified, print_diff, Mismatch};
 use syntax::codemap::FileName;
 
+#[cfg(test)]
 use FileRecord;
 
 // Append a newline to the end of each file.
@@ -26,7 +27,8 @@ pub fn append_newline(s: &mut String) {
     s.push_str("\n");
 }
 
-pub fn write_all_files<T>(
+#[cfg(test)]
+pub(crate) fn write_all_files<T>(
     file_map: &[FileRecord],
     out: &mut T,
     config: &Config,
@@ -34,11 +36,15 @@ pub fn write_all_files<T>(
 where
     T: Write,
 {
-    output_header(out, config.write_mode()).ok();
+    if config.write_mode() == WriteMode::Checkstyle {
+        ::checkstyle::output_header(out)?;
+    }
     for &(ref filename, ref text) in file_map {
         write_file(text, filename, out, config)?;
     }
-    output_footer(out, config.write_mode()).ok();
+    if config.write_mode() == WriteMode::Checkstyle {
+        ::checkstyle::output_footer(out)?;
+    }
 
     Ok(())
 }
