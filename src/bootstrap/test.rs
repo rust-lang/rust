@@ -241,7 +241,16 @@ impl Step for Rls {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rls { compiler, target: self.host, extra_features: Vec::new() });
+        let build_result = builder.ensure(tool::Rls {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if build_result.is_none() {
+            eprintln!("failed to test rls: could not build");
+            return;
+        }
+
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
                                                  host,
@@ -286,7 +295,16 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
+        let build_result = builder.ensure(tool::Rustfmt {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
+        if build_result.is_none() {
+            eprintln!("failed to test rustfmt: could not build");
+            return;
+        }
+
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
                                                  host,
