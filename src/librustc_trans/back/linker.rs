@@ -960,6 +960,7 @@ impl Linker for WasmLd {
 
     fn finalize(&mut self) -> Command {
         self.cmd.arg("--threads");
+        self.cmd.arg("-z").arg("stack-size=1048576");
 
         // FIXME we probably shouldn't pass this but instead pass an explicit
         // whitelist of symbols we'll allow to be undefined. Unfortunately
