@@ -36,7 +36,8 @@ use syntax_pos::Span;
 use syntax::codemap::DUMMY_SP;
 
 pub struct QueryMap<'tcx, D: QueryConfig<'tcx> + ?Sized> {
-    pub(super) map: FxHashMap<D::Key, QueryResult<'tcx, QueryValue<D::Value>>>,
+    pub(super) results: FxHashMap<D::Key, QueryValue<D::Value>>,
+    pub(super) active: FxHashMap<D::Key, QueryResult<'tcx>>,
 }
 
 pub(super) struct QueryValue<T> {
@@ -58,7 +59,8 @@ impl<T> QueryValue<T> {
 impl<'tcx, M: QueryConfig<'tcx>> QueryMap<'tcx, M> {
     pub(super) fn new() -> QueryMap<'tcx, M> {
         QueryMap {
-            map: FxHashMap(),
+            results: FxHashMap(),
+            active: FxHashMap(),
         }
     }
 }
@@ -111,15 +113,15 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         let map = Q::query_map(tcx);
         loop {
             let mut lock = map.borrow_mut();
-            let job = match lock.map.entry((*key).clone()) {
+            if let Some(value) = lock.results.get(key) {
+                profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
+                let result = Ok((value.value.clone(), value.index));
+                return TryGetJob::JobCompleted(result);
+            }
+            let job = match lock.active.entry((*key).clone()) {
                 Entry::Occupied(entry) => {
                     match *entry.get() {
                         QueryResult::Started(ref job) => job.clone(),
-                        QueryResult::Complete(ref value) => {
-                            profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
-                            let result = Ok((value.value.clone(), value.index));
-                            return TryGetJob::JobCompleted(result);
-                        },
                         QueryResult::Poisoned => FatalError.raise(),
                     }
                 }
@@ -161,7 +163,11 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         mem::forget(self);
 
         let value = QueryValue::new(result.clone(), dep_node_index);
-        map.borrow_mut().map.insert(key, QueryResult::Complete(value));
+        {
+            let mut lock = map.borrow_mut();
+            lock.active.remove(&key);
+            lock.results.insert(key, value);
+        }
 
         job.signal_complete();
     }
@@ -205,7 +211,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic
-        self.map.borrow_mut().map.insert(self.key.clone(), QueryResult::Poisoned);
+        self.map.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
         // Also signal the completion of the job, so waiters
         // will continue execution
         self.job.signal_complete();
