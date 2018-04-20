@@ -332,7 +332,8 @@ impl LintPass for HardwiredLints {
 #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub enum BuiltinLintDiagnostics {
     Normal,
-    BareTraitObject(Span, /* is_global */ bool)
+    BareTraitObject(Span, /* is_global */ bool),
+    AbsPathWithModule(Span),
 }
 
 impl BuiltinLintDiagnostics {
@@ -346,6 +347,23 @@ impl BuiltinLintDiagnostics {
                     Err(_) => format!("dyn <type>")
                 };
                 db.span_suggestion(span, "use `dyn`", sugg);
+            }
+            BuiltinLintDiagnostics::AbsPathWithModule(span) => {
+                let sugg = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) => {
+                        // FIXME(Manishearth) ideally the emitting code
+                        // can tell us whether or not this is global
+                        let opt_colon = if s.trim_left().starts_with("::") {
+                            ""
+                        } else {
+                            "::"
+                        };
+
+                        format!("crate{}{}", opt_colon, s)
+                    }
+                    Err(_) => format!("crate::<path>")
+                };
+                db.span_suggestion(span, "use `crate`", sugg);
             }
         }
     }

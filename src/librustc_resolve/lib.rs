@@ -3344,11 +3344,14 @@ impl<'a> Resolver<'a> {
                                 }
 
                                 if !is_crate {
-                                    self.session.buffer_lint(
+                                    let diag = lint::builtin::BuiltinLintDiagnostics
+                                                   ::AbsPathWithModule(path_span);
+                                    self.session.buffer_lint_with_diagnostic(
                                         lint::builtin::ABSOLUTE_PATH_STARTING_WITH_MODULE,
                                         id, path_span,
-                                        "Fully-qualified paths must start with `self`, `super`,
-                                        `crate`, or an external crate name in the 2018 edition");
+                                        "Absolute paths must start with `self`, `super`, \
+                                        `crate`, or an external crate name in the 2018 edition",
+                                        diag);
                                 }
                             }
                         }
