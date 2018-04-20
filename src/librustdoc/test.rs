@@ -437,7 +437,7 @@ fn partition_source(s: &str) -> (String, String) {
 
     for line in s.lines() {
         let trimline = line.trim();
-        let header = trimline.is_whitespace() ||
+        let header = trimline.chars().all(|c| c.is_whitespace()) ||
             trimline.starts_with("#![") ||
             trimline.starts_with("#[macro_use] extern crate") ||
             trimline.starts_with("extern crate");
