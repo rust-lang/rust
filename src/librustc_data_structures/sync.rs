@@ -36,7 +36,6 @@ use std::marker::PhantomData;
 use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::fmt;
-use std;
 use std::ops::{Deref, DerefMut};
 use owning_ref::{Erased, OwningRef};
 
@@ -200,6 +199,7 @@ cfg_if! {
         use parking_lot::Mutex as InnerLock;
         use parking_lot::RwLock as InnerRwLock;
 
+        use std;
         use std::thread;
         pub use rayon::{join, scope};
 
@@ -638,7 +638,9 @@ pub struct OneThread<T> {
     inner: T,
 }
 
+#[cfg(parallel_queries)]
 unsafe impl<T> std::marker::Sync for OneThread<T> {}
+#[cfg(parallel_queries)]
 unsafe impl<T> std::marker::Send for OneThread<T> {}
 
 impl<T> OneThread<T> {
