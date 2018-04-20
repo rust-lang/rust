@@ -34,7 +34,7 @@ implemented using the futures interfaces.
 
 After gaining experience & user feedback with the futures-based ecosystem, we
 discovered certain ergonomics challenges. Using state which needs to be shared
-across await points was extremely ergonomic - requiring either Arcs or join
+across await points was extremely unergonomic - requiring either Arcs or join
 chaining - and while combinators were often more ergonomic than manually
 writing a future, they still often led to messy sets of nested and chained
 callbacks.
@@ -240,7 +240,7 @@ loop {
     match Future::poll(Pin::borrow(&mut pin), &mut ctx) {
           Async::Ready(item) => break item,
           Async::Pending     => yield,
-    }	
+    }
 }
 ```
 
