@@ -24,13 +24,16 @@ pub enum Edition {
 
     // when adding new editions, be sure to update:
     //
-    // - the list in the `parse_edition` static in librustc::session::config
+    // - Update the `ALL_EDITIONS` const
+    // - Update the EDITION_NAME_LIST const
     // - add a `rust_####()` function to the session
     // - update the enum in Cargo's sources as well
 }
 
 // must be in order from oldest to newest
 pub const ALL_EDITIONS: &[Edition] = &[Edition::Edition2015, Edition::Edition2018];
+
+pub const EDITION_NAME_LIST: &'static str = "2015|2018";
 
 pub const DEFAULT_EDITION: Edition = Edition::Edition2015;
 
@@ -56,6 +59,13 @@ impl Edition {
         match *self {
             Edition::Edition2015 => "rust_2015_preview",
             Edition::Edition2018 => "rust_2018_preview",
+        }
+    }
+
+    pub fn is_stable(&self) -> bool {
+        match *self {
+            Edition::Edition2015 => true,
+            Edition::Edition2018 => false,
         }
     }
 }

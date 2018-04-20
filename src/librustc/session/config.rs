@@ -30,7 +30,7 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::codemap::{FileName, FilePathMapping};
-use syntax::edition::{Edition, ALL_EDITIONS, DEFAULT_EDITION};
+use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -412,7 +412,7 @@ top_level_options!(
 
         // Remap source path prefixes in all output (messages, object files, debug, etc)
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
-        edition: Edition [UNTRACKED],
+        edition: Edition [TRACKED],
     }
 );
 
@@ -1643,7 +1643,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "",
             "edition",
             "Specify which edition of the compiler to use when compiling code.",
-            &edition_name_list(),
+            EDITION_NAME_LIST,
         ),
         opt::multi_s(
             "",
@@ -1712,13 +1712,25 @@ pub fn build_session_options_and_crate_config(
                 &format!(
                     "argument for --edition must be one of: \
                     {}. (instead was `{}`)",
-                    edition_name_list(),
+                    EDITION_NAME_LIST,
                     arg
                 ),
             ),
         }
         None => DEFAULT_EDITION,
     };
+
+    if !edition.is_stable() && !nightly_options::is_nightly_build() {
+        early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "Edition {} is unstable an only\
+                    available for nightly builds of rustc.",
+                    edition,
+                )
+        )
+    }
+
 
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
@@ -2311,6 +2323,7 @@ mod dep_tracking {
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
     use rustc_back::target::TargetTriple;
+    use syntax::edition::Edition;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
@@ -2370,6 +2383,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
+    impl_dep_tracking_hash_via_hash!(Edition);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2425,11 +2439,6 @@ mod dep_tracking {
             sub_hash.hash(hasher, error_format);
         }
     }
-}
-
-pub fn edition_name_list() -> String {
-    let names: Vec<String> = ALL_EDITIONS.iter().map(|e| format!("{}", e)).collect();
-    names.join("|")
 }
 
 #[cfg(test)]
