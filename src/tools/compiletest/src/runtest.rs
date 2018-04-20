@@ -2880,8 +2880,10 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let expected_output_path = self.expected_output_path(kind);
-        let output_file = self.output_base_name().with_file_name(&expected_output_path);
+        let expected_output = self.expected_output_path(kind);
+        // #50113: output is abspath; only want filename component.
+        let expected_output = expected_output.file_name().expect("output path requires file name");
+        let output_file = self.output_base_name().with_file_name(&expected_output);
         match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
             Ok(()) => {}
             Err(e) => self.fatal(&format!(
