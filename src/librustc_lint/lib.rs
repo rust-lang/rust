@@ -136,6 +136,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  UnionsWithDropFields,
                  UnreachablePub,
                  TypeAliasBounds,
+                 UnusedBrokenConst,
                  );
 
     add_builtin_with_new!(sess,

@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(const_err)]
+// compile-pass
 
 #![crate_type = "lib"]
 
 pub const Z: u32 = 0 - 1;
-//~^ ERROR attempt to subtract with overflow
+//~^ WARN attempt to subtract with overflow
+//~| WARN this constant cannot be used
+
+pub type Foo = [i32; 0 - 1];
+//~^ WARN attempt to subtract with overflow
+//~| WARN this array length cannot be used
