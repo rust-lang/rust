@@ -32,9 +32,9 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::TraitTyParamBounds;
-use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_constness,
-            format_defaultness, format_mutability, format_unsafety, format_visibility,
-            is_attributes_extendable, last_line_contains_single_line_comment,
+use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_auto,
+            format_constness, format_defaultness, format_mutability, format_unsafety,
+            format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
             last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
             stmt_expr, trimmed_last_line_width};
 use vertical::rewrite_with_alignment;
@@ -936,16 +936,21 @@ fn format_struct(
 }
 
 pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
-    if let ast::ItemKind::Trait(_, unsafety, ref generics, ref type_param_bounds, ref trait_items) =
-        item.node
+    if let ast::ItemKind::Trait(
+        is_auto,
+        unsafety,
+        ref generics,
+        ref type_param_bounds,
+        ref trait_items,
+    ) = item.node
     {
         let mut result = String::with_capacity(128);
         let header = format!(
-            "{}{}trait ",
+            "{}{}{}trait ",
+            format_auto(is_auto),
             format_visibility(&item.vis),
             format_unsafety(unsafety),
         );
-
         result.push_str(&header);
 
         let body_lo = context.snippet_provider.span_after(item.span, "{");
