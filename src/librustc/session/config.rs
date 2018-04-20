@@ -2456,6 +2456,7 @@ mod tests {
     use super::{Externs, OutputType, OutputTypes};
     use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
+    use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;
 
     fn optgroups() -> getopts::Options {
@@ -3105,7 +3106,7 @@ mod tests {
     fn test_edition_parsing() {
         // test default edition
         let options = super::basic_options();
-        assert!(options.edition == Edition::DEFAULT_EDITION);
+        assert!(options.edition == DEFAULT_EDITION);
 
         let matches = optgroups()
             .parse(&["--edition=2018".to_string()])

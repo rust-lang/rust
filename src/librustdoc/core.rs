@@ -155,10 +155,10 @@ pub fn run_core(search_paths: SearchPaths,
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
             force_unstable_if_unmarked,
-            edition,
             ..config::basic_debugging_options()
         },
         error_format,
+        edition,
         ..config::basic_options().clone()
     };
 
