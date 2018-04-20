@@ -57,7 +57,8 @@ impl MultiItemModifier for ProcMacroDerive {
             Annotatable::TraitItem(_) |
             Annotatable::ForeignItem(_) |
             Annotatable::Stmt(_) |
-            Annotatable::Expr(_) => {
+            Annotatable::Expr(_) |
+            Annotatable::Crate(_) => {
                 ecx.span_err(span, "proc-macro derives may only be \
                                     applied to struct/enum items");
                 return Vec::new()

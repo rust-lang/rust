@@ -35,6 +35,7 @@ use tokenstream::{self, TokenStream};
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
+    Crate(P<ast::Crate>),
     Item(P<ast::Item>),
     TraitItem(P<ast::TraitItem>),
     ImplItem(P<ast::ImplItem>),
@@ -46,6 +47,7 @@ pub enum Annotatable {
 impl HasAttrs for Annotatable {
     fn attrs(&self) -> &[Attribute] {
         match *self {
+            Annotatable::Crate(ref krate) => &krate.attrs,
             Annotatable::Item(ref item) => &item.attrs,
             Annotatable::TraitItem(ref trait_item) => &trait_item.attrs,
             Annotatable::ImplItem(ref impl_item) => &impl_item.attrs,
@@ -57,6 +59,7 @@ impl HasAttrs for Annotatable {
 
     fn map_attrs<F: FnOnce(Vec<Attribute>) -> Vec<Attribute>>(self, f: F) -> Self {
         match self {
+            Annotatable::Crate(krate) => Annotatable::Crate(krate.map_attrs(f)),
             Annotatable::Item(item) => Annotatable::Item(item.map_attrs(f)),
             Annotatable::TraitItem(trait_item) => Annotatable::TraitItem(trait_item.map_attrs(f)),
             Annotatable::ImplItem(impl_item) => Annotatable::ImplItem(impl_item.map_attrs(f)),
@@ -71,6 +74,7 @@ impl HasAttrs for Annotatable {
 impl Annotatable {
     pub fn span(&self) -> Span {
         match *self {
+            Annotatable::Crate(ref krate) => krate.span,
             Annotatable::Item(ref item) => item.span,
             Annotatable::TraitItem(ref trait_item) => trait_item.span,
             Annotatable::ImplItem(ref impl_item) => impl_item.span,
@@ -84,6 +88,13 @@ impl Annotatable {
         match self {
             Annotatable::Item(i) => i,
             _ => panic!("expected Item")
+        }
+    }
+
+    pub fn expect_crate(self) -> ast::Crate {
+        match self {
+            Annotatable::Crate(c) => c.into_inner(),
+            _ => panic!("expected crate"),
         }
     }
 
@@ -324,6 +335,11 @@ macro_rules! make_stmts_default {
 /// The result of a macro expansion. The return values of the various
 /// methods are spliced into the AST at the callsite of the macro.
 pub trait MacResult {
+    /// Create a whole crate.
+    fn make_crate(self: Box<Self>) -> Option<P<ast::Crate>> {
+        None
+    }
+
     /// Create an expression.
     fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         None
@@ -389,6 +405,7 @@ macro_rules! make_MacEager {
 }
 
 make_MacEager! {
+    krate: P<ast::Crate>,
     expr: P<ast::Expr>,
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
@@ -400,6 +417,10 @@ make_MacEager! {
 }
 
 impl MacResult for MacEager {
+    fn make_crate(self: Box<Self>) -> Option<P<ast::Crate>> {
+        self.krate
+    }
+
     fn make_expr(self: Box<Self>) -> Option<P<ast::Expr>> {
         self.expr
     }
@@ -503,6 +524,20 @@ impl DummyResult {
 }
 
 impl MacResult for DummyResult {
+    fn make_crate(self: Box<DummyResult>) -> Option<P<ast::Crate>> {
+        Some(P(
+            ast::Crate{
+                attrs: vec![],
+                module: ast::Mod {
+                    inner: self.span,
+                    items: vec![],
+                },
+                span: self.span,
+                tokens: None,
+            }
+        ))
+    }
+
     fn make_expr(self: Box<DummyResult>) -> Option<P<ast::Expr>> {
         Some(DummyResult::raw_expr(self.span))
     }

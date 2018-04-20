@@ -7047,6 +7047,7 @@ impl<'a> Parser<'a> {
             attrs: self.parse_inner_attributes()?,
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: lo.to(self.span),
+            tokens: None,
         })
     }
 

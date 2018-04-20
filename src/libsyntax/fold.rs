@@ -617,6 +617,7 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
 pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
                                          -> token::Nonterminal {
     match nt {
+        token::NtCrate(krate) => token::NtCrate(krate.map(|k| fld.fold_crate(k))),
         token::NtItem(item) =>
             token::NtItem(fld.fold_item(item)
                           // this is probably okay, because the only folds likely
@@ -1017,7 +1018,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod 
     }
 }
 
-pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
+pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span, tokens}: Crate,
                                   folder: &mut T) -> Crate {
     let mut items = folder.fold_item(P(ast::Item {
         ident: keywords::Invalid.ident(),
@@ -1026,16 +1027,16 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Public),
         span,
         node: ast::ItemKind::Mod(module),
-        tokens: None,
+        tokens,
     })).into_iter();
 
-    let (module, attrs, span) = match items.next() {
+    let (module, attrs, span, tokens) = match items.next() {
         Some(item) => {
             assert!(items.next().is_none(),
                     "a crate cannot expand to more than one item");
-            item.and_then(|ast::Item { attrs, span, node, .. }| {
+            item.and_then(|ast::Item { attrs, span, node, tokens, .. }| {
                 match node {
-                    ast::ItemKind::Mod(m) => (m, attrs, span),
+                    ast::ItemKind::Mod(m) => (m, attrs, span, tokens),
                     _ => panic!("fold converted a module to not a module"),
                 }
             })
@@ -1043,13 +1044,14 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
         None => (ast::Mod {
             inner: span,
             items: vec![],
-        }, vec![], span)
+        }, vec![], span, None)
     };
 
     Crate {
         module,
         attrs,
         span,
+        tokens,
     }
 }
 

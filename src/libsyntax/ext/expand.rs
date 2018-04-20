@@ -45,13 +45,19 @@ macro_rules! expansions {
             $(.$fold:ident)*  $(lift .$fold_elt:ident)*,
             $(.$visit:ident)*  $(lift .$visit_elt:ident)*;)*) => {
         #[derive(Copy, Clone, PartialEq, Eq)]
-        pub enum ExpansionKind { OptExpr, $( $kind, )*  }
-        pub enum Expansion { OptExpr(Option<P<ast::Expr>>), $( $kind($ty), )* }
+        pub enum ExpansionKind { OptExpr, Crate, $( $kind, )*  }
+        pub enum Expansion {
+            OptExpr(Option<P<ast::Expr>>),
+            // we don't box `ast::Crate` in most places but we do it here to keep `Expansion` small
+            Crate(P<ast::Crate>),
+            $( $kind($ty), )*
+        }
 
         impl ExpansionKind {
             pub fn name(self) -> &'static str {
                 match self {
                     ExpansionKind::OptExpr => "expression",
+                    ExpansionKind::Crate => "crate",
                     $( ExpansionKind::$kind => $kind_name, )*
                 }
             }
@@ -59,6 +65,7 @@ macro_rules! expansions {
             fn make_from<'a>(self, result: Box<MacResult + 'a>) -> Option<Expansion> {
                 match self {
                     ExpansionKind::OptExpr => result.make_expr().map(Some).map(Expansion::OptExpr),
+                    ExpansionKind::Crate => result.make_crate().map(Expansion::Crate),
                     $( ExpansionKind::$kind => result.$make().map(Expansion::$kind), )*
                 }
             }
@@ -71,6 +78,14 @@ macro_rules! expansions {
                     _ => panic!("Expansion::make_* called on the wrong kind of expansion"),
                 }
             }
+
+            pub fn make_crate(self) -> ast::Crate {
+                match self {
+                    Expansion::Crate(krate) => krate.into_inner(),
+                    _ => panic!("Expansion::make_* called on the wrong kind of expansion"),
+                }
+            }
+
             $( pub fn $make(self) -> $ty {
                 match self {
                     Expansion::$kind(ast) => ast,
@@ -82,6 +97,7 @@ macro_rules! expansions {
                 use self::Expansion::*;
                 match self {
                     OptExpr(expr) => OptExpr(expr.and_then(|expr| folder.fold_opt_expr(expr))),
+                    Crate(krate) => Crate(krate.map(|k| folder.fold_crate(k))),
                     $($( $kind(ast) => $kind(folder.$fold(ast)), )*)*
                     $($( $kind(ast) => {
                         $kind(ast.into_iter().flat_map(|ast| folder.$fold_elt(ast)).collect())
@@ -91,6 +107,7 @@ macro_rules! expansions {
 
             pub fn visit_with<'a, V: Visitor<'a>>(&'a self, visitor: &mut V) {
                 match *self {
+                    Expansion::Crate(ref krate) => visitor.visit_crate(krate),
                     Expansion::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     Expansion::OptExpr(None) => {}
                     $($( Expansion::$kind(ref ast) => visitor.$visit(ast), )*)*
@@ -105,6 +122,11 @@ macro_rules! expansions {
             fn fold_opt_expr(&mut self, expr: P<ast::Expr>) -> Option<P<ast::Expr>> {
                 self.expand(Expansion::OptExpr(Some(expr))).make_opt_expr()
             }
+
+            fn fold_crate(&mut self, krate: ast::Crate) -> ast::Crate {
+                self.expand(Expansion::Crate(P(krate))).make_crate()
+            }
+
             $($(fn $fold(&mut self, node: $ty) -> $ty {
                 self.expand(Expansion::$kind(node)).$make()
             })*)*
@@ -145,6 +167,10 @@ impl ExpansionKind {
     fn expect_from_annotatables<I: IntoIterator<Item = Annotatable>>(self, items: I) -> Expansion {
         let mut items = items.into_iter();
         match self {
+            ExpansionKind::Crate => Expansion::Crate(
+                // we only box `ast::Crate` for `Expansion`
+                P(items.next().expect("expected exactly one crate").expect_crate()),
+            ),
             ExpansionKind::Items =>
                 Expansion::Items(items.map(Annotatable::expect_item).collect()),
             ExpansionKind::ImplItems =>
@@ -242,33 +268,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         self.cx.current_expansion.module = Rc::new(module);
         self.cx.current_expansion.crate_span = Some(krate.span);
 
-        let orig_mod_span = krate.module.inner;
+        // we only box `ast::Crate` for `Expansion` to keep it small
+        let krate_item = Expansion::Crate(P(krate));
+        krate = self.expand(krate_item).make_crate();
 
-        let krate_item = Expansion::Items(SmallVector::one(P(ast::Item {
-            attrs: krate.attrs,
-            span: krate.span,
-            node: ast::ItemKind::Mod(krate.module),
-            ident: keywords::Invalid.ident(),
-            id: ast::DUMMY_NODE_ID,
-            vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
-            tokens: None,
-        })));
-
-        match self.expand(krate_item).make_items().pop().map(P::into_inner) {
-            Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
-                krate.attrs = attrs;
-                krate.module = module;
-            },
-            None => {
-                // Resolution failed so we return an empty expansion
-                krate.attrs = vec![];
-                krate.module = ast::Mod {
-                    inner: orig_mod_span,
-                    items: vec![],
-                };
-            },
-            _ => unreachable!(),
-        };
         self.cx.trace_macros_diag();
         krate
     }
@@ -437,6 +440,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         // Since the item itself has already been configured by the InvocationCollector,
         // we know that fold result vector will contain exactly one element
         match item {
+            Annotatable::Crate(krate) => {
+                Annotatable::Crate(krate.map(|k| cfg.fold_crate(k)))
+            }
             Annotatable::Item(item) => {
                 Annotatable::Item(cfg.fold_item(item).pop().unwrap())
             }
@@ -522,6 +528,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             AttrProcMacro(ref mac) => {
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
+                    Annotatable::Crate(krate) => token::NtCrate(krate),
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
                     Annotatable::ImplItem(item) => token::NtImplItem(item.into_inner()),
@@ -789,6 +796,9 @@ impl<'a> Parser<'a> {
     pub fn parse_expansion(&mut self, kind: ExpansionKind, macro_legacy_warnings: bool)
                            -> PResult<'a, Expansion> {
         Ok(match kind {
+            ExpansionKind::Crate => {
+                Expansion::Crate(P(self.parse_crate_mod()?))
+            }
             ExpansionKind::Items => {
                 let mut items = SmallVector::new();
                 while let Some(item) = self.parse_item()? {

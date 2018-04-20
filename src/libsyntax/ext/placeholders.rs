@@ -42,6 +42,14 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     });
 
     match kind {
+        ExpansionKind::Crate => Expansion::Crate(P(ast::Crate {
+            attrs, module: ast::Mod {
+                inner: span,
+                items: vec![],
+            },
+            span,
+            tokens: None,
+        })),
         ExpansionKind::Expr => Expansion::Expr(expr_placeholder()),
         ExpansionKind::OptExpr => Expansion::OptExpr(Some(expr_placeholder())),
         ExpansionKind::Items => Expansion::Items(SmallVector::one(P(ast::Item {
