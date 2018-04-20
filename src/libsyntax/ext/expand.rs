@@ -514,6 +514,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 Some(kind.expect_from_annotatables(items))
             }
             AttrProcMacro(ref mac) => {
+                self.gate_proc_macro_attr_item(attr.span, &item);
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
                     Annotatable::Item(item) => token::NtItem(item),
                     Annotatable::TraitItem(item) => token::NtTraitItem(item.into_inner()),
@@ -522,7 +523,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
                     Annotatable::Expr(expr) => token::NtExpr(expr),
                 })).into();
-                let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_tok);
+                let input = self.extract_proc_macro_attr_input(attr.tokens, attr.span);
+                let tok_result = mac.expand(self.cx, attr.span, input, item_tok);
                 self.parse_expansion(tok_result, kind, &attr.path, attr.span)
             }
             ProcMacroDerive(..) | BuiltinDerive(..) => {
@@ -537,6 +539,49 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.dummy(attr.span)
             }
         }
+    }
+
+    fn extract_proc_macro_attr_input(&self, tokens: TokenStream, span: Span) -> TokenStream {
+        let mut trees = tokens.trees();
+        match trees.next() {
+            Some(TokenTree::Delimited(_, delim)) => {
+                if trees.next().is_none() {
+                    return delim.tts.into()
+                }
+            }
+            Some(TokenTree::Token(..)) => {}
+            None => return TokenStream::empty(),
+        }
+        self.cx.span_err(span, "custom attribute invocations must be \
+            of the form #[foo] or #[foo(..)], the macro name must only be \
+            followed by a delimiter token");
+        TokenStream::empty()
+    }
+
+    fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
+        let (kind, gate) = match *item {
+            Annotatable::Item(ref item) => {
+                match item.node {
+                    ItemKind::Mod(_) if self.cx.ecfg.proc_macro_mod() => return,
+                    ItemKind::Mod(_) => ("modules", "proc_macro_mod"),
+                    _ => return,
+                }
+            }
+            Annotatable::TraitItem(_) => return,
+            Annotatable::ImplItem(_) => return,
+            Annotatable::ForeignItem(_) => return,
+            Annotatable::Stmt(_) |
+            Annotatable::Expr(_) if self.cx.ecfg.proc_macro_expr() => return,
+            Annotatable::Stmt(_) => ("statements", "proc_macro_expr"),
+            Annotatable::Expr(_) => ("expressions", "proc_macro_expr"),
+        };
+        emit_feature_err(
+            self.cx.parse_sess,
+            gate,
+            span,
+            GateIssue::Language,
+            &format!("custom attributes cannot be applied to {}", kind),
+        );
     }
 
     /// Expand a macro invocation. Returns the result of expansion.
@@ -665,6 +710,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.trace_macros_diag();
                     kind.dummy(span)
                 } else {
+                    self.gate_proc_macro_expansion_kind(span, kind);
                     invoc.expansion_data.mark.set_expn_info(ExpnInfo {
                         call_site: span,
                         callee: NameAndSpan {
@@ -693,6 +739,30 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             self.cx.trace_macros_diag();
             kind.dummy(span)
         }
+    }
+
+    fn gate_proc_macro_expansion_kind(&self, span: Span, kind: ExpansionKind) {
+        let kind = match kind {
+            ExpansionKind::Expr => "expressions",
+            ExpansionKind::OptExpr => "expressions",
+            ExpansionKind::Pat => "patterns",
+            ExpansionKind::Ty => "types",
+            ExpansionKind::Stmts => "statements",
+            ExpansionKind::Items => return,
+            ExpansionKind::TraitItems => return,
+            ExpansionKind::ImplItems => return,
+            ExpansionKind::ForeignItems => return,
+        };
+        if self.cx.ecfg.proc_macro_non_items() {
+            return
+        }
+        emit_feature_err(
+            self.cx.parse_sess,
+            "proc_macro_non_items",
+            span,
+            GateIssue::Language,
+            &format!("procedural macros cannot be expanded to {}", kind),
+        );
     }
 
     /// Expand a derive invocation. Returns the result of expansion.
@@ -1370,6 +1440,9 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_custom_derive = custom_derive,
         fn proc_macro_enabled = proc_macro,
         fn macros_in_extern_enabled = macros_in_extern,
+        fn proc_macro_mod = proc_macro_mod,
+        fn proc_macro_expr = proc_macro_expr,
+        fn proc_macro_non_items = proc_macro_non_items,
     }
 }
 

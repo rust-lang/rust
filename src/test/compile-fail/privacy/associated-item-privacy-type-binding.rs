@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(proc_macro_path_invoc)]
 #![feature(decl_macro, associated_type_defaults)]
 #![allow(unused, private_in_public)]
 

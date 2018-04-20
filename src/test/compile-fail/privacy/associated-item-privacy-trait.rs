@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 
+#![feature(proc_macro_path_invoc)]
 #![feature(decl_macro, associated_type_defaults)]
 #![allow(unused, private_in_public)]
 

@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// #41719
+// no-prefer-dynamic
+// force-host
 
-#![feature(use_extern_macros, proc_macro_path_invoc)]
+#![crate_type = "proc-macro"]
+#![feature(proc_macro)]
 
-fn main() {
-    enum Foo {}
-    let _ = Foo::bar!(); //~ ERROR fail to resolve non-ident macro path
+extern crate proc_macro;
+
+use proc_macro::*;
+
+#[proc_macro]
+pub fn m(a: TokenStream) -> TokenStream {
+    a
+}
+
+#[proc_macro_attribute]
+pub fn a(_a: TokenStream, b: TokenStream) -> TokenStream {
+    b
 }

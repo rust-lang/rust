@@ -451,6 +451,15 @@ declare_features! (
     (active, mmx_target_feature, "1.27.0", None, None),
     (active, sse4a_target_feature, "1.27.0", None, None),
     (active, tbm_target_feature, "1.27.0", None, None),
+
+    // Allows macro invocations of the form `#[foo::bar]`
+    (active, proc_macro_path_invoc, "1.27.0", None, None),
+
+    // Allows macro invocations on modules expressions and statements and
+    // procedural macros to expand to non-items.
+    (active, proc_macro_mod, "1.27.0", None, None),
+    (active, proc_macro_expr, "1.27.0", None, None),
+    (active, proc_macro_non_items, "1.27.0", None, None),
 );
 
 declare_features! (

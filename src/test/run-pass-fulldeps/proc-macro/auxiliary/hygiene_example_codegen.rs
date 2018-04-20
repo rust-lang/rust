@@ -10,7 +10,7 @@
 
 // no-prefer-dynamic
 
-#![feature(proc_macro)]
+#![feature(proc_macro, proc_macro_non_items)]
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro as proc_macro_renamed; // This does not break `quote!`

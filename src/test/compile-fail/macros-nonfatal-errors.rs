@@ -13,6 +13,7 @@
 
 #![feature(asm)]
 #![feature(trace_macros, concat_idents)]
+#![feature(proc_macro_path_invoc)]
 
 #[derive(Default)] //~ ERROR
 enum OrDeriveThis {}

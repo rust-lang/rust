@@ -397,6 +397,18 @@ impl<'a> Resolver<'a> {
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                             -> Result<Def, Determinacy> {
+        if path.segments.len() > 1 {
+            if !self.session.features_untracked().proc_macro_path_invoc {
+                emit_feature_err(
+                    &self.session.parse_sess,
+                    "proc_macro_path_invoc",
+                    path.span,
+                    GateIssue::Language,
+                    "paths of length greater than one in macro invocations are \
+                     currently unstable",
+                );
+            }
+        }
         let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
         if def != Err(Determinacy::Undetermined) {
             // Do not report duplicated errors on every undetermined resolution.

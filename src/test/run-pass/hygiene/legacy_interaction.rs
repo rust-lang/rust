@@ -12,7 +12,7 @@
 
 // aux-build:legacy_interaction.rs
 
-#![feature(decl_macro)]
+#![feature(decl_macro, proc_macro_path_invoc)]
 #[allow(unused)]
 
 extern crate legacy_interaction;

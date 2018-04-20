@@ -12,7 +12,7 @@
 // ignore-stage1
 // ignore-cross-compile
 
-#![feature(proc_macro)]
+#![feature(proc_macro, proc_macro_non_items)]
 
 extern crate proc_macro_def;
 
