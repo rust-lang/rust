@@ -39,7 +39,7 @@ extern crate unicode_segmentation;
 use std::collections::HashMap;
 use std::error;
 use std::fmt;
-use std::io::{self, stdout, BufRead, Write};
+use std::io::{self, stdout, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -819,7 +819,7 @@ fn format_input_inner<T: Write>(
 /// A single span of changed lines, with 0 or more removed lines
 /// and a vector of 0 or more inserted lines.
 #[derive(Debug, PartialEq, Eq)]
-pub struct ModifiedChunk {
+struct ModifiedChunk {
     /// The first to be removed from the original text
     pub line_number_orig: u32,
     /// The number of lines which have been replaced
@@ -830,13 +830,14 @@ pub struct ModifiedChunk {
 
 /// Set of changed sections of a file.
 #[derive(Debug, PartialEq, Eq)]
-pub struct ModifiedLines {
+struct ModifiedLines {
     /// The set of changed chunks.
     pub chunks: Vec<ModifiedChunk>,
 }
 
 /// The successful result of formatting via `get_modified_lines()`.
-pub struct ModifiedLinesResult {
+#[cfg(test)]
+struct ModifiedLinesResult {
     /// The high level summary details
     pub summary: Summary,
     /// The result Filemap
@@ -849,10 +850,13 @@ pub struct ModifiedLinesResult {
 
 /// Format a file and return a `ModifiedLines` data structure describing
 /// the changed ranges of lines.
-pub fn get_modified_lines(
+#[cfg(test)]
+fn get_modified_lines(
     input: Input,
     config: &Config,
 ) -> Result<ModifiedLinesResult, (io::Error, Summary)> {
+    use std::io::BufRead;
+
     let mut data = Vec::new();
 
     let mut config = config.clone();
