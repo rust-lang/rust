@@ -424,6 +424,15 @@ point within the `await`, prior to polling the future being awaited,
 conditional on whether or not the await is the first await in the body of the
 future.
 
+A fundamental difference between Rust's futures and those from other languages
+is that Rust's futures do not do anything unless polled. The whole system is
+built around this: for example, cancellation is dropping the future for
+precisely this reason. In contrast, in other languages, calling an async fn
+spins up a future that starts executing immediately. This difference carries
+over to `async fn` and `async` blocks as well, where it's vital that the
+resulting future be *actively polled* to make progress. Allowing for partial,
+eager execution is likely to lead to significant confusion and bugs.
+
 This is also complicated from a user perspective - when a portion of the body
 is evaluated depends on whether or not it appears before all `await`
 statements (which could possibly be macro generated). The use of a terminal
