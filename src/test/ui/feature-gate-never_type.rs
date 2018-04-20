@@ -8,32 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type)]
-#![feature(exhaustive_patterns)]
+// Test that ! errors when used in illegal positions with feature(never_type) disabled
 
-mod foo {
-    pub struct SecretlyEmpty {
-        _priv: !,
-    }
-
-    pub struct NotSoSecretlyEmpty {
-        pub _pub: !,
-    }
+trait Foo {
+    type Wub;
 }
 
-struct NotSoSecretlyEmpty {
-    _priv: !,
-}
+type Ma = (u32, !, i32); //~ ERROR type is experimental
+type Meeshka = Vec<!>; //~ ERROR type is experimental
+type Mow = &fn(!) -> !; //~ ERROR type is experimental
+type Skwoz = &mut !; //~ ERROR type is experimental
 
-enum Foo {
-    A(foo::SecretlyEmpty),
-    B(foo::NotSoSecretlyEmpty),
-    C(NotSoSecretlyEmpty),
-    D(u32),
+impl Foo for Meeshka {
+    type Wub = !; //~ ERROR type is experimental
 }
 
 fn main() {
-    let x: Foo = Foo::D(123);
-    let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
 }
-

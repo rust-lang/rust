@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
+#![feature(never_type)]
 #![allow(unused_variables)]
 #![allow(unused_assignments)]
 #![allow(dead_code)]

@@ -272,6 +272,9 @@ declare_features! (
     // Allows cfg(target_has_atomic = "...").
     (active, cfg_target_has_atomic, "1.9.0", Some(32976), None),
 
+    // The `!` type. Does not imply exhaustive_patterns (below) any more.
+    (active, never_type, "1.13.0", Some(35121), None),
+
     // Allows exhaustive pattern matching on types that contain uninhabited types.
     (active, exhaustive_patterns, "1.13.0", None, None),
 
@@ -1634,6 +1637,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match ty.node {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_abi(bare_fn_ty.abi, ty.span);
+            }
+            ast::TyKind::Never => {
+                gate_feature_post!(&self, never_type, ty.span,
+                                   "The `!` type is experimental");
             }
             ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::Dyn) => {
                 gate_feature_post!(&self, dyn_trait, ty.span,

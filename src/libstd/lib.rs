@@ -275,6 +275,7 @@
 #![feature(macro_reexport)]
 #![feature(macro_vis_matcher)]
 #![feature(needs_panic_runtime)]
+#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(nonzero)]
 #![feature(num_bits_bytes)]

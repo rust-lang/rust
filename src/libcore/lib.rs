@@ -82,6 +82,7 @@
 #![feature(iterator_repeat_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
+#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(macro_at_most_once_rep)]
 #![feature(no_core)]

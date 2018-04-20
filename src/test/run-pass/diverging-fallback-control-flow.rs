@@ -14,6 +14,8 @@
 // These represent current behavior, but are pretty dubious.  I would
 // like to revisit these and potentially change them. --nmatsakis
 
+#![feature(never_type)]
+
 trait BadDefault {
     fn default() -> Self;
 }

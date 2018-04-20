@@ -179,7 +179,7 @@ mod impls {
         bool char
     }
 
-    #[stable(feature = "never_type", since = "1.26.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Clone for ! {
         #[inline]
         fn clone(&self) -> Self {
