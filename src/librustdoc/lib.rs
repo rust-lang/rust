@@ -646,6 +646,20 @@ where R: 'static + Send,
 
         krate.version = crate_version;
 
+        let diag = core::new_handler(error_format, None);
+
+        fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
+            let mut msg = diag.struct_warn(&format!("WARNING: the `#![doc({})]` attribute is \
+                                                     considered deprecated", name));
+            msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+
+            if name == "no_default_passes" {
+                msg.help("you may want to use `#![doc(document_private_items)]`");
+            }
+
+            msg.emit();
+        }
+
         // Process all of the crate attributes, extracting plugin metadata along
         // with the passes which we are supposed to run.
         for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
@@ -653,17 +667,33 @@ where R: 'static + Send,
             let name = name.as_ref().map(|s| &s[..]);
             if attr.is_word() {
                 if name == Some("no_default_passes") {
+                    report_deprecated_attr("no_default_passes", &diag);
                     default_passes = false;
                 }
             } else if let Some(value) = attr.value_str() {
                 let sink = match name {
-                    Some("passes") => &mut passes,
-                    Some("plugins") => &mut plugins,
+                    Some("passes") => {
+                        report_deprecated_attr("passes = \"...\"", &diag);
+                        &mut passes
+                    },
+                    Some("plugins") => {
+                        report_deprecated_attr("plugins = \"...\"", &diag);
+                        &mut plugins
+                    },
                     _ => continue,
                 };
                 for p in value.as_str().split_whitespace() {
                     sink.push(p.to_string());
                 }
+            }
+
+            if attr.is_word() && name == Some("document_private_items") {
+                default_passes = false;
+
+                passes = vec![
+                    String::from("collapse-docs"),
+                    String::from("unindent-comments"),
+                ];
             }
         }
 
