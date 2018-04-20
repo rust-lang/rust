@@ -832,7 +832,7 @@ test!(RunFailFullDepsPretty {
     host: true
 });
 
-default_test!(RunMake {
+host_test!(RunMake {
     path: "src/test/run-make",
     mode: "run-make",
     suite: "run-make"
