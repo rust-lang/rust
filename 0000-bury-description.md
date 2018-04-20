@@ -26,21 +26,20 @@ Let's steer users away from the `description()` method.
 # Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-The description method can have default implementation returning `core::intrinsics::type_name::<Self>()`. This preserves basic functionality of this method for backwards compatibility.
-
 Users of the `Error` trait can then pretend this method does not exist.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-When users start omitting bespoke `description()` implementations, code that still uses this method will get machine-generated rather than human-written descriptions. If this becomes a problem, the `description()` method can also be formally deprecated (with the `#[deprecated]` attribute). However, this RFC does not propose formal deprecation at this time to avoid unnecessary warnings during the transition.
+When users start omitting bespoke `description()` implementations, code that still uses this method will start getting empty strings instead of human-written description. If this becomes a problem, the `description()` method can also be formally deprecated (with the `#[deprecated]` attribute). However, there's no urgency to remove existing implementations of `description()`, so this RFC does not propose formal deprecation at this time to avoid unnecessary warnings during the transition.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
 
 - Do nothing, and rely on 3rd party crates to improve usability of errors (e.g. various crates providing `Error`-implementing macros or the `Fail` trait).
 - The default message returned by `description` could be different.
-    - it could be even less useful to discourage use of this method harder, e.g. just `"error"`,
+    - it could be a hardcoded generic string, e.g. `"error"`,
+    - it could return `core::intrinsics::type_name::<Self>()`,
     - it could try to be nicer, e.g. use the type's doccomment as the description, or convert type name to a sentence (`FileNotFoundError` -> "error: file not found").
 
 # Unresolved questions
