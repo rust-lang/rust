@@ -445,6 +445,35 @@ shipping - async/await syntax (a concept available widely in many languages
 which interacts well with our existing async IO libraries) is the most logical
 thing to implement at this stage in Rust's evolution.
 
+## Async blocks vs async closures
+
+As noted in the main text, `async` blocks and `async` closures are closely
+related, and are roughly inter-expressible:
+
+```rust
+// equivalent
+async { ... }
+(async || { ... })()
+
+// equivalent
+async |..| { ... }
+|..| async { ... }
+```
+
+We could consider having only one of the two constructs. However:
+
+- There's a strong reason to have `async ||` for consistency with `async fn`;
+  such closures are often useful for higher-order constructs like constructing a
+  service.
+
+- There's a strong reason to have `async` blocks: the initialization pattern
+  mentioned in the RFC text, and the fact that it provides a more
+  direct/primitive way of constructing futures.
+
+The RFC proposes to include both constructs up front, since it seems inevitable
+that we will want both of them, but we can always reconsider this question
+before stabilization.
+
 # Prior art
 [prior-art]: #prior-art
 
