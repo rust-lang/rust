@@ -10,20 +10,12 @@
 
 // compile-pass
 
-#![feature(const_fn)]
+pub const Z: u32 = 0 - 1;
+//~^ WARN attempt to subtract with overflow
+//~| WARN this constant cannot be used
 
-const fn foo(x: u32) -> u32 {
-    x
-}
+pub type Foo = [i32; 0 - 1];
+//~^ WARN attempt to subtract with overflow
+//~| WARN this array length cannot be used
 
-fn main() {
-    const X: u32 = 0-1;
-    //~^ WARN attempt to subtract with overflow
-    //~| WARN this constant cannot be used
-    const Y: u32 = foo(0-1);
-    //~^ WARN attempt to subtract with overflow
-    //~| WARN this constant cannot be used
-    println!("{} {}", X, Y);
-    //~^ WARN constant evaluation error
-    //~| WARN constant evaluation error
-}
+fn main() {}
