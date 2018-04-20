@@ -124,6 +124,24 @@ impl TokenTree {
         }
     }
 
+    // See comments in `interpolated_to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    //
+    // This is otherwise the same as `eq_unspanned`, only recursing with a
+    // different method.
+    pub fn probably_equal_for_proc_macro(&self, other: &TokenTree) -> bool {
+        match (self, other) {
+            (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => {
+                tk.probably_equal_for_proc_macro(tk2)
+            }
+            (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
+                dl.delim == dl2.delim &&
+                dl.stream().probably_equal_for_proc_macro(&dl2.stream())
+            }
+            (_, _) => false,
+        }
+    }
+
     /// Retrieve the TokenTree's span.
     pub fn span(&self) -> Span {
         match *self {
@@ -244,6 +262,22 @@ impl TokenStream {
         let mut t2 = other.trees();
         for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.eq_unspanned(&t2) {
+                return false;
+            }
+        }
+        t1.next().is_none() && t2.next().is_none()
+    }
+
+    // See comments in `interpolated_to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    //
+    // This is otherwise the same as `eq_unspanned`, only recursing with a
+    // different method.
+    pub fn probably_equal_for_proc_macro(&self, other: &TokenStream) -> bool {
+        let mut t1 = self.trees();
+        let mut t2 = other.trees();
+        for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
+            if !t1.probably_equal_for_proc_macro(&t2) {
                 return false;
             }
         }

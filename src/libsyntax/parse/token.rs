@@ -26,6 +26,7 @@ use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
 use std::{cmp, fmt};
+use std::mem;
 use rustc_data_structures::sync::{Lrc, Lock};
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -87,6 +88,12 @@ impl Lit {
             Str_(_) | StrRaw(..) => "string",
             ByteStr(_) | ByteStrRaw(..) => "byte string"
         }
+    }
+
+    // See comments in `interpolated_to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    fn probably_equal_for_proc_macro(&self, other: &Lit) -> bool {
+        mem::discriminant(self) == mem::discriminant(other)
     }
 }
 
@@ -530,14 +537,6 @@ impl Token {
         // stream they came from. Here we attempt to extract these
         // lossless token streams before we fall back to the
         // stringification.
-        //
-        // During early phases of the compiler, though, the AST could
-        // get modified directly (e.g. attributes added or removed) and
-        // the internal cache of tokens my not be invalidated or
-        // updated. Consequently if the "lossless" token stream
-        // disagrees with our actuall stringification (which has
-        // historically been much more battle-tested) then we go with
-        // the lossy stream anyway (losing span information).
         let mut tokens = None;
 
         match nt.0 {
@@ -569,12 +568,95 @@ impl Token {
             let source = pprust::token_to_string(self);
             parse_stream_from_source_str(FileName::MacroExpansion, source, sess, Some(span))
         });
+
+        // During early phases of the compiler the AST could get modified
+        // directly (e.g. attributes added or removed) and the internal cache
+        // of tokens my not be invalidated or updated. Consequently if the
+        // "lossless" token stream disagrees with our actual stringification
+        // (which has historically been much more battle-tested) then we go
+        // with the lossy stream anyway (losing span information).
+        //
+        // Note that the comparison isn't `==` here to avoid comparing spans,
+        // but it *also* is a "probable" equality which is a pretty weird
+        // definition. We mostly want to catch actual changes to the AST
+        // like a `#[cfg]` being processed or some weird `macro_rules!`
+        // expansion.
+        //
+        // What we *don't* want to catch is the fact that a user-defined
+        // literal like `0xf` is stringified as `15`, causing the cached token
+        // stream to not be literal `==` token-wise (ignoring spans) to the
+        // token stream we got from stringification.
+        //
+        // Instead the "probably equal" check here is "does each token
+        // recursively have the same discriminant?" We basically don't look at
+        // the token values here and assume that such fine grained modifications
+        // of token streams doesn't happen.
         if let Some(tokens) = tokens {
-            if tokens.eq_unspanned(&tokens_for_real) {
+            if tokens.probably_equal_for_proc_macro(&tokens_for_real) {
                 return tokens
             }
         }
         return tokens_for_real
+    }
+
+    // See comments in `interpolated_to_tokenstream` for why we care about
+    // *probably* equal here rather than actual equality
+    pub fn probably_equal_for_proc_macro(&self, other: &Token) -> bool {
+        if mem::discriminant(self) != mem::discriminant(other) {
+            return false
+        }
+        match (self, other) {
+            (&Eq, &Eq) |
+            (&Lt, &Lt) |
+            (&Le, &Le) |
+            (&EqEq, &EqEq) |
+            (&Ne, &Ne) |
+            (&Ge, &Ge) |
+            (&Gt, &Gt) |
+            (&AndAnd, &AndAnd) |
+            (&OrOr, &OrOr) |
+            (&Not, &Not) |
+            (&Tilde, &Tilde) |
+            (&At, &At) |
+            (&Dot, &Dot) |
+            (&DotDot, &DotDot) |
+            (&DotDotDot, &DotDotDot) |
+            (&DotDotEq, &DotDotEq) |
+            (&DotEq, &DotEq) |
+            (&Comma, &Comma) |
+            (&Semi, &Semi) |
+            (&Colon, &Colon) |
+            (&ModSep, &ModSep) |
+            (&RArrow, &RArrow) |
+            (&LArrow, &LArrow) |
+            (&FatArrow, &FatArrow) |
+            (&Pound, &Pound) |
+            (&Dollar, &Dollar) |
+            (&Question, &Question) |
+            (&Whitespace, &Whitespace) |
+            (&Comment, &Comment) |
+            (&Eof, &Eof) => true,
+
+            (&BinOp(a), &BinOp(b)) |
+            (&BinOpEq(a), &BinOpEq(b)) => a == b,
+
+            (&OpenDelim(a), &OpenDelim(b)) |
+            (&CloseDelim(a), &CloseDelim(b)) => a == b,
+
+            (&DocComment(a), &DocComment(b)) |
+            (&Shebang(a), &Shebang(b)) => a == b,
+
+            (&Lifetime(a), &Lifetime(b)) => a.name == b.name,
+            (&Ident(a, b), &Ident(c, d)) => a.name == c.name && b == d,
+
+            (&Literal(ref a, b), &Literal(ref c, d)) => {
+                b == d && a.probably_equal_for_proc_macro(c)
+            }
+
+            (&Interpolated(_), &Interpolated(_)) => false,
+
+            _ => panic!("forgot to add a token?"),
+        }
     }
 }
 
