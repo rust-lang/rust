@@ -35,11 +35,9 @@ const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|ch
 fn main() {
     env_logger::init();
     let opts = make_opts();
-    // Only handles arguments passed in through the CLI.
-    let write_mode = determine_write_mode(&opts);
 
     let exit_code = match execute(&opts) {
-        Ok(summary) => {
+        Ok((write_mode, summary)) => {
             if summary.has_operational_errors()
                 || summary.has_diff && write_mode == WriteMode::Check
                 || summary.has_parsing_errors() || summary.has_formatting_errors()
@@ -248,22 +246,22 @@ fn make_opts() -> Options {
     opts
 }
 
-fn execute(opts: &Options) -> FmtResult<Summary> {
+fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
     let matches = opts.parse(env::args().skip(1))?;
 
     match determine_operation(&matches)? {
         Operation::Help => {
             print_usage_to_stdout(opts, "");
             Summary::print_exit_codes();
-            Ok(Summary::default())
+            Ok((WriteMode::None, Summary::default()))
         }
         Operation::Version => {
             print_version();
-            Ok(Summary::default())
+            Ok((WriteMode::None, Summary::default()))
         }
         Operation::ConfigHelp => {
             Config::print_docs(&mut stdout(), matches.opt_present("unstable-features"));
-            Ok(Summary::default())
+            Ok((WriteMode::None, Summary::default()))
         }
         Operation::ConfigOutputDefault { path } => {
             let toml = Config::default().all_options().to_toml()?;
@@ -273,7 +271,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             } else {
                 io::stdout().write_all(toml.as_bytes())?;
             }
-            Ok(Summary::default())
+            Ok((WriteMode::None, Summary::default()))
         }
         Operation::Stdin { input, config_path } => {
             // try to read config from local directory
@@ -302,7 +300,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 checkstyle::output_footer(&mut out, config.write_mode())?;
             }
 
-            Ok(error_summary)
+            Ok((WriteMode::Plain, error_summary))
         }
         Operation::Format {
             files,
@@ -320,7 +318,7 @@ fn format(
     config_path: Option<PathBuf>,
     minimal_config_path: Option<String>,
     options: CliOptions,
-) -> FmtResult<Summary> {
+) -> FmtResult<(WriteMode, Summary)> {
     for f in options.file_lines.files() {
         match *f {
             FileName::Real(ref f) if files.contains(f) => {}
@@ -343,8 +341,9 @@ fn format(
         }
     }
 
+    let write_mode = config.write_mode();
     let mut out = &mut stdout();
-    checkstyle::output_header(&mut out, config.write_mode())?;
+    checkstyle::output_header(&mut out, write_mode)?;
     let mut error_summary = Summary::default();
 
     for file in files {
@@ -379,7 +378,7 @@ fn format(
             error_summary.add(run(Input::File(file), &config));
         }
     }
-    checkstyle::output_footer(&mut out, config.write_mode())?;
+    checkstyle::output_footer(&mut out, write_mode)?;
 
     // If we were given a path via dump-minimal-config, output any options
     // that were used during formatting as TOML.
@@ -389,16 +388,7 @@ fn format(
         file.write_all(toml.as_bytes())?;
     }
 
-    Ok(error_summary)
-}
-
-fn determine_write_mode(opts: &Options) -> WriteMode {
-    let matches = opts.parse(env::args().skip(1)).unwrap();
-    let options = CliOptions::from_matches(&matches).unwrap();
-    match options.write_mode {
-        Some(m) => m,
-        None => WriteMode::default(),
-    }
+    Ok((write_mode, error_summary))
 }
 
 fn print_usage_to_stdout(opts: &Options, reason: &str) {

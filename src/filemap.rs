@@ -191,6 +191,7 @@ where
                 return Ok(has_diff);
             }
         }
+        WriteMode::None => {}
     }
 
     // when we are not in diff mode, don't indicate differing files
