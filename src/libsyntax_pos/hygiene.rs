@@ -238,6 +238,22 @@ impl SyntaxContext {
         })
     }
 
+    /// Pulls a single mark off of the syntax context. This effectively moves the
+    /// context up one macro definition level. That is, if we have a nested macro
+    /// definition as follows:
+    ///
+    /// ```rust
+    /// macro_rules! f {
+    ///    macro_rules! g {
+    ///        ...
+    ///    }
+    /// }
+    /// ```
+    ///
+    /// and we have a SyntaxContext that is referring to something declared by an invocation
+    /// of g (call it g1), calling remove_mark will result in the SyntaxContext for the
+    /// invocation of f that created g1.
+    /// Returns the mark that was removed.
     pub fn remove_mark(&mut self) -> Mark {
         HygieneData::with(|data| {
             let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;
