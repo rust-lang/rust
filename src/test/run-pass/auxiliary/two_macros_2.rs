@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(duplicate_macro_exports)]
+macro_rules! macro_one { ($($t:tt)*) => ($($t)*) }
 
-#[macro_export]
-macro_rules! foo { ($i:ident) => {} }
-
-#[macro_export]
-macro_rules! foo { () => {} }
+macro_rules! macro_two { ($($t:tt)*) => ($($t)*) }
