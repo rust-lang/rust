@@ -514,7 +514,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         let is_float = input_ty.is_fp();
         let is_signed = input_ty.is_signed();
         let is_nil = input_ty.is_nil();
-        let is_bool = input_ty.is_bool();
         match op {
             mir::BinOp::Add => if is_float {
                 bx.fadd(lhs, rhs)
@@ -564,15 +563,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     lhs, rhs
                 )
             } else {
-                let (lhs, rhs) = if is_bool {
-                    // FIXME(#36856) -- extend the bools into `i8` because
-                    // LLVM's i1 comparisons are broken.
-                    (bx.zext(lhs, Type::i8(bx.cx)),
-                     bx.zext(rhs, Type::i8(bx.cx)))
-                } else {
-                    (lhs, rhs)
-                };
-
                 bx.icmp(
                     base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
                     lhs, rhs
