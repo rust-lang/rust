@@ -960,7 +960,7 @@ impl<T> ManuallyDrop<T> {
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
-    pub fn new(value: T) -> ManuallyDrop<T> {
+    pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
     }
 
