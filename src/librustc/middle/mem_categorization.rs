@@ -503,8 +503,37 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_adjusted_opt(expr))
     }
 
+    /// Returns the type of value that this pattern matches against.
+    /// Some non-obvious cases:
+    ///
+    /// - a `ref x` binding matches against a value of type `T` and gives
+    ///   `x` the type `&T`; we return `T`.
+    /// - a pattern with implicit derefs (thanks to default binding
+    ///   modes #42640) may look like `Some(x)` but in fact have
+    ///   implicit deref patterns attached (e.g., it is really
+    ///   `&Some(x)`). In that case, we return the "outermost" type
+    ///   (e.g., `&Option<T>).
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
+        // Check for implicit `&` types wrapping the pattern; note
+        // that these are never attached to binding patterns, so
+        // actually this is somewhat "disjoint" from the code below
+        // that aims to account for `ref x`.
+        if let Some(vec) = self.tables.pat_adjustments().get(pat.hir_id) {
+            if let Some(first_ty) = vec.first() {
+                debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
+                return Ok(first_ty);
+            }
+        }
+
+        self.pat_ty_unadjusted(pat)
+    }
+
+
+    /// Like `pat_ty`, but ignores implicit `&` patterns.
+    fn pat_ty_unadjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
+        debug!("pat_ty(pat={:?}) base_ty={:?}", pat, base_ty);
+
         // This code detects whether we are looking at a `ref x`,
         // and if so, figures out what the type *being borrowed* is.
         let ret_ty = match pat.node {
@@ -531,8 +560,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
             _ => base_ty,
         };
-        debug!("pat_ty(pat={:?}) base_ty={:?} ret_ty={:?}",
-               pat, base_ty, ret_ty);
+        debug!("pat_ty(pat={:?}) ret_ty={:?}", pat, ret_ty);
+
         Ok(ret_ty)
     }
 
@@ -1246,7 +1275,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                      self.tcx.adt_def(enum_def).variant_with_id(def_id).fields.len())
                 }
                 Def::StructCtor(_, CtorKind::Fn) => {
-                    match self.pat_ty(&pat)?.sty {
+                    match self.pat_ty_unadjusted(&pat)?.sty {
                         ty::TyAdt(adt_def, _) => {
                             (cmt, adt_def.non_enum_variant().fields.len())
                         }
@@ -1297,7 +1326,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
           PatKind::Tuple(ref subpats, ddpos) => {
             // (p1, ..., pN)
-            let expected_len = match self.pat_ty(&pat)?.sty {
+            let expected_len = match self.pat_ty_unadjusted(&pat)?.sty {
                 ty::TyTuple(ref tys) => tys.len(),
                 ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
             };
