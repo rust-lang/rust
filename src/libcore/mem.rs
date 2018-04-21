@@ -606,9 +606,105 @@ pub unsafe fn zeroed<T>() -> T {
 /// [copy]: ../intrinsics/fn.copy.html
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
 /// [`Drop`]: ../ops/trait.Drop.html
+#[cfg(stage0)]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn uninitialized<T>() -> T {
+    intrinsics::uninit()
+}
+
+/// Bypasses Rust's normal memory-initialization checks by pretending to
+/// produce a value of type `T`, while doing nothing at all.
+///
+/// **This is incredibly dangerous and should not be done lightly. Deeply
+/// consider initializing your memory with a default value instead.**
+///
+/// This is useful for [FFI] functions and initializing arrays sometimes,
+/// but should generally be avoided.
+///
+/// [FFI]: ../../book/first-edition/ffi.html
+///
+/// # Undefined behavior
+///
+/// It is [undefined behavior][ub] to read uninitialized memory, even just an
+/// uninitialized boolean. For instance, if you branch on the value of such
+/// a boolean, your program may take one, both, or neither of the branches.
+///
+/// Writing to the uninitialized value is similarly dangerous. Rust believes the
+/// value is initialized, and will therefore try to [`Drop`] the uninitialized
+/// value and its fields if you try to overwrite it in a normal manner. The only way
+/// to safely initialize an uninitialized value is with [`ptr::write`][write],
+/// [`ptr::copy`][copy], or [`ptr::copy_nonoverlapping`][copy_no].
+///
+/// If the value does implement [`Drop`], it must be initialized before
+/// it goes out of scope (and therefore would be dropped). Note that this
+/// includes a `panic` occurring and unwinding the stack suddenly.
+///
+/// # Examples
+///
+/// Here's how to safely initialize an array of [`Vec`]s.
+///
+/// ```
+/// use std::mem;
+/// use std::ptr;
+///
+/// // Only declare the array. This safely leaves it
+/// // uninitialized in a way that Rust will track for us.
+/// // However we can't initialize it element-by-element
+/// // safely, and we can't use the `[value; 1000]`
+/// // constructor because it only works with `Copy` data.
+/// let mut data: [Vec<u32>; 1000];
+///
+/// unsafe {
+///     // So we need to do this to initialize it.
+///     data = mem::uninitialized();
+///
+///     // DANGER ZONE: if anything panics or otherwise
+///     // incorrectly reads the array here, we will have
+///     // Undefined Behavior.
+///
+///     // It's ok to mutably iterate the data, since this
+///     // doesn't involve reading it at all.
+///     // (ptr and len are statically known for arrays)
+///     for elem in &mut data[..] {
+///         // *elem = Vec::new() would try to drop the
+///         // uninitialized memory at `elem` -- bad!
+///         //
+///         // Vec::new doesn't allocate or do really
+///         // anything. It's only safe to call here
+///         // because we know it won't panic.
+///         ptr::write(elem, Vec::new());
+///     }
+///
+///     // SAFE ZONE: everything is initialized.
+/// }
+///
+/// println!("{:?}", &data[0]);
+/// ```
+///
+/// This example emphasizes exactly how delicate and dangerous using `mem::uninitialized`
+/// can be. Note that the [`vec!`] macro *does* let you initialize every element with a
+/// value that is only [`Clone`], so the following is semantically equivalent and
+/// vastly less dangerous, as long as you can live with an extra heap
+/// allocation:
+///
+/// ```
+/// let data: Vec<Vec<u32>> = vec![Vec::new(); 1000];
+/// println!("{:?}", &data[0]);
+/// ```
+///
+/// [`Vec`]: ../../std/vec/struct.Vec.html
+/// [`vec!`]: ../../std/macro.vec.html
+/// [`Clone`]: ../../std/clone/trait.Clone.html
+/// [ub]: ../../reference/behavior-considered-undefined.html
+/// [write]: ../ptr/fn.write.html
+/// [copy]: ../intrinsics/fn.copy.html
+/// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
+/// [`Drop`]: ../ops/trait.Drop.html
+#[inline]
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const unsafe fn uninitialized<T>() -> T {
     intrinsics::uninit()
 }
 
