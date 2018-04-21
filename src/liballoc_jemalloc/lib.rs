@@ -14,7 +14,7 @@
             reason = "this library is unlikely to be stabilized in its current \
                       form or name",
             issue = "27783")]
-#![feature(alloc_system)]
+#![feature(core_intrinsics)]
 #![feature(libc)]
 #![feature(linkage)]
 #![feature(staged_api)]
@@ -23,7 +23,6 @@
 #![cfg_attr(not(dummy_jemalloc), feature(allocator_api))]
 #![rustc_alloc_kind = "exe"]
 
-extern crate alloc_system;
 extern crate libc;
 
 #[cfg(not(dummy_jemalloc))]
@@ -102,7 +101,7 @@ mod contents {
     #[no_mangle]
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_oom() -> ! {
-        ::alloc_system::oom()
+        ::core::intrinsics::abort();
     }
 
     #[no_mangle]

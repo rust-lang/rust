@@ -603,32 +603,6 @@ pub unsafe trait Alloc {
     ///   to allocate that block of memory.
     unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout);
 
-    /// Allocator-specific method for signaling an out-of-memory
-    /// condition.
-    ///
-    /// `oom` aborts the thread or process, optionally performing
-    /// cleanup or logging diagnostic information before panicking or
-    /// aborting.
-    ///
-    /// `oom` is meant to be used by clients unable to cope with an
-    /// unsatisfied allocation request, and wish to abandon
-    /// computation rather than attempt to recover locally.
-    ///
-    /// Implementations of the `oom` method are discouraged from
-    /// infinitely regressing in nested calls to `oom`. In
-    /// practice this means implementors should eschew allocating,
-    /// especially from `self` (directly or indirectly).
-    ///
-    /// Implementations of the allocation and reallocation methods
-    /// (e.g. `alloc`, `alloc_one`, `realloc`) are discouraged from
-    /// panicking (or aborting) in the event of memory exhaustion;
-    /// instead they should return an appropriate error from the
-    /// invoked method, and let the client decide whether to invoke
-    /// this `oom` method in response.
-    fn oom(&mut self) -> ! {
-        unsafe { ::intrinsics::abort() }
-    }
-
     // == ALLOCATOR-SPECIFIC QUANTITIES AND LIMITS ==
     // usable_size
 

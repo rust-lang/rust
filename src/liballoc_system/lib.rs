@@ -71,11 +71,6 @@ unsafe impl Alloc for System {
                       new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
     }
-
-    #[inline]
-    fn oom(&mut self) -> ! {
-        ::oom()
-    }
 }
 
 #[cfg(stage0)]
@@ -102,11 +97,6 @@ unsafe impl<'a> Alloc for &'a System {
                       layout: Layout,
                       new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::realloc(*self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    fn oom(&mut self) -> ! {
-        ::oom()
     }
 }
 
@@ -366,63 +356,3 @@ mod platform {
         }
     }
 }
-
-#[inline]
-pub fn oom() -> ! {
-    write_to_stderr("fatal runtime error: memory allocation failed");
-    unsafe {
-        ::core::intrinsics::abort();
-    }
-}
-
-#[cfg(any(unix, target_os = "redox"))]
-#[inline]
-fn write_to_stderr(s: &str) {
-    extern crate libc;
-
-    unsafe {
-        libc::write(libc::STDERR_FILENO,
-                    s.as_ptr() as *const libc::c_void,
-                    s.len());
-    }
-}
-
-#[cfg(windows)]
-#[inline]
-fn write_to_stderr(s: &str) {
-    use core::ptr;
-
-    type LPVOID = *mut u8;
-    type HANDLE = LPVOID;
-    type DWORD = u32;
-    type BOOL = i32;
-    type LPDWORD = *mut DWORD;
-    type LPOVERLAPPED = *mut u8;
-
-    const STD_ERROR_HANDLE: DWORD = -12i32 as DWORD;
-
-    extern "system" {
-        fn WriteFile(hFile: HANDLE,
-                     lpBuffer: LPVOID,
-                     nNumberOfBytesToWrite: DWORD,
-                     lpNumberOfBytesWritten: LPDWORD,
-                     lpOverlapped: LPOVERLAPPED)
-                     -> BOOL;
-        fn GetStdHandle(which: DWORD) -> HANDLE;
-    }
-
-    unsafe {
-        // WriteFile silently fails if it is passed an invalid
-        // handle, so there is no need to check the result of
-        // GetStdHandle.
-        WriteFile(GetStdHandle(STD_ERROR_HANDLE),
-                  s.as_ptr() as LPVOID,
-                  s.len() as DWORD,
-                  ptr::null_mut(),
-                  ptr::null_mut());
-    }
-}
-
-#[cfg(not(any(windows, unix, target_os = "redox")))]
-#[inline]
-fn write_to_stderr(_: &str) {}

@@ -131,11 +131,6 @@ unsafe impl Alloc for Global {
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
     }
-
-    #[inline]
-    fn oom(&mut self) -> ! {
-        oom()
-    }
 }
 
 /// The allocator for unique pointers.
