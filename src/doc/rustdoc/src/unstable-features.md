@@ -373,3 +373,19 @@ This is an internal flag intended for the standard library and compiler that app
 `#[unstable]` attribute to any dependent crate that doesn't have another stability attribute. This
 allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
 library, as an equivalent command-line argument is provided to `rustc` when building those crates.
+
+### `doc_alias` feature
+
+This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
+`doc(alias)` attribute. Example:
+
+```rust,no_run
+#![feature(doc_alias)]
+
+#[doc(alias = "x")]
+#[doc(alias = "big")]
+pub struct BigX;
+```
+
+Then, when looking for it through the `rustdoc` search, if you enter "x" or
+"big", search will show the `BigX` struct first.
