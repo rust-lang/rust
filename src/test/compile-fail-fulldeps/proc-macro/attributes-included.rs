@@ -11,7 +11,7 @@
 // aux-build:attributes-included.rs
 // ignore-stage1
 
-#![feature(proc_macro, rustc_attrs)]
+#![feature(proc_macro, rustc_attrs, proc_macro_path_invoc)]
 #![warn(unused)]
 
 extern crate attributes_included;

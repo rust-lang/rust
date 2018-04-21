@@ -20,7 +20,7 @@ use proc_macro::TokenStream;
 pub fn attr_with_args(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = args.to_string();
 
-    assert_eq!(args, r#"( text = "Hello, world!" )"#);
+    assert_eq!(args, r#"text = "Hello, world!""#);
 
     let input = input.to_string();
 

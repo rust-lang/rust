@@ -13,7 +13,7 @@
 // aux-build:my_crate.rs
 // aux-build:unhygienic_example.rs
 
-#![feature(decl_macro)]
+#![feature(decl_macro, proc_macro_path_invoc)]
 
 extern crate unhygienic_example;
 extern crate my_crate; // (b)

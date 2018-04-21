@@ -11,7 +11,7 @@
 // aux-build:issue-42708.rs
 // ignore-stage1
 
-#![feature(decl_macro, proc_macro)]
+#![feature(decl_macro, proc_macro, proc_macro_path_invoc)]
 #![allow(unused)]
 
 extern crate issue_42708;
