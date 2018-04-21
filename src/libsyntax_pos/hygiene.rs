@@ -21,6 +21,7 @@ use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashSet;
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
@@ -115,6 +116,32 @@ impl Mark {
                 self = data.marks[self.0 as usize].parent;
             }
             true
+        })
+    }
+
+    /// Computes a mark such that both input marks are descendants of (or equal to) the returned
+    /// mark. That is, the following holds:
+    ///
+    /// ```rust
+    /// let lub = lub(a, b);
+    /// assert!(a.is_descendant_of(lub))
+    /// assert!(b.is_descendant_of(lub))
+    /// ```
+    pub fn lub(mut a: Mark, mut b: Mark) -> Mark {
+        HygieneData::with(|data| {
+            // Compute the path from a to the root
+            let mut a_path = FxHashSet::<Mark>();
+            while a != Mark::root() {
+                a_path.insert(a);
+                a = data.marks[a.0 as usize].parent;
+            }
+
+            // While the path from b to the root hasn't intersected, move up the tree
+            while !a_path.contains(&b) {
+                b =  data.marks[b.0 as usize].parent;
+            }
+
+            b
         })
     }
 }
