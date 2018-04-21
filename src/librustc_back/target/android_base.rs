@@ -20,5 +20,6 @@ pub fn opts() -> TargetOptions {
     base.is_like_android = true;
     base.position_independent_executables = true;
     base.has_elf_tls = false;
+    base.requires_uwtable = true;
     base
 }

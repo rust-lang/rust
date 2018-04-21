@@ -492,7 +492,7 @@ pub fn trans_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'tc
     // You can also find more info on why Windows is whitelisted here in:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
     if !cx.sess().no_landing_pads() ||
-       cx.sess().target.target.options.is_like_windows {
+       cx.sess().target.target.options.requires_uwtable {
         attributes::emit_uwtable(lldecl, true);
     }
 
