@@ -47,6 +47,12 @@ as it's possible that someone else has already reported your error. This doesn't
 always work, and sometimes it's hard to know what to search for, so consider this
 extra credit. We won't mind if you accidentally file a duplicate report.
 
+Similarly, to help others who encountered the bug find your issue,
+consider filing an issue with with a descriptive title, which contains imformation that might be unique to it.
+This can be the language or compiler feature used, the conditions that trigger the bug,
+or part of the error message if there is any.
+An example could be: **"impossible case reached" on lifetime inference for impl Trait in return position**.
+
 Opening an issue is as easy as following [this
 link](https://github.com/rust-lang/rust/issues/new) and filling out the fields.
 Here's a template that you can use to file a bug, though it's not necessary to
