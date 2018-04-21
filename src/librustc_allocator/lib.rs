@@ -47,7 +47,6 @@ pub struct AllocatorMethod {
 }
 
 pub enum AllocatorTy {
-    Bang,
     Layout,
     Ptr,
     ResultPtr,
