@@ -3245,6 +3245,7 @@ impl<'a> Resolver<'a> {
 
             if ns == TypeNS {
                 if (i == 0 && name == keywords::CrateRoot.name()) ||
+                   (i == 0 && name == keywords::Crate.name()) ||
                    (i == 1 && name == keywords::Crate.name() &&
                               path[0].name == keywords::CrateRoot.name()) {
                     // `::a::b` or `::crate::a::b`
@@ -3279,8 +3280,10 @@ impl<'a> Resolver<'a> {
                name == keywords::SelfType.name() && i != 0 ||
                name == keywords::Super.name() && i != 0 ||
                name == keywords::Extern.name() && i != 0 ||
-               name == keywords::Crate.name() && i != 1 &&
-                    path[0].name != keywords::CrateRoot.name() {
+               // we allow crate::foo and ::crate::foo but nothing else
+               name == keywords::Crate.name() && i > 1 &&
+                    path[0].name != keywords::CrateRoot.name() ||
+               name == keywords::Crate.name() && path.len() == 1 {
                 let name_str = if name == keywords::CrateRoot.name() {
                     format!("crate root")
                 } else {
@@ -3288,8 +3291,6 @@ impl<'a> Resolver<'a> {
                 };
                 let msg = if i == 1 && path[0].name == keywords::CrateRoot.name() {
                     format!("global paths cannot start with {}", name_str)
-                } else if i == 0 && name == keywords::Crate.name() {
-                    format!("{} can only be used in absolute paths", name_str)
                 } else {
                     format!("{} in paths can only be used in start position", name_str)
                 };

@@ -15,7 +15,7 @@ mod m {
     pub struct Z;
     pub struct S1(crate (::m::Z)); // OK
     pub struct S2(::crate ::m::Z); // OK
-    pub struct S3(crate ::m::Z); //~ ERROR `crate` can only be used in absolute paths
+    pub struct S3(crate ::m::Z); // OK
 }
 
 fn main() {
