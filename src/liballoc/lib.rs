@@ -99,6 +99,7 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]
+#![cfg_attr(stage0, feature(never_type))]
 #![feature(nonzero)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
