@@ -368,7 +368,7 @@ mod platform {
 }
 
 #[inline]
-fn oom() -> ! {
+pub fn oom() -> ! {
     write_to_stderr("fatal runtime error: memory allocation failed");
     unsafe {
         ::core::intrinsics::abort();

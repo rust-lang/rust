@@ -451,17 +451,6 @@ pub unsafe trait GlobalAlloc {
         }
         new_ptr
     }
-
-    /// Aborts the thread or process, optionally performing
-    /// cleanup or logging diagnostic information before panicking or
-    /// aborting.
-    ///
-    /// `oom` is meant to be used by clients unable to cope with an
-    /// unsatisfied allocation request, and wish to abandon
-    /// computation rather than attempt to recover locally.
-    fn oom(&self) -> ! {
-        unsafe { ::intrinsics::abort() }
-    }
 }
 
 /// An implementation of `Alloc` can allocate, reallocate, and

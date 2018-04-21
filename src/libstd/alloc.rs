@@ -13,9 +13,17 @@
 #![unstable(issue = "32838", feature = "allocator_api")]
 
 #[doc(inline)] #[allow(deprecated)] pub use alloc_crate::alloc::Heap;
-#[doc(inline)] pub use alloc_crate::alloc::Global;
+#[doc(inline)] pub use alloc_crate::alloc::{Global, oom};
 #[doc(inline)] pub use alloc_system::System;
 #[doc(inline)] pub use core::alloc::*;
+
+#[cfg(not(stage0))]
+#[cfg(not(test))]
+#[doc(hidden)]
+#[lang = "oom"]
+pub extern fn rust_oom() -> ! {
+    rtabort!("memory allocation failed");
+}
 
 #[cfg(not(test))]
 #[doc(hidden)]
@@ -35,10 +43,11 @@ pub mod __default_lib_allocator {
         System.alloc(layout) as *mut u8
     }
 
+    #[cfg(stage0)]
     #[no_mangle]
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rdl_oom() -> ! {
-        System.oom()
+        super::oom()
     }
 
     #[no_mangle]

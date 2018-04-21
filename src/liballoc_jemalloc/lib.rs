@@ -30,8 +30,6 @@ extern crate libc;
 pub use contents::*;
 #[cfg(not(dummy_jemalloc))]
 mod contents {
-    use core::alloc::GlobalAlloc;
-    use alloc_system::System;
     use libc::{c_int, c_void, size_t};
 
     // Note that the symbols here are prefixed by default on macOS and Windows (we
@@ -100,10 +98,11 @@ mod contents {
         ptr
     }
 
+    #[cfg(stage0)]
     #[no_mangle]
     #[rustc_std_internal_symbol]
     pub unsafe extern fn __rde_oom() -> ! {
-        System.oom()
+        ::alloc_system::oom()
     }
 
     #[no_mangle]
