@@ -46,6 +46,7 @@ pub trait Not {
     type Output;
 
     /// Performs the unary `!` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn not(self) -> Self::Output;
 }
@@ -128,6 +129,7 @@ pub trait BitAnd<RHS=Self> {
     type Output;
 
     /// Performs the `&` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitand(self, rhs: RHS) -> Self::Output;
 }
@@ -210,6 +212,7 @@ pub trait BitOr<RHS=Self> {
     type Output;
 
     /// Performs the `|` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitor(self, rhs: RHS) -> Self::Output;
 }
@@ -295,6 +298,7 @@ pub trait BitXor<RHS=Self> {
     type Output;
 
     /// Performs the `^` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bitxor(self, rhs: RHS) -> Self::Output;
 }
@@ -381,6 +385,7 @@ pub trait Shl<RHS=Self> {
     type Output;
 
     /// Performs the `<<` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn shl(self, rhs: RHS) -> Self::Output;
 }
@@ -488,6 +493,7 @@ pub trait Shr<RHS=Self> {
     type Output;
 
     /// Performs the `>>` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn shr(self, rhs: RHS) -> Self::Output;
 }
