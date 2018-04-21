@@ -1,100 +1,88 @@
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:17:32
+  --> $DIR/write_literal.rs:26:79
    |
-17 |     write!(&mut v, "Hello {}", "world");
-   |                                ^^^^^^^
+26 |     writeln!(&mut v, "{} of {:b} people know binary, the other half doesn't", 1, 2);
+   |                                                                               ^
    |
    = note: `-D write-literal` implied by `-D warnings`
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:18:44
+  --> $DIR/write_literal.rs:27:32
    |
-18 |     writeln!(&mut v, "Hello {} {}", world, "world");
+27 |     write!(&mut v, "Hello {}", "world");
+   |                                ^^^^^^^
+
+error: writing a literal with an empty format string
+  --> $DIR/write_literal.rs:28:44
+   |
+28 |     writeln!(&mut v, "Hello {} {}", world, "world");
    |                                            ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:19:34
+  --> $DIR/write_literal.rs:29:34
    |
-19 |     writeln!(&mut v, "Hello {}", "world");
+29 |     writeln!(&mut v, "Hello {}", "world");
    |                                  ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:20:38
+  --> $DIR/write_literal.rs:30:38
    |
-20 |     writeln!(&mut v, "10 / 4 is {}", 2.5);
+30 |     writeln!(&mut v, "10 / 4 is {}", 2.5);
    |                                      ^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:21:36
+  --> $DIR/write_literal.rs:31:36
    |
-21 |     writeln!(&mut v, "2 + 1 = {}", 3);
+31 |     writeln!(&mut v, "2 + 1 = {}", 3);
    |                                    ^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:22:39
+  --> $DIR/write_literal.rs:36:33
    |
-22 |     writeln!(&mut v, "2 + 1 = {:.4}", 3);
-   |                                       ^
-
-error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:23:40
-   |
-23 |     writeln!(&mut v, "2 + 1 = {:5.4}", 3);
-   |                                        ^
-
-error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:24:41
-   |
-24 |     writeln!(&mut v, "Debug test {:?}", "hello, world");
-   |                                         ^^^^^^^^^^^^^^
-
-error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:29:33
-   |
-29 |     writeln!(&mut v, "{0} {1}", "hello", "world");
+36 |     writeln!(&mut v, "{0} {1}", "hello", "world");
    |                                 ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:29:42
+  --> $DIR/write_literal.rs:36:42
    |
-29 |     writeln!(&mut v, "{0} {1}", "hello", "world");
+36 |     writeln!(&mut v, "{0} {1}", "hello", "world");
    |                                          ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:30:33
+  --> $DIR/write_literal.rs:37:33
    |
-30 |     writeln!(&mut v, "{1} {0}", "hello", "world");
+37 |     writeln!(&mut v, "{1} {0}", "hello", "world");
    |                                 ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:30:42
+  --> $DIR/write_literal.rs:37:42
    |
-30 |     writeln!(&mut v, "{1} {0}", "hello", "world");
+37 |     writeln!(&mut v, "{1} {0}", "hello", "world");
    |                                          ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:33:43
+  --> $DIR/write_literal.rs:40:41
    |
-33 |     writeln!(&mut v, "{foo} {bar}", foo = "hello", bar = "world");
-   |                                           ^^^^^^^
+40 |     writeln!(&mut v, "{foo} {bar}", foo="hello", bar="world");
+   |                                         ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:33:58
+  --> $DIR/write_literal.rs:40:54
    |
-33 |     writeln!(&mut v, "{foo} {bar}", foo = "hello", bar = "world");
-   |                                                          ^^^^^^^
+40 |     writeln!(&mut v, "{foo} {bar}", foo="hello", bar="world");
+   |                                                      ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:34:43
+  --> $DIR/write_literal.rs:41:41
    |
-34 |     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
-   |                                           ^^^^^^^
+41 |     writeln!(&mut v, "{bar} {foo}", foo="hello", bar="world");
+   |                                         ^^^^^^^
 
 error: writing a literal with an empty format string
-  --> $DIR/write_literal.rs:34:58
+  --> $DIR/write_literal.rs:41:54
    |
-34 |     writeln!(&mut v, "{bar} {foo}", foo = "hello", bar = "world");
-   |                                                          ^^^^^^^
+41 |     writeln!(&mut v, "{bar} {foo}", foo="hello", bar="world");
+   |                                                      ^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 14 previous errors
 

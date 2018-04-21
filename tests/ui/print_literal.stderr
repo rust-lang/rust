@@ -1,100 +1,88 @@
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:14:24
+  --> $DIR/print_literal.rs:23:71
    |
-14 |     print!("Hello {}", "world");
-   |                        ^^^^^^^
+23 |     println!("{} of {:b} people know binary, the other half doesn't", 1, 2);
+   |                                                                       ^
    |
    = note: `-D print-literal` implied by `-D warnings`
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:15:36
+  --> $DIR/print_literal.rs:24:24
    |
-15 |     println!("Hello {} {}", world, "world");
+24 |     print!("Hello {}", "world");
+   |                        ^^^^^^^
+
+error: printing a literal with an empty format string
+  --> $DIR/print_literal.rs:25:36
+   |
+25 |     println!("Hello {} {}", world, "world");
    |                                    ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:16:26
+  --> $DIR/print_literal.rs:26:26
    |
-16 |     println!("Hello {}", "world");
+26 |     println!("Hello {}", "world");
    |                          ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:17:30
+  --> $DIR/print_literal.rs:27:30
    |
-17 |     println!("10 / 4 is {}", 2.5);
+27 |     println!("10 / 4 is {}", 2.5);
    |                              ^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:18:28
+  --> $DIR/print_literal.rs:28:28
    |
-18 |     println!("2 + 1 = {}", 3);
+28 |     println!("2 + 1 = {}", 3);
    |                            ^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:19:31
+  --> $DIR/print_literal.rs:33:25
    |
-19 |     println!("2 + 1 = {:.4}", 3);
-   |                               ^
-
-error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:20:32
-   |
-20 |     println!("2 + 1 = {:5.4}", 3);
-   |                                ^
-
-error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:21:33
-   |
-21 |     println!("Debug test {:?}", "hello, world");
-   |                                 ^^^^^^^^^^^^^^
-
-error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:26:25
-   |
-26 |     println!("{0} {1}", "hello", "world");
+33 |     println!("{0} {1}", "hello", "world");
    |                         ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:26:34
+  --> $DIR/print_literal.rs:33:34
    |
-26 |     println!("{0} {1}", "hello", "world");
+33 |     println!("{0} {1}", "hello", "world");
    |                                  ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:27:25
+  --> $DIR/print_literal.rs:34:25
    |
-27 |     println!("{1} {0}", "hello", "world");
+34 |     println!("{1} {0}", "hello", "world");
    |                         ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:27:34
+  --> $DIR/print_literal.rs:34:34
    |
-27 |     println!("{1} {0}", "hello", "world");
+34 |     println!("{1} {0}", "hello", "world");
    |                                  ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:30:33
+  --> $DIR/print_literal.rs:37:33
    |
-30 |     println!("{foo} {bar}", foo="hello", bar="world");
+37 |     println!("{foo} {bar}", foo="hello", bar="world");
    |                                 ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:30:46
+  --> $DIR/print_literal.rs:37:46
    |
-30 |     println!("{foo} {bar}", foo="hello", bar="world");
+37 |     println!("{foo} {bar}", foo="hello", bar="world");
    |                                              ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:31:33
+  --> $DIR/print_literal.rs:38:33
    |
-31 |     println!("{bar} {foo}", foo="hello", bar="world");
+38 |     println!("{bar} {foo}", foo="hello", bar="world");
    |                                 ^^^^^^^
 
 error: printing a literal with an empty format string
-  --> $DIR/print_literal.rs:31:46
+  --> $DIR/print_literal.rs:38:46
    |
-31 |     println!("{bar} {foo}", foo="hello", bar="world");
+38 |     println!("{bar} {foo}", foo="hello", bar="world");
    |                                              ^^^^^^^
 
-error: aborting due to 16 previous errors
+error: aborting due to 14 previous errors
 
