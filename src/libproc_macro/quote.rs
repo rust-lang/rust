@@ -17,8 +17,6 @@
 use {Delimiter, Literal, Spacing, Span, Ident, Punct, Group, TokenStream, TokenTree};
 
 use syntax::ext::base::{ExtCtxt, ProcMacro};
-use syntax::parse::token;
-use syntax::symbol::Symbol;
 use syntax::tokenstream;
 
 /// This is the actual quote!() proc macro
@@ -42,6 +40,7 @@ macro_rules! quote_tok {
     (,) => { tt2ts!(Punct::new(',', Spacing::Alone)) };
     (.) => { tt2ts!(Punct::new('.', Spacing::Alone)) };
     (:) => { tt2ts!(Punct::new(':', Spacing::Alone)) };
+    (;) => { tt2ts!(Punct::new(';', Spacing::Alone)) };
     (|) => { tt2ts!(Punct::new('|', Spacing::Alone)) };
     (::) => {
         [
@@ -61,6 +60,7 @@ macro_rules! quote_tok {
     (_) => { tt2ts!(Punct::new('_', Spacing::Alone)) };
     (0) => { tt2ts!(Literal::i8_unsuffixed(0)) };
     (&) => { tt2ts!(Punct::new('&', Spacing::Alone)) };
+    (=) => { tt2ts!(Punct::new('=', Spacing::Alone)) };
     ($i:ident) => { tt2ts!(Ident::new(stringify!($i), Span::def_site())) };
 }
 
@@ -89,15 +89,6 @@ impl ProcMacro for Quoter {
                    stream: tokenstream::TokenStream)
                    -> tokenstream::TokenStream {
         ::__internal::set_sess(cx, || TokenStream(stream).quote().0)
-    }
-}
-
-impl<T: Quote> Quote for Option<T> {
-    fn quote(self) -> TokenStream {
-        match self {
-            Some(t) => quote!(Some((quote t))),
-            None => quote!(None),
-        }
     }
 }
 
@@ -194,92 +185,22 @@ impl Quote for Span {
     }
 }
 
-macro_rules! literals {
-    ($($i:ident),*; $($raw:ident),*) => {
-        pub struct SpannedSymbol {
-            sym: Symbol,
-            span: Span,
-        }
-
-        impl SpannedSymbol {
-            pub fn new(string: &str, span: Span) -> SpannedSymbol {
-                SpannedSymbol { sym: Symbol::intern(string), span }
+impl Quote for Literal {
+    fn quote(self) -> TokenStream {
+        quote! {{
+            let mut iter = (quote self.to_string())
+                .parse::<::TokenStream>()
+                .unwrap()
+                .into_iter();
+            if let (Some(::TokenTree::Literal(mut lit)), None) = (iter.next(), iter.next()) {
+                lit.set_span((quote self.span));
+                lit
+            } else {
+                unreachable!()
             }
-        }
-
-        impl Quote for SpannedSymbol {
-            fn quote(self) -> TokenStream {
-                quote!(::__internal::SpannedSymbol::new((quote self.sym.as_str()),
-                                                        (quote self.span)))
-            }
-        }
-
-        pub enum LiteralKind {
-            $($i,)*
-            $($raw(u16),)*
-        }
-
-        impl LiteralKind {
-            pub fn with_contents_and_suffix(self, contents: SpannedSymbol,
-                                            suffix: Option<SpannedSymbol>) -> Literal {
-                let sym = contents.sym;
-                let suffix = suffix.map(|t| t.sym);
-                match self {
-                    $(LiteralKind::$i => {
-                        Literal {
-                            lit: token::Lit::$i(sym),
-                            suffix,
-                            span: contents.span,
-                        }
-                    })*
-                    $(LiteralKind::$raw(n) => {
-                        Literal {
-                            lit: token::Lit::$raw(sym, n),
-                            suffix,
-                            span: contents.span,
-                        }
-                    })*
-                }
-            }
-        }
-
-        impl Literal {
-            fn kind_contents_and_suffix(self) -> (LiteralKind, SpannedSymbol, Option<SpannedSymbol>)
-            {
-                let (kind, contents) = match self.lit {
-                    $(token::Lit::$i(contents) => (LiteralKind::$i, contents),)*
-                    $(token::Lit::$raw(contents, n) => (LiteralKind::$raw(n), contents),)*
-                };
-                let suffix = self.suffix.map(|sym| SpannedSymbol::new(&sym.as_str(), self.span()));
-                (kind, SpannedSymbol::new(&contents.as_str(), self.span()), suffix)
-            }
-        }
-
-        impl Quote for LiteralKind {
-            fn quote(self) -> TokenStream {
-                match self {
-                    $(LiteralKind::$i => quote! {
-                        ::__internal::LiteralKind::$i
-                    },)*
-                    $(LiteralKind::$raw(n) => quote! {
-                        ::__internal::LiteralKind::$raw((quote n))
-                    },)*
-                }
-            }
-        }
-
-        impl Quote for Literal {
-            fn quote(self) -> TokenStream {
-                let (kind, contents, suffix) = self.kind_contents_and_suffix();
-                quote! {
-                    (quote kind).with_contents_and_suffix((quote contents), (quote suffix))
-                }
-            }
-        }
+        }}
     }
 }
-
-literals!(Byte, Char, Float, Str_, Integer, ByteStr; StrRaw, ByteStrRaw);
 
 impl Quote for Delimiter {
     fn quote(self) -> TokenStream {
