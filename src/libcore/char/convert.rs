@@ -204,7 +204,7 @@ impl FromStr for char {
 }
 
 
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 impl TryFrom<u32> for char {
     type Error = CharTryFromError;
 
@@ -219,11 +219,11 @@ impl TryFrom<u32> for char {
 }
 
 /// The error type returned when a conversion from u32 to char fails.
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct CharTryFromError(());
 
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 impl fmt::Display for CharTryFromError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "converted integer out of range for `char`".fmt(f)

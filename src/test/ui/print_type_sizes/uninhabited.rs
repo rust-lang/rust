@@ -11,6 +11,7 @@
 // compile-flags: -Z print-type-sizes
 // compile-pass
 
+#![feature(never_type)]
 #![feature(start)]
 
 #[start]

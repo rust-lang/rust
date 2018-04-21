@@ -2217,7 +2217,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Tries to apply a fallback to `ty` if it is an unsolved variable.
-    // Non-numerics get replaced with !, unconstrained ints with i32,
+    // Non-numerics get replaced with ! or () (depending on whether
+    // feature(never_type) is enabled, unconstrained ints with i32,
     // unconstrained floats with f64.
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to TyError.
@@ -2231,7 +2232,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ if self.is_tainted_by_errors() => self.tcx().types.err,
             UnconstrainedInt => self.tcx.types.i32,
             UnconstrainedFloat => self.tcx.types.f64,
-            Neither if self.type_var_diverges(ty) => self.tcx.types.never,
+            Neither if self.type_var_diverges(ty) => self.tcx.mk_diverging_default(),
             Neither => return false,
         };
         debug!("default_type_parameters: defaulting `{:?}` to `{:?}`", ty, fallback);

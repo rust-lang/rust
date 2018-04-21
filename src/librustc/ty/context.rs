@@ -2374,6 +2374,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.intern_tup(&[])
     }
 
+    pub fn mk_diverging_default(self) -> Ty<'tcx> {
+        if self.features().never_type {
+            self.types.never
+        } else {
+            self.intern_tup(&[])
+        }
+    }
+
     pub fn mk_bool(self) -> Ty<'tcx> {
         self.mk_ty(TyBool)
     }

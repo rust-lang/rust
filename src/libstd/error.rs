@@ -233,7 +233,7 @@ impl<'a> From<Cow<'a, str>> for Box<Error> {
     }
 }
 
-#[stable(feature = "never_type", since = "1.26.0")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }
@@ -284,14 +284,14 @@ impl Error for num::ParseIntError {
     }
 }
 
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 impl Error for num::TryFromIntError {
     fn description(&self) -> &str {
         self.__description()
     }
 }
 
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 impl Error for array::TryFromSliceError {
     fn description(&self) -> &str {
         self.__description()
@@ -365,7 +365,7 @@ impl Error for cell::BorrowMutError {
     }
 }
 
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 impl Error for char::CharTryFromError {
     fn description(&self) -> &str {
         "converted integer out of range for `char`"

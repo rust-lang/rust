@@ -52,6 +52,7 @@
 #![cfg_attr(windows, feature(libc))]
 #![feature(macro_lifetime_matcher)]
 #![feature(macro_vis_matcher)]
+#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(non_exhaustive)]
 #![feature(nonzero)]
