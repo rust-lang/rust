@@ -16,6 +16,8 @@ pub use self::CrateType::*;
 pub use self::Passes::*;
 pub use self::DebugInfoLevel::*;
 
+use std::str::FromStr;
+
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
@@ -28,7 +30,7 @@ use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::codemap::{FileName, FilePathMapping};
-use syntax::edition::Edition;
+use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -410,6 +412,7 @@ top_level_options!(
 
         // Remap source path prefixes in all output (messages, object files, debug, etc)
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
+        edition: Edition [TRACKED],
     }
 );
 
@@ -589,6 +592,7 @@ pub fn basic_options() -> Options {
         cli_forced_codegen_units: None,
         cli_forced_thinlto_off: false,
         remap_path_prefix: Vec::new(),
+        edition: DEFAULT_EDITION,
     }
 }
 
@@ -773,8 +777,6 @@ macro_rules! options {
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
-        pub const parse_edition: Option<&'static str> =
-            Some("one of: `2015`, `2018`");
     }
 
     #[allow(dead_code)]
@@ -782,7 +784,6 @@ macro_rules! options {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
         use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
-        use syntax::edition::Edition;
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -985,20 +986,6 @@ macro_rules! options {
             true
         }
 
-        fn parse_edition(slot: &mut Edition, v: Option<&str>) -> bool {
-            match v {
-                Some(s) => {
-                    let edition = s.parse();
-                    if let Ok(parsed) = edition {
-                        *slot = parsed;
-                        true
-                    } else {
-                        false
-                    }
-                }
-                _ => false,
-            }
-        }
     }
 ) }
 
@@ -1292,10 +1279,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         `everybody_loops` (all function bodies replaced with `loop {}`),
         `hir` (the HIR), `hir,identified`, or
         `hir,typed` (HIR with types for each node)."),
-    edition: Edition = (Edition::Edition2015, parse_edition, [TRACKED],
-        "The edition to build Rust with. Newer editions may include features
-         that require breaking changes. The default edition is 2015 (the first
-         edition). Crates compiled with different editions can be linked together."),
     run_dsymutil: Option<bool> = (None, parse_opt_bool, [TRACKED],
           "run `dsymutil` and delete intermediate object files"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
@@ -1656,6 +1639,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
             "TYPE",
         ),
+        opt::opt_s(
+            "",
+            "edition",
+            "Specify which edition of the compiler to use when compiling code.",
+            EDITION_NAME_LIST,
+        ),
         opt::multi_s(
             "",
             "remap-path-prefix",
@@ -1714,6 +1703,34 @@ pub fn build_session_options_and_crate_config(
             ),
         ),
     };
+
+    let edition = match matches.opt_str("edition") {
+        Some(arg) => match Edition::from_str(&arg){
+            Ok(edition) => edition,
+            Err(_) => early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "argument for --edition must be one of: \
+                    {}. (instead was `{}`)",
+                    EDITION_NAME_LIST,
+                    arg
+                ),
+            ),
+        }
+        None => DEFAULT_EDITION,
+    };
+
+    if !edition.is_stable() && !nightly_options::is_nightly_build() {
+        early_error(
+                ErrorOutputType::default(),
+                &format!(
+                    "Edition {} is unstable an only\
+                    available for nightly builds of rustc.",
+                    edition,
+                )
+        )
+    }
+
 
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
@@ -2171,6 +2188,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_codegen_units: codegen_units,
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
+            edition,
         },
         cfg,
     )
@@ -2300,11 +2318,12 @@ mod dep_tracking {
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
-    use super::{CrateType, DebugInfoLevel, Edition, ErrorOutputType, Lto, OptLevel, OutputTypes,
+    use super::{CrateType, DebugInfoLevel, ErrorOutputType, Lto, OptLevel, OutputTypes,
                 Passes, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::{PanicStrategy, RelroLevel};
     use rustc_back::target::TargetTriple;
+    use syntax::edition::Edition;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
@@ -2363,8 +2382,8 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
-    impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
+    impl_dep_tracking_hash_via_hash!(Edition);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2437,6 +2456,7 @@ mod tests {
     use super::{Externs, OutputType, OutputTypes};
     use rustc_back::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
+    use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;
 
     fn optgroups() -> getopts::Options {
@@ -3080,5 +3100,18 @@ mod tests {
         opts = reference.clone();
         opts.debugging_opts.relro_level = Some(RelroLevel::Full);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+    }
+
+    #[test]
+    fn test_edition_parsing() {
+        // test default edition
+        let options = super::basic_options();
+        assert!(options.edition == DEFAULT_EDITION);
+
+        let matches = optgroups()
+            .parse(&["--edition=2018".to_string()])
+            .unwrap();
+        let (sessopts, _) = build_session_options_and_crate_config(&matches);
+        assert!(sessopts.edition == Edition::Edition2018)
     }
 }

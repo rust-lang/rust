@@ -934,11 +934,11 @@ impl Session {
 
     /// Are we allowed to use features from the Rust 2018 edition?
     pub fn rust_2018(&self) -> bool {
-        self.opts.debugging_opts.edition >= Edition::Edition2018
+        self.opts.edition >= Edition::Edition2018
     }
 
     pub fn edition(&self) -> Edition {
-        self.opts.debugging_opts.edition
+        self.opts.edition
     }
 }
 

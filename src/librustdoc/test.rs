@@ -80,9 +80,9 @@ pub fn run(input_path: &Path,
         lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
-            edition,
             ..config::basic_debugging_options()
         },
+        edition,
         ..config::basic_options().clone()
     };
 
@@ -223,9 +223,9 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         test: as_test_harness,
         unstable_features: UnstableFeatures::from_environment(),
         debugging_opts: config::DebuggingOptions {
-            edition,
             ..config::basic_debugging_options()
         },
+        edition,
         ..config::basic_options().clone()
     };
 
