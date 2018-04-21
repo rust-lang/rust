@@ -270,7 +270,7 @@ impl Span {
     /// `self` was generated from, if any.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn parent(&self) -> Option<Span> {
-        self.0.ctxt().outer().expn_info().map(|i| Span(i.call_site))
+        self.0.parent().map(|x| { Span(x) })
     }
 
     /// The span for the origin source code that `self` was generated from. If

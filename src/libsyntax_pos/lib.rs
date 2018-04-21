@@ -291,6 +291,12 @@ impl Span {
         self.ctxt().outer().expn_info().map(|info| info.call_site.source_callsite()).unwrap_or(self)
     }
 
+    /// The `Span for the tokens in the previous macro expansion from which `self` was generated,
+    /// if any
+    pub fn parent(self) -> Option<Span> {
+        self.ctxt().outer().expn_info().map(|i| i.call_site)
+    }
+
     /// Return the source callee.
     ///
     /// Returns None if the supplied span has no expansion trace,
