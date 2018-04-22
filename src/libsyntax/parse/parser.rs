@@ -589,7 +589,8 @@ impl<'a> Parser<'a> {
             self.token_cursor.next()
         };
         if next.sp == syntax_pos::DUMMY_SP {
-            next.sp = self.prev_span;
+            // Tweak the location for better diagnostics, but keep syntactic context intact.
+            next.sp = self.prev_span.with_ctxt(next.sp.ctxt());
         }
         next
     }
