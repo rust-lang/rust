@@ -5,6 +5,8 @@ LL |     let x = |ref x: isize| { x += 1; };
    |                              -^^^^^
    |                              |
    |                              cannot use `+=` on type `&isize`
+   |
+   = note: an implementation of `std::ops::AddAssign` might be missing for `&isize`
 
 error: aborting due to previous error
 
