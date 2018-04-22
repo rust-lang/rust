@@ -10,6 +10,8 @@
 
 // ignore-tidy-linelength
 
+//~^^^^^^^^^^^^ ERROR
+
 #![feature(optin_builtin_traits)]
 
 unsafe auto trait Trait {
@@ -22,5 +24,4 @@ fn call_method<T: Trait>(x: T) {}
 fn main() {
     // ICE
     call_method(());
-    //~^ ERROR
 }
