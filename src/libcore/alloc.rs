@@ -63,7 +63,7 @@ fn size_align<T>() -> (usize, usize) {
 /// requests have positive size. A caller to the `Alloc::alloc`
 /// method must either ensure that conditions like this are met, or
 /// use specific allocators with looser requirements.)
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
     size: usize,
