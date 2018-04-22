@@ -130,3 +130,6 @@ trait AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 #[rustfmt_skip]
 trait FooBar = Foo
     + Bar;
+
+// #2637
+auto trait Example {}
