@@ -58,6 +58,8 @@ pub trait Error: Debug + Display {
     /// new code should use [`Display`] instead
     /// and new `impl`s can omit it.
     ///
+    /// To obtain error description as a string, use `to_string()`.
+    ///
     /// [`Display`]: ../fmt/trait.Display.html
     ///
     /// # Examples
@@ -73,7 +75,7 @@ pub trait Error: Debug + Display {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn description(&self) -> &str {
-        ""
+        "description() is deprecated; use Display"
     }
 
     /// The lower-level cause of this error, if any.
