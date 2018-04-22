@@ -268,6 +268,7 @@ impl Duration {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(duration_nanos)]
     /// use std::time::Duration;
     ///
     /// let duration = Duration::new(5, 730023852);
