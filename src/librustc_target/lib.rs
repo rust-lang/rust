@@ -29,6 +29,7 @@
 #![feature(const_fn)]
 #![feature(fs_read_write)]
 #![feature(inclusive_range)]
+#![feature(inclusive_range_fields)]
 #![feature(slice_patterns)]
 
 #[macro_use]

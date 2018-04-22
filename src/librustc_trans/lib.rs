@@ -25,6 +25,7 @@
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(quote)]
+#![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
