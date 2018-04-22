@@ -28,8 +28,8 @@ settings (and possibly others, such as `llvm.ccache`):
 assertions = true
 
 [rust]
-# This enables some assertions, but more importantly it enables the `debug!` logging
-# macros that are essential for debugging rustc.
+# This enables some assertions, but more importantly it enables the `debug!`
+# logging macros that are essential for debugging rustc.
 debug-assertions = true
 
 # This will make your build more parallel; it costs a bit of runtime
@@ -55,7 +55,8 @@ compiler to compile the newer version. In particular, the newer version of the
 compiler, `libstd`, and other tooling may use some unstable features
 internally. The result is the compiling `rustc` is done in stages.
 
-- **Stage 0:** the stage0 compiler can be your existing (perhaps older version of)
+- **Stage 0:** the stage0 compiler can be your existing
+  (perhaps older version of)
   Rust compiler, the current _beta_ compiler or you may download the binary
   from the internet
 - **Stage 1:** the code in your clone (for new version)
@@ -66,7 +67,8 @@ internally. The result is the compiling `rustc` is done in stages.
 - **Stage 2:** we rebuild our stage1 compiler with itself
   to produce the stage2 compiler (i.e. it builds
   itself) to have all the _latest optimizations_
-- _(Optional)_ **Stage 3**: to sanity check of our new compiler, we can build it again
+- _(Optional)_ **Stage 3**: to sanity check of our new compiler,
+  we can build it again
   with stage2 compiler which must be identical to itself,
   unless something has broken
 
