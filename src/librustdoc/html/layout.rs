@@ -145,6 +145,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     </script>\
     <script src=\"{root_path}main{suffix}.js\"></script>\
     <script defer src=\"{root_path}search-index.js\"></script>\
+    <script defer src=\"{root_path}aliases.js\"></script>\
 </body>\
 </html>",
     css_extension = if css_file_extension {

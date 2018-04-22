@@ -463,6 +463,9 @@ declare_features! (
     (active, proc_macro_mod, "1.27.0", None, None),
     (active, proc_macro_expr, "1.27.0", None, None),
     (active, proc_macro_non_items, "1.27.0", None, None),
+
+    // #[doc(alias = "...")]
+    (active, doc_alias, "1.27.0", Some(50146), None),
 );
 
 declare_features! (
@@ -1457,6 +1460,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 } else if content.iter().any(|c| c.check_name("spotlight")) {
                     gate_feature_post!(&self, doc_spotlight, attr.span,
                         "#[doc(spotlight)] is experimental"
+                    );
+                } else if content.iter().any(|c| c.check_name("alias")) {
+                    gate_feature_post!(&self, doc_alias, attr.span,
+                        "#[doc(alias = \"...\")] is experimental"
                     );
                 }
             }

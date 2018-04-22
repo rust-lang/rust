@@ -1,0 +1,11 @@
+error[E0658]: #[doc(alias = "...")] is experimental (see issue #50146)
+  --> $DIR/feature-gate-doc_alias.rs:11:1
+   |
+LL | #[doc(alias = "foo")] //~ ERROR: #[doc(alias = "...")] is experimental
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(doc_alias)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1012,11 +1012,21 @@
                 }
             }
 
-            return {
+            var ret = {
                 'in_args': sortResults(results_in_args, true),
                 'returned': sortResults(results_returned, true),
                 'others': sortResults(results),
             };
+            if (ALIASES[window.currentCrate][query.raw]) {
+                var aliases = ALIASES[window.currentCrate][query.raw];
+                for (var i = 0; i < aliases.length; ++i) {
+                    ret['others'].unshift(aliases[i]);
+                    if (ret['others'].length > MAX_RESULTS) {
+                        ret['others'].pop();
+                    }
+                }
+            }
+            return ret;
         }
 
         /**
@@ -1197,11 +1207,13 @@
                 array.forEach(function(item) {
                     var name, type, href, displayPath;
 
-                    if (shown.indexOf(item) !== -1) {
+                    var id_ty = item.ty + item.path + item.name;
+                    if (shown.indexOf(id_ty) !== -1) {
                         return;
                     }
 
-                    shown.push(item);
+                    console.log(item);
+                    shown.push(id_ty);
                     name = item.name;
                     type = itemTypes[item.ty];
 
@@ -1369,7 +1381,7 @@
 
         function search(e) {
             var params = getQueryStringParams();
-            var query = getQuery(document.getElementsByClassName('search-input')[0].value);
+            var query = getQuery(document.getElementsByClassName('search-input')[0].value.trim());
 
             if (e) {
                 e.preventDefault();

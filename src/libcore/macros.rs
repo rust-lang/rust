@@ -295,6 +295,7 @@ macro_rules! debug_assert_ne {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "?")]
 macro_rules! try {
     ($expr:expr) => (match $expr {
         $crate::result::Result::Ok(val) => val,
