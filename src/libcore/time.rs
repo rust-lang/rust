@@ -273,7 +273,7 @@ impl Duration {
     /// let duration = Duration::new(5, 730023852);
     /// assert_eq!(duration.as_nanos(), 5730023852);
     /// ```
-    #[unstable(feature = "duration_nanos", issue = "0")]
+    #[unstable(feature = "duration_nanos", issue = "50167")]
     #[inline]
     pub fn as_nanos(&self) -> u128 {
         self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos as u128
