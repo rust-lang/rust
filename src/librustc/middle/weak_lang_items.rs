@@ -151,4 +151,5 @@ weak_lang_items! {
     panic_fmt,          PanicFmtLangItem,           rust_begin_unwind;
     eh_personality,     EhPersonalityLangItem,      rust_eh_personality;
     eh_unwind_resume,   EhUnwindResumeLangItem,     rust_eh_unwind_resume;
+    oom,                OomLangItem,                rust_oom;
 }

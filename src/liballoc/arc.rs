@@ -31,7 +31,7 @@ use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
 
-use alloc::{Global, Alloc, Layout, box_free};
+use alloc::{Global, Alloc, Layout, box_free, oom};
 use boxed::Box;
 use string::String;
 use vec::Vec;
@@ -553,7 +553,7 @@ impl<T: ?Sized> Arc<T> {
         let layout = Layout::for_value(&*fake_ptr);
 
         let mem = Global.alloc(layout)
-            .unwrap_or_else(|_| Global.oom());
+            .unwrap_or_else(|_| oom());
 
         // Initialize the real ArcInner
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut ArcInner<T>;

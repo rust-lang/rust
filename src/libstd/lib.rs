@@ -482,7 +482,6 @@ pub mod path;
 pub mod process;
 pub mod sync;
 pub mod time;
-pub mod alloc;
 
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[rustc_deprecated(since = "1.27.0", reason = "module renamed to `alloc`")]
@@ -495,6 +494,8 @@ pub mod heap {
 #[macro_use]
 mod sys_common;
 mod sys;
+
+pub mod alloc;
 
 // Private support modules
 mod panicking;

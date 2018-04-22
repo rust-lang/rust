@@ -48,9 +48,6 @@ extern "Rust" {
     #[allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
-    #[cold]
-    #[rustc_allocator_nounwind]
-    fn __rust_oom() -> !;
     #[rustc_allocator_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_allocator_nounwind]
@@ -107,16 +104,6 @@ unsafe impl GlobalAlloc for Global {
         let ptr = __rust_alloc_zeroed(layout.size(), layout.align(), &mut 0);
         ptr as *mut Opaque
     }
-
-    #[inline]
-    fn oom(&self) -> ! {
-        unsafe {
-            #[cfg(not(stage0))]
-            __rust_oom();
-            #[cfg(stage0)]
-            __rust_oom(&mut 0);
-        }
-    }
 }
 
 unsafe impl Alloc for Global {
@@ -144,11 +131,6 @@ unsafe impl Alloc for Global {
     unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
         NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
     }
-
-    #[inline]
-    fn oom(&mut self) -> ! {
-        GlobalAlloc::oom(self)
-    }
 }
 
 /// The allocator for unique pointers.
@@ -165,7 +147,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
         if !ptr.is_null() {
             ptr as *mut u8
         } else {
-            Global.oom()
+            oom()
         }
     }
 }
@@ -182,19 +164,33 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     }
 }
 
+#[cfg(stage0)]
+pub fn oom() -> ! {
+    unsafe { ::core::intrinsics::abort() }
+}
+
+#[cfg(not(stage0))]
+pub fn oom() -> ! {
+    extern {
+        #[lang = "oom"]
+        fn oom_impl() -> !;
+    }
+    unsafe { oom_impl() }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;
-    use alloc::{Global, Alloc, Layout};
+    use alloc::{Global, Alloc, Layout, oom};
 
     #[test]
     fn allocate_zeroed() {
         unsafe {
             let layout = Layout::from_size_align(1024, 1).unwrap();
             let ptr = Global.alloc_zeroed(layout.clone())
-                .unwrap_or_else(|_| Global.oom());
+                .unwrap_or_else(|_| oom());
 
             let mut i = ptr.cast::<u8>().as_ptr();
             let end = i.offset(layout.size() as isize);

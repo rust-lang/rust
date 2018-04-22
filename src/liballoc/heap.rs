@@ -59,7 +59,7 @@ unsafe impl<T> Alloc for T where T: CoreAlloc {
     }
 
     fn oom(&mut self, _: AllocErr) -> ! {
-        CoreAlloc::oom(self)
+        unsafe { ::core::intrinsics::abort() }
     }
 
     fn usable_size(&self, layout: &Layout) -> (usize, usize) {

@@ -11,7 +11,7 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
-use alloc::{Global, Alloc, CollectionAllocErr};
+use alloc::{CollectionAllocErr, oom};
 use cell::Cell;
 use borrow::Borrow;
 use cmp::max;
@@ -784,7 +784,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn reserve(&mut self, additional: usize) {
         match self.try_reserve(additional) {
             Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => Global.oom(),
+            Err(CollectionAllocErr::AllocErr) => oom(),
             Ok(()) => { /* yay */ }
          }
     }
