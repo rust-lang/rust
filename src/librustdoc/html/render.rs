@@ -750,6 +750,8 @@ fn write_shared(cx: &Context,
 
     write(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/rustdoc.css"))?;
+    write(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
+          include_bytes!("static/settings.css"))?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
@@ -769,6 +771,8 @@ fn write_shared(cx: &Context,
 
     write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
           include_bytes!("static/brush.svg"))?;
+    write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
+          include_bytes!("static/wheel.svg"))?;
     write(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
           include_bytes!("static/themes/light.css"))?;
     themes.insert("light".to_owned());
@@ -802,8 +806,7 @@ themePicker.onclick = function() {{
         switchTheme(currentTheme, mainTheme, item);
     }};
     themes.appendChild(but);
-}});
-"#,
+}});"#,
                  themes.iter()
                        .map(|s| format!("\"{}\"", s))
                        .collect::<Vec<String>>()
@@ -812,6 +815,8 @@ themePicker.onclick = function() {{
 
     write(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
                       include_bytes!("static/main.js"))?;
+    write(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
+                      include_bytes!("static/settings.js"))?;
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
@@ -1575,6 +1580,51 @@ impl fmt::Display for AllTypes {
     }
 }
 
+#[derive(Debug)]
+struct Settings<'a> {
+    // (id, explanation, default value)
+    settings: Vec<(&'static str, &'static str, bool)>,
+    root_path: &'a str,
+    suffix: &'a str,
+}
+
+impl<'a> Settings<'a> {
+    pub fn new(root_path: &'a str, suffix: &'a str) -> Settings<'a> {
+        Settings {
+            settings: vec![
+                ("item-declarations", "Auto-hide item declarations.", true),
+                ("item-attributes", "Auto-hide item attributes.", true),
+            ],
+            root_path,
+            suffix,
+        }
+    }
+}
+
+impl<'a> fmt::Display for Settings<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+"<h1 class='fqn'>\
+     <span class='in-band'>Rustdoc settings</span>\
+</h1>\
+<div class='settings'>{}</div>\
+<script src='{}settings{}.js'></script>",
+               self.settings.iter()
+                            .map(|(id, text, enabled)| {
+                                format!("<div class='setting-line'>\
+                                             <label class='toggle'>\
+                                                <input type='checkbox' id='{}' {}>\
+                                                <span class='slider'></span>\
+                                             </label>\
+                                             <div>{}</div>\
+                                         </div>", id, if *enabled { " checked" } else { "" }, text)
+                            })
+                            .collect::<String>(),
+               self.root_path,
+               self.suffix)
+    }
+}
+
 impl Context {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
@@ -1618,6 +1668,8 @@ impl Context {
         };
         let final_file = self.dst.join(&krate.name)
                                  .join("all.html");
+        let settings_file = self.dst.join("settings.html");
+
         let crate_name = krate.name.clone();
         item.name = Some(krate.name);
 
@@ -1639,7 +1691,7 @@ impl Context {
         if !root_path.ends_with('/') {
             root_path.push('/');
         }
-        let page = layout::Page {
+        let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
@@ -1662,6 +1714,27 @@ impl Context {
                                 self.shared.css_file_extension.is_some(),
                                 &self.shared.themes),
                  &final_file);
+
+        // Generating settings page.
+        let settings = Settings::new("./", &self.shared.resource_suffix);
+        page.title = "Rustdoc settings";
+        page.description = "Settings of Rustdoc";
+        page.root_path = "./";
+
+        let mut w = BufWriter::new(try_err!(File::create(&settings_file), &settings_file));
+        let mut themes = self.shared.themes.clone();
+        let sidebar = "<p class='location'>Settings</p><div class='sidebar-elems'></div>";
+        themes.push(PathBuf::from("settings.css"));
+        let mut layout = self.shared.layout.clone();
+        layout.krate = String::new();
+        layout.logo = String::new();
+        layout.favicon = String::new();
+        try_err!(layout::render(&mut w, &layout,
+                                &page, &sidebar, &settings,
+                                self.shared.css_file_extension.is_some(),
+                                &themes),
+                 &settings_file);
+
         Ok(())
     }
 

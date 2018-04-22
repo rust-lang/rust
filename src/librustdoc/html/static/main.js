@@ -77,19 +77,13 @@
                     return false;
                 }
                 var end = start + className.length;
-                if (end < elemClass.length && elemClass[end] !== ' ') {
-                    return false;
-                }
-                return true;
+                return !(end < elemClass.length && elemClass[end] !== ' ');
             }
             if (start > 0 && elemClass[start - 1] !== ' ') {
                 return false;
             }
             var end = start + className.length;
-            if (end < elemClass.length && elemClass[end] !== ' ') {
-                return false;
-            }
-            return true;
+            return !(end < elemClass.length && elemClass[end] !== ' ');
         }
         return false;
     }
@@ -320,7 +314,7 @@
         } else if (ev.target.tagName === 'SPAN' && hasClass(ev.target.parentNode, 'line-numbers')) {
             var prev_id = 0;
 
-            var set_fragment = function (name) {
+            var set_fragment = function(name) {
                 if (browserSupportsHistoryApi()) {
                     history.replaceState(null, null, '#' + name);
                     window.hashchange();
@@ -835,7 +829,7 @@
                 query.search = val;
             // searching by type
             } else if (val.search("->") > -1) {
-                var trimmer = function (s) { return s.trim(); };
+                var trimmer = function(s) { return s.trim(); };
                 var parts = val.split("->").map(trimmer);
                 var input = parts[0];
                 // sort inputs so that order does not matter
@@ -1559,7 +1553,7 @@
         startSearch();
 
         // Draw a convenient sidebar of known crates if we have a listing
-        if (rootPath === '../') {
+        if (rootPath === '../' || rootPath === "./") {
             var sidebar = document.getElementsByClassName('sidebar-elems')[0];
             if (sidebar) {
                 var div = document.createElement('div');
@@ -1578,11 +1572,11 @@
                 crates.sort();
                 for (var i = 0; i < crates.length; ++i) {
                     var klass = 'crate';
-                    if (crates[i] === window.currentCrate) {
+                    if (rootPath !== "./" && crates[i] === window.currentCrate) {
                         klass += ' current';
                     }
                     var link = document.createElement('a');
-                    link.href = '../' + crates[i] + '/index.html';
+                    link.href = rootPath + crates[i] + '/index.html';
                     link.title = rawSearchIndex[crates[i]].doc;
                     link.className = klass;
                     link.textContent = crates[i];
@@ -1959,7 +1953,7 @@
                 otherMessage = '&nbsp;Show&nbsp;type&nbsp;declaration';
             }
             e.parentNode.insertBefore(createToggle(otherMessage), e);
-            if (otherMessage) {
+            if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
@@ -2029,7 +2023,9 @@
     onEach(document.getElementById('main').getElementsByTagName('pre'), function(e) {
         onEach(e.getElementsByClassName('attributes'), function(i_e) {
             i_e.parentNode.insertBefore(createToggleWrapper(), i_e);
-            collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
+            if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+                collapseDocs(i_e.previousSibling.childNodes[0], "toggle");
+            }
         });
     });
 
