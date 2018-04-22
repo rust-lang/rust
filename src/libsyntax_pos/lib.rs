@@ -20,6 +20,7 @@
 
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(specialization)]
@@ -48,6 +49,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 
 extern crate unicode_width;
 
+pub mod edition;
 pub mod hygiene;
 pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan, CompilerDesugaringKind};
 
