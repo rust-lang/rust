@@ -277,9 +277,10 @@ impl Token {
             DotDot | DotDotDot | DotDotEq     | // range notation
             Lt | BinOp(Shl)                   | // associated path
             ModSep                            | // global path
+            Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => match nt.0 {
-                NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) => true,
+                NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) | NtLifetime(..) => true,
                 _ => false,
             },
             _ => false,
