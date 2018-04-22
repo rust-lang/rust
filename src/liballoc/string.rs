@@ -2239,6 +2239,14 @@ impl<'a> From<String> for Cow<'a, str> {
     }
 }
 
+#[stable(feature = "cow_from_string_ref", since = "1.28.0")]
+impl<'a> From<&'a String> for Cow<'a, str> {
+    #[inline]
+    fn from(s: &'a String) -> Cow<'a, str> {
+        Cow::Borrowed(s.as_str())
+    }
+}
+
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a> FromIterator<char> for Cow<'a, str> {
     fn from_iter<I: IntoIterator<Item = char>>(it: I) -> Cow<'a, str> {
