@@ -17,6 +17,7 @@
 #![feature(decode_utf8)]
 #![feature(exact_size_is_empty)]
 #![feature(fixed_size_array)]
+#![feature(float_internals)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]

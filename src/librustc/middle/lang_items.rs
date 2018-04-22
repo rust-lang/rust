@@ -214,6 +214,9 @@ language_item_table! {
     StrImplItem,                     "str",                     str_impl;
     SliceImplItem,                   "slice",                   slice_impl;
     SliceU8ImplItem,                 "slice_u8",                slice_u8_impl;
+    StrAllocImplItem,                "str_alloc",               str_alloc_impl;
+    SliceAllocImplItem,              "slice_alloc",             slice_alloc_impl;
+    SliceU8AllocImplItem,            "slice_u8_alloc",          slice_u8_alloc_impl;
     ConstPtrImplItem,                "const_ptr",               const_ptr_impl;
     MutPtrImplItem,                  "mut_ptr",                 mut_ptr_impl;
     I8ImplItem,                      "i8",                      i8_impl;
@@ -230,6 +233,8 @@ language_item_table! {
     UsizeImplItem,                   "usize",                   usize_impl;
     F32ImplItem,                     "f32",                     f32_impl;
     F64ImplItem,                     "f64",                     f64_impl;
+    F32RuntimeImplItem,              "f32_runtime",             f32_runtime_impl;
+    F64RuntimeImplItem,              "f64_runtime",             f64_runtime_impl;
 
     SizedTraitLangItem,              "sized",                   sized_trait;
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;

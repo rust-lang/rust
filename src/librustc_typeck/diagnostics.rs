@@ -4526,23 +4526,23 @@ but the type of the numeric value or binding could not be identified.
 The error happens on numeric literals:
 
 ```compile_fail,E0689
-2.0.powi(2);
+2.0.recip();
 ```
 
 and on numeric bindings without an identified concrete type:
 
 ```compile_fail,E0689
 let x = 2.0;
-x.powi(2);  // same error as above
+x.recip();  // same error as above
 ```
 
 Because of this, you must give the numeric literal or binding a type:
 
 ```
-let _ = 2.0_f32.powi(2);
+let _ = 2.0_f32.recip();
 let x: f32 = 2.0;
-let _ = x.powi(2);
-let _ = (2.0 as f32).powi(2);
+let _ = x.recip();
+let _ = (2.0 as f32).recip();
 ```
 "##,
 

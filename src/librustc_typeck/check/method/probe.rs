@@ -471,12 +471,21 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyStr => {
                 let lang_def_id = lang_items.str_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.str_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TySlice(_) => {
                 let lang_def_id = lang_items.slice_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
 
                 let lang_def_id = lang_items.slice_u8_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_alloc_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.slice_u8_alloc_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
@@ -538,9 +547,15 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             ty::TyFloat(ast::FloatTy::F32) => {
                 let lang_def_id = lang_items.f32_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.f32_runtime_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             ty::TyFloat(ast::FloatTy::F64) => {
                 let lang_def_id = lang_items.f64_impl();
+                self.assemble_inherent_impl_for_primitive(lang_def_id);
+
+                let lang_def_id = lang_items.f64_runtime_impl();
                 self.assemble_inherent_impl_for_primitive(lang_def_id);
             }
             _ => {}

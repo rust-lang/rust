@@ -75,7 +75,7 @@
 #![deny(missing_debug_implementations)]
 
 #![cfg_attr(test, allow(deprecated))] // rand
-#![cfg_attr(not(test), feature(core_float))]
+#![cfg_attr(all(not(test), stage0), feature(float_internals))]
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![cfg_attr(not(test), feature(generator_trait))]
 #![cfg_attr(test, feature(rand, test))]
@@ -90,6 +90,8 @@
 #![feature(collections_range)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
+#![cfg_attr(stage0, feature(core_slice_ext))]
+#![cfg_attr(stage0, feature(core_str_ext))]
 #![feature(custom_attribute)]
 #![feature(dropck_eyepatch)]
 #![feature(exact_size_is_empty)]
