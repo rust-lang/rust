@@ -39,7 +39,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
 use syntax::edition::Edition;
-use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, NO_EXPANSION, FileName};
@@ -517,8 +516,11 @@ impl CrateStore for cstore::CStore {
             return LoadedMacro::ProcMacro(proc_macros[id.index.to_proc_macro_index()].1.clone());
         } else if data.name == "proc_macro" &&
                   self.get_crate_data(id.krate).item_name(id.index) == "quote" {
+            use syntax::ext::base::SyntaxExtension;
+            use syntax_ext::proc_macro_impl::BangProcMacro;
+
             let ext = SyntaxExtension::ProcMacro {
-                expander: Box::new(::proc_macro::__internal::Quoter),
+                expander: Box::new(BangProcMacro { inner: ::proc_macro::quote }),
                 allow_internal_unstable: true,
                 edition: data.root.edition,
             };

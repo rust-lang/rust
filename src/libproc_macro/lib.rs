@@ -145,6 +145,9 @@ impl fmt::Debug for TokenStream {
     }
 }
 
+#[unstable(feature = "proc_macro_quote", issue = "38356")]
+pub use quote::{quote, quote_span};
+
 /// Creates a token stream containing a single token tree.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
@@ -237,7 +240,7 @@ pub mod token_stream {
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
 ///
-/// This is a dummy macro, the actual implementation is in quote::Quoter
+/// This is a dummy macro, the actual implementation is in `quote::quote`.`
 #[unstable(feature = "proc_macro_quote", issue = "38356")]
 #[macro_export]
 macro_rules! quote { () => {} }
@@ -245,13 +248,6 @@ macro_rules! quote { () => {} }
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 mod quote;
-
-/// Quote a `Span` into a `TokenStream`.
-/// This is needed to implement a custom quoter.
-#[unstable(feature = "proc_macro_quote", issue = "38356")]
-pub fn quote_span(span: Span) -> TokenStream {
-    quote::Quote::quote(span)
-}
 
 /// A region of source code, along with macro expansion information.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
@@ -1364,8 +1360,6 @@ impl TokenTree {
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod __internal {
-    pub use quote::{Quoter, unquote};
-
     use std::cell::Cell;
     use std::ptr;
 
