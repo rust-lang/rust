@@ -106,30 +106,22 @@ impl<'a> Folder for ExpandAllocatorDirectives<'a> {
             span,
             kind: AllocatorKind::Global,
             global: item.ident,
-            core: Ident::from_str("core"),
+            core: Ident::with_empty_ctxt(Symbol::gensym("core")),
             cx: ExtCtxt::new(self.sess, ecfg, self.resolver),
         };
-        //let super_path = f.cx.path(f.span, vec![Ident::from_str("super"), f.global]);
-        let super_path = f.cx.path(f.span, vec![f.global]);
-        let mut items = vec![
-            f.cx.item_extern_crate(f.span, f.core),
-            f.cx.item_use_simple(
-                f.span,
-                respan(f.span.shrink_to_lo(), VisibilityKind::Inherited),
-                super_path,
-            ),
-        ];
-        for method in ALLOCATOR_METHODS {
-            items.push(f.allocator_fn(method));
-        }
-        let name = f.kind.fn_name("allocator_abi");
-        let allocator_abi = Ident::with_empty_ctxt(Symbol::gensym(&name));
-        let module = f.cx.item_mod(span, span, allocator_abi, Vec::new(), items);
-        let module = f.cx.monotonic_expander().fold_item(module).pop().unwrap();
+
+        let extcore = {
+            let extcore = f.cx.item_extern_crate(item.span, f.core);
+            f.cx.monotonic_expander().fold_item(extcore).pop().unwrap()
+        };
 
         let mut ret = SmallVector::new();
         ret.push(item);
-        ret.push(module);
+        ret.push(extcore);
+        ret.extend(ALLOCATOR_METHODS.iter().map(|method| {
+            let method = f.allocator_fn(method);
+            f.cx.monotonic_expander().fold_item(method).pop().unwrap()
+        }));
         return ret;
     }
 
@@ -182,6 +174,7 @@ impl<'a> AllocFnFactory<'a> {
         let method = self.cx.path(
             self.span,
             vec![
+                Ident::from_str("self"),
                 self.core,
                 Ident::from_str("alloc"),
                 Ident::from_str("GlobalAlloc"),
@@ -232,6 +225,7 @@ impl<'a> AllocFnFactory<'a> {
                 let layout_new = self.cx.path(
                     self.span,
                     vec![
+                        Ident::from_str("self"),
                         self.core,
                         Ident::from_str("alloc"),
                         Ident::from_str("Layout"),
@@ -298,6 +292,7 @@ impl<'a> AllocFnFactory<'a> {
         let opaque = self.cx.path(
             self.span,
             vec![
+                Ident::from_str("self"),
                 self.core,
                 Ident::from_str("alloc"),
                 Ident::from_str("Opaque"),
