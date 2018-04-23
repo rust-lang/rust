@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
+
 #![feature(const_fn)]
 
 const fn foo(x: u32) -> u32 {
@@ -20,6 +22,6 @@ fn main() {
     const Y: u32 = foo(0-1);
     //~^ WARN attempt to subtract with overflow
     println!("{} {}", X, Y);
-    //~^ ERROR constant evaluation error
-    //~| ERROR constant evaluation error
+    //~^ WARN constant evaluation error
+    //~| WARN constant evaluation error
 }
