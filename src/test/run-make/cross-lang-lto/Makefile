@@ -1,5 +1,6 @@
 
 # min-llvm-version 4.0
+# ignore-mingw
 
 -include ../../run-make-fulldeps/tools.mk
 
@@ -24,7 +25,7 @@ BUILD_EXE=$(RUSTC) main.rs -Copt-level=2 -Z cross-lang-lto -Ccodegen-units=1 --e
 all: staticlib staticlib-fat-lto staticlib-thin-lto rlib exe cdylib rdylib
 
 staticlib: lib.rs
-	$(BUILD_LIB) --crate-type=staticlib
+	$(BUILD_LIB) --crate-type=staticlib -o $(TMPDIR)/liblib.a
 	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib.a | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
 
 staticlib-fat-lto: lib.rs
@@ -36,7 +37,7 @@ staticlib-thin-lto: lib.rs
 	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib-thin-lto.a | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
 
 rlib: lib.rs
-	$(BUILD_LIB) --crate-type=rlib
+	$(BUILD_LIB) --crate-type=rlib -o $(TMPDIR)/liblib.rlib
 	[ "$$($(SECTION_HEADERS) $(TMPDIR)/liblib.rlib | grep -c $(LLVMBC_SECTION_NAME))" -ne "0" ]
 
 cdylib: lib.rs
