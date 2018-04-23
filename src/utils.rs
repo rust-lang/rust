@@ -82,6 +82,14 @@ pub fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
 }
 
 #[inline]
+pub fn format_auto(is_auto: ast::IsAuto) -> &'static str {
+    match is_auto {
+        ast::IsAuto::Yes => "auto ",
+        ast::IsAuto::No => "",
+    }
+}
+
+#[inline]
 pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
         ast::Mutability::Mutable => "mut ",
