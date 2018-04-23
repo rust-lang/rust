@@ -1768,8 +1768,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             ast::TraitItemKind::Type(_, ref default) => {
-                // We use two if statements instead of something like match guards so that both
-                // of these errors can be emitted if both cases apply.
+                // We use three if statements instead of something like match guards so that all
+                // of these errors can be emitted if all cases apply.
                 if default.is_some() {
                     gate_feature_post!(&self, associated_type_defaults, ti.span,
                                        "associated type defaults are unstable");
@@ -1777,6 +1777,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if ti.generics.is_parameterized() {
                     gate_feature_post!(&self, generic_associated_types, ti.span,
                                        "generic associated types are unstable");
+                }
+                if !ti.generics.where_clause.predicates.is_empty() {
+                    gate_feature_post!(&self, generic_associated_types, ti.span,
+                                       "where clauses on associated types are unstable");
                 }
             }
             _ => {}
