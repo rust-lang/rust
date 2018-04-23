@@ -7,7 +7,7 @@ use syntax::ptr;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
 use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
-use utils::{opt_def_id, paths};
+use utils::{opt_def_id, paths, last_path_segment};
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -266,7 +266,6 @@ fn check_print_variants<'a, 'tcx>(
             };
 
             span_lint(cx, PRINT_STDOUT, span, &format!("use of `{}!`", name));
-
             if_chain! {
                 // ensure we're calling Arguments::new_v1
                 if args.len() == 1;
@@ -339,7 +338,9 @@ where
     F: Fn(Span),
 {
     if_chain! {
-        if args.len() > 1;
+        if args.len() >= 2;
+
+        // the match statement
         if let ExprAddrOf(_, ref match_expr) = args[1].node;
         if let ExprMatch(ref matchee, ref arms, _) = match_expr.node;
         if let ExprTup(ref tup) = matchee.node;
@@ -355,15 +356,31 @@ where
                     if let ExprLit(_) = tup_val.node;
 
                     // next, check the corresponding match arm body to ensure
-                    // this is "{}", or DISPLAY_FMT_METHOD
+                    // this is DISPLAY_FMT_METHOD
                     if let ExprCall(_, ref body_args) = arm_body_exprs[idx].node;
                     if body_args.len() == 2;
                     if let ExprPath(ref body_qpath) = body_args[1].node;
                     if let Some(fun_def_id) = opt_def_id(resolve_node(cx, body_qpath, body_args[1].hir_id));
-                    if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD) ||
-                       match_def_path(cx.tcx, fun_def_id, &paths::DEBUG_FMT_METHOD);
+                    if match_def_path(cx.tcx, fun_def_id, &paths::DISPLAY_FMT_METHOD);
                     then {
-                        lint_fn(tup_val.span);
+                        if args.len() == 2 {
+                            lint_fn(tup_val.span);
+                        } 
+
+                        // ensure the format str has no options (e.g., width, precision, alignment, etc.)
+                        // and is just "{}"
+                        if_chain! {
+                            if args.len() == 3;
+                            if let ExprAddrOf(_, ref format_expr) = args[2].node;
+                            if let ExprArray(ref format_exprs) = format_expr.node;
+                            if format_exprs.len() >= 1;
+                            if let ExprStruct(_, ref fields, _) = format_exprs[idx].node;
+                            if let Some(format_field) = fields.iter().find(|f| f.name.node == "format");
+                            if check_unformatted(&format_field.expr);
+                            then {
+                                lint_fn(tup_val.span);
+                            }
+                        }
                     }
                 }
             }
@@ -436,5 +453,35 @@ fn is_in_debug_impl(cx: &LateContext, expr: &Expr) -> bool {
             }
         }
     }
+    false
+}
+
+/// Checks if the expression matches
+/// ```rust,ignore
+/// &[_ {
+///    format: _ {
+///         width: _::Implied,
+///         ...
+///    },
+///    ...,
+/// }]
+/// ```
+pub fn check_unformatted(format_field: &Expr) -> bool {
+    if_chain! {
+        if let ExprStruct(_, ref fields, _) = format_field.node;
+        if let Some(width_field) = fields.iter().find(|f| f.name.node == "width");
+        if let ExprPath(ref qpath) = width_field.expr.node;
+        if last_path_segment(qpath).name == "Implied";
+        if let Some(align_field) = fields.iter().find(|f| f.name.node == "align");
+        if let ExprPath(ref qpath) = align_field.expr.node;
+        if last_path_segment(qpath).name == "Unknown";
+        if let Some(precision_field) = fields.iter().find(|f| f.name.node == "precision");
+        if let ExprPath(ref qpath_precision) = precision_field.expr.node;
+        if last_path_segment(qpath_precision).name == "Implied";
+        then {
+            return true;
+        }
+    }
+
     false
 }
