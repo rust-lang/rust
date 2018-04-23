@@ -730,8 +730,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         if impl_ty.synthetic != trait_ty.synthetic {
             let impl_node_id = tcx.hir.as_local_node_id(impl_ty.def_id).unwrap();
             let impl_span = tcx.hir.span(impl_node_id);
-            let trait_node_id = tcx.hir.as_local_node_id(trait_ty.def_id).unwrap();
-            let trait_span = tcx.hir.span(trait_node_id);
+            let trait_span = tcx.def_span(trait_ty.def_id);
             let mut err = struct_span_err!(tcx.sess,
                                            impl_span,
                                            E0643,
