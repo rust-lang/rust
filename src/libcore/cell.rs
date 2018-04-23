@@ -257,7 +257,7 @@ impl<T:Copy> Cell<T> {
         unsafe{ *self.value.get() }
     }
 
-    /// Applies a function to the contained value.
+    /// Updates the contained value using a function and returns the new value.
     ///
     /// # Examples
     ///
@@ -267,8 +267,9 @@ impl<T:Copy> Cell<T> {
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
-    /// c.update(|x| x + 1);
+    /// let new = c.update(|x| x + 1);
     ///
+    /// assert_eq!(new, 6);
     /// assert_eq!(c.get(), 6);
     /// ```
     #[inline]
