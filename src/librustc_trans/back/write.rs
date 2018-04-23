@@ -1007,13 +1007,6 @@ pub fn start_async_translation(tcx: TyCtxt,
     metadata_config.time_passes = false;
     allocator_config.time_passes = false;
 
-    let client = sess.jobserver_from_env.clone().unwrap_or_else(|| {
-        // Pick a "reasonable maximum" if we don't otherwise have a jobserver in
-        // our environment, capping out at 32 so we don't take everything down
-        // by hogging the process run queue.
-        Client::new(32).expect("failed to create jobserver")
-    });
-
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (trans_worker_send, trans_worker_receive) = channel();
 
@@ -1023,7 +1016,7 @@ pub fn start_async_translation(tcx: TyCtxt,
                                                   trans_worker_send,
                                                   coordinator_receive,
                                                   total_cgus,
-                                                  client,
+                                                  sess.jobserver.clone(),
                                                   time_graph.clone(),
                                                   Arc::new(modules_config),
                                                   Arc::new(metadata_config),
