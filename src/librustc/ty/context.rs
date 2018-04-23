@@ -38,7 +38,7 @@ use ty::subst::{Kind, Substs};
 use ty::ReprOptions;
 use ty::Instance;
 use traits;
-use traits::{Clause, Goal};
+use traits::{Clause, Clauses, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region, Const};
@@ -2517,7 +2517,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn intern_clauses(self, ts: &[Clause<'tcx>]) -> &'tcx Slice<Clause<'tcx>> {
+    pub fn intern_clauses(self, ts: &[Clause<'tcx>]) -> Clauses<'tcx> {
         if ts.len() == 0 {
             Slice::empty()
         } else {
@@ -2525,7 +2525,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn intern_goals(self, ts: &[Goal<'tcx>]) -> &'tcx Slice<Goal<'tcx>> {
+    pub fn intern_goals(self, ts: &[Goal<'tcx>]) -> Goals<'tcx> {
         if ts.len() == 0 {
             Slice::empty()
         } else {
@@ -2579,13 +2579,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_substs(iter::once(s).chain(t.into_iter().cloned()).map(Kind::from))
     }
 
-    pub fn mk_clauses<I: InternAs<[Clause<'tcx>],
-        &'tcx Slice<Clause<'tcx>>>>(self, iter: I) -> I::Output {
+    pub fn mk_clauses<I: InternAs<[Clause<'tcx>], Clauses<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_clauses(xs))
     }
 
-    pub fn mk_goals<I: InternAs<[Goal<'tcx>],
-        &'tcx Slice<Goal<'tcx>>>>(self, iter: I) -> I::Output {
+    pub fn mk_goals<I: InternAs<[Goal<'tcx>], Goals<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_goals(xs))
     }
 

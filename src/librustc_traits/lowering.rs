@@ -12,11 +12,11 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
 use rustc::hir::{self, ImplPolarity};
-use rustc::traits::{Clause, DomainGoal, Goal, PolyDomainGoal, ProgramClause, WhereClauseAtom};
+use rustc::traits::{Clause, Clauses, DomainGoal, Goal, PolyDomainGoal, ProgramClause,
+                    WhereClauseAtom};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Slice, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use std::mem;
 use syntax::ast;
 
@@ -122,19 +122,19 @@ impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
 crate fn program_clauses_for<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Lrc<&'tcx Slice<Clause<'tcx>>> {
+) -> Clauses<'tcx> {
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::Trait(_) => program_clauses_for_trait(tcx, def_id),
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),
         DefPathData::AssocTypeInImpl(..) => program_clauses_for_associated_type_value(tcx, def_id),
-        _ => Lrc::new(Slice::empty()),
+        _ => Slice::empty(),
     }
 }
 
 crate fn program_clauses_for_env<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Lrc<&'tcx Slice<Clause<'tcx>>> {
+) -> Clauses<'tcx> {
     debug!("program_clauses_for_env(param_env={:?})", param_env);
 
     let mut last_round = FxHashSet();
@@ -164,12 +164,10 @@ crate fn program_clauses_for_env<'a, 'tcx>(
 
     debug!("program_clauses_for_env: closure = {:#?}", closure);
 
-    return Lrc::new(
-        tcx.mk_clauses(
-            closure
-                .into_iter()
-                .flat_map(|def_id| tcx.program_clauses_for(def_id).iter().cloned()),
-        ),
+    return tcx.mk_clauses(
+        closure
+            .into_iter()
+            .flat_map(|def_id| tcx.program_clauses_for(def_id).iter().cloned()),
     );
 
     /// Given that `predicate` is in the environment, returns the
@@ -196,7 +194,7 @@ crate fn program_clauses_for_env<'a, 'tcx>(
 fn program_clauses_for_trait<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Lrc<&'tcx Slice<Clause<'tcx>>> {
+) -> Clauses<'tcx> {
     // `trait Trait<P1..Pn> where WC { .. } // P0 == Self`
 
     // Rule Implemented-From-Env (see rustc guide)
@@ -243,7 +241,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
         .into_iter()
         .map(|wc| implied_bound_from_trait(tcx, trait_pred, wc));
 
-    Lrc::new(tcx.mk_clauses(clauses.chain(implied_bound_clauses)))
+    tcx.mk_clauses(clauses.chain(implied_bound_clauses))
 }
 
 /// For a given `where_clause`, returns a clause `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`.
@@ -262,12 +260,9 @@ fn implied_bound_from_trait<'a, 'tcx>(
     }))
 }
 
-fn program_clauses_for_impl<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    def_id: DefId,
-) -> Lrc<&'tcx Slice<Clause<'tcx>>> {
+fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
     if let ImplPolarity::Negative = tcx.impl_polarity(def_id) {
-        return Lrc::new(tcx.mk_clauses(iter::empty::<Clause>()));
+        return Slice::empty();
     }
 
     // Rule Implemented-From-Impl (see rustc guide)
@@ -295,13 +290,13 @@ fn program_clauses_for_impl<'a, 'tcx>(
                 .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
         ),
     };
-    Lrc::new(tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause)))))
+    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
 }
 
 pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_id: DefId,
-) -> Lrc<&'tcx Slice<Clause<'tcx>>> {
+) -> Clauses<'tcx> {
     // Rule Normalize-From-Impl (see rustc guide)
     //
     // ```impl<P0..Pn> Trait<A1..An> for A0
@@ -349,7 +344,7 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
                 .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
         ),
     };
-    Lrc::new(tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause)))))
+    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
