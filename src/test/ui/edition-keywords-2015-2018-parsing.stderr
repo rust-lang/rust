@@ -1,0 +1,44 @@
+error: expected identifier, found reserved keyword `proc`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:37:13
+   |
+LL |     let mut proc = 1; //~ ERROR expected identifier, found reserved keyword `proc`
+   |             ^^^^ expected identifier, found reserved keyword
+
+error: expected identifier, found reserved keyword `proc`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:47:13
+   |
+LL |     module::proc(); //~ ERROR expected identifier, found reserved keyword `proc`
+   |             ^^^^ expected identifier, found reserved keyword
+
+error: no rules expected the token `r#async`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:25:31
+   |
+LL |     r#async = consumes_async!(r#async); //~ ERROR no rules expected the token `r#async`
+   |                               ^^^^^^^
+
+error: no rules expected the token `async`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:26:35
+   |
+LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
+   |                                   ^^^^^
+
+error: no rules expected the token `r#proc`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:41:29
+   |
+LL |     r#proc = consumes_proc!(r#proc); //~ ERROR no rules expected the token `r#proc`
+   |                             ^^^^^^
+
+error: no rules expected the token `proc`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:42:33
+   |
+LL |     r#proc = consumes_proc_raw!(proc); //~ ERROR no rules expected the token `proc`
+   |                                 ^^^^
+
+error: expected expression, found reserved keyword `proc`
+  --> $DIR/edition-keywords-2015-2018-parsing.rs:45:22
+   |
+LL |     if passes_ident!(proc) == 1 {} //~ ERROR expected expression, found reserved keyword `proc`
+   |                      ^^^^ expected expression
+
+error: aborting due to 7 previous errors
+
