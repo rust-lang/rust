@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-pass
-
+// compile-flags: -O
 fn main() {
     println!("{}", 0u32 - 1);
     //~^ WARN const_err
