@@ -42,7 +42,7 @@ pub use core::char::{EscapeDebug, EscapeDefault, EscapeUnicode};
 pub use core::char::ParseCharError;
 
 // unstable re-exports
-#[stable(feature = "try_from", since = "1.26.0")]
+#[unstable(feature = "try_from", issue = "33417")]
 pub use core::char::CharTryFromError;
 #[unstable(feature = "decode_utf8", issue = "33906")]
 pub use core::char::{DecodeUtf8, decode_utf8};
