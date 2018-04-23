@@ -679,10 +679,10 @@ declare_clippy_lint! {
     "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
-/// **What it does:** Checks for casts from a more-strictly-aligned pointer to a
-/// less-strictly-aligned pointer
+/// **What it does:** Checks for casts from a less-strictly-aligned pointer to a
+/// more-strictly-aligned pointer
 ///
-/// **Why is this bad?** Dereferencing the resulting pointer is undefined
+/// **Why is this bad?** Dereferencing the resulting pointer may be undefined
 /// behavior.
 ///
 /// **Known problems:** None.
@@ -695,7 +695,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub CAST_PTR_ALIGNMENT,
     correctness,
-    "cast from a pointer to a less-strictly-aligned pointer"
+    "cast from a pointer to a more-strictly-aligned pointer"
 }
 
 /// Returns the size in bits of an integral type.
@@ -986,7 +986,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                         cx,
                         CAST_PTR_ALIGNMENT,
                         expr.span,
-                        &format!("casting from `{}` to a less-strictly-aligned pointer (`{}`)", cast_from, cast_to)
+                        &format!("casting from `{}` to a more-strictly-aligned pointer (`{}`)", cast_from, cast_to)
                     );
                 }
             }
