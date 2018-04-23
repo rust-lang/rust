@@ -40,6 +40,7 @@
 #![feature(non_exhaustive)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(try_from)]
 
 mod bool_trie;
 mod tables;

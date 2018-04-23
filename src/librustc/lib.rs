@@ -58,6 +58,7 @@
 #![cfg_attr(stage0, feature(match_default_bindings))]
 #![feature(macro_lifetime_matcher)]
 #![feature(macro_vis_matcher)]
+#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 #![feature(non_exhaustive)]
 #![feature(nonzero)]

@@ -89,6 +89,7 @@ This API is completely unstable and subject to change.
 #![cfg_attr(stage0, feature(i128_type))]
 #![cfg_attr(stage0, feature(never_type))]
 #![feature(dyn_trait)]
+#![feature(never_type)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

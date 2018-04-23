@@ -12,6 +12,7 @@
 
 // error-pattern:wowzers!
 
+#![feature(never_type)]
 #![allow(unreachable_code)]
 
 fn foo(x: !) -> ! {

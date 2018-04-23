@@ -402,6 +402,36 @@ fn test_str_get_maxinclusive() {
 }
 
 #[test]
+fn test_str_slice_rangetoinclusive_ok() {
+    let s = "abcαβγ";
+    assert_eq!(&s[..=2], "abc");
+    assert_eq!(&s[..=4], "abcα");
+}
+
+#[test]
+#[should_panic]
+fn test_str_slice_rangetoinclusive_notok() {
+    let s = "abcαβγ";
+    &s[..=3];
+}
+
+#[test]
+fn test_str_slicemut_rangetoinclusive_ok() {
+    let mut s = "abcαβγ".to_owned();
+    let s: &mut str = &mut s;
+    assert_eq!(&mut s[..=2], "abc");
+    assert_eq!(&mut s[..=4], "abcα");
+}
+
+#[test]
+#[should_panic]
+fn test_str_slicemut_rangetoinclusive_notok() {
+    let mut s = "abcαβγ".to_owned();
+    let s: &mut str = &mut s;
+    &mut s[..=3];
+}
+
+#[test]
 fn test_is_char_boundary() {
     let s = "ศไทย中华Việt Nam β-release 🐱123";
     assert!(s.is_char_boundary(0));

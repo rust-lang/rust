@@ -12,6 +12,8 @@
 
 // error-pattern:kapow!
 
+#![feature(never_type)]
+
 trait Foo {
     type Wow;
 
