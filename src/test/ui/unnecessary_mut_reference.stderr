@@ -1,0 +1,9 @@
+error[E0596]: cannot borrow immutable argument `user` as mutable
+  --> unnecessary_mut_reference.rs:13:24
+   |
+12 | fn mutator_part1(user: &mut User) {
+13 |     mutator_part2(&mut user);
+   |                        ^^^^ cannot borrow mutably
+   |                   --------- consider removing the `&mut`, as it is an immutable binding to a mutable reference
+
+error: aborting due to previous error
