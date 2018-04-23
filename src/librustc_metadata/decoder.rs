@@ -977,7 +977,13 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_trait_of_item(&self, id: DefIndex) -> Option<DefId> {
-        self.def_key(id).parent.and_then(|parent_index| {
+        let def_key = self.def_key(id);
+        match def_key.disambiguated_data.data {
+            DefPathData::TypeNs(..) | DefPathData::ValueNs(..) => (),
+            // Not an associated item
+            _ => return None,
+        }
+        def_key.parent.and_then(|parent_index| {
             match self.entry(parent_index).kind {
                 EntryKind::Trait(_) => Some(self.local_def_id(parent_index)),
                 _ => None,
