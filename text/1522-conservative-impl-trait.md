@@ -21,7 +21,7 @@ With the placeholder syntax used in discussions so far,
 abstract return types would be used roughly like this:
 
 ```rust
-fn foo(n: u32) -> impl Iterator<Item=u32> {
+fn foo(n: u32) -> impl Iterator<Item = u32> {
     (0..n).map(|x| x * 100)
 }
 // ^ behaves as if it had return type Map<Range<u32>, Closure>
@@ -30,7 +30,6 @@ fn foo(n: u32) -> impl Iterator<Item=u32> {
 for x in foo(10) {
     // x = 0, 100, 200, ...
 }
-
 ```
 
 # Background
@@ -61,10 +60,10 @@ its motivation and some other parts of its text below.
 
 In today's Rust, you can write a function signature like
 
-````rust
-fn consume_iter_static<I: Iterator<u8>>(iter: I)
-fn consume_iter_dynamic(iter: Box<Iterator<u8>>)
-````
+```rust
+fn consume_iter_static<I: Iterator<Item = u8>>(iter: I)
+fn consume_iter_dynamic(iter: Box<Iterator<Item = u8>>)
+```
 
 In both cases, the function does not depend on the exact type of the argument.
 The type is held "abstract", and is assumed only to satisfy a trait bound.
@@ -78,15 +77,15 @@ The type is held "abstract", and is assumed only to satisfy a trait bound.
 
 On the other hand, while you can write
 
-````rust
-fn produce_iter_dynamic() -> Box<Iterator<u8>>
-````
+```rust
+fn produce_iter_dynamic() -> Box<Iterator<Item = u8>>
+```
 
 you _cannot_ write something like
 
-````rust
-fn produce_iter_static() -> Iterator<u8>
-````
+```rust
+fn produce_iter_static() -> Iterator<Item = u8>
+```
 
 That is, in today's Rust, abstract return types can only be written using trait
 objects, which can be a significant performance penalty. This RFC proposes
@@ -105,15 +104,15 @@ Here are some problems that unboxed abstract types solve or mitigate:
   type, when the API should really only promise a trait bound. For example, a
   function returning `Rev<Splits<'a, u8>>` is revealing exactly how the iterator
   is constructed, when the function should only promise that it returns _some_
-  type implementing `Iterator<u8>`. Using newtypes/structs with private fields
+  type implementing `Iterator<Item = u8>`. Using newtypes/structs with private fields
   helps, but is extra work. Unboxed abstract types make it as easy to promise only
   a trait bound as it is to return a concrete type.
 
 * _Complex types_. Use of iterators in particular can lead to huge types:
 
-  ````rust
-  Chain<Map<'a, (int, u8), u16, Enumerate<Filter<'a, u8, vec::MoveItems<u8>>>>, SkipWhile<'a, u16, Map<'a, &u16, u16, slice::Items<u16>>>>
-  ````
+  ```rust
+  Chain<Map<'a, (i32, u8), u16, Enumerate<Filter<'a, u8, vec::MoveItems<u8>>>>, SkipWhile<'a, u16, Map<'a, &u16, u16, slice::Items<u16>>>>
+  ```
 
   Even when using newtypes to hide the details, the type still has to be written
   out, which can be very painful. Unboxed abstract types only require writing the
