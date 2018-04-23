@@ -165,7 +165,7 @@ error: mutating transmuted &mut T from &T may cause undefined behavior, consider
 
 This lint detects any `const` items with the `#[no_mangle]` attribute.
 Constants do not have their symbols exported, and therefore, this probably
-means you meant to use a `static`, not a `const. Some example code that
+means you meant to use a `static`, not a `const`. Some example code that
 triggers this lint:
 
 ```rust,ignore

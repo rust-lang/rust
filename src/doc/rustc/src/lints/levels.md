@@ -45,8 +45,8 @@ pub fn foo() {
 
 This will produce this warning:
 
-```bash
-> rustc lib.rs --crate-type=lib
+```console
+$ rustc lib.rs --crate-type=lib
 warning: unused variable: `x`
  --> lib.rs:2:9
   |

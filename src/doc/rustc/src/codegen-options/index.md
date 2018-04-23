@@ -99,7 +99,7 @@ flag will turn that behavior off.
 ## no-vectorize-slp
 
 By default, `rustc` will attempt to vectorize loops using [superword-level
-parallism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer). This
+parallelism](https://llvm.org/docs/Vectorizers.html#the-slp-vectorizer). This
 flag will turn that behavior off.
 
 ## soft-float
