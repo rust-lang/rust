@@ -1,0 +1,108 @@
+warning: unreachable statement
+  --> $DIR/liveness-unused.rs:102:9
+   |
+LL |         drop(*x as i32); //~ WARN unreachable statement
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/liveness-unused.rs:13:47
+   |
+LL | #![warn(unused_variables, unused_assignments, unreachable_code)]
+   |                                               ^^^^^^^^^^^^^^^^
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:18:7
+   |
+LL | fn f1(x: isize) {
+   |       ^ help: consider using `_x` instead
+   |
+note: lint level defined here
+  --> $DIR/liveness-unused.rs:13:9
+   |
+LL | #![warn(unused_variables, unused_assignments, unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:22:8
+   |
+LL | fn f1b(x: &mut isize) {
+   |        ^ help: consider using `_x` instead
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:30:9
+   |
+LL |     let x: isize;
+   |         ^ help: consider using `_x` instead
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:35:9
+   |
+LL |     let x = 3;
+   |         ^ help: consider using `_x` instead
+
+warning: variable `x` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:40:9
+   |
+LL |     let mut x = 3;
+   |         ^^^^^
+   |
+   = note: consider using `_x` instead
+
+warning: value assigned to `x` is never read
+  --> $DIR/liveness-unused.rs:42:5
+   |
+LL |     x += 4;
+   |     ^    ^
+   |
+note: lint level defined here
+  --> $DIR/liveness-unused.rs:13:27
+   |
+LL | #![warn(unused_variables, unused_assignments, unreachable_code)]
+   |                           ^^^^^^^^^^^^^^^^^^
+
+warning: variable `z` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:47:9
+   |
+LL |     let mut z = 3;
+   |         ^^^^^
+   |
+   = note: consider using `_z` instead
+
+warning: unused variable: `i`
+  --> $DIR/liveness-unused.rs:69:12
+   |
+LL |       Some(i) => {
+   |            ^ help: consider using `_i` instead
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:89:9
+   |
+LL |     for x in 1..10 { }
+   |         ^ help: consider using `_x` instead
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:94:10
+   |
+LL |     for (x, _) in [1, 2, 3].iter().enumerate() { }
+   |          ^ help: consider using `_x` instead
+
+warning: unused variable: `x`
+  --> $DIR/liveness-unused.rs:99:13
+   |
+LL |     for (_, x) in [1, 2, 3].iter().enumerate() {
+   |             ^ help: consider using `_x` instead
+
+warning: variable `x` is assigned to, but never used
+  --> $DIR/liveness-unused.rs:122:9
+   |
+LL |     let x;
+   |         ^
+   |
+   = note: consider using `_x` instead
+
+warning: value assigned to `x` is never read
+  --> $DIR/liveness-unused.rs:126:9
+   |
+LL |         x = 0;  //~ WARN value assigned to `x` is never read
+   |         ^   ^
+
