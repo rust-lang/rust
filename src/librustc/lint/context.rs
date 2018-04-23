@@ -466,8 +466,13 @@ pub trait LintContext<'tcx>: Sized {
 
     /// Emit a lint at the appropriate level, for a particular span.
     fn span_lint<S: Into<MultiSpan>>(&self, lint: &'static Lint, span: S, msg: &str) {
-        if !lint::in_external_macro(lint, span) {
-            self.lookup_and_emit(lint, Some(span), msg);
+        match self.lints().future_incompatible(LintId::of(lint)) {
+            Some(_) => self.lookup_and_emit(lint, Some(span), msg),
+            None => {
+                if !lint::in_external_macro(lint, span) {
+                    self.lookup_and_emit(lint, Some(span), msg);
+                }
+            }
         }
     }
 
