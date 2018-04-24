@@ -89,7 +89,7 @@ This flag lets you 'cap' lints, for more, [see here](lints/levels.html#capping-l
 
 This flag will allow you to set [codegen options](codegen-options/index.html).
 
-## `-V`/`--verision`: print a version
+## `-V`/`--version`: print a version
 
 This flag will print out `rustc`'s version.
 
@@ -111,6 +111,6 @@ distribution; this flag allows that to be overridden.
 
 This flag lets you control the format of errors.
 
-## `--color`: configur coloring of output
+## `--color`: configure coloring of output
 
 This flag lets you control color settings of the output.
