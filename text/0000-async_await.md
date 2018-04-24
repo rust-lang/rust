@@ -119,6 +119,9 @@ fn main() {
 This will print both "Hello from main" statements before printing "Hello from
 async closure."
 
+`async` closures can be annotated with `move` to capture ownership of the
+variables they close over.
+
 ## `async` blocks
 
 You can create a future directly as an expression using an `async` block:
@@ -240,7 +243,7 @@ fn foo<'a>(arg1: &'a str, arg2: &str) -> impl Future<Output = usize> + 'a {
     // do some initialization using arg2
 
     // closure which is evaluated immediately
-    move async {
+    async move {
          // asynchronous portion of the function
     }
 }
@@ -264,6 +267,19 @@ loop {
 This is not a literal expansion, because the `yield` concept cannot be
 expressed in the surface syntax within `async` functions. This is why `await!`
 is a compiler builtin instead of an actual macro.
+
+## The order of `async` and `move`
+
+Async closures and blocks can be annotated with `move` to capture ownership of
+the variables they close over. The order of the keywords is fixed to
+`async move`. Permitting only one ordering avoids confusion about whether it is
+significant for the meaning.
+
+```rust
+async move {
+    // body
+}
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
