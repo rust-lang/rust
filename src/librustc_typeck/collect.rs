@@ -1682,6 +1682,7 @@ fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn from_target_feature(
     tcx: TyCtxt,
+    id: DefId,
     attr: &ast::Attribute,
     whitelist: &FxHashMap<String, Option<String>>,
     target_features: &mut Vec<Symbol>,
@@ -1752,7 +1753,7 @@ fn from_target_feature(
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
-            if !allowed {
+            if !allowed && id.is_local() {
                 feature_gate::emit_feature_err(
                     &tcx.sess.parse_sess,
                     feature_gate.as_ref().unwrap(),
@@ -1877,7 +1878,7 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                            `unsafe` function";
                 tcx.sess.span_err(attr.span, msg);
             }
-            from_target_feature(tcx, attr, &whitelist, &mut trans_fn_attrs.target_features);
+            from_target_feature(tcx, id, attr, &whitelist, &mut trans_fn_attrs.target_features);
         } else if attr.check_name("linkage") {
             if let Some(val) = attr.value_str() {
                 trans_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
