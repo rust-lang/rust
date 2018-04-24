@@ -10,7 +10,6 @@
 
 #[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
 pub enum ConstMathErr {
-    UnequalTypes(Op),
     Overflow(Op),
     DivisionByZero,
     RemainderByZero,
@@ -36,17 +35,6 @@ impl ConstMathErr {
     pub fn description(&self) -> &'static str {
         use self::Op::*;
         match *self {
-            UnequalTypes(Add) => "tried to add two values of different types",
-            UnequalTypes(Sub) => "tried to subtract two values of different types",
-            UnequalTypes(Mul) => "tried to multiply two values of different types",
-            UnequalTypes(Div) => "tried to divide two values of different types",
-            UnequalTypes(Rem) => {
-                "tried to calculate the remainder of two values of different types"
-            },
-            UnequalTypes(BitAnd) => "tried to bitand two values of different types",
-            UnequalTypes(BitOr) => "tried to bitor two values of different types",
-            UnequalTypes(BitXor) => "tried to xor two values of different types",
-            UnequalTypes(_) => unreachable!(),
             Overflow(Add) => "attempt to add with overflow",
             Overflow(Sub) => "attempt to subtract with overflow",
             Overflow(Mul) => "attempt to multiply with overflow",

@@ -17,7 +17,6 @@ impl_stable_hash_for!(struct ::rustc_const_math::ConstFloat {
 });
 
 impl_stable_hash_for!(enum ::rustc_const_math::ConstMathErr {
-    UnequalTypes(op),
     Overflow(op),
     DivisionByZero,
     RemainderByZero,

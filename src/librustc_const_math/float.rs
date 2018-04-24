@@ -16,8 +16,6 @@ use syntax::ast;
 use rustc_apfloat::{Float, FloatConvert, Status};
 use rustc_apfloat::ieee::{Single, Double};
 
-use super::err::*;
-
 // Note that equality for `ConstFloat` means that the it is the same
 // constant, not that the rust values are equal. In particular, `NaN
 // == NaN` (at least if it's the same NaN; distinct encodings for NaN
@@ -172,8 +170,8 @@ impl ::std::fmt::Debug for ConstFloat {
 macro_rules! derive_binop {
     ($op:ident, $func:ident) => {
         impl ::std::ops::$op for ConstFloat {
-            type Output = Result<Self, ConstMathErr>;
-            fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
+            type Output = Option<Self>;
+            fn $func(self, rhs: Self) -> Option<Self> {
                 let bits = match (self.ty, rhs.ty) {
                     (ast::FloatTy::F32, ast::FloatTy::F32) =>{
                         let a = Single::from_bits(self.bits);
@@ -185,9 +183,9 @@ macro_rules! derive_binop {
                         let b = Double::from_bits(rhs.bits);
                         a.$func(b).value.to_bits()
                     }
-                    _ => return Err(UnequalTypes(Op::$op)),
+                    _ => return None,
                 };
-                Ok(ConstFloat { bits, ty: self.ty })
+                Some(ConstFloat { bits, ty: self.ty })
             }
         }
     }
