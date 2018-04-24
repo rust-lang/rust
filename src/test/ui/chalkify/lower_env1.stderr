@@ -1,0 +1,24 @@
+error: program clause dump
+  --> $DIR/lower_env1.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: FromEnv(Self: Bar) :- FromEnv(Self: Bar).
+   = note: FromEnv(Self: Foo) :- FromEnv(Self: Bar).
+   = note: Implemented(Self: Bar) :- FromEnv(Self: Bar).
+
+error: program clause dump
+  --> $DIR/lower_env1.rs:19:1
+   |
+LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: FromEnv(Self: Bar) :- FromEnv(Self: Bar).
+   = note: FromEnv(Self: Foo) :- FromEnv(Self: Bar).
+   = note: Implemented(Self: Bar) :- FromEnv(Self: Bar).
+   = note: Implemented(Self: Foo) :- FromEnv(Self: Foo).
+   = note: Implemented(Self: std::marker::Sized) :- FromEnv(Self: std::marker::Sized).
+
+error: aborting due to 2 previous errors
+

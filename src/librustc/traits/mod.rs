@@ -282,12 +282,15 @@ pub enum QuantifierKind {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Goal<'tcx> {
-    Implies(&'tcx Slice<Clause<'tcx>>, &'tcx Goal<'tcx>),
+    Implies(Clauses<'tcx>, &'tcx Goal<'tcx>),
     And(&'tcx Goal<'tcx>, &'tcx Goal<'tcx>),
     Not(&'tcx Goal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
-    Quantified(QuantifierKind, ty::Binder<&'tcx Goal<'tcx>>)
+    Quantified(QuantifierKind, ty::Binder<&'tcx Goal<'tcx>>),
+    CannotProve,
 }
+
+pub type Goals<'tcx> = &'tcx Slice<Goal<'tcx>>;
 
 impl<'tcx> Goal<'tcx> {
     pub fn from_poly_domain_goal<'a>(
@@ -318,6 +321,9 @@ pub enum Clause<'tcx> {
     ForAll(ty::Binder<ProgramClause<'tcx>>),
 }
 
+/// Multiple clauses.
+pub type Clauses<'tcx> = &'tcx Slice<Clause<'tcx>>;
+
 /// A "program clause" has the form `D :- G1, ..., Gn`. It is saying
 /// that the domain goal `D` is true if `G1...Gn` are provable. This
 /// is equivalent to the implication `G1..Gn => D`; we usually write
@@ -330,7 +336,7 @@ pub struct ProgramClause<'tcx> {
     pub goal: DomainGoal<'tcx>,
 
     /// ...if we can prove these hypotheses (there may be no hypotheses at all):
-    pub hypotheses: &'tcx Slice<Goal<'tcx>>,
+    pub hypotheses: Goals<'tcx>,
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;

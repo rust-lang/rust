@@ -204,6 +204,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // finer-grained distinctions, e.g. between enum/struct).
             data @ DefPathData::Misc |
             data @ DefPathData::TypeNs(..) |
+            data @ DefPathData::Trait(..) |
+            data @ DefPathData::AssocTypeInTrait(..) |
+            data @ DefPathData::AssocTypeInImpl(..) |
             data @ DefPathData::ValueNs(..) |
             data @ DefPathData::Module(..) |
             data @ DefPathData::TypeParam(..) |

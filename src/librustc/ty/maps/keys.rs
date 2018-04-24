@@ -154,6 +154,15 @@ impl<'tcx> Key for Ty<'tcx> {
     }
 }
 
+impl<'tcx> Key for ty::ParamEnv<'tcx> {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
     fn map_crate(&self) -> CrateNum {
         self.value.map_crate()

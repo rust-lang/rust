@@ -1138,6 +1138,11 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
+    /// Returns the def-id of the associated item being projected.
+    pub fn item_def_id(&self) -> DefId {
+        self.skip_binder().projection_ty.item_def_id
+    }
+
     pub fn to_poly_trait_ref(&self, tcx: TyCtxt) -> PolyTraitRef<'tcx> {
         // Note: unlike with TraitRef::to_poly_trait_ref(),
         // self.0.trait_ref is permitted to have escaping regions.

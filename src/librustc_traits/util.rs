@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use rustc::infer::InferCtxt;
-use rustc::infer::canonical::{CanonicalVarValues, Canonicalize, Certainty, QueryRegionConstraints,
-                              QueryResult};
+use rustc::infer::canonical::{CanonicalVarValues, Canonicalize, Certainty, QueryResult};
 use rustc::infer::region_constraints::{Constraint, RegionConstraintData};
 use rustc::traits::{FulfillmentContext, TraitEngine};
 use rustc::traits::query::NoSolution;
@@ -62,7 +61,7 @@ where
 
     let region_obligations = infcx.take_registered_region_obligations();
 
-    let (region_outlives, ty_outlives) = infcx.with_region_constraints(|region_constraints| {
+    let region_constraints = infcx.with_region_constraints(|region_constraints| {
         let RegionConstraintData {
             constraints,
             verifys,
@@ -72,24 +71,32 @@ where
         assert!(verifys.is_empty());
         assert!(givens.is_empty());
 
-        let region_outlives: Vec<_> = constraints
+        let mut outlives: Vec<_> = constraints
             .into_iter()
             .map(|(k, _)| match *k {
-                Constraint::VarSubVar(v1, v2) => {
-                    (tcx.mk_region(ty::ReVar(v1)), tcx.mk_region(ty::ReVar(v2)))
+                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
+                    tcx.mk_region(ty::ReVar(v1)).into(),
+                    tcx.mk_region(ty::ReVar(v2)),
+                ),
+                Constraint::VarSubReg(v1, r2) => {
+                    ty::OutlivesPredicate(tcx.mk_region(ty::ReVar(v1)).into(), r2)
                 }
-                Constraint::VarSubReg(v1, r2) => (tcx.mk_region(ty::ReVar(v1)), r2),
-                Constraint::RegSubVar(r1, v2) => (r1, tcx.mk_region(ty::ReVar(v2))),
-                Constraint::RegSubReg(r1, r2) => (r1, r2),
+                Constraint::RegSubVar(r1, v2) => {
+                    ty::OutlivesPredicate(r1.into(), tcx.mk_region(ty::ReVar(v2)))
+                }
+                Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r1.into(), r2),
             })
+            .map(ty::Binder) // no bound regions in the code above
             .collect();
 
-        let ty_outlives: Vec<_> = region_obligations
-            .into_iter()
-            .map(|(_, r_o)| (r_o.sup_type, r_o.sub_region))
-            .collect();
+        outlives.extend(
+            region_obligations
+                .into_iter()
+                .map(|(_, r_o)| ty::OutlivesPredicate(r_o.sup_type.into(), r_o.sub_region))
+                .map(ty::Binder) // no bound regions in the code above
+        );
 
-        (region_outlives, ty_outlives)
+        outlives
     });
 
     let certainty = if ambig_errors.is_empty() {
@@ -100,10 +107,7 @@ where
 
     let (canonical_result, _) = infcx.canonicalize_response(&QueryResult {
         var_values: inference_vars,
-        region_constraints: QueryRegionConstraints {
-            region_outlives,
-            ty_outlives,
-        },
+        region_constraints,
         certainty,
         value: answer,
     });

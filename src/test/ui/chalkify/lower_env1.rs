@@ -9,13 +9,16 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![allow(dead_code)]
+
+trait Foo { }
 
 #[rustc_dump_program_clauses] //~ ERROR program clause dump
-trait Foo<F> where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8
-{
-    fn s(F) -> F;
+trait Bar where Self: Foo { }
+
+#[rustc_dump_env_program_clauses] //~ ERROR program clause dump
+fn bar<T: Bar>() {
 }
 
 fn main() {
-    println!("hello");
 }

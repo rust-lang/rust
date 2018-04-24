@@ -12,7 +12,7 @@
 
 trait Foo { }
 
-#[rustc_dump_program_clauses] //~ ERROR Implemented(T: Foo) :-
+#[rustc_dump_program_clauses] //~ ERROR program clause dump
 impl<T: 'static> Foo for T where T: Iterator<Item = i32> { }
 
 trait Bar {
@@ -20,7 +20,7 @@ trait Bar {
 }
 
 impl<T> Bar for T where T: Iterator<Item = i32> {
-    #[rustc_dump_program_clauses] //~ ERROR Normalize(<T as Bar>::Assoc == std::vec::Vec<T>) :-
+    #[rustc_dump_program_clauses] //~ ERROR program clause dump
     type Assoc = Vec<T>;
 }
 

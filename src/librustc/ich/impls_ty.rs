@@ -1352,10 +1352,6 @@ impl_stable_hash_for!(
     }
 );
 
-impl_stable_hash_for!(struct infer::canonical::QueryRegionConstraints<'tcx> {
-    region_outlives, ty_outlives
-});
-
 impl_stable_hash_for!(enum infer::canonical::Certainty {
     Proven, Ambiguous
 });
@@ -1417,6 +1413,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
                 quantifier.hash_stable(hcx, hasher);
                 goal.hash_stable(hcx, hasher);
             },
+            CannotProve => { },
         }
     }
 }
