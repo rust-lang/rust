@@ -220,12 +220,12 @@ impl FormatReport {
                 write!(t, "{} ", error.msg_prefix())?;
                 t.reset()?;
                 t.attr(term::Attr::Bold)?;
-                write!(t, "{}\n", error.kind)?;
+                writeln!(t, "{}", error.kind)?;
 
                 // Second line: file info
                 write!(t, "{}--> ", &prefix_spaces[1..])?;
                 t.reset()?;
-                write!(t, "{}:{}\n", file, error.line)?;
+                writeln!(t, "{}:{}", file, error.line)?;
 
                 // Third to fifth lines: show the line which triggered error, if available.
                 if !error.line_buffer.is_empty() {
@@ -233,11 +233,11 @@ impl FormatReport {
                     t.attr(term::Attr::Bold)?;
                     write!(t, "{}|\n{} | ", prefix_spaces, error.line)?;
                     t.reset()?;
-                    write!(t, "{}\n", error.line_buffer)?;
+                    writeln!(t, "{}", error.line_buffer)?;
                     t.attr(term::Attr::Bold)?;
                     write!(t, "{}| ", prefix_spaces)?;
                     t.fg(term::color::RED)?;
-                    write!(t, "{}\n", target_str(space_len, target_len))?;
+                    writeln!(t, "{}", target_str(space_len, target_len))?;
                     t.reset()?;
                 }
 
@@ -247,9 +247,9 @@ impl FormatReport {
                     t.attr(term::Attr::Bold)?;
                     write!(t, "{}= note: ", prefix_spaces)?;
                     t.reset()?;
-                    write!(t, "{}\n", error.msg_suffix())?;
+                    writeln!(t, "{}", error.msg_suffix())?;
                 } else {
-                    write!(t, "\n")?;
+                    writeln!(t)?;
                 }
                 t.reset()?;
             }
@@ -307,9 +307,9 @@ impl fmt::Display for FormatReport {
                     format!("{}note= ", prefix_spaces)
                 };
 
-                write!(
+                writeln!(
                     fmt,
-                    "{}\n{}\n{}\n{}{}\n",
+                    "{}\n{}\n{}\n{}{}",
                     error_info,
                     file_info,
                     error_line_buffer,
@@ -319,9 +319,9 @@ impl fmt::Display for FormatReport {
             }
         }
         if !self.file_error_map.is_empty() {
-            write!(
+            writeln!(
                 fmt,
-                "warning: rustfmt may have failed to format. See previous {} errors.\n",
+                "warning: rustfmt may have failed to format. See previous {} errors.",
                 self.warning_count(),
             )?;
         }
@@ -384,7 +384,7 @@ where
 
         debug_assert_eq!(
             visitor.line_number,
-            ::utils::count_newlines(&format!("{}", visitor.buffer))
+            ::utils::count_newlines(&visitor.buffer)
         );
 
         let filename = path.clone();
@@ -627,7 +627,7 @@ fn enclose_in_main_block(s: &str, config: &Config) -> String {
         }
         result.push_str(&line);
         result.push('\n');
-        need_indent = !(kind.is_string() && !line.ends_with('\\'));
+        need_indent = !kind.is_string() || line.ends_with('\\');
     }
     result.push('}');
     result
@@ -680,7 +680,7 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
             line
         };
         result.push_str(trimmed_line);
-        is_indented = !(kind.is_string() && !line.ends_with('\\'));
+        is_indented = !kind.is_string() || line.ends_with('\\');
     }
     Some(result)
 }

@@ -458,7 +458,7 @@ where
         let item = item.as_ref();
         let inner_item_width = item.inner_as_ref().len();
         if !first
-            && (item.is_different_group() || !item.post_comment.is_some()
+            && (item.is_different_group() || item.post_comment.is_none()
                 || inner_item_width + overhead > max_budget)
         {
             return max_width;

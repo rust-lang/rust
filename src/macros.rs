@@ -580,7 +580,7 @@ impl MacroArgKind {
                 let another = another
                     .as_ref()
                     .and_then(|a| a.rewrite(context, shape, use_multiple_lines))
-                    .unwrap_or("".to_owned());
+                    .unwrap_or_else(|| "".to_owned());
                 let repeat_tok = pprust::token_to_string(tok);
 
                 Some(format!("${}{}{}{}{}", lhs, inner, rhs, another, repeat_tok))
@@ -685,7 +685,7 @@ impl MacroArgParser {
         match iter.next() {
             Some(TokenTree::Token(sp, Token::Ident(ref ident, _))) => {
                 self.result.push(ParsedMacroArg {
-                    kind: MacroArgKind::MetaVariable(ident.clone(), self.buf.clone()),
+                    kind: MacroArgKind::MetaVariable(*ident, self.buf.clone()),
                     span: mk_sp(self.lo, sp.hi()),
                 });
 
@@ -718,7 +718,7 @@ impl MacroArgParser {
         let mut hi = span.hi();
 
         // Parse '*', '+' or '?.
-        while let Some(ref tok) = iter.next() {
+        for ref tok in iter {
             self.set_last_tok(tok);
             if first {
                 first = false;
@@ -1080,7 +1080,7 @@ fn indent_macro_snippet(
         .min()?;
 
     Some(
-        String::from(first_line) + "\n"
+        first_line + "\n"
             + &trimmed_lines
                 .iter()
                 .map(
@@ -1250,7 +1250,7 @@ impl MacroBranch {
                     if !l.is_empty() && need_indent {
                         s += &indent_str;
                     }
-                    (s + l + "\n", !(kind.is_string() && !l.ends_with('\\')))
+                    (s + l + "\n", !kind.is_string() || l.ends_with('\\'))
                 },
             )
             .0;

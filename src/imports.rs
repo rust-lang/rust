@@ -381,7 +381,7 @@ impl UseTree {
 
         // Normalise foo::self -> foo.
         if let UseSegment::Slf(None) = last {
-            if self.path.len() > 0 {
+            if !self.path.is_empty() {
                 return self;
             }
         }
@@ -494,8 +494,8 @@ impl UseTree {
             UseSegment::List(list) => {
                 let prefix = &self.path[..self.path.len() - 1];
                 let mut result = vec![];
-                for nested_use_tree in list.into_iter() {
-                    for mut flattend in nested_use_tree.clone().flatten().iter_mut() {
+                for nested_use_tree in list {
+                    for mut flattend in &mut nested_use_tree.clone().flatten() {
                         let mut new_path = prefix.to_vec();
                         new_path.append(&mut flattend.path);
                         result.push(UseTree {
@@ -672,7 +672,7 @@ fn rewrite_nested_use_tree(
             list_items.push(ListItem::from_str(use_tree.rewrite(context, nested_shape)?));
         }
     }
-    let (tactic, remaining_width) = if use_tree_list.iter().any(|use_segment| {
+    let has_nested_list = use_tree_list.iter().any(|use_segment| {
         use_segment
             .path
             .last()
@@ -680,7 +680,8 @@ fn rewrite_nested_use_tree(
                 UseSegment::List(..) => true,
                 _ => false,
             })
-    }) {
+    });
+    let (tactic, remaining_width) = if has_nested_list {
         (DefinitiveListTactic::Vertical, 0)
     } else {
         let remaining_width = shape.width.checked_sub(2).unwrap_or(0);

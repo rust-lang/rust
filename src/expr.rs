@@ -1661,11 +1661,7 @@ fn rewrite_struct_lit<'a>(
         let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
 
         let ends_with_comma = span_ends_with_comma(context, span);
-        let force_no_trailing_comma = if context.inside_macro() && !ends_with_comma {
-            true
-        } else {
-            false
-        };
+        let force_no_trailing_comma = context.inside_macro() && !ends_with_comma;
 
         let fmt = struct_lit_formatting(
             nested_shape,
@@ -1846,12 +1842,10 @@ where
             } else {
                 Some(SeparatorTactic::Never)
             }
+        } else if items.len() == 1 {
+            Some(SeparatorTactic::Always)
         } else {
-            if items.len() == 1 {
-                Some(SeparatorTactic::Always)
-            } else {
-                None
-            }
+            None
         };
         overflow::rewrite_with_parens(
             context,

@@ -160,7 +160,7 @@ where
 
     for mismatch in diff {
         let title = get_section_title(mismatch.line_number);
-        writer.writeln(&format!("{}", title), None);
+        writer.writeln(&title, None);
 
         for line in mismatch.lines {
             match line {

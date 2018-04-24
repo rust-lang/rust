@@ -482,7 +482,7 @@ fn rewrite_bounded_lifetime(
 ) -> Option<String> {
     let result = lt.rewrite(context, shape)?;
 
-    if bounds.len() == 0 {
+    if bounds.is_empty() {
         Some(result)
     } else {
         let colon = type_bound_colon(context);

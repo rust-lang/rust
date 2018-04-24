@@ -2722,17 +2722,7 @@ impl Rewrite for ast::ForeignItem {
                 let mut_str = if is_mutable { "mut " } else { "" };
                 let prefix = format!("{}static {}{}:", vis, mut_str, self.ident);
                 // 1 = ;
-                let shape = shape.sub_width(1)?;
-                ty.rewrite(context, shape).map(|ty_str| {
-                    // 1 = space between prefix and type.
-                    let sep = if prefix.len() + ty_str.len() + 1 <= shape.width {
-                        Cow::from(" ")
-                    } else {
-                        let nested_indent = shape.indent.block_indent(context.config);
-                        nested_indent.to_string_with_newline(context.config)
-                    };
-                    format!("{}{}{};", prefix, sep, ty_str)
-                })
+                rewrite_assign_rhs(context, prefix, &**ty, shape.sub_width(1)?).map(|s| s + ";")
             }
             ast::ForeignItemKind::Ty => {
                 let vis = format_visibility(&self.vis);

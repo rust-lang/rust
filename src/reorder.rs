@@ -149,7 +149,7 @@ fn rewrite_reorderable_items(
                 .into_iter()
                 .map(|use_tree| ListItem {
                     item: use_tree.rewrite_top_level(context, nested_shape),
-                    ..use_tree.list_item.unwrap_or_else(|| ListItem::empty())
+                    ..use_tree.list_item.unwrap_or_else(ListItem::empty)
                 })
                 .collect();
 
