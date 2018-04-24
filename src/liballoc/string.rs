@@ -1195,6 +1195,54 @@ impl String {
         ch
     }
 
+    /// Remove all matches of pattern `pat` in the `String`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut s = String::from("Trees are not green, the sky is not blue.");
+    /// s.remove_matches("not ");
+    /// assert_eq!("Trees are green, the sky is blue.", s);
+    /// ```
+    ///
+    /// Matches will be detected and removed iteratively, so in cases where
+    /// patterns overlap, only the first pattern will be removed:
+    ///
+    /// ```rust
+    /// let mut s = String::from("banana");
+    /// s.remove_matches("ana");
+    /// assert_eq!("bna", s);
+    /// ```
+    #[unstable(feature = "string_remove_matches", reason = "new API", issue = "0")]
+    pub fn remove_matches<'a, P>(&'a mut self, pat: P)
+    where
+        P: Pattern<'a>,
+    {
+        use core::str::pattern::Searcher;
+        use core::str::pattern::SearchStep;
+
+        loop {
+            // FIXME: lol
+            let s = self.clone();
+            // FIXME: this is inefficient because we'll search from the beginning of the string in
+            // .      each iteration of the loop
+            let mut searcher = pat.into_searcher(&s);
+            match searcher.next() {
+                SearchStep::Match(start_idx, end_idx) => {
+                    unsafe {
+                        ptr::copy(self.vec.as_ptr().offset(end_idx as isize),
+                                self.vec.as_mut_ptr().offset(start_idx as isize),
+                                end_idx - start_idx);
+                        let new_len = self.vec.len() - (end_idx - start_idx);
+                        self.vec.set_len(new_len);
+                    }
+                }
+                SearchStep::Reject(..) => (),
+                SearchStep::Done => break,
+            }
+        }
+    }
+
     /// Retains only the characters specified by the predicate.
     ///
     /// In other words, remove all characters `c` such that `f(c)` returns `false`.
