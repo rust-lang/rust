@@ -16,7 +16,7 @@ mod check_match;
 pub use self::check_match::check_crate;
 pub(crate) use self::check_match::check_match;
 
-use interpret::{const_val_field, const_discr, self};
+use interpret::{const_val_field, const_variant_index, self};
 
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{Field, BorrowKind, Mutability};
@@ -835,38 +835,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             ty::TyAdt(adt_def, substs) if adt_def.is_enum() => {
                 match cv.val {
                     ConstVal::Value(val) => {
-                        let discr_val = const_discr(
+                        let variant_index = const_variant_index(
                             self.tcx, self.param_env, instance, val, cv.ty
-                        ).expect("const_discr failed");
-                        let layout = self
-                            .tcx
-                            .layout_of(self.param_env.and(cv.ty))
-                            .expect("layout of enum not available");
-                        let variant_index = match layout.variants {
-                            ty::layout::Variants::Single { index } => index,
-                            ty::layout::Variants::Tagged { ref discr, .. } => {
-                                // raw discriminants for enums are isize or bigger during
-                                // their computation, but later shrunk to the smallest possible
-                                // representation
-                                let size = discr.value.size(self.tcx).bits();
-                                let amt = 128 - size;
-                                adt_def
-                                    .discriminants(self.tcx)
-                                    .position(|var| ((var.val << amt) >> amt) == discr_val)
-                                    .unwrap_or_else(|| {
-                                        bug!("discriminant {} not found in {:#?}",
-                                            discr_val,
-                                            adt_def
-                                                .discriminants(self.tcx)
-                                                .collect::<Vec<_>>(),
-                                            );
-                                    })
-                            }
-                            ty::layout::Variants::NicheFilling { .. } => {
-                                assert_eq!(discr_val as usize as u128, discr_val);
-                                discr_val as usize
-                            },
-                        };
+                        ).expect("const_variant_index failed");
                         let subpatterns = adt_subpatterns(
                             adt_def.variants[variant_index].fields.len(),
                             Some(variant_index),

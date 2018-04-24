@@ -25,7 +25,7 @@ pub use self::const_eval::{
     CompileTimeEvaluator,
     const_eval_provider,
     const_val_field,
-    const_discr,
+    const_variant_index,
 };
 
 pub use self::machine::Machine;
