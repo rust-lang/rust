@@ -26,7 +26,7 @@ use std::collections::VecDeque;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, create_dir_all, File};
 use std::fmt;
 use std::io::prelude::*;
@@ -68,6 +68,26 @@ impl Mismatch {
         Mismatch {
             line_number: line_number,
             lines: Vec::new(),
+        }
+    }
+}
+
+trait PathBufExt {
+    /// Append an extension to the path, even if it already has one.
+    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf;
+}
+
+impl PathBufExt for PathBuf {
+    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
+        if extension.as_ref().len() == 0 {
+            self.clone()
+        } else {
+            let mut fname = self.file_name().unwrap().to_os_string();
+            if !extension.as_ref().to_str().unwrap().starts_with(".") {
+                fname.push(".");
+            }
+            fname.push(extension);
+            self.with_file_name(fname)
         }
     }
 }
@@ -1725,20 +1745,14 @@ impl<'test> TestCx<'test> {
     }
 
     fn make_exe_name(&self) -> PathBuf {
-        let mut f = self.output_base_name();
+        let mut f = self.output_base_name_stage();
         // FIXME: This is using the host architecture exe suffix, not target!
         if self.config.target.contains("emscripten") {
-            let mut fname = f.file_name().unwrap().to_os_string();
-            fname.push(".js");
-            f.set_file_name(&fname);
+            f = f.with_extra_extension("js");
         } else if self.config.target.contains("wasm32") {
-            let mut fname = f.file_name().unwrap().to_os_string();
-            fname.push(".wasm");
-            f.set_file_name(&fname);
+            f = f.with_extra_extension("wasm");
         } else if !env::consts::EXE_SUFFIX.is_empty() {
-            let mut fname = f.file_name().unwrap().to_os_string();
-            fname.push(env::consts::EXE_SUFFIX);
-            f.set_file_name(&fname);
+            f = f.with_extra_extension(env::consts::EXE_SUFFIX);
         }
         f
     }
@@ -1846,25 +1860,28 @@ impl<'test> TestCx<'test> {
     }
 
     fn aux_output_dir_name(&self) -> PathBuf {
-        let f = self.output_base_name();
-        let mut fname = f.file_name().unwrap().to_os_string();
-        fname.push(&format!("{}.aux", self.config.mode.disambiguator()));
-        f.with_file_name(&fname)
+        self.output_base_name_stage()
+            .with_extra_extension(self.config.mode.disambiguator())
+            .with_extra_extension(".aux")
     }
 
     fn output_testname(&self, filepath: &Path) -> PathBuf {
         PathBuf::from(filepath.file_stem().unwrap())
     }
 
-    /// Given a test path like `compile-fail/foo/bar.rs` Returns a name like
-    ///
-    ///     <output>/foo/bar-stage1
+    /// Given a test path like `compile-fail/foo/bar.rs` returns a name like
+    /// `/path/to/build/<triple>/test/compile-fail/foo/bar`.
     fn output_base_name(&self) -> PathBuf {
         let dir = self.config.build_base.join(&self.testpaths.relative_dir);
 
         // Note: The directory `dir` is created during `collect_tests_from_dir`
         dir.join(&self.output_testname(&self.testpaths.file))
-            .with_extension(&self.config.stage_id)
+    }
+
+    /// Same as `output_base_name`, but includes the stage ID as an extension,
+    /// such as: `.../compile-fail/foo/bar.stage1-<triple>`
+    fn output_base_name_stage(&self) -> PathBuf {
+        self.output_base_name().with_extension(&self.config.stage_id)
     }
 
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
@@ -1989,7 +2006,7 @@ impl<'test> TestCx<'test> {
     fn run_rustdoc_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        let out_dir = self.output_base_name();
+        let out_dir = self.output_base_name_stage();
         let _ = fs::remove_dir_all(&out_dir);
         create_dir_all(&out_dir).unwrap();
 
@@ -2391,7 +2408,7 @@ impl<'test> TestCx<'test> {
             .unwrap();
         let src_root = cwd.join(&src_root);
 
-        let tmpdir = cwd.join(self.output_base_name());
+        let tmpdir = cwd.join(self.output_base_name_stage());
         if tmpdir.exists() {
             self.aggressive_rm_rf(&tmpdir).unwrap();
         }
@@ -2816,7 +2833,6 @@ impl<'test> TestCx<'test> {
                                             self.revision,
                                             &self.config.compare_mode,
                                             kind);
-
         if !path.exists() && self.config.compare_mode.is_some() {
             // fallback!
             path = expected_output_path(&self.testpaths, self.revision, &None, kind);
@@ -2880,10 +2896,12 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        let expected_output = self.expected_output_path(kind);
-        // #50113: output is abspath; only want filename component.
-        let expected_output = expected_output.file_name().expect("output path requires file name");
-        let output_file = self.output_base_name().with_file_name(&expected_output);
+        let mode = self.config.compare_mode.as_ref().map_or("", |m| m.to_str());
+        let output_file = self.output_base_name()
+            .with_extra_extension(self.revision.unwrap_or(""))
+            .with_extra_extension(mode)
+            .with_extra_extension(kind);
+
         match File::create(&output_file).and_then(|mut f| f.write_all(actual.as_bytes())) {
             Ok(()) => {}
             Err(e) => self.fatal(&format!(
