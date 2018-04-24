@@ -224,10 +224,10 @@ Future<Output = T>`.
 ### "Initialization" pattern
 
 One pattern that sometimes occurs is that a future has an "initialization" step
-which could ideally happen before the future starts being polled. Because the
-async function does not begin evaluating until you poll it, and it captures the
-lifetimes of its arguments, this pattern cannot be expressed with a single
-`async fn`.
+which should be performed during its construction. This is useful when dealing
+with data conversion and temporary borrows. Because the async function does not
+begin evaluating until you poll it, and it captures the lifetimes of its
+arguments, this pattern cannot be expressed directly with an `async fn`.
 
 One option is to write a function that returns `impl Future` using a closure
 which is evaluated immediately:
