@@ -571,14 +571,14 @@ There are a couple of possible solutions:
 This is left as an unresolved question to find another solution or decide which
 of these is least bad.
 
-## `async for` and processing streams
+## `for await` and processing streams
 
 Another extension left out of the RFC for now is the ability to process streams
-using a for loop. One could imagine a construct like `async for`, which takes
+using a for loop. One could imagine a construct like `for await`, which takes
 an `IntoStream` instead of an `IntoIterator`:
 
 ```rust
-async for value in stream {
+for await value in stream {
     println!("{}", value);
 }
 ```
