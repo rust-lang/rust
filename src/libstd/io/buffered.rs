@@ -1251,6 +1251,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn read_char_buffered() {
         let buf = [195, 159];
         let reader = BufReader::with_capacity(1, &buf[..]);
@@ -1258,6 +1259,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_chars() {
         let buf = [195, 159, b'a'];
         let reader = BufReader::with_capacity(1, &buf[..]);

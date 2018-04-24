@@ -566,6 +566,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_read_char() {
         let b = &b"Vi\xE1\xBB\x87t"[..];
         let mut c = Cursor::new(b).chars();
@@ -577,6 +578,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_read_bad_char() {
         let b = &b"\x80"[..];
         let mut c = Cursor::new(b).chars();
