@@ -1479,6 +1479,8 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
             unsafe { Some(self.next_unchecked()) }
         }
     }
+
+    // FIXME(#49205): Add size_hint.
 }
 
 #[stable(feature = "map_values_mut", since = "1.10.0")]
@@ -1611,6 +1613,8 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
             unsafe { Some(self.next_unchecked()) }
         }
     }
+
+    // FIXME(#49205): Add size_hint.
 }
 
 impl<'a, K, V> RangeMut<'a, K, V> {
@@ -2547,5 +2551,20 @@ impl<K: Ord, V, I: Iterator<Item = (K, V)>> Iterator for MergeIter<K, V, I> {
                 self.right.next()
             }
         }
+    }
+
+    // Currently unused. However, BTreeMap::from_sorted_iter may some day be
+    // rewritten to pre-allocate the correct amount of nodes, in which case
+    // having this will be helpful.
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (left_lower, left_upper) = self.left.size_hint();
+        let (right_lower, right_upper) = self.right.size_hint();
+        let lower = left_lower.saturating_add(right_lower);
+        let upper = match (left_upper, right_upper) {
+            (Some(left), Some(right)) => left.checked_add(right),
+            (_, None) => None,
+            (None, _) => None
+        };
+        (lower, upper)
     }
 }

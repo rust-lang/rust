@@ -987,6 +987,10 @@ impl<'a, T> Iterator for Range<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next().map(|(k, _)| k)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 #[stable(feature = "btree_range", since = "1.17.0")]
