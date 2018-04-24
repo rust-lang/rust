@@ -14,7 +14,7 @@ use deriving::{path_local, pathvec_std, path_std};
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{self, BinOpKind, Expr, MetaItem, Ident};
+use syntax::ast::{self, BinOpKind, Expr, MetaItem};
 use syntax::ext::base::{Annotatable, ExtCtxt};
 use syntax::ext::build::AstBuilder;
 use syntax::ptr::P;
@@ -231,8 +231,14 @@ fn cs_op(less: bool,
             // `ast::lt`
             //
             // ```
-            // self.f1.partial_cmp(other.f1).unwrap_or(Ordering::Equal)
-            //     .then_with(|| self.f2.partial_cmp(other.f2).unwrap_or(Ordering::Equal))
+            // Ordering::then_with(
+            //    Option::unwrap_or(
+            //        PartialOrd::partial_cmp(self.f1, other.f1), Ordering::Equal)
+            //    ),
+            //    Option::unwrap_or(
+            //        PartialOrd::partial_cmp(self.f2, other.f2), Ordering::Greater)
+            //    )
+            // )
             // == Ordering::Less
             // ```
             //
@@ -240,8 +246,14 @@ fn cs_op(less: bool,
             // `ast::le`
             //
             // ```
-            // self.f1.partial_cmp(other.f1).unwrap_or(Ordering::Equal)
-            //     .then_with(|| self.f2.partial_cmp(other.f2).unwrap_or(Ordering::Equal))
+            // Ordering::then_with(
+            //    Option::unwrap_or(
+            //        PartialOrd::partial_cmp(self.f1, other.f1), Ordering::Equal)
+            //    ),
+            //    Option::unwrap_or(
+            //        PartialOrd::partial_cmp(self.f2, other.f2), Ordering::Greater)
+            //    )
+            // )
             // != Ordering::Greater
             // ```
             //
@@ -249,14 +261,15 @@ fn cs_op(less: bool,
             // get use the binops to avoid auto-deref dereferencing too many
             // layers of pointers, if the type includes pointers.
 
-            // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Equal)`
+            // `Option::unwrap_or(PartialOrd::partial_cmp(self.fi, other.fi), Ordering::Equal)`
             let par_cmp = par_cmp(cx, span, self_f, other_fs, "Equal");
 
-            // `self.fi.partial_cmp(other.fi).unwrap_or(Ordering::Equal).then_with(...)`
-            cx.expr_method_call(span,
-                                par_cmp,
-                                Ident::from_str("then_with"),
-                                vec![cx.lambda0(span, subexpr)])
+            // `Ordering::then_with(Option::unwrap_or(..), ..)`
+            let then_with_path = cx.expr_path(cx.path_global(span,
+                                                             cx.std_path(&["cmp",
+                                                                           "Ordering",
+                                                                           "then_with"])));
+            cx.expr_call(span, then_with_path, vec![par_cmp, cx.lambda0(span, subexpr)])
         },
         |cx, args| {
             match args {
