@@ -27,6 +27,17 @@ fn smoketest_cell() {
 }
 
 #[test]
+fn cell_update() {
+    let x = Cell::new(10);
+
+    assert_eq!(x.update(|x| x + 5), 15);
+    assert_eq!(x.get(), 15);
+
+    assert_eq!(x.update(|x| x / 3), 5);
+    assert_eq!(x.get(), 5);
+}
+
+#[test]
 fn cell_has_sensible_show() {
     let x = Cell::new("foo bar");
     assert!(format!("{:?}", x).contains(x.get()));

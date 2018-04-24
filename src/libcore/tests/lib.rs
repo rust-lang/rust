@@ -10,6 +10,7 @@
 
 #![feature(ascii_ctype)]
 #![feature(box_syntax)]
+#![feature(cell_update)]
 #![feature(core_float)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
