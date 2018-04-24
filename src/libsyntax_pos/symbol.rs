@@ -15,8 +15,8 @@
 use hygiene::SyntaxContext;
 use {Span, DUMMY_SP, GLOBALS};
 
+use rustc_data_structures::fx::FxHashMap;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
-use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -184,7 +184,7 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 
 #[derive(Default)]
 pub struct Interner {
-    names: HashMap<Box<str>, Symbol>,
+    names: FxHashMap<Box<str>, Symbol>,
     strings: Vec<Box<str>>,
     gensyms: Vec<Symbol>,
 }

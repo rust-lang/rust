@@ -1765,7 +1765,11 @@ assert_eq!((-a).mod_euc(-b), 1);
             pub fn mod_euc(self, rhs: Self) -> Self {
                 let r = self % rhs;
                 if r < 0 {
-                    r + rhs.abs()
+                    if rhs < 0 {
+                        r - rhs
+                    } else {
+                        r + rhs
+                    }
                 } else {
                     r
                 }

@@ -31,6 +31,11 @@ mod tests {
     }
 
     #[test]
+    fn test_mod_euc() {
+        assert!((-1 as $T).mod_euc(MIN) == MAX);
+    }
+
+    #[test]
     pub fn test_abs() {
         assert!((1 as $T).abs() == 1 as $T);
         assert!((0 as $T).abs() == 0 as $T);

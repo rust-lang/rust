@@ -1375,13 +1375,17 @@
 
         function search(e) {
             var params = getQueryStringParams();
-            var query = getQuery(document.getElementsByClassName('search-input')[0].value.trim());
+            var search_input = document.getElementsByClassName('search-input')[0];
+            var query = getQuery(search_input.value.trim());
 
             if (e) {
                 e.preventDefault();
             }
 
             if (!query.query || query.id === currentResults) {
+                if (query.query.length > 0) {
+                    putBackSearch(search_input);
+                }
                 return;
             }
 
@@ -2072,19 +2076,23 @@
         };
     });
 
+    function putBackSearch(search_input) {
+        if (search_input.value !== "") {
+            addClass(document.getElementById("main"), "hidden");
+            removeClass(document.getElementById("search"), "hidden");
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(search_input.value,
+                                     "",
+                                     "?search=" + encodeURIComponent(search_input.value));
+            }
+        }
+    }
+
     var search_input = document.getElementsByClassName("search-input")[0];
 
     if (search_input) {
         search_input.onfocus = function() {
-            if (search_input.value !== "") {
-                addClass(document.getElementById("main"), "hidden");
-                removeClass(document.getElementById("search"), "hidden");
-                if (browserSupportsHistoryApi()) {
-                    history.replaceState(search_input.value,
-                                         "",
-                                         "?search=" + encodeURIComponent(search_input.value));
-                }
-            }
+            putBackSearch(this);
         };
     }
 
