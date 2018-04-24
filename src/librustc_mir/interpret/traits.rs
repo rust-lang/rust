@@ -1,6 +1,5 @@
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
-use syntax::ast::Mutability;
 
 use rustc::mir::interpret::{PrimVal, Value, MemoryPointer, EvalResult};
 use super::{EvalContext, Machine};
@@ -53,7 +52,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         self.memory.mark_static_initialized(
             vtable.alloc_id,
-            Mutability::Immutable,
         )?;
 
         Ok(vtable)

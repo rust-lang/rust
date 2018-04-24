@@ -12,7 +12,6 @@ use rustc::ty::maps::TyCtxtAt;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::middle::const_val::FrameInfo;
 use syntax::codemap::{self, Span};
-use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Pointer, PrimVal, PrimValKind,
     EvalError, EvalResult, EvalErrorKind, MemoryPointer,
@@ -96,7 +95,7 @@ pub enum StackPopCleanup {
     /// isn't modifyable afterwards in case of constants.
     /// In case of `static mut`, mark the memory to ensure it's never marked as immutable through
     /// references or deallocated
-    MarkStatic(Mutability),
+    MarkStatic,
     /// A regular stackframe added due to a function call will need to get forwarded to the next
     /// block
     Goto(mir::BasicBlock),
@@ -440,12 +439,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             self.memory.cur_frame = self.cur_frame();
         }
         match frame.return_to_block {
-            StackPopCleanup::MarkStatic(mutable) => {
+            StackPopCleanup::MarkStatic => {
                 if let Place::Ptr { ptr, .. } = frame.return_place {
                     // FIXME: to_ptr()? might be too extreme here, static zsts might reach this under certain conditions
                     self.memory.mark_static_initialized(
                         ptr.to_ptr()?.alloc_id,
-                        mutable,
                     )?
                 } else {
                     bug!("StackPopCleanup::MarkStatic on: {:?}", frame.return_place);

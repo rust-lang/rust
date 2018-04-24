@@ -20,7 +20,6 @@ use ty::{self, TyCtxt};
 use ty::layout::{self, Align, HasDataLayout};
 use middle::region;
 use std::iter;
-use syntax::ast::Mutability;
 use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -247,10 +246,6 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
-    /// Whether the allocation (of a static) should be put into mutable memory when translating
-    ///
-    /// Only happens for `static mut` or `static` with interior mutability
-    pub runtime_mutability: Mutability,
 }
 
 impl Allocation {
@@ -262,7 +257,6 @@ impl Allocation {
             relocations: BTreeMap::new(),
             undef_mask,
             align: Align::from_bytes(1, 1).unwrap(),
-            runtime_mutability: Mutability::Immutable,
         }
     }
 }
