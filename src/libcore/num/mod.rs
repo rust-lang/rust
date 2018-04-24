@@ -4545,6 +4545,33 @@ impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")]
 impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
 
+macro_rules! impl_from_itself {
+    ($nb:ty, #[$attr:meta]) => {
+        #[$attr]
+        impl From<$nb> for $nb {
+            #[inline]
+            fn from(nb: $nb) -> $nb {
+                nb
+            }
+        }
+    }
+}
+
+impl_from_itself!(u8, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(u16, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(u32, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(u64, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(u128, #[stable(feature = "from_itself", since = "1.27.0")]);
+
+impl_from_itself!(i8, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(i16, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(i32, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(i64, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(i128, #[stable(feature = "from_itself", since = "1.27.0")]);
+
+impl_from_itself!(f32, #[stable(feature = "from_itself", since = "1.27.0")]);
+impl_from_itself!(f64, #[stable(feature = "from_itself", since = "1.27.0")]);
+
 // The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
 // which imply that pointer-sized integers must be at least 16 bits:
 // https://port70.net/~nsz/c/c99/n1256.html#7.18.2.4
