@@ -56,6 +56,7 @@ pub mod bitvec;
 pub mod graph;
 pub mod indexed_set;
 pub mod indexed_vec;
+pub mod lazy_btree_map;
 pub mod obligation_forest;
 pub mod sip128;
 pub mod snapshot_map;
