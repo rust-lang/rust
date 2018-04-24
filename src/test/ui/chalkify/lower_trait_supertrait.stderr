@@ -1,0 +1,14 @@
+error: Implemented(Self: Foo) :- FromEnv(Self: Foo).
+  --> $DIR/lower_trait_supertrait.rs:15:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: FromEnv(Self: Bar) :- FromEnv(Self: Foo).
+  --> $DIR/lower_trait_supertrait.rs:15:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR Implemented
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

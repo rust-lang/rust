@@ -183,11 +183,19 @@ fn program_clauses_for_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefI
     // ```
 
     // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`, for each where clause WC
-    // FIXME: Remove the [1..] slice; this is a hack because the query
+    // FIXME: Remove the filter; this is a hack because the query
     // predicates_of currently includes the trait itself (`Self: Trait<P1..Pn>`).
     let where_clauses = &tcx.predicates_of(def_id).predicates;
     let implied_bound_clauses =
-        where_clauses[1..].into_iter()
+        where_clauses.into_iter()
+        .filter(|wc| {
+            if let ty::Predicate::Trait(pred) = wc {
+                if pred.skip_binder().def_id() == def_id {
+                    return false;
+                }
+            }
+            true
+        })
         .map(|wc| implied_bound_from_trait(tcx, trait_pred, wc));
 
     Lrc::new(tcx.mk_clauses(clauses.chain(implied_bound_clauses)))
