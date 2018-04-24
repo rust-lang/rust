@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags: --test
+// run-pass
 
 #![feature(termination_trait_test)]
 #![feature(test)]
@@ -20,13 +21,6 @@ use test::Bencher;
 #[test]
 fn is_a_num() -> Result<(), ParseIntError> {
     let _: u32 = "22".parse()?;
-    Ok(())
-}
-
-#[test]
-#[should_panic]
-fn not_a_num() -> Result<(), ParseIntError> {
-    let _: u32 = "abc".parse()?;
     Ok(())
 }
 
