@@ -15,6 +15,8 @@
 #![deny(warnings)]
 
 extern crate env_logger;
+#[macro_use]
+extern crate failure;
 extern crate getopts;
 #[macro_use]
 extern crate log;
@@ -24,9 +26,8 @@ extern crate serde_derive;
 extern crate serde_json as json;
 
 use std::collections::HashSet;
-use std::error::Error;
 use std::io::{self, BufRead};
-use std::{env, fmt, process};
+use std::{env, process};
 
 use regex::Regex;
 
@@ -35,31 +36,14 @@ use regex::Regex;
 /// We only want to format rust files by default.
 const DEFAULT_PATTERN: &str = r".*\.rs";
 
-#[derive(Debug)]
+#[derive(Fail, Debug)]
 enum FormatDiffError {
-    IncorrectOptions(getopts::Fail),
-    IncorrectFilter(regex::Error),
-    IoError(io::Error),
-}
-
-impl fmt::Display for FormatDiffError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        fmt::Display::fmt(self.cause().unwrap(), f)
-    }
-}
-
-impl Error for FormatDiffError {
-    fn description(&self) -> &str {
-        self.cause().unwrap().description()
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        Some(match *self {
-            FormatDiffError::IoError(ref e) => e,
-            FormatDiffError::IncorrectFilter(ref e) => e,
-            FormatDiffError::IncorrectOptions(ref e) => e,
-        })
-    }
+    #[fail(display = "{}", _0)]
+    IncorrectOptions(#[cause] getopts::Fail),
+    #[fail(display = "{}", _0)]
+    IncorrectFilter(#[cause] regex::Error),
+    #[fail(display = "{}", _0)]
+    IoError(#[cause] io::Error),
 }
 
 impl From<getopts::Fail> for FormatDiffError {
@@ -99,7 +83,7 @@ fn main() {
     );
 
     if let Err(e) = run(&opts) {
-        println!("{}", opts.usage(e.description()));
+        println!("{}", opts.usage(&format!("{}", e)));
         process::exit(1);
     }
 }
