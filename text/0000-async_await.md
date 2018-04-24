@@ -129,7 +129,7 @@ let my_future = async {
 };
 ```
 
-This form is equivalent to an immediately-invoked `async` closure.
+This form is almost equivalent to an immediately-invoked `async` closure.
 That is:
 
 ```rust
@@ -142,7 +142,9 @@ async { /* body */ }
 
 except that control-flow constructs like `return`, `break` and `continue` are
 not allowed within `body` (unless they appear within a fresh control-flow
-context like a closure or a loop).
+context like a closure or a loop). How the `?`-operator and early returns
+should work inside async blocks has not yet been established (see unresolved
+questions).
 
 As with `async` closures, `async` blocks can be annotated with `move` to capture
 ownership of the variables they close over.
@@ -464,11 +466,11 @@ As noted in the main text, `async` blocks and `async` closures are closely
 related, and are roughly inter-expressible:
 
 ```rust
-// equivalent
+// almost equivalent
 async { ... }
 (async || { ... })()
 
-// equivalent
+// almost equivalent
 async |..| { ... }
 |..| async { ... }
 ```
@@ -479,7 +481,7 @@ We could consider having only one of the two constructs. However:
   such closures are often useful for higher-order constructs like constructing a
   service.
 
-- There's a strong reason to have `async` blocks: the initialization pattern
+- There's a strong reason to have `async` blocks: The initialization pattern
   mentioned in the RFC text, and the fact that it provides a more
   direct/primitive way of constructing futures.
 
@@ -604,3 +606,33 @@ across yield points.
 We could also, with an annotation, typecheck an async function to confirm that it
 does not contain any references across yield points, allowing it to implement
 `Unpin`. The annotation to enable this is left unspecified for the time being.
+
+## `?`-operator and control-flow constructs in async blocks
+
+This RFC does not propose how the `?`-operator and control-flow constructs like
+`return`, `break` and `continue` should work inside async blocks.
+
+It was discussed that async blocks should act as a boundary for the
+`?`-operator. This would make them suitable for fallible IO:
+
+```rust
+let reader: AsyncRead = ...;
+async {
+    let foo = await!(reader.read_to_end())?;
+    Ok(foo.parse().unwrap_or(0))
+}: impl Future<Output = io::Result<u32>>
+```
+
+Also, it was discussed to allow the use of `break` to return early from
+an async block:
+
+```rust
+async {
+    if true { break "foo" }
+}
+```
+
+The use of the `break` keyword instead of `return` could be beneficial to
+indicate that it applies to the async block and not its surrounding function. On
+the other hand this would introduce a difference to closures and async closures
+which make use the `return` keyword.
