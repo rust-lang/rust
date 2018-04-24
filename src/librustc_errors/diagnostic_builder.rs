@@ -11,6 +11,7 @@
 use Diagnostic;
 use DiagnosticId;
 use DiagnosticStyledString;
+use SuggestionApproximate;
 
 use Level;
 use Handler;
@@ -190,12 +191,14 @@ impl<'a> DiagnosticBuilder<'a> {
     forward!(pub fn span_approximate_suggestion(&mut self,
                                                 sp: Span,
                                                 msg: &str,
-                                                suggestion: String)
+                                                suggestion: String,
+                                                approximate: SuggestionApproximate)
                                                 -> &mut Self);
     forward!(pub fn span_approximate_suggestions(&mut self,
                                                  sp: Span,
                                                  msg: &str,
-                                                 suggestions: Vec<String>)
+                                                 suggestions: Vec<String>,
+                                                 approximate: SuggestionApproximate)
                                                  -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);

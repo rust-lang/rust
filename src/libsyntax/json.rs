@@ -23,7 +23,7 @@ use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
-use errors::DiagnosticId;
+use errors::{DiagnosticId, SuggestionApproximate};
 use errors::emitter::{Emitter, EmitterWriter};
 
 use rustc_data_structures::sync::{self, Lrc};
@@ -138,7 +138,7 @@ struct DiagnosticSpan {
     suggested_replacement: Option<String>,
     /// If the suggestion is approximate
     #[rustc_serialize_exclude_null]
-    suggestion_approximate: Option<bool>,
+    suggestion_approximate: Option<SuggestionApproximate>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
@@ -239,7 +239,7 @@ impl Diagnostic {
 
 impl DiagnosticSpan {
     fn from_span_label(span: SpanLabel,
-                       suggestion: Option<(&String, bool)>,
+                       suggestion: Option<(&String, SuggestionApproximate)>,
                        je: &JsonEmitter)
                        -> DiagnosticSpan {
         Self::from_span_etc(span.span,
@@ -252,7 +252,7 @@ impl DiagnosticSpan {
     fn from_span_etc(span: Span,
                      is_primary: bool,
                      label: Option<String>,
-                     suggestion: Option<(&String, bool)>,
+                     suggestion: Option<(&String, SuggestionApproximate)>,
                      je: &JsonEmitter)
                      -> DiagnosticSpan {
         // obtain the full backtrace from the `macro_backtrace`
@@ -272,7 +272,7 @@ impl DiagnosticSpan {
     fn from_span_full(span: Span,
                       is_primary: bool,
                       label: Option<String>,
-                      suggestion: Option<(&String, bool)>,
+                      suggestion: Option<(&String, SuggestionApproximate)>,
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
