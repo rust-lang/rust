@@ -78,10 +78,7 @@ pub struct FrameInfo {
 
 impl<'tcx> From<ConstMathErr> for ErrKind<'tcx> {
     fn from(err: ConstMathErr) -> ErrKind<'tcx> {
-        match err {
-            ConstMathErr::UnsignedNegation => ErrKind::TypeckError,
-            _ => ErrKind::Math(err)
-        }
+        ErrKind::Math(err)
     }
 }
 

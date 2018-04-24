@@ -17,16 +17,11 @@ impl_stable_hash_for!(struct ::rustc_const_math::ConstFloat {
 });
 
 impl_stable_hash_for!(enum ::rustc_const_math::ConstMathErr {
-    NotInRange,
     CmpBetweenUnequalTypes,
     UnequalTypes(op),
     Overflow(op),
-    ShiftNegative,
     DivisionByZero,
     RemainderByZero,
-    UnsignedNegation,
-    ULitOutOfRange(int_ty),
-    LitOutOfRange(int_ty)
 });
 
 impl_stable_hash_for!(enum ::rustc_const_math::Op {
