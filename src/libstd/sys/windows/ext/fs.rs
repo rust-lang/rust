@@ -103,9 +103,9 @@ impl FileExt for fs::File {
     }
 }
 
-/// Windows-specific extensions to [`OpenOptions`].
+/// Windows-specific extensions to [`fs::OpenOptions`].
 ///
-/// [`OpenOptions`]: ../../../fs/struct.OpenOptions.html
+/// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 #[stable(feature = "open_options_ext", since = "1.10.0")]
 pub trait OpenOptionsExt {
     /// Overrides the `dwDesiredAccess` argument to the call to [`CreateFile`]
@@ -281,13 +281,12 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
-/// Extension methods for [`fs::Metadata`] to access the raw fields contained
-/// within.
+/// Windows-specific extensions to [`fs::Metadata`].
 ///
 /// The data members that this trait exposes correspond to the members
 /// of the [`BY_HANDLE_FILE_INFORMATION`] structure.
 ///
-/// [`fs::Metadata`]: ../../../fs/struct.Metadata.html
+/// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 /// [`BY_HANDLE_FILE_INFORMATION`]:
 ///     https://msdn.microsoft.com/en-us/library/windows/desktop/aa363788.aspx
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -445,8 +444,11 @@ impl MetadataExt for Metadata {
     fn file_size(&self) -> u64 { self.as_inner().size() }
 }
 
-/// Add support for the Windows specific fact that a symbolic link knows whether it is a file
-/// or directory.
+/// Windows-specific extensions to [`FileType`].
+///
+/// On Windows, a symbolic link knows whether it is a file or directory.
+///
+/// [`FileType`]: ../../../../std/fs/struct.FileType.html
 #[unstable(feature = "windows_file_type_ext", issue = "0")]
 pub trait FileTypeExt {
     /// Returns whether this file type is a symbolic link that is also a directory.
