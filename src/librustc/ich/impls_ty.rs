@@ -505,9 +505,6 @@ for ::middle::const_val::ErrKind<'gcx> {
                 len.hash_stable(hcx, hasher);
                 index.hash_stable(hcx, hasher);
             }
-            Math(ref const_math_err) => {
-                const_math_err.hash_stable(hcx, hasher);
-            }
             LayoutError(ref layout_error) => {
                 layout_error.hash_stable(hcx, hasher);
             }

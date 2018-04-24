@@ -11,7 +11,6 @@
 use hir::def_id::DefId;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
-use rustc_const_math::*;
 use mir::interpret::{Value, PrimVal};
 use errors::DiagnosticBuilder;
 
@@ -62,7 +61,6 @@ pub enum ErrKind<'tcx> {
     UnimplementedConstVal(&'static str),
     IndexOutOfBounds { len: u64, index: u64 },
 
-    Math(ConstMathErr),
     LayoutError(layout::LayoutError<'tcx>),
 
     TypeckError,
@@ -74,12 +72,6 @@ pub enum ErrKind<'tcx> {
 pub struct FrameInfo {
     pub span: Span,
     pub location: String,
-}
-
-impl<'tcx> From<ConstMathErr> for ErrKind<'tcx> {
-    fn from(err: ConstMathErr) -> ErrKind<'tcx> {
-        ErrKind::Math(err)
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -119,7 +111,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
                         len, index)
             }
 
-            Math(ref err) => Simple(err.description().into_cow()),
             LayoutError(ref err) => Simple(err.to_string().into_cow()),
 
             TypeckError => simple!("type-checking failed"),

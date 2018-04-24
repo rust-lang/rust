@@ -585,7 +585,6 @@ impl<'a, 'tcx> Lift<'tcx> for const_val::ErrKind<'a> {
             NonConstPath => NonConstPath,
             UnimplementedConstVal(s) => UnimplementedConstVal(s),
             IndexOutOfBounds { len, index } => IndexOutOfBounds { len, index },
-            Math(ref e) => Math(e.clone()),
 
             LayoutError(ref e) => {
                 return tcx.lift(e).map(LayoutError)
