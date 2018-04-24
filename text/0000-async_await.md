@@ -25,7 +25,7 @@ The development of asynchronous IO in Rust has gone through multiple phases.
 Prior to 1.0, we experimented with having a green-threading runtime built into
 the language. However, this proved too opinionated - because it impacted every
 program written in Rust - and it was removed shortly before 1.0. After 1.0,
-asynchronous IO initially focused around the mio library, which provided an
+asynchronous IO initially focused around the mio library, which provided a
 cross-platform abstraction over the async IO primitives of Linux, Mac OS, and
 Windows. In mid-2016, the introduction of the futures crate had a major impact
 by providing a convenient, shared abstraction for asynchronous operations. The
@@ -164,7 +164,7 @@ yielding control of the function when it returns `Poll::Pending` and
 eventually evaluating to the item value when it returns `Poll::Ready`.
 
 `await!` can only be used inside of an async function, closure, or block.
-Using outside of that context is an error.
+Using it outside of that context is an error.
 
 (`await!` is a compiler built-in to leave space for deciding its exact syntax
 later. See more information in the unresolved questions section.)
@@ -193,8 +193,8 @@ state, which contains all of the arguments to this function.
 The anonymous return type implements `Future`, with the return type as its
 `Item`. Polling it advances the state of the function, returning `Pending`
 when it hits an `await` point, and `Ready` with the item when it hits a
-`return` point. Any attempt to poll it after it has already returned Ready once
-will panic.
+`return` point. Any attempt to poll it after it has already returned `Ready`
+once will panic.
 
 The anonymous return type has a negative impl for the `Unpin` trait - that is
 `impl !Unpin`. This is because the future could have internal references which
