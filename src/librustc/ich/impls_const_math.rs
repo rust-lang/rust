@@ -31,7 +31,4 @@ impl_stable_hash_for!(enum ::rustc_const_math::Op {
     Shr,
     Shl,
     Neg,
-    BitAnd,
-    BitOr,
-    BitXor
 });

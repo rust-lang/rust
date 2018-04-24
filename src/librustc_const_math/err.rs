@@ -26,9 +26,6 @@ pub enum Op {
     Shr,
     Shl,
     Neg,
-    BitAnd,
-    BitOr,
-    BitXor,
 }
 
 impl ConstMathErr {
@@ -43,7 +40,6 @@ impl ConstMathErr {
             Overflow(Neg) => "attempt to negate with overflow",
             Overflow(Shr) => "attempt to shift right with overflow",
             Overflow(Shl) => "attempt to shift left with overflow",
-            Overflow(_) => unreachable!(),
             DivisionByZero => "attempt to divide by zero",
             RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
         }
