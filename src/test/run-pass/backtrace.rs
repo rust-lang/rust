@@ -53,7 +53,7 @@ fn expected(fn_name: &str) -> String {
 
 fn runtest(me: &str) {
     // Make sure that the stack trace is printed
-    let p = template(me).arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
+    let p = template(me).arg("fail").env("RUST_BACKTRACE", "full").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();

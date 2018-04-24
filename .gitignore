@@ -102,7 +102,6 @@ version.ml
 version.texi
 .cargo
 !src/vendor/**
-/src/target/
 
 no_llvm_build
 
