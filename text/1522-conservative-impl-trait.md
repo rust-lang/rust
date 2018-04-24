@@ -21,7 +21,7 @@ With the placeholder syntax used in discussions so far,
 abstract return types would be used roughly like this:
 
 ```rust
-fn foo(n: u32) -> impl Iterator<Item=u32> {
+fn foo(n: u32) -> impl Iterator<Item = u32> {
     (0..n).map(|x| x * 100)
 }
 // ^ behaves as if it had return type Map<Range<u32>, Closure>
@@ -30,7 +30,6 @@ fn foo(n: u32) -> impl Iterator<Item=u32> {
 for x in foo(10) {
     // x = 0, 100, 200, ...
 }
-
 ```
 
 # Background
@@ -61,10 +60,10 @@ its motivation and some other parts of its text below.
 
 In today's Rust, you can write a function signature like
 
-````rust
-fn consume_iter_static<I: Iterator<u8>>(iter: I)
-fn consume_iter_dynamic(iter: Box<Iterator<u8>>)
-````
+```rust
+fn consume_iter_static<I: Iterator<Item = u8>>(iter: I)
+fn consume_iter_dynamic(iter: Box<Iterator<Item = u8>>)
+```
 
 In both cases, the function does not depend on the exact type of the argument.
 The type is held "abstract", and is assumed only to satisfy a trait bound.
@@ -78,15 +77,15 @@ The type is held "abstract", and is assumed only to satisfy a trait bound.
 
 On the other hand, while you can write
 
-````rust
-fn produce_iter_dynamic() -> Box<Iterator<u8>>
-````
+```rust
+fn produce_iter_dynamic() -> Box<Iterator<Item = u8>>
+```
 
 you _cannot_ write something like
 
-````rust
-fn produce_iter_static() -> Iterator<u8>
-````
+```rust
+fn produce_iter_static() -> Iterator<Item = u8>
+```
 
 That is, in today's Rust, abstract return types can only be written using trait
 objects, which can be a significant performance penalty. This RFC proposes
@@ -98,22 +97,22 @@ Here are some problems that unboxed abstract types solve or mitigate:
 
 * _Returning unboxed closures_. Closure syntax generates an anonymous type
   implementing a closure trait. Without unboxed abstract types, there is no way
-  to use this syntax while returning the resulting closure unboxed, because there
+  to use this syntax while returning the resulting closure unboxed because there
   is no way to write the name of the generated type.
 
 * _Leaky APIs_. Functions can easily leak implementation details in their return
   type, when the API should really only promise a trait bound. For example, a
   function returning `Rev<Splits<'a, u8>>` is revealing exactly how the iterator
   is constructed, when the function should only promise that it returns _some_
-  type implementing `Iterator<u8>`. Using newtypes/structs with private fields
+  type implementing `Iterator<Item = u8>`. Using newtypes/structs with private fields
   helps, but is extra work. Unboxed abstract types make it as easy to promise only
   a trait bound as it is to return a concrete type.
 
 * _Complex types_. Use of iterators in particular can lead to huge types:
 
-  ````rust
-  Chain<Map<'a, (int, u8), u16, Enumerate<Filter<'a, u8, vec::MoveItems<u8>>>>, SkipWhile<'a, u16, Map<'a, &u16, u16, slice::Items<u16>>>>
-  ````
+  ```rust
+  Chain<Map<'a, (i32, u8), u16, Enumerate<Filter<'a, u8, vec::MoveItems<u8>>>>, SkipWhile<'a, u16, Map<'a, &u16, u16, slice::Items<u16>>>>
+  ```
 
   Even when using newtypes to hide the details, the type still has to be written
   out, which can be very painful. Unboxed abstract types only require writing the
@@ -142,7 +141,7 @@ with other extensions.
 ## Syntax
 
 Let's start with the bikeshed: The proposed syntax is `impl Trait` in return type
-position, composing like trait objects to forms like `impl Foo+Send+'a`.
+position, composing like trait objects to forms like `impl Foo + Send + 'a`.
 
 It can be explained as "a type that implements `Trait`",
 and has been used in that form in most earlier discussions and proposals.
@@ -163,7 +162,7 @@ The core semantics of the feature is described below.
 
 Note that the sections after this one go into more detail on some of the design
 decisions, and that **it is likely for many of the mentioned limitations to be
-lifted at some point in the future**. For clarity, we'll separately categories the *core
+lifted at some point in the future**. For clarity, we'll separately categorize the *core
 semantics* of the feature (aspects that would stay unchanged with future extensions)
 and the *initial limitations* (which are likely to be lifted later).
 
@@ -182,7 +181,7 @@ and the *initial limitations* (which are likely to be lifted later).
   - The type would not be known to implement any other trait, with
     the exception of OIBITS (aka "auto traits") and default traits like `Sized`.
   - The type would not be considered equal to the actual underlying type.
-  - The type would not be allowed to appear as the Self type for an `impl` block.
+  - The type would not be allowed to appear as the `Self` type for an `impl` block.
 
 - Because OIBITS like `Send` and `Sync` will leak through an abstract return
   type, there will be some additional complexity in the compiler due to some
@@ -224,7 +223,7 @@ and the *initial limitations* (which are likely to be lifted later).
   unless these are themselves part of a legal return type.
 
   - Eventually, we will want to allow the feature to be used within traits, and
-    like in argument position as well (as an ergonomic improvement over today's generics).
+    likely in argument position as well (as an ergonomic improvement over today's generics).
   - Using `impl Trait` multiple times in the same return type would be valid,
     like for example in `-> (impl Foo, impl Bar)`.
 
@@ -253,7 +252,7 @@ and the *initial limitations* (which are likely to be lifted later).
 
 ## Rationale
 
-### Why this semantics for the return type?
+### Why these semantics for the return type?
 
 There has been a lot of discussion about what the semantics of the return type
 should be, with the theoretical extremes being "full return type inference" and
@@ -411,11 +410,11 @@ so the syntax is forbidden there.
 
 ### Compatibility with conditional trait bounds
 
-On valid critique for the existing `impl Trait` proposal is that it does not
-cover more complex scenarios, where the return type would implement
+One valid critique for the existing `impl Trait` proposal is that it does not
+cover more complex scenarios where the return type would implement
 one or more traits depending on whether a type parameter does so with another.
 
-For example, a iterator adapter might want to implement `Iterator` and
+For example, an iterator adapter might want to implement `Iterator` and
 `DoubleEndedIterator`, depending on whether the adapted one does:
 
 ```rust
@@ -427,7 +426,7 @@ impl<I: DoubleEndedIterator> DoubleEndedIterator for SkipOne<I> { ... }
 
 Using just `-> impl Iterator`, this would not be possible to reproduce.
 
-Since there has been no proposals so far that would address this in a way
+Since there have been no proposals so far that would address this in a way
 that would conflict with the fixed-trait-set case, this RFC punts on that issue as well.
 
 ### Limitation to free/inherent functions
@@ -436,10 +435,10 @@ One important usecase of abstract return types is to use them in trait methods.
 
 However, there is an issue with this, namely that in combinations with generic
 trait methods, they are effectively equivalent to higher kinded types.
-Which is an issue because Rust HKT story is not yet figured out, so
+Which is an issue because Rust's HKT story is not yet figured out, so
 any "accidental implementation" might cause unintended fallout.
 
-HKT allows you to be generic over a type constructor, aka a
+HKT allows you to be generic over a type constructor, a.k.a. a
 "thing with type parameters", and then instantiate them at some later point to
 get the actual type.
 For example, given a HK type `T` that takes one type as parameter, you could
@@ -460,7 +459,7 @@ with a `u32` or `bool`,
 just like `T<u32>` and `T<bool>` might give us `Vec<u32>` or `Box<bool>`
 in the example above.
 
-The problem does not exists with trait method return types today because
+The problem does not exist with trait method return types today because
 they are concrete:
 
 ```rust
@@ -473,7 +472,7 @@ Given the above code, there is no way for `bar` to choose a return type `X`
 that could fundamentally differ between instantiations of `Self`
 while still being instantiable with an arbitrary `U`.
 
-At most you could return a associated type, but then you'd loose the generics
+At most you could return a associated type, but then you'd lose the generics
 from `bar`
 
 ```rust
@@ -483,7 +482,7 @@ trait Foo {
 }
 ```
 
-So, in conclusion, since Rusts HKT story is not yet fleshed out,
+So, in conclusion, since Rust's HKT story is not yet fleshed out,
 and the compatibility of the current compiler with it is unknown,
 it is not yet possible to reach a concrete solution here.
 
