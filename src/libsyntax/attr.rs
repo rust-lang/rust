@@ -15,7 +15,7 @@ pub use self::ReprAttr::*;
 pub use self::IntType::*;
 
 use ast;
-use ast::{AttrId, Attribute, Name, Ident};
+use ast::{AttrId, Attribute, Name, Ident, Path, PathSegment};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
 use codemap::{BytePos, Spanned, respan, dummy_spanned};
@@ -212,7 +212,7 @@ impl NestedMetaItem {
     }
 }
 
-fn name_from_path(path: &ast::Path) -> Name {
+fn name_from_path(path: &Path) -> Name {
     path.segments.last().expect("empty path in attribute").ident.name
 }
 
@@ -399,15 +399,15 @@ pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem 
 }
 
 pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
-    MetaItem { ident: ast::Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
+    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
 }
 
 pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { ident: ast::Path::from_ident(ident), span, node: MetaItemKind::List(items) }
+    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
-    MetaItem { ident: ast::Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
+    MetaItem { ident: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
 }
 
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
@@ -466,7 +466,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     Attribute {
         id,
         style,
-        path: ast::Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
+        path: Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,
@@ -1142,7 +1142,6 @@ impl MetaItem {
     fn tokens(&self) -> TokenStream {
         let mut idents = vec![];
         let mut last_pos = BytePos(0 as u32);
-        // FIXME: Share code with `parse_path`.
         for (i, segment) in self.ident.segments.iter().enumerate() {
             let is_first = i == 0;
             if !is_first {
@@ -1162,14 +1161,16 @@ impl MetaItem {
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
         where I: Iterator<Item = TokenTree>,
     {
+        // FIXME: Share code with `parse_path`.
         let ident = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
                 if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+                    let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
                     tokens.next();
-                    let mut segments = vec![];
                     loop {
-                        if let Some(TokenTree::Token(_, Token::Ident(ident, _))) = tokens.next() {
-                            segments.push(ast::PathSegment::from_ident(ident));
+                        if let Some(TokenTree::Token(span,
+                                                     Token::Ident(ident, _))) = tokens.next() {
+                            segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
                         } else {
                             return None;
                         }
@@ -1179,15 +1180,14 @@ impl MetaItem {
                             break;
                         }
                     }
-                    ast::Path { span, segments }
+                    let span = span.with_hi(segments.last().unwrap().ident.span.hi());
+                    Path { span, segments }
                 } else {
-                    ast::Path::from_ident(ident)
+                    Path::from_ident(ident.with_span_pos(span))
                 }
             }
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident, _) => {
-                    ast::Path::from_ident(ident)
-                }
+                token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 token::Nonterminal::NtPath(ref path) => path.clone(),
                 _ => return None,

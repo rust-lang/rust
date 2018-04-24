@@ -112,7 +112,7 @@ fn expand_duplicate(cx: &mut ExtCtxt,
     let copy_name = match mi.node {
         ast::MetaItemKind::List(ref xs) => {
             if let Some(word) = xs[0].word() {
-                word.ident
+                word.ident.segments.last().unwrap().ident
             } else {
                 cx.span_err(mi.span, "Expected word");
                 return;

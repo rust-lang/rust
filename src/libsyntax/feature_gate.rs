@@ -460,7 +460,7 @@ declare_features! (
 
     // Access to crate names passed via `--extern` through prelude
     (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
-    
+
     // Scoped attributes
     (active, tool_attributes, "1.25.0", Some(44690), None),
 );
@@ -1191,7 +1191,7 @@ impl<'a> Context<'a> {
                     }
                 } else {
                     gate_feature!(self, custom_attribute, attr.span,
-                                  &format!("the attribute `{}` is currently \
+                                  &format!("The attribute `{}` is currently \
                                             unknown to the compiler and \
                                             may have meaning \
                                             added to it in the future",
