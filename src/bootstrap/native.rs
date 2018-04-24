@@ -275,21 +275,53 @@ fn configure_cmake(builder: &Builder,
         return
     }
 
-    let cc = builder.cc(target);
-    let cxx = builder.cxx(target).unwrap();
+    let (cc, cxx) = match builder.config.llvm_clang_cl {
+        Some(ref cl) => (cl.as_ref(), cl.as_ref()),
+        None => (builder.cc(target), builder.cxx(target).unwrap()),
+    };
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
     if target.contains("msvc") &&
        builder.config.ninja &&
-       builder.config.ccache.is_some() {
-        let mut cc = env::current_exe().expect("failed to get cwd");
-        cc.set_file_name("sccache-plus-cl.exe");
+       builder.config.ccache.is_some()
+    {
+       let mut wrap_cc = env::current_exe().expect("failed to get cwd");
+       wrap_cc.set_file_name("sccache-plus-cl.exe");
 
-       cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
-          .define("CMAKE_CXX_COMPILER", sanitize_cc(&cc));
+       cfg.define("CMAKE_C_COMPILER", sanitize_cc(&wrap_cc))
+          .define("CMAKE_CXX_COMPILER", sanitize_cc(&wrap_cc));
        cfg.env("SCCACHE_PATH",
                builder.config.ccache.as_ref().unwrap())
-          .env("SCCACHE_TARGET", target);
+          .env("SCCACHE_TARGET", target)
+          .env("SCCACHE_CC", &cc)
+          .env("SCCACHE_CXX", &cxx);
+
+       // Building LLVM on MSVC can be a little ludicrous at times. We're so far
+       // off the beaten path here that I'm not really sure this is even half
+       // supported any more. Here we're trying to:
+       //
+       // * Build LLVM on MSVC
+       // * Build LLVM with `clang-cl` instead of `cl.exe`
+       // * Build a project with `sccache`
+       // * Build for 32-bit as well
+       // * Build with Ninja
+       //
+       // For `cl.exe` there are different binaries to compile 32/64 bit which
+       // we use but for `clang-cl` there's only one which internally
+       // multiplexes via flags. As a result it appears that CMake's detection
+       // of a compiler's architecture and such on MSVC **doesn't** pass any
+       // custom flags we pass in CMAKE_CXX_FLAGS below. This means that if we
+       // use `clang-cl.exe` it's always diagnosed as a 64-bit compiler which
+       // definitely causes problems since all the env vars are pointing to
+       // 32-bit libraries.
+       //
+       // To hack aroudn this... again... we pass an argument that's
+       // unconditionally passed in the sccache shim. This'll get CMake to
+       // correctly diagnose it's doing a 32-bit compilation and LLVM will
+       // internally configure itself appropriately.
+       if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
+           cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
+       }
 
     // If ccache is configured we inform the build a little differently hwo
     // to invoke ccache while also invoking our compilers.
@@ -368,9 +400,27 @@ impl Step for Lld {
         let mut cfg = cmake::Config::new(builder.src.join("src/tools/lld"));
         configure_cmake(builder, target, &mut cfg, true);
 
+        // This is an awful, awful hack. Discovered when we migrated to using
+        // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
+        // tree, will execute `llvm-config --cmakedir` and then tell CMake about
+        // that directory for later processing. Unfortunately if this path has
+        // forward slashes in it (which it basically always does on Windows)
+        // then CMake will hit a syntax error later on as... something isn't
+        // escaped it seems?
+        //
+        // Instead of attempting to fix this problem in upstream CMake and/or
+        // LLVM/LLD we just hack around it here. This thin wrapper will take the
+        // output from llvm-config and replace all instances of `\` with `/` to
+        // ensure we don't hit the same bugs with escaping. It means that you
+        // can't build on a system where your paths require `\` on Windows, but
+        // there's probably a lot of reasons you can't do that other than this.
+        let llvm_config_shim = env::current_exe()
+            .unwrap()
+            .with_file_name("llvm-config-wrapper");
         cfg.out_dir(&out_dir)
            .profile("Release")
-           .define("LLVM_CONFIG_PATH", llvm_config)
+           .env("LLVM_CONFIG_REAL", llvm_config)
+           .define("LLVM_CONFIG_PATH", llvm_config_shim)
            .define("LLVM_INCLUDE_TESTS", "OFF");
 
         cfg.build();
