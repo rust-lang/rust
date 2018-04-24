@@ -40,6 +40,8 @@
                      "union",
                      "foreigntype"];
 
+    var search_input = document.getElementsByClassName('search-input')[0];
+
     // On the search screen, so you remain on the last tab you opened.
     //
     // 0 for "In Names"
@@ -411,8 +413,8 @@
         // but only if the input bar is empty. This avoid the obnoxious issue
         // where you start trying to do a search, and the index loads, and
         // suddenly your search is gone!
-        if (document.getElementsByClassName("search-input")[0].value === "") {
-            document.getElementsByClassName("search-input")[0].value = params.search || '';
+        if (search_input.value === "") {
+            search_input.value = params.search || '';
         }
 
         /**
@@ -1118,7 +1120,6 @@
                 });
             });
 
-            var search_input = document.getElementsByClassName('search-input')[0];
             search_input.onkeydown = function(e) {
                 // "actives" references the currently highlighted item in each search tab.
                 // Each array in "actives" represents a tab.
@@ -1169,7 +1170,7 @@
                     // Does nothing, it's just to avoid losing "focus" on the highlighted element.
                 } else if (e.which === 27) { // escape
                     removeClass(actives[currentTab][0], 'highlighted');
-                    document.getElementsByClassName('search-input')[0].value = '';
+                    search_input.value = '';
                     defocusSearchBar();
                 } else if (actives[currentTab].length > 0) {
                     removeClass(actives[currentTab][0], 'highlighted');
@@ -1206,7 +1207,6 @@
                         return;
                     }
 
-                    console.log(item);
                     shown.push(id_ty);
                     name = item.name;
                     type = itemTypes[item.ty];
@@ -1268,7 +1268,7 @@
         }
 
         function showResults(results) {
-            var output, query = getQuery(document.getElementsByClassName('search-input')[0].value);
+            var output, query = getQuery(search_input.value);
 
             currentResults = query.id;
             output = '<h1>Results for ' + escape(query.query) +
@@ -1375,14 +1375,13 @@
 
         function search(e) {
             var params = getQueryStringParams();
-            var search_input = document.getElementsByClassName('search-input')[0];
             var query = getQuery(search_input.value.trim());
 
             if (e) {
                 e.preventDefault();
             }
 
-            if (!query.query || query.id === currentResults) {
+            if (query.query.length === 0 || query.id === currentResults) {
                 if (query.query.length > 0) {
                     putBackSearch(search_input);
                 }
@@ -1468,9 +1467,6 @@
         function startSearch() {
             var searchTimeout;
             var callback = function() {
-                var search_input = document.getElementsByClassName('search-input');
-                if (search_input.length < 1) { return; }
-                search_input = search_input[0];
                 clearTimeout(searchTimeout);
                 if (search_input.value.length === 0) {
                     if (browserSupportsHistoryApi()) {
@@ -1488,7 +1484,6 @@
                     searchTimeout = setTimeout(search, 500);
                 }
             };
-            var search_input = document.getElementsByClassName("search-input")[0];
             search_input.onkeyup = callback;
             search_input.oninput = callback;
             document.getElementsByClassName("search-form")[0].onsubmit = function(e) {
@@ -1538,9 +1533,9 @@
                     // nothing there, which lets you really go back to a
                     // previous state with nothing in the bar.
                     if (params.search) {
-                        document.getElementsByClassName('search-input')[0].value = params.search;
+                        search_input.value = params.search;
                     } else {
-                        document.getElementsByClassName('search-input')[0].value = '';
+                        search_input.value = '';
                     }
                     // Some browsers fire 'onpopstate' for every page load
                     // (Chrome), while others fire the event only when actually
@@ -1950,28 +1945,14 @@
         return wrapper;
     }
 
-    onEach(document.getElementById('main').getElementsByClassName('docblock'), function(e) {
-        if (e.parentNode.id === "main") {
-            var otherMessage;
-            if (hasClass(e, "type-decl")) {
-                otherMessage = '&nbsp;Show&nbsp;type&nbsp;declaration';
-            }
-            e.parentNode.insertBefore(createToggle(otherMessage), e);
-            if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
-                collapseDocs(e.previousSibling.childNodes[0], "toggle");
-            }
-        }
-    });
-
     onEach(document.getElementsByClassName('docblock'), function(e) {
         if (hasClass(e, 'autohide')) {
             var wrap = e.previousElementSibling;
             if (wrap && hasClass(wrap, 'toggle-wrapper')) {
                 var toggle = wrap.childNodes[0];
+                var extra = false;
                 if (e.childNodes[0].tagName === 'H3') {
-                    onEach(toggle.getElementsByClassName('toggle-label'), function(i_e) {
-                        i_e.innerHTML = " Show " + e.childNodes[0].innerHTML;
-                    });
+                    extra = true;
                 }
                 e.style.display = 'none';
                 addClass(wrap, 'collapsed');
@@ -1980,7 +1961,20 @@
                 });
                 onEach(toggle.getElementsByClassName('toggle-label'), function(e) {
                     e.style.display = 'inline-block';
+                    if (extra === true) {
+                        i_e.innerHTML = " Show " + e.childNodes[0].innerHTML;
+                    }
                 });
+            }
+        }
+        if (e.parentNode.id === "main") {
+            var otherMessage;
+            if (hasClass(e, "type-decl")) {
+                otherMessage = '&nbsp;Show&nbsp;type&nbsp;declaration';
+            }
+            e.parentNode.insertBefore(createToggle(otherMessage), e);
+            if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
+                collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
     })
@@ -2087,8 +2081,6 @@
             }
         }
     }
-
-    var search_input = document.getElementsByClassName("search-input")[0];
 
     if (search_input) {
         search_input.onfocus = function() {
