@@ -1069,8 +1069,7 @@ pub fn compare_const_vals<'a, 'tcx>(
                         bits: b,
                         ty,
                     };
-                    // FIXME(oli-obk): report cmp errors?
-                    l.try_cmp(r).ok()
+                    l.partial_cmp(&r)
                 },
                 ty::TyInt(_) => {
                     let a = interpret::sign_extend(tcx, a, ty).expect("layout error for TyInt");

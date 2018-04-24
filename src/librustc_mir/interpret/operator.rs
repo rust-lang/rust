@@ -135,12 +135,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 ty,
             };
             match op {
-                Eq => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Equal),
-                Ne => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Equal),
-                Lt => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Less),
-                Le => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Greater),
-                Gt => PrimVal::from_bool(l.try_cmp(r).unwrap() == Ordering::Greater),
-                Ge => PrimVal::from_bool(l.try_cmp(r).unwrap() != Ordering::Less),
+                Eq => PrimVal::from_bool(l.partial_cmp(&r).unwrap() == Ordering::Equal),
+                Ne => PrimVal::from_bool(l.partial_cmp(&r).unwrap() != Ordering::Equal),
+                Lt => PrimVal::from_bool(l.partial_cmp(&r).unwrap() == Ordering::Less),
+                Le => PrimVal::from_bool(l.partial_cmp(&r).unwrap() != Ordering::Greater),
+                Gt => PrimVal::from_bool(l.partial_cmp(&r).unwrap() == Ordering::Greater),
+                Ge => PrimVal::from_bool(l.partial_cmp(&r).unwrap() != Ordering::Less),
                 Add => PrimVal::Bytes((l + r).unwrap().bits),
                 Sub => PrimVal::Bytes((l - r).unwrap().bits),
                 Mul => PrimVal::Bytes((l * r).unwrap().bits),

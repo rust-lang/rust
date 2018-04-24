@@ -10,7 +10,6 @@
 
 #[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
 pub enum ConstMathErr {
-    CmpBetweenUnequalTypes,
     UnequalTypes(Op),
     Overflow(Op),
     DivisionByZero,
@@ -37,7 +36,6 @@ impl ConstMathErr {
     pub fn description(&self) -> &'static str {
         use self::Op::*;
         match *self {
-            CmpBetweenUnequalTypes => "compared two values of different types",
             UnequalTypes(Add) => "tried to add two values of different types",
             UnequalTypes(Sub) => "tried to subtract two values of different types",
             UnequalTypes(Mul) => "tried to multiply two values of different types",

@@ -31,6 +31,12 @@ pub struct ConstFloat {
     pub bits: u128,
 }
 
+impl PartialOrd<ConstFloat> for ConstFloat {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.try_cmp(*other)
+    }
+}
+
 impl ConstFloat {
     /// Description of the type, not the value
     pub fn description(&self) -> &'static str {
@@ -38,22 +44,22 @@ impl ConstFloat {
     }
 
     /// Compares the values if they are of the same type
-    pub fn try_cmp(self, rhs: Self) -> Result<Ordering, ConstMathErr> {
+    fn try_cmp(self, rhs: Self) -> Option<Ordering> {
         match (self.ty, rhs.ty) {
             (ast::FloatTy::F64, ast::FloatTy::F64)  => {
                 let a = Double::from_bits(self.bits);
                 let b = Double::from_bits(rhs.bits);
                 // This is pretty bad but it is the existing behavior.
-                Ok(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
+                Some(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
             }
 
             (ast::FloatTy::F32, ast::FloatTy::F32) => {
                 let a = Single::from_bits(self.bits);
                 let b = Single::from_bits(rhs.bits);
-                Ok(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
+                Some(a.partial_cmp(&b).unwrap_or(Ordering::Greater))
             }
 
-            _ => Err(CmpBetweenUnequalTypes),
+            _ => None,
         }
     }
 
