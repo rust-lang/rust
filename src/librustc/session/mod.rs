@@ -156,7 +156,7 @@ pub struct Session {
 
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
-    pub jobserver_from_env: Option<Client>,
+    pub jobserver: Client,
 
     /// Metadata about the allocators for the current crate being compiled
     pub has_global_allocator: Once<bool>,
@@ -1128,14 +1128,23 @@ pub fn build_session_(
         // positives, or in other words we try to execute this before we open
         // any file descriptors ourselves.
         //
+        // Pick a "reasonable maximum" if we don't otherwise have
+        // a jobserver in our environment, capping out at 32 so we
+        // don't take everything down by hogging the process run queue.
+        // The fixed number is used to have deterministic compilation
+        // across machines.
+        //
         // Also note that we stick this in a global because there could be
         // multiple `Session` instances in this process, and the jobserver is
         // per-process.
-        jobserver_from_env: unsafe {
-            static mut GLOBAL_JOBSERVER: *mut Option<Client> = 0 as *mut _;
+        jobserver: unsafe {
+            static mut GLOBAL_JOBSERVER: *mut Client = 0 as *mut _;
             static INIT: std::sync::Once = std::sync::ONCE_INIT;
             INIT.call_once(|| {
-                GLOBAL_JOBSERVER = Box::into_raw(Box::new(Client::from_env()));
+                let client = Client::from_env().unwrap_or_else(|| {
+                    Client::new(32).expect("failed to create jobserver")
+                });
+                GLOBAL_JOBSERVER = Box::into_raw(Box::new(client));
             });
             (*GLOBAL_JOBSERVER).clone()
         },
