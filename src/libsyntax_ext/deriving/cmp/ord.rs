@@ -38,7 +38,7 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                           name: "cmp",
                           generics: LifetimeBounds::empty(),
                           explicit_self: borrowed_explicit_self(),
-                          args: vec![borrowed_self()],
+                          args: vec![(borrowed_self(), "other")],
                           ret_ty: Literal(path_std!(cx, cmp::Ordering)),
                           attributes: attrs,
                           is_unsafe: false,
@@ -64,7 +64,7 @@ pub fn ordering_collapsed(cx: &mut ExtCtxt,
 }
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-    let test_id = cx.ident_of("__cmp");
+    let test_id = cx.ident_of("cmp").gensym();
     let equals_path = cx.path_global(span, cx.std_path(&["cmp", "Ordering", "Equal"]));
 
     let cmp_path = cx.std_path(&["cmp", "Ord", "cmp"]);
@@ -77,9 +77,9 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
     // ::std::cmp::Ordering::Equal => {
     // ...
     // }
-    // __cmp => __cmp
+    // cmp => cmp
     // },
-    // __cmp => __cmp
+    // cmp => cmp
     // }
     //
     cs_fold(// foldr nests the if-elses correctly, leaving the first field
@@ -88,7 +88,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
             |cx, span, old, self_f, other_fs| {
         // match new {
         //     ::std::cmp::Ordering::Equal => old,
-        //     __cmp => __cmp
+        //     cmp => cmp
         // }
 
         let new = {

@@ -53,6 +53,10 @@ impl Ident {
     pub fn modern(self) -> Ident {
         Ident::new(self.name, self.span.modern())
     }
+
+    pub fn gensym(self) -> Ident {
+        Ident::new(self.name.gensymed(), self.span)
+    }
 }
 
 impl PartialEq for Ident {

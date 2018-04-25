@@ -252,7 +252,7 @@ pub struct MethodDef<'a> {
     pub explicit_self: Option<Option<PtrTy<'a>>>,
 
     /// Arguments other than the self argument
-    pub args: Vec<Ty<'a>>,
+    pub args: Vec<(Ty<'a>, &'a str)>,
 
     /// Return type
     pub ret_ty: Ty<'a>,
@@ -915,9 +915,9 @@ impl<'a> MethodDef<'a> {
             explicit_self
         });
 
-        for (i, ty) in self.args.iter().enumerate() {
+        for (ty, name) in self.args.iter() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(&format!("__arg_{}", i));
+            let ident = cx.ident_of(name).gensym();
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -1004,10 +1004,10 @@ impl<'a> MethodDef<'a> {
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///     fn eq(&self, other: &A) -> bool {
     ///         match *self {
     ///             A {x: ref __self_0_0, y: ref __self_0_1} => {
-    ///                 match *__arg_1 {
+    ///                 match *other {
     ///                     A {x: ref __self_1_0, y: ref __self_1_1} => {
     ///                         __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
     ///                     }
@@ -1020,10 +1020,10 @@ impl<'a> MethodDef<'a> {
     /// // or if A is repr(packed) - note fields are matched by-value
     /// // instead of by-reference.
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///     fn eq(&self, other: &A) -> bool {
     ///         match *self {
     ///             A {x: __self_0_0, y: __self_0_1} => {
-    ///                 match __arg_1 {
+    ///                 match other {
     ///                     A {x: __self_1_0, y: __self_1_1} => {
     ///                         __self_0_0.eq(&__self_1_0) && __self_0_1.eq(&__self_1_1)
     ///                     }
@@ -1134,14 +1134,14 @@ impl<'a> MethodDef<'a> {
     /// // is equivalent to
     ///
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> ::bool {
-    ///         match (&*self, &*__arg_1) {
+    ///     fn eq(&self, other: &A) -> ::bool {
+    ///         match (&*self, &*other) {
     ///             (&A1, &A1) => true,
     ///             (&A2(ref self_0),
     ///              &A2(ref __arg_1_0)) => (*self_0).eq(&(*__arg_1_0)),
     ///             _ => {
     ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
-    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0, A2(..) => 1 };
+    ///                 let __arg_1_vi = match *other { A1(..) => 0, A2(..) => 1 };
     ///                 false
     ///             }
     ///         }
@@ -1240,7 +1240,7 @@ impl<'a> MethodDef<'a> {
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
-                cx.ident_of(&vi_suffix[..])
+                cx.ident_of(&vi_suffix[..]).gensym()
             })
             .collect::<Vec<ast::Ident>>();
 
@@ -1616,7 +1616,7 @@ impl<'a> TraitDef<'a> {
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = struct_field.span.with_ctxt(self.span.ctxt());
-            let ident = cx.ident_of(&format!("{}_{}", prefix, i));
+            let ident = cx.ident_of(&format!("{}_{}", prefix, i)).gensym();
             paths.push(ident.with_span_pos(sp));
             let val = cx.expr_path(cx.path_ident(sp, ident));
             let val = if use_temporaries {
