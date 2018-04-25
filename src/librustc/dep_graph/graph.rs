@@ -233,22 +233,24 @@ impl DepGraph {
             |data, key, _| data.borrow_mut().alloc_node(key, Vec::new()))
     }
 
-    fn with_task_impl<'gcx, C, A, R>(&self,
-                                     key: DepNode,
-                                     cx: C,
-                                     arg: A,
-                                     no_tcx: bool,
-                                     task: fn(C, A) -> R,
-                                     get_task: fn(DepNode) -> OpenTask,
-                                     get_index: fn(&Lock<CurrentDepGraph>,
-                                                   DepNode,
-                                                   OpenTask) -> DepNodeIndex)
-                                     -> (R, DepNodeIndex)
-        where C: DepGraphSafe + StableHashingContextProvider<'gcx>,
-              R: HashStable<StableHashingContext<'gcx>>,
+    fn with_task_impl<'gcx, C, A, R>(
+        &self,
+        key: DepNode,
+        cx: C,
+        arg: A,
+        no_tcx: bool,
+        task: fn(C, A) -> R,
+        create_task: fn(DepNode) -> OpenTask,
+        finish_task_and_alloc_depnode: fn(&Lock<CurrentDepGraph>,
+                                          DepNode,
+                                          OpenTask) -> DepNodeIndex
+    ) -> (R, DepNodeIndex)
+    where
+        C: DepGraphSafe + StableHashingContextProvider<'gcx>,
+        R: HashStable<StableHashingContext<'gcx>>,
     {
         if let Some(ref data) = self.data {
-            let open_task = get_task(key);
+            let open_task = create_task(key);
 
             // In incremental mode, hash the result of the task. We don't
             // do anything with the hash yet, but we are computing it
@@ -286,7 +288,7 @@ impl DepGraph {
                 profq_msg(hcx.sess(), ProfileQueriesMsg::TaskEnd)
             };
 
-            let dep_node_index = get_index(&data.current, key, open_task);
+            let dep_node_index = finish_task_and_alloc_depnode(&data.current, key, open_task);
 
             let mut stable_hasher = StableHasher::new();
             result.hash_stable(&mut hcx, &mut stable_hasher);
@@ -983,7 +985,7 @@ impl CurrentDepGraph {
         }
     }
 
-    pub(super) fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
+    fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
         if let OpenTask::Regular {
             node,
             read_set: _,
