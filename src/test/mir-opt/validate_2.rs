@@ -22,14 +22,14 @@ fn main() {
 // fn main() -> () {
 //     ...
 //     bb1: {
-//         Validate(Acquire, [_2: std::boxed::Box<[i32; 3]>]);
-//         Validate(Release, [_2: std::boxed::Box<[i32; 3]>]);
-//         _1 = move _2 as std::boxed::Box<[i32]> (Unsize);
-//         Validate(Acquire, [_1: std::boxed::Box<[i32]>]);
+//         Validate(Acquire, [_2: std::boxed::Box<[i32; 3], std::alloc::Global>]);
+//         Validate(Release, [_2: std::boxed::Box<[i32; 3], std::alloc::Global>]);
+//         _1 = move _2 as std::boxed::Box<[i32], std::alloc::Global> (Unsize);
+//         Validate(Acquire, [_1: std::boxed::Box<[i32], std::alloc::Global>]);
 //         StorageDead(_2);
 //         StorageDead(_3);
 //         _0 = ();
-//         Validate(Release, [_1: std::boxed::Box<[i32]>]);
+//         Validate(Release, [_1: std::boxed::Box<[i32], std::alloc::Global>]);
 //         drop(_1) -> [return: bb2, unwind: bb3];
 //     }
 //     ...

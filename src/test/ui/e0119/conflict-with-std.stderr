@@ -5,8 +5,8 @@ LL | impl AsRef<Q> for Box<Q> { //~ ERROR conflicting implementations
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `alloc`:
-           - impl<T> std::convert::AsRef<T> for std::boxed::Box<T>
-             where T: ?Sized;
+           - impl<T, A> std::convert::AsRef<T> for std::boxed::Box<T, A>
+             where A: std::alloc::Alloc, T: ?Sized;
 
 error[E0119]: conflicting implementations of trait `std::convert::From<S>` for type `S`:
   --> $DIR/conflict-with-std.rs:24:1
