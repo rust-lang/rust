@@ -3101,7 +3101,9 @@ impl<'a> LoweringContext<'a> {
                 })
             }
             ExprKind::Block(ref blk, opt_label) => {
-                hir::ExprBlock(self.lower_block(blk, false), self.lower_label(opt_label))
+                hir::ExprBlock(self.lower_block(blk,
+                                                opt_label.is_some()),
+                                                self.lower_label(opt_label))
             }
             ExprKind::Assign(ref el, ref er) => {
                 hir::ExprAssign(P(self.lower_expr(el)), P(self.lower_expr(er)))

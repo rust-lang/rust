@@ -4326,8 +4326,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // In some cases, blocks have just one exit, but other blocks
-        // can be targeted by multiple breaks. This cannot happen in
-        // normal Rust syntax today, but it can happen when we desugar
+        // can be targeted by multiple breaks. This can happen both
+        // with labeled blocks as well as when we desugar
         // a `do catch { ... }` expression.
         //
         // Example 1:

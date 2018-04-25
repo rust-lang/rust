@@ -21,6 +21,7 @@ use syntax_pos::Span;
 enum LoopKind {
     Loop(hir::LoopSource),
     WhileLoop,
+    Block,
 }
 
 impl LoopKind {
@@ -30,6 +31,7 @@ impl LoopKind {
             LoopKind::Loop(hir::LoopSource::WhileLet) => "while let",
             LoopKind::Loop(hir::LoopSource::ForLoop) => "for",
             LoopKind::WhileLoop => "while",
+            LoopKind::Block => "block",
         }
     }
 }
@@ -39,6 +41,7 @@ enum Context {
     Normal,
     Loop(LoopKind),
     Closure,
+    LabeledBlock,
 }
 
 #[derive(Copy, Clone)]
@@ -84,6 +87,9 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprClosure(.., b, _, _) => {
                 self.with_context(Closure, |v| v.visit_nested_body(b));
             }
+            hir::ExprBlock(ref b, Some(_label)) => {
+                self.with_context(LabeledBlock, |v| v.visit_block(&b));
+            }
             hir::ExprBreak(label, ref opt_expr) => {
                 let loop_id = match label.target_id.into() {
                     Ok(loop_id) => loop_id,
@@ -94,11 +100,16 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     },
                     Err(hir::LoopIdError::UnresolvedLabel) => ast::DUMMY_NODE_ID,
                 };
+
                 if loop_id != ast::DUMMY_NODE_ID {
                     match self.hir_map.find(loop_id).unwrap() {
                         hir::map::NodeBlock(_) => return,
                         _=> (),
                     }
+                }
+
+                if self.cx == LabeledBlock {
+                    return;
                 }
 
                 if opt_expr.is_some() {
@@ -108,18 +119,22 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         Some(match self.hir_map.expect_expr(loop_id).node {
                             hir::ExprWhile(..) => LoopKind::WhileLoop,
                             hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
+                            hir::ExprBlock(..) => LoopKind::Block,
                             ref r => span_bug!(e.span,
                                                "break label resolved to a non-loop: {:?}", r),
                         })
                     };
                     match loop_kind {
-                        None | Some(LoopKind::Loop(hir::LoopSource::Loop)) => (),
+                        None |
+                        Some(LoopKind::Loop(hir::LoopSource::Loop)) |
+                        Some(LoopKind::Block) => (),
                         Some(kind) => {
                             struct_span_err!(self.sess, e.span, E0571,
                                              "`break` with value from a `{}` loop",
                                              kind.name())
                                 .span_label(e.span,
-                                            "can only break with a value inside `loop`")
+                                            "can only break with a value inside \
+                                            `loop` or breakable block")
                                 .span_suggestion(e.span,
                                                  &format!("instead, use `break` on its own \
                                                            without a value inside this `{}` loop",
@@ -130,13 +145,13 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     }
                 }
 
-                self.require_loop("break", e.span);
+                self.require_break_cx("break", e.span);
             }
             hir::ExprAgain(label) => {
                 if let Err(hir::LoopIdError::UnlabeledCfInWhileCondition) = label.target_id {
                     self.emit_unlabled_cf_in_while_condition(e.span, "continue");
                 }
-                self.require_loop("continue", e.span)
+                self.require_break_cx("continue", e.span)
             },
             _ => intravisit::walk_expr(self, e),
         }
@@ -153,8 +168,9 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         self.cx = old_cx;
     }
 
-    fn require_loop(&self, name: &str, span: Span) {
+    fn require_break_cx(&self, name: &str, span: Span) {
         match self.cx {
+            LabeledBlock |
             Loop(_) => {}
             Closure => {
                 struct_span_err!(self.sess, span, E0267, "`{}` inside of a closure", name)
