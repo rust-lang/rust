@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
+// must-compile-successfully
 
 pub const Z: u32 = 0 - 1;
 //~^ WARN attempt to subtract with overflow
