@@ -161,161 +161,162 @@ pub fn run_core(search_paths: SearchPaths,
         edition,
         ..config::basic_options().clone()
     };
-
-    let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
-    let emitter: Box<dyn Emitter + sync::Send> = match error_format {
-        ErrorOutputType::HumanReadable(color_config) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                Some(codemap.clone()),
-                false,
-                sessopts.debugging_opts.teach,
-            ).ui_testing(sessopts.debugging_opts.ui_testing)
-        ),
-        ErrorOutputType::Json(pretty) => Box::new(
-            JsonEmitter::stderr(
-                None,
-                codemap.clone(),
-                pretty,
-                sessopts.debugging_opts.suggestion_applicability,
-            ).ui_testing(sessopts.debugging_opts.ui_testing)
-        ),
-        ErrorOutputType::Short(color_config) => Box::new(
-            EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false)
-        ),
-    };
-
-    let diagnostic_handler = errors::Handler::with_emitter_and_flags(
-        emitter,
-        errors::HandlerFlags {
-            can_emit_warnings: true,
-            treat_err_as_bug: false,
-            external_macro_backtrace: false,
-            ..Default::default()
-        },
-    );
-
-    let mut sess = session::build_session_(
-        sessopts, cpath, diagnostic_handler, codemap,
-    );
-    let trans = rustc_driver::get_trans(&sess);
-    let cstore = Rc::new(CStore::new(trans.metadata_loader()));
-    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-
-    let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
-    target_features::add_configuration(&mut cfg, &sess, &*trans);
-    sess.parse_sess.config = cfg;
-
-    let control = &driver::CompileController::basic();
-
-    let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
-
-    let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
-
-    let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
-
-    let resolver_arenas = resolve::Resolver::arenas();
-    let result = driver::phase_2_configure_and_expand_inner(&sess,
-                                                      &cstore,
-                                                      krate,
-                                                      None,
-                                                      &name,
-                                                      None,
-                                                      resolve::MakeGlobMap::No,
-                                                      &resolver_arenas,
-                                                      &mut crate_loader,
-                                                      |_| Ok(()));
-    let driver::InnerExpansionResult {
-        mut hir_forest,
-        resolver,
-        ..
-    } = abort_on_err(result, &sess);
-
-    // We need to hold on to the complete resolver, so we clone everything
-    // for the analysis passes to use. Suboptimal, but necessary in the
-    // current architecture.
-    let defs = resolver.definitions.clone();
-    let resolutions = ty::Resolutions {
-        freevars: resolver.freevars.clone(),
-        export_map: resolver.export_map.clone(),
-        trait_map: resolver.trait_map.clone(),
-        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
-        maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
-    };
-    let analysis = ty::CrateAnalysis {
-        access_levels: Lrc::new(AccessLevels::default()),
-        name: name.to_string(),
-        glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
-    };
-
-    let arenas = AllArenas::new();
-    let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
-    let output_filenames = driver::build_output_filenames(&input,
-                                                          &None,
-                                                          &None,
-                                                          &[],
-                                                          &sess);
-
-    let resolver = RefCell::new(resolver);
-
-    abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
-                                                     control,
-                                                     &sess,
-                                                     &*cstore,
-                                                     hir_map,
-                                                     analysis,
-                                                     resolutions,
-                                                     &arenas,
-                                                     &name,
-                                                     &output_filenames,
-                                                     |tcx, analysis, _, result| {
-        if let Err(_) = result {
-            sess.fatal("Compilation failed, aborting rustdoc");
-        }
-
-        let ty::CrateAnalysis { access_levels, .. } = analysis;
-
-        // Convert from a NodeId set to a DefId set since we don't always have easy access
-        // to the map from defid -> nodeid
-        let access_levels = AccessLevels {
-            map: access_levels.map.iter()
-                                  .map(|(&k, &v)| (tcx.hir.local_def_id(k), v))
-                                  .collect()
+    driver::spawn_thread_pool(sessopts, move |sessopts| {
+        let codemap = Lrc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
+        let emitter: Box<dyn Emitter + sync::Send> = match error_format {
+            ErrorOutputType::HumanReadable(color_config) => Box::new(
+                EmitterWriter::stderr(
+                    color_config,
+                    Some(codemap.clone()),
+                    false,
+                    sessopts.debugging_opts.teach,
+                ).ui_testing(sessopts.debugging_opts.ui_testing)
+            ),
+            ErrorOutputType::Json(pretty) => Box::new(
+                JsonEmitter::stderr(
+                    None,
+                    codemap.clone(),
+                    pretty,
+                    sessopts.debugging_opts.suggestion_applicability,
+                ).ui_testing(sessopts.debugging_opts.ui_testing)
+            ),
+            ErrorOutputType::Short(color_config) => Box::new(
+                EmitterWriter::stderr(color_config, Some(codemap.clone()), true, false)
+            ),
         };
 
-        let send_trait = if crate_name == Some("core".to_string()) {
-            clean::get_trait_def_id(&tcx, &["marker", "Send"], true)
-        } else {
-            clean::get_trait_def_id(&tcx, &["core", "marker", "Send"], false)
+        let diagnostic_handler = errors::Handler::with_emitter_and_flags(
+            emitter,
+            errors::HandlerFlags {
+                can_emit_warnings: true,
+                treat_err_as_bug: false,
+                external_macro_backtrace: false,
+                ..Default::default()
+            },
+        );
+
+        let mut sess = session::build_session_(
+            sessopts, cpath, diagnostic_handler, codemap,
+        );
+        let trans = rustc_driver::get_trans(&sess);
+        let cstore = Rc::new(CStore::new(trans.metadata_loader()));
+        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+
+        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs));
+        target_features::add_configuration(&mut cfg, &sess, &*trans);
+        sess.parse_sess.config = cfg;
+
+        let control = &driver::CompileController::basic();
+
+        let krate = panictry!(driver::phase_1_parse_input(control, &sess, &input));
+
+        let name = ::rustc_trans_utils::link::find_crate_name(Some(&sess), &krate.attrs, &input);
+
+        let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
+
+        let resolver_arenas = resolve::Resolver::arenas();
+        let result = driver::phase_2_configure_and_expand_inner(&sess,
+                                                        &cstore,
+                                                        krate,
+                                                        None,
+                                                        &name,
+                                                        None,
+                                                        resolve::MakeGlobMap::No,
+                                                        &resolver_arenas,
+                                                        &mut crate_loader,
+                                                        |_| Ok(()));
+        let driver::InnerExpansionResult {
+            mut hir_forest,
+            resolver,
+            ..
+        } = abort_on_err(result, &sess);
+
+        // We need to hold on to the complete resolver, so we clone everything
+        // for the analysis passes to use. Suboptimal, but necessary in the
+        // current architecture.
+        let defs = resolver.definitions.clone();
+        let resolutions = ty::Resolutions {
+            freevars: resolver.freevars.clone(),
+            export_map: resolver.export_map.clone(),
+            trait_map: resolver.trait_map.clone(),
+            maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
+            maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
+        };
+        let analysis = ty::CrateAnalysis {
+            access_levels: Lrc::new(AccessLevels::default()),
+            name: name.to_string(),
+            glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
-        let ctxt = DocContext {
-            tcx,
-            resolver: &resolver,
-            crate_name,
-            cstore: cstore.clone(),
-            populated_all_crate_impls: Cell::new(false),
-            access_levels: RefCell::new(access_levels),
-            external_traits: Default::default(),
-            active_extern_traits: Default::default(),
-            renderinfo: Default::default(),
-            ty_substs: Default::default(),
-            lt_substs: Default::default(),
-            impl_trait_bounds: Default::default(),
-            mod_ids: Default::default(),
-            send_trait: send_trait,
-            fake_def_ids: RefCell::new(FxHashMap()),
-            all_fake_def_ids: RefCell::new(FxHashSet()),
-            generated_synthetics: RefCell::new(FxHashSet()),
-        };
-        debug!("crate: {:?}", tcx.hir.krate());
+        let arenas = AllArenas::new();
+        let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
+        let output_filenames = driver::build_output_filenames(&input,
+                                                            &None,
+                                                            &None,
+                                                            &[],
+                                                            &sess);
 
-        let krate = {
-            let mut v = RustdocVisitor::new(&*cstore, &ctxt);
-            v.visit(tcx.hir.krate());
-            v.clean(&ctxt)
-        };
+        let resolver = RefCell::new(resolver);
 
-        (krate, ctxt.renderinfo.into_inner())
-    }), &sess)
+        abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
+                                                        control,
+                                                        &sess,
+                                                        &*cstore,
+                                                        hir_map,
+                                                        analysis,
+                                                        resolutions,
+                                                        &arenas,
+                                                        &name,
+                                                        &output_filenames,
+                                                        |tcx, analysis, _, result| {
+            if let Err(_) = result {
+                sess.fatal("Compilation failed, aborting rustdoc");
+            }
+
+            let ty::CrateAnalysis { access_levels, .. } = analysis;
+
+            // Convert from a NodeId set to a DefId set since we don't always have easy access
+            // to the map from defid -> nodeid
+            let access_levels = AccessLevels {
+                map: access_levels.map.iter()
+                                    .map(|(&k, &v)| (tcx.hir.local_def_id(k), v))
+                                    .collect()
+            };
+
+            let send_trait = if crate_name == Some("core".to_string()) {
+                clean::get_trait_def_id(&tcx, &["marker", "Send"], true)
+            } else {
+                clean::get_trait_def_id(&tcx, &["core", "marker", "Send"], false)
+            };
+
+            let ctxt = DocContext {
+                tcx,
+                resolver: &resolver,
+                crate_name,
+                cstore: cstore.clone(),
+                populated_all_crate_impls: Cell::new(false),
+                access_levels: RefCell::new(access_levels),
+                external_traits: Default::default(),
+                active_extern_traits: Default::default(),
+                renderinfo: Default::default(),
+                ty_substs: Default::default(),
+                lt_substs: Default::default(),
+                impl_trait_bounds: Default::default(),
+                mod_ids: Default::default(),
+                send_trait: send_trait,
+                fake_def_ids: RefCell::new(FxHashMap()),
+                all_fake_def_ids: RefCell::new(FxHashSet()),
+                generated_synthetics: RefCell::new(FxHashSet()),
+            };
+            debug!("crate: {:?}", tcx.hir.krate());
+
+            let krate = {
+                let mut v = RustdocVisitor::new(&*cstore, &ctxt);
+                v.visit(tcx.hir.krate());
+                v.clean(&ctxt)
+            };
+
+            (krate, ctxt.renderinfo.into_inner())
+        }), &sess)
+    })
 }

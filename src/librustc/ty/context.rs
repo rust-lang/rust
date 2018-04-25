@@ -1800,9 +1800,11 @@ pub mod tls {
     /// in librustc otherwise. It is used to when diagnostic messages are
     /// emitted and stores them in the current query, if there is one.
     fn track_diagnostic(diagnostic: &Diagnostic) {
-        with_context(|context| {
-            if let Some(ref query) = context.query {
-                query.diagnostics.lock().push(diagnostic.clone());
+        with_context_opt(|icx| {
+            if let Some(icx) = icx {
+                if let Some(ref query) = icx.query {
+                    query.diagnostics.lock().push(diagnostic.clone());
+                }
             }
         })
     }

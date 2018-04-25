@@ -49,7 +49,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::ext::base::ExtCtxt;
@@ -63,6 +63,51 @@ use derive_registrar;
 use pretty::ReplaceBodyWithLoop;
 
 use profile;
+
+#[cfg(not(parallel_queries))]
+pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
+    opts: config::Options,
+    f: F
+) -> R {
+    f(opts)
+}
+
+#[cfg(parallel_queries)]
+pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(
+    opts: config::Options,
+    f: F
+) -> R {
+    use syntax;
+    use syntax_pos;
+    use rayon::{ThreadPoolBuilder, ThreadPool};
+
+    let config = ThreadPoolBuilder::new().num_threads(Session::query_threads_from_opts(&opts))
+                                         .stack_size(16 * 1024 * 1024);
+
+    let with_pool = move |pool: &ThreadPool| {
+        pool.install(move || f(opts))
+    };
+
+    syntax::GLOBALS.with(|syntax_globals| {
+        syntax_pos::GLOBALS.with(|syntax_pos_globals| {
+            // The main handler run for each Rayon worker thread and sets up
+            // the thread local rustc uses. syntax_globals and syntax_pos_globals are
+            // captured and set on the new threads. ty::tls::with_thread_locals sets up
+            // thread local callbacks from libsyntax
+            let main_handler = move |worker: &mut FnMut()| {
+                syntax::GLOBALS.set(syntax_globals, || {
+                    syntax_pos::GLOBALS.set(syntax_pos_globals, || {
+                        ty::tls::with_thread_locals(|| {
+                            worker()
+                        })
+                    })
+                })
+            };
+
+            ThreadPool::scoped_pool(config, main_handler, with_pool).unwrap()
+        })
+    })
+}
 
 pub fn compile_input(
     trans: Box<TransCrate>,
