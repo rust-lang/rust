@@ -352,6 +352,13 @@ pub trait Extend<A> {
     fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
 }
 
+#[stable(feature = "extend_for_unit", since = "1.28.0")]
+impl Extend<()> for () {
+    fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
+        iter.into_iter().for_each(drop)
+    }
+}
+
 /// An iterator able to yield elements from both ends.
 ///
 /// Something that implements `DoubleEndedIterator` has one extra capability
