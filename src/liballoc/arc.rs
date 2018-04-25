@@ -60,7 +60,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// ## Thread Safety
 ///
 /// Unlike [`Rc<T>`], `Arc<T>` uses atomic operations for its reference
-/// counting  This means that it is thread-safe. The disadvantage is that
+/// counting. This means that it is thread-safe. The disadvantage is that
 /// atomic operations are more expensive than ordinary memory accesses. If you
 /// are not sharing reference-counted values between threads, consider using
 /// [`Rc<T>`] for lower overhead. [`Rc<T>`] is a safe default, because the
