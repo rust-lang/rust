@@ -970,6 +970,9 @@ fn link_args(cmd: &mut Linker,
              out_filename: &Path,
              trans: &CrateTranslation) {
 
+    // Linker plugins should be specified early in the list of arguments
+    cmd.cross_lang_lto();
+
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
     let lib_path = sess.target_filesearch(PathKind::All).get_lib_path();
