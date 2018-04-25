@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use abi::FnType;
+use abi::{FnType, FnTypeExt};
 use callee;
 use common::*;
 use builder::Builder;
@@ -35,7 +35,7 @@ impl<'a, 'tcx> VirtualIndex {
 
     pub fn get_fn(self, bx: &Builder<'a, 'tcx>,
                   llvtable: ValueRef,
-                  fn_ty: &FnType<'tcx>) -> ValueRef {
+                  fn_ty: &FnType<'tcx, Ty<'tcx>>) -> ValueRef {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", Value(llvtable), self);
 

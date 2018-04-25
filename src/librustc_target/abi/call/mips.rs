@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgType, FnType, LayoutExt, Reg, Uniform};
+use abi::call::{ArgType, FnType, Reg, Uniform};
+use abi::{HasDataLayout, LayoutOf, Size, TyLayoutMethods};
 
-use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayoutMethods};
-
-fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<Ty>, offset: &mut Size) 
+fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<Ty>, offset: &mut Size)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     if !ret.layout.is_aggregate() {
@@ -45,7 +44,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<Ty>, offset: &mut Size)
     *offset = offset.abi_align(align) + size.abi_align(align);
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<Ty>)
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<Ty>) 
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     let mut offset = Size::from_bytes(0);

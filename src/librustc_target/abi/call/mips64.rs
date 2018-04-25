@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgAttribute, ArgType, CastTarget, FnType, LayoutExt, PassMode, Reg, RegKind, Uniform};
-use rustc_target::abi::{self, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
+use abi::call::{ArgAttribute, ArgType, CastTarget, FnType, PassMode, Reg, RegKind, Uniform};
+use abi::{self, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgType<Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips

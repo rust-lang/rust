@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, ArgType, LayoutExt, Uniform};
-use rustc_target::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use abi::call::{FnType, ArgType, Uniform};
+use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
 

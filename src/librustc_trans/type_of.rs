@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::FnType;
+use abi::{FnType, FnTypeExt};
 use common::*;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};

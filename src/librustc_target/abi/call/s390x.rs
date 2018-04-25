@@ -11,9 +11,8 @@
 // FIXME: The assumes we're using the non-vector ABI, i.e. compiling
 // for a pre-z13 machine or using -mno-vx.
 
-use abi::{FnType, ArgType, LayoutExt, Reg};
-
-use rustc_target::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use abi::call::{FnType, ArgType, Reg};
+use abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<Ty>) 
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout

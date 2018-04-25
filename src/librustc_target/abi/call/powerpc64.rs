@@ -12,9 +12,8 @@
 // Alignment of 128 bit types is not currently handled, this will
 // need to be fixed when PowerPC vector support is added.
 
-use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
-
-use rustc_target::abi::{Align, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
+use abi::{Align, Endian, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ABI {

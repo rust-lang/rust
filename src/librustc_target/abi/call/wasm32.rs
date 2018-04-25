@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_upper_case_globals)]
-
-use abi::{FnType, ArgType, LayoutExt};
+use abi::call::{FnType, ArgType};
 
 fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
-    if ret.layout.is_aggregate() && ret.layout.size.bits() > 64 {
-        ret.make_indirect();
-    } else {
-        ret.extend_integer_width_to(32);
-    }
+    ret.extend_integer_width_to(32);
 }
 
 fn classify_arg_ty<Ty>(arg: &mut ArgType<Ty>) {
-    if arg.layout.is_aggregate() && arg.layout.size.bits() > 64 {
-        arg.make_indirect();
-    } else {
-        arg.extend_integer_width_to(32);
-    }
+    arg.extend_integer_width_to(32);
 }
 
 pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
@@ -34,9 +24,7 @@ pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
     }
 
     for arg in &mut fty.args {
-        if arg.is_ignore() {
-            continue;
-        }
+        if arg.is_ignore() { continue; }
         classify_arg_ty(arg);
     }
 }

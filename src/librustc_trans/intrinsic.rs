@@ -87,7 +87,7 @@ fn get_simple_intrinsic(cx: &CodegenCx, name: &str) -> Option<ValueRef> {
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                                       callee_ty: Ty<'tcx>,
-                                      fn_ty: &FnType<'tcx>,
+                                      fn_ty: &FnType<'tcx, Ty<'tcx>>,
                                       args: &[OperandRef<'tcx>],
                                       llresult: ValueRef,
                                       span: Span) {

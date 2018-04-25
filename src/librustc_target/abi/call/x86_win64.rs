@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgType, FnType, Reg};
-
-use rustc_target::abi;
+use abi::call::{ArgType, FnType, Reg};
+use abi::Abi;
 
 // Win64 ABI: http://msdn.microsoft.com/en-us/library/zthk2dkh.aspx
 
 pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
     let fixup = |a: &mut ArgType<Ty>| {
         match a.layout.abi {
-            abi::Abi::Uninhabited => {}
-            abi::Abi::ScalarPair(..) |
-            abi::Abi::Aggregate { .. } => {
+            Abi::Uninhabited => {}
+            Abi::ScalarPair(..) |
+            Abi::Aggregate { .. } => {
                 match a.layout.size.bits() {
                     8 => a.cast_to(Reg::i8()),
                     16 => a.cast_to(Reg::i16()),
@@ -28,11 +27,11 @@ pub fn compute_abi_info<Ty>(fty: &mut FnType<Ty>) {
                     _ => a.make_indirect()
                 }
             }
-            abi::Abi::Vector { .. } => {
+            Abi::Vector { .. } => {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
-            abi::Abi::Scalar(_) => {
+            Abi::Scalar(_) => {
                 if a.layout.size.bytes() > 8 {
                     a.make_indirect();
                 } else {

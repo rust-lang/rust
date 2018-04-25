@@ -11,7 +11,7 @@
 // Reference: PTX Writer's Guide to Interoperability
 // http://docs.nvidia.com/cuda/ptx-writers-guide-to-interoperability
 
-use abi::{ArgType, FnType, LayoutExt};
+use abi::call::{ArgType, FnType};
 
 fn classify_ret_ty<Ty>(ret: &mut ArgType<Ty>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 32 {

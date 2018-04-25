@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{ArgAttribute, FnType, LayoutExt, PassMode, Reg, RegKind};
-use rustc_target::abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
-use rustc_target::spec::HasTargetSpec;
+use abi::call::{ArgAttribute, FnType, PassMode, Reg, RegKind};
+use abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
+use spec::HasTargetSpec;
 
 #[derive(PartialEq)]
 pub enum Flavor {
@@ -108,7 +108,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>, flavor: Flav
                 PassMode::Direct(ref mut attrs) => attrs,
                 PassMode::Pair(..) |
                 PassMode::Cast(_) => {
-                    bug!("x86 shouldn't be passing arguments by {:?}", arg.mode)
+                    unreachable!("x86 shouldn't be passing arguments by {:?}", arg.mode)
                 }
             };
 

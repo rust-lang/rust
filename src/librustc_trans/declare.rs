@@ -25,7 +25,7 @@ use llvm::AttributePlace::Function;
 use rustc::ty::{self, Ty};
 use rustc::session::config::Sanitizer;
 use rustc_target::spec::PanicStrategy;
-use abi::{Abi, FnType};
+use abi::{Abi, FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
 use common;
@@ -131,7 +131,7 @@ pub fn declare_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, name: &str,
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(cx, sig, &[]);
-    let llfn = declare_raw_fn(cx, name, fty.cconv, fty.llvm_type(cx));
+    let llfn = declare_raw_fn(cx, name, fty.llvm_cconv(), fty.llvm_type(cx));
 
     // FIXME(canndrew): This is_never should really be an is_uninhabited
     if sig.output().is_never() {

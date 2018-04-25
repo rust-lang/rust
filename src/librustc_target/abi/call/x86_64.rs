@@ -11,8 +11,8 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use abi::{ArgType, CastTarget, FnType, LayoutExt, Reg, RegKind};
-use rustc_target::abi::{self, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
+use abi::call::{ArgType, CastTarget, FnType, Reg, RegKind};
+use abi::{self, Abi, HasDataLayout, LayoutOf, Size, TyLayout, TyLayoutMethods};
 
 /// Classification of "eightbyte" components.
 // NB: the order of the variants is from general to specific,
@@ -49,9 +49,9 @@ fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
         }
 
         let mut c = match layout.abi {
-            abi::Abi::Uninhabited => return Ok(()),
+            Abi::Uninhabited => return Ok(()),
 
-            abi::Abi::Scalar(ref scalar) => {
+            Abi::Scalar(ref scalar) => {
                 match scalar.value {
                     abi::Int(..) |
                     abi::Pointer => Class::Int,
@@ -60,10 +60,10 @@ fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
                 }
             }
 
-            abi::Abi::Vector { .. } => Class::Sse,
+            Abi::Vector { .. } => Class::Sse,
 
-            abi::Abi::ScalarPair(..) |
-            abi::Abi::Aggregate { .. } => {
+            Abi::ScalarPair(..) |
+            Abi::Aggregate { .. } => {
                 match layout.variants {
                     abi::Variants::Single { .. } => {
                         for i in 0..layout.fields.count() {
@@ -161,7 +161,7 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
                 }
             })
         }
-        Some(c) => bug!("reg_component: unhandled class {:?}", c)
+        Some(c) => unreachable!("reg_component: unhandled class {:?}", c)
     }
 }
 
