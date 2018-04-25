@@ -35,13 +35,6 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
     let start_node = graph.start_node();
     assert_eq!(rpo[0], start_node);
 
-    // compute the post order index (rank) for each node
-    let mut post_order_rank: IndexVec<G::Node, usize> = IndexVec::from_elem_n(usize::default(),
-                                                                              graph.num_nodes());
-    for (index, node) in rpo.iter().rev().cloned().enumerate() {
-        post_order_rank[node] = index;
-    }
-
     let mut immediate_dominators: IndexVec<G::Node, Option<G::Node>> =
         IndexVec::from_elem_n(Option::default(), graph.num_nodes());
     immediate_dominators[start_node] = Some(start_node);
@@ -71,7 +64,6 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(graph: &G,
     }
 
     Dominators {
-        post_order_rank,
         immediate_dominators,
     }
 }
@@ -107,7 +99,7 @@ fn intersect<Node: Idx>(post_order_rank: &IndexVec<Node, usize>,
 
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
-    post_order_rank: IndexVec<N, usize>,
+    //post_order_rank: IndexVec<N, usize>,
     immediate_dominators: IndexVec<N, Option<N>>,
 }
 
