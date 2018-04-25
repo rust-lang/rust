@@ -1704,7 +1704,7 @@ pub mod tls {
     use ty::maps;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::Lrc;
+    use rustc_data_structures::sync::{self, Lrc};
     use dep_graph::OpenTask;
 
     /// This is the implicit state of rustc. It contains the current
@@ -1832,6 +1832,10 @@ pub mod tls {
         if context == 0 {
             f(None)
         } else {
+            // We could get a ImplicitCtxt pointer from another thread.
+            // Ensure that ImplicitCtxt is Sync
+            sync::assert_sync::<ImplicitCtxt>();
+
             unsafe { f(Some(&*(context as *const ImplicitCtxt))) }
         }
     }
