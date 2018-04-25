@@ -146,7 +146,11 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
             broken: &[],
         };
         self.source = &[];
-        return Some(r);
+        Some(r)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(self.source.len()))
     }
 }
 
@@ -176,6 +180,8 @@ impl fmt::Display for Utf8Lossy {
         Ok(())
     }
 }
+
+impl FusedIterator for Utf8LossyChunksIter {}
 
 impl fmt::Debug for Utf8Lossy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

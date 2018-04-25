@@ -4316,6 +4316,10 @@ impl<'a> Iterator for SplitWhitespace<'a> {
     fn next(&mut self) -> Option<&'a str> {
         self.inner.next()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
 }
 
 #[stable(feature = "split_whitespace", since = "1.1.0")]
