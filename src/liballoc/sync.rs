@@ -585,7 +585,7 @@ impl<T: ?Sized> Arc<T> {
                 value_size);
 
             // Free the allocation without dropping its contents
-            box_free(box_unique);
+            box_free(box_unique, Global);
 
             Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
         }

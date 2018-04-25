@@ -40,9 +40,13 @@ extern "Rust" {
 /// This type implements the [`Alloc`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
+#[cfg(not(test))]
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
+
+#[cfg(test)]
+pub use std::alloc::Global;
 
 /// Allocate memory with the global allocator.
 ///
@@ -116,6 +120,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     __rust_alloc_zeroed(layout.size(), layout.align())
 }
 
+#[cfg(not(test))]
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for Global {
     #[inline]
@@ -165,14 +170,14 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
 
 #[cfg_attr(not(test), lang = "box_free")]
 #[inline]
-pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
+pub(crate) unsafe fn box_free<T: ?Sized, A: Alloc>(ptr: Unique<T>, mut a: A) {
     let ptr = ptr.as_ptr();
     let size = size_of_val(&*ptr);
     let align = min_align_of_val(&*ptr);
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
     if size != 0 {
         let layout = Layout::from_size_align_unchecked(size, align);
-        dealloc(ptr as *mut u8, layout);
+        a.dealloc(NonNull::new_unchecked(ptr).cast(), layout);
     }
 }
 
