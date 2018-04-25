@@ -45,6 +45,7 @@ use fmt;
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
+#[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
@@ -74,6 +75,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1.. ], [     'b', 'c', 'd']);
 /// assert_eq!(arr[1..3], [     'b', 'c'     ]);  // Range
 /// ```
+#[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
@@ -175,6 +177,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// ```
 ///
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
+#[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
@@ -256,6 +259,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
+#[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
@@ -323,6 +327,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[ ..=2], [0,1,2  ]);
 /// assert_eq!(arr[1..=2], [  1,2  ]);  // RangeInclusive
 /// ```
+#[doc(alias = "..=")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
@@ -449,6 +454,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
+#[doc(alias = "..=")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeToInclusive<Idx> {

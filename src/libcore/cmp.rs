@@ -106,6 +106,8 @@ use self::Ordering::*;
 /// ```
 #[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = "==")]
+#[doc(alias = "!=")]
 #[rustc_on_unimplemented = "can't compare `{Self}` with `{Rhs}`"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used
@@ -160,6 +162,8 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// }
 /// impl Eq for Book {}
 /// ```
+#[doc(alias = "==")]
+#[doc(alias = "!=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Eq: PartialEq<Self> {
     // this method is used solely by #[deriving] to assert
@@ -428,6 +432,10 @@ impl<T: Ord> Ord for Reverse<T> {
 /// }
 /// ```
 #[lang = "ord"]
+#[doc(alias = "<")]
+#[doc(alias = ">")]
+#[doc(alias = "<=")]
+#[doc(alias = ">=")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an `Ordering` between `self` and `other`.
@@ -599,6 +607,10 @@ impl PartialOrd for Ordering {
 /// ```
 #[lang = "partial_ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(alias = ">")]
+#[doc(alias = "<")]
+#[doc(alias = "<=")]
+#[doc(alias = ">=")]
 #[rustc_on_unimplemented = "can't compare `{Self}` with `{Rhs}`"]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values if one exists.
