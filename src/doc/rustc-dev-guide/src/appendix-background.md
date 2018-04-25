@@ -76,6 +76,9 @@ cycle.
 
 ## What is a dataflow analysis?
 
+[*Static Program Analysis*](https://cs.au.dk/~amoeller/spa/) by Anders Møller
+and Michael I. Schwartzbach is an incredible resource!
+
 *to be written*
 
 <a name=quantified>
