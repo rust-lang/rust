@@ -87,8 +87,8 @@ error: approximate value of `f{32, 64}::consts::LN_2` found. Consider using it d
 error: approximate value of `f{32, 64}::consts::LOG10_E` found. Consider using it directly
   --> $DIR/approx_const.rs:45:22
    |
-45 |     let my_log10_e = 0.43429448190325182;
-   |                      ^^^^^^^^^^^^^^^^^^^
+45 |     let my_log10_e = 0.4342944819032518;
+   |                      ^^^^^^^^^^^^^^^^^^
 
 error: approximate value of `f{32, 64}::consts::LOG2_E` found. Consider using it directly
   --> $DIR/approx_const.rs:48:21
