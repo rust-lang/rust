@@ -455,7 +455,7 @@ that it (1) does not introduce a name for the existential type and (2) does not
 allow you to control the scope in which the underlying concrete type is known.
 
 Moreover, some versions of the design (including in this RFC) impose further
-limitations on the power of the feature for the same of simplicity.
+limitations on the power of the feature for the sake of simplicity.
 
 This is done under the assumption that we will eventually introduce a fully
 expressive, explicit syntax for existentials. Such a syntax is sketched in an
