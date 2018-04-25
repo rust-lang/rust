@@ -485,9 +485,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn last_mut(&mut self) -> Option<&mut T> {
-        let len = self.len();
-        if len == 0 { return None; }
-        Some(&mut self[len - 1])
+        if self.is_empty() { None } else { Some(&mut self[self.len() - 1]) }
     }
 
     #[inline]
