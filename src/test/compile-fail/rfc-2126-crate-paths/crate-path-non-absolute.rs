@@ -12,9 +12,10 @@
 
 struct S;
 
-mod m {
+pub mod m {
     fn f() {
-        let s = crate::S; //~ ERROR `crate` can only be used in absolute paths
+        let s = ::m::crate::S; //~ ERROR failed to resolve
+        let s2 = crate::S; // no error
     }
 }
 
