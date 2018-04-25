@@ -1741,7 +1741,7 @@ pub mod tls {
     use ty::maps;
     use errors::{Diagnostic, TRACK_DIAGNOSTICS};
     use rustc_data_structures::OnDrop;
-    use rustc_data_structures::sync::{Lrc, Lock};
+    use rustc_data_structures::sync::Lrc;
     use dep_graph::OpenTask;
 
     /// This is the implicit state of rustc. It contains the current
@@ -1764,7 +1764,7 @@ pub mod tls {
 
         /// The current dep graph task. This is used to add dependencies to queries
         /// when executing them
-        pub task: &'a Lock<OpenTask>,
+        pub task: &'a OpenTask,
     }
 
     // A thread local value which stores a pointer to the current ImplicitCtxt
@@ -1851,7 +1851,7 @@ pub mod tls {
                 tcx,
                 query: None,
                 layout_depth: 0,
-                task: &Lock::new(OpenTask::Ignore),
+                task: &OpenTask::Ignore,
             };
             enter_context(&icx, |_| {
                 f(tcx)

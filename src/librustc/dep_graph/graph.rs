@@ -145,7 +145,7 @@ impl DepGraph {
         if let Some(..) = self.data {
             ty::tls::with_context_opt(|icx| {
                 let icx = if let Some(icx) = icx { icx } else { return };
-                match *icx.task.lock() {
+                match *icx.task {
                     OpenTask::Ignore => {
                         // ignored
                     }
@@ -160,7 +160,7 @@ impl DepGraph {
     {
         ty::tls::with_context(|icx| {
             let icx = ty::tls::ImplicitCtxt {
-                task: &Lock::new(OpenTask::Ignore),
+                task: &OpenTask::Ignore,
                 ..icx.clone()
             };
 
@@ -207,11 +207,11 @@ impl DepGraph {
               R: HashStable<StableHashingContext<'gcx>>,
     {
         self.with_task_impl(key, cx, arg, false, task,
-            |key| OpenTask::Regular {
+            |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
                 reads: Vec::new(),
                 read_set: FxHashSet(),
-            },
+            })),
             |data, key, task| data.borrow_mut().complete_task(key, task))
     }
 
@@ -263,24 +263,18 @@ impl DepGraph {
                 profq_msg(hcx.sess(), ProfileQueriesMsg::TaskBegin(key.clone()))
             };
 
-            let (result, open_task) = if no_tcx {
-                (task(cx, arg), open_task)
+            let result = if no_tcx {
+                task(cx, arg)
             } else {
                 ty::tls::with_context(|icx| {
-                    let open_task = Lock::new(open_task);
-
-                    let r = {
-                        let icx = ty::tls::ImplicitCtxt {
-                            task: &open_task,
-                            ..icx.clone()
-                        };
-
-                        ty::tls::enter_context(&icx, |_| {
-                            task(cx, arg)
-                        })
+                    let icx = ty::tls::ImplicitCtxt {
+                        task: &open_task,
+                        ..icx.clone()
                     };
 
-                    (r, open_task.into_inner())
+                    ty::tls::enter_context(&icx, |_| {
+                        task(cx, arg)
+                    })
                 })
             };
 
@@ -358,10 +352,10 @@ impl DepGraph {
     {
         if let Some(ref data) = self.data {
             let (result, open_task) = ty::tls::with_context(|icx| {
-                let task = Lock::new(OpenTask::Anon {
+                let task = OpenTask::Anon(Lock::new(AnonOpenTask {
                     reads: Vec::new(),
                     read_set: FxHashSet(),
-                });
+                }));
 
                 let r = {
                     let icx = ty::tls::ImplicitCtxt {
@@ -374,7 +368,7 @@ impl DepGraph {
                     })
                 };
 
-                (r, task.into_inner())
+                (r, task)
             });
             let dep_node_index = data.current
                                      .borrow_mut()
@@ -986,11 +980,12 @@ impl CurrentDepGraph {
     }
 
     fn complete_task(&mut self, key: DepNode, task: OpenTask) -> DepNodeIndex {
-        if let OpenTask::Regular {
-            node,
-            read_set: _,
-            reads
-        } = task {
+        if let OpenTask::Regular(task) = task {
+            let RegularOpenTask {
+                node,
+                read_set: _,
+                reads
+            } = task.into_inner();
             assert_eq!(node, key);
 
             // If this is an input node, we expect that it either has no
@@ -1022,10 +1017,11 @@ impl CurrentDepGraph {
     }
 
     fn pop_anon_task(&mut self, kind: DepKind, task: OpenTask) -> DepNodeIndex {
-        if let OpenTask::Anon {
-            read_set: _,
-            reads
-        } = task {
+        if let OpenTask::Anon(task) = task {
+            let AnonOpenTask {
+                read_set: _,
+                reads
+            } = task.into_inner();
             debug_assert!(!kind.is_input());
 
             let mut fingerprint = self.anon_id_seed;
@@ -1074,18 +1070,16 @@ impl CurrentDepGraph {
     fn read_index(&mut self, source: DepNodeIndex) {
         ty::tls::with_context_opt(|icx| {
             let icx = if let Some(icx) = icx { icx } else { return };
-            match *icx.task.lock() {
-                OpenTask::Regular {
-                    ref mut reads,
-                    ref mut read_set,
-                    node: ref target,
-                } => {
+            match *icx.task {
+                OpenTask::Regular(ref task) => {
+                    let mut task = task.lock();
                     self.total_read_count += 1;
-                    if read_set.insert(source) {
-                        reads.push(source);
+                    if task.read_set.insert(source) {
+                        task.reads.push(source);
 
                         if cfg!(debug_assertions) {
                             if let Some(ref forbidden_edge) = self.forbidden_edge {
+                                let target = &task.node;
                                 let source = self.nodes[source];
                                 if forbidden_edge.test(&source, &target) {
                                     bug!("forbidden edge {:?} -> {:?} created",
@@ -1098,12 +1092,10 @@ impl CurrentDepGraph {
                         self.total_duplicate_read_count += 1;
                     }
                 }
-                OpenTask::Anon {
-                    ref mut reads,
-                    ref mut read_set,
-                } => {
-                    if read_set.insert(source) {
-                        reads.push(source);
+                OpenTask::Anon(ref task) => {
+                    let mut task = task.lock();
+                    if task.read_set.insert(source) {
+                        task.reads.push(source);
                     }
                 }
                 OpenTask::Ignore | OpenTask::EvalAlways { .. } => {
@@ -1128,17 +1120,20 @@ impl CurrentDepGraph {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+pub struct RegularOpenTask {
+    node: DepNode,
+    reads: Vec<DepNodeIndex>,
+    read_set: FxHashSet<DepNodeIndex>,
+}
+
+pub struct AnonOpenTask {
+    reads: Vec<DepNodeIndex>,
+    read_set: FxHashSet<DepNodeIndex>,
+}
+
 pub enum OpenTask {
-    Regular {
-        node: DepNode,
-        reads: Vec<DepNodeIndex>,
-        read_set: FxHashSet<DepNodeIndex>,
-    },
-    Anon {
-        reads: Vec<DepNodeIndex>,
-        read_set: FxHashSet<DepNodeIndex>,
-    },
+    Regular(Lock<RegularOpenTask>),
+    Anon(Lock<AnonOpenTask>),
     Ignore,
     EvalAlways {
         node: DepNode,
