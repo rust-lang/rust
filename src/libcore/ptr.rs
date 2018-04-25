@@ -2551,10 +2551,9 @@ impl<T: Sized> Unique<T> {
     /// This is useful for initializing types which lazily allocate, like
     /// `Vec::new` does.
     // FIXME: rename to dangling() to match NonNull?
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
-            Unique::new_unchecked(ptr)
+            Unique::new_unchecked(mem::align_of::<T>() as *mut T)
         }
     }
 }

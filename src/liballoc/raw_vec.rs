@@ -68,6 +68,16 @@ impl<T, A: Alloc> RawVec<T, A> {
         }
     }
 
+    /// Like `empty` but parametrized over the choice of allocator for the returned `RawVec`.
+    pub const fn empty_in(a: A) -> Self {
+        // Unique::empty() doubles as "unallocated" and "zero-sized allocation"
+        RawVec {
+            ptr: Unique::empty(),
+            cap: 0,
+            a,
+        }
+    }
+
     /// Like `with_capacity` but parameterized over the choice of
     /// allocator for the returned RawVec.
     #[inline]
@@ -122,6 +132,12 @@ impl<T> RawVec<T, Global> {
     /// delayed allocation.
     pub fn new() -> Self {
         Self::new_in(Global)
+    }
+
+    /// Create a `RawVec` with capcity 0 (on the system heap), regardless of `T`, without
+    /// allocating.
+    pub fn empty() -> Self {
+        Self::empty_in(Global)
     }
 
     /// Creates a RawVec (on the system heap) with exactly the

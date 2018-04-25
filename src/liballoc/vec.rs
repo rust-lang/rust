@@ -324,7 +324,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Vec<T> {
         Vec {
-            buf: RawVec::new(),
+            buf: RawVec::empty(),
             len: 0,
         }
     }
