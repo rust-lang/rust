@@ -13,6 +13,7 @@ use str as core_str;
 use fmt;
 use fmt::Write;
 use mem;
+use iter::FusedIterator;
 
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "0")]
@@ -181,7 +182,7 @@ impl fmt::Display for Utf8Lossy {
     }
 }
 
-impl FusedIterator for Utf8LossyChunksIter {}
+impl<'a> FusedIterator for Utf8LossyChunksIter<'a> {}
 
 impl fmt::Debug for Utf8Lossy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
