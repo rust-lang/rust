@@ -380,7 +380,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::ConstEvaluatable(..) => {
                         None
                     }
-                    ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(t, r))) => {
+                    ty::Predicate::TypeOutlives(predicate) => {
                         // Search for a bound of the form `erased_self_ty
                         // : 'a`, but be wary of something like `for<'a>
                         // erased_self_ty : 'a` (we interpret a
@@ -390,8 +390,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         // it's kind of a moot point since you could never
                         // construct such an object, but this seems
                         // correct even if that code changes).
-                        if t == erased_self_ty && !r.has_escaping_regions() {
-                            Some(r)
+                        let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
+                        if t == &erased_self_ty && !r.has_escaping_regions() {
+                            Some(*r)
                         } else {
                             None
                         }
@@ -561,7 +562,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::ClosureKind::FnMut => self.mk_mut_ref(self.mk_region(env_region), closure_ty),
             ty::ClosureKind::FnOnce => closure_ty,
         };
-        Some(ty::Binder(env_ty))
+        Some(ty::Binder::bind(env_ty))
     }
 
     /// Given the def-id of some item that has no type parameters, make

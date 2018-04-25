@@ -394,7 +394,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
         });
-        Binder(value)
+        Binder::bind(value)
     }
 
     /// Returns a set of all late-bound regions that are constrained
@@ -446,7 +446,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         where T : TypeFoldable<'tcx>,
     {
         let mut counter = 0;
-        Binder(self.replace_late_bound_regions(sig, |_| {
+        Binder::bind(self.replace_late_bound_regions(sig, |_| {
             counter += 1;
             self.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(counter)))
         }).0)

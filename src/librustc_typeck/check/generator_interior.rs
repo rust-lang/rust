@@ -129,7 +129,7 @@ pub fn resolve_interior<'a, 'gcx, 'tcx>(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
                                         ty::BrAnon(counter)))
     });
 
-    let witness = fcx.tcx.mk_generator_witness(ty::Binder(type_list));
+    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind(type_list));
 
     debug!("Types in generator after region replacement {:?}, span = {:?}",
             witness, body.value.span);

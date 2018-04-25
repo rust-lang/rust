@@ -406,7 +406,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
             return llfn;
         }
 
-        let ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+        let ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
             iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
             tcx.types.never,
             false,

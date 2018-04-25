@@ -163,7 +163,7 @@ pub fn custom_coerce_unsize_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            -> CustomCoerceUnsized {
     let def_id = tcx.lang_items().coerce_unsized_trait().unwrap();
 
-    let trait_ref = ty::Binder(ty::TraitRef {
+    let trait_ref = ty::Binder::bind(ty::TraitRef {
         def_id: def_id,
         substs: tcx.mk_substs_trait(source_ty, &[target_ty])
     });

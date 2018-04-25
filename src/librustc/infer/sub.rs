@@ -98,7 +98,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                         self.fields.trace.cause.clone(),
                         self.fields.param_env,
                         ty::Predicate::Subtype(
-                            ty::Binder(ty::SubtypePredicate {
+                            ty::Binder::dummy(ty::SubtypePredicate {
                                 a_is_expected: self.a_is_expected,
                                 a,
                                 b,

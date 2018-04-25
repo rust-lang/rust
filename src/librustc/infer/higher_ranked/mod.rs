@@ -80,7 +80,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
             debug!("higher_ranked_sub: OK result={:?}", result);
 
-            Ok(ty::Binder(result))
+            Ok(ty::Binder::bind(result))
         });
     }
 
@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(ty::Binder::bind(result1))
         });
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
@@ -335,7 +335,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(ty::Binder::bind(result1))
         });
 
         fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,

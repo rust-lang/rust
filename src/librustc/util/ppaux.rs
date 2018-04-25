@@ -473,7 +473,7 @@ impl PrintContext {
         let value = if let Some(v) = lifted {
             v
         } else {
-            return original.0.print_display(f, self);
+            return original.skip_binder().print_display(f, self);
         };
 
         if self.binder_depth == 0 {
@@ -679,9 +679,9 @@ define_print! {
             ty::tls::with(|tcx| {
                 let dummy_self = tcx.mk_infer(ty::FreshTy(0));
 
-                let trait_ref = tcx.lift(&ty::Binder(*self))
+                let trait_ref = *tcx.lift(&ty::Binder::bind(*self))
                                    .expect("could not lift TraitRef for printing")
-                                   .with_self_ty(tcx, dummy_self).0;
+                                   .with_self_ty(tcx, dummy_self).skip_binder();
                 cx.parameterized(f, trait_ref.substs, trait_ref.def_id, &[])
             })
         }

@@ -125,7 +125,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if !illegal_sized_bound {
-            let method_ty = self.tcx.mk_fn_ptr(ty::Binder(method_sig));
+            let method_ty = self.tcx.mk_fn_ptr(ty::Binder::bind(method_sig));
             self.add_obligations(method_ty, all_substs, &method_predicates);
         }
 
@@ -587,7 +587,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                 }
             })
             .any(|trait_pred| {
-                match trait_pred.0.self_ty().sty {
+                match trait_pred.skip_binder().self_ty().sty {
                     ty::TyDynamic(..) => true,
                     _ => false,
                 }

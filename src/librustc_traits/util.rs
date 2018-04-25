@@ -86,14 +86,14 @@ where
                 }
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r1.into(), r2),
             })
-            .map(ty::Binder) // no bound regions in the code above
+            .map(ty::Binder::dummy) // no bound regions in the code above
             .collect();
 
         outlives.extend(
             region_obligations
                 .into_iter()
                 .map(|(_, r_o)| ty::OutlivesPredicate(r_o.sup_type.into(), r_o.sub_region))
-                .map(ty::Binder) // no bound regions in the code above
+                .map(ty::Binder::dummy) // no bound regions in the code above
         );
 
         outlives

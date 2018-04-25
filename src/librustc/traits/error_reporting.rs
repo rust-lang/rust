@@ -537,7 +537,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     &data.parent_trait_ref);
                 match self.get_parent_trait_ref(&data.parent_code) {
                     Some(t) => Some(t),
-                    None => Some(format!("{}", parent_trait_ref.0.self_ty())),
+                    None => Some(format!("{}", parent_trait_ref.skip_binder().self_ty())),
                 }
             }
             _ => None,
@@ -862,7 +862,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 obligation: &PredicateObligation<'tcx>,
                                 err: &mut DiagnosticBuilder<'tcx>,
                                 trait_ref: &ty::Binder<ty::TraitRef<'tcx>>) {
-        let ty::Binder(trait_ref) = trait_ref;
+        let trait_ref = trait_ref.skip_binder();
         let span = obligation.cause.span;
 
         if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
@@ -1102,7 +1102,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     ::syntax::abi::Abi::Rust
                 )
             };
-            format!("{}", ty::Binder(sig))
+            format!("{}", ty::Binder::bind(sig))
         }
 
         let argument_is_closure = expected_ref.skip_binder().substs.type_at(0).is_closure();
@@ -1436,7 +1436,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
                 let parent_trait_ref = self.resolve_type_vars_if_possible(&data.parent_trait_ref);
-                let ty = parent_trait_ref.0.self_ty();
+                let ty = parent_trait_ref.skip_binder().self_ty();
                 err.note(&format!("required because it appears within the type `{}`", ty));
                 obligated_types.push(ty);
 
@@ -1453,7 +1453,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.note(
                     &format!("required because of the requirements on the impl of `{}` for `{}`",
                              parent_trait_ref,
-                             parent_trait_ref.0.self_ty()));
+                             parent_trait_ref.skip_binder().self_ty()));
                 let parent_predicate = parent_trait_ref.to_predicate();
                 self.note_obligation_cause_code(err,
                                             &parent_predicate,
@@ -1484,7 +1484,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let ObligationCauseCode::BuiltinDerivedObligation(ref data) = cause_code {
             let parent_trait_ref = self.resolve_type_vars_if_possible(&data.parent_trait_ref);
             for obligated_type in obligated_types {
-                if obligated_type == &parent_trait_ref.0.self_ty() {
+                if obligated_type == &parent_trait_ref.skip_binder().self_ty() {
                     return true;
                 }
             }

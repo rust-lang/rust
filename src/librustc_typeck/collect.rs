@@ -1171,7 +1171,7 @@ fn fn_sig<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let inputs = fields.iter().map(|f| {
                 tcx.type_of(tcx.hir.local_def_id(f.id))
             });
-            ty::Binder(tcx.mk_fn_sig(
+            ty::Binder::bind(tcx.mk_fn_sig(
                 inputs,
                 ty,
                 false,
@@ -1434,7 +1434,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         for bound in &param.bounds {
             let bound_region = AstConv::ast_region_to_region(&icx, bound, None);
-            let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
+            let outlives = ty::Binder::bind(ty::OutlivesPredicate(region, bound_region));
             predicates.push(outlives.to_predicate());
         }
     }
@@ -1482,7 +1482,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             let region = AstConv::ast_region_to_region(&icx,
                                                                        lifetime,
                                                                        None);
-                            let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
+                            let pred = ty::Binder::bind(ty::OutlivesPredicate(ty, region));
                             predicates.push(ty::Predicate::TypeOutlives(pred))
                         }
                     }
@@ -1493,7 +1493,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 let r1 = AstConv::ast_region_to_region(&icx, &region_pred.lifetime, None);
                 for bound in &region_pred.bounds {
                     let r2 = AstConv::ast_region_to_region(&icx, bound, None);
-                    let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
+                    let pred = ty::Binder::bind(ty::OutlivesPredicate(r1, r2));
                     predicates.push(ty::Predicate::RegionOutlives(pred))
                 }
             }
@@ -1627,7 +1627,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
         }
         hir::RegionTyParamBound(ref lifetime) => {
             let region = astconv.ast_region_to_region(lifetime, None);
-            let pred = ty::Binder(ty::OutlivesPredicate(param_ty, region));
+            let pred = ty::Binder::bind(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
         hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {

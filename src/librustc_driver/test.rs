@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.mk_fn_ptr(ty::Binder(self.infcx.tcx.mk_fn_sig(
+        self.infcx.tcx.mk_fn_ptr(ty::Binder::bind(self.infcx.tcx.mk_fn_sig(
             input_tys.iter().cloned(),
             output_ty,
             false,

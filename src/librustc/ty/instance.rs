@@ -259,7 +259,7 @@ fn resolve_associated_item<'a, 'tcx>(
            def_id, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = tcx.trans_fulfill_obligation((param_env, ty::Binder(trait_ref)));
+    let vtbl = tcx.trans_fulfill_obligation((param_env, ty::Binder::bind(trait_ref)));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:

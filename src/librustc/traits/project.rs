@@ -478,7 +478,7 @@ pub fn normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             let def_id = projection_ty.item_def_id;
             let ty_var = selcx.infcx().next_ty_var(
                 TypeVariableOrigin::NormalizeProjectionType(tcx.def_span(def_id)));
-            let projection = ty::Binder(ty::ProjectionPredicate {
+            let projection = ty::Binder::dummy(ty::ProjectionPredicate {
                 projection_ty,
                 ty: ty_var
             });
@@ -982,8 +982,7 @@ fn assemble_candidates_from_predicates<'cx, 'gcx, 'tcx, I>(
                predicate);
         match predicate {
             ty::Predicate::Projection(data) => {
-                let same_def_id =
-                    data.0.projection_ty.item_def_id == obligation.predicate.item_def_id;
+                let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
                 let is_match = same_def_id && infcx.probe(|_| {
                     let data_poly_trait_ref =
@@ -1241,7 +1240,7 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
         // item with the correct name
         let env_predicates = env_predicates.filter_map(|p| match p {
             ty::Predicate::Projection(data) =>
-                if data.0.projection_ty.item_def_id == obligation.predicate.item_def_id {
+                if data.projection_def_id() == obligation.predicate.item_def_id {
                     Some(data)
                 } else {
                     None
@@ -1302,28 +1301,28 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
 
     let gen_def_id = tcx.lang_items().gen_trait().unwrap();
 
-    // Note: we unwrap the binder here but re-create it below (1)
-    let ty::Binder((trait_ref, yield_ty, return_ty)) =
+    let predicate =
         tcx.generator_trait_ref_and_outputs(gen_def_id,
                                             obligation.predicate.self_ty(),
-                                            gen_sig);
+                                            gen_sig)
+        .map_bound(|(trait_ref, yield_ty, return_ty)| {
+            let name = tcx.associated_item(obligation.predicate.item_def_id).name;
+            let ty = if name == Symbol::intern("Return") {
+                return_ty
+            } else if name == Symbol::intern("Yield") {
+                yield_ty
+            } else {
+                bug!()
+            };
 
-    let name = tcx.associated_item(obligation.predicate.item_def_id).name;
-    let ty = if name == Symbol::intern("Return") {
-        return_ty
-    } else if name == Symbol::intern("Yield") {
-        yield_ty
-    } else {
-        bug!()
-    };
-
-    let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
-        projection_ty: ty::ProjectionTy {
-            substs: trait_ref.substs,
-            item_def_id: obligation.predicate.item_def_id,
-        },
-        ty: ty
-    });
+            ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy {
+                    substs: trait_ref.substs,
+                    item_def_id: obligation.predicate.item_def_id,
+                },
+                ty: ty
+            }
+        });
 
     confirm_param_env_candidate(selcx, obligation, predicate)
         .with_addl_obligations(vtable.nested)
@@ -1400,21 +1399,21 @@ fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     // the `Output` associated type is declared on `FnOnce`
     let fn_once_def_id = tcx.lang_items().fn_once_trait().unwrap();
 
-    // Note: we unwrap the binder here but re-create it below (1)
-    let ty::Binder((trait_ref, ret_type)) =
+    let predicate =
         tcx.closure_trait_ref_and_return_type(fn_once_def_id,
                                               obligation.predicate.self_ty(),
                                               fn_sig,
-                                              flag);
-
-    let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
-        projection_ty: ty::ProjectionTy::from_ref_and_name(
-            tcx,
-            trait_ref,
-            Symbol::intern(FN_OUTPUT_NAME),
-        ),
-        ty: ret_type
-    });
+                                              flag)
+        .map_bound(|(trait_ref, ret_type)| {
+            ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy::from_ref_and_name(
+                    tcx,
+                    trait_ref,
+                    Symbol::intern(FN_OUTPUT_NAME),
+                ),
+                ty: ret_type
+            }
+        });
 
     confirm_param_env_candidate(selcx, obligation, predicate)
 }

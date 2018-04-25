@@ -61,7 +61,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     }
 
-    let fty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+    let fty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
@@ -304,7 +304,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
-                let fn_ty = ty::Binder(tcx.mk_fn_sig(
+                let fn_ty = ty::Binder::bind(tcx.mk_fn_sig(
                     iter::once(mut_u8),
                     tcx.mk_nil(),
                     false,

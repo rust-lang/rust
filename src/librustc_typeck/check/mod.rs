@@ -1727,7 +1727,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
             predicates: self.param_env.caller_bounds.iter().filter(|predicate| {
                 match **predicate {
                     ty::Predicate::Trait(ref data) => {
-                        data.0.self_ty().is_param(index)
+                        data.skip_binder().self_ty().is_param(index)
                     }
                     _ => false
                 }

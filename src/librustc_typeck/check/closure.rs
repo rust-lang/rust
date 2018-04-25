@@ -317,7 +317,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let ret_param_ty = projection.0.ty;
+        let ret_param_ty = projection.skip_binder().ty;
         let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
         debug!(
             "deduce_sig_from_projection: ret_param_ty {:?}",
@@ -458,7 +458,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // regions appearing free in `expected_sig` are now bound up
         // in this binder we are creating.
         assert!(!expected_sig.sig.has_regions_escaping_depth(1));
-        let bound_sig = ty::Binder(self.tcx.mk_fn_sig(
+        let bound_sig = ty::Binder::bind(self.tcx.mk_fn_sig(
             expected_sig.sig.inputs().iter().cloned(),
             expected_sig.sig.output(),
             decl.variadic,
@@ -562,7 +562,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let (supplied_ty, _) = self.infcx.replace_late_bound_regions_with_fresh_var(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
-                    &ty::Binder(supplied_ty),
+                    &ty::Binder::bind(supplied_ty),
                 ); // recreated from (*) above
 
                 // Check that E' = S'.
@@ -607,7 +607,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::DefaultReturn(_) => astconv.ty_infer(decl.output.span()),
         };
 
-        let result = ty::Binder(self.tcx.mk_fn_sig(
+        let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
             supplied_return,
             decl.variadic,
@@ -639,7 +639,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::DefaultReturn(_) => {}
         }
 
-        let result = ty::Binder(self.tcx.mk_fn_sig(
+        let result = ty::Binder::bind(self.tcx.mk_fn_sig(
             supplied_arguments,
             self.tcx.types.err,
             decl.variadic,
