@@ -1441,3 +1441,71 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeAliasBounds {
         }
     }
 }
+
+/// Lint constants that are erroneous.
+/// Without this lint, we might not get any diagnostic if the constant is
+/// unused within this crate, even though downstream crates can't use it
+/// without producing an error.
+pub struct UnusedBrokenConst;
+
+impl LintPass for UnusedBrokenConst {
+    fn get_lints(&self) -> LintArray {
+        lint_array!()
+    }
+}
+
+fn check_const(cx: &LateContext, body_id: hir::BodyId, what: &str) {
+    let def_id = cx.tcx.hir.body_owner_def_id(body_id);
+    let param_env = cx.tcx.param_env(def_id);
+    let cid = ::rustc::mir::interpret::GlobalId {
+        instance: ty::Instance::mono(cx.tcx, def_id),
+        promoted: None
+    };
+    if let Err(err) = cx.tcx.const_eval(param_env.and(cid)) {
+        let span = cx.tcx.def_span(def_id);
+        let mut diag = cx.struct_span_lint(
+            CONST_ERR,
+            span,
+            &format!("this {} cannot be used", what),
+        );
+        use rustc::middle::const_val::ConstEvalErrDescription;
+        match err.description() {
+            ConstEvalErrDescription::Simple(message) => {
+                diag.span_label(span, message);
+            }
+            ConstEvalErrDescription::Backtrace(miri, frames) => {
+                diag.span_label(span, format!("{}", miri));
+                for frame in frames {
+                    diag.span_label(frame.span, format!("inside call to `{}`", frame.location));
+                }
+            }
+        }
+        diag.emit()
+    }
+}
+
+struct UnusedBrokenConstVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
+
+impl<'a, 'tcx, 'v> hir::intravisit::Visitor<'v> for UnusedBrokenConstVisitor<'a, 'tcx> {
+    fn visit_nested_body(&mut self, id: hir::BodyId) {
+        check_const(self.0, id, "array length");
+    }
+    fn nested_visit_map<'this>(&'this mut self) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
+        hir::intravisit::NestedVisitorMap::None
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
+    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        match it.node {
+            hir::ItemConst(_, body_id) => {
+                check_const(cx, body_id, "constant");
+            },
+            hir::ItemTy(ref ty, _) => hir::intravisit::walk_ty(
+                &mut UnusedBrokenConstVisitor(cx),
+                ty
+            ),
+            _ => {},
+        }
+    }
+}
