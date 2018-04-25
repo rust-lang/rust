@@ -20,7 +20,7 @@ use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{TyCtxt, self, Instance};
 use rustc::mir::interpret::{Value, PrimVal, GlobalId};
-use interpret::{eval_body_with_mir, mk_borrowck_eval_cx, ValTy};
+use interpret::{eval_promoted, mk_borrowck_eval_cx, ValTy};
 use transform::{MirPass, MirSource};
 use syntax::codemap::Span;
 use rustc::ty::subst::Substs;
@@ -161,7 +161,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                 };
                 // cannot use `const_eval` here, because that would require having the MIR
                 // for the current function available, but we're producing said MIR right now
-                let (value, _, ty) = eval_body_with_mir(self.tcx, cid, self.mir, self.param_env)?;
+                let (value, _, ty) = eval_promoted(self.tcx, cid, self.mir, self.param_env)?;
                 let val = (value, ty, c.span);
                 trace!("evaluated {:?} to {:?}", c, val);
                 Some(val)

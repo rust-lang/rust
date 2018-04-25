@@ -399,7 +399,14 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 self.mir_constant_to_miri_value(bx, constant)
                     .and_then(|c| OperandRef::from_const(bx, c, ty))
                     .unwrap_or_else(|err| {
-                        err.report(bx.tcx(), constant.span, "const operand");
+                        match constant.literal {
+                            mir::Literal::Promoted { .. } => {
+                                // don't report errors inside promoteds, just warnings.
+                            },
+                            mir::Literal::Value { .. } => {
+                                err.report(bx.tcx(), constant.span, "const operand")
+                            },
+                        }
                         // We've errored, so we don't have to produce working code.
                         let layout = bx.cx.layout_of(ty);
                         PlaceRef::new_sized(

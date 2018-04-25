@@ -10,12 +10,28 @@
 
 // must-compile-successfully
 
-#![crate_type = "lib"]
+trait Foo {
+    const AMT: usize;
+}
 
-pub const Z: u32 = 0 - 1;
-//~^ WARN attempt to subtract with overflow
-//~| WARN this constant cannot be used
+enum Bar<A, B> {
+    First(A),
+    Second(B),
+}
 
-pub type Foo = [i32; 0 - 1];
-//~^ WARN attempt to subtract with overflow
-//~| WARN this array length cannot be used
+impl<A: Foo, B: Foo> Foo for Bar<A, B> {
+    const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
+}
+
+impl Foo for u8 {
+    const AMT: usize = 1;
+}
+
+impl Foo for u16 {
+    const AMT: usize = 2;
+}
+
+fn main() {
+    println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
+    //~^ WARN const_err
+}

@@ -9,14 +9,20 @@
 // except according to those terms.
 
 // must-compile-successfully
-
-const X: u32 = 5;
-const Y: u32 = 6;
-const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-//~^ WARN attempt to subtract with overflow
-//~| WARN this constant cannot be used
-
+// compile-flags: -O
 fn main() {
-    println!("{}", FOO);
-    //~^ WARN constant evaluation error
+    println!("{}", 0u32 - 1);
+    //~^ WARN const_err
+    //~| WARN const_err
+    let _x = 0u32 - 1;
+    //~^ WARN const_err
+    println!("{}", 1/(1-1));
+    //~^ WARN const_err
+    //~| WARN const_err
+    let _x = 1/(1-1);
+    //~^ WARN const_err
+    //~| WARN const_err
+    println!("{}", 1/(false as u32));
+    //~^ WARN const_err
+    let _x = 1/(false as u32);
 }
