@@ -535,7 +535,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will not define any names
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
-            let result = self.resolve_path(&directive.module_path[..], None, false, directive.span);
+            let result = self.resolve_path(&directive.module_path[..], None, false,
+                                           directive.span, Some(directive.id));
             directive.vis.set(vis);
 
             match result {
@@ -663,7 +664,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
-        let module_result = self.resolve_path(&module_path, None, true, span);
+        let module_result = self.resolve_path(&module_path, None, true, span, Some(directive.id));
         let module = match module_result {
             PathResult::Module(module) => module,
             PathResult::Failed(span, msg, false) => {
@@ -677,7 +678,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 if !self_path.is_empty() && !is_special(self_path[0]) &&
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
-                    self_result = Some(self.resolve_path(&self_path, None, false, span));
+                    self_result = Some(self.resolve_path(&self_path, None, false,
+                                                         span, None));
                 }
                 return if let Some(PathResult::Module(..)) = self_result {
                     Some((span, format!("Did you mean `{}`?", names_to_string(&self_path[..]))))

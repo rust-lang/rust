@@ -438,7 +438,7 @@ impl<'a> Resolver<'a> {
                 return Err(Determinacy::Determined);
             }
 
-            let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
+            let def = match self.resolve_path(&path, Some(MacroNS), false, span, None) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => {
@@ -616,7 +616,7 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(&path, Some(MacroNS), true, span) {
+            match self.resolve_path(&path, Some(MacroNS), true, span, None) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
