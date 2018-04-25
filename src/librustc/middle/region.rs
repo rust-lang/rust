@@ -22,6 +22,7 @@ use ty;
 
 use std::fmt;
 use std::mem;
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use syntax::codemap;
 use syntax::ast;
@@ -677,95 +678,74 @@ impl<'tcx> ScopeTree {
                                    -> Scope {
         if scope_a == scope_b { return scope_a; }
 
-        // [1] The initial values for `a_buf` and `b_buf` are not used.
-        // The `ancestors_of` function will return some prefix that
-        // is re-initialized with new values (or else fallback to a
-        // heap-allocated vector).
-        let mut a_buf: [Scope; 32] = [scope_a /* [1] */; 32];
-        let mut a_vec: Vec<Scope> = vec![];
-        let mut b_buf: [Scope; 32] = [scope_b /* [1] */; 32];
-        let mut b_vec: Vec<Scope> = vec![];
-        let parent_map = &self.parent_map;
-        let a_ancestors = ancestors_of(parent_map, scope_a, &mut a_buf, &mut a_vec);
-        let b_ancestors = ancestors_of(parent_map, scope_b, &mut b_buf, &mut b_vec);
-        let mut a_index = a_ancestors.len() - 1;
-        let mut b_index = b_ancestors.len() - 1;
-
-        // Here, [ab]_ancestors is a vector going from narrow to broad.
-        // The end of each vector will be the item where the scope is
-        // defined; if there are any common ancestors, then the tails of
-        // the vector will be the same.  So basically we want to walk
-        // backwards from the tail of each vector and find the first point
-        // where they diverge.  If one vector is a suffix of the other,
-        // then the corresponding scope is a superscope of the other.
-
-        if a_ancestors[a_index] != b_ancestors[b_index] {
-            // In this case, the two regions belong to completely
-            // different functions.  Compare those fn for lexical
-            // nesting. The reasoning behind this is subtle.  See the
-            // "Modeling closures" section of the README in
-            // infer::region_constraints for more details.
-            let a_root_scope = a_ancestors[a_index];
-            let b_root_scope = a_ancestors[a_index];
-            return match (a_root_scope.data(), b_root_scope.data()) {
-                (ScopeData::Destruction(a_root_id),
-                 ScopeData::Destruction(b_root_id)) => {
-                    if self.closure_is_enclosed_by(a_root_id, b_root_id) {
-                        // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
-                        scope_b
-                    } else if self.closure_is_enclosed_by(b_root_id, a_root_id) {
-                        // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
-                        scope_a
-                    } else {
-                        // neither fn encloses the other
-                        bug!()
-                    }
+        // Process the lists in tandem from the innermost scope, recording the
+        // scopes seen so far. The first scope that comes up for a second time
+        // is the nearest common ancestor.
+        //
+        // Note: another way to compute the nearest common ancestor is to get
+        // the full scope chain for both scopes and then compare the chains to
+        // find the first scope in a common tail. But getting a parent scope
+        // requires a hash table lookup, and we often have very long scope
+        // chains (10s or 100s of scopes) that only differ by a few elements at
+        // the start. So this algorithm is faster.
+        let mut ma = Some(scope_a);
+        let mut mb = Some(scope_b);
+        let mut seen: SmallVec<[Scope; 32]> = SmallVec::new();
+        loop {
+            if let Some(a) = ma {
+                if seen.iter().position(|s| *s == a).is_some() {
+                    return a;
                 }
-                _ => {
-                    // root ids are always Node right now
+                seen.push(a);
+                ma = self.parent_map.get(&a).map(|s| *s);
+            }
+
+            if let Some(b) = mb {
+                if seen.iter().position(|s| *s == b).is_some() {
+                    return b;
+                }
+                seen.push(b);
+                mb = self.parent_map.get(&b).map(|s| *s);
+            }
+
+            if ma.is_none() && mb.is_none() {
+                break;
+            }
+        };
+
+        fn outermost_scope(parent_map: &FxHashMap<Scope, Scope>, scope: Scope) -> Scope {
+            let mut scope = scope;
+            loop {
+               match parent_map.get(&scope) {
+                   Some(&superscope) => scope = superscope,
+                   None => break scope,
+               }
+            }
+        }
+
+        // In this (rare) case, the two regions belong to completely different
+        // functions. Compare those fn for lexical nesting. The reasoning
+        // behind this is subtle. See the "Modeling closures" section of the
+        // README in infer::region_constraints for more details.
+        let a_root_scope = outermost_scope(&self.parent_map, scope_a);
+        let b_root_scope = outermost_scope(&self.parent_map, scope_b);
+        match (a_root_scope.data(), b_root_scope.data()) {
+            (ScopeData::Destruction(a_root_id),
+             ScopeData::Destruction(b_root_id)) => {
+                if self.closure_is_enclosed_by(a_root_id, b_root_id) {
+                    // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
+                    scope_b
+                } else if self.closure_is_enclosed_by(b_root_id, a_root_id) {
+                    // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
+                    scope_a
+                } else {
+                    // neither fn encloses the other
                     bug!()
                 }
-            };
-        }
-
-        loop {
-            // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
-            // for all indices between a_index and the end of the array
-            if a_index == 0 { return scope_a; }
-            if b_index == 0 { return scope_b; }
-            a_index -= 1;
-            b_index -= 1;
-            if a_ancestors[a_index] != b_ancestors[b_index] {
-                return a_ancestors[a_index + 1];
             }
-        }
-
-        fn ancestors_of<'a, 'tcx>(parent_map: &FxHashMap<Scope, Scope>,
-                                  scope: Scope,
-                                  buf: &'a mut [Scope; 32],
-                                  vec: &'a mut Vec<Scope>)
-                                  -> &'a [Scope] {
-            // debug!("ancestors_of(scope={:?})", scope);
-            let mut scope = scope;
-
-            let mut i = 0;
-            while i < 32 {
-                buf[i] = scope;
-                match parent_map.get(&scope) {
-                    Some(&superscope) => scope = superscope,
-                    _ => return &buf[..i+1]
-                }
-                i += 1;
-            }
-
-            *vec = Vec::with_capacity(64);
-            vec.extend_from_slice(buf);
-            loop {
-                vec.push(scope);
-                match parent_map.get(&scope) {
-                    Some(&superscope) => scope = superscope,
-                    _ => return &*vec
-                }
+            _ => {
+                // root ids are always Node right now
+                bug!()
             }
         }
     }
