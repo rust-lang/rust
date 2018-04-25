@@ -454,11 +454,15 @@
                         var obj = searchIndex[results[i].id];
                         obj.lev = results[i].lev;
                         if (isType !== true || obj.type) {
+                            var res = buildHrefAndPath(obj);
+                            obj.displayPath = pathSplitter(res[0]);
+                            obj.fullPath = obj.displayPath + obj.name;
+                            obj.href = res[1];
                             out.push(obj);
+                            if (out.length >= MAX_RESULTS) {
+                                break;
+                            }
                         }
-                    }
-                    if (out.length >= MAX_RESULTS) {
-                        break;
                     }
                 }
                 return out;
@@ -1017,6 +1021,12 @@
                     ALIASES[window.currentCrate][query.raw]) {
                 var aliases = ALIASES[window.currentCrate][query.raw];
                 for (var i = 0; i < aliases.length; ++i) {
+                    aliases[i].is_alias = true;
+                    aliases[i].alias = query.raw;
+                    var res = buildHrefAndPath(aliases[i]);
+                    aliases[i].displayPath = pathSplitter(res[0]);
+                    aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
+                    aliases[i].href = res[1];
                     ret['others'].unshift(aliases[i]);
                     if (ret['others'].length > MAX_RESULTS) {
                         ret['others'].pop();
@@ -1179,16 +1189,6 @@
             };
         }
 
-        function escape(content) {
-            var h1 = document.createElement('h1');
-            h1.textContent = content;
-            return h1.innerHTML;
-        }
-
-        function pathSplitter(path) {
-            return '<span>' + path.replace(/::/g, '::</span><span>');
-        }
-
         function buildHrefAndPath(item) {
             var displayPath;
             var href;
@@ -1227,6 +1227,16 @@
             return [displayPath, href];
         }
 
+        function escape(content) {
+            var h1 = document.createElement('h1');
+            h1.textContent = content;
+            return h1.innerHTML;
+        }
+
+        function pathSplitter(path) {
+            return '<span>' + path.replace(/::/g, '::</span><span>');
+        }
+
         function addTab(array, query, display) {
             var extraStyle = '';
             if (display === false) {
@@ -1234,12 +1244,13 @@
             }
 
             var output = '';
+            var duplicates = {};
             if (array.length > 0) {
                 output = '<table class="search-results"' + extraStyle + '>';
                 var shown = [];
 
                 array.forEach(function(item) {
-                    var name, type, href, displayPath;
+                    var name, type;
 
                     var id_ty = item.ty + item.path + item.name;
                     if (shown.indexOf(id_ty) !== -1) {
@@ -1250,15 +1261,23 @@
                     name = item.name;
                     type = itemTypes[item.ty];
 
-                    var res = buildHrefAndPath(item);
-                    var href = res[1];
-                    var displayPath = res[0];
+                    if (item.is_alias !== true) {
+                        var fullPath = item.displayPath + name;
+
+                        if (duplicates[fullPath]) {
+                            return;
+                        }
+                        duplicates[fullPath] = true;
+                    }
 
                     output += '<tr class="' + type + ' result"><td>' +
-                              '<a href="' + href + '">' +
-                              pathSplitter(displayPath) + '<span class="' + type + '">' +
+                              '<a href="' + item.href + '">' +
+                              (item.is_alias === true ?
+                               ('<span><b>' + item.alias + ' </b></span><span ' +
+                                  'class="grey"><i>&nbsp;- see&nbsp;</i></span>') : '') +
+                              item.displayPath + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
-                              '<a href="' + href + '">' +
+                              '<a href="' + item.href + '">' +
                               '<span class="desc">' + escape(item.desc) +
                               '&nbsp;</span></a></td></tr>';
                 });
@@ -1284,8 +1303,7 @@
             if (results['others'].length === 1 &&
                 getCurrentValue('rustdoc-go-to-only-result') === "true") {
                 var elem = document.createElement('a');
-                var res = buildHrefAndPath(results['others'][0]);
-                elem.href = res[1];
+                elem.href = results['others'][0].href;
                 elem.style.display = 'none';
                 // For firefox, we need the element to be in the DOM so it can be clicked.
                 document.body.appendChild(elem);
@@ -1347,12 +1365,13 @@
                 }
             }
             if (queries.length > 1) {
-                function getSmallest(arrays, positions) {
+                function getSmallest(arrays, positions, notDuplicates) {
                     var start = null;
 
                     for (var it = 0; it < positions.length; ++it) {
                         if (arrays[it].length > positions[it] &&
-                            (start === null || start > arrays[it][positions[it]].lev)) {
+                            (start === null || start > arrays[it][positions[it]].lev) &&
+                            !notDuplicates[arrays[it][positions[it]].fullPath]) {
                             start = arrays[it][positions[it]].lev;
                         }
                     }
@@ -1362,19 +1381,23 @@
                 function mergeArrays(arrays) {
                     var ret = [];
                     var positions = [];
+                    var notDuplicates = {};
 
                     for (var x = 0; x < arrays.length; ++x) {
                         positions.push(0);
                     }
                     while (ret.length < MAX_RESULTS) {
-                        var smallest = getSmallest(arrays, positions);
+                        var smallest = getSmallest(arrays, positions, notDuplicates);
+
                         if (smallest === null) {
                             break;
                         }
                         for (x = 0; x < arrays.length && ret.length < MAX_RESULTS; ++x) {
                             if (arrays[x].length > positions[x] &&
-                                    arrays[x][positions[x]].lev === smallest) {
+                                    arrays[x][positions[x]].lev === smallest &&
+                                    !notDuplicates[arrays[x][positions[x]].fullPath]) {
                                 ret.push(arrays[x][positions[x]]);
+                                notDuplicates[arrays[x][positions[x]].fullPath] = true;
                                 positions[x] += 1;
                             }
                         }
