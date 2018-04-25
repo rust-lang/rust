@@ -149,7 +149,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         trait_def_id: DefId,
         supertraits_only: bool) -> bool
     {
-        let trait_ref = ty::Binder(ty::TraitRef {
+        let trait_ref = ty::Binder::dummy(ty::TraitRef {
             def_id: trait_def_id,
             substs: Substs::identity_for_item(self, trait_def_id)
         });
@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             .any(|predicate| {
                 match predicate {
                     ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                        trait_pred.0.self_ty().is_self()
+                        trait_pred.skip_binder().self_ty().is_self()
                     }
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
@@ -352,7 +352,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                     // Compute supertraits of current trait lazily.
                     if supertraits.is_none() {
-                        let trait_ref = ty::Binder(ty::TraitRef {
+                        let trait_ref = ty::Binder::bind(ty::TraitRef {
                             def_id: trait_def_id,
                             substs: Substs::identity_for_item(self, trait_def_id)
                         });
@@ -367,7 +367,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     // direct equality here because all of these types
                     // are part of the formal parameter listing, and
                     // hence there should be no inference variables.
-                    let projection_trait_ref = ty::Binder(data.trait_ref(self));
+                    let projection_trait_ref = ty::Binder::bind(data.trait_ref(self));
                     let is_supertrait_of_current_trait =
                         supertraits.as_ref().unwrap().contains(&projection_trait_ref);
 

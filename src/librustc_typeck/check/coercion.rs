@@ -558,7 +558,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             let trait_ref = match obligation.predicate {
                 ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
                     if unsize_did == tr.def_id() {
-                        if let ty::TyTuple(..) = tr.0.input_types().nth(1).unwrap().sty {
+                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().sty;
+                        if let ty::TyTuple(..) = sty {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }

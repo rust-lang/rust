@@ -89,11 +89,11 @@ fn inferred_outlives_crate<'tcx>(
             let vec: Vec<ty::Predicate<'tcx>> = set.iter()
                 .map(
                     |ty::OutlivesPredicate(kind1, region2)| match kind1.unpack() {
-                        UnpackedKind::Type(ty1) => ty::Predicate::TypeOutlives(ty::Binder(
+                        UnpackedKind::Type(ty1) => ty::Predicate::TypeOutlives(ty::Binder::bind(
                             ty::OutlivesPredicate(ty1, region2),
                         )),
                         UnpackedKind::Lifetime(region1) => ty::Predicate::RegionOutlives(
-                            ty::Binder(ty::OutlivesPredicate(region1, region2)),
+                            ty::Binder::bind(ty::OutlivesPredicate(region1, region2)),
                         ),
                     },
                 )

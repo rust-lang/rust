@@ -388,14 +388,16 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     Obligation::new(
                         cause.clone(),
                         param_env,
-                        ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r1, r2))),
+                        ty::Predicate::RegionOutlives(
+                            ty::Binder::dummy(ty::OutlivesPredicate(r1, r2))),
                     ),
 
                 UnpackedKind::Type(t1) =>
                     Obligation::new(
                         cause.clone(),
                         param_env,
-                        ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(t1, r2))),
+                        ty::Predicate::TypeOutlives(
+                            ty::Binder::dummy(ty::OutlivesPredicate(t1, r2))),
                     ),
             }
         })) as Box<dyn Iterator<Item = _>>

@@ -120,7 +120,7 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
 
 impl<T, U> Clean<U> for ty::Binder<T> where T: Clean<U> {
     fn clean(&self, cx: &DocContext) -> U {
-        self.0.clean(cx)
+        self.skip_binder().clean(cx)
     }
 }
 
@@ -2846,15 +2846,15 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     }
 
                     let mut bindings = vec![];
-                    for ty::Binder(ref pb) in obj.projection_bounds() {
+                    for pb in obj.projection_bounds() {
                         bindings.push(TypeBinding {
-                            name: cx.tcx.associated_item(pb.item_def_id).name.clean(cx),
-                            ty: pb.ty.clean(cx)
+                            name: cx.tcx.associated_item(pb.item_def_id()).name.clean(cx),
+                            ty: pb.skip_binder().ty.clean(cx)
                         });
                     }
 
                     let path = external_path(cx, &cx.tcx.item_name(did), Some(did),
-                        false, bindings, principal.0.substs);
+                        false, bindings, principal.skip_binder().substs);
                     ResolvedPath {
                         path,
                         typarams: Some(typarams),

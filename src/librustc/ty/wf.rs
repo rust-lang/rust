@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                                 cause,
                                 param_env,
                                 ty::Predicate::TypeOutlives(
-                                    ty::Binder(
+                                    ty::Binder::dummy(
                                         ty::OutlivesPredicate(mt.ty, r)))));
                     }
                 }
@@ -492,7 +492,8 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
-                let outlives = ty::Binder(ty::OutlivesPredicate(explicit_bound, implicit_bound));
+                let outlives = ty::Binder::dummy(
+                    ty::OutlivesPredicate(explicit_bound, implicit_bound));
                 self.out.push(traits::Obligation::new(cause,
                                                       self.param_env,
                                                       outlives.to_predicate()));

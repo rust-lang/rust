@@ -313,11 +313,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
                 if let Some(p) = data.principal() {
                     let poly_trait_ref = p.with_self_ty(self.tcx(), self.tcx().types.err);
-                    self.add_constraints_from_trait_ref(current, poly_trait_ref.0, variance);
+                    self.add_constraints_from_trait_ref(
+                        current, *poly_trait_ref.skip_binder(), variance);
                 }
 
                 for projection in data.projection_bounds() {
-                    self.add_constraints_from_ty(current, projection.0.ty, self.invariant);
+                    self.add_constraints_from_ty(
+                        current, projection.skip_binder().ty, self.invariant);
                 }
             }
 
@@ -399,10 +401,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                 sig: ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in sig.0.inputs() {
+        for &input in sig.skip_binder().inputs() {
             self.add_constraints_from_ty(current, input, contra);
         }
-        self.add_constraints_from_ty(current, sig.0.output(), variance);
+        self.add_constraints_from_ty(current, sig.skip_binder().output(), variance);
     }
 
     /// Adds constraints appropriate for a region appearing in a

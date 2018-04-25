@@ -302,7 +302,7 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
 
 /// Result from a generalization operation. This includes
 /// not only the generalized type, but also a bool flag
-/// indicating whether further WF checks are needed.q
+/// indicating whether further WF checks are needed.
 struct Generalization<'tcx> {
     ty: Ty<'tcx>,
 
@@ -351,7 +351,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>
     {
-        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 
     fn relate_item_substs(&mut self,

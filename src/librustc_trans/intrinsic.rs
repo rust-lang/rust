@@ -958,7 +958,7 @@ fn gen_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     output: Ty<'tcx>,
                     trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
-    let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder(cx.tcx.mk_fn_sig(
+    let rust_fn_ty = cx.tcx.mk_fn_ptr(ty::Binder::bind(cx.tcx.mk_fn_sig(
         inputs.into_iter(),
         output,
         false,
@@ -985,7 +985,7 @@ fn get_rust_try_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // Define the type up front for the signature of the rust_try function.
     let tcx = cx.tcx;
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+    let fn_ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
         iter::once(i8p),
         tcx.mk_nil(),
         false,

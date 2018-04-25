@@ -1048,18 +1048,18 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
 
-        let substs = &trait_ref.0.substs;
+        let substs = &trait_ref.skip_binder().substs;
         match *self {
-            Predicate::Trait(ty::Binder(ref data)) =>
-                Predicate::Trait(ty::Binder(data.subst(tcx, substs))),
-            Predicate::Subtype(ty::Binder(ref data)) =>
-                Predicate::Subtype(ty::Binder(data.subst(tcx, substs))),
-            Predicate::RegionOutlives(ty::Binder(ref data)) =>
-                Predicate::RegionOutlives(ty::Binder(data.subst(tcx, substs))),
-            Predicate::TypeOutlives(ty::Binder(ref data)) =>
-                Predicate::TypeOutlives(ty::Binder(data.subst(tcx, substs))),
-            Predicate::Projection(ty::Binder(ref data)) =>
-                Predicate::Projection(ty::Binder(data.subst(tcx, substs))),
+            Predicate::Trait(ref binder) =>
+                Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs))),
+            Predicate::Subtype(ref binder) =>
+                Predicate::Subtype(binder.map_bound(|data| data.subst(tcx, substs))),
+            Predicate::RegionOutlives(ref binder) =>
+                Predicate::RegionOutlives(binder.map_bound(|data| data.subst(tcx, substs))),
+            Predicate::TypeOutlives(ref binder) =>
+                Predicate::TypeOutlives(binder.map_bound(|data| data.subst(tcx, substs))),
+            Predicate::Projection(ref binder) =>
+                Predicate::Projection(binder.map_bound(|data| data.subst(tcx, substs))),
             Predicate::WellFormed(data) =>
                 Predicate::WellFormed(data.subst(tcx, substs)),
             Predicate::ObjectSafe(trait_def_id) =>
@@ -1095,7 +1095,7 @@ impl<'tcx> TraitPredicate<'tcx> {
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
         // ok to skip binder since trait def-id does not care about regions
-        self.0.def_id()
+        self.skip_binder().def_id()
     }
 }
 
@@ -1149,11 +1149,20 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         // This is because here `self` has a `Binder` and so does our
         // return value, so we are preserving the number of binding
         // levels.
-        ty::Binder(self.0.projection_ty.trait_ref(tcx))
+        self.map_bound(|predicate| predicate.projection_ty.trait_ref(tcx))
     }
 
     pub fn ty(&self) -> Binder<Ty<'tcx>> {
-        Binder(self.skip_binder().ty) // preserves binding levels
+        self.map_bound(|predicate| predicate.ty)
+    }
+
+    /// The DefId of the TraitItem for the associated type.
+    ///
+    /// Note that this is not the DefId of the TraitRef containing this
+    /// associated type, which is in tcx.associated_item(projection_def_id()).container.
+    pub fn projection_def_id(&self) -> DefId {
+        // ok to skip binder since trait def-id does not care about regions
+        self.skip_binder().projection_ty.item_def_id
     }
 }
 
@@ -1163,8 +1172,7 @@ pub trait ToPolyTraitRef<'tcx> {
 
 impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        assert!(!self.has_escaping_regions());
-        ty::Binder(self.clone())
+        ty::Binder::dummy(self.clone())
     }
 }
 
@@ -1180,12 +1188,7 @@ pub trait ToPredicate<'tcx> {
 
 impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
     fn to_predicate(&self) -> Predicate<'tcx> {
-        // we're about to add a binder, so let's check that we don't
-        // accidentally capture anything, or else that might be some
-        // weird debruijn accounting.
-        assert!(!self.has_escaping_regions());
-
-        ty::Predicate::Trait(ty::Binder(ty::TraitPredicate {
+        ty::Predicate::Trait(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: self.clone()
         }))
     }
@@ -1224,17 +1227,19 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::Trait(ref data) => {
                 data.skip_binder().input_types().collect()
             }
-            ty::Predicate::Subtype(ty::Binder(SubtypePredicate { a, b, a_is_expected: _ })) => {
+            ty::Predicate::Subtype(binder) => {
+                let SubtypePredicate { a, b, a_is_expected: _ } = binder.skip_binder();
                 vec![a, b]
             }
-            ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
-                vec![data.0]
+            ty::Predicate::TypeOutlives(binder) => {
+                vec![binder.skip_binder().0]
             }
             ty::Predicate::RegionOutlives(..) => {
                 vec![]
             }
             ty::Predicate::Projection(ref data) => {
-                data.0.projection_ty.substs.types().chain(Some(data.0.ty)).collect()
+                let inner = data.skip_binder();
+                inner.projection_ty.substs.types().chain(Some(inner.ty)).collect()
             }
             ty::Predicate::WellFormed(data) => {
                 vec![data]
@@ -2090,7 +2095,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     Some(x) => x,
                     _ => return vec![ty]
                 };
-                let sized_predicate = Binder(TraitRef {
+                let sized_predicate = Binder::dummy(TraitRef {
                     def_id: sized_trait,
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();

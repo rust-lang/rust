@@ -258,7 +258,7 @@ fn check_explicit_predicates<'tcx>(
                 // where OutlivesPredicate<type1, region1> is the predicate
                 // we want to add.
                 ty::Predicate::TypeOutlives(poly) => {
-                    let predicate = poly.0.subst(tcx, substs);
+                    let predicate = poly.skip_binder().subst(tcx, substs);
                     insert_outlives_predicate(
                         tcx,
                         predicate.0.into(),
@@ -271,7 +271,7 @@ fn check_explicit_predicates<'tcx>(
                 // where OutlivesPredicate<region1, region2> is the predicate
                 // we want to add.
                 ty::Predicate::RegionOutlives(poly) => {
-                    let predicate = poly.0.subst(tcx, substs);
+                    let predicate = poly.skip_binder().subst(tcx, substs);
                     insert_outlives_predicate(
                         tcx,
                         predicate.0.into(),
