@@ -54,6 +54,7 @@ pub struct RawVec<T, A: Alloc = Global> {
 }
 
 impl<T, A: Alloc> RawVec<T, A> {
+    // FIXME: this should be made `const` when `if` statements are allowed
     /// Like `new` but parameterized over the choice of allocator for
     /// the returned RawVec.
     pub fn new_in(a: A) -> Self {
@@ -68,6 +69,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         }
     }
 
+    // FIXME: this should removed when `new_in` can be made `const`
     /// Like `empty` but parametrized over the choice of allocator for the returned `RawVec`.
     pub const fn empty_in(a: A) -> Self {
         // Unique::empty() doubles as "unallocated" and "zero-sized allocation"
@@ -134,9 +136,10 @@ impl<T> RawVec<T, Global> {
         Self::new_in(Global)
     }
 
+    // FIXME: this should removed when `new` can be made `const`
     /// Create a `RawVec` with capcity 0 (on the system heap), regardless of `T`, without
     /// allocating.
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self::empty_in(Global)
     }
 
