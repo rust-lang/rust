@@ -57,7 +57,7 @@ mod lock;
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
 
 #[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
-pub enum SuggestionApproximate {
+pub enum Applicability {
     MachineApplicable,
     HasPlaceholders,
     MaybeIncorrect,
@@ -95,7 +95,7 @@ pub struct CodeSuggestion {
     /// Sometimes we may show suggestions with placeholders,
     /// which are useful for users but not useful for
     /// tools like rustfix
-    pub approximate: SuggestionApproximate,
+    pub applicability: Applicability,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
