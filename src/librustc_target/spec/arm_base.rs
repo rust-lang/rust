@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::abi::Abi;
+use spec::abi::Abi;
 
 // All the calling conventions trigger an assertion(Unsupported calling convention) in llvm on arm
 pub fn abi_blacklist() -> Vec<Abi> {

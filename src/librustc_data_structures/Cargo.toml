@@ -11,6 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 ena = "0.9.1"
 log = "0.4"
+rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"

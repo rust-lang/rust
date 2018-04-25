@@ -13,7 +13,7 @@ use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
-use syntax::abi::Abi::RustIntrinsic;
+use rustc_target::spec::abi::Abi::RustIntrinsic;
 use syntax_pos::Span;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;

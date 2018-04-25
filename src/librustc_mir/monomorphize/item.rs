@@ -339,7 +339,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 }
 
                 let abi = sig.abi();
-                if abi != ::syntax::abi::Abi::Rust {
+                if abi != ::rustc_target::spec::abi::Abi::Rust {
                     output.push_str("extern \"");
                     output.push_str(abi.name());
                     output.push_str("\" ");

@@ -12,7 +12,7 @@ use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
 use ty::subst::Kind;
 use traits;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use util::ppaux;
 
 use std::fmt;

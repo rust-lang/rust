@@ -11,7 +11,7 @@
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 use rustc::ty::TyCtxt;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     let mut collector = Collector {

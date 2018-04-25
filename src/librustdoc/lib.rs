@@ -36,6 +36,7 @@ extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_metadata;
+extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate serialize;
 #[macro_use] extern crate syntax;

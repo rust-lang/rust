@@ -678,7 +678,7 @@ mod tests {
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
     use codemap::{respan, Spanned};
     use ast::{self, Ident, PatKind};
-    use abi::Abi;
+    use rustc_target::spec::abi::Abi;
     use attr::first_attr_value_str_by_name;
     use parse;
     use parse::parser::Parser;

@@ -54,7 +54,7 @@ use std::sync::Arc;
 use externalfiles::ExternalHtml;
 
 use serialize::json::{ToJson, Json, as_json};
-use syntax::{abi, ast};
+use syntax::ast;
 use syntax::codemap::FileName;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
@@ -62,6 +62,7 @@ use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
+use rustc_target::spec::abi;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
 use doctree;

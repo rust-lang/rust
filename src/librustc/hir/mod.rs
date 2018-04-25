@@ -34,7 +34,7 @@ use mir::mono::Linkage;
 
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::InlineAttr;

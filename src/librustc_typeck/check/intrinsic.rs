@@ -17,7 +17,7 @@ use rustc::ty::{self, TyCtxt, Ty};
 use rustc::util::nodemap::FxHashMap;
 use require_same_types;
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;

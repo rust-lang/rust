@@ -2,7 +2,7 @@ use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::LayoutOf;
 use syntax::codemap::Span;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PrimVal, Value};
 use super::{EvalContext, Place, Machine, ValTy};

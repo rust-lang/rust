@@ -31,7 +31,7 @@ use rustc::session::config::{OutputFilenames, OutputTypes};
 use rustc_data_structures::sync::{self, Lrc};
 use syntax;
 use syntax::ast;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::codemap::{CodeMap, FilePathMapping, FileName};
 use errors;
 use errors::emitter::Emitter;

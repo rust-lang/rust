@@ -82,7 +82,7 @@ impl_stable_hash_for!(enum ::syntax::ext::base::MacroKind {
 });
 
 
-impl_stable_hash_for!(enum ::syntax::abi::Abi {
+impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     Cdecl,
     Stdcall,
     Fastcall,

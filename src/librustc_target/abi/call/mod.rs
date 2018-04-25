@@ -458,22 +458,22 @@ pub struct FnType<'a, Ty> {
 }
 
 impl<'a, Ty> FnType<'a, Ty> {
-    pub fn adjust_for_cabi<C>(&mut self, cx: C, abi: ::syntax::abi::Abi) -> Result<(), String>
+    pub fn adjust_for_cabi<C>(&mut self, cx: C, abi: ::spec::abi::Abi) -> Result<(), String>
         where Ty: TyLayoutMethods<'a, C> + Copy,
               C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
     {
         match &cx.target_spec().arch[..] {
             "x86" => {
-                let flavor = if abi == ::syntax::abi::Abi::Fastcall {
+                let flavor = if abi == ::spec::abi::Abi::Fastcall {
                     x86::Flavor::Fastcall
                 } else {
                     x86::Flavor::General
                 };
                 x86::compute_abi_info(cx, self, flavor);
             },
-            "x86_64" => if abi == ::syntax::abi::Abi::SysV64 {
+            "x86_64" => if abi == ::spec::abi::Abi::SysV64 {
                 x86_64::compute_abi_info(cx, self);
-            } else if abi == ::syntax::abi::Abi::Win64 || cx.target_spec().options.is_like_windows {
+            } else if abi == ::spec::abi::Abi::Win64 || cx.target_spec().options.is_like_windows {
                 x86_win64::compute_abi_info(self);
             } else {
                 x86_64::compute_abi_info(cx, self);

@@ -23,7 +23,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::TypeFoldable;
 use std::cmp;
 use std::iter;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::codemap::Span;
 use rustc::hir;
 

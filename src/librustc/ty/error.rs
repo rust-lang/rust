@@ -11,7 +11,7 @@
 use hir::def_id::DefId;
 use ty::{self, BoundRegion, Region, Ty, TyCtxt};
 use std::fmt;
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::ast;
 use errors::DiagnosticBuilder;
 use syntax_pos::Span;

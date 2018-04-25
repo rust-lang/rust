@@ -44,7 +44,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::hir::MatchSource,
     ::hir::Mutability,
     ::hir::Unsafety,
-    ::syntax::abi::Abi,
+    ::rustc_target::spec::abi::Abi,
     ::mir::Local,
     ::mir::Promoted,
     ::traits::Reveal,

@@ -23,7 +23,8 @@ use rustc::ty::{self, AdtKind, CratePredicatesMap, Region, RegionKind, ReprOptio
                 ToPolyTraitRef, ToPredicate, Ty, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use syntax::{abi, ast};
+use rustc_target::spec::abi;
+use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
 /// Infer predicates for the items in the crate.

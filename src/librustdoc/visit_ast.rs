@@ -13,7 +13,7 @@
 
 use std::mem;
 
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax_pos::Span;

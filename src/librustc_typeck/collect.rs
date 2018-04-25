@@ -38,8 +38,9 @@ use rustc::ty::util::IntTypeExt;
 use rustc::ty::util::Discr;
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
+use rustc_target::spec::abi;
 
-use syntax::{abi, ast};
+use syntax::ast;
 use syntax::ast::MetaItemKind;
 use syntax::attr::{InlineAttr, list_contains_name, mark_used};
 use syntax::codemap::Spanned;

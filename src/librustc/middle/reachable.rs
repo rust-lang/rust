@@ -26,7 +26,7 @@ use middle::privacy;
 use session::config;
 use util::nodemap::{NodeSet, FxHashSet};
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use hir;

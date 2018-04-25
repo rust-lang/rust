@@ -50,8 +50,9 @@ use std::default::Default;
 use std::{fmt, io};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use syntax::abi::{Abi, lookup as lookup_abi};
+use spec::abi::{Abi, lookup as lookup_abi};
 
+pub mod abi;
 mod android_base;
 mod apple_base;
 mod apple_ios_base;

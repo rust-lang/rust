@@ -1091,7 +1091,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,
-                    ::syntax::abi::Abi::Rust
+                    ::rustc_target::spec::abi::Abi::Rust
                 )
             } else {
                 tcx.mk_fn_sig(
@@ -1099,7 +1099,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,
-                    ::syntax::abi::Abi::Rust
+                    ::rustc_target::spec::abi::Abi::Rust
                 )
             };
             format!("{}", ty::Binder::bind(sig))

@@ -10,7 +10,7 @@
 
 use rustc::middle::allocator::AllocatorKind;
 use rustc_errors;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast::{Attribute, Crate, LitKind, StrStyle};
 use syntax::ast::{Arg, Constness, Generics, Mac, Mutability, Ty, Unsafety};
 use syntax::ast::{self, Expr, Ident, Item, ItemKind, TyKind, VisibilityKind};

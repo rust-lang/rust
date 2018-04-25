@@ -70,7 +70,7 @@ use std::ops::Deref;
 use std::iter;
 use std::sync::mpsc;
 use std::sync::Arc;
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use syntax::codemap::MultiSpan;

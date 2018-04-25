@@ -20,7 +20,7 @@ pub use self::FunctionRetTy::*;
 pub use self::Visibility::*;
 
 use syntax;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
 use syntax::codemap::{dummy_spanned, Spanned};

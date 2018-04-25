@@ -24,7 +24,7 @@ use rustc::ty::layout;
 
 use libc::c_uint;
 
-pub use syntax::abi::Abi;
+pub use rustc_target::spec::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 pub use rustc_target::abi::call::*;
 

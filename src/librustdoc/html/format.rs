@@ -19,7 +19,7 @@ use std::fmt;
 use std::iter::repeat;
 
 use rustc::hir::def_id::DefId;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use rustc::hir;
 
 use clean::{self, PrimitiveType};

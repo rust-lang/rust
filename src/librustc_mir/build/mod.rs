@@ -25,7 +25,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use shim;
 use std::mem;
 use std::u32;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;

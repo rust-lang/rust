@@ -10,7 +10,7 @@
 
 pub use self::AnnNode::*;
 
-use abi::{self, Abi};
+use rustc_target::spec::abi::{self, Abi};
 use ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use ast::{SelfKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Attribute;

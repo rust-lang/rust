@@ -11,7 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 bitflags = "1.0"
 log = "0.4"
-syntax = { path = "../libsyntax" }
+rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }
 
 [features]
