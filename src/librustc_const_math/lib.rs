@@ -18,14 +18,9 @@
       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
-extern crate rustc_apfloat;
-
-extern crate syntax;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-mod float;
 mod err;
 
-pub use float::*;
 pub use err::{ConstMathErr, Op};

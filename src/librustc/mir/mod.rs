@@ -43,6 +43,8 @@ use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
+use rustc_apfloat::ieee::{Single, Double};
+use rustc_apfloat::Float;
 
 mod cache;
 pub mod tcx;
@@ -1915,12 +1917,13 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
 
 pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
-    use rustc_const_math::ConstFloat;
     match (value, &ty.sty) {
         (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
         (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
-        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(fty)) =>
-            write!(f, "{}", ConstFloat { bits, ty: fty }),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F32)) =>
+            write!(f, "{}", Single::from_bits(bits)),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F64)) =>
+            write!(f, "{}", Double::from_bits(bits)),
         (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
         (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
         (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>

@@ -28,7 +28,6 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_const_math::ConstFloat;
 
 use std::cmp::Ordering;
 use std::fmt;
@@ -1053,22 +1052,21 @@ pub fn compare_const_vals<'a, 'tcx>(
     b: &ConstVal,
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
-    use rustc_const_math::ConstFloat;
     trace!("compare_const_vals: {:?}, {:?}", a, b);
     use rustc::mir::interpret::{Value, PrimVal};
     match (a, b) {
         (&ConstVal::Value(Value::ByVal(PrimVal::Bytes(a))),
          &ConstVal::Value(Value::ByVal(PrimVal::Bytes(b)))) => {
+            use ::rustc_apfloat::Float;
             match ty.sty {
-                ty::TyFloat(ty) => {
-                    let l = ConstFloat {
-                        bits: a,
-                        ty,
-                    };
-                    let r = ConstFloat {
-                        bits: b,
-                        ty,
-                    };
+                ty::TyFloat(ast::FloatTy::F32) => {
+                    let l = ::rustc_apfloat::ieee::Single::from_bits(a);
+                    let r = ::rustc_apfloat::ieee::Single::from_bits(b);
+                    l.partial_cmp(&r)
+                },
+                ty::TyFloat(ast::FloatTy::F64) => {
+                    let l = ::rustc_apfloat::ieee::Double::from_bits(a);
+                    let r = ::rustc_apfloat::ieee::Double::from_bits(b);
                     l.partial_cmp(&r)
                 },
                 ty::TyInt(_) => {
@@ -1148,12 +1146,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         },
         LitKind::Float(n, fty) => {
             let n = n.as_str();
-            let mut f = parse_float(&n, fty)?;
-            if neg {
-                f = -f;
-            }
-            let bits = f.bits;
-            Value::ByVal(PrimVal::Bytes(bits))
+            parse_float(&n, fty, neg).map_err(|_| ())?
         }
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
@@ -1161,12 +1154,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
                 _ => bug!()
             };
             let n = n.as_str();
-            let mut f = parse_float(&n, fty)?;
-            if neg {
-                f = -f;
-            }
-            let bits = f.bits;
-            Value::ByVal(PrimVal::Bytes(bits))
+            parse_float(&n, fty, neg).map_err(|_| ())?
         }
         LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
         LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
@@ -1174,7 +1162,33 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
     Ok(ConstVal::Value(lit))
 }
 
-fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
-                     -> Result<ConstFloat, ()> {
-    ConstFloat::from_str(num, fty).map_err(|_| ())
+pub fn parse_float(
+    num: &str,
+    fty: ast::FloatTy,
+    neg: bool,
+) -> Result<Value, String> {
+    use rustc_apfloat::ieee::{Single, Double};
+    use rustc_apfloat::Float;
+    let bits = match fty {
+        ast::FloatTy::F32 => {
+            let mut f = num.parse::<Single>().map_err(|e| {
+                format!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            })?;
+            if neg {
+                f = -f;
+            }
+            f.to_bits()
+        }
+        ast::FloatTy::F64 => {
+            let mut f = num.parse::<Double>().map_err(|e| {
+                format!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            })?;
+            if neg {
+                f = -f;
+            }
+            f.to_bits()
+        }
+    };
+
+    Ok(Value::ByVal(PrimVal::Bytes(bits)))
 }

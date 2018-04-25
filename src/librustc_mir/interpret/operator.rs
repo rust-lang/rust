@@ -1,9 +1,10 @@
 use rustc::mir;
 use rustc::ty::{self, Ty};
-use rustc_const_math::ConstFloat;
 use syntax::ast::FloatTy;
 use std::cmp::Ordering;
 use rustc::ty::layout::LayoutOf;
+use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::Float;
 
 use super::{EvalContext, Place, Machine, ValTy};
 
@@ -125,31 +126,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             return err!(Unimplemented(msg));
         }
 
-        let float_op = |op, l, r, ty| {
-            let l = ConstFloat {
-                bits: l,
-                ty,
-            };
-            let r = ConstFloat {
-                bits: r,
-                ty,
-            };
-            match op {
-                Eq => PrimVal::from_bool(l.partial_cmp(&r).unwrap() == Ordering::Equal),
-                Ne => PrimVal::from_bool(l.partial_cmp(&r).unwrap() != Ordering::Equal),
-                Lt => PrimVal::from_bool(l.partial_cmp(&r).unwrap() == Ordering::Less),
-                Le => PrimVal::from_bool(l.partial_cmp(&r).unwrap() != Ordering::Greater),
-                Gt => PrimVal::from_bool(l.partial_cmp(&r).unwrap() == Ordering::Greater),
-                Ge => PrimVal::from_bool(l.partial_cmp(&r).unwrap() != Ordering::Less),
-                Add => PrimVal::Bytes((l + r).unwrap().bits),
-                Sub => PrimVal::Bytes((l - r).unwrap().bits),
-                Mul => PrimVal::Bytes((l * r).unwrap().bits),
-                Div => PrimVal::Bytes((l / r).unwrap().bits),
-                Rem => PrimVal::Bytes((l % r).unwrap().bits),
-                _ => bug!("invalid float op: `{:?}`", op),
-            }
-        };
-
         if left_layout.abi.is_signed() {
             let op: Option<fn(&i128, &i128) -> bool> = match bin_op {
                 Lt => Some(i128::lt),
@@ -199,7 +175,31 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         }
 
         if let ty::TyFloat(fty) = left_ty.sty {
-            return Ok((float_op(bin_op, l, r, fty), false));
+            macro_rules! float_math {
+                ($ty:path) => {{
+                    let l = <$ty>::from_bits(l);
+                    let r = <$ty>::from_bits(r);
+                    let val = match bin_op {
+                        Eq => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Equal),
+                        Ne => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Equal),
+                        Lt => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Less),
+                        Le => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Greater),
+                        Gt => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) == Ordering::Greater),
+                        Ge => PrimVal::from_bool(l.partial_cmp(&r).unwrap_or(Ordering::Greater) != Ordering::Less),
+                        Add => PrimVal::Bytes((l + r).value.to_bits()),
+                        Sub => PrimVal::Bytes((l - r).value.to_bits()),
+                        Mul => PrimVal::Bytes((l * r).value.to_bits()),
+                        Div => PrimVal::Bytes((l / r).value.to_bits()),
+                        Rem => PrimVal::Bytes((l % r).value.to_bits()),
+                        _ => bug!("invalid float op: `{:?}`", bin_op),
+                    };
+                    return Ok((val, false));
+                }};
+            }
+            match fty {
+                FloatTy::F32 => float_math!(Single),
+                FloatTy::F64 => float_math!(Double),
+            }
         }
 
         // only ints left
