@@ -141,7 +141,7 @@ could have `T: !Sized` so there seems to be no need for keeping `unsized`.
 
 We already have [`std::mem::size_of`](https://doc.rust-lang.org/nightly/std/mem/fn.size_of.html) and similar which
 are `const fn`s or can be. In the case of `offsetof`, we would instead use
-a macro `offet_of!`.
+a macro `offset_of!`.
 
 A reason why we might want to keep these reserved is that they already exist in
 the standard library, and so we might not want anyone to define these functions,
