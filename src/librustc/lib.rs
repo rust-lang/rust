@@ -64,6 +64,7 @@
 #![feature(slice_sort_by_cached_key)]
 #![feature(specialization)]
 #![feature(unboxed_closures)]
+#![feature(thread_local)]
 #![feature(trace_macros)]
 #![feature(trusted_len)]
 #![feature(catch_expr)]

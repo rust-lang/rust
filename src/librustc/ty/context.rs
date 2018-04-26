@@ -1762,17 +1762,20 @@ pub mod tls {
     }
 
     // A thread local value which stores a pointer to the current ImplicitCtxt
-    thread_local!(static TLV: Cell<usize> = Cell::new(0));
+    #[thread_local]
+    static TLV: Cell<usize> = Cell::new(0);
 
+    #[inline(always)]
     fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
         let old = get_tlv();
-        let _reset = OnDrop(move || TLV.with(|tlv| tlv.set(old)));
-        TLV.with(|tlv| tlv.set(value));
+        let _reset = OnDrop(move || TLV.set(old));
+        TLV.set(value);
         f()
     }
 
+    #[inline(always)]
     fn get_tlv() -> usize {
-        TLV.with(|tlv| tlv.get())
+        TLV.get()
     }
 
     /// This is a callback from libsyntax as it cannot access the implicit state
