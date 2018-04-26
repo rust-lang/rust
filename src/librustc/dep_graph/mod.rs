@@ -14,13 +14,12 @@ mod dep_tracking_map;
 mod graph;
 mod prev;
 mod query;
-mod raii;
 mod safe;
 mod serialized;
 
 pub use self::dep_tracking_map::{DepTrackingMap, DepTrackingMapConfig};
 pub use self::dep_node::{DepNode, DepKind, DepConstructor, WorkProductId, label_strs};
-pub use self::graph::{DepGraph, WorkProduct, DepNodeIndex, DepNodeColor};
+pub use self::graph::{DepGraph, WorkProduct, DepNodeIndex, DepNodeColor, OpenTask};
 pub use self::graph::WorkProductFileKind;
 pub use self::prev::PreviousDepGraph;
 pub use self::query::DepGraphQuery;
