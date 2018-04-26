@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: isize = Foo::B as isize;
+const A: isize = Foo::B as isize; //~ ERROR E0391
 
 enum Foo {
-    B = A, //~ ERROR E0391
+    B = A,
 }
 
 fn main() {}
