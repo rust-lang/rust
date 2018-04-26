@@ -123,11 +123,11 @@ impl Mark {
     /// mark. That is, the following holds:
     ///
     /// ```rust
-    /// let lub = lub(a, b);
-    /// assert!(a.is_descendant_of(lub))
-    /// assert!(b.is_descendant_of(lub))
+    /// let la = least_ancestor(a, b);
+    /// assert!(a.is_descendant_of(la))
+    /// assert!(b.is_descendant_of(la))
     /// ```
-    pub fn lub(mut a: Mark, mut b: Mark) -> Mark {
+    pub fn least_ancestor(mut a: Mark, mut b: Mark) -> Mark {
         HygieneData::with(|data| {
             // Compute the path from a to the root
             let mut a_path = FxHashSet::<Mark>();
@@ -138,7 +138,7 @@ impl Mark {
 
             // While the path from b to the root hasn't intersected, move up the tree
             while !a_path.contains(&b) {
-                b =  data.marks[b.0 as usize].parent;
+                b = data.marks[b.0 as usize].parent;
             }
 
             b
