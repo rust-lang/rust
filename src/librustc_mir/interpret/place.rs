@@ -218,9 +218,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             }
         };
 
-        if log_enabled!(::log::Level::Trace) {
-            self.dump_local(place);
-        }
+        self.dump_local(place);
 
         Ok(place)
     }
