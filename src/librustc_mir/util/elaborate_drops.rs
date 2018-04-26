@@ -13,6 +13,7 @@ use rustc::hir;
 use rustc::mir::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
+use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::util::IntTypeExt;
@@ -206,6 +207,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             let field = Field::new(i);
             let subpath = self.elaborator.field_subpath(variant_path, field);
 
+            assert_eq!(self.elaborator.param_env().reveal, Reveal::All);
             let field_ty = self.tcx().normalize_erasing_regions(
                 self.elaborator.param_env(),
                 f.ty(self.tcx(), substs),
