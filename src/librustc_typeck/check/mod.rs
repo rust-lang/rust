@@ -1054,6 +1054,13 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.check_pat_walk(&arg.pat, arg_ty,
             ty::BindingMode::BindByValue(hir::Mutability::MutImmutable), true);
 
+        // If any of a function's parameters have a type that is uninhabited, then it
+        // may never be called (because its arguments cannot be constructed). Therefore,
+        // it must always diverge.
+        if arg_ty.conservative_is_uninhabited() {
+            fcx.diverges.set(fcx.diverges.get() | Diverges::UnwarnedAlways);
+        }
+
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
