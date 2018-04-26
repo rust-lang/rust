@@ -19,7 +19,6 @@ log = { version = "0.4", features = ["release_max_level_info", "std"] }
 proc_macro = { path = "../libproc_macro" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_target = { path = "../librustc_target" }
-rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 serialize = { path = "../libserialize" }

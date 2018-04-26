@@ -311,8 +311,8 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
                 if !bx.cx.check_overflow {
-                    use rustc_const_math::ConstMathErr::Overflow;
-                    use rustc_const_math::Op::Neg;
+                    use rustc::mir::interpret::ConstMathErr::Overflow;
+                    use rustc::mir::interpret::Op::Neg;
 
                     if let mir::AssertMessage::Math(Overflow(Neg)) = *msg {
                         const_cond = Some(expected);

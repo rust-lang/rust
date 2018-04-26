@@ -10,7 +10,6 @@
 
 //! See docs in build/expr/mod.rs
 
-use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -21,7 +20,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
-use rustc::mir::interpret::{Value, PrimVal};
+use rustc::mir::interpret::{Value, PrimVal, ConstMathErr, Op};
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {

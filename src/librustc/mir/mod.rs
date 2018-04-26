@@ -15,7 +15,6 @@
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
-use rustc_const_math::ConstMathErr;
 use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
@@ -26,7 +25,7 @@ use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
-use mir::interpret::{Value, PrimVal};
+use mir::interpret::{Value, PrimVal, ConstMathErr};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};

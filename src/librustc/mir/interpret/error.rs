@@ -8,7 +8,6 @@ use super::{
     MemoryPointer, Lock, AccessKind
 };
 
-use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 use backtrace::Backtrace;
 
@@ -301,6 +300,44 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and align {}", size, align, size2, align2),
             _ => write!(f, "{}", self.description()),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
+pub enum ConstMathErr {
+    Overflow(Op),
+    DivisionByZero,
+    RemainderByZero,
+}
+pub use self::ConstMathErr::*;
+
+#[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
+pub enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Shr,
+    Shl,
+    Neg,
+}
+
+impl ConstMathErr {
+    pub fn description(&self) -> &'static str {
+        use self::Op::*;
+        match *self {
+            Overflow(Add) => "attempt to add with overflow",
+            Overflow(Sub) => "attempt to subtract with overflow",
+            Overflow(Mul) => "attempt to multiply with overflow",
+            Overflow(Div) => "attempt to divide with overflow",
+            Overflow(Rem) => "attempt to calculate the remainder with overflow",
+            Overflow(Neg) => "attempt to negate with overflow",
+            Overflow(Shr) => "attempt to shift right with overflow",
+            Overflow(Shl) => "attempt to shift left with overflow",
+            DivisionByZero => "attempt to divide by zero",
+            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
         }
     }
 }

@@ -8,7 +8,7 @@ macro_rules! err {
 mod error;
 mod value;
 
-pub use self::error::{EvalError, EvalResult, EvalErrorKind};
+pub use self::error::{EvalError, EvalResult, EvalErrorKind, Op, ConstMathErr};
 
 pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 

@@ -669,6 +669,23 @@ for ::mir::interpret::EvalError<'gcx> {
     }
 }
 
+impl_stable_hash_for!(enum mir::interpret::ConstMathErr {
+    Overflow(op),
+    DivisionByZero,
+    RemainderByZero,
+});
+
+impl_stable_hash_for!(enum mir::interpret::Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Rem,
+    Shr,
+    Shl,
+    Neg,
+});
+
 impl_stable_hash_for!(enum mir::interpret::Lock {
     NoLock,
     WriteLock(dl),
