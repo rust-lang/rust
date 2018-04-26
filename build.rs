@@ -11,11 +11,16 @@
 use std::env;
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn main() {
-    println!("cargo:rerun-if-changed=.git/HEAD");
+    // Only check .git/HEAD dirty status if it exists - doing so when
+    // building dependent crates may lead to false positives and rebuilds
+    if Path::new(".git/HEAD").exists() {
+        println!("cargo:rerun-if-changed=.git/HEAD");
+    }
+
     println!("cargo:rerun-if-env-changed=CFG_RELEASE_CHANNEL");
 
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
