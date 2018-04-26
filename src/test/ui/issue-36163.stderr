@@ -1,21 +1,20 @@
-error[E0391]: cycle detected when const-evaluating `Foo::B::{{initializer}}`
+error[E0391]: cycle detected when processing `Foo::B::{{initializer}}`
   --> $DIR/issue-36163.rs:14:9
    |
 LL |     B = A, //~ ERROR E0391
    |         ^
    |
-note: ...which requires processing `Foo::B::{{initializer}}`...
-  --> $DIR/issue-36163.rs:14:9
-   |
-LL |     B = A, //~ ERROR E0391
-   |         ^
-note: ...which requires const-evaluating `A`...
+note: ...which requires processing `A`...
   --> $DIR/issue-36163.rs:11:18
    |
 LL | const A: isize = Foo::B as isize;
-   |                  ^^^^^^
-note: ...which requires computing layout of `Foo`...
-   = note: ...which again requires const-evaluating `Foo::B::{{initializer}}`, completing the cycle
+   |                  ^^^^^^^^^^^^^^^
+   = note: ...which again requires processing `Foo::B::{{initializer}}`, completing the cycle
+note: cycle used when const-evaluating `Foo::B::{{initializer}}`
+  --> $DIR/issue-36163.rs:14:9
+   |
+LL |     B = A, //~ ERROR E0391
+   |         ^
 
 error: aborting due to previous error
 

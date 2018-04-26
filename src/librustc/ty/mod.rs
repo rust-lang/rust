@@ -1982,32 +1982,38 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                     variant_index: usize)
                                     -> Discr<'tcx> {
-        let repr_type = self.repr.discr_type();
-        let mut explicit_value = repr_type.initial_discriminant(tcx.global_tcx());
+        let (val, offset) = self.discriminant_def_for_variant(variant_index);
+        let explicit_value = val
+            .and_then(|expr_did| self.eval_explicit_discr(tcx, expr_did))
+            .unwrap_or_else(|| self.repr.discr_type().initial_discriminant(tcx.global_tcx()));
+        explicit_value.checked_add(tcx, offset as u128).0
+    }
+
+    /// Yields a DefId for the discriminant and an offset to add to it
+    /// Alternatively, if there is no explicit discriminant, returns the
+    /// inferred discriminant directly
+    pub fn discriminant_def_for_variant(
+        &self,
+        variant_index: usize,
+    ) -> (Option<DefId>, usize) {
         let mut explicit_index = variant_index;
+        let expr_did;
         loop {
             match self.variants[explicit_index].discr {
-                ty::VariantDiscr::Relative(0) => break,
+                ty::VariantDiscr::Relative(0) => {
+                    expr_did = None;
+                    break;
+                },
                 ty::VariantDiscr::Relative(distance) => {
                     explicit_index -= distance;
                 }
-                ty::VariantDiscr::Explicit(expr_did) => {
-                    match self.eval_explicit_discr(tcx, expr_did) {
-                        Some(discr) => {
-                            explicit_value = discr;
-                            break;
-                        },
-                        None => {
-                            if explicit_index == 0 {
-                                break;
-                            }
-                            explicit_index -= 1;
-                        }
-                    }
+                ty::VariantDiscr::Explicit(did) => {
+                    expr_did = Some(did);
+                    break;
                 }
             }
         }
-        explicit_value.checked_add(tcx, (variant_index - explicit_index) as u128).0
+        (expr_did, variant_index - explicit_index)
     }
 
     pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {
