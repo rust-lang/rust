@@ -857,28 +857,53 @@ fn configuration_snippet_tests() {
     assert_eq!(failures, 0, "{} configurations tests failed", failures);
 }
 
+struct TempFile {
+    file_name: &'static str,
+}
+
+fn make_temp_file(file_name: &'static str) -> TempFile {
+    use std::fs::File;
+
+    let mut file = File::create(file_name).expect("Couldn't create temp file");
+    let content = "fn main() {}\n";
+    file.write_all(content.as_bytes())
+        .expect("Couldn't write temp file");
+    TempFile { file_name }
+}
+
+impl Drop for TempFile {
+    fn drop(&mut self) {
+        use std::fs::remove_file;
+        remove_file(self.file_name).expect("Couldn't delete temp file");
+    }
+}
+
 #[test]
 fn verify_check_works() {
+    let file_name = "temp_check.rs";
+    let _temp_file = make_temp_file(file_name);
     assert_cli::Assert::command(&[
         "cargo",
         "run",
         "--bin=rustfmt",
         "--",
         "--write-mode=check",
-        "src/bin/main.rs",
+        file_name,
     ]).succeeds()
         .unwrap();
 }
 
 #[test]
 fn verify_diff_works() {
+    let file_name = "temp_diff.rs";
+    let _temp_file = make_temp_file(file_name);
     assert_cli::Assert::command(&[
         "cargo",
         "run",
         "--bin=rustfmt",
         "--",
         "--write-mode=diff",
-        "src/bin/main.rs",
+        file_name,
     ]).succeeds()
         .unwrap();
 }
