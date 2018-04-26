@@ -445,11 +445,18 @@ pub enum Diverges {
     Always,
 
     /// Same as `Always` but with a reachability
-    /// warning already emitted
-    WarnedAlways
+    /// warning already emitted.
+    WarnedAlways,
+
+    /// Same as `Always` but without a reachability
+    /// warning emitted. Unlike `Always`, cannot be
+    /// converted to `WarnedAlways`. Used when
+    /// unreachable code is expected (e.g. in
+    /// function parameters as part of trait impls).
+    UnwarnedAlways,
 }
 
-// Convenience impls for combinig `Diverges`.
+// Convenience impls for combining `Diverges`.
 
 impl ops::BitAnd for Diverges {
     type Output = Self;
