@@ -12,7 +12,6 @@ We unreserve:
 + `sizeof`
 + `alignof`
 + `offsetof`
-+ `priv`
 
 # Motivation
 [motivation]: #motivation
@@ -42,7 +41,6 @@ The keywords to unreserve are:
 + `sizeof`
 + `alignof`
 + `offsetof`
-+ `priv`
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -151,37 +149,6 @@ and so the error messages could be improved saying
 *"go look at `std::mem::size_of` instead"*. However, we believe it is better
 to allow users the freedom to use these keywords instead.
 
-## Rationale for `priv`
-
-Here, `priv` is a privacy / visibility modifier on things like fields, and items.
-An example:
-
-```rust
-priv struct Foo;
-pub struct Bar {
-    priv baz: u8
-}
-```
-
-Since everything is already private by default, `priv` would only be an extra
-hint that users can use to be more explict, but serves no other purpose.
-Further, we could possibly use `pub(self)` for `priv` instead.
-
-Permitting `priv` could also be confusing for readers. Consider for example:
-
-```rust
-pub struct Foo {
-    priv bar: T,
-    baz: U,
-}
-```
-
-An unsuspecting reader can get the impression that `bar` is private but `baz`
-is public. We could of course lint against this mixing, but it does not seem
-worth the complexity.
-
-For these reasons, the current proposal is to unreserve.
-
 # Prior art
 [prior-art]: #prior-art
 
@@ -256,6 +223,39 @@ Additionally, there are known potential use cases / RFCs for:
     ```
 
 ## Possible future unreservations
+
+## `priv`
+
+Here, `priv` is a privacy / visibility modifier on things like fields, and items.
+An example:
+
+```rust
+priv struct Foo;
+pub struct Bar {
+    priv baz: u8
+}
+```
+
+Since everything is already private by default, `priv` would only be an extra
+hint that users can use to be more explict, but serves no other purpose.
+Further, we could possibly use `pub(self)` for `priv` instead.
+
+Permitting `priv` could also be confusing for readers. Consider for example:
+
+```rust
+pub struct Foo {
+    priv bar: T,
+    baz: U,
+}
+```
+
+An unsuspecting reader can get the impression that `bar` is private but `baz`
+is public. We could of course lint against this mixing, but it does not seem
+worth the complexity.
+
+However, right now (2018-04-26), there is a lot of movement around the module
+system. So we would like to wait and discuss unreserving this keyword at some
+later time.
 
 ### `box`
 
