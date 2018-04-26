@@ -270,7 +270,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         None => {}
     };
-    if cx.layout_of(sig.output()).abi == ty::layout::Abi::Uninhabited {
+    if sig.output().conservative_is_uninhabited() {
         flags = flags | DIFlags::FlagNoReturn;
     }
 

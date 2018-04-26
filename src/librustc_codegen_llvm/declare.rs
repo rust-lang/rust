@@ -134,7 +134,7 @@ pub fn declare_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, name: &str,
     let fty = FnType::new(cx, sig, &[]);
     let llfn = declare_raw_fn(cx, name, fty.llvm_cconv(), fty.llvm_type(cx));
 
-    if cx.layout_of(sig.output()).abi == layout::Abi::Uninhabited {
+    if sig.output().conservative_is_uninhabited() {
         llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 

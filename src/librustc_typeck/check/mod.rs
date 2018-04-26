@@ -3666,9 +3666,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
         }
 
-        // Any expression that produces a value of type `!` must have diverged
-        if ty.is_never() {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
+        // Any expression that produces a value of an uninhabited type must have diverged.
+        if ty.conservative_is_uninhabited() {
+            let always = if ty.is_never() {
+                Diverges::Always
+            } else {
+                // We avoid linting in this case for
+                // consistency with previous versions.
+                Diverges::UnwarnedAlways
+            };
+            self.diverges.set(self.diverges.get() | always);
         }
 
         // Record the type, which applies it effects.
