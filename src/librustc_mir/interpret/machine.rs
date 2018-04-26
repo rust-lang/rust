@@ -63,7 +63,6 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn mark_static_initialized<'a>(
         _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
-        _mutability: Mutability,
     ) -> EvalResult<'tcx, bool>;
 
     /// Called when requiring a pointer to a static. Non const eval can

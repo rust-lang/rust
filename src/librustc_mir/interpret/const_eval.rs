@@ -115,14 +115,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
             layout.align,
             None,
         )?;
-        let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-        let mutability = tcx.is_static(cid.instance.def_id());
-        let mutability = if mutability == Some(hir::Mutability::MutMutable) || internally_mutable {
-            Mutability::Mutable
-        } else {
-            Mutability::Immutable
-        };
-        let cleanup = StackPopCleanup::MarkStatic(mutability);
+        let cleanup = StackPopCleanup::MarkStatic;
         let name = ty::tls::with(|tcx| tcx.item_path_str(cid.instance.def_id()));
         let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
         trace!("const_eval: pushing stack frame for global: {}{}", name, prom);
@@ -315,7 +308,6 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     fn mark_static_initialized<'a>(
         _mem: &mut Memory<'a, 'mir, 'tcx, Self>,
         _id: AllocId,
-        _mutability: Mutability,
     ) -> EvalResult<'tcx, bool> {
         Ok(false)
     }

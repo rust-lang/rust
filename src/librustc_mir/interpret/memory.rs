@@ -5,7 +5,6 @@ use std::{ptr, io};
 use rustc::ty::Instance;
 use rustc::ty::maps::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout};
-use syntax::ast::Mutability;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, Value, Pointer,
@@ -91,7 +90,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
             align,
-            runtime_mutability: Mutability::Immutable,
         };
         let id = self.tcx.interpret_interner.reserve();
         M::add_lock(self, id);
@@ -499,13 +497,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn mark_inner_allocation_initialized(
         &mut self,
         alloc: AllocId,
-        mutability: Mutability,
     ) -> EvalResult<'tcx> {
         match self.alloc_kind.get(&alloc) {
             // do not go into statics
             None => Ok(()),
             // just locals and machine allocs
-            Some(_) => self.mark_static_initialized(alloc, mutability),
+            Some(_) => self.mark_static_initialized(alloc),
         }
     }
 
@@ -513,15 +510,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn mark_static_initialized(
         &mut self,
         alloc_id: AllocId,
-        mutability: Mutability,
     ) -> EvalResult<'tcx> {
         trace!(
-            "mark_static_initialized {:?}, mutability: {:?}",
+            "mark_static_initialized {:?}",
             alloc_id,
-            mutability
         );
         // The machine handled it
-        if M::mark_static_initialized(self, alloc_id, mutability)? {
+        if M::mark_static_initialized(self, alloc_id)? {
             return Ok(())
         }
         let alloc = self.alloc_map.remove(&alloc_id);
@@ -531,14 +526,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Some(MemoryKind::Stack) => {},
         }
         let uninit = self.uninitialized_statics.remove(&alloc_id);
-        if let Some(mut alloc) = alloc.or(uninit) {
-            // ensure llvm knows not to put this into immutable memroy
-            alloc.runtime_mutability = mutability;
+        if let Some(alloc) = alloc.or(uninit) {
             let alloc = self.tcx.intern_const_alloc(alloc);
             self.tcx.interpret_interner.intern_at_reserved(alloc_id, alloc);
             // recurse into inner allocations
             for &alloc in alloc.relocations.values() {
-                self.mark_inner_allocation_initialized(alloc, mutability)?;
+                self.mark_inner_allocation_initialized(alloc)?;
             }
         } else {
             bug!("no allocation found for {:?}", alloc_id);
