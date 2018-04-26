@@ -10,6 +10,7 @@
 
 use common::CompareMode;
 use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
+use common::{output_base_dir, output_base_name, output_testname_unique};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Config, TestPaths};
@@ -21,15 +22,15 @@ use header::TestProps;
 use json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json};
-use util::logv;
+use util::{logv, PathBufExt};
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::hash_map::DefaultHasher;
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt;
 use std::fs::{self, create_dir_all, File};
+use std::hash::{Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -106,26 +107,6 @@ impl Mismatch {
     }
 }
 
-trait PathBufExt {
-    /// Append an extension to the path, even if it already has one.
-    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf;
-}
-
-impl PathBufExt for PathBuf {
-    fn with_extra_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
-        if extension.as_ref().len() == 0 {
-            self.clone()
-        } else {
-            let mut fname = self.file_name().unwrap().to_os_string();
-            if !extension.as_ref().to_str().unwrap().starts_with(".") {
-                fname.push(".");
-            }
-            fname.push(extension);
-            self.with_file_name(fname)
-        }
-    }
-}
-
 // Produces a diff between the expected output and actual output.
 pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
     let mut line_number = 1;
@@ -186,7 +167,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-pub fn run(config: Config, testpaths: &TestPaths) {
+pub fn run(config: Config, testpaths: &TestPaths, revision: Option<&str>) {
     match &*config.target {
         "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
             if !config.adb_device_status {
@@ -207,20 +188,25 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let base_props = TestProps::from_file(&testpaths.file, None, &config);
+    let props = TestProps::from_file(&testpaths.file, revision, &config);
 
-    let base_cx = TestCx {
+    let cx = TestCx {
         config: &config,
-        props: &base_props,
+        props: &props,
         testpaths,
-        revision: None,
+        revision: revision,
     };
-    base_cx.init_all();
+    create_dir_all(&cx.output_base_dir()).unwrap();
 
-    if base_props.revisions.is_empty() {
-        base_cx.run_revision()
-    } else {
-        for revision in &base_props.revisions {
+    if config.mode == Incremental {
+        // Incremental tests are special because they cannot be run in
+        // parallel.
+        assert!(
+            !props.revisions.is_empty(),
+            "Incremental tests require revisions."
+        );
+        cx.init_incremental_test();
+        for revision in &props.revisions {
             let revision_props = TestProps::from_file(&testpaths.file, Some(revision), &config);
             let rev_cx = TestCx {
                 config: &config,
@@ -230,11 +216,17 @@ pub fn run(config: Config, testpaths: &TestPaths) {
             };
             rev_cx.run_revision();
         }
+    } else {
+        cx.run_revision();
     }
 
-    base_cx.complete_all();
+    cx.create_stamp();
+}
 
-    File::create(::stamp(&config, testpaths)).unwrap();
+pub fn compute_stamp_hash(config: &Config) -> String {
+    let mut hash = DefaultHasher::new();
+    config.stage_id.hash(&mut hash);
+    format!("{:x}", hash.finish())
 }
 
 struct TestCx<'test> {
@@ -251,14 +243,6 @@ struct DebuggerCommands {
 }
 
 impl<'test> TestCx<'test> {
-    /// invoked once before any revisions have been processed
-    fn init_all(&self) {
-        assert!(self.revision.is_none(), "init_all invoked for a revision");
-        if let Incremental = self.config.mode {
-            self.init_incremental_test()
-        }
-    }
-
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
@@ -278,11 +262,6 @@ impl<'test> TestCx<'test> {
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
         }
-    }
-
-    /// Invoked after all revisions have executed.
-    fn complete_all(&self) {
-        assert!(self.revision.is_none(), "init_all invoked for a revision");
     }
 
     fn check_if_test_should_compile(&self, proc_res: &ProcRes) {
@@ -1361,6 +1340,8 @@ impl<'test> TestCx<'test> {
                     testpaths: &aux_testpaths,
                     revision: self.revision,
                 };
+                // Create the directory for the stdout/stderr files.
+                create_dir_all(aux_cx.output_base_dir()).unwrap();
                 let auxres = aux_cx.document(out_dir);
                 if !auxres.status.success() {
                     return auxres;
@@ -1445,7 +1426,7 @@ impl<'test> TestCx<'test> {
                 let mut program = Command::new(&prog);
                 program
                     .args(args)
-                    .current_dir(&self.output_base_name().parent().unwrap())
+                    .current_dir(&self.output_base_dir())
                     .envs(env.clone());
                 self.compose_and_run(
                     program,
@@ -1483,9 +1464,9 @@ impl<'test> TestCx<'test> {
 
         TestPaths {
             file: test_ab,
-            base: self.testpaths.base.clone(),
             relative_dir: self.testpaths
                 .relative_dir
+                .join(self.output_testname_unique())
                 .join("auxiliary")
                 .join(rel_ab)
                 .parent()
@@ -1506,17 +1487,15 @@ impl<'test> TestCx<'test> {
             let aux_props =
                 self.props
                     .from_aux_file(&aux_testpaths.file, self.revision, self.config);
-            let aux_output = {
-                let f = self.make_lib_name(&self.testpaths.file);
-                let parent = f.parent().unwrap();
-                TargetLocation::ThisDirectory(parent.to_path_buf())
-            };
+            let aux_output = TargetLocation::ThisDirectory(self.aux_output_dir_name());
             let aux_cx = TestCx {
                 config: self.config,
                 props: &aux_props,
                 testpaths: &aux_testpaths,
                 revision: self.revision,
             };
+            // Create the directory for the stdout/stderr files.
+            create_dir_all(aux_cx.output_base_dir()).unwrap();
             let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
 
             let crate_type = if aux_props.no_prefer_dynamic {
@@ -1642,7 +1621,8 @@ impl<'test> TestCx<'test> {
                 .clone()
                 .expect("no rustdoc built yet"))
         };
-        rustc.arg(input_file).arg("-L").arg(&self.config.build_base);
+        // FIXME Why is -L here?
+        rustc.arg(input_file);//.arg("-L").arg(&self.config.build_base);
 
         // Optionally prevent default --target if specified in test compile-flags.
         let custom_target = self.props
@@ -1767,15 +1747,12 @@ impl<'test> TestCx<'test> {
         rustc
     }
 
-    fn make_lib_name(&self, auxfile: &Path) -> PathBuf {
-        // what we return here is not particularly important, as it
-        // happens; rustc ignores everything except for the directory.
-        let auxname = self.output_testname(auxfile);
-        self.aux_output_dir_name().join(&auxname)
-    }
-
     fn make_exe_name(&self) -> PathBuf {
-        let mut f = self.output_base_name_stage();
+        // Using a single letter here to keep the path length down for
+        // Windows.  Some test names get very long.  rustc creates `rcgu`
+        // files with the module name appended to it which can more than
+        // double the length.
+        let mut f = self.output_base_dir().join("a");
         // FIXME: This is using the host architecture exe suffix, not target!
         if self.config.target.contains("emscripten") {
             f = f.with_extra_extension("js");
@@ -1885,34 +1862,47 @@ impl<'test> TestCx<'test> {
             .unwrap();
     }
 
+    /// Create a filename for output with the given extension.  Example:
+    ///   /.../testname.revision.mode/testname.extension
     fn make_out_name(&self, extension: &str) -> PathBuf {
         self.output_base_name().with_extension(extension)
     }
 
+    /// Directory where auxiliary files are written.  Example:
+    ///   /.../testname.revision.mode/auxiliary/
     fn aux_output_dir_name(&self) -> PathBuf {
-        self.output_base_name_stage()
+        self.output_base_dir()
+            .join("auxiliary")
             .with_extra_extension(self.config.mode.disambiguator())
-            .with_extra_extension(".aux")
     }
 
-    fn output_testname(&self, filepath: &Path) -> PathBuf {
-        PathBuf::from(filepath.file_stem().unwrap())
+    /// Generates a unique name for the test, such as `testname.revision.mode`.
+    fn output_testname_unique(&self) -> PathBuf {
+        output_testname_unique(self.config, self.testpaths, self.safe_revision())
     }
 
-    /// Given a test path like `compile-fail/foo/bar.rs` returns a name like
-    /// `/path/to/build/<triple>/test/compile-fail/foo/bar`.
+    /// The revision, ignored for Incremental since it wants all revisions in
+    /// the same directory.
+    fn safe_revision(&self) -> Option<&str> {
+        if self.config.mode == Incremental {
+            None
+        } else {
+            self.revision
+        }
+    }
+
+    /// Absolute path to the directory where all output for the given
+    /// test/revision should reside.  Example:
+    ///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+    fn output_base_dir(&self) -> PathBuf {
+        output_base_dir(self.config, self.testpaths, self.safe_revision())
+    }
+
+    /// Absolute path to the base filename used as output for the given
+    /// test/revision.  Example:
+    ///   /.../relative/testname.revision.mode/testname
     fn output_base_name(&self) -> PathBuf {
-        let dir = self.config.build_base.join(&self.testpaths.relative_dir);
-
-        // Note: The directory `dir` is created during `collect_tests_from_dir`
-        dir.join(&self.output_testname(&self.testpaths.file))
-    }
-
-    /// Same as `output_base_name`, but includes the stage ID as an extension,
-    /// such as: `.../compile-fail/foo/bar.stage1-<triple>`
-    fn output_base_name_stage(&self) -> PathBuf {
-        self.output_base_name()
-            .with_extension(&self.config.stage_id)
+        output_base_name(self.config, self.testpaths, self.safe_revision())
     }
 
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
@@ -1987,8 +1977,7 @@ impl<'test> TestCx<'test> {
     fn compile_test_and_save_ir(&self) -> ProcRes {
         let aux_dir = self.aux_output_dir_name();
 
-        let output_file =
-            TargetLocation::ThisDirectory(self.output_base_name().parent().unwrap().to_path_buf());
+        let output_file = TargetLocation::ThisDirectory(self.output_base_dir());
         let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
         rustc.arg("-L").arg(aux_dir).arg("--emit=llvm-ir");
 
@@ -2037,7 +2026,7 @@ impl<'test> TestCx<'test> {
     fn run_rustdoc_test(&self) {
         assert!(self.revision.is_none(), "revisions not relevant here");
 
-        let out_dir = self.output_base_name_stage();
+        let out_dir = self.output_base_dir();
         let _ = fs::remove_dir_all(&out_dir);
         create_dir_all(&out_dir).unwrap();
 
@@ -2365,7 +2354,7 @@ impl<'test> TestCx<'test> {
     fn run_incremental_test(&self) {
         // Basic plan for a test incremental/foo/bar.rs:
         // - load list of revisions rpass1, cfail2, rpass3
-        //   - each should begin with `rpass`, `cfail`, or `cfail`
+        //   - each should begin with `rpass`, `cfail`, or `rfail`
         //   - if `rpass`, expect compile and execution to succeed
         //   - if `cfail`, expect compilation to fail
         //   - if `rfail`, expect execution to fail
@@ -2438,7 +2427,7 @@ impl<'test> TestCx<'test> {
             .unwrap();
         let src_root = cwd.join(&src_root);
 
-        let tmpdir = cwd.join(self.output_base_name_stage());
+        let tmpdir = cwd.join(self.output_base_name());
         if tmpdir.exists() {
             self.aggressive_rm_rf(&tmpdir).unwrap();
         }
@@ -2981,6 +2970,11 @@ impl<'test> TestCx<'test> {
         println!("\nThe actual {0} differed from the expected {0}.", kind);
         println!("Actual {} saved to {}", kind, output_file.display());
         1
+    }
+
+    fn create_stamp(&self) {
+        let mut f = File::create(::stamp(&self.config, self.testpaths, self.revision)).unwrap();
+        f.write_all(compute_stamp_hash(&self.config).as_bytes()).unwrap();
     }
 }
 

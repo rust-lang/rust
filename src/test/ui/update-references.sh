@@ -35,7 +35,7 @@ shopt -s nullglob
 
 while [[ "$1" != "" ]]; do
     for EXT in "stderr" "stdout" "fixed"; do
-        for OUT_NAME in $BUILD_DIR/${1%.rs}.*$EXT; do
+        for OUT_NAME in $BUILD_DIR/${1%.rs}*/*$EXT; do
             OUT_DIR=`dirname "$1"`
             OUT_BASE=`basename "$OUT_NAME"`
             if ! (diff $OUT_NAME $MYDIR/$OUT_DIR/$OUT_BASE >& /dev/null); then
