@@ -305,12 +305,12 @@ macro_rules! create_config {
             ///
             /// Return a `Config` if the config could be read and parsed from
             /// the file, Error otherwise.
-            pub(super) fn from_toml_path(file_path: &Path) -> Result<Config, ::failure::Error> {
+            pub(super) fn from_toml_path(file_path: &Path) -> Result<Config, Error> {
                 let mut file = File::open(&file_path)?;
                 let mut toml = String::new();
                 file.read_to_string(&mut toml)?;
                 Config::from_toml(&toml, file_path.parent().unwrap())
-                    .map_err(::failure::err_msg)
+                    .map_err(|err| Error::new(ErrorKind::InvalidData, err))
             }
 
             /// Resolve the config for input in `dir`.
@@ -322,12 +322,12 @@ macro_rules! create_config {
             ///
             /// Returns the `Config` to use, and the path of the project file if there was
             /// one.
-            pub(super) fn from_resolved_toml_path(dir: &Path) -> Result<(Config, Option<PathBuf>), ::failure::Error> {
+            pub(super) fn from_resolved_toml_path(dir: &Path) -> Result<(Config, Option<PathBuf>), Error> {
 
                 /// Try to find a project file in the given directory and its parents.
                 /// Returns the path of a the nearest project file if one exists,
                 /// or `None` if no project file was found.
-                fn resolve_project_file(dir: &Path) -> Result<Option<PathBuf>, ::failure::Error> {
+                fn resolve_project_file(dir: &Path) -> Result<Option<PathBuf>, Error> {
                     let mut current = if dir.is_relative() {
                         env::current_dir()?.join(dir)
                     } else {
