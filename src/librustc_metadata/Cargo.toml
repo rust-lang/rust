@@ -13,7 +13,7 @@ flate2 = "1.0"
 log = "0.4"
 proc_macro = { path = "../libproc_macro" }
 rustc = { path = "../librustc" }
-rustc_back = { path = "../librustc_back" }
+rustc_target = { path = "../librustc_target" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 serialize = { path = "../libserialize" }

@@ -22,8 +22,8 @@ use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
 use ich::StableHashingContext;
-use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
-use rustc_back::target::{Target, TargetTriple};
+use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
+use rustc_target::spec::{Target, TargetTriple};
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use lint;
 use middle::cstore;
@@ -770,7 +770,7 @@ macro_rules! options {
         pub const parse_sanitizer: Option<&'static str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
         pub const parse_linker_flavor: Option<&'static str> =
-            Some(::rustc_back::LinkerFlavor::one_of());
+            Some(::rustc_target::spec::LinkerFlavor::one_of());
         pub const parse_optimization_fuel: Option<&'static str> =
             Some("crate=integer");
         pub const parse_unpretty: Option<&'static str> =
@@ -782,7 +782,7 @@ macro_rules! options {
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
-        use rustc_back::{LinkerFlavor, PanicStrategy, RelroLevel};
+        use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
         $(
@@ -2323,8 +2323,7 @@ mod dep_tracking {
     use super::{CrateType, DebugInfoLevel, ErrorOutputType, Lto, OptLevel, OutputTypes,
                 Passes, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
-    use rustc_back::{PanicStrategy, RelroLevel};
-    use rustc_back::target::TargetTriple;
+    use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
 
     pub trait DepTrackingHash {
@@ -2456,7 +2455,7 @@ mod tests {
     use std::iter::FromIterator;
     use std::path::PathBuf;
     use super::{Externs, OutputType, OutputTypes};
-    use rustc_back::{PanicStrategy, RelroLevel};
+    use rustc_target::spec::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
     use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;

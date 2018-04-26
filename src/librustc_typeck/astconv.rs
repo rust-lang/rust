@@ -23,6 +23,7 @@ use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits;
 use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
+use rustc_target::spec::abi;
 use std::slice;
 use require_c_abi_if_variadic;
 use util::common::ErrorReported;
@@ -30,7 +31,7 @@ use util::nodemap::FxHashSet;
 use errors::FatalError;
 
 use std::iter;
-use syntax::{abi, ast};
+use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax_pos::Span;
 

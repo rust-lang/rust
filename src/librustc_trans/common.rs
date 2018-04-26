@@ -32,7 +32,7 @@ use rustc::hir;
 use libc::{c_uint, c_char};
 use std::iter;
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 

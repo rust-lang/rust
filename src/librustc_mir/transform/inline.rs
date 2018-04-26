@@ -28,7 +28,7 @@ use transform::{MirPass, MirSource};
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
 use syntax::{attr};
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 
 const DEFAULT_THRESHOLD: usize = 50;
 const HINT_THRESHOLD: usize = 100;

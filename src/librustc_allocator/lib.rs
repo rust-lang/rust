@@ -12,6 +12,7 @@
 
 extern crate rustc;
 extern crate rustc_errors;
+extern crate rustc_target;
 extern crate syntax;
 extern crate syntax_pos;
 

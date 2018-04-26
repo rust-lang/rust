@@ -23,7 +23,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_resolve as resolve;
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::CStore;
-use rustc_back::target::TargetTriple;
+use rustc_target::spec::TargetTriple;
 
 use syntax::ast::NodeId;
 use syntax::codemap;

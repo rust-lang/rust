@@ -10,10 +10,10 @@
 
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc::middle::lang_items;
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir;
-use abi::{Abi, FnType, ArgType, PassMode};
+use abi::{Abi, ArgType, ArgTypeExt, FnType, FnTypeExt, LlvmType, PassMode};
 use base;
 use callee;
 use builder::Builder;
@@ -110,7 +110,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         let do_call = |
             this: &mut Self,
             bx: Builder<'a, 'tcx>,
-            fn_ty: FnType<'tcx>,
+            fn_ty: FnType<'tcx, Ty<'tcx>>,
             fn_ptr: ValueRef,
             llargs: &[ValueRef],
             destination: Option<(ReturnDest<'tcx>, mir::BasicBlock)>,
@@ -604,7 +604,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                       bx: &Builder<'a, 'tcx>,
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
-                      arg: &ArgType<'tcx>) {
+                      arg: &ArgType<'tcx, Ty<'tcx>>) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
             llargs.push(C_undef(ty.llvm_type(bx.cx)));
@@ -683,7 +683,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                 bx: &Builder<'a, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
                                 llargs: &mut Vec<ValueRef>,
-                                args: &[ArgType<'tcx>]) {
+                                args: &[ArgType<'tcx, Ty<'tcx>>]) {
         let tuple = self.trans_operand(bx, operand);
 
         // Handle both by-ref and immediate tuples.
@@ -776,7 +776,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     }
 
     fn make_return_dest(&mut self, bx: &Builder<'a, 'tcx>,
-                        dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx>,
+                        dest: &mir::Place<'tcx>, fn_ret: &ArgType<'tcx, Ty<'tcx>>,
                         llargs: &mut Vec<ValueRef>, is_intrinsic: bool)
                         -> ReturnDest<'tcx> {
         // If the return is ignored, we can just return a do-nothing ReturnDest
@@ -873,7 +873,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
     fn store_return(&mut self,
                     bx: &Builder<'a, 'tcx>,
                     dest: ReturnDest<'tcx>,
-                    ret_ty: &ArgType<'tcx>,
+                    ret_ty: &ArgType<'tcx, Ty<'tcx>>,
                     llval: ValueRef) {
         use self::ReturnDest::*;
 

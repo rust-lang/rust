@@ -118,7 +118,7 @@ use std::fmt::Display;
 use std::mem::replace;
 use std::iter;
 use std::ops::{self, Deref};
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::{original_sp, Spanned};

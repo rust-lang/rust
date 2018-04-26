@@ -45,7 +45,7 @@ use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use util::common::{profq_msg, ErrorReported, ProfileQueriesMsg};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
-use rustc_back::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableVec;

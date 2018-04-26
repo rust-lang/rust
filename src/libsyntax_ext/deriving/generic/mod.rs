@@ -191,7 +191,7 @@ use std::cell::RefCell;
 use std::collections::HashSet;
 use std::vec;
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast::{
     self, BinOpKind, EnumDef, Expr, GenericParam, Generics, Ident, PatKind, VariantData
 };

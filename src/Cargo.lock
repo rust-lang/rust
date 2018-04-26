@@ -1728,10 +1728,10 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc_apfloat 0.0.0",
- "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_target 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -1818,8 +1818,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
- "rustc_back 0.0.0",
  "rustc_driver 0.0.0",
+ "rustc_target 0.0.0",
 ]
 
 [[package]]
@@ -1833,6 +1833,7 @@ version = "0.0.0"
 dependencies = [
  "rustc 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_target 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -1855,16 +1856,6 @@ dependencies = [
  "cmake 0.1.30 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
-]
-
-[[package]]
-name = "rustc_back"
-version = "0.0.0"
-dependencies = [
- "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
- "syntax 0.0.0",
 ]
 
 [[package]]
@@ -1895,6 +1886,7 @@ name = "rustc_cratesio_shim"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1906,6 +1898,7 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot_core 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_cratesio_shim 0.0.0",
  "serialize 0.0.0",
  "stable_deref_trait 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1921,7 +1914,6 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_allocator 0.0.0",
- "rustc_back 0.0.0",
  "rustc_borrowck 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -1934,6 +1926,7 @@ dependencies = [
  "rustc_privacy 0.0.0",
  "rustc_resolve 0.0.0",
  "rustc_save_analysis 0.0.0",
+ "rustc_target 0.0.0",
  "rustc_traits 0.0.0",
  "rustc_trans_utils 0.0.0",
  "rustc_typeck 0.0.0",
@@ -1976,6 +1969,7 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_mir 0.0.0",
+ "rustc_target 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2011,9 +2005,9 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_target 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
@@ -2032,10 +2026,10 @@ dependencies = [
  "log_settings 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_apfloat 0.0.0",
- "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_target 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -2116,9 +2110,20 @@ dependencies = [
  "rustc 0.0.0",
  "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
+ "rustc_target 0.0.0",
  "rustc_typeck 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_target"
+version = "0.0.0"
+dependencies = [
+ "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_cratesio_shim 0.0.0",
+ "serialize 0.0.0",
 ]
 
 [[package]]
@@ -2138,7 +2143,6 @@ dependencies = [
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2150,7 +2154,6 @@ dependencies = [
  "rustc-demangle 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
  "rustc_apfloat 0.0.0",
- "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -2158,6 +2161,7 @@ dependencies = [
  "rustc_llvm 0.0.0",
  "rustc_mir 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
+ "rustc_target 0.0.0",
  "rustc_trans_utils 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
@@ -2173,10 +2177,10 @@ dependencies = [
  "flate2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_back 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_incremental 0.0.0",
  "rustc_mir 0.0.0",
+ "rustc_target 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2205,6 +2209,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
+ "rustc_target 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2543,9 +2548,9 @@ version = "0.0.0"
 dependencies = [
  "bitflags 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_target 0.0.0",
  "scoped-tls 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "syntax_pos 0.0.0",
@@ -2559,6 +2564,7 @@ dependencies = [
  "proc_macro 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_target 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

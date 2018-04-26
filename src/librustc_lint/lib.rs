@@ -37,6 +37,7 @@ extern crate rustc;
 #[macro_use]
 extern crate log;
 extern crate rustc_mir;
+extern crate rustc_target;
 extern crate syntax_pos;
 
 use rustc::lint;

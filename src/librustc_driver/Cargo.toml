@@ -15,7 +15,7 @@ log = "0.4"
 env_logger = { version = "0.5", default-features = false }
 rustc = { path = "../librustc" }
 rustc_allocator = { path = "../librustc_allocator" }
-rustc_back = { path = "../librustc_back" }
+rustc_target = { path = "../librustc_target" }
 rustc_borrowck = { path = "../librustc_borrowck" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }

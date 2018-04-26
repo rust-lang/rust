@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Integer::*;
-pub use self::Primitive::*;
-
-use session::{self, DataTypeKind, Session};
+use session::{self, DataTypeKind};
 use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 
 use syntax::ast::{self, FloatTy, IntTy, UintTy};
@@ -21,432 +18,28 @@ use syntax_pos::DUMMY_SP;
 use std::cmp;
 use std::fmt;
 use std::i128;
-use std::iter;
 use std::mem;
-use std::ops::{Add, Sub, Mul, AddAssign, Deref, RangeInclusive};
+use std::ops::RangeInclusive;
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
-/// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
-/// for a target, which contains everything needed to compute layouts.
-pub struct TargetDataLayout {
-    pub endian: Endian,
-    pub i1_align: Align,
-    pub i8_align: Align,
-    pub i16_align: Align,
-    pub i32_align: Align,
-    pub i64_align: Align,
-    pub i128_align: Align,
-    pub f32_align: Align,
-    pub f64_align: Align,
-    pub pointer_size: Size,
-    pub pointer_align: Align,
-    pub aggregate_align: Align,
+pub use rustc_target::abi::*;
 
-    /// Alignments for vector types.
-    pub vector_align: Vec<(Size, Align)>
+pub trait IntegerExt {
+    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
+    fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer;
+    fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                  ty: Ty<'tcx>,
+                  repr: &ReprOptions,
+                  min: i128,
+                  max: i128)
+                  -> (Integer, bool);
 }
 
-impl Default for TargetDataLayout {
-    /// Creates an instance of `TargetDataLayout`.
-    fn default() -> TargetDataLayout {
-        TargetDataLayout {
-            endian: Endian::Big,
-            i1_align: Align::from_bits(8, 8).unwrap(),
-            i8_align: Align::from_bits(8, 8).unwrap(),
-            i16_align: Align::from_bits(16, 16).unwrap(),
-            i32_align: Align::from_bits(32, 32).unwrap(),
-            i64_align: Align::from_bits(32, 64).unwrap(),
-            i128_align: Align::from_bits(32, 64).unwrap(),
-            f32_align: Align::from_bits(32, 32).unwrap(),
-            f64_align: Align::from_bits(64, 64).unwrap(),
-            pointer_size: Size::from_bits(64),
-            pointer_align: Align::from_bits(64, 64).unwrap(),
-            aggregate_align: Align::from_bits(0, 64).unwrap(),
-            vector_align: vec![
-                (Size::from_bits(64), Align::from_bits(64, 64).unwrap()),
-                (Size::from_bits(128), Align::from_bits(128, 128).unwrap())
-            ]
-        }
-    }
-}
-
-impl TargetDataLayout {
-    pub fn parse(sess: &Session) -> TargetDataLayout {
-        // Parse a bit count from a string.
-        let parse_bits = |s: &str, kind: &str, cause: &str| {
-            s.parse::<u64>().unwrap_or_else(|err| {
-                sess.err(&format!("invalid {} `{}` for `{}` in \"data-layout\": {}",
-                                  kind, s, cause, err));
-                0
-            })
-        };
-
-        // Parse a size string.
-        let size = |s: &str, cause: &str| {
-            Size::from_bits(parse_bits(s, "size", cause))
-        };
-
-        // Parse an alignment string.
-        let align = |s: &[&str], cause: &str| {
-            if s.is_empty() {
-                sess.err(&format!("missing alignment for `{}` in \"data-layout\"", cause));
-            }
-            let abi = parse_bits(s[0], "alignment", cause);
-            let pref = s.get(1).map_or(abi, |pref| parse_bits(pref, "alignment", cause));
-            Align::from_bits(abi, pref).unwrap_or_else(|err| {
-                sess.err(&format!("invalid alignment for `{}` in \"data-layout\": {}",
-                                  cause, err));
-                Align::from_bits(8, 8).unwrap()
-            })
-        };
-
-        let mut dl = TargetDataLayout::default();
-        let mut i128_align_src = 64;
-        for spec in sess.target.target.data_layout.split("-") {
-            match &spec.split(":").collect::<Vec<_>>()[..] {
-                &["e"] => dl.endian = Endian::Little,
-                &["E"] => dl.endian = Endian::Big,
-                &["a", ref a..] => dl.aggregate_align = align(a, "a"),
-                &["f32", ref a..] => dl.f32_align = align(a, "f32"),
-                &["f64", ref a..] => dl.f64_align = align(a, "f64"),
-                &[p @ "p", s, ref a..] | &[p @ "p0", s, ref a..] => {
-                    dl.pointer_size = size(s, p);
-                    dl.pointer_align = align(a, p);
-                }
-                &[s, ref a..] if s.starts_with("i") => {
-                    let bits = match s[1..].parse::<u64>() {
-                        Ok(bits) => bits,
-                        Err(_) => {
-                            size(&s[1..], "i"); // For the user error.
-                            continue;
-                        }
-                    };
-                    let a = align(a, s);
-                    match bits {
-                        1 => dl.i1_align = a,
-                        8 => dl.i8_align = a,
-                        16 => dl.i16_align = a,
-                        32 => dl.i32_align = a,
-                        64 => dl.i64_align = a,
-                        _ => {}
-                    }
-                    if bits >= i128_align_src && bits <= 128 {
-                        // Default alignment for i128 is decided by taking the alignment of
-                        // largest-sized i{64...128}.
-                        i128_align_src = bits;
-                        dl.i128_align = a;
-                    }
-                }
-                &[s, ref a..] if s.starts_with("v") => {
-                    let v_size = size(&s[1..], "v");
-                    let a = align(a, s);
-                    if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
-                        v.1 = a;
-                        continue;
-                    }
-                    // No existing entry, add a new one.
-                    dl.vector_align.push((v_size, a));
-                }
-                _ => {} // Ignore everything else.
-            }
-        }
-
-        // Perform consistency checks against the Target information.
-        let endian_str = match dl.endian {
-            Endian::Little => "little",
-            Endian::Big => "big"
-        };
-        if endian_str != sess.target.target.target_endian {
-            sess.err(&format!("inconsistent target specification: \"data-layout\" claims \
-                               architecture is {}-endian, while \"target-endian\" is `{}`",
-                              endian_str, sess.target.target.target_endian));
-        }
-
-        if dl.pointer_size.bits().to_string() != sess.target.target.target_pointer_width {
-            sess.err(&format!("inconsistent target specification: \"data-layout\" claims \
-                               pointers are {}-bit, while \"target-pointer-width\" is `{}`",
-                              dl.pointer_size.bits(), sess.target.target.target_pointer_width));
-        }
-
-        dl
-    }
-
-    /// Return exclusive upper bound on object size.
-    ///
-    /// The theoretical maximum object size is defined as the maximum positive `isize` value.
-    /// This ensures that the `offset` semantics remain well-defined by allowing it to correctly
-    /// index every address within an object along with one byte past the end, along with allowing
-    /// `isize` to store the difference between any two pointers into an object.
-    ///
-    /// The upper bound on 64-bit currently needs to be lower because LLVM uses a 64-bit integer
-    /// to represent object size in bits. It would need to be 1 << 61 to account for this, but is
-    /// currently conservatively bounded to 1 << 47 as that is enough to cover the current usable
-    /// address space on 64-bit ARMv8 and x86_64.
-    pub fn obj_size_bound(&self) -> u64 {
-        match self.pointer_size.bits() {
-            16 => 1 << 15,
-            32 => 1 << 31,
-            64 => 1 << 47,
-            bits => bug!("obj_size_bound: unknown pointer bit size {}", bits)
-        }
-    }
-
-    pub fn ptr_sized_integer(&self) -> Integer {
-        match self.pointer_size.bits() {
-            16 => I16,
-            32 => I32,
-            64 => I64,
-            bits => bug!("ptr_sized_integer: unknown pointer bit size {}", bits)
-        }
-    }
-
-    pub fn vector_align(&self, vec_size: Size) -> Align {
-        for &(size, align) in &self.vector_align {
-            if size == vec_size {
-                return align;
-            }
-        }
-        // Default to natural alignment, which is what LLVM does.
-        // That is, use the size, rounded up to a power of 2.
-        let align = vec_size.bytes().next_power_of_two();
-        Align::from_bytes(align, align).unwrap()
-    }
-}
-
-pub trait HasDataLayout: Copy {
-    fn data_layout(&self) -> &TargetDataLayout;
-}
-
-impl<'a> HasDataLayout for &'a TargetDataLayout {
-    fn data_layout(&self) -> &TargetDataLayout {
-        self
-    }
-}
-
-/// Endianness of the target, which must match cfg(target-endian).
-#[derive(Copy, Clone)]
-pub enum Endian {
-    Little,
-    Big
-}
-
-/// Size of a type in bytes.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct Size {
-    raw: u64
-}
-
-impl Size {
-    pub fn from_bits(bits: u64) -> Size {
-        // Avoid potential overflow from `bits + 7`.
-        Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
-    }
-
-    pub fn from_bytes(bytes: u64) -> Size {
-        if bytes >= (1 << 61) {
-            bug!("Size::from_bytes: {} bytes in bits doesn't fit in u64", bytes)
-        }
-        Size {
-            raw: bytes
-        }
-    }
-
-    pub fn bytes(self) -> u64 {
-        self.raw
-    }
-
-    pub fn bits(self) -> u64 {
-        self.bytes() * 8
-    }
-
-    pub fn abi_align(self, align: Align) -> Size {
-        let mask = align.abi() - 1;
-        Size::from_bytes((self.bytes() + mask) & !mask)
-    }
-
-    pub fn is_abi_aligned(self, align: Align) -> bool {
-        let mask = align.abi() - 1;
-        self.bytes() & mask == 0
-    }
-
-    pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: C) -> Option<Size> {
-        let dl = cx.data_layout();
-
-        // Each Size is less than dl.obj_size_bound(), so the sum is
-        // also less than 1 << 62 (and therefore can't overflow).
-        let bytes = self.bytes() + offset.bytes();
-
-        if bytes < dl.obj_size_bound() {
-            Some(Size::from_bytes(bytes))
-        } else {
-            None
-        }
-    }
-
-    pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: C) -> Option<Size> {
-        let dl = cx.data_layout();
-
-        match self.bytes().checked_mul(count) {
-            Some(bytes) if bytes < dl.obj_size_bound() => {
-                Some(Size::from_bytes(bytes))
-            }
-            _ => None
-        }
-    }
-}
-
-// Panicking addition, subtraction and multiplication for convenience.
-// Avoid during layout computation, return `LayoutError` instead.
-
-impl Add for Size {
-    type Output = Size;
-    fn add(self, other: Size) -> Size {
-        // Each Size is less than 1 << 61, so the sum is
-        // less than 1 << 62 (and therefore can't overflow).
-        Size::from_bytes(self.bytes() + other.bytes())
-    }
-}
-
-impl Sub for Size {
-    type Output = Size;
-    fn sub(self, other: Size) -> Size {
-        // Each Size is less than 1 << 61, so an underflow
-        // would result in a value larger than 1 << 61,
-        // which Size::from_bytes will catch for us.
-        Size::from_bytes(self.bytes() - other.bytes())
-    }
-}
-
-impl Mul<u64> for Size {
-    type Output = Size;
-    fn mul(self, count: u64) -> Size {
-        match self.bytes().checked_mul(count) {
-            Some(bytes) => Size::from_bytes(bytes),
-            None => {
-                bug!("Size::mul: {} * {} doesn't fit in u64", self.bytes(), count)
-            }
-        }
-    }
-}
-
-impl AddAssign for Size {
-    fn add_assign(&mut self, other: Size) {
-        *self = *self + other;
-    }
-}
-
-/// Alignment of a type in bytes, both ABI-mandated and preferred.
-/// Each field is a power of two, giving the alignment a maximum
-/// value of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a i32, with
-/// a maximum capacity of 2<sup>31</sup> - 1 or 2147483647.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Align {
-    abi_pow2: u8,
-    pref_pow2: u8,
-}
-
-impl Align {
-    pub fn from_bits(abi: u64, pref: u64) -> Result<Align, String> {
-        Align::from_bytes(Size::from_bits(abi).bytes(),
-                          Size::from_bits(pref).bytes())
-    }
-
-    pub fn from_bytes(abi: u64, pref: u64) -> Result<Align, String> {
-        let log2 = |align: u64| {
-            // Treat an alignment of 0 bytes like 1-byte alignment.
-            if align == 0 {
-                return Ok(0);
-            }
-
-            let mut bytes = align;
-            let mut pow: u8 = 0;
-            while (bytes & 1) == 0 {
-                pow += 1;
-                bytes >>= 1;
-            }
-            if bytes != 1 {
-                Err(format!("`{}` is not a power of 2", align))
-            } else if pow > 30 {
-                Err(format!("`{}` is too large", align))
-            } else {
-                Ok(pow)
-            }
-        };
-
-        Ok(Align {
-            abi_pow2: log2(abi)?,
-            pref_pow2: log2(pref)?,
-        })
-    }
-
-    pub fn abi(self) -> u64 {
-        1 << self.abi_pow2
-    }
-
-    pub fn pref(self) -> u64 {
-        1 << self.pref_pow2
-    }
-
-    pub fn abi_bits(self) -> u64 {
-        self.abi() * 8
-    }
-
-    pub fn pref_bits(self) -> u64 {
-        self.pref() * 8
-    }
-
-    pub fn min(self, other: Align) -> Align {
-        Align {
-            abi_pow2: cmp::min(self.abi_pow2, other.abi_pow2),
-            pref_pow2: cmp::min(self.pref_pow2, other.pref_pow2),
-        }
-    }
-
-    pub fn max(self, other: Align) -> Align {
-        Align {
-            abi_pow2: cmp::max(self.abi_pow2, other.abi_pow2),
-            pref_pow2: cmp::max(self.pref_pow2, other.pref_pow2),
-        }
-    }
-}
-
-/// Integers, also used for enum discriminants.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum Integer {
-    I8,
-    I16,
-    I32,
-    I64,
-    I128,
-}
-
-impl<'a, 'tcx> Integer {
-    pub fn size(&self) -> Size {
-        match *self {
-            I8 => Size::from_bytes(1),
-            I16 => Size::from_bytes(2),
-            I32 => Size::from_bytes(4),
-            I64  => Size::from_bytes(8),
-            I128  => Size::from_bytes(16),
-        }
-    }
-
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
-        let dl = cx.data_layout();
-
-        match *self {
-            I8 => dl.i8_align,
-            I16 => dl.i16_align,
-            I32 => dl.i32_align,
-            I64 => dl.i64_align,
-            I128 => dl.i128_align,
-        }
-    }
-
-    pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx> {
+impl IntegerExt for Integer {
+    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx> {
         match (*self, signed) {
             (I8, false) => tcx.types.u8,
             (I16, false) => tcx.types.u16,
@@ -461,57 +54,8 @@ impl<'a, 'tcx> Integer {
         }
     }
 
-    /// Find the smallest Integer type which can represent the signed value.
-    pub fn fit_signed(x: i128) -> Integer {
-        match x {
-            -0x0000_0000_0000_0080...0x0000_0000_0000_007f => I8,
-            -0x0000_0000_0000_8000...0x0000_0000_0000_7fff => I16,
-            -0x0000_0000_8000_0000...0x0000_0000_7fff_ffff => I32,
-            -0x8000_0000_0000_0000...0x7fff_ffff_ffff_ffff => I64,
-            _ => I128
-        }
-    }
-
-    /// Find the smallest Integer type which can represent the unsigned value.
-    pub fn fit_unsigned(x: u128) -> Integer {
-        match x {
-            0...0x0000_0000_0000_00ff => I8,
-            0...0x0000_0000_0000_ffff => I16,
-            0...0x0000_0000_ffff_ffff => I32,
-            0...0xffff_ffff_ffff_ffff => I64,
-            _ => I128,
-        }
-    }
-
-    /// Find the smallest integer with the given alignment.
-    pub fn for_abi_align<C: HasDataLayout>(cx: C, align: Align) -> Option<Integer> {
-        let dl = cx.data_layout();
-
-        let wanted = align.abi();
-        for &candidate in &[I8, I16, I32, I64, I128] {
-            if wanted == candidate.align(dl).abi() && wanted == candidate.size().bytes() {
-                return Some(candidate);
-            }
-        }
-        None
-    }
-
-    /// Find the largest integer with the given alignment or less.
-    pub fn approximate_abi_align<C: HasDataLayout>(cx: C, align: Align) -> Integer {
-        let dl = cx.data_layout();
-
-        let wanted = align.abi();
-        // FIXME(eddyb) maybe include I128 in the future, when it works everywhere.
-        for &candidate in &[I64, I32, I16] {
-            if wanted >= candidate.align(dl).abi() && wanted >= candidate.size().bytes() {
-                return candidate;
-            }
-        }
-        I8
-    }
-
     /// Get the Integer type from an attr::IntType.
-    pub fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer {
+    fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer {
         let dl = cx.data_layout();
 
         match ity {
@@ -530,7 +74,7 @@ impl<'a, 'tcx> Integer {
     /// signed discriminant range and #[repr] attribute.
     /// N.B.: u128 values above i128::MAX will be treated as signed, but
     /// that shouldn't affect anything, other than maybe debuginfo.
-    fn repr_discr(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   ty: Ty<'tcx>,
                   repr: &ReprOptions,
                   min: i128,
@@ -578,74 +122,17 @@ impl<'a, 'tcx> Integer {
     }
 }
 
-/// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Primitive {
-    /// The `bool` is the signedness of the `Integer` type.
-    ///
-    /// One would think we would not care about such details this low down,
-    /// but some ABIs are described in terms of C types and ISAs where the
-    /// integer arithmetic is done on {sign,zero}-extended registers, e.g.
-    /// a negative integer passed by zero-extension will appear positive in
-    /// the callee, and most operations on it will produce the wrong values.
-    Int(Integer, bool),
-    F32,
-    F64,
-    Pointer
+pub trait PrimitiveExt {
+    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
 }
 
-impl<'a, 'tcx> Primitive {
-    pub fn size<C: HasDataLayout>(self, cx: C) -> Size {
-        let dl = cx.data_layout();
-
-        match self {
-            Int(i, _) => i.size(),
-            F32 => Size::from_bits(32),
-            F64 => Size::from_bits(64),
-            Pointer => dl.pointer_size
-        }
-    }
-
-    pub fn align<C: HasDataLayout>(self, cx: C) -> Align {
-        let dl = cx.data_layout();
-
-        match self {
-            Int(i, _) => i.align(dl),
-            F32 => dl.f32_align,
-            F64 => dl.f64_align,
-            Pointer => dl.pointer_align
-        }
-    }
-
-    pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+impl PrimitiveExt for Primitive {
+    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             Int(i, signed) => i.to_ty(tcx, signed),
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             Pointer => tcx.mk_mut_ptr(tcx.mk_nil()),
-        }
-    }
-}
-
-/// Information about one scalar component of a Rust type.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Scalar {
-    pub value: Primitive,
-
-    /// Inclusive wrap-around range of valid values, that is, if
-    /// min > max, it represents min..=u128::MAX followed by 0..=max.
-    // FIXME(eddyb) always use the shortest range, e.g. by finding
-    // the largest space between two consecutive valid values and
-    // taking everything else as the (shortest) valid range.
-    pub valid_range: RangeInclusive<u128>,
-}
-
-impl Scalar {
-    pub fn is_bool(&self) -> bool {
-        if let Int(I8, _) = self.value {
-            self.valid_range == (0..=1)
-        } else {
-            false
         }
     }
 }
@@ -662,183 +149,6 @@ pub const FAT_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;
 
-/// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Debug)]
-pub enum FieldPlacement {
-    /// All fields start at no offset. The `usize` is the field count.
-    Union(usize),
-
-    /// Array/vector-like placement, with all fields of identical types.
-    Array {
-        stride: Size,
-        count: u64
-    },
-
-    /// Struct-like placement, with precomputed offsets.
-    ///
-    /// Fields are guaranteed to not overlap, but note that gaps
-    /// before, between and after all the fields are NOT always
-    /// padding, and as such their contents may not be discarded.
-    /// For example, enum variants leave a gap at the start,
-    /// where the discriminant field in the enum layout goes.
-    Arbitrary {
-        /// Offsets for the first byte of each field,
-        /// ordered to match the source definition order.
-        /// This vector does not go in increasing order.
-        // FIXME(eddyb) use small vector optimization for the common case.
-        offsets: Vec<Size>,
-
-        /// Maps source order field indices to memory order indices,
-        /// depending how fields were permuted.
-        // FIXME(camlorn) also consider small vector  optimization here.
-        memory_index: Vec<u32>
-    }
-}
-
-impl FieldPlacement {
-    pub fn count(&self) -> usize {
-        match *self {
-            FieldPlacement::Union(count) => count,
-            FieldPlacement::Array { count, .. } => {
-                let usize_count = count as usize;
-                assert_eq!(usize_count as u64, count);
-                usize_count
-            }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets.len()
-        }
-    }
-
-    pub fn offset(&self, i: usize) -> Size {
-        match *self {
-            FieldPlacement::Union(_) => Size::from_bytes(0),
-            FieldPlacement::Array { stride, count } => {
-                let i = i as u64;
-                assert!(i < count);
-                stride * i
-            }
-            FieldPlacement::Arbitrary { ref offsets, .. } => offsets[i]
-        }
-    }
-
-    pub fn memory_index(&self, i: usize) -> usize {
-        match *self {
-            FieldPlacement::Union(_) |
-            FieldPlacement::Array { .. } => i,
-            FieldPlacement::Arbitrary { ref memory_index, .. } => {
-                let r = memory_index[i];
-                assert_eq!(r as usize as u32, r);
-                r as usize
-            }
-        }
-    }
-
-    /// Get source indices of the fields by increasing offsets.
-    #[inline]
-    pub fn index_by_increasing_offset<'a>(&'a self) -> impl iter::Iterator<Item=usize>+'a {
-        let mut inverse_small = [0u8; 64];
-        let mut inverse_big = vec![];
-        let use_small = self.count() <= inverse_small.len();
-
-        // We have to write this logic twice in order to keep the array small.
-        if let FieldPlacement::Arbitrary { ref memory_index, .. } = *self {
-            if use_small {
-                for i in 0..self.count() {
-                    inverse_small[memory_index[i] as usize] = i as u8;
-                }
-            } else {
-                inverse_big = vec![0; self.count()];
-                for i in 0..self.count() {
-                    inverse_big[memory_index[i] as usize] = i as u32;
-                }
-            }
-        }
-
-        (0..self.count()).map(move |i| {
-            match *self {
-                FieldPlacement::Union(_) |
-                FieldPlacement::Array { .. } => i,
-                FieldPlacement::Arbitrary { .. } => {
-                    if use_small { inverse_small[i] as usize }
-                    else { inverse_big[i] as usize }
-                }
-            }
-        })
-    }
-}
-
-/// Describes how values of the type are passed by target ABIs,
-/// in terms of categories of C types there are ABI rules for.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum Abi {
-    Uninhabited,
-    Scalar(Scalar),
-    ScalarPair(Scalar, Scalar),
-    Vector {
-        element: Scalar,
-        count: u64
-    },
-    Aggregate {
-        /// If true, the size is exact, otherwise it's only a lower bound.
-        sized: bool,
-    }
-}
-
-impl Abi {
-    /// Returns true if the layout corresponds to an unsized type.
-    pub fn is_unsized(&self) -> bool {
-        match *self {
-            Abi::Uninhabited |
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => !sized
-        }
-    }
-
-    /// Returns true if this is a single signed integer scalar
-    pub fn is_signed(&self) -> bool {
-        match *self {
-            Abi::Scalar(ref scal) => match scal.value {
-                Primitive::Int(_, signed) => signed,
-                _ => false,
-            },
-            _ => false,
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Hash, Debug)]
-pub enum Variants {
-    /// Single enum variants, structs/tuples, unions, and all non-ADTs.
-    Single {
-        index: usize
-    },
-
-    /// General-case enums: for each case there is a struct, and they all have
-    /// all space reserved for the discriminant, and their first field starts
-    /// at a non-0 offset, after where the discriminant would go.
-    Tagged {
-        discr: Scalar,
-        variants: Vec<LayoutDetails>,
-    },
-
-    /// Multiple cases distinguished by a niche (values invalid for a type):
-    /// the variant `dataful_variant` contains a niche at an arbitrary
-    /// offset (field 0 of the enum), which for a variant with discriminant
-    /// `d` is set to `(d - niche_variants.start).wrapping_add(niche_start)`.
-    ///
-    /// For example, `Option<(usize, &T)>`  is represented such that
-    /// `None` has a null pointer for the second tuple field, and
-    /// `Some` is the identity function (with a non-null reference).
-    NicheFilling {
-        dataful_variant: usize,
-        niche_variants: RangeInclusive<usize>,
-        niche: Scalar,
-        niche_start: u128,
-        variants: Vec<LayoutDetails>,
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
@@ -854,40 +164,6 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "the type `{:?}` is too big for the current architecture", ty)
             }
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Hash, Debug)]
-pub struct LayoutDetails {
-    pub variants: Variants,
-    pub fields: FieldPlacement,
-    pub abi: Abi,
-    pub align: Align,
-    pub size: Size
-}
-
-impl LayoutDetails {
-    fn scalar<C: HasDataLayout>(cx: C, scalar: Scalar) -> Self {
-        let size = scalar.value.size(cx);
-        let align = scalar.value.align(cx);
-        LayoutDetails {
-            variants: Variants::Single { index: 0 },
-            fields: FieldPlacement::Union(0),
-            abi: Abi::Scalar(scalar),
-            size,
-            align,
-        }
-    }
-
-    fn uninhabited(field_count: usize) -> Self {
-        let align = Align::from_bytes(1, 1).unwrap();
-        LayoutDetails {
-            variants: Variants::Single { index: 0 },
-            fields: FieldPlacement::Union(field_count),
-            abi: Abi::Uninhabited,
-            align,
-            size: Size::from_bytes(0)
         }
     }
 }
@@ -1525,9 +801,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                     if let Some(i) = dataful_variant {
                         let count = (niche_variants.end - niche_variants.start + 1) as u128;
-                        for (field_index, field) in variants[i].iter().enumerate() {
+                        for (field_index, &field) in variants[i].iter().enumerate() {
                             let (offset, niche, niche_start) =
-                                match field.find_niche(self, count)? {
+                                match self.find_niche(field, count)? {
                                     Some(niche) => niche,
                                     None => continue
                                 };
@@ -2024,26 +1300,6 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
     }
 }
 
-/// The details of the layout of a type, alongside the type itself.
-/// Provides various type traversal APIs (e.g. recursing into fields).
-///
-/// Note that the details are NOT guaranteed to always be identical
-/// to those obtained from `layout_of(ty)`, as we need to produce
-/// layouts for which Rust types do not exist, such as enum variants
-/// or synthetic fields of enums (i.e. discriminants) and fat pointers.
-#[derive(Copy, Clone, Debug)]
-pub struct TyLayout<'tcx> {
-    pub ty: Ty<'tcx>,
-    details: &'tcx LayoutDetails
-}
-
-impl<'tcx> Deref for TyLayout<'tcx> {
-    type Target = &'tcx LayoutDetails;
-    fn deref(&self) -> &&'tcx LayoutDetails {
-        &self.details
-    }
-}
-
 pub trait HasTyCtxt<'tcx>: HasDataLayout {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
 }
@@ -2095,13 +1351,10 @@ impl<T, E> MaybeResult<T> for Result<T, E> {
     }
 }
 
-pub trait LayoutOf<T> {
-    type TyLayout;
+pub type TyLayout<'tcx> = ::rustc_target::abi::TyLayout<'tcx, Ty<'tcx>>;
 
-    fn layout_of(self, ty: T) -> Self::TyLayout;
-}
-
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
+impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
+    type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
@@ -2127,7 +1380,8 @@ impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf<Ty<'tcx>> for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>> {
+impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::maps::TyCtxtAt<'a, 'tcx, 'tcx>> {
+    type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
     /// Computes the layout of a type. Note that this implicitly
@@ -2186,22 +1440,22 @@ impl<'a, 'tcx> ty::maps::TyCtxtAt<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyLayout<'tcx> {
-    pub fn for_variant<C>(&self, cx: C, variant_index: usize) -> Self
-        where C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>,
-              C::TyLayout: MaybeResult<TyLayout<'tcx>>
-    {
-        let details = match self.variants {
-            Variants::Single { index } if index == variant_index => self.details,
+impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
+    where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
+          C::TyLayout: MaybeResult<TyLayout<'tcx>>
+{
+    fn for_variant(this: TyLayout<'tcx>, cx: C, variant_index: usize) -> TyLayout<'tcx> {
+        let details = match this.variants {
+            Variants::Single { index } if index == variant_index => this.details,
 
             Variants::Single { index } => {
                 // Deny calling for_variant more than once for non-Single enums.
-                cx.layout_of(self.ty).map_same(|layout| {
+                cx.layout_of(this.ty).map_same(|layout| {
                     assert_eq!(layout.variants, Variants::Single { index });
                     layout
                 });
 
-                let fields = match self.ty.sty {
+                let fields = match this.ty.sty {
                     ty::TyAdt(def, _) => def.variants[variant_index].fields.len(),
                     _ => bug!()
                 };
@@ -2219,17 +1473,14 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         assert_eq!(details.variants, Variants::Single { index: variant_index });
 
         TyLayout {
-            ty: self.ty,
+            ty: this.ty,
             details
         }
     }
 
-    pub fn field<C>(&self, cx: C, i: usize) -> C::TyLayout
-        where C: LayoutOf<Ty<'tcx>> + HasTyCtxt<'tcx>,
-              C::TyLayout: MaybeResult<TyLayout<'tcx>>
-    {
+    fn field(this: TyLayout<'tcx>, cx: C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
-        cx.layout_of(match self.ty.sty {
+        cx.layout_of(match this.ty.sty {
             ty::TyBool |
             ty::TyChar |
             ty::TyInt(_) |
@@ -2241,7 +1492,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyGeneratorWitness(..) |
             ty::TyForeign(..) |
             ty::TyDynamic(..) => {
-                bug!("TyLayout::field_type({:?}): not applicable", self)
+                bug!("TyLayout::field_type({:?}): not applicable", this)
             }
 
             // Potentially-fat pointers.
@@ -2255,13 +1506,13 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                 // as the `Abi` or `FieldPlacement` is checked by users.
                 if i == 0 {
                     let nil = tcx.mk_nil();
-                    let ptr_ty = if self.ty.is_unsafe_ptr() {
+                    let ptr_ty = if this.ty.is_unsafe_ptr() {
                         tcx.mk_mut_ptr(nil)
                     } else {
                         tcx.mk_mut_ref(tcx.types.re_static, nil)
                     };
                     return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
-                        ptr_layout.ty = self.ty;
+                        ptr_layout.ty = this.ty;
                         ptr_layout
                     });
                 }
@@ -2274,7 +1525,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
                         // the correct number of vtables slots.
                         tcx.mk_imm_ref(tcx.types.re_static, tcx.mk_nil())
                     }
-                    _ => bug!("TyLayout::field_type({:?}): not applicable", self)
+                    _ => bug!("TyLayout::field_type({:?}): not applicable", this)
                 }
             }
 
@@ -2296,12 +1547,12 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             // SIMD vector types.
             ty::TyAdt(def, ..) if def.repr.simd() => {
-                self.ty.simd_type(tcx)
+                this.ty.simd_type(tcx)
             }
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                match self.variants {
+                match this.variants {
                     Variants::Single { index } => {
                         def.variants[index].fields[i].ty(tcx, substs)
                     }
@@ -2321,45 +1572,25 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
             ty::TyInfer(_) | ty::TyError => {
-                bug!("TyLayout::field_type: unexpected type `{}`", self.ty)
+                bug!("TyLayout::field_type: unexpected type `{}`", this.ty)
             }
         })
     }
+}
 
-    /// Returns true if the layout corresponds to an unsized type.
-    pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
-    }
-
-    /// Returns true if the type is a ZST and not unsized.
-    pub fn is_zst(&self) -> bool {
-        match self.abi {
-            Abi::Uninhabited => true,
-            Abi::Scalar(_) |
-            Abi::ScalarPair(..) |
-            Abi::Vector { .. } => false,
-            Abi::Aggregate { sized } => sized && self.size.bytes() == 0
-        }
-    }
-
-    pub fn size_and_align(&self) -> (Size, Align) {
-        (self.size, self.align)
-    }
-
+impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Find the offset of a niche leaf field, starting from
     /// the given type and recursing through aggregates, which
     /// has at least `count` consecutive invalid values.
     /// The tuple is `(offset, scalar, niche_value)`.
     // FIXME(eddyb) traverse already optimized enums.
-    fn find_niche<C>(&self, cx: C, count: u128)
+    fn find_niche(self, layout: TyLayout<'tcx>, count: u128)
         -> Result<Option<(Size, Scalar, u128)>, LayoutError<'tcx>>
-        where C: LayoutOf<Ty<'tcx>, TyLayout = Result<Self, LayoutError<'tcx>>> +
-                 HasTyCtxt<'tcx>
     {
         let scalar_component = |scalar: &Scalar, offset| {
             let Scalar { value, valid_range: ref v } = *scalar;
 
-            let bits = value.size(cx).bits();
+            let bits = value.size(self).bits();
             assert!(bits <= 128);
             let max_value = !0u128 >> (128 - bits);
 
@@ -2386,17 +1617,17 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         // Locals variables which live across yields are stored
         // in the generator type as fields. These may be uninitialized
         // so we don't look for niches there.
-        if let ty::TyGenerator(..) = self.ty.sty {
+        if let ty::TyGenerator(..) = layout.ty.sty {
             return Ok(None);
         }
 
-        match self.abi {
+        match layout.abi {
             Abi::Scalar(ref scalar) => {
                 return Ok(scalar_component(scalar, Size::from_bytes(0)));
             }
             Abi::ScalarPair(ref a, ref b) => {
                 return Ok(scalar_component(a, Size::from_bytes(0)).or_else(|| {
-                    scalar_component(b, a.value.size(cx).abi_align(b.value.align(cx)))
+                    scalar_component(b, a.value.size(self).abi_align(b.value.align(self)))
                 }));
             }
             Abi::Vector { ref element, .. } => {
@@ -2406,22 +1637,22 @@ impl<'a, 'tcx> TyLayout<'tcx> {
         }
 
         // Perhaps one of the fields is non-zero, let's recurse and find out.
-        if let FieldPlacement::Union(_) = self.fields {
+        if let FieldPlacement::Union(_) = layout.fields {
             // Only Rust enums have safe-to-inspect fields
             // (a discriminant), other unions are unsafe.
-            if let Variants::Single { .. } = self.variants {
+            if let Variants::Single { .. } = layout.variants {
                 return Ok(None);
             }
         }
-        if let FieldPlacement::Array { .. } = self.fields {
-            if self.fields.count() > 0 {
-                return self.field(cx, 0)?.find_niche(cx, count);
+        if let FieldPlacement::Array { .. } = layout.fields {
+            if layout.fields.count() > 0 {
+                return self.find_niche(layout.field(self, 0)?, count);
             }
         }
-        for i in 0..self.fields.count() {
-            let r = self.field(cx, i)?.find_niche(cx, count)?;
+        for i in 0..layout.fields.count() {
+            let r = self.find_niche(layout.field(self, i)?, count)?;
             if let Some((offset, scalar, niche_value)) = r {
-                let offset = self.fields.offset(i) + offset;
+                let offset = layout.fields.offset(i) + offset;
                 return Ok(Some((offset, scalar, niche_value)));
             }
         }
@@ -2549,14 +1780,22 @@ impl_stable_hash_for!(enum ::ty::layout::Primitive {
     Pointer
 });
 
-impl_stable_hash_for!(struct ::ty::layout::Align {
-    abi_pow2,
-    pref_pow2
-});
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Align {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.abi().hash_stable(hcx, hasher);
+        self.pref().hash_stable(hcx, hasher);
+    }
+}
 
-impl_stable_hash_for!(struct ::ty::layout::Size {
-    raw
-});
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for Size {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'gcx>,
+                                          hasher: &mut StableHasher<W>) {
+        self.bytes().hash_stable(hcx, hasher);
+    }
+}
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for LayoutError<'gcx>
 {

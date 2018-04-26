@@ -22,7 +22,7 @@ use util::captures::Captures;
 
 use std::iter;
 use std::cmp::Ordering;
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::ast::{self, Name};
 use syntax::symbol::{keywords, InternedString};
 

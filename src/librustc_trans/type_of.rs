@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::FnType;
+use abi::{FnType, FnTypeExt};
 use common::*;
 use rustc::hir;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
-use rustc_back::PanicStrategy;
+use rustc_target::spec::PanicStrategy;
 use trans_item::DefPathBasedNames;
 use type_::Type;
 

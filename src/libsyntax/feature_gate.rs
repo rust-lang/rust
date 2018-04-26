@@ -25,7 +25,7 @@
 use self::AttributeType::*;
 use self::AttributeGate::*;
 
-use abi::Abi;
+use rustc_target::spec::abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
 use edition::{ALL_EDITIONS, Edition};

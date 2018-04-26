@@ -23,7 +23,7 @@ use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
 use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
 use rustc::ty::TyCtxt;
-use rustc_back::{LinkerFlavor, LldFlavor};
+use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might

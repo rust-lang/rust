@@ -10,7 +10,7 @@
 
 pub use self::AnnNode::*;
 
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{CodeMap, Spanned};
 use syntax::parse::{token, ParseSess};

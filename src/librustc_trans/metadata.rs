@@ -10,7 +10,7 @@
 
 use rustc::util::common;
 use rustc::middle::cstore::MetadataLoader;
-use rustc_back::target::Target;
+use rustc_target::spec::Target;
 use llvm;
 use llvm::{False, ObjectFile, mk_section_iter};
 use llvm::archive_ro::ArchiveRO;

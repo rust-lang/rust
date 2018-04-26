@@ -22,6 +22,7 @@ extern crate rustc;
 extern crate log;
 extern crate rustc_data_structures;
 extern crate rustc_serialize;
+extern crate rustc_target;
 extern crate rustc_typeck;
 #[macro_use]
 extern crate syntax;

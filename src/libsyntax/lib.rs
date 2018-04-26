@@ -28,10 +28,6 @@
 
 #![recursion_limit="256"]
 
-// See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
-#[allow(unused_extern_crates)]
-extern crate rustc_cratesio_shim;
-
 #[macro_use] extern crate bitflags;
 extern crate core;
 extern crate serialize;
@@ -39,6 +35,7 @@ extern crate serialize;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
+extern crate rustc_target;
 #[macro_use] extern crate scoped_tls;
 
 extern crate serialize as rustc_serialize; // used by deriving
@@ -138,7 +135,6 @@ pub mod syntax {
     pub use ast;
 }
 
-pub mod abi;
 pub mod ast;
 pub mod attr;
 pub mod codemap;

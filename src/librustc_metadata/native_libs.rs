@@ -14,7 +14,7 @@ use rustc::middle::cstore::{self, NativeLibrary};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::nodemap::FxHashSet;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::feature_gate::{self, GateIssue};

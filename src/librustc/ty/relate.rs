@@ -22,7 +22,7 @@ use mir::interpret::{GlobalId, Value, PrimVal};
 use util::common::ErrorReported;
 use std::rc::Rc;
 use std::iter;
-use syntax::abi;
+use rustc_target::spec::abi;
 use hir as ast;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 

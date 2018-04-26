@@ -12,7 +12,7 @@ use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
@@ -22,7 +22,7 @@ use builder::Builder;
 use common::{CodegenCx, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::Instance;
-use abi::{ArgAttribute, FnType, PassMode};
+use abi::{ArgAttribute, ArgTypeExt, FnType, FnTypeExt, PassMode};
 use type_::Type;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
@@ -53,7 +53,7 @@ pub struct FunctionCx<'a, 'tcx:'a> {
 
     cx: &'a CodegenCx<'a, 'tcx>,
 
-    fn_ty: FnType<'tcx>,
+    fn_ty: FnType<'tcx, Ty<'tcx>>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the

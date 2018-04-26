@@ -37,7 +37,7 @@ use syntax::ast;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
-use rustc_back::target::Target;
+use rustc_target::spec::Target;
 use rustc_data_structures::sync::{MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;

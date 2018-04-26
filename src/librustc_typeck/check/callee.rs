@@ -17,7 +17,7 @@ use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, TypeFoldable, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 

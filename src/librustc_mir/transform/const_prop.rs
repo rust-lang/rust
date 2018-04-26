@@ -72,7 +72,8 @@ struct ConstPropagator<'b, 'a, 'tcx:'a+'b> {
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'a, 'b, 'tcx> LayoutOf<ty::Ty<'tcx>> for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> LayoutOf for &'a ConstPropagator<'a, 'b, 'tcx> {
+    type Ty = ty::Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
     fn layout_of(self, ty: ty::Ty<'tcx>) -> Self::TyLayout {

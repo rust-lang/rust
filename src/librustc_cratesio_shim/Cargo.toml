@@ -21,3 +21,4 @@ crate-type = ["dylib"]
 
 [dependencies]
 bitflags = "1.0"
+log = "0.4"

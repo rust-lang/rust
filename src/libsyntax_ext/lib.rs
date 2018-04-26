@@ -27,6 +27,7 @@ extern crate syntax_pos;
 extern crate proc_macro;
 extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
+extern crate rustc_target;
 
 #[cfg(not(stage0))]
 mod diagnostics;

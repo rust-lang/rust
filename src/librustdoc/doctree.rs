@@ -13,7 +13,7 @@
 pub use self::StructType::*;
 pub use self::TypeBound::*;
 
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;

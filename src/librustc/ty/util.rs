@@ -22,7 +22,7 @@ use ty::fold::TypeVisitor;
 use ty::subst::UnpackedKind;
 use ty::maps::TyCtxtAt;
 use ty::TypeVariants::*;
-use ty::layout::Integer;
+use ty::layout::{Integer, IntegerExt};
 use util::common::ErrorReported;
 use middle::lang_items;
 use mir::interpret::{Value, PrimVal};

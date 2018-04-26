@@ -29,7 +29,7 @@ use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::middle::lang_items;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::ast::LitKind;
 use syntax::feature_gate::UnstableFeatures;

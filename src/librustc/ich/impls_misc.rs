@@ -20,7 +20,7 @@ impl_stable_hash_for!(enum ::session::search_paths::PathKind {
     All
 });
 
-impl_stable_hash_for!(enum ::rustc_back::PanicStrategy {
+impl_stable_hash_for!(enum ::rustc_target::spec::PanicStrategy {
     Abort,
     Unwind
 });

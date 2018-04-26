@@ -51,7 +51,7 @@ use std::cmp;
 use std::fmt;
 use std::mem;
 use std::rc::Rc;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use hir;
 use util::nodemap::{FxHashMap, FxHashSet};
 

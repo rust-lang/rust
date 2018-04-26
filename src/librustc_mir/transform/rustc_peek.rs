@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::abi::{Abi};
+use rustc_target::spec::abi::{Abi};
 use syntax::ast;
 use syntax_pos::Span;
 

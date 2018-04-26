@@ -23,7 +23,7 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use abi::Abi;
+use rustc_target::spec::abi::Abi;
 use ast::*;
 use syntax_pos::Span;
 use codemap::Spanned;

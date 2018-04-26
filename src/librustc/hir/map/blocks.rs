@@ -25,7 +25,7 @@ use hir as ast;
 use hir::map::{self, Node};
 use hir::{Expr, FnDecl};
 use hir::intravisit::FnKind;
-use syntax::abi;
+use rustc_target::spec::abi;
 use syntax::ast::{Attribute, Name, NodeId};
 use syntax_pos::Span;
 
