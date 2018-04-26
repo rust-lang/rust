@@ -231,3 +231,24 @@ fn test_try() {
     }
     assert_eq!(try_result_err(), Err(1));
 }
+
+#[test]
+fn test_result_deref() {
+    // Ok(T).deref_ok() -> Result<&T, &E::Deref::Target>::Ok(&T)
+    let ref_ok: &Result<&i32, &u8> = &Ok(&42);
+    assert_eq!(ref_ok.deref_ok(), Ok(&42));
+    assert_eq!(ref_ok.deref_ok(), Ok(&42));
+    assert_eq!(ref_ok.deref(), Ok(&42));
+
+    // Err(E) -> Result<&T, &E::Deref::Target>::Err(&*E)
+    let ref_err: &Result<&i32, &u8> = &Err(&41);
+    assert_eq!(ref_err.deref_err(), Err(&41));
+    assert_eq!(ref_err.deref_err(), Err(&41));
+    assert_eq!(ref_err.deref(), Err(&41));
+
+    // &Ok(T).deref_err() -> Result<&T, &E::Deref::Target>::Ok(&T)
+    assert_eq!(ref_ok.deref_err(), Ok(&&42));
+
+    // &Err(E) -> Result<&T::Deref::Target, &E>::Err(&E)
+    assert_eq!(ref_err.deref_ok(), Err(&&41));
+}

@@ -297,3 +297,14 @@ fn test_try() {
     }
     assert_eq!(try_option_err(), Err(NoneError));
 }
+
+#[test]
+fn test_option_deref() {
+    // Some: &Option<T: Deref>::Some(T) -> Option<&T::Deref::Target>::Some(&*T)
+    let ref_option = &Some(&42);
+    assert_eq!(ref_option.deref(), Some(&42));
+
+    // None: &Option<T: Deref>>::None -> None
+    let ref_option = &None;
+    assert_eq!(ref_option.deref(), None);
+}

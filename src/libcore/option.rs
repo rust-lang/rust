@@ -146,7 +146,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use {mem, ops};
+use {mem, ops::{self, Deref}};
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -914,7 +914,6 @@ fn expect_failed(msg: &str) -> ! {
     panic!("{}", msg)
 }
 
-
 /////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
@@ -976,6 +975,24 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 impl<T> From<T> for Option<T> {
     fn from(val: T) -> Option<T> {
         Some(val)
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+/// Extension trait to get a reference of an Option via the Deref trait.
+pub trait OptionDeref<T: Deref> {
+    /// Converts from `&Option<T>` to `Option<&T::Target>`.
+    ///
+    /// Leaves the original Option in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the contents via `Deref`.
+    fn deref(&self) -> Option<&T::Target>;
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref> OptionDeref<T> for Option<T>
+{
+    fn deref(&self) -> Option<&T::Target> {
+        self.as_ref().map(|t| t.deref())
     }
 }
 

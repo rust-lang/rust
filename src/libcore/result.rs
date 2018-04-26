@@ -242,7 +242,7 @@
 
 use fmt;
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use ops;
+use ops::{self, Deref};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///
@@ -996,6 +996,63 @@ impl<'a, T, E> IntoIterator for &'a mut Result<T, E> {
 
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+/// Extension trait to get a reference to a Result via the Deref trait.
+pub trait ResultDeref<T, E> {
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Ok` arm of the Result via
+    /// `Deref`.
+    fn deref_ok(&self) -> Result<&T::Target, &E>
+                where
+                       T: Deref;
+
+    /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the `Err` arm of the Result via
+    /// `Deref`.
+    fn deref_err(&self) -> Result<&T, &E::Target>
+                 where
+                        E: Deref;
+
+    /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
+    ///
+    /// Leaves the original Result in-place, creating a new one with a reference
+    /// to the original one, additionally coercing both the `Ok` and `Err` arms
+    /// of the Result via `Deref`.
+    fn deref(&self) -> Result<&T::Target, &E::Target>
+             where
+                    T: Deref,
+                    E: Deref;
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T, E> ResultDeref<T, E> for Result<T, E> {
+    fn deref_ok(&self) -> Result<&T::Target, &E>
+                where
+                       T: Deref,
+    {
+        self.as_ref().map(|t| t.deref())
+    }
+
+    fn deref_err(&self) -> Result<&T, &E::Target>
+                 where
+                        E: Deref,
+    {
+        self.as_ref().map_err(|e| e.deref())
+    }
+
+    fn deref(&self) -> Result<&T::Target, &E::Target>
+             where
+                    T: Deref,
+                    E: Deref,
+    {
+        self.as_ref().map(|t| t.deref()).map_err(|e| e.deref())
     }
 }
 
