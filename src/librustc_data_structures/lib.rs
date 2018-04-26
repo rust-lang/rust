@@ -45,7 +45,6 @@ extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
-extern crate parking_lot;
 #[macro_use]
 extern crate cfg_if;
 extern crate stable_deref_trait;
