@@ -1535,6 +1535,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
+        logv(self.config, format!("rustc env {:?}", self.props.rustc_env));
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
             rustc,

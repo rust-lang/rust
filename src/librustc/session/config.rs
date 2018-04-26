@@ -38,6 +38,8 @@ use syntax::feature_gate::UnstableFeatures;
 
 use errors::{ColorConfig, FatalError, Handler};
 
+use env_sandbox::{EnvSandboxBuilder, EnvSandbox};
+
 use getopts;
 use std::collections::{BTreeMap, BTreeSet};
 use std::collections::btree_map::Iter as BTreeMapIter;
@@ -413,6 +415,9 @@ top_level_options!(
         // Remap source path prefixes in all output (messages, object files, debug, etc)
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
         edition: Edition [TRACKED],
+
+        // Environment sandbox for process envvars and include path prefixes
+        env_sb: EnvSandbox [UNTRACKED],
     }
 );
 
@@ -593,6 +598,7 @@ pub fn basic_options() -> Options {
         cli_forced_thinlto_off: false,
         remap_path_prefix: Vec::new(),
         edition: DEFAULT_EDITION,
+        env_sb: EnvSandbox::default(),
     }
 }
 
@@ -1653,6 +1659,34 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
+        opt::multi_s(
+            "",
+            "env-allow",
+            "Allow a specific environment variable to be accessed with an env!() macro",
+            "ENVVAR",
+        ),
+        opt::multi_s(
+            "",
+            "env-define",
+            "Define an environment variable for reading with an env!() macro",
+            "ENVVAR=VALUE",
+        ),
+        opt::flag_s(
+            "",
+            "env-clear",
+            "Clear all environment, and prevent access to process environment",
+        ),
+        opt::multi_s(
+            "",
+            "include-prefix",
+            "Define a valid prefix for include!() macros",
+            "PATH",
+        ),
+        opt::flag_s(
+            "",
+            "clear-include-prefixes",
+            "Clear all path prefixes, disallowing access to all files",
+        ),
     ]);
     opts
 }
@@ -2161,6 +2195,32 @@ pub fn build_session_options_and_crate_config(
         })
         .collect();
 
+    let mut env_sb = EnvSandboxBuilder::new();
+
+    if matches.opt_present("env-clear") {
+        env_sb.env_clear();
+    }
+    for env in matches.opt_strs("env-allow") {
+        env_sb.env_allow(env);
+    }
+    for envvar in matches.opt_strs("env-define") {
+        let envvar: Vec<_> = envvar.splitn(2, '=').collect();
+        if envvar.len() != 2 {
+            early_error(error_format, "--env-define must contain '=' between ENVVAR and VALUE");
+        }
+        env_sb.env_define(envvar[0], envvar[1]);
+    }
+
+    if matches.opt_present("clear-include-prefixes") {
+        env_sb.paths_clear();
+    }
+    for pathpfx in matches.opt_strs("include-prefix") {
+        if let Err(err) = env_sb.path_add(pathpfx) {
+            early_error(error_format, &format!("--include-prefix path error: {}", err));
+        }
+    }
+    let env_sb = env_sb.build();
+
     (
         Options {
             crate_types,
@@ -2191,6 +2251,7 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
+            env_sb,
         },
         cfg,
     )

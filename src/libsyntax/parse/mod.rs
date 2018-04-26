@@ -22,6 +22,7 @@ use str::char_at;
 use symbol::Symbol;
 use tokenstream::{TokenStream, TokenTree};
 use diagnostics::plugin::ErrorMap;
+use env_sandbox::EnvSandbox;
 
 use std::collections::HashSet;
 use std::iter;
@@ -57,6 +58,7 @@ pub struct ParseSess {
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
     code_map: Lrc<CodeMap>,
+    env_sandbox: Lrc<EnvSandbox>,
 }
 
 impl ParseSess {
@@ -66,10 +68,12 @@ impl ParseSess {
                                                 true,
                                                 false,
                                                 Some(cm.clone()));
-        ParseSess::with_span_handler(handler, cm)
+        let env_sb = Lrc::new(EnvSandbox::default());
+        ParseSess::with_span_handler(handler, cm, env_sb)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, code_map: Lrc<CodeMap>, env_sandbox: Lrc<EnvSandbox>)
+                                        -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -80,11 +84,16 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             code_map,
             non_modrs_mods: Lock::new(vec![]),
+            env_sandbox,
         }
     }
 
     pub fn codemap(&self) -> &CodeMap {
         &self.code_map
+    }
+
+    pub fn env_sandbox(&self) -> &EnvSandbox {
+        &self.env_sandbox
     }
 }
 
