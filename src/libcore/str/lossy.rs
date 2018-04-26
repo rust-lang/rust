@@ -151,6 +151,8 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
+        // We might return no characters (we encounter an error).
+        // We will return the most characters when the input is all ASCII.
         (0, Some(self.source.len()))
     }
 }
