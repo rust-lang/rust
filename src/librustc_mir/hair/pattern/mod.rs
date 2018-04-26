@@ -34,6 +34,7 @@ use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
@@ -1145,16 +1146,14 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             Value::ByVal(PrimVal::Bytes(n))
         },
         LitKind::Float(n, fty) => {
-            let n = n.as_str();
-            parse_float(&n, fty, neg).map_err(|_| ())?
+            parse_float(n, fty, neg)?
         }
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
                 ty::TyFloat(fty) => fty,
                 _ => bug!()
             };
-            let n = n.as_str();
-            parse_float(&n, fty, neg).map_err(|_| ())?
+            parse_float(n, fty, neg)?
         }
         LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
         LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
@@ -1163,26 +1162,29 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
 }
 
 pub fn parse_float(
-    num: &str,
+    num: Symbol,
     fty: ast::FloatTy,
     neg: bool,
-) -> Result<Value, String> {
+) -> Result<Value, ()> {
+    let num = num.as_str();
     use rustc_apfloat::ieee::{Single, Double};
     use rustc_apfloat::Float;
     let bits = match fty {
         ast::FloatTy::F32 => {
-            let mut f = num.parse::<Single>().map_err(|e| {
-                format!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
-            })?;
+            num.parse::<f32>().map_err(|_| ())?;
+            let mut f = num.parse::<Single>().unwrap_or_else(|e| {
+                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            });
             if neg {
                 f = -f;
             }
             f.to_bits()
         }
         ast::FloatTy::F64 => {
-            let mut f = num.parse::<Double>().map_err(|e| {
-                format!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
-            })?;
+            num.parse::<f64>().map_err(|_| ())?;
+            let mut f = num.parse::<Double>().unwrap_or_else(|e| {
+                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            });
             if neg {
                 f = -f;
             }

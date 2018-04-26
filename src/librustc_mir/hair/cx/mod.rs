@@ -171,6 +171,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     ) -> Literal<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
+        let parse_float = |num, fty| -> Value {
+            parse_float(num, fty, neg).unwrap_or_else(|_| {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
+            })
+        };
+
         let clamp = |n| {
             let size = self.integer_bit_width(ty);
             trace!("clamp {} with size {} and amt {}", n, size, 128 - size);
@@ -205,16 +212,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             },
             LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(clamp(n))),
             LitKind::Float(n, fty) => {
-                let n = n.as_str();
-                parse_float(&n, fty, neg).expect("apfloat parsing failed")
+                parse_float(n, fty)
             }
             LitKind::FloatUnsuffixed(n) => {
                 let fty = match ty.sty {
                     ty::TyFloat(fty) => fty,
                     _ => bug!()
                 };
-                let n = n.as_str();
-                parse_float(&n, fty, neg).expect("apfloat parsing failed")
+                parse_float(n, fty)
             }
             LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
             LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
