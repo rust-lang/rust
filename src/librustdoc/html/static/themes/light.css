@@ -391,3 +391,10 @@ kbd {
 #all-types:hover {
 	background-color: #f9f9f9;
 }
+
+.search-results td span.alias {
+	color: #000;
+}
+.search-results td span.grey {
+	color: #999;
+}

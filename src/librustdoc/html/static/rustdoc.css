@@ -1327,7 +1327,3 @@ kbd {
 #all-types > p {
 	margin: 5px 0;
 }
-
-.search-results td span.grey {
-	color: #ccc;
-}

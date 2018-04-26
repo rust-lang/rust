@@ -1273,7 +1273,7 @@
                     output += '<tr class="' + type + ' result"><td>' +
                               '<a href="' + item.href + '">' +
                               (item.is_alias === true ?
-                               ('<span><b>' + item.alias + ' </b></span><span ' +
+                               ('<span class="alias"><b>' + item.alias + ' </b></span><span ' +
                                   'class="grey"><i>&nbsp;- see&nbsp;</i></span>') : '') +
                               item.displayPath + '<span class="' + type + '">' +
                               name + '</span></a></td><td>' +
