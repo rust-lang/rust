@@ -88,7 +88,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                    layout: TyLayout<'tcx>) -> OperandRef<'tcx> {
         assert!(layout.is_zst());
         OperandRef {
-            val: OperandValue::Immediate(C_undef(layout.immediate_llvm_type(cx))),
+            val: OperandValue::Immediate(C_undef(layout.llvm_type(cx))),
             layout
         }
     }
@@ -113,7 +113,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
                     bx.cx,
                     x,
                     scalar,
-                    layout.immediate_llvm_type(bx.cx),
+                    layout.llvm_type(bx.cx),
                 );
                 OperandValue::Immediate(llval)
             },
@@ -226,7 +226,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
             // If we're uninhabited, or the field is ZST, it has no data.
             _ if self.layout.abi == layout::Abi::Uninhabited || field.is_zst() => {
                 return OperandRef {
-                    val: OperandValue::Immediate(C_undef(field.immediate_llvm_type(bx.cx))),
+                    val: OperandValue::Immediate(C_undef(field.llvm_type(bx.cx))),
                     layout: field
                 };
             }
@@ -263,7 +263,7 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
         match val {
             OperandValue::Immediate(ref mut llval) => {
-                *llval = bx.bitcast(*llval, field.immediate_llvm_type(bx.cx));
+                *llval = bx.bitcast(*llval, field.llvm_type(bx.cx));
             }
             OperandValue::Pair(ref mut a, ref mut b) => {
                 *a = bx.bitcast(*a, field.scalar_pair_element_llvm_type(bx.cx, 0));
@@ -292,7 +292,7 @@ impl<'a, 'tcx> OperandValue {
                 base::memcpy_ty(bx, dest.llval, r, dest.layout,
                                 source_align.min(dest.align)),
             OperandValue::Immediate(s) => {
-                bx.store(base::from_immediate(bx, s), dest.llval, dest.align);
+                bx.store(s, dest.llval, dest.align);
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
@@ -301,7 +301,7 @@ impl<'a, 'tcx> OperandValue {
                     if common::val_ty(x) == Type::i1(bx.cx) {
                         llptr = bx.pointercast(llptr, Type::i8p(bx.cx));
                     }
-                    bx.store(base::from_immediate(bx, x), llptr, dest.align);
+                    bx.store(x, llptr, dest.align);
                 }
             }
         }

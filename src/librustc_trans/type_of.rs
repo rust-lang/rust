@@ -200,7 +200,6 @@ pub trait LayoutLlvmExt<'tcx> {
     fn is_llvm_immediate(&self) -> bool;
     fn is_llvm_scalar_pair<'a>(&self) -> bool;
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type;
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type;
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type;
     fn scalar_pair_element_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
@@ -244,6 +243,9 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     /// that field and ensuring the struct has the right alignment.
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
         if let layout::Abi::Scalar(ref scalar) = self.abi {
+            if scalar.is_bool() {
+                return Type::i1(cx);
+            }
             // Use a different cache for scalars because pointers to DSTs
             // can be either fat or thin (data pointers of fat pointers).
             if let Some(&llty) = cx.scalar_lltypes.borrow().get(&self.ty) {
@@ -310,15 +312,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         llty
     }
 
-    fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Type {
-        if let layout::Abi::Scalar(ref scalar) = self.abi {
-            if scalar.is_bool() {
-                return Type::i1(cx);
-            }
-        }
-        self.llvm_type(cx)
-    }
-
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>,
                                scalar: &layout::Scalar, offset: Size) -> Type {
         match scalar.value {
@@ -359,13 +352,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
         };
         let scalar = [a, b][index];
 
-        // Make sure to return the same type `immediate_llvm_type` would,
-        // to avoid dealing with two types and the associated conversions.
-        // This means that `(bool, bool)` is represented as `{i1, i1}`,
-        // both in memory and as an immediate, while `bool` is typically
-        // `i8` in memory and only `i1` when immediate. While we need to
-        // load/store `bool` as `i8` to avoid crippling LLVM optimizations,
-        // `i1` in a LLVM aggregate is valid and mostly equivalent to `i8`.
         if scalar.is_bool() {
             return Type::i1(cx);
         }

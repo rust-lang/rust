@@ -101,7 +101,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
                 let start = dest.project_index(&bx, C_usize(bx.cx, 0)).llval;
 
-                if let OperandValue::Immediate(v) = tr_elem.val {
+                if let OperandValue::Immediate(mut v) = tr_elem.val {
                     let align = C_i32(bx.cx, dest.align.abi() as i32);
                     let size = C_usize(bx.cx, dest.layout.size.bytes());
 
@@ -113,7 +113,9 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
-                    let v = base::from_immediate(&bx, v);
+                    if common::val_ty(v) == Type::i1(bx.cx) {
+                        v = bx.zext(v, Type::i8(bx.cx))
+                    }
                     if common::val_ty(v) == Type::i8(bx.cx) {
                         base::call_memset(&bx, start, v, size, align, false);
                         return bx;
@@ -256,7 +258,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = cast.immediate_llvm_type(bx.cx);
+                                let llcast_ty = cast.llvm_type(bx.cx);
                                 let llval = bx.pointercast(data_ptr, llcast_ty);
                                 OperandValue::Immediate(llval)
                             }
@@ -266,7 +268,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     }
                     mir::CastKind::Misc => {
                         assert!(cast.is_llvm_immediate());
-                        let ll_t_out = cast.immediate_llvm_type(bx.cx);
+                        let ll_t_out = cast.llvm_type(bx.cx);
                         if operand.layout.abi == layout::Abi::Uninhabited {
                             return (bx, OperandRef {
                                 val: OperandValue::Immediate(C_undef(ll_t_out)),
@@ -276,7 +278,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         let r_t_in = CastTy::from_ty(operand.layout.ty)
                             .expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
-                        let ll_t_in = operand.layout.immediate_llvm_type(bx.cx);
+                        let ll_t_in = operand.layout.llvm_type(bx.cx);
                         match operand.layout.variants {
                             layout::Variants::Single { index } => {
                                 if let Some(def) = operand.layout.ty.ty_adt_def() {

@@ -244,7 +244,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             unsafe {
                 llvm::LLVMSetAlignment(load, cx.align_of(tp_ty).abi() as u32);
             }
-            to_immediate(bx, load, cx.layout_of(tp_ty))
+            load
         },
         "volatile_store" => {
             let tp_ty = substs.type_at(0);
@@ -259,7 +259,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                     if dst.layout.is_zst() {
                         return;
                     }
-                    from_immediate(bx, args[1].immediate())
+                    args[1].immediate()
                 };
                 let ptr = bx.pointercast(dst.llval, val_ty(val).ptr_to());
                 let store = bx.volatile_store(val, ptr);
@@ -556,7 +556,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             let val = if let OperandValue::Ref(ptr, align) = args[1].val {
                 bx.load(ptr, align)
             } else {
-                from_immediate(bx, args[1].immediate())
+                args[1].immediate()
             };
             let ptr = bx.pointercast(dst.llval, val_ty(val).ptr_to());
             let store = bx.nontemporal_store(val, ptr);

@@ -93,7 +93,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         let scalar_load_metadata = |load, scalar: &layout::Scalar| {
             let vr = scalar.valid_range.clone();
             match scalar.value {
-                layout::Int(..) => {
+                layout::Int(..) if !scalar.is_bool() => {
                     let range = scalar.valid_range_exclusive(bx.cx);
                     if range.start != range.end {
                         bx.range_metadata(load, range);
@@ -124,21 +124,13 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 }
                 load
             };
-            OperandValue::Immediate(base::to_immediate(bx, llval, self.layout))
+            OperandValue::Immediate(llval)
         } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
             let load = |i, scalar: &layout::Scalar| {
-                let mut llptr = bx.struct_gep(self.llval, i as u64);
-                // Make sure to always load i1 as i8.
-                if scalar.is_bool() {
-                    llptr = bx.pointercast(llptr, Type::i8p(bx.cx));
-                }
+                let llptr = bx.struct_gep(self.llval, i as u64);
                 let load = bx.load(llptr, self.align);
                 scalar_load_metadata(load, scalar);
-                if scalar.is_bool() {
-                    bx.trunc(load, Type::i1(bx.cx))
-                } else {
-                    load
-                }
+                load
             };
             OperandValue::Pair(load(0, a), load(1, b))
         } else {
@@ -254,7 +246,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
 
     /// Obtain the actual discriminant of a value.
     pub fn trans_get_discr(self, bx: &Builder<'a, 'tcx>, cast_to: Ty<'tcx>) -> ValueRef {
-        let cast_to = bx.cx.layout_of(cast_to).immediate_llvm_type(bx.cx);
+        let cast_to = bx.cx.layout_of(cast_to).llvm_type(bx.cx);
         if self.layout.abi == layout::Abi::Uninhabited {
             return C_undef(cast_to);
         }
@@ -286,7 +278,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 niche_start,
                 ..
             } => {
-                let niche_llty = discr.layout.immediate_llvm_type(bx.cx);
+                let niche_llty = discr.layout.llvm_type(bx.cx);
                 if niche_variants.start() == niche_variants.end() {
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_start == 0 {
@@ -351,7 +343,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                     }
 
                     let niche = self.project_field(bx, 0);
-                    let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
+                    let niche_llty = niche.layout.llvm_type(bx.cx);
                     let niche_value = ((variant_index - *niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
                     // FIXME(eddyb) Check the actual primitive type here.

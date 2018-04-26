@@ -558,7 +558,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
         let llreturn_ty = match self.ret.mode {
             PassMode::Ignore => Type::void(cx),
             PassMode::Direct(_) | PassMode::Pair(..) => {
-                self.ret.layout.immediate_llvm_type(cx)
+                self.ret.layout.llvm_type(cx)
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(_) => {
@@ -575,7 +575,7 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
 
             let llarg_ty = match arg.mode {
                 PassMode::Ignore => continue,
-                PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
+                PassMode::Direct(_) => arg.layout.llvm_type(cx),
                 PassMode::Pair(..) => {
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 0));
                     llargument_tys.push(arg.layout.scalar_pair_element_llvm_type(cx, 1));

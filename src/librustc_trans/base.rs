@@ -40,7 +40,7 @@ use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
+use rustc::ty::layout::{Align, TyLayout, LayoutOf};
 use rustc::ty::maps::Providers;
 use rustc::dep_graph::{DepNode, DepConstructor};
 use rustc::ty::subst::Kind;
@@ -385,23 +385,6 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
 pub fn call_assume<'a, 'tcx>(bx: &Builder<'a, 'tcx>, val: ValueRef) {
     let assume_intrinsic = bx.cx.get_intrinsic("llvm.assume");
     bx.call(assume_intrinsic, &[val], None);
-}
-
-pub fn from_immediate(bx: &Builder, val: ValueRef) -> ValueRef {
-    if val_ty(val) == Type::i1(bx.cx) {
-        bx.zext(val, Type::i8(bx.cx))
-    } else {
-        val
-    }
-}
-
-pub fn to_immediate(bx: &Builder, val: ValueRef, layout: layout::TyLayout) -> ValueRef {
-    if let layout::Abi::Scalar(ref scalar) = layout.abi {
-        if scalar.is_bool() {
-            return bx.trunc(val, Type::i1(bx.cx));
-        }
-    }
-    val
 }
 
 pub fn call_memcpy(bx: &Builder,
