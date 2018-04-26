@@ -50,7 +50,7 @@ impl MirPass for ElaborateDrops {
             (hir::BodyOwnerKind::Fn, None) => {},
             _ => return
         }
-        let param_env = tcx.param_env(src.def_id);
+        let param_env = tcx.param_env(src.def_id).with_reveal_all();
         let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let elaborate_patch = {
             let mir = &*mir;
