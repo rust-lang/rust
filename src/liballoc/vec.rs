@@ -322,7 +322,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Vec<T> {
+    pub const fn new() -> Vec<T> {
         Vec {
             buf: RawVec::empty(),
             len: 0,
