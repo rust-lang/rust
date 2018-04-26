@@ -879,8 +879,8 @@ themePicker.onclick = function() {{
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!("{{'crate':'{}','ty':{},'name':'{}','path':'{}'{}}}",
-                krate, item.ty as usize, item.name, item.path,
+        format!("{{'crate':'{}','ty':{},'name':'{}','desc':'{}','path':'{}'{}}}",
+                krate, item.ty as usize, item.name, item.desc, item.path,
                 if let Some(p) = item.parent_idx {
                     format!(",'parent':{}", p)
                 } else {
@@ -1442,7 +1442,7 @@ impl<'a> Cache {
                                 ty: item.type_(),
                                 name: item_name.to_string(),
                                 path: path.clone(),
-                                desc: String::new(),
+                                desc: plain_summary_line(item.doc_value()),
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),
