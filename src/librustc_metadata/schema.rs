@@ -373,9 +373,10 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for EntryKind<'gcx> {
             EntryKind::AssociatedType(associated_container) => {
                 associated_container.hash_stable(hcx, hasher);
             }
-            EntryKind::AssociatedConst(associated_container, qualif, _) => {
+            EntryKind::AssociatedConst(associated_container, qualif, ref const_data) => {
                 associated_container.hash_stable(hcx, hasher);
                 qualif.hash_stable(hcx, hasher);
+                const_data.hash_stable(hcx, hasher);
             }
         }
     }
