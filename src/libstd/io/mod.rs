@@ -1075,7 +1075,7 @@ pub trait Write {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn flush(&mut self) -> Result<()>;
 
-    /// Attempts to write an entire buffer into this write.
+    /// Attempts to write an entire buffer into this writer.
     ///
     /// This method will continuously call [`write`] until there is no more data
     /// to be written or an error of non-[`ErrorKind::Interrupted`] kind is
