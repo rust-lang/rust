@@ -19,6 +19,7 @@
 #[macro_use]
 extern crate derive_new;
 extern crate diff;
+#[macro_use]
 extern crate failure;
 extern crate getopts;
 extern crate itertools;
@@ -38,7 +39,6 @@ extern crate toml;
 extern crate unicode_segmentation;
 
 use std::collections::HashMap;
-use std::error;
 use std::fmt;
 use std::io::{self, stdout, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -64,8 +64,7 @@ pub use config::options::CliOptions;
 pub use config::summary::Summary;
 pub use config::{file_lines, load_config, Config, WriteMode};
 
-pub type FmtError = Box<error::Error + Send + Sync>;
-pub type FmtResult<T> = std::result::Result<T, FmtError>;
+pub type FmtResult<T> = std::result::Result<T, failure::Error>;
 
 pub const WRITE_MODE_LIST: &str =
     "[replace|overwrite|display|plain|diff|coverage|checkstyle|check]";
@@ -896,7 +895,7 @@ pub enum Input {
 
 pub fn format_and_emit_report(input: Input, config: &Config) -> FmtResult<Summary> {
     if !config.version_meets_requirement() {
-        return Err(FmtError::from("Version mismatch"));
+        return Err(format_err!("Version mismatch"));
     }
     let out = &mut stdout();
     match format_input(input, config, Some(out)) {

@@ -12,16 +12,17 @@ use regex::Regex;
 use std::cell::Cell;
 use std::default::Default;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Read};
+use std::io::{ErrorKind, Read};
 use std::path::{Path, PathBuf};
 use std::{env, fs};
 
-use {FmtError, FmtResult};
+use FmtResult;
 
 use config::config_type::ConfigType;
 use config::file_lines::FileLines;
 pub use config::lists::*;
 pub use config::options::*;
+use failure::Error;
 
 #[macro_use]
 pub mod config_type;
@@ -161,11 +162,9 @@ pub fn load_config(
     };
 
     let result = if let Some(over_ride) = over_ride {
-        Config::from_toml_path(over_ride.as_ref())
-            .map(|p| (p, Some(over_ride.to_owned())))
-            .map_err(FmtError::from)
+        Config::from_toml_path(over_ride.as_ref()).map(|p| (p, Some(over_ride.to_owned())))
     } else if let Some(file_path) = file_path {
-        Config::from_resolved_toml_path(file_path).map_err(FmtError::from)
+        Config::from_resolved_toml_path(file_path)
     } else {
         Ok((Config::default(), None))
     };
@@ -181,7 +180,7 @@ pub fn load_config(
 // Check for the presence of known config file names (`rustfmt.toml, `.rustfmt.toml`) in `dir`
 //
 // Return the path if a config file exists, empty if no file exists, and Error for IO errors
-fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
+fn get_toml_path(dir: &Path) -> FmtResult<Option<PathBuf>> {
     const CONFIG_FILE_NAMES: [&str; 2] = [".rustfmt.toml", "rustfmt.toml"];
     for config_file_name in &CONFIG_FILE_NAMES {
         let config_file = dir.join(config_file_name);
@@ -193,7 +192,7 @@ fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
             // find the project file yet, and continue searching.
             Err(e) => {
                 if e.kind() != ErrorKind::NotFound {
-                    return Err(e);
+                    return Err(Error::from(e));
                 }
             }
             _ => {}
@@ -204,10 +203,10 @@ fn get_toml_path(dir: &Path) -> Result<Option<PathBuf>, Error> {
 
 fn config_path(options: &CliOptions) -> FmtResult<Option<PathBuf>> {
     let config_path_not_found = |path: &str| -> FmtResult<Option<PathBuf>> {
-        Err(FmtError::from(format!(
+        Err(format_err!(
             "Error: unable to find a config file for the given path: `{}`",
             path
-        )))
+        ))
     };
 
     // Read the config_path and convert to parent dir if a file is provided.

@@ -14,7 +14,9 @@ use config::config_type::ConfigType;
 use config::file_lines::FileLines;
 use config::lists::*;
 use config::Config;
-use {FmtError, FmtResult, WRITE_MODE_LIST};
+use {FmtResult, WRITE_MODE_LIST};
+
+use failure::err_msg;
 
 use getopts::Matches;
 use std::collections::HashSet;
@@ -332,8 +334,8 @@ impl CliOptions {
             .map(|c| c == "nightly")
             .unwrap_or(false);
         if unstable_features && !rust_nightly {
-            return Err(FmtError::from(
-                "Unstable features are only available on Nightly channel",
+            return Err(format_err!(
+                "Unstable features are only available on Nightly channel"
             ));
         } else {
             options.unstable_features = unstable_features;
@@ -345,22 +347,23 @@ impl CliOptions {
             if let Ok(write_mode) = WriteMode::from_str(write_mode) {
                 options.write_mode = Some(write_mode);
             } else {
-                return Err(FmtError::from(format!(
+                return Err(format_err!(
                     "Invalid write-mode: {}, expected one of {}",
-                    write_mode, WRITE_MODE_LIST
-                )));
+                    write_mode,
+                    WRITE_MODE_LIST
+                ));
             }
         }
 
         if let Some(ref color) = matches.opt_str("color") {
             match Color::from_str(color) {
                 Ok(color) => options.color = Some(color),
-                _ => return Err(FmtError::from(format!("Invalid color: {}", color))),
+                _ => return Err(format_err!("Invalid color: {}", color)),
             }
         }
 
         if let Some(ref file_lines) = matches.opt_str("file-lines") {
-            options.file_lines = file_lines.parse()?;
+            options.file_lines = file_lines.parse().map_err(err_msg)?;
         }
 
         if matches.opt_present("skip-children") {
