@@ -525,16 +525,26 @@ impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     predicates
 });
 
+
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
 for ::mir::interpret::EvalError<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
+        self.kind.hash_stable(hcx, hasher)
+    }
+}
+
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::EvalErrorKind<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
         use mir::interpret::EvalErrorKind::*;
 
-        mem::discriminant(&self.kind).hash_stable(hcx, hasher);
+        mem::discriminant(&self).hash_stable(hcx, hasher);
 
-        match self.kind {
+        match *self {
             DanglingPointerDeref |
             DoubleFree |
             InvalidMemoryAccess |
@@ -565,8 +575,10 @@ for ::mir::interpret::EvalError<'gcx> {
             TypeckError |
             DerefFunctionPointer |
             ExecuteMemory |
-            ReferencedConstant |
-            OverflowingMath => {}
+            OverflowNeg |
+            RemainderByZero |
+            DivisionByZero |
+            ReferencedConstant => {}
             MachineError(ref err) => err.hash_stable(hcx, hasher),
             FunctionPointerTyMismatch(a, b) => {
                 a.hash_stable(hcx, hasher);
@@ -589,10 +601,6 @@ for ::mir::interpret::EvalError<'gcx> {
                 sp.hash_stable(hcx, hasher);
                 a.hash_stable(hcx, hasher);
                 b.hash_stable(hcx, hasher)
-            },
-            Math(sp, ref err) => {
-                sp.hash_stable(hcx, hasher);
-                err.hash_stable(hcx, hasher)
             },
             Intrinsic(ref s) => s.hash_stable(hcx, hasher),
             InvalidChar(c) => c.hash_stable(hcx, hasher),
@@ -665,26 +673,10 @@ for ::mir::interpret::EvalError<'gcx> {
             Layout(lay) => lay.hash_stable(hcx, hasher),
             HeapAllocNonPowerOfTwoAlignment(n) => n.hash_stable(hcx, hasher),
             PathNotFound(ref v) => v.hash_stable(hcx, hasher),
+            Overflow(op) => op.hash_stable(hcx, hasher),
         }
     }
 }
-
-impl_stable_hash_for!(enum mir::interpret::ConstMathErr {
-    Overflow(op),
-    DivisionByZero,
-    RemainderByZero,
-});
-
-impl_stable_hash_for!(enum mir::interpret::Op {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-    Shr,
-    Shl,
-    Neg,
-});
 
 impl_stable_hash_for!(enum mir::interpret::Lock {
     NoLock,

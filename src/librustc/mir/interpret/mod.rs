@@ -8,7 +8,7 @@ macro_rules! err {
 mod error;
 mod value;
 
-pub use self::error::{EvalError, EvalResult, EvalErrorKind, Op, ConstMathErr};
+pub use self::error::{EvalError, EvalResult, EvalErrorKind};
 
 pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
 
@@ -23,7 +23,7 @@ use std::iter;
 use syntax::ast::Mutability;
 use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lock {
     NoLock,
     WriteLock(DynamicLifetime),
@@ -31,13 +31,13 @@ pub enum Lock {
     ReadLock(Vec<DynamicLifetime>),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct DynamicLifetime {
     pub frame: usize,
     pub region: Option<region::Scope>, // "None" indicates "until the function ends"
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AccessKind {
     Read,
     Write,
@@ -88,12 +88,12 @@ pub trait PointerArithmetic: layout::HasDataLayout {
 
     fn signed_offset<'tcx>(self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
         let (res, over) = self.overflowing_signed_offset(val, i as i128);
-        if over { err!(OverflowingMath) } else { Ok(res) }
+        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
 
     fn offset<'tcx>(self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
         let (res, over) = self.overflowing_offset(val, i);
-        if over { err!(OverflowingMath) } else { Ok(res) }
+        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
 
     fn wrapping_signed_offset(self, val: u64, i: i64) -> u64 {

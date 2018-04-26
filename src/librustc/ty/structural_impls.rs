@@ -505,9 +505,7 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             DerefFunctionPointer => DerefFunctionPointer,
             ExecuteMemory => ExecuteMemory,
             ArrayIndexOutOfBounds(sp, a, b) => ArrayIndexOutOfBounds(sp, a, b),
-            Math(sp, ref err) => Math(sp, err.clone()),
             Intrinsic(ref s) => Intrinsic(s.clone()),
-            OverflowingMath => OverflowingMath,
             InvalidChar(c) => InvalidChar(c),
             StackFrameLimitReached => StackFrameLimitReached,
             OutOfTls => OutOfTls,
@@ -568,6 +566,10 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             UnimplementedTraitSelection => UnimplementedTraitSelection,
             TypeckError => TypeckError,
             ReferencedConstant => ReferencedConstant,
+            OverflowNeg => OverflowNeg,
+            Overflow(op) => Overflow(op),
+            DivisionByZero => DivisionByZero,
+            RemainderByZero => RemainderByZero,
         };
         Some(interpret::EvalError {
             kind: kind,

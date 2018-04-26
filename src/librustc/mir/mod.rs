@@ -25,7 +25,7 @@ use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
-use mir::interpret::{Value, PrimVal, ConstMathErr};
+use mir::interpret::{Value, PrimVal, EvalErrorKind};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -1211,7 +1211,7 @@ pub enum AssertMessage<'tcx> {
         len: Operand<'tcx>,
         index: Operand<'tcx>
     },
-    Math(ConstMathErr),
+    Math(EvalErrorKind<'tcx>),
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
 }
@@ -1920,9 +1920,9 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
         (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
         (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
         (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F32)) =>
-            write!(f, "{}", Single::from_bits(bits)),
+            write!(f, "{}f32", Single::from_bits(bits)),
         (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F64)) =>
-            write!(f, "{}", Double::from_bits(bits)),
+            write!(f, "{}f64", Double::from_bits(bits)),
         (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
         (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
         (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>

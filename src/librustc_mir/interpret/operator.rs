@@ -269,7 +269,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
             (Neg, ty::TyFloat(FloatTy::F32)) => Single::to_bits(-Single::from_bits(bytes)),
             (Neg, ty::TyFloat(FloatTy::F64)) => Double::to_bits(-Double::from_bits(bytes)),
 
-            (Neg, _) if bytes == (1 << (size - 1)) => return err!(OverflowingMath),
+            (Neg, _) if bytes == (1 << (size - 1)) => return err!(OverflowNeg),
             (Neg, _) => (-(bytes as i128)) as u128,
         };
 

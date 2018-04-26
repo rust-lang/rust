@@ -20,7 +20,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
-use rustc::mir::interpret::{Value, PrimVal, ConstMathErr, Op};
+use rustc::mir::interpret::{Value, PrimVal, EvalErrorKind};
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -85,7 +85,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.push_assign(block, source_info, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval));
 
-                    let err = ConstMathErr::Overflow(Op::Neg);
+                    let err = EvalErrorKind::OverflowNeg;
                     block = this.assert(block, Operand::Move(is_min), false,
                                         AssertMessage::Math(err), expr_span);
                 }
@@ -310,16 +310,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let err = ConstMathErr::Overflow(match op {
-                BinOp::Add => Op::Add,
-                BinOp::Sub => Op::Sub,
-                BinOp::Mul => Op::Mul,
-                BinOp::Shl => Op::Shl,
-                BinOp::Shr => Op::Shr,
-                _ => {
-                    bug!("MIR build_binary_op: {:?} is not checkable", op)
-                }
-            });
+            let err = EvalErrorKind::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false,
                                 AssertMessage::Math(err), span);
@@ -331,11 +322,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
                 let (zero_err, overflow_err) = if op == BinOp::Div {
-                    (ConstMathErr::DivisionByZero,
-                     ConstMathErr::Overflow(Op::Div))
+                    (EvalErrorKind::DivisionByZero,
+                     EvalErrorKind::Overflow(op))
                 } else {
-                    (ConstMathErr::RemainderByZero,
-                     ConstMathErr::Overflow(Op::Rem))
+                    (EvalErrorKind::RemainderByZero,
+                     EvalErrorKind::Overflow(op))
                 };
 
                 // Check for / 0

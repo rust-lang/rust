@@ -160,9 +160,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                                 .to_u64()?;
                             err!(ArrayIndexOutOfBounds(span, len, index))
                         }
-                        Math(ref err) => {
-                            err!(Math(terminator.source_info.span, err.clone()))
-                        }
+                        Math(ref err) => Err(err.clone().into()),
                         GeneratorResumedAfterReturn |
                         GeneratorResumedAfterPanic => unimplemented!(),
                     };

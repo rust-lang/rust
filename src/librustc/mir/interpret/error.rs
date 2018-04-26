@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::{fmt, env};
 
 use mir;
@@ -30,7 +29,7 @@ impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
 pub enum EvalErrorKind<'tcx> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
@@ -60,9 +59,11 @@ pub enum EvalErrorKind<'tcx> {
     DerefFunctionPointer,
     ExecuteMemory,
     ArrayIndexOutOfBounds(Span, u64, u64),
-    Math(Span, ConstMathErr),
+    Overflow(mir::BinOp),
+    OverflowNeg,
+    DivisionByZero,
+    RemainderByZero,
     Intrinsic(String),
-    OverflowingMath,
     InvalidChar(u128),
     StackFrameLimitReached,
     OutOfTls,
@@ -124,10 +125,10 @@ pub enum EvalErrorKind<'tcx> {
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
-impl<'tcx> Error for EvalError<'tcx> {
-    fn description(&self) -> &str {
+impl<'tcx> EvalErrorKind<'tcx> {
+    pub fn description(&self) -> &str {
         use self::EvalErrorKind::*;
-        match self.kind {
+        match *self {
             MachineError(ref inner) => inner,
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
@@ -176,12 +177,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to treat a memory pointer as a function pointer",
             ArrayIndexOutOfBounds(..) =>
                 "array index out of bounds",
-            Math(..) =>
-                "mathematical operation failed",
             Intrinsic(..) =>
                 "intrinsic failed",
-            OverflowingMath =>
-                "attempted to do overflowing math",
             NoMirFor(..) =>
                 "mir not found",
             InvalidChar(..) =>
@@ -239,6 +236,17 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "encountered constants with type errors, stopping evaluation",
             ReferencedConstant =>
                 "referenced constant has errors",
+            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
+            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
+            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
+            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
+            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
+            OverflowNeg => "attempt to negate with overflow",
+            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
+            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
+            Overflow(op) => bug!("{:?} cannot overflow", op),
+            DivisionByZero => "attempt to divide by zero",
+            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
         }
     }
 }
@@ -280,8 +288,6 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "tried to reallocate memory from {} to {}", old, new),
             DeallocatedWrongMemoryKind(ref old, ref new) =>
                 write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
-            Math(_, ref err) =>
-                write!(f, "{}", err.description()),
             Intrinsic(ref err) =>
                 write!(f, "{}", err),
             InvalidChar(c) =>
@@ -299,45 +305,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                 write!(f, "{}", inner),
             IncorrectAllocationInformation(size, size2, align, align2) =>
                 write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and align {}", size, align, size2, align2),
-            _ => write!(f, "{}", self.description()),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
-pub enum ConstMathErr {
-    Overflow(Op),
-    DivisionByZero,
-    RemainderByZero,
-}
-pub use self::ConstMathErr::*;
-
-#[derive(Debug, PartialEq, Eq, Clone, RustcEncodable, RustcDecodable)]
-pub enum Op {
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Rem,
-    Shr,
-    Shl,
-    Neg,
-}
-
-impl ConstMathErr {
-    pub fn description(&self) -> &'static str {
-        use self::Op::*;
-        match *self {
-            Overflow(Add) => "attempt to add with overflow",
-            Overflow(Sub) => "attempt to subtract with overflow",
-            Overflow(Mul) => "attempt to multiply with overflow",
-            Overflow(Div) => "attempt to divide with overflow",
-            Overflow(Rem) => "attempt to calculate the remainder with overflow",
-            Overflow(Neg) => "attempt to negate with overflow",
-            Overflow(Shr) => "attempt to shift right with overflow",
-            Overflow(Shl) => "attempt to shift left with overflow",
-            DivisionByZero => "attempt to divide by zero",
-            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
+            _ => write!(f, "{}", self.kind.description()),
         }
     }
 }

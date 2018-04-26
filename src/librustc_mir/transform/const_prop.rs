@@ -328,7 +328,7 @@ impl<'b, 'a, 'tcx:'b> ConstPropagator<'b, 'a, 'tcx> {
                         } else {
                             if overflow {
                                 use rustc::mir::interpret::EvalErrorKind;
-                                let mut err = EvalErrorKind::OverflowingMath.into();
+                                let mut err = EvalErrorKind::Overflow(op).into();
                                 ecx.report(&mut err, false, Some(span));
                                 return None;
                             }
