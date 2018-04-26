@@ -1204,7 +1204,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   f: F) -> R
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
     {
-        let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| { 
+        let data_layout = TargetDataLayout::parse(&s.target.target).unwrap_or_else(|err| {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(&arenas.interner);

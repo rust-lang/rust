@@ -44,7 +44,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<Ty>, offset: &mut Size)
     *offset = offset.abi_align(align) + size.abi_align(align);
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<Ty>) 
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<Ty>)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     let mut offset = Size::from_bytes(0);

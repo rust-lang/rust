@@ -563,7 +563,9 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main = ast::ItemKind::Fn(ecx.fn_decl(vec![], ast::FunctionRetTy::Ty(main_ret_ty)),
                            ast::Unsafety::Normal,
                            dummy_spanned(ast::Constness::NotConst),
-                           ::rustc_target::spec::abi::Abi::Rust, ast::Generics::default(), main_body);
+                           ::rustc_target::spec::abi::Abi::Rust,
+                           ast::Generics::default(),
+                           main_body);
     P(ast::Item {
         ident: Ident::from_str("main"),
         attrs: vec![main_attr],

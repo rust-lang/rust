@@ -13,7 +13,7 @@ use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use spec::HasTargetSpec;
 
 fn is_homogeneous_aggregate<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
-                                     -> Option<Uniform> 
+                                     -> Option<Uniform>
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -77,7 +77,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<'a, Ty>, vfp: bool)
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>, vfp: bool) 
+fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>, vfp: bool)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -101,7 +101,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>, vfp: bool)
     });
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
 {

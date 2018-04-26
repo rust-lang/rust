@@ -14,7 +14,7 @@
 use abi::call::{FnType, ArgType, Reg};
 use abi::{self, HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<Ty>) 
+fn classify_ret_ty<'a, Ty, C>(ret: &mut ArgType<Ty>)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     if !ret.layout.is_aggregate() && ret.layout.size.bits() <= 64 {
@@ -46,7 +46,7 @@ fn is_single_fp_element<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>) -> bool
     }
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>) 
+fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -72,7 +72,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
     }
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {

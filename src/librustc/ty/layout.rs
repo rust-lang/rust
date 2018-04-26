@@ -1440,7 +1440,7 @@ impl<'a, 'tcx> ty::maps::TyCtxtAt<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx> 
+impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
           C::TyLayout: MaybeResult<TyLayout<'tcx>>
 {

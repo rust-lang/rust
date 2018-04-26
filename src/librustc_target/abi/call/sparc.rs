@@ -11,7 +11,7 @@
 use abi::call::{ArgType, FnType, Reg, Uniform};
 use abi::{HasDataLayout, LayoutOf, Size, TyLayoutMethods};
 
-fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<Ty>, offset: &mut Size) 
+fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<Ty>, offset: &mut Size)
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> + HasDataLayout
 {
     if !ret.layout.is_aggregate() {

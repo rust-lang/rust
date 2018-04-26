@@ -794,7 +794,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::for_variant(self, cx, variant_index)
     }
-    pub fn field<C>(self, cx: C, i: usize) -> C::TyLayout 
+    pub fn field<C>(self, cx: C, i: usize) -> C::TyLayout
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::field(self, cx, i)
     }

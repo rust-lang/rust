@@ -32,12 +32,12 @@ const LARGEST_VECTOR_SIZE: usize = 512;
 const MAX_EIGHTBYTES: usize = LARGEST_VECTOR_SIZE / 64;
 
 fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
-                          -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory> 
+                          -> Result<[Option<Class>; MAX_EIGHTBYTES], Memory>
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
     fn classify<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>,
-                          cls: &mut [Option<Class>], off: Size) -> Result<(), Memory> 
+                          cls: &mut [Option<Class>], off: Size) -> Result<(), Memory>
         where Ty: TyLayoutMethods<'a, C> + Copy,
             C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
     {
@@ -179,7 +179,7 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
     target
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>) 
+pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {

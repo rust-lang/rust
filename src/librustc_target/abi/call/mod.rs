@@ -245,7 +245,7 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         }
     }
 
-    fn homogeneous_aggregate<C>(&self, cx: C) -> Option<Reg> 
+    fn homogeneous_aggregate<C>(&self, cx: C) -> Option<Reg>
         where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self> + Copy
     {
         match self.abi {
