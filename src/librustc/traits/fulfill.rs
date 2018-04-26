@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
                 selcx,
                 register_region_obligations: self.register_region_obligations
             });
-            debug!("select: outcome={:?}", outcome);
+            debug!("select: outcome={:#?}", outcome);
 
             // FIXME: if we kept the original cache key, we could mark projection
             // obligations as complete for the projection cache here.

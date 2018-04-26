@@ -196,7 +196,10 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
                 let span = obligation.cause.span;
                 match infcx.leak_check(false, span, &skol_map, snapshot) {
                     Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
-                    Err(e) => Err(MismatchedProjectionTypes { err: e }),
+                    Err(e) => {
+                        debug!("poly_project_and_unify_type: leak check encountered error {:?}", e);
+                        Err(MismatchedProjectionTypes { err: e })
+                    }
                 }
             }
             Err(e) => {
@@ -243,7 +246,10 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
             obligations.extend(inferred_obligations);
             Ok(Some(obligations))
         },
-        Err(err) => Err(MismatchedProjectionTypes { err: err }),
+        Err(err) => {
+            debug!("project_and_unify_type: equating types encountered error {:?}", err);
+            Err(MismatchedProjectionTypes { err: err })
+        }
     }
 }
 

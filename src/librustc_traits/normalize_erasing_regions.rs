@@ -17,6 +17,8 @@ crate fn normalize_ty_after_erasing_regions<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Ty<'tcx> {
+    debug!("normalize_ty_after_erasing_regions(goal={:#?})", goal);
+
     let ParamEnvAnd { param_env, value } = goal;
     tcx.sess.perf_stats.normalize_ty_after_erasing_regions.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter(|infcx| {
