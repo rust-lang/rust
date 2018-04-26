@@ -10,10 +10,8 @@
 
 //! A pass that simplifies branches when their condition is known.
 
-use rustc::ty::{self, TyCtxt};
-use rustc::middle::const_val::ConstVal;
+use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::interpret::{Value, PrimVal};
 use transform::{MirPass, MirSource};
 
 use std::borrow::Cow;
@@ -32,7 +30,7 @@ impl MirPass for SimplifyBranches {
     }
 
     fn run_pass<'a, 'tcx>(&self,
-                          _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource,
                           mir: &mut Mir<'tcx>) {
         for block in mir.basic_blocks_mut() {
@@ -40,8 +38,8 @@ impl MirPass for SimplifyBranches {
             terminator.kind = match terminator.kind {
                 TerminatorKind::SwitchInt { discr: Operand::Constant(box Constant {
                     literal: Literal::Value { ref value }, ..
-                }), ref values, ref targets, .. } => {
-                    if let Some(constint) = value.val.to_raw_bits() {
+                }), switch_ty, ref values, ref targets, .. } => {
+                    if let Some(constint) = value.assert_bits(switch_ty) {
                         let (otherwise, targets) = targets.split_last().unwrap();
                         let mut ret = TerminatorKind::Goto { target: *otherwise };
                         for (&v, t) in values.iter().zip(targets.iter()) {
@@ -57,12 +55,9 @@ impl MirPass for SimplifyBranches {
                 },
                 TerminatorKind::Assert { target, cond: Operand::Constant(box Constant {
                     literal: Literal::Value {
-                        value: &ty::Const {
-                            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(cond))),
-                        .. }
+                        value
                     }, ..
-                }), expected, .. } if (cond == 1) == expected => {
-                    assert!(cond <= 1);
+                }), expected, .. } if (value.assert_bool(tcx) == Some(true)) == expected => {
                     TerminatorKind::Goto { target: target }
                 },
                 TerminatorKind::FalseEdges { real_target, .. } => {

@@ -11,7 +11,7 @@
 use hir::def_id::DefId;
 use ty::{self, TyCtxt, layout};
 use ty::subst::Substs;
-use mir::interpret::{Value, PrimVal};
+use mir::interpret::ConstValue;
 use errors::DiagnosticBuilder;
 
 use graphviz::IntoCow;
@@ -25,27 +25,7 @@ pub type EvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ConstEvalErr<'tcx>>;
 #[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub enum ConstVal<'tcx> {
     Unevaluated(DefId, &'tcx Substs<'tcx>),
-    Value(Value),
-}
-
-impl<'tcx> ConstVal<'tcx> {
-    pub fn to_raw_bits(&self) -> Option<u128> {
-        match *self {
-            ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => {
-                Some(b)
-            },
-            _ => None,
-        }
-    }
-    pub fn unwrap_u64(&self) -> u64 {
-        match self.to_raw_bits() {
-            Some(val) => {
-                assert_eq!(val as u64 as u128, val);
-                val as u64
-            },
-            None => bug!("expected constant u64, got {:#?}", self),
-        }
-    }
+    Value(ConstValue<'tcx>),
 }
 
 #[derive(Clone, Debug)]

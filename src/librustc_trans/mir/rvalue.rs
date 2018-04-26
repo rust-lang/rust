@@ -516,7 +516,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::TyArray(_, n) = op.layout.ty.sty {
-                    let n = n.val.unwrap_u64();
+                    let n = n.unwrap_usize(bx.cx.tcx);
                     return common::C_usize(bx.cx, n);
                 }
             }

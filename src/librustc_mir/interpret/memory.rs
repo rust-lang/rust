@@ -1,6 +1,5 @@
-use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
-use std::collections::{btree_map, BTreeMap, VecDeque};
-use std::{ptr, io};
+use std::collections::{btree_map, VecDeque};
+use std::ptr;
 
 use rustc::ty::Instance;
 use rustc::ty::maps::TyCtxtAt;
@@ -8,8 +7,9 @@ use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
-use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, UndefMask, Value, Pointer,
+use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, Value, Pointer,
                             EvalResult, PrimVal, EvalErrorKind};
+pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 
 use super::{EvalContext, Machine};
 
@@ -79,20 +79,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// kind is `None` for statics
-    pub fn allocate(
+    pub fn allocate_value(
         &mut self,
-        size: u64,
-        align: Align,
+        alloc: Allocation,
         kind: Option<MemoryKind<M::MemoryKinds>>,
-    ) -> EvalResult<'tcx, MemoryPointer> {
-        assert_eq!(size as usize as u64, size);
-        let alloc = Allocation {
-            bytes: vec![0; size as usize],
-            relocations: BTreeMap::new(),
-            undef_mask: UndefMask::new(size),
-            align,
-            runtime_mutability: Mutability::Immutable,
-        };
+    ) -> EvalResult<'tcx, AllocId> {
         let id = self.tcx.interpret_interner.reserve();
         M::add_lock(self, id);
         match kind {
@@ -105,6 +96,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 self.uninitialized_statics.insert(id, alloc);
             },
         }
+        Ok(id)
+    }
+
+    /// kind is `None` for statics
+    pub fn allocate(
+        &mut self,
+        size: u64,
+        align: Align,
+        kind: Option<MemoryKind<M::MemoryKinds>>,
+    ) -> EvalResult<'tcx, MemoryPointer> {
+        let id = self.allocate_value(Allocation::undef(size, align), kind)?;
         Ok(MemoryPointer::new(id, 0))
     }
 
@@ -870,41 +872,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             new_state,
         );
         Ok(())
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Methods to access integers in the target endianness
-////////////////////////////////////////////////////////////////////////////////
-
-pub fn write_target_uint(
-    endianness: layout::Endian,
-    mut target: &mut [u8],
-    data: u128,
-) -> Result<(), io::Error> {
-    let len = target.len();
-    match endianness {
-        layout::Endian::Little => target.write_uint128::<LittleEndian>(data, len),
-        layout::Endian::Big => target.write_uint128::<BigEndian>(data, len),
-    }
-}
-
-pub fn write_target_int(
-    endianness: layout::Endian,
-    mut target: &mut [u8],
-    data: i128,
-) -> Result<(), io::Error> {
-    let len = target.len();
-    match endianness {
-        layout::Endian::Little => target.write_int128::<LittleEndian>(data, len),
-        layout::Endian::Big => target.write_int128::<BigEndian>(data, len),
-    }
-}
-
-pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
-    match endianness {
-        layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
-        layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
 }
 

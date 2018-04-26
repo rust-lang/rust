@@ -11,7 +11,7 @@
 use dep_graph::SerializedDepNodeIndex;
 use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
-use mir::interpret::{GlobalId};
+use mir::interpret::{GlobalId, ConstValue};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;

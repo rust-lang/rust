@@ -14,7 +14,7 @@ use rustc_mir::interpret::{read_target_uint, const_val_field};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc::mir::interpret::{Allocation, GlobalId, MemoryPointer, PrimVal, Value as MiriValue};
+use rustc::mir::interpret::{GlobalId, MemoryPointer, PrimVal, Allocation, ConstValue};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, HasDataLayout, LayoutOf, Scalar};
 use builder::Builder;
@@ -56,7 +56,7 @@ pub fn primval_to_llvm(cx: &CodegenCx,
                     consts::get_static(cx, def_id)
                 } else if let Some(alloc) = cx.tcx.interpret_interner
                                               .get_alloc(ptr.alloc_id) {
-                    let init = global_initializer(cx, alloc);
+                    let init = const_alloc_to_llvm(cx, alloc);
                     if alloc.runtime_mutability == Mutability::Mutable {
                         consts::addr_of_mut(cx, init, alloc.align, "byte_str")
                     } else {
@@ -81,7 +81,50 @@ pub fn primval_to_llvm(cx: &CodegenCx,
     }
 }
 
-pub fn global_initializer(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
+fn const_value_to_llvm<'tcx>(cx: &CodegenCx<'_, 'tcx>, val: ConstValue, ty: Ty<'tcx>) -> ValueRef {
+    let layout = cx.layout_of(ty);
+
+    if layout.is_zst() {
+        return C_undef(layout.immediate_llvm_type(cx));
+    }
+
+    match val {
+        ConstValue::ByVal(x) => {
+            let scalar = match layout.abi {
+                layout::Abi::Scalar(ref x) => x,
+                _ => bug!("const_value_to_llvm: invalid ByVal layout: {:#?}", layout)
+            };
+            primval_to_llvm(
+                cx,
+                x,
+                scalar,
+                layout.immediate_llvm_type(cx),
+            )
+        },
+        ConstValue::ByValPair(a, b) => {
+            let (a_scalar, b_scalar) = match layout.abi {
+                layout::Abi::ScalarPair(ref a, ref b) => (a, b),
+                _ => bug!("const_value_to_llvm: invalid ByValPair layout: {:#?}", layout)
+            };
+            let a_llval = primval_to_llvm(
+                cx,
+                a,
+                a_scalar,
+                layout.scalar_pair_element_llvm_type(cx, 0),
+            );
+            let b_llval = primval_to_llvm(
+                cx,
+                b,
+                b_scalar,
+                layout.scalar_pair_element_llvm_type(cx, 1),
+            );
+            C_struct(cx, &[a_llval, b_llval], false)
+        },
+        ConstValue::ByRef(alloc) => const_alloc_to_llvm(cx, alloc),
+    }
+}
+
+pub fn const_alloc_to_llvm(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
     let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
     let layout = cx.data_layout();
     let pointer_size = layout.pointer_size.bytes() as usize;
@@ -96,7 +139,7 @@ pub fn global_initializer(cx: &CodegenCx, alloc: &Allocation) -> ValueRef {
         let ptr_offset = read_target_uint(
             layout.endian,
             &alloc.bytes[offset..(offset + pointer_size)],
-        ).expect("global_initializer: could not read relocation pointer") as u64;
+        ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(primval_to_llvm(
             cx,
             PrimVal::Ptr(MemoryPointer { alloc_id, offset: ptr_offset }),
@@ -128,25 +171,19 @@ pub fn trans_static_initializer<'a, 'tcx>(
     let param_env = ty::ParamEnv::reveal_all();
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
-    let ptr = match static_.val {
-        ConstVal::Value(MiriValue::ByRef(ptr, _)) => ptr,
+    let val = match static_.val {
+        ConstVal::Value(val) => val,
         _ => bug!("static const eval returned {:#?}", static_),
     };
-
-    let alloc = cx
-        .tcx
-        .interpret_interner
-        .get_alloc(ptr.primval.to_ptr().expect("static has integer pointer").alloc_id)
-        .expect("miri allocation never successfully created");
-    Ok(global_initializer(cx, alloc))
+    Ok(const_value_to_llvm(cx, val, static_.ty))
 }
 
 impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
-    fn const_to_miri_value(
+    fn const_to_const_value(
         &mut self,
         bx: &Builder<'a, 'tcx>,
         constant: &'tcx ty::Const<'tcx>,
-    ) -> Result<MiriValue, ConstEvalErr<'tcx>> {
+    ) -> Result<ConstValue<'tcx>, ConstEvalErr<'tcx>> {
         match constant.val {
             ConstVal::Unevaluated(def_id, ref substs) => {
                 let tcx = bx.tcx();
@@ -157,17 +194,17 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     promoted: None,
                 };
                 let c = tcx.const_eval(param_env.and(cid))?;
-                self.const_to_miri_value(bx, c)
+                self.const_to_const_value(bx, c)
             },
-            ConstVal::Value(miri_val) => Ok(miri_val),
+            ConstVal::Value(val) => Ok(val),
         }
     }
 
-    pub fn mir_constant_to_miri_value(
+    pub fn mir_constant_to_const_value(
         &mut self,
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
-    ) -> Result<MiriValue, ConstEvalErr<'tcx>> {
+    ) -> Result<ConstValue<'tcx>, ConstEvalErr<'tcx>> {
         match constant.literal {
             mir::Literal::Promoted { index } => {
                 let param_env = ty::ParamEnv::reveal_all();
@@ -180,7 +217,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
             mir::Literal::Value { value } => {
                 Ok(self.monomorphize(&value))
             }
-        }.and_then(|c| self.const_to_miri_value(bx, c))
+        }.and_then(|c| self.const_to_const_value(bx, c))
     }
 
     /// process constant containing SIMD shuffle indices
@@ -189,11 +226,11 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
         bx: &Builder<'a, 'tcx>,
         constant: &mir::Constant<'tcx>,
     ) -> (ValueRef, Ty<'tcx>) {
-        self.mir_constant_to_miri_value(bx, constant)
+        self.mir_constant_to_const_value(bx, constant)
             .and_then(|c| {
                 let field_ty = constant.ty.builtin_index().unwrap();
                 let fields = match constant.ty.sty {
-                    ty::TyArray(_, n) => n.val.unwrap_u64(),
+                    ty::TyArray(_, n) => n.unwrap_usize(bx.tcx()),
                     ref other => bug!("invalid simd shuffle type: {}", other),
                 };
                 let values: Result<Vec<ValueRef>, _> = (0..fields).map(|field| {
@@ -206,19 +243,18 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         c,
                         constant.ty,
                     )?;
-                    match field.val {
-                        ConstVal::Value(MiriValue::ByVal(prim)) => {
-                            let layout = bx.cx.layout_of(field_ty);
-                            let scalar = match layout.abi {
-                                layout::Abi::Scalar(ref x) => x,
-                                _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
-                            };
-                            Ok(primval_to_llvm(
-                                bx.cx, prim, scalar,
-                                layout.immediate_llvm_type(bx.cx),
-                            ))
-                        },
-                        other => bug!("simd shuffle field {:?}, {}", other, constant.ty),
+                    if let Some(prim) = field.to_primval() {
+                        let layout = bx.cx.layout_of(field_ty);
+                        let scalar = match layout.abi {
+                            layout::Abi::Scalar(ref x) => x,
+                            _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
+                        };
+                        Ok(primval_to_llvm(
+                            bx.cx, prim, scalar,
+                            layout.immediate_llvm_type(bx.cx),
+                        ))
+                    } else {
+                        bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
                 let llval = C_struct(bx.cx, &values?, false);

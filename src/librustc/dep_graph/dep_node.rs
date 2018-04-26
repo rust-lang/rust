@@ -60,7 +60,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use mir::interpret::{GlobalId};
+use mir::interpret::{GlobalId, ConstValue};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};

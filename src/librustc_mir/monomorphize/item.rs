@@ -313,8 +313,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::TyArray(inner_type, len) => {
                 output.push('[');
                 self.push_type_name(inner_type, output);
-                write!(output, "; {}",
-                    len.val.unwrap_u64()).unwrap();
+                write!(output, "; {}", len.unwrap_usize(self.tcx)).unwrap();
                 output.push(']');
             },
             ty::TySlice(inner_type) => {

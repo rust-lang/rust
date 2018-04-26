@@ -26,6 +26,7 @@ pub use self::const_eval::{
     const_eval_provider,
     const_val_field,
     const_variant_index,
+    value_to_const_value,
 };
 
 pub use self::machine::Machine;

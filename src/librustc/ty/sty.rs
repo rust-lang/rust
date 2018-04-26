@@ -19,6 +19,7 @@ use ty::subst::{Substs, Subst, Kind, UnpackedKind};
 use ty::{self, AdtDef, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use ty::{Slice, TyS};
 use util::captures::Captures;
+use mir::interpret::{Allocation, PrimVal, MemoryPointer, Value, ConstValue};
 
 use std::iter;
 use std::cmp::Ordering;
@@ -1728,6 +1729,158 @@ pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
     pub val: ConstVal<'tcx>,
+}
+
+impl<'tcx> Const<'tcx> {
+    pub fn unevaluated(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        tcx.mk_const(Const {
+            val: ConstVal::Unevaluated(def_id, substs),
+            ty,
+        })
+    }
+
+    #[inline]
+    pub fn from_const_val(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        val: ConstVal<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        tcx.mk_const(Const {
+            val,
+            ty,
+        })
+    }
+
+    #[inline]
+    pub fn from_const_value(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        val: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        Self::from_const_val(tcx, ConstVal::Value(val), ty)
+    }
+
+    #[inline]
+    pub fn from_alloc(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        alloc: &'tcx Allocation,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        Self::from_const_value(tcx, ConstValue::ByRef(alloc), ty)
+    }
+
+    #[inline]
+    pub fn from_byval_value(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        val: Value,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        Self::from_const_value(tcx, ConstValue::from_byval_value(val), ty)
+    }
+
+    #[inline]
+    pub fn from_primval(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        val: PrimVal,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        Self::from_const_value(tcx, ConstValue::from_primval(val), ty)
+    }
+
+    #[inline]
+    pub fn from_bits(
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        val: u128,
+        ty: Ty<'tcx>,
+    ) -> &'tcx Self {
+        Self::from_primval(tcx, PrimVal::Bytes(val), ty)
+    }
+
+    #[inline]
+    pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
+        Self::from_primval(tcx, PrimVal::Undef, ty)
+    }
+
+    #[inline]
+    pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> &'tcx Self {
+        Self::from_bits(tcx, v as u128, tcx.types.bool)
+    }
+
+    #[inline]
+    pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> &'tcx Self {
+        Self::from_bits(tcx, n as u128, tcx.types.usize)
+    }
+
+    #[inline]
+    pub fn to_bits(&self, ty: Ty<'_>) -> Option<u128> {
+        if self.ty != ty {
+            return None;
+        }
+        match self.val {
+            ConstVal::Value(val) => val.to_bits(),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn to_ptr(&self) -> Option<MemoryPointer> {
+        match self.val {
+            ConstVal::Value(val) => val.to_ptr(),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn to_primval(&self) -> Option<PrimVal> {
+        match self.val {
+            ConstVal::Value(val) => val.to_primval(),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn assert_bits(&self, ty: Ty<'_>) -> Option<u128> {
+        assert_eq!(self.ty, ty);
+        match self.val {
+            ConstVal::Value(val) => val.to_bits(),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn assert_bool(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<bool> {
+        self.assert_bits(tcx.types.bool).and_then(|v| match v {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        })
+    }
+
+    #[inline]
+    pub fn assert_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
+        self.assert_bits(tcx.types.usize).map(|v| v as u64)
+    }
+
+    #[inline]
+    pub fn unwrap_bits(&self, ty: Ty<'_>) -> u128 {
+        match self.assert_bits(ty) {
+            Some(val) => val,
+            None => bug!("expected bits of {}, got {:#?}", ty, self),
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> u64 {
+        match self.assert_usize(tcx) {
+            Some(val) => val,
+            None => bug!("expected constant usize, got {:#?}", self),
+        }
+    }
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}

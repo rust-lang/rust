@@ -194,7 +194,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::map as hir_map;
 use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::interpret::{Value, PrimVal, AllocId, Pointer};
+use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt};
@@ -203,7 +203,7 @@ use rustc::session::config;
 use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
-use rustc::mir::interpret::GlobalId;
+use rustc::mir::interpret::{PrimVal, GlobalId};
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -1237,22 +1237,17 @@ fn collect_const<'a, 'tcx>(
     };
     match val {
         ConstVal::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
-        ConstVal::Value(Value::ByValPair(PrimVal::Ptr(a), PrimVal::Ptr(b))) => {
+        ConstVal::Value(ConstValue::ByValPair(PrimVal::Ptr(a), PrimVal::Ptr(b))) => {
             collect_miri(tcx, a.alloc_id, output);
             collect_miri(tcx, b.alloc_id, output);
         }
-        ConstVal::Value(Value::ByValPair(_, PrimVal::Ptr(ptr))) |
-        ConstVal::Value(Value::ByValPair(PrimVal::Ptr(ptr), _)) |
-        ConstVal::Value(Value::ByVal(PrimVal::Ptr(ptr))) =>
+        ConstVal::Value(ConstValue::ByValPair(_, PrimVal::Ptr(ptr))) |
+        ConstVal::Value(ConstValue::ByValPair(PrimVal::Ptr(ptr), _)) |
+        ConstVal::Value(ConstValue::ByVal(PrimVal::Ptr(ptr))) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstVal::Value(Value::ByRef(Pointer { primval: PrimVal::Ptr(ptr) }, _)) => {
-            // by ref should only collect the inner allocation, not the value itself
-            let alloc = tcx
-                .interpret_interner
-                .get_alloc(ptr.alloc_id)
-                .expect("ByRef to extern static is not allowed");
-            for &inner in alloc.relocations.values() {
-                collect_miri(tcx, inner, output);
+        ConstVal::Value(ConstValue::ByRef(alloc)) => {
+            for &id in alloc.relocations.values() {
+                collect_miri(tcx, id, output);
             }
         }
         _ => {},

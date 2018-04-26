@@ -3,7 +3,69 @@
 use ty::layout::{Align, HasDataLayout};
 use ty;
 
-use super::{EvalResult, MemoryPointer, PointerArithmetic};
+use super::{EvalResult, MemoryPointer, PointerArithmetic, Allocation};
+
+/// Represents a constant value in Rust. ByVal and ByValPair are optimizations which
+/// matches Value's optimizations for easy conversions between these two types
+#[derive(Clone, Copy, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
+pub enum ConstValue<'tcx> {
+    // Used only for types with layout::abi::Scalar ABI and ZSTs which use PrimVal::Undef
+    ByVal(PrimVal),
+    // Used only for types with layout::abi::ScalarPair
+    ByValPair(PrimVal, PrimVal),
+    // Used only for the remaining cases
+    ByRef(&'tcx Allocation),
+}
+
+impl<'tcx> ConstValue<'tcx> {
+    #[inline]
+    pub fn from_byval_value(val: Value) -> Self {
+        match val {
+            Value::ByRef(..) => bug!(),
+            Value::ByValPair(a, b) => ConstValue::ByValPair(a, b),
+            Value::ByVal(val) => ConstValue::ByVal(val),
+        }
+    }
+
+    #[inline]
+    pub fn to_byval_value(&self) -> Option<Value> {
+        match *self {
+            ConstValue::ByRef(..) => None,
+            ConstValue::ByValPair(a, b) => Some(Value::ByValPair(a, b)),
+            ConstValue::ByVal(val) => Some(Value::ByVal(val)),
+        }
+    }
+
+    #[inline]
+    pub fn from_primval(val: PrimVal) -> Self {
+        ConstValue::ByVal(val)
+    }
+
+    #[inline]
+    pub fn to_primval(&self) -> Option<PrimVal> {
+        match *self {
+            ConstValue::ByRef(..) => None,
+            ConstValue::ByValPair(..) => None,
+            ConstValue::ByVal(val) => Some(val),
+        }
+    }
+
+    #[inline]
+    pub fn to_bits(&self) -> Option<u128> {
+        match self.to_primval() {
+            Some(PrimVal::Bytes(val)) => Some(val),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn to_ptr(&self) -> Option<MemoryPointer> {
+        match self.to_primval() {
+            Some(PrimVal::Ptr(ptr)) => Some(ptr),
+            _ => None,
+        }
+    }
+}
 
 /// A `Value` represents a single self-contained Rust value.
 ///

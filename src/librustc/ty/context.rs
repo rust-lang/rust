@@ -26,14 +26,12 @@ use lint::{self, Lint};
 use ich::{StableHashingContext, NodeIdHashingMode};
 use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use infer::outlives::free_region_map::FreeRegionMap;
-use middle::const_val::ConstVal;
 use middle::cstore::{CrateStore, LinkMeta};
 use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::{self, Mir, interpret};
-use mir::interpret::{Value, PrimVal};
 use ty::subst::{Kind, Substs, Subst};
 use ty::ReprOptions;
 use ty::Instance;
@@ -1132,7 +1130,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return alloc_id;
         }
         // create an allocation that just contains these bytes
-        let alloc = interpret::Allocation::from_bytes(bytes);
+        let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
 
         // the next unique id
@@ -2375,10 +2373,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(TyArray(ty, self.mk_const(ty::Const {
-            val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(n.into()))),
-            ty: self.types.usize
-        })))
+        self.mk_ty(TyArray(ty, ty::Const::from_usize(self, n)))
     }
 
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {

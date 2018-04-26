@@ -28,7 +28,7 @@ use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
 use middle::const_val::EvalResult;
 use mir::mono::{CodegenUnit, Stats};
 use mir;
-use mir::interpret::{GlobalId};
+use mir::interpret::{GlobalId, Allocation, ConstValue};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
 use traits::{self, Vtable};

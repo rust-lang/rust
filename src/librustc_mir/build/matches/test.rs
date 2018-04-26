@@ -122,12 +122,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatternKind::Constant { value } => {
-                // if the places match, the type should match
-                assert_eq!(match_pair.pattern.ty, switch_ty);
-
                 indices.entry(value)
                        .or_insert_with(|| {
-                           options.push(value.val.to_raw_bits().expect("switching on int"));
+                           options.push(value.unwrap_bits(switch_ty));
                            options.len() - 1
                        });
                 true

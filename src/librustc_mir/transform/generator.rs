@@ -61,7 +61,6 @@
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
@@ -79,7 +78,6 @@ use transform::simplify;
 use transform::no_landing_pads::no_landing_pads;
 use dataflow::{do_dataflow, DebugFormatted, state_for_location};
 use dataflow::{MaybeStorageLive, HaveBeenBorrowedLocals};
-use rustc::mir::interpret::{Value, PrimVal};
 
 pub struct StateTransform;
 
@@ -180,10 +178,10 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
             span: source_info.span,
             ty: self.tcx.types.u32,
             literal: Literal::Value {
-                value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(state_disc.into()))),
-                    ty: self.tcx.types.u32
-                }),
+                value: ty::Const::from_bits(
+                    self.tcx,
+                    state_disc.into(),
+                    self.tcx.types.u32),
             },
         });
         Statement {
@@ -698,10 +696,7 @@ fn insert_panic_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             span: mir.span,
             ty: tcx.types.bool,
             literal: Literal::Value {
-                value: tcx.mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                    ty: tcx.types.bool
-                }),
+                value: ty::Const::from_bool(tcx, false),
             },
         }),
         expected: true,

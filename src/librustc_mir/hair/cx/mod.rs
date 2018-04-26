@@ -16,7 +16,6 @@
 
 use hair::*;
 
-use rustc::middle::const_val::ConstVal;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
@@ -31,7 +30,6 @@ use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use rustc::mir::interpret::{Value, PrimVal};
 use hair::pattern::parse_float;
 
 #[derive(Clone)]
@@ -117,10 +115,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
         Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value as u128))),
-                ty: self.tcx.types.usize
-            })
+            value: ty::Const::from_usize(self.tcx, value),
         }
     }
 
@@ -134,19 +129,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn true_literal(&mut self) -> Literal<'tcx> {
         Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(1))),
-                ty: self.tcx.types.bool
-            })
+            value: ty::Const::from_bool(self.tcx, true),
         }
     }
 
     pub fn false_literal(&mut self) -> Literal<'tcx> {
         Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                ty: self.tcx.types.bool
-            })
+            value: ty::Const::from_bool(self.tcx, false),
         }
     }
 
@@ -162,6 +151,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         layout::Integer::from_attr(self.tcx, ty).size().bits()
     }
 
+    // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
     pub fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,
@@ -171,7 +161,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     ) -> Literal<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
-        let parse_float = |num, fty| -> Value {
+        let parse_float = |num, fty| -> ConstValue<'tcx> {
             parse_float(num, fty, neg).unwrap_or_else(|_| {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
                 self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
@@ -193,7 +183,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let s = s.as_str();
                 let id = self.tcx.allocate_cached(s.as_bytes());
                 let ptr = MemoryPointer::new(id, 0);
-                Value::ByValPair(
+                ConstValue::ByValPair(
                     PrimVal::Ptr(ptr),
                     PrimVal::from_u128(s.len() as u128),
                 )
@@ -201,16 +191,16 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_cached(data);
                 let ptr = MemoryPointer::new(id, 0);
-                Value::ByVal(PrimVal::Ptr(ptr))
+                ConstValue::ByVal(PrimVal::Ptr(ptr))
             },
-            LitKind::Byte(n) => Value::ByVal(PrimVal::Bytes(n as u128)),
+            LitKind::Byte(n) => ConstValue::ByVal(PrimVal::Bytes(n as u128)),
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
                 let n = clamp(n as u128);
-                Value::ByVal(PrimVal::Bytes(n))
+                ConstValue::ByVal(PrimVal::Bytes(n))
             },
-            LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(clamp(n))),
+            LitKind::Int(n, _) => ConstValue::ByVal(PrimVal::Bytes(clamp(n))),
             LitKind::Float(n, fty) => {
                 parse_float(n, fty)
             }
@@ -221,14 +211,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 };
                 parse_float(n, fty)
             }
-            LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
-            LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
+            LitKind::Bool(b) => ConstValue::ByVal(PrimVal::Bytes(b as u128)),
+            LitKind::Char(c) => ConstValue::ByVal(PrimVal::Bytes(c as u128)),
         };
         Literal::Value {
-            value: self.tcx.mk_const(ty::Const {
-                val: ConstVal::Value(lit),
-                ty,
-            }),
+            value: ty::Const::from_const_value(self.tcx, lit, ty)
         }
     }
 
@@ -258,11 +245,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let method_ty = method_ty.subst(self.tcx, substs);
                 return (method_ty,
                         Literal::Value {
-                            value: self.tcx.mk_const(ty::Const {
-                                // ZST function type
-                                val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
-                                ty: method_ty
-                            }),
+                            value: ty::Const::zero_sized(self.tcx, method_ty)
                         });
             }
         }

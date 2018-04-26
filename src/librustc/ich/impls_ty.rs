@@ -384,6 +384,30 @@ for ::middle::const_val::ConstVal<'gcx> {
     }
 }
 
+impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::ConstValue<'gcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use mir::interpret::ConstValue::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            ByVal(val) => {
+                val.hash_stable(hcx, hasher);
+            }
+            ByValPair(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
+            }
+            ByRef(alloc) => {
+                alloc.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
 impl_stable_hash_for!(enum mir::interpret::Value {
     ByVal(v),
     ByValPair(a, b),
