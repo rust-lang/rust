@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::env;
 use common::Config;
+use std::env;
 
 /// Conversion table from triple OS name to Rust SYSNAME
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
@@ -73,7 +73,7 @@ pub fn matches_os(triple: &str, name: &str) -> bool {
     // For the wasm32 bare target we ignore anything also ignored on emscripten
     // and then we also recognize `wasm32-bare` as the os for the target
     if triple == "wasm32-unknown-unknown" {
-        return name == "emscripten" || name == "wasm32-bare"
+        return name == "emscripten" || name == "wasm32-bare";
     }
     let triple: Vec<_> = triple.split('-').collect();
     for &(triple_os, os) in OS_TABLE {

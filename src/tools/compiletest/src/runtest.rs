@@ -8,28 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common::{Config, TestPaths};
-use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
-use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{Incremental, MirOpt, RunMake, Ui};
-use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
 use common::CompareMode;
+use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
+use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
+use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use common::{Config, TestPaths};
+use common::{Incremental, MirOpt, RunMake, Ui};
 use diff;
 use errors::{self, Error, ErrorKind};
 use filetime::FileTime;
-use json;
 use header::TestProps;
-use util::logv;
+use json;
 use regex::Regex;
 use rustfix::{apply_suggestions, get_suggestions_from_json};
+use util::logv;
 
-use std::collections::VecDeque;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::fs::{self, create_dir_all, File};
 use std::fmt;
+use std::fs::{self, create_dir_all, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
@@ -355,9 +355,10 @@ impl<'test> TestCx<'test> {
 
         if expected_status != received_status {
             self.fatal_proc_rec(
-                &format!("Error: expected failure status ({:?}) but received status {:?}.",
-                         expected_status,
-                         received_status),
+                &format!(
+                    "Error: expected failure status ({:?}) but received status {:?}.",
+                    expected_status, received_status
+                ),
                 proc_res,
             );
         }
@@ -440,8 +441,7 @@ impl<'test> TestCx<'test> {
                 self.config,
                 format!(
                     "pretty-printing round {} revision {:?}",
-                    round,
-                    self.revision
+                    round, self.revision
                 ),
             );
             let proc_res = self.print_source(srcs[round].to_owned(), &self.props.pretty_mode);
@@ -450,8 +450,7 @@ impl<'test> TestCx<'test> {
                 self.fatal_proc_rec(
                     &format!(
                         "pretty-printing failed in round {} revision {:?}",
-                        round,
-                        self.revision
+                        round, self.revision
                     ),
                     &proc_res,
                 );
@@ -555,8 +554,7 @@ impl<'test> TestCx<'test> {
                  {}\n\
                  ------------------------------------------\n\
                  \n",
-                expected,
-                actual
+                expected, actual
             );
         }
     }
@@ -661,8 +659,7 @@ impl<'test> TestCx<'test> {
                 script_str.push_str(&format!(
                     "set solib-search-path \
                      ./{}/stage2/lib/rustlib/{}/lib/\n",
-                    self.config.host,
-                    self.config.target
+                    self.config.host, self.config.target
                 ));
                 for line in &breakpoint_lines {
                     script_str.push_str(
@@ -881,7 +878,6 @@ impl<'test> TestCx<'test> {
             ..self.config.clone()
         };
 
-
         let test_cx = TestCx {
             config: &config,
             ..*self
@@ -952,8 +948,7 @@ impl<'test> TestCx<'test> {
         for line in &breakpoint_lines {
             script_str.push_str(&format!(
                 "breakpoint set --file '{}' --line {}\n",
-                source_file_name,
-                line
+                source_file_name, line
             ));
         }
 
@@ -1028,9 +1023,7 @@ impl<'test> TestCx<'test> {
     fn parse_debugger_commands(&self, debugger_prefixes: &[&str]) -> DebuggerCommands {
         let directives = debugger_prefixes
             .iter()
-            .map(|prefix| {
-                (format!("{}-command", prefix), format!("{}-check", prefix))
-            })
+            .map(|prefix| (format!("{}-command", prefix), format!("{}-check", prefix)))
             .collect::<Vec<_>>();
 
         let mut breakpoint_lines = vec![];
@@ -1041,12 +1034,11 @@ impl<'test> TestCx<'test> {
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    let line =
-                        if line.starts_with("//") {
-                            line[2..].trim_left()
-                        } else {
-                            line.as_str()
-                        };
+                    let line = if line.starts_with("//") {
+                        line[2..].trim_left()
+                    } else {
+                        line.as_str()
+                    };
 
                     if line.contains("#break") {
                         breakpoint_lines.push(counter);
@@ -1645,7 +1637,10 @@ impl<'test> TestCx<'test> {
         let mut rustc = if !is_rustdoc {
             Command::new(&self.config.rustc_path)
         } else {
-            Command::new(&self.config.rustdoc_path.clone().expect("no rustdoc built yet"))
+            Command::new(&self.config
+                .rustdoc_path
+                .clone()
+                .expect("no rustdoc built yet"))
         };
         rustc.arg(input_file).arg("-L").arg(&self.config.build_base);
 
@@ -1671,10 +1666,7 @@ impl<'test> TestCx<'test> {
 
         if !is_rustdoc {
             if let Some(ref incremental_dir) = self.props.incremental_dir {
-                rustc.args(&[
-                    "-C",
-                    &format!("incremental={}", incremental_dir.display()),
-                ]);
+                rustc.args(&["-C", &format!("incremental={}", incremental_dir.display())]);
                 rustc.args(&["-Z", "incremental-verify-ich"]);
                 rustc.args(&["-Z", "incremental-queries"]);
             }
@@ -1697,7 +1689,11 @@ impl<'test> TestCx<'test> {
                 }
             }
             Ui => {
-                if !self.props.compile_flags.iter().any(|s| s.starts_with("--error-format")) {
+                if !self.props
+                    .compile_flags
+                    .iter()
+                    .any(|s| s.starts_with("--error-format"))
+                {
                     rustc.args(&["--error-format", "json"]);
                 }
                 if !self.props.disable_ui_testing_normalization {
@@ -1720,16 +1716,8 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            RunPass |
-            RunFail |
-            RunPassValgrind |
-            Pretty |
-            DebugInfoGdb |
-            DebugInfoLldb |
-            Codegen |
-            Rustdoc |
-            RunMake |
-            CodegenUnits => {
+            RunPass | RunFail | RunPassValgrind | Pretty | DebugInfoGdb | DebugInfoLldb
+            | Codegen | Rustdoc | RunMake | CodegenUnits => {
                 // do not use JSON output
             }
         }
@@ -1759,8 +1747,8 @@ impl<'test> TestCx<'test> {
         match self.config.compare_mode {
             Some(CompareMode::Nll) => {
                 rustc.args(&["-Zborrowck=mir", "-Ztwo-phase-borrows"]);
-            },
-            None => {},
+            }
+            None => {}
         }
 
         if self.props.force_host {
@@ -1923,7 +1911,8 @@ impl<'test> TestCx<'test> {
     /// Same as `output_base_name`, but includes the stage ID as an extension,
     /// such as: `.../compile-fail/foo/bar.stage1-<triple>`
     fn output_base_name_stage(&self) -> PathBuf {
-        self.output_base_name().with_extension(&self.config.stage_id)
+        self.output_base_name()
+            .with_extension(&self.config.stage_id)
     }
 
     fn maybe_dump_to_stdout(&self, out: &str, err: &str) {
@@ -2417,8 +2406,7 @@ impl<'test> TestCx<'test> {
         if self.config.verbose {
             print!(
                 "revision={:?} revision_props={:#?}",
-                revision,
-                revision_props
+                revision, revision_props
             );
         }
 
@@ -2731,8 +2719,7 @@ impl<'test> TestCx<'test> {
         if source_time > output_time {
             debug!(
                 "source file time: {:?} output file time: {:?}",
-                source_time,
-                output_time
+                source_time, output_time
             );
             panic!(
                 "test source file `{}` is newer than potentially stale output file `{}`.",
@@ -2906,10 +2893,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn expected_output_path(&self, kind: &str) -> PathBuf {
-        let mut path = expected_output_path(&self.testpaths,
-                                            self.revision,
-                                            &self.config.compare_mode,
-                                            kind);
+        let mut path = expected_output_path(
+            &self.testpaths,
+            self.revision,
+            &self.config.compare_mode,
+            kind,
+        );
         if !path.exists() && self.config.compare_mode.is_some() {
             // fallback!
             path = expected_output_path(&self.testpaths, self.revision, &None, kind);
@@ -2959,14 +2948,14 @@ impl<'test> TestCx<'test> {
                         DiffLine::Expected(e) => {
                             println!("-\t{}", e);
                             line_number += 1;
-                        },
+                        }
                         DiffLine::Context(c) => {
                             println!("{}\t{}", line_number, c);
                             line_number += 1;
-                        },
+                        }
                         DiffLine::Resulting(r) => {
                             println!("+\t{}", r);
-                        },
+                        }
                     }
                 }
                 println!("");
@@ -3025,10 +3014,7 @@ impl ProcRes {
              {}\n\
              ------------------------------------------\n\
              \n",
-            self.status,
-            self.cmdline,
-            self.stdout,
-            self.stderr
+            self.status, self.cmdline, self.stdout, self.stderr
         );
         panic!();
     }
@@ -3072,8 +3058,8 @@ fn nocomment_mir_line(line: &str) -> &str {
 }
 
 fn read2_abbreviated(mut child: Child) -> io::Result<Output> {
-    use std::mem::replace;
     use read2::read2;
+    use std::mem::replace;
 
     const HEAD_LEN: usize = 160 * 1024;
     const TAIL_LEN: usize = 256 * 1024;

@@ -10,8 +10,8 @@
 pub use self::Mode::*;
 
 use std::fmt;
-use std::str::FromStr;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use test::ColorConfig;
 
@@ -103,7 +103,7 @@ pub enum CompareMode {
 impl CompareMode {
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
-            CompareMode::Nll => "nll"
+            CompareMode::Nll => "nll",
         }
     }
 
@@ -253,16 +253,21 @@ pub struct TestPaths {
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
-pub fn expected_output_path(testpaths: &TestPaths,
-                            revision: Option<&str>,
-                            compare_mode: &Option<CompareMode>,
-                            kind: &str) -> PathBuf {
-
+pub fn expected_output_path(
+    testpaths: &TestPaths,
+    revision: Option<&str>,
+    compare_mode: &Option<CompareMode>,
+    kind: &str,
+) -> PathBuf {
     assert!(UI_EXTENSIONS.contains(&kind));
     let mut parts = Vec::new();
 
-    if let Some(x) = revision { parts.push(x); }
-    if let Some(ref x) = *compare_mode { parts.push(x.to_str()); }
+    if let Some(x) = revision {
+        parts.push(x);
+    }
+    if let Some(ref x) = *compare_mode {
+        parts.push(x.to_str());
+    }
     parts.push(kind);
 
     let extension = parts.join(".");

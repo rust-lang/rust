@@ -31,31 +31,31 @@ extern crate serde_json;
 extern crate test;
 extern crate rustfix;
 
+use common::CompareMode;
+use common::{expected_output_path, UI_EXTENSIONS};
+use common::{Config, TestPaths};
+use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
+use filetime::FileTime;
+use getopts::Options;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use filetime::FileTime;
-use getopts::Options;
-use common::{Config, TestPaths};
-use common::{DebugInfoGdb, DebugInfoLldb, Mode, Pretty};
-use common::{expected_output_path, UI_EXTENSIONS};
-use common::CompareMode;
 use test::ColorConfig;
 use util::logv;
 
 use self::header::EarlyProps;
 
-pub mod util;
-mod json;
-pub mod header;
-pub mod runtest;
 pub mod common;
 pub mod errors;
+pub mod header;
+mod json;
 mod raise_fd_limit;
 mod read2;
+pub mod runtest;
+pub mod util;
 
 fn main() {
     env_logger::init();
@@ -236,7 +236,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "compare-mode",
             "mode describing what file the actual ui output will be compared to",
-            "COMPARE MODE"
+            "COMPARE MODE",
         )
         .optflag("h", "help", "show this message");
 
@@ -501,7 +501,11 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
         run_ignored: config.run_ignored,
-        format: if config.quiet { test::OutputFormat::Terse } else { test::OutputFormat::Pretty },
+        format: if config.quiet {
+            test::OutputFormat::Terse
+        } else {
+            test::OutputFormat::Pretty
+        },
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
@@ -634,8 +638,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     };
 
     // Debugging emscripten code doesn't make sense today
-    let ignore = early_props.ignore
-        || !up_to_date(config, testpaths, &early_props)
+    let ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props)
         || (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
             && config.target.contains("emscripten");
 
@@ -694,8 +697,7 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
     for pretty_printer_file in &pretty_printer_files {
         inputs.push(mtime(&rust_src_dir.join(pretty_printer_file)));
     }
-    let mut entries = config.run_lib_path.read_dir().unwrap()
-        .collect::<Vec<_>>();
+    let mut entries = config.run_lib_path.read_dir().unwrap().collect::<Vec<_>>();
     while let Some(entry) = entries.pop() {
         let entry = entry.unwrap();
         let path = entry.path();
@@ -713,10 +715,8 @@ fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> boo
     // UI test files.
     for extension in UI_EXTENSIONS {
         for revision in &props.revisions {
-            let path = &expected_output_path(testpaths,
-                                             Some(revision),
-                                             &config.compare_mode,
-                                             extension);
+            let path =
+                &expected_output_path(testpaths, Some(revision), &config.compare_mode, extension);
             inputs.push(mtime(path));
         }
 
@@ -746,7 +746,12 @@ pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName 
         Some(ref mode) => format!(" ({})", mode.to_str()),
         None => format!(""),
     };
-    test::DynTestName(format!("[{}{}] {}", config.mode, mode_suffix, path.display()))
+    test::DynTestName(format!(
+        "[{}{}] {}",
+        config.mode,
+        mode_suffix,
+        path.display()
+    ))
 }
 
 pub fn make_test_closure(config: &Config, testpaths: &TestPaths) -> test::TestFn {
