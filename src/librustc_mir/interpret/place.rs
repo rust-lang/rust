@@ -136,6 +136,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let val = [a, b][field_index];
                 Ok(Some((Value::ByVal(val), field.ty)))
             },
+            // FIXME(oli-obk): figure out whether we should be calling `try_read_value` here
             _ => Ok(None),
         }
     }

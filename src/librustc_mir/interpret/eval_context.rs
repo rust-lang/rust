@@ -671,6 +671,23 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                 (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
+                            let src_layout = self.layout_of(src.ty)?;
+                            match src_layout.variants {
+                                layout::Variants::Single { index } => {
+                                    if let Some(def) = src.ty.ty_adt_def() {
+                                        let discr_val = def
+                                            .discriminant_for_variant(*self.tcx, index)
+                                            .val;
+                                        return self.write_primval(
+                                            dest,
+                                            PrimVal::Bytes(discr_val),
+                                            dest_ty);
+                                    }
+                                }
+                                layout::Variants::Tagged { .. } |
+                                layout::Variants::NicheFilling { .. } => {},
+                            }
+
                             let src_val = self.value_to_primval(src)?;
                             let dest_val = self.cast_primval(src_val, src.ty, dest_ty)?;
                             let valty = ValTy {
@@ -852,10 +869,16 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     ) -> EvalResult<'tcx, u128> {
         let layout = self.layout_of(ty)?;
         trace!("read_discriminant_value {:#?}", layout);
+        if layout.abi == layout::Abi::Uninhabited {
+            return Ok(0);
+        }
 
         match layout.variants {
             layout::Variants::Single { index } => {
-                return Ok(index as u128);
+                let discr_val = ty.ty_adt_def().map_or(
+                    index as u128,
+                    |def| def.discriminant_for_variant(*self.tcx, index).val);
+                return Ok(discr_val);
             }
             layout::Variants::Tagged { .. } |
             layout::Variants::NicheFilling { .. } => {},
@@ -1317,6 +1340,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         use syntax::ast::FloatTy;
+
+        let layout = self.layout_of(ty)?;
+        // do the strongest layout check of the two
+        let align = layout.align.max(ptr_align);
+        self.memory.check_align(ptr, align)?;
+
+        if layout.size.bytes() == 0 {
+            return Ok(Some(Value::ByVal(PrimVal::Undef)));
+        }
 
         let ptr = ptr.to_ptr()?;
         let val = match ty.sty {

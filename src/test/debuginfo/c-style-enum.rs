@@ -151,6 +151,7 @@ enum ManualDiscriminant {
 }
 
 #[derive(Copy, Clone)]
+#[repr(u8)]
 enum SingleVariant {
     TheOnlyVariant
 }

@@ -727,11 +727,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     // Only one variant is inhabited.
                     (inh_second.is_none() &&
                     // Representation optimizations are allowed.
-                     !def.repr.inhibit_enum_layout_opt() &&
-                    // Inhabited variant either has data ...
-                     (!variants[inh_first.unwrap()].is_empty() ||
-                    // ... or there other, uninhabited, variants.
-                      variants.len() > 1));
+                     !def.repr.inhibit_enum_layout_opt());
                 if is_struct {
                     // Struct, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
@@ -765,6 +761,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     return Ok(tcx.intern_layout(st));
                 }
 
+                // The current code for niche-filling relies on variant indices
+                // instead of actual discriminants, so dataful enums with
+                // explicit discriminants (RFC #2363) would misbehave.
                 let no_explicit_discriminants = def.variants.iter().enumerate()
                     .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i));
 
