@@ -185,7 +185,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     let res: Vec<_> = preds.iter().map(|p| {
                         match *p.skip_binder() {
                             Trait(existential_trait_ref) => {
-                                let trait_ref = Binder(existential_trait_ref)
+                                let trait_ref = Binder::bind(existential_trait_ref)
                                     .with_self_ty(self.tcx, self.tcx.types.err);
                                 let did = trait_ref.skip_binder().def_id;
                                 let substs = trait_ref.skip_binder().substs;
@@ -206,7 +206,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                 }
                             },
                             Projection(existential_projection) => {
-                                let projection_pred = Binder(existential_projection)
+                                let projection_pred = Binder::bind(existential_projection)
                                     .with_self_ty(self.tcx, self.tcx.types.err);
                                 let item_def_id =
                                     projection_pred.skip_binder().projection_ty.item_def_id;
@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
                     if success.get() {
                         let target_preds = self.tcx.mk_existential_predicates(res.iter());
-                        self.tcx.mk_dynamic(Binder(target_preds), region)
+                        self.tcx.mk_dynamic(Binder::bind(target_preds), region)
                     } else {
                         ty
                     }
@@ -328,10 +328,10 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
         Some(match predicate {
             Predicate::Trait(trait_predicate) => {
-                Predicate::Trait(Binder(if let Some((target_def_id, target_substs)) =
+                Predicate::Trait(Binder::bind(if let Some((target_def_id, target_substs)) =
                     self.translate_orig_substs(index_map,
-                                               trait_predicate.0.trait_ref.def_id,
-                                               trait_predicate.0.trait_ref.substs) {
+                                               trait_predicate.skip_binder().trait_ref.def_id,
+                                               trait_predicate.skip_binder().trait_ref.substs) {
                     TraitPredicate {
                         trait_ref: TraitRef {
                             def_id: target_def_id,
@@ -364,16 +364,22 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                 }))
             },
             Predicate::Projection(projection_predicate) => {
-                Predicate::Projection(Binder(if let Some((target_def_id, target_substs)) =
+                Predicate::Projection(Binder::bind(if let Some((target_def_id, target_substs)) =
                     self.translate_orig_substs(index_map,
-                                               projection_predicate.0.projection_ty.item_def_id,
-                                               projection_predicate.0.projection_ty.substs) {
+                                               projection_predicate
+                                                   .skip_binder()
+                                                   .projection_ty
+                                                   .item_def_id,
+                                               projection_predicate
+                                                   .skip_binder()
+                                                   .projection_ty
+                                                   .substs) {
                     ProjectionPredicate {
                         projection_ty: ProjectionTy {
                             substs: target_substs,
                             item_def_id: target_def_id,
                         },
-                        ty: self.translate(index_map, &projection_predicate.0.ty),
+                        ty: self.translate(index_map, &projection_predicate.skip_binder().ty),
                     }
                 } else {
                     return None;

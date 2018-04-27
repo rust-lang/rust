@@ -180,8 +180,9 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                 let _ = self.relate(&a_r, &b_r)?;
 
                 match (a_obj.principal(), b_obj.principal()) {
-                    (Some(a), Some(b)) if self.check_substs(a.0.substs, b.0.substs) => {
-                        let _ = self.relate(&a.0.substs, &b.0.substs)?;
+                    (Some(a), Some(b)) if self.check_substs(a.skip_binder().substs,
+                                                            b.skip_binder().substs) => {
+                        let _ = self.relate(&a.skip_binder().substs, &b.skip_binder().substs)?;
                         Some((a.skip_binder().def_id, b.skip_binder().def_id))
                     },
                     _ => None,
@@ -232,6 +233,6 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
     fn binders<T: Relate<'tcx>>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
         -> RelateResult<'tcx, ty::Binder<T>>
     {
-        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(ty::Binder::bind(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 }
