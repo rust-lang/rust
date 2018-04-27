@@ -454,6 +454,7 @@ pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
+    pub tokens: Option<TokenStream>,
 }
 
 /// A spanned compile-time attribute list item.

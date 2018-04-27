@@ -540,6 +540,9 @@ impl Token {
         let mut tokens = None;
 
         match nt.0 {
+            Nonterminal::NtCrate(ref krate) => {
+                tokens = prepend_attrs(sess, &krate.attrs, krate.tokens.as_ref(), span);
+            }
             Nonterminal::NtItem(ref item) => {
                 tokens = prepend_attrs(sess, &item.attrs, item.tokens.as_ref(), span);
             }
@@ -663,6 +666,7 @@ impl Token {
 #[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
+    NtCrate(P<ast::Crate>),
     NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
     NtStmt(ast::Stmt),
@@ -705,6 +709,7 @@ impl PartialEq for Nonterminal {
 impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
+            NtCrate(..) => f.pad("NtCrate(..)"),
             NtItem(..) => f.pad("NtItem(..)"),
             NtBlock(..) => f.pad("NtBlock(..)"),
             NtStmt(..) => f.pad("NtStmt(..)"),

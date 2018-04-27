@@ -262,6 +262,7 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
         token::Interpolated(ref nt) => match nt.0 {
+            token::NtCrate(ref k)       => crate_to_string(k),
             token::NtExpr(ref e)        => expr_to_string(e),
             token::NtMeta(ref e)        => meta_item_to_string(e),
             token::NtTy(ref e)          => ty_to_string(e),
@@ -284,6 +285,10 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtForeignItem(ref e) => foreign_item_to_string(e),
         }
     }
+}
+
+pub fn crate_to_string(krate: &ast::Crate) -> String {
+    to_string(|s| s.print_mod(&krate.module, &krate.attrs))
 }
 
 pub fn ty_to_string(ty: &ast::Ty) -> String {
