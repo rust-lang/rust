@@ -305,6 +305,6 @@ fn test_option_deref() {
     assert_eq!(ref_option.deref(), Some(&42));
 
     // None: &Option<T: Deref>>::None -> None
-    let ref_option = &None;
+    let ref_option: &Option<&i32> = &None;
     assert_eq!(ref_option.deref(), None);
 }
