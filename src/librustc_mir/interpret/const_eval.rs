@@ -284,6 +284,28 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 ecx.write_primval(dest, PrimVal::from_u128(type_id), dest_layout.ty)?;
             }
 
+            "uninit" => {
+                let size = dest_layout.size.bytes();
+                let uninit = |this: &mut EvalContext<'a, 'mir, 'tcx, Self>, val: Value| match val {
+                    Value::ByRef(ptr, ..) => {
+                        this.memory.mark_definedness(ptr, size, false)?;
+                        Ok(val)
+                    }
+                    _ => Ok(Value::ByVal(PrimVal::Undef)),
+                };
+                match dest {
+                    Place::Local { frame, local } => ecx.modify_local(frame, local, uninit)?,
+                    Place::Ptr {
+                        ptr,
+                        extra: PlaceExtra::None,
+                        ..
+                    } => ecx.memory.mark_definedness(ptr, size, false)?,
+                    Place::Ptr { .. } => {
+                        bug!("uninit intrinsic tried to write to fat or unaligned ptr target")
+                    }
+                }
+            }
+
             name => return Err(ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", name)).into()),
         }
 
