@@ -1482,11 +1482,22 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 
     pub fn conservative_is_uninhabited(&self) -> bool {
-        // "rustc-1.0-style" uncontentious uninhabitableness check
+        // Uncontentious uninhabitableness check
         match self.sty {
             ty::TyNever => true,
+            // We could extend this to ADTs in which every variant is uninhabited
+            // (for enums, unions, etc.).
             ty::TyAdt(def, _) => def.variants.is_empty(),
             ty::TyTuple(tys) => tys.iter().any(|ty| ty.conservative_is_uninhabited()),
+            ty::TyArray(ty, len) => {
+                match len.val.to_raw_bits() {
+                    // If the array is definitely non-empty, it's uninhabited if
+                    // the type of its elements is uninhabited.
+                    Some(n) if n != 0 => ty.conservative_is_uninhabited(),
+                    _ => false
+                }
+            }
+            // `ty::TyRef` is a grey area at the moment.
             _ => false
         }
     }
