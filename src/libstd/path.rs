@@ -1540,6 +1540,14 @@ impl<'a> From<&'a PathBuf> for Cow<'a, Path> {
     }
 }
 
+#[stable(feature = "pathbuf_from_cow_path", since = "1.28.0")]
+impl<'a> From<Cow<'a, Path>> for PathBuf {
+    #[inline]
+    fn from(p: Cow<'a, Path>) -> Self {
+        p.into_owned()
+    }
+}
+
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<PathBuf> for Arc<Path> {
     #[inline]
