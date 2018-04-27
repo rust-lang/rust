@@ -909,8 +909,8 @@ impl<T: Default, E> Result<T, E> {
     }
 }
 
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref, E: Deref> Result<T, E> {
-    #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
     /// Converts from `&Result<T, E>` to `Result<&T::Target, &E>`.
     ///
     /// Leaves the original Result in-place, creating a new one with a reference
@@ -920,7 +920,6 @@ impl<T: Deref, E: Deref> Result<T, E> {
         self.as_ref().map(|t| t.deref())
     }
 
-    #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
     /// Converts from `&Result<T, E>` to `Result<&T, &E::Target>`.
     ///
     /// Leaves the original Result in-place, creating a new one with a reference
@@ -931,7 +930,6 @@ impl<T: Deref, E: Deref> Result<T, E> {
         self.as_ref().map_err(|e| e.deref())
     }
 
-    #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
     /// Converts from `&Result<T, E>` to `Result<&T::Target, &E::Target>`.
     ///
     /// Leaves the original Result in-place, creating a new one with a reference
