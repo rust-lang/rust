@@ -876,8 +876,10 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn is_self(&self) -> bool {
-        if self.name == keywords::SelfType.name().as_str() {
-            assert_eq!(self.idx, 0);
+        // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
+        // but this should only be possible when using `-Z continue-parse-after-error` like
+        // `compile-fail/issue-36638.rs`.
+        if self.name == keywords::SelfType.name().as_str() && self.idx == 0 {
             true
         } else {
             false

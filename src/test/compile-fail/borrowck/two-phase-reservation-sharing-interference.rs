@@ -10,7 +10,7 @@
 
 // ignore-tidy-linelength
 
-// revisions: nll_beyond nll_target
+// revisions: nll_target
 
 // The following revisions are disabled due to missing support from two-phase beyond autorefs
 //[nll_beyond]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref

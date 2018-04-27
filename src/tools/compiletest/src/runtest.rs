@@ -1168,6 +1168,8 @@ impl<'test> TestCx<'test> {
         for line in proc_res.stderr.lines() {
             if line.contains("error: internal compiler error") {
                 self.fatal_proc_rec("compiler encountered internal error", proc_res);
+            } else if line.contains(" panicked at ") {
+                self.fatal_proc_rec("compiler panicked", proc_res);
             }
         }
     }
