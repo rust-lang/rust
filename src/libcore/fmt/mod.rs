@@ -547,6 +547,7 @@ impl<'a> Display for Arguments<'a> {
     message="`{Self}` doesn't implement `{Debug}`",
     label="`{Self}` cannot be formatted using `:?` because it doesn't implement `{Debug}`",
 )]
+#[doc(alias = "{:?}")]
 #[lang = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
@@ -612,6 +613,7 @@ pub trait Debug {
     label="`{Self}` cannot be formatted with the default formatter; \
            try using `:?` instead if you are using a format string",
 )]
+#[doc(alias = "{}")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.
