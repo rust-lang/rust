@@ -878,6 +878,17 @@ impl<T: Default> Option<T> {
     }
 }
 
+# [unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: Deref> Option<T> {
+    /// Converts from `&Option<T>` to `Option<&T::Target>`.
+    ///
+    /// Leaves the original Option in-place, creating a new one with a reference
+    /// to the original one, additionally coercing the contents via `Deref`.
+    pub fn deref(&self) -> Option<&T::Target> {
+        self.as_ref().map(|t| t.deref())
+    }
+}
+
 impl<T, E> Option<Result<T, E>> {
     /// Transposes an `Option` of a `Result` into a `Result` of an `Option`.
     ///
@@ -975,24 +986,6 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 impl<T> From<T> for Option<T> {
     fn from(val: T) -> Option<T> {
         Some(val)
-    }
-}
-
-#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
-/// Extension trait to get a reference of an Option via the Deref trait.
-pub trait OptionDeref<T: Deref> {
-    /// Converts from `&Option<T>` to `Option<&T::Target>`.
-    ///
-    /// Leaves the original Option in-place, creating a new one with a reference
-    /// to the original one, additionally coercing the contents via `Deref`.
-    fn deref(&self) -> Option<&T::Target>;
-}
-
-#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
-impl<T: Deref> OptionDeref<T> for Option<T>
-{
-    fn deref(&self) -> Option<&T::Target> {
-        self.as_ref().map(|t| t.deref())
     }
 }
 
