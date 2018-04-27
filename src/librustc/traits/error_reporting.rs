@@ -979,6 +979,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                      ArgKind::Arg(format!("{}", field.name), "_".to_string())
                  }).collect::<Vec<_>>())
             }
+            hir::map::NodeStructCtor(ref variant_data) => {
+                (self.tcx.sess.codemap().def_span(self.tcx.hir.span(variant_data.id())),
+                 variant_data.fields()
+                    .iter().map(|_| ArgKind::Arg("_".to_owned(), "_".to_owned()))
+                    .collect())
+            }
             _ => panic!("non-FnLike node found: {:?}", node),
         }
     }
