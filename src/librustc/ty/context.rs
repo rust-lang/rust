@@ -2471,7 +2471,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_self_type(self) -> Ty<'tcx> {
-        self.mk_param(0, keywords::SelfType.name().as_str())
+        self.mk_param(0, keywords::SelfType.name().as_interned_str())
     }
 
     pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {

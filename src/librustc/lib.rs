@@ -58,6 +58,7 @@
 #![feature(nonzero)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
+#![feature(optin_builtin_traits)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]

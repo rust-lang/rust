@@ -1037,7 +1037,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push_str(" ");
-                    output.push_str(&cgu_name);
+                    output.push_str(&cgu_name.as_str());
 
                     let linkage_abbrev = match linkage {
                         Linkage::External => "External",

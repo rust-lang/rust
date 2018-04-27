@@ -52,7 +52,7 @@ pub fn get_fn<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         return llfn;
     }
 
-    let sym = tcx.symbol_name(instance);
+    let sym = tcx.symbol_name(instance).as_str();
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // Create a fn pointer with the substituted signature.

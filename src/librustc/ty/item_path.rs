@@ -14,7 +14,7 @@ use ty::{self, Ty, TyCtxt};
 use middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 
 use std::cell::Cell;
 
@@ -131,7 +131,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let visible_parent_map = self.visible_parent_map(LOCAL_CRATE);
 
-        let (mut cur_def, mut cur_path) = (external_def_id, Vec::<InternedString>::new());
+        let (mut cur_def, mut cur_path) = (external_def_id, Vec::<LocalInternedString>::new());
         loop {
             // If `cur_def` is a direct or injected extern crate, push the path to the crate
             // followed by the path to the item within the crate and return.
@@ -168,8 +168,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             let data = cur_def_key.disambiguated_data.data;
-            let symbol =
-                data.get_opt_name().unwrap_or_else(|| Symbol::intern("<unnamed>").as_str());
+            let symbol = data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
+                Symbol::intern("<unnamed>").as_str()
+            });
             cur_path.push(symbol);
 
             match visible_parent_map.get(&cur_def) {
@@ -221,7 +222,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::GlobalMetaData(..) => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
-                buffer.push(&data.as_interned_str());
+                buffer.push(&data.as_interned_str().as_symbol().as_str());
             }
             DefPathData::StructCtor => { // present `X` instead of `X::{{constructor}}`
                 let parent_def_id = self.parent_def_id(def_id).unwrap();

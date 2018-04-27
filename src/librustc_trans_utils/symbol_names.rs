@@ -229,7 +229,7 @@ fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>)
                          -> ty::SymbolName
 {
-    ty::SymbolName { name: Symbol::intern(&compute_symbol_name(tcx, instance)).as_str() }
+    ty::SymbolName { name: Symbol::intern(&compute_symbol_name(tcx, instance)).as_interned_str() }
 }
 
 fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>)
@@ -355,12 +355,12 @@ impl SymbolPathBuffer {
             result: String::with_capacity(64),
             temp_buf: String::with_capacity(16)
         };
-        result.result.push_str(&symbol.name);
+        result.result.push_str(&symbol.name.as_str());
         result
     }
 
     fn into_interned(self) -> ty::SymbolName {
-        ty::SymbolName { name: Symbol::intern(&self.result).as_str() }
+        ty::SymbolName { name: Symbol::intern(&self.result).as_interned_str() }
     }
 
     fn finish(mut self, hash: u64) -> String {

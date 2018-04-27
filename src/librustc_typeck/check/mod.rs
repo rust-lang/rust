@@ -124,7 +124,7 @@ use syntax::attr;
 use syntax::codemap::{original_sp, Spanned};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
-use syntax::symbol::{Symbol, InternedString, keywords};
+use syntax::symbol::{Symbol, LocalInternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
 
@@ -3172,7 +3172,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Return an hint about the closest match in field names
     fn suggest_field_name(variant: &'tcx ty::VariantDef,
                           field: &Spanned<ast::Name>,
-                          skip: Vec<InternedString>)
+                          skip: Vec<LocalInternedString>)
                           -> Option<Symbol> {
         let name = field.node.as_str();
         let names = variant.fields.iter().filter_map(|field| {

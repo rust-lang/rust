@@ -244,7 +244,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let param_owner_def_id = tcx.hir.local_def_id(param_owner);
     let generics = tcx.generics_of(param_owner_def_id);
     let index = generics.type_param_to_index[&def_id];
-    let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id).as_str());
+    let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id).as_interned_str());
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner_def_id {
@@ -842,7 +842,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
                     opt_self = Some(ty::TypeParameterDef {
                         index: 0,
-                        name: keywords::SelfType.name().as_str(),
+                        name: keywords::SelfType.name().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param_id),
                         has_default: false,
                         object_lifetime_default: rl::Set1::Empty,
@@ -888,7 +888,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
     let regions = early_lifetimes.enumerate().map(|(i, l)| {
         ty::RegionParameterDef {
-            name: l.lifetime.name.name().as_str(),
+            name: l.lifetime.name.name().as_interned_str(),
             index: own_start + i as u32,
             def_id: tcx.hir.local_def_id(l.lifetime.id),
             pure_wrt_drop: l.pure_wrt_drop,
@@ -918,7 +918,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         ty::TypeParameterDef {
             index: type_start + i as u32,
-            name: p.name.as_str(),
+            name: p.name.as_interned_str(),
             def_id: tcx.hir.local_def_id(p.id),
             has_default: p.default.is_some(),
             object_lifetime_default:
@@ -937,7 +937,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // add a dummy parameter for the closure kind
         types.push(ty::TypeParameterDef {
             index: type_start,
-            name: Symbol::intern("<closure_kind>").as_str(),
+            name: Symbol::intern("<closure_kind>").as_interned_str(),
             def_id,
             has_default: false,
             object_lifetime_default: rl::Set1::Empty,
@@ -948,7 +948,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // add a dummy parameter for the closure signature
         types.push(ty::TypeParameterDef {
             index: type_start + 1,
-            name: Symbol::intern("<closure_signature>").as_str(),
+            name: Symbol::intern("<closure_signature>").as_interned_str(),
             def_id,
             has_default: false,
             object_lifetime_default: rl::Set1::Empty,
@@ -959,7 +959,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tcx.with_freevars(node_id, |fv| {
             types.extend(fv.iter().zip(2..).map(|(_, i)| ty::TypeParameterDef {
                 index: type_start + i,
-                name: Symbol::intern("<upvar>").as_str(),
+                name: Symbol::intern("<upvar>").as_interned_str(),
                 def_id,
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
@@ -1429,7 +1429,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let region = tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             def_id: tcx.hir.local_def_id(param.lifetime.id),
             index,
-            name: param.lifetime.name.name().as_str(),
+            name: param.lifetime.name.name().as_interned_str(),
         }));
         index += 1;
 
@@ -1443,7 +1443,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T:Foo>`).
     for param in ast_generics.ty_params() {
-        let param_ty = ty::ParamTy::new(index, param.name.as_str()).to_ty(tcx);
+        let param_ty = ty::ParamTy::new(index, param.name.as_interned_str()).to_ty(tcx);
         index += 1;
 
         let bounds = compute_bounds(&icx,
