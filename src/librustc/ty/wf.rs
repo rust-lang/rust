@@ -13,7 +13,7 @@ use middle::const_val::ConstVal;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
-use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
@@ -170,10 +170,11 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
     /// Pushes the obligations required for `trait_ref` to be WF into
     /// `self.out`.
     fn compute_trait_ref(&mut self, trait_ref: &ty::TraitRef<'tcx>, elaborate: Elaborate) {
-        let obligations = self.nominal_obligations(trait_ref.def_id, trait_ref.substs);
+        let param_env = self.param_env;
+
+        let obligations = self.nominal_trait_obligations(trait_ref);
 
         let cause = self.cause(traits::MiscObligation);
-        let param_env = self.param_env;
 
         if let Elaborate::All = elaborate {
             let predicates = obligations.iter()
@@ -441,6 +442,37 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                           .instantiate(self.infcx.tcx, substs);
         let cause = self.cause(traits::ItemObligation(def_id));
         predicates.predicates
+                  .into_iter()
+                  .map(|pred| traits::Obligation::new(cause.clone(),
+                                                      self.param_env,
+                                                      pred))
+                  .filter(|pred| !pred.has_escaping_regions())
+                  .collect()
+    }
+
+    fn nominal_trait_obligations(&mut self,
+                                 trait_ref: &ty::TraitRef<'tcx>)
+                                 -> Vec<traits::PredicateObligation<'tcx>>
+    {
+        let mut predicates = self.infcx.tcx.predicates_of(trait_ref.def_id);
+
+        // Add in a predicate that `Self:Trait` (where `Trait` is the
+        // current trait).
+        // trait_ref can probably be added in as a predicate directly after
+        // instantiation, rather than erasing the substituted type and then
+        // re-instantiating this bound.
+        let identity_trait_ref = ty::TraitRef {
+            def_id: trait_ref.def_id,
+            substs: Substs::identity_for_item(self.infcx.tcx, trait_ref.def_id)
+        };
+        predicates.predicates.push(identity_trait_ref.to_poly_trait_ref().to_predicate());
+
+        debug!("nominal_trait_obligations: trait_ref={:?} predicates={:?}",
+               trait_ref, predicates.predicates);
+
+        let cause = self.cause(traits::ItemObligation(trait_ref.def_id));
+        predicates.instantiate(self.infcx.tcx, trait_ref.substs)
+                  .predicates
                   .into_iter()
                   .map(|pred| traits::Obligation::new(cause.clone(),
                                                       self.param_env,
