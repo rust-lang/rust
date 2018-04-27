@@ -864,7 +864,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfType.name().as_str())
+        ParamTy::new(0, keywords::SelfType.name().as_interned_str())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {

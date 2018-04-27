@@ -224,7 +224,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     let name = if p.name == "" {
                         hir::LifetimeName::Static
                     } else {
-                        hir::LifetimeName::Name(Symbol::intern(&p.name))
+                        hir::LifetimeName::Name(p.name.as_symbol())
                     };
 
                     hir::Lifetime {
@@ -261,7 +261,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
                     span: DUMMY_SP,
                     def: Def::TyParam(param.def_id),
                     segments: HirVec::from_vec(vec![
-                        hir::PathSegment::from_name(Symbol::intern(&param.name))
+                        hir::PathSegment::from_name(param.name.as_symbol())
                     ]),
                 }),
             )),

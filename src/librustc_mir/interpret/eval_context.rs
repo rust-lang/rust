@@ -768,9 +768,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
         }
 
-        if log_enabled!(::log::Level::Trace) {
-            self.dump_local(dest);
-        }
+        self.dump_local(dest);
 
         Ok(())
     }
@@ -1572,6 +1570,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn dump_local(&self, place: Place) {
         // Debug output
+        if !log_enabled!(::log::Level::Trace) {
+            return;
+        }
         match place {
             Place::Local { frame, local } => {
                 let mut allocs = Vec::new();

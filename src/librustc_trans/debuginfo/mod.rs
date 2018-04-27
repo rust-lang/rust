@@ -394,7 +394,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             substs.types().zip(names).map(|(ty, name)| {
                 let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
                 let actual_type_metadata = type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
-                let name = CString::new(name.as_bytes()).unwrap();
+                let name = CString::new(name.as_str().as_bytes()).unwrap();
                 unsafe {
                     llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),

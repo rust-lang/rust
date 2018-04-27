@@ -43,6 +43,10 @@ Rust's standard library has [extensive API documentation](std/index.html),
 with explanations of how to use various things, as well as example code for
 accomplishing various tasks.
 
+## The Rustc Book
+
+[The Rustc Book](rustc/index.html) describes the Rust compiler, `rustc`.
+
 ## The Cargo Book
 
 [The Cargo Book](cargo/index.html) is a guide to Cargo, Rust's build tool and dependency manager.

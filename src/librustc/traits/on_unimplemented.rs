@@ -18,10 +18,10 @@ use util::nodemap::FxHashMap;
 use syntax::ast::{MetaItem, NestedMetaItem};
 use syntax::attr;
 use syntax_pos::Span;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::LocalInternedString;
 
 #[derive(Clone, Debug)]
-pub struct OnUnimplementedFormatString(InternedString);
+pub struct OnUnimplementedFormatString(LocalInternedString);
 
 #[derive(Debug)]
 pub struct OnUnimplementedDirective {
@@ -225,7 +225,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedDirective {
 impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
     pub fn try_parse(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      trait_def_id: DefId,
-                     from: InternedString,
+                     from: LocalInternedString,
                      err_sp: Span)
                      -> Result<Self, ErrorReported>
     {

@@ -1212,6 +1212,7 @@ test_book!(
     Nomicon, "src/doc/nomicon", "nomicon", default=false;
     Reference, "src/doc/reference", "reference", default=false;
     RustdocBook, "src/doc/rustdoc", "rustdoc", default=true;
+    RustcBook, "src/doc/rustc", "rustc", default=true;
     RustByExample, "src/doc/rust-by-example", "rust-by-example", default=false;
     TheBook, "src/doc/book", "book", default=false;
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;

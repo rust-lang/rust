@@ -323,7 +323,7 @@ impl<'a> Builder<'a> {
                 test::Cargotest, test::Cargo, test::Rls, test::ErrorIndex, test::Distcheck,
                 test::RunMakeFullDeps,
                 test::Nomicon, test::Reference, test::RustdocBook, test::RustByExample,
-                test::TheBook, test::UnstableBook,
+                test::TheBook, test::UnstableBook, test::RustcBook,
                 test::Rustfmt, test::Miri, test::Clippy, test::RustdocJS, test::RustdocTheme,
                 // Run run-make last, since these won't pass without make on Windows
                 test::RunMake, test::RustdocUi),
@@ -331,7 +331,7 @@ impl<'a> Builder<'a> {
             Kind::Doc => describe!(doc::UnstableBook, doc::UnstableBookGen, doc::TheBook,
                 doc::Standalone, doc::Std, doc::Test, doc::WhitelistedRustc, doc::Rustc,
                 doc::ErrorIndex, doc::Nomicon, doc::Reference, doc::Rustdoc, doc::RustByExample,
-                doc::CargoBook),
+                doc::RustcBook, doc::CargoBook),
             Kind::Dist => describe!(dist::Docs, dist::RustcDocs, dist::Mingw, dist::Rustc,
                 dist::DebuggerScripts, dist::Std, dist::Analysis, dist::Src,
                 dist::PlainSourceTarball, dist::Cargo, dist::Rls, dist::Rustfmt, dist::Extended,

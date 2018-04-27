@@ -334,11 +334,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// For debugging, print an allocation and all allocations it points to, recursively.
     pub fn dump_alloc(&self, id: AllocId) {
+        if !log_enabled!(::log::Level::Trace) {
+            return;
+        }
         self.dump_allocs(vec![id]);
     }
 
     /// For debugging, print a list of allocations and all allocations they point to, recursively.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
+        if !log_enabled!(::log::Level::Trace) {
+            return;
+        }
         use std::fmt::Write;
         allocs.sort();
         allocs.dedup();
