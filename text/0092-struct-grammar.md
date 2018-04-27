@@ -65,9 +65,9 @@ e'     ::= x
 block  ::=  `{` (e;)* e? `}`
 ```
 
-`e' is just e without struct literal expressions. We use e' instead of e
-`wherever e is followed directly by block or any other non-terminal which may
-`have block as its first terminal (after any possible expansions).
+`e'` is just e without struct literal expressions. We use `e'` instead of `e`
+wherever `e` is followed directly by block or any other non-terminal which may
+have block as its first terminal (after any possible expansions).
 
 For any expressions where a sub-expression is the final lexical element
 (closures in the subset above, but also unary and binary operations), we require
