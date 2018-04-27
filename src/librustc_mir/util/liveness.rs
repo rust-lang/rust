@@ -138,7 +138,7 @@ pub fn liveness_of_locals<'tcx>(mir: &Mir<'tcx>, mode: LivenessMode) -> Liveness
         for b in mir.basic_blocks().indices().rev() {
             // outs[b] = ∪ {ins of successors}
             bits.clear();
-            for &successor in mir.basic_blocks()[b].terminator().successors().into_iter() {
+            for &successor in mir.basic_blocks()[b].terminator().successors() {
                 bits.union(&ins[successor]);
             }
             outs[b].clone_from(&bits);
