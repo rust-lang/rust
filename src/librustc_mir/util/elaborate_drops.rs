@@ -339,18 +339,19 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_ladder(fields, succ, unwind).0
     }
 
-    fn open_drop_for_box<'a>(&mut self, ty: Ty<'tcx>) -> BasicBlock
+    fn open_drop_for_box<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
+                             -> BasicBlock
     {
-        debug!("open_drop_for_box({:?}, {:?})", self, ty);
+        debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
 
         let interior = self.place.clone().deref();
         let interior_path = self.elaborator.deref_subpath(self.path);
 
         let succ = self.succ; // FIXME(#43234)
         let unwind = self.unwind;
-        let succ = self.box_free_block(ty, succ, unwind);
+        let succ = self.box_free_block(adt, substs, succ, unwind);
         let unwind_succ = self.unwind.map(|unwind| {
-            self.box_free_block(ty, unwind, Unwind::InCleanup)
+            self.box_free_block(adt, substs, unwind, Unwind::InCleanup)
         });
 
         self.drop_subpath(&interior, interior_path, succ, unwind_succ)
@@ -793,11 +794,12 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ty::TyTuple(tys) => {
                 self.open_drop_for_tuple(tys)
             }
-            ty::TyAdt(def, _) if def.is_box() => {
-                self.open_drop_for_box(ty.boxed_ty())
-            }
             ty::TyAdt(def, substs) => {
-                self.open_drop_for_adt(def, substs)
+                if def.is_box() {
+                    self.open_drop_for_box(def, substs)
+                } else {
+                    self.open_drop_for_adt(def, substs)
+                }
             }
             ty::TyDynamic(..) => {
                 let unwind = self.unwind; // FIXME(#43234)
@@ -860,28 +862,34 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
     fn box_free_block<'a>(
         &mut self,
-        ty: Ty<'tcx>,
+        adt: &'tcx ty::AdtDef,
+        substs: &'tcx Substs<'tcx>,
         target: BasicBlock,
         unwind: Unwind,
     ) -> BasicBlock {
-        let block = self.unelaborated_free_block(ty, target, unwind);
+        let block = self.unelaborated_free_block(adt, substs, target, unwind);
         self.drop_flag_test_block(block, target, unwind)
     }
 
     fn unelaborated_free_block<'a>(
         &mut self,
-        ty: Ty<'tcx>,
+        adt: &'tcx ty::AdtDef,
+        substs: &'tcx Substs<'tcx>,
         target: BasicBlock,
         unwind: Unwind
     ) -> BasicBlock {
         let tcx = self.tcx();
         let unit_temp = Place::Local(self.new_temp(tcx.mk_nil()));
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
-        let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
+        let args = adt.variants[0].fields.iter().enumerate().map(|(i, f)| {
+            let field = Field::new(i);
+            let field_ty = f.ty(self.tcx(), substs);
+            Operand::Move(self.place.clone().field(field, field_ty))
+        }).collect();
 
         let call = TerminatorKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
-            args: vec![Operand::Move(self.place.clone())],
+            args: args,
             destination: Some((unit_temp, target)),
             cleanup: None
         }; // FIXME(#43234)
