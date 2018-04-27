@@ -101,7 +101,7 @@ There are two main drawbacks to the `try` keyword.
 
 For some people, the association to `try { .. } catch { .. }` in languages such
 as Java, and others in the [prior-art] section, is unhelpful wrt. teachability
-because they see the explicit, reifed, and manually propagated exceptions in
+because they see the explicit, reified, and manually propagated exceptions in
 Rust as something very different than the much more implicit exception handling
 stories in Java et al.
 
