@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use dep_graph::{DepConstructor, DepNode};
-use errors::DiagnosticBuilder;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::def::{Def, Export};
 use hir::{self, TraitCandidate, ItemLocalId, TransFnAttrs};
@@ -43,7 +42,7 @@ use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
-use util::common::{profq_msg, ErrorReported, ProfileQueriesMsg};
+use util::common::{ErrorReported};
 
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_target::spec::PanicStrategy;
@@ -68,7 +67,6 @@ pub use self::plumbing::force_from_dep_node;
 
 mod job;
 pub use self::job::{QueryJob, QueryInfo};
-use self::job::QueryResult;
 
 mod keys;
 pub use self::keys::Key;

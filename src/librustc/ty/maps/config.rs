@@ -9,24 +9,45 @@
 // except according to those terms.
 
 use dep_graph::SerializedDepNodeIndex;
+use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
 use mir::interpret::{GlobalId};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::maps::queries;
+use ty::maps::Query;
+use ty::maps::QueryMap;
 
 use std::hash::Hash;
+use std::fmt::Debug;
 use syntax_pos::symbol::InternedString;
+use rustc_data_structures::sync::Lock;
+use rustc_data_structures::stable_hasher::HashStable;
+use ich::StableHashingContext;
 
 /// Query configuration and description traits.
 
-pub trait QueryConfig {
-    type Key: Eq + Hash + Clone;
-    type Value;
+pub trait QueryConfig<'tcx> {
+    const NAME: &'static str;
+
+    type Key: Eq + Hash + Clone + Debug;
+    type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;
+
+    fn query(key: Self::Key) -> Query<'tcx>;
+
+    // Don't use this method to access query results, instead use the methods on TyCtxt
+    fn query_map<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryMap<'tcx, Self>>;
+
+    fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
+
+    // Don't use this method to compute query results, instead use the methods on TyCtxt
+    fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value;
+
+    fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
 }
 
-pub(super) trait QueryDescription<'tcx>: QueryConfig {
+pub trait QueryDescription<'tcx>: QueryConfig<'tcx> {
     fn describe(tcx: TyCtxt, key: Self::Key) -> String;
 
     #[inline]
@@ -41,7 +62,7 @@ pub(super) trait QueryDescription<'tcx>: QueryConfig {
     }
 }
 
-impl<'tcx, M: QueryConfig<Key=DefId>> QueryDescription<'tcx> for M {
+impl<'tcx, M: QueryConfig<'tcx, Key=DefId>> QueryDescription<'tcx> for M {
     default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         if !tcx.sess.verbose() {
             format!("processing `{}`", tcx.item_path_str(def_id))

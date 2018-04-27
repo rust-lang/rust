@@ -126,7 +126,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     continue;
                 }
 
-                let callee_mir = match ty::queries::optimized_mir::try_get(self.tcx,
+                let callee_mir = match self.tcx.try_get_query::<ty::queries::optimized_mir>(
                                                                            callsite.location.span,
                                                                            callsite.callee) {
                     Ok(callee_mir) if self.should_inline(callsite, callee_mir) => {
