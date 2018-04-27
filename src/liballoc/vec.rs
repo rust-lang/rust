@@ -2285,7 +2285,7 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
     }
 }
 
-#[stable(feature = "cow_from_vec_ref", since = "1.28.0")]
+#[stable(feature = "cow_from_vec_ref", since = "1.27.0")]
 impl<'a, T: Clone> From<&'a Vec<T>> for Cow<'a, [T]> {
     fn from(v: &'a Vec<T>) -> Cow<'a, [T]> {
         Cow::Borrowed(v.as_slice())

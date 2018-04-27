@@ -664,7 +664,7 @@ impl<'a> From<&'a OsStr> for Rc<OsStr> {
     }
 }
 
-#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+#[stable(feature = "cow_from_osstr", since = "1.27.0")]
 impl<'a> From<OsString> for Cow<'a, OsStr> {
     #[inline]
     fn from(s: OsString) -> Cow<'a, OsStr> {
@@ -672,7 +672,7 @@ impl<'a> From<OsString> for Cow<'a, OsStr> {
     }
 }
 
-#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+#[stable(feature = "cow_from_osstr", since = "1.27.0")]
 impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
     #[inline]
     fn from(s: &'a OsStr) -> Cow<'a, OsStr> {
@@ -680,7 +680,7 @@ impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
     }
 }
 
-#[stable(feature = "cow_from_osstr", since = "1.28.0")]
+#[stable(feature = "cow_from_osstr", since = "1.27.0")]
 impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
     #[inline]
     fn from(s: &'a OsString) -> Cow<'a, OsStr> {
@@ -688,7 +688,7 @@ impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
     }
 }
 
-#[stable(feature = "osstring_from_cow_osstr", since = "1.28.0")]
+#[stable(feature = "osstring_from_cow_osstr", since = "1.27.0")]
 impl<'a> From<Cow<'a, OsStr>> for OsString {
     #[inline]
     fn from(s: Cow<'a, OsStr>) -> Self {

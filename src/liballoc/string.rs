@@ -2239,7 +2239,7 @@ impl<'a> From<String> for Cow<'a, str> {
     }
 }
 
-#[stable(feature = "cow_from_string_ref", since = "1.28.0")]
+#[stable(feature = "cow_from_string_ref", since = "1.27.0")]
 impl<'a> From<&'a String> for Cow<'a, str> {
     #[inline]
     fn from(s: &'a String) -> Cow<'a, str> {
