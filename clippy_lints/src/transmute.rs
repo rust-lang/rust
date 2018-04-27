@@ -16,7 +16,7 @@ use utils::{opt_def_id, sugg};
 ///
 /// **Example:**
 /// ```rust
-/// let ptr: *const T = core::intrinsics::transmute('x')`
+/// let ptr: *const T = core::intrinsics::transmute('x')
 /// ```
 declare_clippy_lint! {
     pub WRONG_TRANSMUTE,
@@ -51,8 +51,8 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// core::intrinsics::transmute(t)` // where the result type is the same as
-/// `*t` or `&t`'s
+/// core::intrinsics::transmute(t) // where the result type is the same as
+/// // `*t` or `&t`'s
 /// ```
 declare_clippy_lint! {
     pub CROSSPOINTER_TRANSMUTE,
