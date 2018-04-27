@@ -21,7 +21,7 @@ use url::Url;
 /// **Examples:**
 /// ```rust
 /// /// Do something with the foo_bar parameter. See also
-/// that::other::module::foo.
+/// /// that::other::module::foo.
 /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
 /// fn doit(foo_bar) { .. }
 /// ```
