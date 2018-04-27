@@ -186,18 +186,18 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
         // The TyCtxt stored in TLS has the same global interner lifetime
         // as `tcx`, so we use `with_related_context` to relate the 'gcx lifetimes
         // when accessing the ImplicitCtxt
-        let r = tls::with_related_context(tcx, move |icx| {
+        let r = tls::with_related_context(tcx, move |current_icx| {
             // Update the ImplicitCtxt to point to our new query job
-            let icx = tls::ImplicitCtxt {
+            let new_icx = tls::ImplicitCtxt {
                 tcx,
                 query: Some(self.job.clone()),
-                layout_depth: icx.layout_depth,
-                task: icx.task,
+                layout_depth: current_icx.layout_depth,
+                task: current_icx.task,
             };
 
             // Use the ImplicitCtxt while we execute the query
-            tls::enter_context(&icx, |icx| {
-                compute(icx.tcx)
+            tls::enter_context(&new_icx, |_| {
+                compute(tcx)
             })
         });
 

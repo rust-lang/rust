@@ -35,10 +35,13 @@ pub trait QueryConfig<'tcx> {
     type Value: Clone + for<'a> HashStable<StableHashingContext<'a>>;
 
     fn query(key: Self::Key) -> Query<'tcx>;
+
+    // Don't use this method to access query results, instead use the methods on TyCtxt
     fn query_map<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryMap<'tcx, Self>>;
 
     fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
 
+    // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn compute(tcx: TyCtxt<'_, 'tcx, '_>, key: Self::Key) -> Self::Value;
 
     fn handle_cycle_error(tcx: TyCtxt<'_, 'tcx, '_>) -> Self::Value;
