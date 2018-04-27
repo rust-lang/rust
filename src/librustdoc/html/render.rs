@@ -1595,6 +1595,8 @@ impl<'a> Settings<'a> {
             settings: vec![
                 ("item-declarations", "Auto-hide item declarations.", true),
                 ("item-attributes", "Auto-hide item attributes.", true),
+                ("go-to-only-result", "Directly go to item in search if there is only one result",
+                 false),
             ],
             root_path,
             suffix,

@@ -1013,7 +1013,8 @@
                 'returned': sortResults(results_returned, true),
                 'others': sortResults(results),
             };
-            if (ALIASES[window.currentCrate][query.raw]) {
+            if (ALIASES && ALIASES[window.currentCrate] &&
+                    ALIASES[window.currentCrate][query.raw]) {
                 var aliases = ALIASES[window.currentCrate][query.raw];
                 for (var i = 0; i < aliases.length; ++i) {
                     ret['others'].unshift(aliases[i]);
@@ -1188,6 +1189,44 @@
             return '<span>' + path.replace(/::/g, '::</span><span>');
         }
 
+        function buildHrefAndPath(item) {
+            var displayPath;
+            var href;
+            var type = itemTypes[item.ty];
+            var name = item.name;
+
+            if (type === 'mod') {
+                displayPath = item.path + '::';
+                href = rootPath + item.path.replace(/::/g, '/') + '/' +
+                       name + '/index.html';
+            } else if (type === "primitive") {
+                displayPath = "";
+                href = rootPath + item.path.replace(/::/g, '/') +
+                       '/' + type + '.' + name + '.html';
+            } else if (type === "externcrate") {
+                displayPath = "";
+                href = rootPath + name + '/index.html';
+            } else if (item.parent !== undefined) {
+                var myparent = item.parent;
+                var anchor = '#' + type + '.' + name;
+                var parentType = itemTypes[myparent.ty];
+                if (parentType === "primitive") {
+                    displayPath = myparent.name + '::';
+                } else {
+                    displayPath = item.path + '::' + myparent.name + '::';
+                }
+                href = rootPath + item.path.replace(/::/g, '/') +
+                       '/' + parentType +
+                       '.' + myparent.name +
+                       '.html' + anchor;
+            } else {
+                displayPath = item.path + '::';
+                href = rootPath + item.path.replace(/::/g, '/') +
+                       '/' + type + '.' + name + '.html';
+            }
+            return [displayPath, href];
+        }
+
         function addTab(array, query, display) {
             var extraStyle = '';
             if (display === false) {
@@ -1211,35 +1250,9 @@
                     name = item.name;
                     type = itemTypes[item.ty];
 
-                    if (type === 'mod') {
-                        displayPath = item.path + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') + '/' +
-                               name + '/index.html';
-                    } else if (type === "primitive") {
-                        displayPath = "";
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/' + type + '.' + name + '.html';
-                    } else if (type === "externcrate") {
-                        displayPath = "";
-                        href = rootPath + name + '/index.html';
-                    } else if (item.parent !== undefined) {
-                        var myparent = item.parent;
-                        var anchor = '#' + type + '.' + name;
-                        var parentType = itemTypes[myparent.ty];
-                        if (parentType === "primitive") {
-                            displayPath = myparent.name + '::';
-                        } else {
-                            displayPath = item.path + '::' + myparent.name + '::';
-                        }
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/' + parentType +
-                               '.' + myparent.name +
-                               '.html' + anchor;
-                    } else {
-                        displayPath = item.path + '::';
-                        href = rootPath + item.path.replace(/::/g, '/') +
-                               '/' + type + '.' + name + '.html';
-                    }
+                    var res = buildHrefAndPath(item);
+                    var href = res[1];
+                    var displayPath = res[0];
 
                     output += '<tr class="' + type + ' result"><td>' +
                               '<a href="' + href + '">' +
@@ -1268,6 +1281,16 @@
         }
 
         function showResults(results) {
+            if (results['others'].length === 1 &&
+                getCurrentValue('rustdoc-go-to-only-result') === "true") {
+                var elem = document.createElement('a');
+                var res = buildHrefAndPath(results['others'][0]);
+                elem.href = res[1];
+                elem.style.display = 'none';
+                // For firefox, we need the element to be in the DOM so it can be clicked.
+                document.body.appendChild(elem);
+                elem.click();
+            }
             var output, query = getQuery(search_input.value);
 
             currentResults = query.id;
@@ -1721,6 +1744,9 @@
 
     function toggleAllDocs(pageId) {
         var toggle = document.getElementById("toggle-all-docs");
+        if (!toggle) {
+            return;
+        }
         if (hasClass(toggle, "will-expand")) {
             updateLocalStorage("rustdoc-collapse", "false");
             removeClass(toggle, "will-expand");
@@ -1977,7 +2003,7 @@
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
-    })
+    });
 
     autoCollapseAllImpls(getPageId());
 
