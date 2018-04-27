@@ -20,6 +20,7 @@ use utils::{camel_case_from, camel_case_until, in_macro};
 /// enum Cake {
 ///     BlackForestCake,
 ///     HummingbirdCake,
+///     BattenbergCake,
 /// }
 /// ```
 declare_clippy_lint! {
@@ -41,6 +42,7 @@ declare_clippy_lint! {
 /// enum Cake {
 ///     BlackForestCake,
 ///     HummingbirdCake,
+///     BattenbergCake,
 /// }
 /// ```
 declare_clippy_lint! {
