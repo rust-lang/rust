@@ -688,6 +688,14 @@ impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
     }
 }
 
+#[stable(feature = "osstring_from_cow_osstr", since = "1.28.0")]
+impl<'a> From<Cow<'a, OsStr>> for OsString {
+    #[inline]
+    fn from(s: Cow<'a, OsStr>) -> Self {
+        s.into_owned()
+    }
+}
+
 #[stable(feature = "box_default_extra", since = "1.17.0")]
 impl Default for Box<OsStr> {
     fn default() -> Box<OsStr> {
