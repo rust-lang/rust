@@ -1728,7 +1728,6 @@ dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc_apfloat 0.0.0",
- "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
@@ -1870,15 +1869,6 @@ dependencies = [
  "rustc_mir 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
-]
-
-[[package]]
-name = "rustc_const_math"
-version = "0.0.0"
-dependencies = [
- "rustc_apfloat 0.0.0",
- "serialize 0.0.0",
- "syntax 0.0.0",
 ]
 
 [[package]]
@@ -2026,7 +2016,6 @@ dependencies = [
  "log_settings 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_apfloat 0.0.0",
- "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_target 0.0.0",
@@ -2053,7 +2042,6 @@ version = "0.0.0"
 dependencies = [
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_mir 0.0.0",
@@ -2154,7 +2142,6 @@ dependencies = [
  "rustc-demangle 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
  "rustc_apfloat 0.0.0",
- "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_incremental 0.0.0",
@@ -2205,7 +2192,6 @@ dependencies = [
  "fmt_macros 0.0.0",
  "log 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
