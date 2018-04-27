@@ -10,8 +10,6 @@
 
 // ignore-pretty `dyn ::foo` parses differently in the current edition
 
-#![feature(dyn_trait)]
-
 use std::fmt::Display;
 
 static BYTE: u8 = 33;

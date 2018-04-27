@@ -4107,15 +4107,13 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn maybe_lint_bare_trait(&self, span: Span, id: NodeId, is_global: bool) {
-        if self.sess.features_untracked().dyn_trait {
-            self.sess.buffer_lint_with_diagnostic(
-                builtin::BARE_TRAIT_OBJECT,
-                id,
-                span,
-                "trait objects without an explicit `dyn` are deprecated",
-                builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global),
-            )
-        }
+        self.sess.buffer_lint_with_diagnostic(
+            builtin::BARE_TRAIT_OBJECT,
+            id,
+            span,
+            "trait objects without an explicit `dyn` are deprecated",
+            builtin::BuiltinLintDiagnostics::BareTraitObject(span, is_global),
+        )
     }
 
     fn wrap_in_try_constructor(

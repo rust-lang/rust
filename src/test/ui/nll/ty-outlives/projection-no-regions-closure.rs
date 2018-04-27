@@ -15,7 +15,6 @@
 // Iterator>::Item`, to be exact).
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 #![feature(rustc_attrs)]
 
 trait Anything { }

@@ -11,7 +11,6 @@
 // compile-flags:-Zborrowck=mir
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 
 use std::fmt::Debug;
 

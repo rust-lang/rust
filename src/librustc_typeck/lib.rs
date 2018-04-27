@@ -71,6 +71,8 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
+#![cfg_attr(stage0, feature(dyn_trait))]
+
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -81,7 +83,6 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
-#![feature(dyn_trait)]
 #![feature(never_type)]
 
 #[macro_use] extern crate log;
