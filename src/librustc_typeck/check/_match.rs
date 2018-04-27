@@ -606,7 +606,12 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
 
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
+            let diverges = match self.diverges.get() {
+                Diverges::Maybe | Diverges::Always | Diverges::UnwarnedAlways
+                    => Diverges::Always,
+                Diverges::WarnedAlways => Diverges::WarnedAlways,
+            };
+            self.diverges.set(diverges);
             return tcx.types.never;
         }
 
