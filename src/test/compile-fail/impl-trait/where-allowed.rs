@@ -10,7 +10,6 @@
 
 //! A simple test for testing many permutations of allowedness of
 //! impl Trait
-#![feature(dyn_trait)]
 use std::fmt::Debug;
 
 // Allowed

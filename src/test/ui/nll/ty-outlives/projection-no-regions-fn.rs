@@ -11,7 +11,6 @@
 // compile-flags:-Zborrowck=mir -Zverbose
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 
 trait Anything { }
 

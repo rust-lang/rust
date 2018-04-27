@@ -959,7 +959,11 @@ impl Linker for WasmLd {
     }
 
     fn finalize(&mut self) -> Command {
-        self.cmd.arg("--threads");
+        // There have been reports in the wild (rustwasm/wasm-bindgen#119) of
+        // using threads causing weird hangs and bugs. Disable it entirely as
+        // this isn't yet the bottleneck of compilation at all anyway.
+        self.cmd.arg("--no-threads");
+
         self.cmd.arg("-z").arg("stack-size=1048576");
 
         // FIXME we probably shouldn't pass this but instead pass an explicit
