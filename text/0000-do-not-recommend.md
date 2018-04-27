@@ -243,4 +243,4 @@ The author is not aware of any prior art regarding this feature.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-n/a
+- What other names could we go with besides `#[do_not_recommend]`?
