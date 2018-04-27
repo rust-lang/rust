@@ -29,7 +29,6 @@ pub enum Enum4 {
     A(i32),
     B(i32),
 }
-// CHECK: %Enum4 = type { [0 x i32], i32, [1 x i32] }
 // CHECK: %"Enum4::A" = type { [1 x i32], i32, [0 x i32] }
 
 pub enum Enum64 {
@@ -59,7 +58,7 @@ pub fn nested64(a: Align64, b: i32, c: i32, d: i8) -> Nested64 {
 // CHECK-LABEL: @enum4
 #[no_mangle]
 pub fn enum4(a: i32) -> Enum4 {
-// CHECK: %e4 = alloca %Enum4, align 4
+// CHECK: %e4 = alloca { i32, i32 }, align 4
     let e4 = Enum4::A(a);
     e4
 }

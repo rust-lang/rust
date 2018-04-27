@@ -145,6 +145,18 @@ pub fn return_slice(x: &[u16]) -> &[u16] {
   x
 }
 
+// CHECK: { i16, i16 } @enum_id_1(i16 %x.0, i16 %x.1)
+#[no_mangle]
+pub fn enum_id_1(x: Option<Result<u16, u16>>) -> Option<Result<u16, u16>> {
+  x
+}
+
+// CHECK: i16 @enum_id_2(i16)
+#[no_mangle]
+pub fn enum_id_2(x: Option<u8>) -> Option<u8> {
+  x
+}
+
 // CHECK: noalias i8* @allocator()
 #[no_mangle]
 #[allocator]
