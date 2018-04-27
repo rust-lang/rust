@@ -81,7 +81,7 @@ mod tests {
     use coresimd::x86::*;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "sse4a"]
+    #[simd_test(enable = "sse4a")]
     unsafe fn test_mm_extract_si64() {
         let b = 0b0110_0000_0000_i64;
         //        ^^^^ bit range extracted
@@ -94,7 +94,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4a"]
+    #[simd_test(enable = "sse4a")]
     unsafe fn test_mm_insert_si64() {
         let i = 0b0110_i64;
         //        ^^^^ bit range inserted
@@ -116,7 +116,7 @@ mod tests {
         data: [f64; 2],
     }
 
-    #[simd_test = "sse4a"]
+    #[simd_test(enable = "sse4a")]
     unsafe fn test_mm_stream_sd() {
         let mut mem = MemoryF64 {
             data: [1.0_f64, 2.0],
@@ -138,7 +138,7 @@ mod tests {
         data: [f32; 4],
     }
 
-    #[simd_test = "sse4a"]
+    #[simd_test(enable = "sse4a")]
     unsafe fn test_mm_stream_ss() {
         let mut mem = MemoryF32 {
             data: [1.0_f32, 2.0, 3.0, 4.0],

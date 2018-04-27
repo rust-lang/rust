@@ -32,7 +32,7 @@ mod tests {
     use simd::*;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "msa"]
+    #[simd_test(enable = "msa")]
     unsafe fn __msa_add_a_b() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = i8x16::new(

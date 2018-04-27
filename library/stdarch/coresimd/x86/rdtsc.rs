@@ -62,13 +62,13 @@ mod tests {
     use coresimd::x86::rdtsc;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "sse2"]
+    #[simd_test(enable = "sse2")]
     unsafe fn _rdtsc() {
         let r = rdtsc::_rdtsc();
         assert_ne!(r, 0); // The chances of this being 0 are infinitesimal
     }
 
-    #[simd_test = "sse2"]
+    #[simd_test(enable = "sse2")]
     unsafe fn _rdtscp() {
         let mut aux = 0;
         let r = rdtsc::__rdtscp(&mut aux);

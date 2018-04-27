@@ -118,8 +118,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// Find a substring using [`_SIDD_CMP_EQUAL_ORDERED`]
 ///
 /// ```
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
@@ -167,8 +165,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// one or more of a given set of characters in the haystack.
 ///
 /// ```
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
@@ -213,8 +209,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// range of characters.
 ///
 /// ```
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
@@ -259,8 +253,6 @@ pub unsafe fn _mm_cmpistrm(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 /// Working with 16-bit characters.
 ///
 /// ```
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
@@ -492,8 +484,6 @@ pub unsafe fn _mm_cmpestrm(
 /// # Examples
 ///
 /// ```
-/// # #![feature(cfg_target_feature)]
-/// # #![feature(target_feature)]
 /// # #![feature(stdsimd)]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
@@ -794,7 +784,7 @@ mod tests {
         _mm_loadu_si128(slice.as_ptr() as *const _)
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistrm() {
         let a = str_to_m128i(b"Hello! Good-Bye!");
         let b = str_to_m128i(b"hello! good-bye!");
@@ -807,7 +797,7 @@ mod tests {
         assert_eq_m128i(i, res);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistri() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"   Hello        ");
@@ -815,7 +805,7 @@ mod tests {
         assert_eq!(3, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
@@ -823,7 +813,7 @@ mod tests {
         assert_eq!(1, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistrc() {
         let a = str_to_m128i(b"                ");
         let b = str_to_m128i(b"       !        ");
@@ -831,7 +821,7 @@ mod tests {
         assert_eq!(1, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistrs() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"");
@@ -839,7 +829,7 @@ mod tests {
         assert_eq!(1, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistro() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a_bytes = _mm_setr_epi8(
@@ -857,7 +847,7 @@ mod tests {
         assert_eq!(0, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistra() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello!!!!!!!!!!!");
@@ -865,7 +855,7 @@ mod tests {
         assert_eq!(1, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestrm() {
         let a = str_to_m128i(b"Hello!");
         let b = str_to_m128i(b"Hello.");
@@ -878,7 +868,7 @@ mod tests {
         assert_eq_m128i(i, r);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestri() {
         let a = str_to_m128i(b"bar - garbage");
         let b = str_to_m128i(b"foobar");
@@ -886,7 +876,7 @@ mod tests {
         assert_eq!(3, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestrz() {
         let a = str_to_m128i(b"");
         let b = str_to_m128i(b"Hello");
@@ -894,7 +884,7 @@ mod tests {
         assert_eq!(1, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestrc() {
         let va = str_to_m128i(b"!!!!!!!!");
         let vb = str_to_m128i(b"        ");
@@ -902,7 +892,7 @@ mod tests {
         assert_eq!(0, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestrs() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a_bytes = _mm_setr_epi8(
@@ -915,7 +905,7 @@ mod tests {
         assert_eq!(0, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestro() {
         let a = str_to_m128i(b"Hello");
         let b = str_to_m128i(b"World");
@@ -923,7 +913,7 @@ mod tests {
         assert_eq!(0, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestra() {
         let a = str_to_m128i(b"Cannot match a");
         let b = str_to_m128i(b"Null after 14");
@@ -937,7 +927,7 @@ mod tests {
         assert_eq!(1, i);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_crc32_u8() {
         let crc = 0x2aa1e72b;
         let v = 0x2a;
@@ -945,7 +935,7 @@ mod tests {
         assert_eq!(i, 0xf24122e4);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_crc32_u16() {
         let crc = 0x8ecec3b5;
         let v = 0x22b;
@@ -953,7 +943,7 @@ mod tests {
         assert_eq!(i, 0x13bb2fb);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_crc32_u32() {
         let crc = 0xae2912c8;
         let v = 0x845fed;
@@ -961,7 +951,7 @@ mod tests {
         assert_eq!(i, 0xffae2ed1);
     }
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpgt_epi64() {
         let a = _mm_setr_epi64x(0, 0x2a);
         let b = _mm_set1_epi64x(0x00);

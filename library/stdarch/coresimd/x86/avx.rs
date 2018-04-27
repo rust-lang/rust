@@ -3210,7 +3210,7 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_add_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -3219,7 +3219,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_add_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
@@ -3228,7 +3228,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_and_pd() {
         let a = _mm256_set1_pd(1.);
         let b = _mm256_set1_pd(0.6);
@@ -3237,7 +3237,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_and_ps() {
         let a = _mm256_set1_ps(1.);
         let b = _mm256_set1_ps(0.6);
@@ -3246,7 +3246,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_or_pd() {
         let a = _mm256_set1_pd(1.);
         let b = _mm256_set1_pd(0.6);
@@ -3255,7 +3255,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_or_ps() {
         let a = _mm256_set1_ps(1.);
         let b = _mm256_set1_ps(0.6);
@@ -3264,7 +3264,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_shuffle_pd() {
         let a = _mm256_setr_pd(1., 4., 5., 8.);
         let b = _mm256_setr_pd(2., 3., 6., 7.);
@@ -3273,7 +3273,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_shuffle_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
@@ -3282,7 +3282,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_andnot_pd() {
         let a = _mm256_set1_pd(0.);
         let b = _mm256_set1_pd(0.6);
@@ -3290,7 +3290,7 @@ mod tests {
         assert_eq_m256d(r, b);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_andnot_ps() {
         let a = _mm256_set1_ps(0.);
         let b = _mm256_set1_ps(0.6);
@@ -3298,7 +3298,7 @@ mod tests {
         assert_eq_m256(r, b);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_max_pd() {
         let a = _mm256_setr_pd(1., 4., 5., 8.);
         let b = _mm256_setr_pd(2., 3., 6., 7.);
@@ -3307,7 +3307,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_max_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
@@ -3316,7 +3316,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_min_pd() {
         let a = _mm256_setr_pd(1., 4., 5., 8.);
         let b = _mm256_setr_pd(2., 3., 6., 7.);
@@ -3325,7 +3325,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_min_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
@@ -3334,7 +3334,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_mul_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -3343,7 +3343,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_mul_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
@@ -3352,7 +3352,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_addsub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -3361,7 +3361,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_addsub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
@@ -3370,7 +3370,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_sub_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -3379,7 +3379,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_sub_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., -1., -2., -3., -4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 3., 2., 1., 0.);
@@ -3388,7 +3388,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_round_pd() {
         let a = _mm256_setr_pd(1.55, 2.2, 3.99, -1.2);
         let result_closest = _mm256_round_pd(a, 0b00000000);
@@ -3402,7 +3402,7 @@ mod tests {
         assert_eq_m256d(result_up, expected_up);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_floor_pd() {
         let a = _mm256_setr_pd(1.55, 2.2, 3.99, -1.2);
         let result_down = _mm256_floor_pd(a);
@@ -3410,7 +3410,7 @@ mod tests {
         assert_eq_m256d(result_down, expected_down);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_ceil_pd() {
         let a = _mm256_setr_pd(1.55, 2.2, 3.99, -1.2);
         let result_up = _mm256_ceil_pd(a);
@@ -3418,7 +3418,7 @@ mod tests {
         assert_eq_m256d(result_up, expected_up);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_round_ps() {
         let a = _mm256_setr_ps(1.55, 2.2, 3.99, -1.2, 1.55, 2.2, 3.99, -1.2);
         let result_closest = _mm256_round_ps(a, 0b00000000);
@@ -3433,7 +3433,7 @@ mod tests {
         assert_eq_m256(result_up, expected_up);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_floor_ps() {
         let a = _mm256_setr_ps(1.55, 2.2, 3.99, -1.2, 1.55, 2.2, 3.99, -1.2);
         let result_down = _mm256_floor_ps(a);
@@ -3441,7 +3441,7 @@ mod tests {
         assert_eq_m256(result_down, expected_down);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_ceil_ps() {
         let a = _mm256_setr_ps(1.55, 2.2, 3.99, -1.2, 1.55, 2.2, 3.99, -1.2);
         let result_up = _mm256_ceil_ps(a);
@@ -3449,7 +3449,7 @@ mod tests {
         assert_eq_m256(result_up, expected_up);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_sqrt_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let r = _mm256_sqrt_pd(a);
@@ -3457,7 +3457,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_sqrt_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let r = _mm256_sqrt_ps(a);
@@ -3465,7 +3465,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_div_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
@@ -3474,7 +3474,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_div_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
@@ -3483,7 +3483,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_blend_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
@@ -3495,7 +3495,7 @@ mod tests {
         assert_eq_m256d(r, _mm256_setr_pd(4., 3., 2., 5.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_blend_ps() {
         let a = _mm256_setr_ps(1., 4., 5., 8., 9., 12., 13., 16.);
         let b = _mm256_setr_ps(2., 3., 6., 7., 10., 11., 14., 15.);
@@ -3516,7 +3516,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_blendv_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
@@ -3526,7 +3526,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_blendv_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
@@ -3539,7 +3539,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_dp_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
@@ -3557,7 +3557,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_hadd_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
@@ -3572,7 +3572,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_hadd_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
@@ -3587,7 +3587,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_hsub_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_setr_pd(4., 3., 2., 5.);
@@ -3602,7 +3602,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_hsub_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
@@ -3617,7 +3617,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_xor_pd() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let b = _mm256_set1_pd(0.);
@@ -3625,7 +3625,7 @@ mod tests {
         assert_eq_m256d(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_xor_ps() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let b = _mm256_set1_ps(0.);
@@ -3633,7 +3633,7 @@ mod tests {
         assert_eq_m256(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_cmp_pd() {
         let a = _mm_setr_pd(4., 9.);
         let b = _mm_setr_pd(4., 3.);
@@ -3642,7 +3642,7 @@ mod tests {
         assert!(get_m128d(r, 1).is_nan());
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cmp_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -3651,7 +3651,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_cmp_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let b = _mm_setr_ps(4., 9., 16., 25.);
@@ -3662,7 +3662,7 @@ mod tests {
         assert_eq!(get_m128(r, 3), 0.);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cmp_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
@@ -3671,7 +3671,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_cmp_sd() {
         let a = _mm_setr_pd(4., 9.);
         let b = _mm_setr_pd(4., 3.);
@@ -3680,7 +3680,7 @@ mod tests {
         assert_eq!(get_m128d(r, 1), 9.);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_cmp_ss() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let b = _mm_setr_ps(4., 9., 16., 25.);
@@ -3691,7 +3691,7 @@ mod tests {
         assert_eq!(get_m128(r, 3), 5.);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtepi32_pd() {
         let a = _mm_setr_epi32(4, 9, 16, 25);
         let r = _mm256_cvtepi32_pd(a);
@@ -3699,7 +3699,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtepi32_ps() {
         let a = _mm256_setr_epi32(4, 9, 16, 25, 4, 9, 16, 25);
         let r = _mm256_cvtepi32_ps(a);
@@ -3707,7 +3707,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtpd_ps() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let r = _mm256_cvtpd_ps(a);
@@ -3715,7 +3715,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtps_epi32() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let r = _mm256_cvtps_epi32(a);
@@ -3723,7 +3723,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtps_pd() {
         let a = _mm_setr_ps(4., 9., 16., 25.);
         let r = _mm256_cvtps_pd(a);
@@ -3731,7 +3731,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvttpd_epi32() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let r = _mm256_cvttpd_epi32(a);
@@ -3739,7 +3739,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtpd_epi32() {
         let a = _mm256_setr_pd(4., 9., 16., 25.);
         let r = _mm256_cvtpd_epi32(a);
@@ -3747,7 +3747,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvttps_epi32() {
         let a = _mm256_setr_ps(4., 9., 16., 25., 4., 9., 16., 25.);
         let r = _mm256_cvttps_epi32(a);
@@ -3755,7 +3755,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_extractf128_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_extractf128_ps(a, 0);
@@ -3763,7 +3763,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_extractf128_pd() {
         let a = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_extractf128_pd(a, 0);
@@ -3771,7 +3771,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_extractf128_si256() {
         let a = _mm256_setr_epi64x(4, 3, 2, 5);
         let r = _mm256_extractf128_si256(a, 0);
@@ -3779,17 +3779,17 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_zeroall() {
         _mm256_zeroall();
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_zeroupper() {
         _mm256_zeroupper();
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permutevar_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let b = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
@@ -3798,7 +3798,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_permutevar_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let b = _mm_setr_epi32(1, 2, 3, 4);
@@ -3807,7 +3807,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let r = _mm256_permute_ps(a, 0x1b);
@@ -3815,7 +3815,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_permute_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let r = _mm_permute_ps(a, 0x1b);
@@ -3823,7 +3823,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permutevar_pd() {
         let a = _mm256_setr_pd(4., 3., 2., 5.);
         let b = _mm256_setr_epi64x(1, 2, 3, 4);
@@ -3832,7 +3832,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_permutevar_pd() {
         let a = _mm_setr_pd(4., 3.);
         let b = _mm_setr_epi64x(3, 0);
@@ -3841,7 +3841,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute_pd() {
         let a = _mm256_setr_pd(4., 3., 2., 5.);
         let r = _mm256_permute_pd(a, 5);
@@ -3849,7 +3849,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_permute_pd() {
         let a = _mm_setr_pd(4., 3.);
         let r = _mm_permute_pd(a, 1);
@@ -3857,7 +3857,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute2f128_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 1., 2., 3., 4.);
         let b = _mm256_setr_ps(5., 6., 7., 8., 5., 6., 7., 8.);
@@ -3866,7 +3866,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute2f128_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -3875,7 +3875,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_permute2f128_si256() {
         let a = _mm256_setr_epi32(1, 2, 3, 4, 1, 2, 3, 4);
         let b = _mm256_setr_epi32(5, 6, 7, 8, 5, 6, 7, 8);
@@ -3884,28 +3884,28 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_broadcast_ss() {
         let r = _mm256_broadcast_ss(&3.);
         let e = _mm256_set1_ps(3.);
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_broadcast_ss() {
         let r = _mm_broadcast_ss(&3.);
         let e = _mm_set1_ps(3.);
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_broadcast_sd() {
         let r = _mm256_broadcast_sd(&3.);
         let e = _mm256_set1_pd(3.);
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_broadcast_ps() {
         let a = _mm_setr_ps(4., 3., 2., 5.);
         let r = _mm256_broadcast_ps(&a);
@@ -3913,7 +3913,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_broadcast_pd() {
         let a = _mm_setr_pd(4., 3.);
         let r = _mm256_broadcast_pd(&a);
@@ -3921,7 +3921,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insertf128_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let b = _mm_setr_ps(4., 9., 16., 25.);
@@ -3930,7 +3930,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insertf128_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm_setr_pd(5., 6.);
@@ -3939,7 +3939,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insertf128_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm_setr_epi64x(5, 6);
@@ -3948,7 +3948,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm256_setr_epi8(
@@ -3968,7 +3968,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi16() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm256_setr_epi16(
@@ -3984,7 +3984,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi32() {
         let a = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         let r = _mm256_insert_epi32(a, 0, 7);
@@ -3992,7 +3992,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_load_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let p = &a as *const _ as *const f64;
@@ -4001,7 +4001,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_store_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let mut r = _mm256_undefined_pd();
@@ -4009,7 +4009,7 @@ mod tests {
         assert_eq_m256d(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_load_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let p = &a as *const _ as *const f32;
@@ -4018,7 +4018,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_store_ps() {
         let a = _mm256_setr_ps(4., 3., 2., 5., 8., 9., 64., 50.);
         let mut r = _mm256_undefined_ps();
@@ -4026,7 +4026,7 @@ mod tests {
         assert_eq_m256(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu_pd() {
         let a = &[1.0f64, 2., 3., 4.];
         let p = a.as_ptr();
@@ -4035,7 +4035,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_storeu_pd() {
         let a = _mm256_set1_pd(9.);
         let mut r = _mm256_undefined_pd();
@@ -4043,7 +4043,7 @@ mod tests {
         assert_eq_m256d(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu_ps() {
         let a = &[4., 3., 2., 5., 8., 9., 64., 50.];
         let p = a.as_ptr();
@@ -4052,7 +4052,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_storeu_ps() {
         let a = _mm256_set1_ps(9.);
         let mut r = _mm256_undefined_ps();
@@ -4060,7 +4060,7 @@ mod tests {
         assert_eq_m256(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_load_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let p = &a as *const _;
@@ -4069,7 +4069,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_store_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
@@ -4077,7 +4077,7 @@ mod tests {
         assert_eq_m256i(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let p = &a as *const _;
@@ -4086,7 +4086,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_storeu_si256() {
         let a = _mm256_set1_epi8(9);
         let mut r = _mm256_undefined_si256();
@@ -4094,7 +4094,7 @@ mod tests {
         assert_eq_m256i(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_maskload_pd() {
         let a = &[1.0f64, 2., 3., 4.];
         let p = a.as_ptr();
@@ -4104,7 +4104,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_maskstore_pd() {
         let mut r = _mm256_set1_pd(0.);
         let mask = _mm256_setr_epi64x(0, !0, 0, !0);
@@ -4114,7 +4114,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_maskload_pd() {
         let a = &[1.0f64, 2.];
         let p = a.as_ptr();
@@ -4124,7 +4124,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_maskstore_pd() {
         let mut r = _mm_set1_pd(0.);
         let mask = _mm_setr_epi64x(0, !0);
@@ -4134,7 +4134,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_maskload_ps() {
         let a = &[1.0f32, 2., 3., 4., 5., 6., 7., 8.];
         let p = a.as_ptr();
@@ -4144,7 +4144,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_maskstore_ps() {
         let mut r = _mm256_set1_ps(0.);
         let mask = _mm256_setr_epi32(0, !0, 0, !0, 0, !0, 0, !0);
@@ -4154,7 +4154,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_maskload_ps() {
         let a = &[1.0f32, 2., 3., 4.];
         let p = a.as_ptr();
@@ -4164,7 +4164,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_maskstore_ps() {
         let mut r = _mm_set1_ps(0.);
         let mask = _mm_setr_epi32(0, !0, 0, !0);
@@ -4174,7 +4174,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_movehdup_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_movehdup_ps(a);
@@ -4182,7 +4182,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_moveldup_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_moveldup_ps(a);
@@ -4190,7 +4190,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_movedup_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_movedup_pd(a);
@@ -4198,7 +4198,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_lddqu_si256() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm256_setr_epi8(
@@ -4219,7 +4219,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_stream_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let mut r = _mm256_undefined_si256();
@@ -4227,7 +4227,7 @@ mod tests {
         assert_eq_m256i(r, a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_stream_pd() {
         #[repr(align(32))]
         struct Memory {
@@ -4244,7 +4244,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_stream_ps() {
         #[repr(align(32))]
         struct Memory {
@@ -4261,7 +4261,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_rcp_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_rcp_ps(a);
@@ -4276,7 +4276,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_rsqrt_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_rsqrt_ps(a);
@@ -4291,7 +4291,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_unpackhi_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -4300,7 +4300,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_unpackhi_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
@@ -4309,7 +4309,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_unpacklo_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -4318,7 +4318,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_unpacklo_ps() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let b = _mm256_setr_ps(9., 10., 11., 12., 13., 14., 15., 16.);
@@ -4327,7 +4327,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testz_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm256_setr_epi64x(5, 6, 7, 8);
@@ -4338,7 +4338,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testc_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm256_setr_epi64x(5, 6, 7, 8);
@@ -4349,7 +4349,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testnzc_si256() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let b = _mm256_setr_epi64x(5, 6, 7, 8);
@@ -4361,7 +4361,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testz_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -4372,7 +4372,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testc_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -4384,7 +4384,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testnzc_pd() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let b = _mm256_setr_pd(5., 6., 7., 8.);
@@ -4396,7 +4396,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_testz_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 6.);
@@ -4407,7 +4407,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_testc_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 6.);
@@ -4419,7 +4419,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_testnzc_pd() {
         let a = _mm_setr_pd(1., 2.);
         let b = _mm_setr_pd(5., 6.);
@@ -4431,7 +4431,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testz_ps() {
         let a = _mm256_set1_ps(1.);
         let r = _mm256_testz_ps(a, a);
@@ -4441,7 +4441,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testc_ps() {
         let a = _mm256_set1_ps(1.);
         let r = _mm256_testc_ps(a, a);
@@ -4451,7 +4451,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_testnzc_ps() {
         let a = _mm256_set1_ps(1.);
         let r = _mm256_testnzc_ps(a, a);
@@ -4462,7 +4462,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_testz_ps() {
         let a = _mm_set1_ps(1.);
         let r = _mm_testz_ps(a, a);
@@ -4472,7 +4472,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_testc_ps() {
         let a = _mm_set1_ps(1.);
         let r = _mm_testc_ps(a, a);
@@ -4482,7 +4482,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm_testnzc_ps() {
         let a = _mm_set1_ps(1.);
         let r = _mm_testnzc_ps(a, a);
@@ -4493,45 +4493,45 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_movemask_pd() {
         let a = _mm256_setr_pd(1., -2., 3., -4.);
         let r = _mm256_movemask_pd(a);
         assert_eq!(r, 0xA);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_movemask_ps() {
         let a = _mm256_setr_ps(1., -2., 3., -4., 1., -2., 3., -4.);
         let r = _mm256_movemask_ps(a);
         assert_eq!(r, 0xAA);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setzero_pd() {
         let r = _mm256_setzero_pd();
         assert_eq_m256d(r, _mm256_set1_pd(0.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setzero_ps() {
         let r = _mm256_setzero_ps();
         assert_eq_m256(r, _mm256_set1_ps(0.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setzero_si256() {
         let r = _mm256_setzero_si256();
         assert_eq_m256i(r, _mm256_set1_epi8(0));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_pd() {
         let r = _mm256_set_pd(1., 2., 3., 4.);
         assert_eq_m256d(r, _mm256_setr_pd(4., 3., 2., 1.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_ps() {
         let r = _mm256_set_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         assert_eq_m256(
@@ -4540,7 +4540,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = _mm256_set_epi8(
@@ -4559,7 +4559,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_epi16() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = _mm256_set_epi16(
@@ -4574,25 +4574,25 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_epi32() {
         let r = _mm256_set_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         assert_eq_m256i(r, _mm256_setr_epi32(8, 7, 6, 5, 4, 3, 2, 1));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_epi64x() {
         let r = _mm256_set_epi64x(1, 2, 3, 4);
         assert_eq_m256i(r, _mm256_setr_epi64x(4, 3, 2, 1));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_pd() {
         let r = _mm256_setr_pd(1., 2., 3., 4.);
         assert_eq_m256d(r, _mm256_setr_pd(1., 2., 3., 4.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_ps() {
         let r = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         assert_eq_m256(
@@ -4601,7 +4601,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = _mm256_setr_epi8(
@@ -4621,7 +4621,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_epi16() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let r = _mm256_setr_epi16(
@@ -4636,55 +4636,55 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_epi32() {
         let r = _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8);
         assert_eq_m256i(r, _mm256_setr_epi32(1, 2, 3, 4, 5, 6, 7, 8));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_epi64x() {
         let r = _mm256_setr_epi64x(1, 2, 3, 4);
         assert_eq_m256i(r, _mm256_setr_epi64x(1, 2, 3, 4));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set1_pd() {
         let r = _mm256_set1_pd(1.);
         assert_eq_m256d(r, _mm256_set1_pd(1.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set1_ps() {
         let r = _mm256_set1_ps(1.);
         assert_eq_m256(r, _mm256_set1_ps(1.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set1_epi8() {
         let r = _mm256_set1_epi8(1);
         assert_eq_m256i(r, _mm256_set1_epi8(1));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set1_epi16() {
         let r = _mm256_set1_epi16(1);
         assert_eq_m256i(r, _mm256_set1_epi16(1));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set1_epi32() {
         let r = _mm256_set1_epi32(1);
         assert_eq_m256i(r, _mm256_set1_epi32(1));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set1_epi64x() {
         let r = _mm256_set1_epi64x(1);
         assert_eq_m256i(r, _mm256_set1_epi64x(1));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castpd_ps() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd_ps(a);
@@ -4692,7 +4692,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castps_pd() {
         let a = _mm256_setr_ps(0., 1.875, 0., 2., 0., 2.125, 0., 2.25);
         let r = _mm256_castps_pd(a);
@@ -4700,7 +4700,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castps_si256() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_castps_si256(a);
@@ -4714,7 +4714,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castsi256_ps() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm256_setr_epi8(
@@ -4728,42 +4728,42 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castpd_si256() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd_si256(a);
         assert_eq_m256d(mem::transmute(r), a);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castsi256_pd() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_castsi256_pd(a);
         assert_eq_m256d(r, mem::transmute(a));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castps256_ps128() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_castps256_ps128(a);
         assert_eq_m128(r, _mm_setr_ps(1., 2., 3., 4.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castpd256_pd128() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let r = _mm256_castpd256_pd128(a);
         assert_eq_m128d(r, _mm_setr_pd(1., 2.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_castsi256_si128() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_castsi256_si128(a);
         assert_eq_m128i(r, _mm_setr_epi64x(1, 2));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_zextps128_ps256() {
         let a = _mm_setr_ps(1., 2., 3., 4.);
         let r = _mm256_zextps128_ps256(a);
@@ -4771,7 +4771,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_zextsi128_si256() {
         let a = _mm_setr_epi64x(1, 2);
         let r = _mm256_zextsi128_si256(a);
@@ -4779,7 +4779,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_zextpd128_pd256() {
         let a = _mm_setr_pd(1., 2.);
         let r = _mm256_zextpd128_pd256(a);
@@ -4787,7 +4787,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_m128() {
         let hi = _mm_setr_ps(5., 6., 7., 8.);
         let lo = _mm_setr_ps(1., 2., 3., 4.);
@@ -4796,7 +4796,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_m128d() {
         let hi = _mm_setr_pd(3., 4.);
         let lo = _mm_setr_pd(1., 2.);
@@ -4805,7 +4805,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_set_m128i() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let hi = _mm_setr_epi8(
@@ -4832,7 +4832,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_m128() {
         let lo = _mm_setr_ps(1., 2., 3., 4.);
         let hi = _mm_setr_ps(5., 6., 7., 8.);
@@ -4841,7 +4841,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_m128d() {
         let lo = _mm_setr_pd(1., 2.);
         let hi = _mm_setr_pd(3., 4.);
@@ -4850,7 +4850,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_setr_m128i() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let lo = _mm_setr_epi8(
@@ -4875,7 +4875,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu2_m128() {
         let hi = &[5., 6., 7., 8.];
         let hiaddr = hi.as_ptr();
@@ -4886,7 +4886,7 @@ mod tests {
         assert_eq_m256(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu2_m128d() {
         let hi = &[3., 4.];
         let hiaddr = hi.as_ptr();
@@ -4897,7 +4897,7 @@ mod tests {
         assert_eq_m256d(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_loadu2_m128i() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let hi = _mm_setr_epi8(
@@ -4923,7 +4923,7 @@ mod tests {
         assert_eq_m256i(r, e);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_storeu2_m128() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let mut hi = _mm_undefined_ps();
@@ -4937,7 +4937,7 @@ mod tests {
         assert_eq_m128(lo, _mm_setr_ps(1., 2., 3., 4.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_storeu2_m128d() {
         let a = _mm256_setr_pd(1., 2., 3., 4.);
         let mut hi = _mm_undefined_pd();
@@ -4951,7 +4951,7 @@ mod tests {
         assert_eq_m128d(lo, _mm_setr_pd(1., 2.));
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_storeu2_m128i() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm256_setr_epi8(
@@ -4978,7 +4978,7 @@ mod tests {
         assert_eq_m128i(lo, e_lo);
     }
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_cvtss_f32() {
         let a = _mm256_setr_ps(1., 2., 3., 4., 5., 6., 7., 8.);
         let r = _mm256_cvtss_f32(a);

@@ -27,7 +27,7 @@ mod tests {
 
     use stdsimd_test::simd_test;
 
-    #[simd_test = "sse4.2"]
+    #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_crc32_u64() {
         let crc = 0x7819dccd3e824;
         let v = 0x2a22b845fed;

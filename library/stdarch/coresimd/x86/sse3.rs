@@ -164,7 +164,7 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_addsub_ps() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);
         let b = _mm_setr_ps(-100.0, 20.0, 0.0, -5.0);
@@ -172,7 +172,7 @@ mod tests {
         assert_eq_m128(r, _mm_setr_ps(99.0, 25.0, 0.0, -15.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_addsub_pd() {
         let a = _mm_setr_pd(-1.0, 5.0);
         let b = _mm_setr_pd(-100.0, 20.0);
@@ -180,7 +180,7 @@ mod tests {
         assert_eq_m128d(r, _mm_setr_pd(99.0, 25.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_hadd_pd() {
         let a = _mm_setr_pd(-1.0, 5.0);
         let b = _mm_setr_pd(-100.0, 20.0);
@@ -188,7 +188,7 @@ mod tests {
         assert_eq_m128d(r, _mm_setr_pd(4.0, -80.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_hadd_ps() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);
         let b = _mm_setr_ps(-100.0, 20.0, 0.0, -5.0);
@@ -196,7 +196,7 @@ mod tests {
         assert_eq_m128(r, _mm_setr_ps(4.0, -10.0, -80.0, -5.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_hsub_pd() {
         let a = _mm_setr_pd(-1.0, 5.0);
         let b = _mm_setr_pd(-100.0, 20.0);
@@ -204,7 +204,7 @@ mod tests {
         assert_eq_m128d(r, _mm_setr_pd(-6.0, -120.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_hsub_ps() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);
         let b = _mm_setr_ps(-100.0, 20.0, 0.0, -5.0);
@@ -212,7 +212,7 @@ mod tests {
         assert_eq_m128(r, _mm_setr_ps(-6.0, 10.0, -120.0, 5.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_lddqu_si128() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -225,28 +225,28 @@ mod tests {
         assert_eq_m128i(a, r);
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_movedup_pd() {
         let a = _mm_setr_pd(-1.0, 5.0);
         let r = _mm_movedup_pd(a);
         assert_eq_m128d(r, _mm_setr_pd(-1.0, -1.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_movehdup_ps() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);
         let r = _mm_movehdup_ps(a);
         assert_eq_m128(r, _mm_setr_ps(5.0, 5.0, -10.0, -10.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_moveldup_ps() {
         let a = _mm_setr_ps(-1.0, 5.0, 0.0, -10.0);
         let r = _mm_moveldup_ps(a);
         assert_eq_m128(r, _mm_setr_ps(-1.0, -1.0, 0.0, 0.0));
     }
 
-    #[simd_test = "sse3"]
+    #[simd_test(enable = "sse3")]
     unsafe fn test_mm_loaddup_pd() {
         let d = -5.0;
         let r = _mm_loaddup_pd(&d);

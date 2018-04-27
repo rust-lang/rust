@@ -115,7 +115,7 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "aes"]
+    #[simd_test(enable = "aes")]
     unsafe fn test_mm_aesdec_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664949.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
@@ -125,7 +125,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "aes"]
+    #[simd_test(enable = "aes")]
     unsafe fn test_mm_aesdeclast_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714178.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
@@ -135,7 +135,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "aes"]
+    #[simd_test(enable = "aes")]
     unsafe fn test_mm_aesenc_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc664810.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
@@ -145,7 +145,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "aes"]
+    #[simd_test(enable = "aes")]
     unsafe fn test_mm_aesenclast_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714136.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
@@ -155,7 +155,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "aes"]
+    #[simd_test(enable = "aes")]
     unsafe fn test_mm_aesimc_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714195.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);
@@ -164,7 +164,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "aes"]
+    #[simd_test(enable = "aes")]
     unsafe fn test_mm_aeskeygenassist_si128() {
         // Constants taken from https://msdn.microsoft.com/en-us/library/cc714138.aspx.
         let a = _mm_set_epi64x(0x0123456789abcdef, 0x8899aabbccddeeff);

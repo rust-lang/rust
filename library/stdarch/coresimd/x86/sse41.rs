@@ -1233,7 +1233,7 @@ mod tests {
     use std::mem;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blendv_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -1256,7 +1256,7 @@ mod tests {
         assert_eq_m128i(_mm_blendv_epi8(a, b, mask), e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blendv_pd() {
         let a = _mm_set1_pd(0.0);
         let b = _mm_set1_pd(1.0);
@@ -1266,7 +1266,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blendv_ps() {
         let a = _mm_set1_ps(0.0);
         let b = _mm_set1_ps(1.0);
@@ -1276,7 +1276,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blend_pd() {
         let a = _mm_set1_pd(0.0);
         let b = _mm_set1_pd(1.0);
@@ -1285,7 +1285,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blend_ps() {
         let a = _mm_set1_ps(0.0);
         let b = _mm_set1_ps(1.0);
@@ -1294,7 +1294,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blend_epi16() {
         let a = _mm_set1_epi16(0);
         let b = _mm_set1_epi16(1);
@@ -1303,7 +1303,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_extract_ps() {
         let a = _mm_setr_ps(0.0, 1.0, 2.0, 3.0);
         let r: f32 = mem::transmute(_mm_extract_ps(a, 1));
@@ -1312,7 +1312,7 @@ mod tests {
         assert_eq!(r, 1.0);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_extract_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -1325,7 +1325,7 @@ mod tests {
         assert_eq!(r2, 3);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_extract_epi32() {
         let a = _mm_setr_epi32(0, 1, 2, 3);
         let r = _mm_extract_epi32(a, 1);
@@ -1334,7 +1334,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_insert_ps() {
         let a = _mm_set1_ps(1.0);
         let b = _mm_setr_ps(1.0, 2.0, 3.0, 4.0);
@@ -1343,7 +1343,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_insert_epi8() {
         let a = _mm_set1_epi8(0);
         let e = _mm_setr_epi8(0, 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -1353,7 +1353,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_insert_epi32() {
         let a = _mm_set1_epi32(0);
         let e = _mm_setr_epi32(0, 32, 0, 0);
@@ -1363,7 +1363,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_max_epi8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -1384,7 +1384,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_max_epu16() {
         let a = _mm_setr_epi16(1, 4, 5, 8, 9, 12, 13, 16);
         let b = _mm_setr_epi16(2, 3, 6, 7, 10, 11, 14, 15);
@@ -1393,7 +1393,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_max_epi32() {
         let a = _mm_setr_epi32(1, 4, 5, 8);
         let b = _mm_setr_epi32(2, 3, 6, 7);
@@ -1402,7 +1402,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_max_epu32() {
         let a = _mm_setr_epi32(1, 4, 5, 8);
         let b = _mm_setr_epi32(2, 3, 6, 7);
@@ -1411,7 +1411,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epi8_1() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -1432,7 +1432,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epi8_2() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -1453,7 +1453,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epu16() {
         let a = _mm_setr_epi16(1, 4, 5, 8, 9, 12, 13, 16);
         let b = _mm_setr_epi16(2, 3, 6, 7, 10, 11, 14, 15);
@@ -1462,7 +1462,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epi32_1() {
         let a = _mm_setr_epi32(1, 4, 5, 8);
         let b = _mm_setr_epi32(2, 3, 6, 7);
@@ -1471,7 +1471,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epi32_2() {
         let a = _mm_setr_epi32(-1, 4, 5, -7);
         let b = _mm_setr_epi32(-2, 3, -6, 8);
@@ -1480,7 +1480,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epu32() {
         let a = _mm_setr_epi32(1, 4, 5, 8);
         let b = _mm_setr_epi32(2, 3, 6, 7);
@@ -1489,7 +1489,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_packus_epi32() {
         let a = _mm_setr_epi32(1, 2, 3, 4);
         let b = _mm_setr_epi32(-1, -2, -3, -4);
@@ -1498,7 +1498,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cmpeq_epi64() {
         let a = _mm_setr_epi64x(0, 1);
         let b = _mm_setr_epi64x(0, 0);
@@ -1507,7 +1507,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepi8_epi16() {
         let a = _mm_set1_epi8(10);
         let r = _mm_cvtepi8_epi16(a);
@@ -1519,7 +1519,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepi8_epi32() {
         let a = _mm_set1_epi8(10);
         let r = _mm_cvtepi8_epi32(a);
@@ -1531,7 +1531,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepi8_epi64() {
         let a = _mm_set1_epi8(10);
         let r = _mm_cvtepi8_epi64(a);
@@ -1543,7 +1543,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepi16_epi32() {
         let a = _mm_set1_epi16(10);
         let r = _mm_cvtepi16_epi32(a);
@@ -1555,7 +1555,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepi16_epi64() {
         let a = _mm_set1_epi16(10);
         let r = _mm_cvtepi16_epi64(a);
@@ -1567,7 +1567,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepi32_epi64() {
         let a = _mm_set1_epi32(10);
         let r = _mm_cvtepi32_epi64(a);
@@ -1579,7 +1579,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepu8_epi16() {
         let a = _mm_set1_epi8(10);
         let r = _mm_cvtepu8_epi16(a);
@@ -1587,7 +1587,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepu8_epi32() {
         let a = _mm_set1_epi8(10);
         let r = _mm_cvtepu8_epi32(a);
@@ -1595,7 +1595,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepu8_epi64() {
         let a = _mm_set1_epi8(10);
         let r = _mm_cvtepu8_epi64(a);
@@ -1603,7 +1603,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepu16_epi32() {
         let a = _mm_set1_epi16(10);
         let r = _mm_cvtepu16_epi32(a);
@@ -1611,7 +1611,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepu16_epi64() {
         let a = _mm_set1_epi16(10);
         let r = _mm_cvtepu16_epi64(a);
@@ -1619,7 +1619,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_cvtepu32_epi64() {
         let a = _mm_set1_epi32(10);
         let r = _mm_cvtepu32_epi64(a);
@@ -1627,7 +1627,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_dp_pd() {
         let a = _mm_setr_pd(2.0, 3.0);
         let b = _mm_setr_pd(1.0, 4.0);
@@ -1635,7 +1635,7 @@ mod tests {
         assert_eq_m128d(_mm_dp_pd(a, b, 0b00110001), e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_dp_ps() {
         let a = _mm_setr_ps(2.0, 3.0, 1.0, 10.0);
         let b = _mm_setr_ps(1.0, 4.0, 0.5, 10.0);
@@ -1643,7 +1643,7 @@ mod tests {
         assert_eq_m128(_mm_dp_ps(a, b, 0b01110101), e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_floor_pd() {
         let a = _mm_setr_pd(2.5, 4.5);
         let r = _mm_floor_pd(a);
@@ -1651,7 +1651,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_floor_ps() {
         let a = _mm_setr_ps(2.5, 4.5, 8.5, 16.5);
         let r = _mm_floor_ps(a);
@@ -1659,7 +1659,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_floor_sd() {
         let a = _mm_setr_pd(2.5, 4.5);
         let b = _mm_setr_pd(-1.5, -3.5);
@@ -1668,7 +1668,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_floor_ss() {
         let a = _mm_setr_ps(2.5, 4.5, 8.5, 16.5);
         let b = _mm_setr_ps(-1.5, -3.5, -7.5, -15.5);
@@ -1677,7 +1677,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_ceil_pd() {
         let a = _mm_setr_pd(1.5, 3.5);
         let r = _mm_ceil_pd(a);
@@ -1685,7 +1685,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_ceil_ps() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
         let r = _mm_ceil_ps(a);
@@ -1693,7 +1693,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_ceil_sd() {
         let a = _mm_setr_pd(1.5, 3.5);
         let b = _mm_setr_pd(-2.5, -4.5);
@@ -1702,7 +1702,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_ceil_ss() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
         let b = _mm_setr_ps(-2.5, -4.5, -8.5, -16.5);
@@ -1711,7 +1711,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_pd() {
         let a = _mm_setr_pd(1.25, 3.75);
         let r = _mm_round_pd(a, _MM_FROUND_TO_NEAREST_INT);
@@ -1719,7 +1719,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_ps() {
         let a = _mm_setr_ps(2.25, 4.75, -1.75, -4.25);
         let r = _mm_round_ps(a, _MM_FROUND_TO_ZERO);
@@ -1727,7 +1727,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_sd() {
         let a = _mm_setr_pd(1.5, 3.5);
         let b = _mm_setr_pd(-2.5, -4.5);
@@ -1739,7 +1739,7 @@ mod tests {
         assert_eq_m128d(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_round_ss() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
         let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
@@ -1751,7 +1751,7 @@ mod tests {
         assert_eq_m128(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_minpos_epu16_1() {
         let a = _mm_setr_epi16(23, 18, 44, 97, 50, 13, 67, 66);
         let r = _mm_minpos_epu16(a);
@@ -1759,7 +1759,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_minpos_epu16_2() {
         let a = _mm_setr_epi16(0, 18, 44, 97, 50, 13, 67, 66);
         let r = _mm_minpos_epu16(a);
@@ -1767,7 +1767,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_mul_epi32() {
         {
             let a = _mm_setr_epi32(1, 1, 1, 1);
@@ -1795,7 +1795,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_mullo_epi32() {
         {
             let a = _mm_setr_epi32(1, 1, 1, 1);
@@ -1816,7 +1816,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_minpos_epu16() {
         let a = _mm_setr_epi16(8, 7, 6, 5, 4, 1, 2, 3);
         let r = _mm_minpos_epu16(a);
@@ -1824,7 +1824,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_mpsadbw_epu8() {
         #[cfg_attr(rustfmt, rustfmt_skip)]
         let a = _mm_setr_epi8(
@@ -1853,7 +1853,7 @@ mod tests {
         assert_eq_m128i(r, e);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_testz_si128() {
         let a = _mm_set1_epi8(1);
         let mask = _mm_set1_epi8(0);
@@ -1869,7 +1869,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_testc_si128() {
         let a = _mm_set1_epi8(-1);
         let mask = _mm_set1_epi8(0);
@@ -1885,7 +1885,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_testnzc_si128() {
         let a = _mm_set1_epi8(0);
         let mask = _mm_set1_epi8(1);
@@ -1905,7 +1905,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_test_all_zeros() {
         let a = _mm_set1_epi8(1);
         let mask = _mm_set1_epi8(0);
@@ -1921,7 +1921,7 @@ mod tests {
         assert_eq!(r, 1);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_test_all_ones() {
         let a = _mm_set1_epi8(-1);
         let r = _mm_test_all_ones(a);
@@ -1931,7 +1931,7 @@ mod tests {
         assert_eq!(r, 0);
     }
 
-    #[simd_test = "sse4.1"]
+    #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_test_mix_ones_zeros() {
         let a = _mm_set1_epi8(0);
         let mask = _mm_set1_epi8(1);

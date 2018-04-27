@@ -29,13 +29,6 @@ quickcheck = "0.6"
 rand = "0.4"
 cupid = "0.5.0"
 
-[features]
-# Internal-usage only: denies all warnings.
-strict = [ "coresimd/strict" ]
-# Internal-usage only: enables only those intrinsics supported by Intel's
-# Software Development Environment (SDE).
-intel_sde = [ "coresimd/intel_sde" ]
-
 [[example]]
 name = "hex"
 path = "../../examples/hex.rs"

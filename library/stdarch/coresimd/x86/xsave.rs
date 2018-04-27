@@ -231,7 +231,7 @@ mod tests {
 
     // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
     /*
-    #[simd_test = "xsave"]
+    #[simd_test(enable = "xsave")]
     unsafe fn xsave() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -244,7 +244,7 @@ mod tests {
     }
     */
 
-    #[simd_test = "xsave"]
+    #[simd_test(enable = "xsave")]
     unsafe fn xgetbv_xsetbv() {
         let xcr_n: u32 = _XCR_XFEATURE_ENABLED_MASK;
 
@@ -259,7 +259,7 @@ mod tests {
 
     // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
     /*
-    #[simd_test = "xsave,xsaveopt"]
+    #[simd_test(enable = "xsave,xsaveopt")]
     unsafe fn xsaveopt() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -273,8 +273,8 @@ mod tests {
     */
 
     // FIXME: this looks like a bug in Intel's SDE:
-    #[cfg(not(feature = "intel_sde"))]
-    #[simd_test = "xsave,xsavec"]
+    #[cfg(not(stdsimd_intel_sde))]
+    #[simd_test(enable = "xsave,xsavec")]
     unsafe fn xsavec() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -288,7 +288,7 @@ mod tests {
 
     // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/209
     /*
-    #[simd_test = "xsave,xsaves"]
+    #[simd_test(enable = "xsave,xsaves")]
     unsafe fn xsaves() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();

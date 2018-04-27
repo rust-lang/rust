@@ -25,31 +25,30 @@ pub fn simd_test(
     let tokens = TokenStream::from(attr)
         .into_iter()
         .collect::<Vec<_>>();
-    if tokens.len() != 2 {
-        panic!("expected #[simd_test = \"feature\"]");
+    if tokens.len() != 3 {
+        panic!("expected #[simd_test(enable = \"feature\")]");
     }
     match &tokens[0] {
-        TokenTree::Op(tt) if tt.op() == '=' => {}
-        _ => panic!("expected #[simd_test = \"feature\"]"),
+        TokenTree::Term(tt) if tt.to_string() == "enable" => {}
+        _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     }
-    let target_features = match &tokens[1] {
+    match &tokens[1] {
+        TokenTree::Op(tt) if tt.op() == '=' => {}
+        _ => panic!("expected #[simd_test(enable = \"feature\")]"),
+    }
+    let enable_feature = match &tokens[2] {
         TokenTree::Literal(tt) => tt.to_string(),
-        _ => panic!("expected #[simd_test = \"feature\"]"),
+        _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     };
-    let target_features: Vec<String> = target_features
-        .replace('"', "")
+    let enable_feature = enable_feature
+        .trim_left_matches('"')
+        .trim_right_matches('"');
+    let target_features: Vec<String> = enable_feature
         .replace('+', "")
         .split(',')
         .map(|v| String::from(v))
         .collect();
 
-    let enable_feature = match &tokens[1] {
-        TokenTree::Literal(tt) => tt.to_string(),
-        _ => panic!("expected #[simd_test = \"feature\"]"),
-    };
-    let enable_feature = enable_feature
-        .trim_left_matches('"')
-        .trim_right_matches('"');
     let enable_feature = string(enable_feature);
     let item = TokenStream::from(item);
     let name = find_name(item.clone());

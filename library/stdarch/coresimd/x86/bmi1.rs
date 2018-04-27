@@ -125,13 +125,13 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "bmi1"]
+    #[simd_test(enable = "bmi1")]
     unsafe fn test_bextr_u32() {
         let r = _bextr_u32(0b0101_0000u32, 4, 4);
         assert_eq!(r, 0b0000_0101u32);
     }
 
-    #[simd_test = "bmi1"]
+    #[simd_test(enable = "bmi1")]
     unsafe fn test_andn_u32() {
         assert_eq!(_andn_u32(0, 0), 0);
         assert_eq!(_andn_u32(0, 1), 1);
@@ -154,25 +154,25 @@ mod tests {
         assert_eq!(r, 0b0001_1101u32);
     }
 
-    #[simd_test = "bmi1"]
+    #[simd_test(enable = "bmi1")]
     unsafe fn test_blsi_u32() {
         assert_eq!(_blsi_u32(0b1101_0000u32), 0b0001_0000u32);
     }
 
-    #[simd_test = "bmi1"]
+    #[simd_test(enable = "bmi1")]
     unsafe fn test_blsmsk_u32() {
         let r = _blsmsk_u32(0b0011_0000u32);
         assert_eq!(r, 0b0001_1111u32);
     }
 
-    #[simd_test = "bmi1"]
+    #[simd_test(enable = "bmi1")]
     unsafe fn test_blsr_u32() {
         // TODO: test the behavior when the input is 0
         let r = _blsr_u32(0b0011_0000u32);
         assert_eq!(r, 0b0010_0000u32);
     }
 
-    #[simd_test = "bmi1"]
+    #[simd_test(enable = "bmi1")]
     unsafe fn test_tzcnt_u32() {
         assert_eq!(_tzcnt_u32(0b0000_0001u32), 0u32);
         assert_eq!(_tzcnt_u32(0b0000_0000u32), 32u32);

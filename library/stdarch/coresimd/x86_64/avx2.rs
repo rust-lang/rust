@@ -40,7 +40,7 @@ mod tests {
 
     use coresimd::arch::x86_64::*;
 
-    #[simd_test = "avx2"]
+    #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi64() {
         let a = _mm256_setr_epi64x(0, 1, 2, 3);
         let r = _mm256_extract_epi64(a, 3);

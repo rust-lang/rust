@@ -81,7 +81,7 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "bmi2"]
+    #[simd_test(enable = "bmi2")]
     unsafe fn test_pext_u32() {
         let n = 0b1011_1110_1001_0011u32;
 
@@ -95,7 +95,7 @@ mod tests {
         assert_eq!(_pext_u32(n, m1), s1);
     }
 
-    #[simd_test = "bmi2"]
+    #[simd_test(enable = "bmi2")]
     unsafe fn test_pdep_u32() {
         let n = 0b1011_1110_1001_0011u32;
 
@@ -109,14 +109,14 @@ mod tests {
         assert_eq!(_pdep_u32(n, m1), s1);
     }
 
-    #[simd_test = "bmi2"]
+    #[simd_test(enable = "bmi2")]
     unsafe fn test_bzhi_u32() {
         let n = 0b1111_0010u32;
         let s = 0b0001_0010u32;
         assert_eq!(_bzhi_u32(n, 5), s);
     }
 
-    #[simd_test = "bmi2"]
+    #[simd_test(enable = "bmi2")]
     unsafe fn test_mulx_u32() {
         let a: u32 = 4_294_967_200;
         let b: u32 = 2;

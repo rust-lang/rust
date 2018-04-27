@@ -36,7 +36,7 @@ mod tests {
 
     use coresimd::x86::*;
 
-    #[simd_test = "avx"]
+    #[simd_test(enable = "avx")]
     unsafe fn test_mm256_insert_epi64() {
         let a = _mm256_setr_epi64x(1, 2, 3, 4);
         let r = _mm256_insert_epi64(a, 0, 3);

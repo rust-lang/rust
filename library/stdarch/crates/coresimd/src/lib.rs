@@ -6,15 +6,17 @@
 //!
 //! [stdsimd]: https://rust-lang-nursery.github.io/stdsimd/x86_64/stdsimd/
 
-#![cfg_attr(feature = "strict", deny(warnings))]
+#![cfg_attr(stdsimd_strict, deny(warnings))]
 #![allow(dead_code)]
 #![allow(unused_features)]
 #![feature(const_fn, link_llvm_intrinsics, platform_intrinsics, repr_simd,
-           simd_ffi, target_feature, cfg_target_feature, asm,
+           simd_ffi, asm,
            integer_atomics, stmt_expr_attributes, core_intrinsics,
            crate_in_paths, no_core, attr_literals, rustc_attrs, stdsimd,
            staged_api, fn_must_use, core_float, core_slice_ext, align_offset,
-           doc_cfg)]
+           doc_cfg, mmx_target_feature, tbm_target_feature,
+           sse4a_target_feature, arm_target_feature, aarch64_target_feature,
+           mips_target_feature)]
 #![cfg_attr(test,
             feature(proc_macro, test, attr_literals, abi_vectorcall,
                     untagged_unions))]

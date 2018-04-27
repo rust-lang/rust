@@ -1,5 +1,5 @@
-#![feature(cfg_target_feature, stdsimd)]
-#![cfg_attr(feature = "strict", deny(warnings))]
+#![feature(stdsimd)]
+#![cfg_attr(stdsimd_strict, deny(warnings))]
 #![cfg_attr(feature = "cargo-clippy",
             allow(option_unwrap_used, use_debug, print_stdout))]
 

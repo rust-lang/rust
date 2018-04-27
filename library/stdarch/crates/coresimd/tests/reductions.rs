@@ -1,4 +1,8 @@
-#![feature(cfg_target_feature, stdsimd, target_feature)]
+#![feature(stdsimd, sse4a_target_feature, avx512_target_feature)]
+#![feature(arm_target_feature)]
+#![feature(aarch64_target_feature)]
+#![feature(powerpc_target_feature)]
+#![allow(unused_attributes)]
 
 #[macro_use]
 extern crate stdsimd;

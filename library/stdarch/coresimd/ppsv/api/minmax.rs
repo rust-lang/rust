@@ -94,7 +94,6 @@ macro_rules! impl_float_minmax_ops {
                 // FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/416
                 // use coresimd::simd_llvm::simd_fmax;
                 // unsafe { simd_fmax(self, x) }
-                use num::Float;
                 let mut r = self;
                 for i in 0..$id::lanes() {
                     let a = self.extract(i);

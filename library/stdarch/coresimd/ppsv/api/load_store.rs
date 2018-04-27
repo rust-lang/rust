@@ -12,7 +12,6 @@ macro_rules! impl_load_store {
             /// aligned to an `align_of::<Self>()` boundary.
             #[inline]
             pub fn store_aligned(self, slice: &mut [$elem_ty]) {
-                use slice::SliceExt;
                 unsafe {
                     assert!(slice.len() >= $elem_count);
                     let target_ptr =
@@ -32,7 +31,6 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()`.
             #[inline]
             pub fn store_unaligned(self, slice: &mut [$elem_ty]) {
-                use slice::SliceExt;
                 unsafe {
                     assert!(slice.len() >= $elem_count);
                     self.store_unaligned_unchecked(slice);
@@ -50,7 +48,6 @@ macro_rules! impl_load_store {
             pub unsafe fn store_aligned_unchecked(
                 self, slice: &mut [$elem_ty]
             ) {
-                use slice::SliceExt;
                 *(slice.get_unchecked_mut(0) as *mut $elem_ty as *mut Self) =
                     self;
             }
@@ -64,7 +61,6 @@ macro_rules! impl_load_store {
             pub unsafe fn store_unaligned_unchecked(
                 self, slice: &mut [$elem_ty]
             ) {
-                use slice::SliceExt;
                 let target_ptr =
                     slice.get_unchecked_mut(0) as *mut $elem_ty as *mut u8;
                 let self_ptr = &self as *const Self as *const u8;
@@ -84,7 +80,6 @@ macro_rules! impl_load_store {
             #[inline]
             pub fn load_aligned(slice: &[$elem_ty]) -> Self {
                 unsafe {
-                    use slice::SliceExt;
                     assert!(slice.len() >= $elem_count);
                     let target_ptr = slice.get_unchecked(0) as *const $elem_ty;
                     assert!(
@@ -102,7 +97,6 @@ macro_rules! impl_load_store {
             /// If `slice.len() < Self::lanes()`.
             #[inline]
             pub fn load_unaligned(slice: &[$elem_ty]) -> Self {
-                use slice::SliceExt;
                 unsafe {
                     assert!(slice.len() >= $elem_count);
                     Self::load_unaligned_unchecked(slice)
@@ -117,7 +111,6 @@ macro_rules! impl_load_store {
             /// to an `align_of::<Self>()` boundary, the behavior is undefined.
             #[inline]
             pub unsafe fn load_aligned_unchecked(slice: &[$elem_ty]) -> Self {
-                use slice::SliceExt;
                 *(slice.get_unchecked(0) as *const $elem_ty as *const Self)
             }
 
@@ -131,7 +124,6 @@ macro_rules! impl_load_store {
                 slice: &[$elem_ty]
             ) -> Self {
                 use mem::size_of;
-                use slice::SliceExt;
                 let target_ptr =
                     slice.get_unchecked(0) as *const $elem_ty as *const u8;
                 let mut x = Self::splat(0 as $elem_ty);

@@ -99,7 +99,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "fxsr"]
+    #[simd_test(enable = "fxsr")]
     unsafe fn fxsave64() {
         let mut a = FxsaveArea::new();
         let mut b = FxsaveArea::new();

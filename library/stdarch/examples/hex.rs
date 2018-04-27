@@ -12,7 +12,7 @@
 //!
 //! and you should see `746573740a` get printed out.
 
-#![feature(cfg_target_feature, target_feature, stdsimd)]
+#![feature(stdsimd)]
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(feature = "cargo-clippy",
             allow(result_unwrap_used, print_stdout, option_unwrap_used,

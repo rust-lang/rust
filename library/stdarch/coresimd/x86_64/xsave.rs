@@ -192,7 +192,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "xsave"]
+    #[simd_test(enable = "xsave")]
     unsafe fn xsave64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -204,7 +204,7 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    #[simd_test = "xsave,xsaveopt"]
+    #[simd_test(enable = "xsave,xsaveopt")]
     unsafe fn xsaveopt64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -216,7 +216,7 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    #[simd_test = "xsave,xsavec"]
+    #[simd_test(enable = "xsave,xsavec")]
     unsafe fn xsavec64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -228,7 +228,7 @@ mod tests {
         assert_eq!(a, b);
     }
 
-    #[simd_test = "xsave,xsaves"]
+    #[simd_test(enable = "xsave,xsaves")]
     unsafe fn xsaves64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();

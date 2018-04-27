@@ -284,31 +284,31 @@ mod tests {
     use coresimd::x86::*;
 
     /*
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_bextr_u32() {
         assert_eq!(_bextr_u32(0b0101_0000u32, 4, 4), 0b0000_0101u32);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_bextr_u64() {
         assert_eq!(_bextr_u64(0b0101_0000u64, 4, 4), 0b0000_0101u64);
     }
     */
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blcfill_u32() {
         assert_eq!(_blcfill_u32(0b0101_0111u32), 0b0101_0000u32);
         assert_eq!(_blcfill_u32(0b1111_1111u32), 0u32);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     unsafe fn test_blcfill_u64() {
         assert_eq!(_blcfill_u64(0b0101_0111u64), 0b0101_0000u64);
         assert_eq!(_blcfill_u64(0b1111_1111u64), 0u64);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blci_u32() {
         assert_eq!(
             _blci_u32(0b0101_0000u32),
@@ -320,7 +320,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     unsafe fn test_blci_u64() {
@@ -334,46 +334,46 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blcic_u32() {
         assert_eq!(_blcic_u32(0b0101_0001u32), 0b0000_0010u32);
         assert_eq!(_blcic_u32(0b1111_1111u32), 0b1_0000_0000u32);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     unsafe fn test_blcic_u64() {
         assert_eq!(_blcic_u64(0b0101_0001u64), 0b0000_0010u64);
         assert_eq!(_blcic_u64(0b1111_1111u64), 0b1_0000_0000u64);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blcmsk_u32() {
         assert_eq!(_blcmsk_u32(0b0101_0001u32), 0b0000_0011u32);
         assert_eq!(_blcmsk_u32(0b1111_1111u32), 0b1_1111_1111u32);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     unsafe fn test_blcmsk_u64() {
         assert_eq!(_blcmsk_u64(0b0101_0001u64), 0b0000_0011u64);
         assert_eq!(_blcmsk_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blcs_u32() {
         assert_eq!(_blcs_u32(0b0101_0001u32), 0b0101_0011u32);
         assert_eq!(_blcs_u32(0b1111_1111u32), 0b1_1111_1111u32);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     unsafe fn test_blcs_u64() {
         assert_eq!(_blcs_u64(0b0101_0001u64), 0b0101_0011u64);
         assert_eq!(_blcs_u64(0b1111_1111u64), 0b1_1111_1111u64);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blsfill_u32() {
         assert_eq!(_blsfill_u32(0b0101_0100u32), 0b0101_0111u32);
         assert_eq!(
@@ -382,7 +382,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     unsafe fn test_blsfill_u64() {
@@ -393,7 +393,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_blsic_u32() {
         assert_eq!(
             _blsic_u32(0b0101_0100u32),
@@ -405,7 +405,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     unsafe fn test_blsic_u64() {
@@ -419,7 +419,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_t1mskc_u32() {
         assert_eq!(
             _t1mskc_u32(0b0101_0111u32),
@@ -431,7 +431,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     #[cfg_attr(rustfmt, rustfmt_skip)]
     unsafe fn test_t1mksc_u64() {
@@ -445,13 +445,13 @@ mod tests {
         );
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     unsafe fn test_tzmsk_u32() {
         assert_eq!(_tzmsk_u32(0b0101_1000u32), 0b0000_0111u32);
         assert_eq!(_tzmsk_u32(0b0101_1001u32), 0b0000_0000u32);
     }
 
-    #[simd_test = "tbm"]
+    #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
     unsafe fn test_tzmsk_u64() {
         assert_eq!(_tzmsk_u64(0b0101_1000u64), 0b0000_0111u64);

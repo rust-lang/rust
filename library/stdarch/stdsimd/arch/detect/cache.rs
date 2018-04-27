@@ -135,7 +135,7 @@ impl Cache {
 /// initializes it with the result of `f()`.
 ///
 /// On its first invocation, it detects the CPU features and caches them in the
-/// `FEATURES` global variable as an `AtomicU64`.
+/// `CACHE` global variable as an `AtomicU64`.
 ///
 /// It uses the `Feature` variant to index into this variable as a bitset. If
 /// the bit is set, the feature is enabled, and otherwise it is disabled.

@@ -8,7 +8,7 @@ matrix:
     - env: TARGET=i586-unknown-linux-gnu
     - env: TARGET=i686-unknown-linux-gnu
     - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1 FEATURES="intel_sde"
+    - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
     - env: TARGET=arm-unknown-linux-gnueabihf
     - env: TARGET=armv7-unknown-linux-gnueabihf
     - env: TARGET=aarch64-unknown-linux-gnu
@@ -55,7 +55,6 @@ matrix:
         cargo clippy --all -- -D clippy-pedantic
   allow_failures:
     - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: VERIFY_X86
 
 before_install:
   # FIXME (travis-ci/travis-ci#8920) shouldn't be necessary...

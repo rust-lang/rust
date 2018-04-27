@@ -147,7 +147,7 @@ mod tests {
     use stdsimd_test::simd_test;
     use test::black_box; // Used to inhibit constant-folding.
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha1msg1_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
@@ -157,7 +157,7 @@ mod tests {
         assert_eq_m128i(r, expected);
     }
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha1msg2_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
@@ -167,7 +167,7 @@ mod tests {
         assert_eq_m128i(r, expected);
     }
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha1nexte_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
@@ -177,7 +177,7 @@ mod tests {
         assert_eq_m128i(r, expected);
     }
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha1rnds4_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
@@ -199,7 +199,7 @@ mod tests {
         assert_eq_m128i(r, expected);
     }
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha256msg1_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
@@ -209,7 +209,7 @@ mod tests {
         assert_eq_m128i(r, expected);
     }
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha256msg2_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);
@@ -219,7 +219,7 @@ mod tests {
         assert_eq_m128i(r, expected);
     }
 
-    #[simd_test = "sha"]
+    #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
     unsafe fn test_mm_sha256rnds2_epu32() {
         let a = _mm_set_epi64x(0xe9b5dba5b5c0fbcf, 0x71374491428a2f98);

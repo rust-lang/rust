@@ -33,9 +33,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(stdsimd)]
-    /// # #![cfg_attr(dox, feature(mmx_target_feature))]
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature))]
+    /// # #![feature(stdsimd, mmx_target_feature)]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -85,7 +83,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+    /// # #![cfg_attr(not(dox), feature(stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -129,7 +127,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+    /// # #![cfg_attr(not(dox), feature(stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -173,7 +171,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+    /// # #![cfg_attr(not(dox), feature(stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -221,7 +219,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+    /// # #![cfg_attr(not(dox), feature(stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -265,7 +263,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+    /// # #![cfg_attr(not(dox), feature(stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -309,7 +307,7 @@ types! {
     /// # Examples
     ///
     /// ```
-    /// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+    /// # #![cfg_attr(not(dox), feature(stdsimd))]
     /// # #![cfg_attr(not(dox), no_std)]
     /// # #[cfg(not(dox))]
     /// # extern crate std as real_std;
@@ -606,14 +604,14 @@ pub use self::bmi1::*;
 mod bmi2;
 pub use self::bmi2::*;
 
-#[cfg(not(feature = "intel_sde"))]
+#[cfg(not(stdsimd_intel_sde))]
 mod sse4a;
-#[cfg(not(feature = "intel_sde"))]
+#[cfg(not(stdsimd_intel_sde))]
 pub use self::sse4a::*;
 
-#[cfg(not(feature = "intel_sde"))]
+#[cfg(not(stdsimd_intel_sde))]
 mod tbm;
-#[cfg(not(feature = "intel_sde"))]
+#[cfg(not(stdsimd_intel_sde))]
 pub use self::tbm::*;
 
 mod mmx;

@@ -490,13 +490,13 @@ mod tests {
     use coresimd::x86::*;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_setzero_si64() {
         let r: __m64 = ::std::mem::transmute(0_i64);
         assert_eq_m64(r, _mm_setzero_si64());
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_add_pi8() {
         let a = _mm_setr_pi8(-1, -1, 1, 1, -1, 0, 1, 0);
         let b = _mm_setr_pi8(-127, 101, 99, 126, 0, -1, 0, 1);
@@ -505,7 +505,7 @@ mod tests {
         assert_eq_m64(e, _m_paddb(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_add_pi16() {
         let a = _mm_setr_pi16(-1, -1, 1, 1);
         let b = _mm_setr_pi16(
@@ -524,7 +524,7 @@ mod tests {
         assert_eq_m64(e, _m_paddw(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_add_pi32() {
         let a = _mm_setr_pi32(1, -1);
         let b = _mm_setr_pi32(i32::max_value() - 1, i32::min_value() + 1);
@@ -533,7 +533,7 @@ mod tests {
         assert_eq_m64(e, _m_paddd(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_adds_pi8() {
         let a = _mm_setr_pi8(-100, -1, 1, 100, -1, 0, 1, 0);
         let b = _mm_setr_pi8(-100, 1, -1, 100, 0, -1, 0, 1);
@@ -551,7 +551,7 @@ mod tests {
         assert_eq_m64(e, _m_paddsb(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_adds_pi16() {
         let a = _mm_setr_pi16(-32000, 32000, 4, 0);
         let b = _mm_setr_pi16(-32000, 32000, -5, 1);
@@ -560,7 +560,7 @@ mod tests {
         assert_eq_m64(e, _m_paddsw(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_adds_pu8() {
         let a = _mm_setr_pi8(0, 1, 2, 3, 4, 5, 6, 200u8 as i8);
         let b = _mm_setr_pi8(0, 10, 20, 30, 40, 50, 60, 200u8 as i8);
@@ -569,7 +569,7 @@ mod tests {
         assert_eq_m64(e, _m_paddusb(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_adds_pu16() {
         let a = _mm_setr_pi16(0, 1, 2, 60000u16 as i16);
         let b = _mm_setr_pi16(0, 10, 20, 60000u16 as i16);
@@ -578,7 +578,7 @@ mod tests {
         assert_eq_m64(e, _m_paddusw(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_sub_pi8() {
         let a = _mm_setr_pi8(0, 0, 1, 1, -1, -1, 0, 0);
         let b = _mm_setr_pi8(-1, 1, -2, 2, 100, -100, -127, 127);
@@ -587,7 +587,7 @@ mod tests {
         assert_eq_m64(e, _m_psubb(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_sub_pi16() {
         let a = _mm_setr_pi16(-20000, -20000, 20000, 30000);
         let b = _mm_setr_pi16(-10000, 10000, -10000, 30000);
@@ -596,7 +596,7 @@ mod tests {
         assert_eq_m64(e, _m_psubw(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_sub_pi32() {
         let a = _mm_setr_pi32(500_000, -500_000);
         let b = _mm_setr_pi32(500_000, 500_000);
@@ -605,7 +605,7 @@ mod tests {
         assert_eq_m64(e, _m_psubd(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_subs_pi8() {
         let a = _mm_setr_pi8(-100, 100, 0, 0, 0, 0, -5, 5);
         let b = _mm_setr_pi8(100, -100, i8::min_value(), 127, -1, 1, 3, -3);
@@ -623,7 +623,7 @@ mod tests {
         assert_eq_m64(e, _m_psubsb(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_subs_pi16() {
         let a = _mm_setr_pi16(-20000, 20000, 0, 0);
         let b = _mm_setr_pi16(20000, -20000, -1, 1);
@@ -632,7 +632,7 @@ mod tests {
         assert_eq_m64(e, _m_psubsw(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_subs_pu8() {
         let a = _mm_setr_pi8(50, 10, 20, 30, 40, 60, 70, 80);
         let b = _mm_setr_pi8(60, 20, 30, 40, 30, 20, 10, 0);
@@ -641,7 +641,7 @@ mod tests {
         assert_eq_m64(e, _m_psubusb(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_subs_pu16() {
         let a = _mm_setr_pi16(10000, 200, 0, 44444u16 as i16);
         let b = _mm_setr_pi16(20000, 300, 1, 11111);
@@ -650,7 +650,7 @@ mod tests {
         assert_eq_m64(e, _m_psubusw(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_packs_pi16() {
         let a = _mm_setr_pi16(-1, 2, -3, 4);
         let b = _mm_setr_pi16(-5, 6, -7, 8);
@@ -658,7 +658,7 @@ mod tests {
         assert_eq_m64(r, _mm_packs_pi16(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_packs_pi32() {
         let a = _mm_setr_pi32(-1, 2);
         let b = _mm_setr_pi32(-5, 6);
@@ -666,7 +666,7 @@ mod tests {
         assert_eq_m64(r, _mm_packs_pi32(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_cmpgt_pi8() {
         let a = _mm_setr_pi8(0, 1, 2, 3, 4, 5, 6, 7);
         let b = _mm_setr_pi8(8, 7, 6, 5, 4, 3, 2, 1);
@@ -674,7 +674,7 @@ mod tests {
         assert_eq_m64(r, _mm_cmpgt_pi8(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_cmpgt_pi16() {
         let a = _mm_setr_pi16(0, 1, 2, 3);
         let b = _mm_setr_pi16(4, 3, 2, 1);
@@ -682,7 +682,7 @@ mod tests {
         assert_eq_m64(r, _mm_cmpgt_pi16(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_cmpgt_pi32() {
         let a = _mm_setr_pi32(0, 3);
         let b = _mm_setr_pi32(1, 2);
@@ -693,7 +693,7 @@ mod tests {
         assert_eq_m64(r1, _mm_cmpgt_pi32(b, a));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_unpackhi_pi8() {
         let a = _mm_setr_pi8(0, 3, 4, 7, 8, 11, 12, 15);
         let b = _mm_setr_pi8(1, 2, 5, 6, 9, 10, 13, 14);
@@ -702,7 +702,7 @@ mod tests {
         assert_eq_m64(r, _mm_unpackhi_pi8(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_unpacklo_pi8() {
         let a = _mm_setr_pi8(0, 1, 2, 3, 4, 5, 6, 7);
         let b = _mm_setr_pi8(8, 9, 10, 11, 12, 13, 14, 15);
@@ -710,7 +710,7 @@ mod tests {
         assert_eq_m64(r, _mm_unpacklo_pi8(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_unpackhi_pi16() {
         let a = _mm_setr_pi16(0, 1, 2, 3);
         let b = _mm_setr_pi16(4, 5, 6, 7);
@@ -718,7 +718,7 @@ mod tests {
         assert_eq_m64(r, _mm_unpackhi_pi16(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_unpacklo_pi16() {
         let a = _mm_setr_pi16(0, 1, 2, 3);
         let b = _mm_setr_pi16(4, 5, 6, 7);
@@ -726,7 +726,7 @@ mod tests {
         assert_eq_m64(r, _mm_unpacklo_pi16(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_unpackhi_pi32() {
         let a = _mm_setr_pi32(0, 3);
         let b = _mm_setr_pi32(1, 2);
@@ -735,7 +735,7 @@ mod tests {
         assert_eq_m64(r, _mm_unpackhi_pi32(a, b));
     }
 
-    #[simd_test = "mmx"]
+    #[simd_test(enable = "mmx")]
     unsafe fn test_mm_unpacklo_pi32() {
         let a = _mm_setr_pi32(0, 3);
         let b = _mm_setr_pi32(1, 2);

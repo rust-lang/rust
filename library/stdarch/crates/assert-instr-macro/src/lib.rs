@@ -137,7 +137,7 @@ struct Invoc {
 }
 
 impl syn::synom::Synom for Invoc {
-    named!(parse -> Self, map!(parens!(do_parse!(
+    named!(parse -> Self, do_parse!(
         instr: syn!(syn::Expr) >>
         args: many0!(do_parse!(
             syn!(syn::token::Comma) >>
@@ -150,7 +150,7 @@ impl syn::synom::Synom for Invoc {
             instr,
             args,
         })
-    )), |p| p.1));
+    ));
 }
 
 struct Append<T>(T);

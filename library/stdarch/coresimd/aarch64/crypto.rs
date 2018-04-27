@@ -189,7 +189,7 @@ mod tests {
     use std::mem;
     use stdsimd_test::simd_test;
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vaeseq_u8() {
         let data = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8)
             .into_bits();
@@ -219,7 +219,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vaesdq_u8() {
         let data = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8)
             .into_bits();
@@ -249,7 +249,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vaesmcq_u8() {
         let data = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8)
             .into_bits();
@@ -277,7 +277,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vaesimcq_u8() {
         let data = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8)
             .into_bits();
@@ -305,13 +305,13 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1h_u32() {
         assert_eq!(vsha1h_u32(0x1234), 0x048d);
         assert_eq!(vsha1h_u32(0x5678), 0x159e);
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1su0q_u32() {
         let r: u32x4 = vsha1su0q_u32(
             u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)
@@ -324,7 +324,7 @@ mod tests {
         assert_eq!(r, u32x4::new(0x9abc, 0xdef0, 0x1234, 0x5678));
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1su1q_u32() {
         let r: u32x4 = vsha1su1q_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -336,7 +336,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1cq_u32() {
         let r: u32x4 = vsha1cq_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -349,7 +349,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1pq_u32() {
         let r: u32x4 = vsha1pq_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -362,7 +362,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1mq_u32() {
         let r: u32x4 = vsha1mq_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -375,7 +375,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256hq_u32() {
         let r: u32x4 = vsha256hq_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -388,7 +388,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256h2q_u32() {
         let r: u32x4 = vsha256h2q_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -401,7 +401,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256su0q_u32() {
         let r: u32x4 = vsha256su0q_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),
@@ -413,7 +413,7 @@ mod tests {
         );
     }
 
-    #[simd_test = "crypto"]
+    #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256su1q_u32() {
         let r: u32x4 = vsha256su1q_u32(
             u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0).into_bits(),

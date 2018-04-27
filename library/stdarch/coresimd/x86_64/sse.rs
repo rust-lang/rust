@@ -77,7 +77,7 @@ mod tests {
 
     use coresimd::arch::x86_64::*;
 
-    #[simd_test = "sse"]
+    #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvtss_si64() {
         let inputs = &[
             (42.0f32, 42i64),
@@ -102,7 +102,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "sse"]
+    #[simd_test(enable = "sse")]
     unsafe fn test_mm_cvttss_si64() {
         let inputs = &[
             (42.0f32, 42i64),
@@ -130,7 +130,7 @@ mod tests {
         }
     }
 
-    #[simd_test = "sse"]
+    #[simd_test(enable = "sse")]
     pub unsafe fn test_mm_cvtsi64_ss() {
         let inputs = &[
             (4555i64, 4555.0f32),
