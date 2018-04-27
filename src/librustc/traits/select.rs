@@ -17,12 +17,12 @@ use self::EvaluationResult::*;
 
 use super::coherence::{self, Conflict};
 use super::DerivedObligationCause;
-use super::IntercrateMode;
+use super::{IntercrateMode, TraitQueryMode};
 use super::project;
 use super::project::{normalize_with_depth, Normalized, ProjectionCacheKey};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
-use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
+use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch, Overflow};
 use super::{ObjectCastObligation, Obligation};
 use super::TraitNotObjectSafe;
 use super::Selection;
@@ -87,7 +87,12 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     /// Controls whether or not to filter out negative impls when selecting.
     /// This is used in librustdoc to distinguish between the lack of an impl
     /// and a negative impl
-    allow_negative_impls: bool
+    allow_negative_impls: bool,
+
+    /// The mode that trait queries run in, which informs our error handling
+    /// policy. In essence, canonicalized queries need their errors propagated
+    /// rather than immediately reported because we do not have accurate spans.
+    query_mode: TraitQueryMode,
 }
 
 #[derive(Clone, Debug)]
@@ -319,7 +324,7 @@ enum BuiltinImplConditions<'tcx> {
 ///     all the "potential success" candidates can potentially succeed,
 ///     so they are no-ops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
-enum EvaluationResult {
+pub enum EvaluationResult {
     /// Evaluation successful
     EvaluatedToOk,
     /// Evaluation is known to be ambiguous - it *might* hold for some
@@ -385,7 +390,7 @@ enum EvaluationResult {
 }
 
 impl EvaluationResult {
-    fn may_apply(self) -> bool {
+    pub fn may_apply(self) -> bool {
         match self {
             EvaluatedToOk |
             EvaluatedToAmbig |
@@ -408,6 +413,26 @@ impl EvaluationResult {
     }
 }
 
+impl_stable_hash_for!(enum self::EvaluationResult {
+    EvaluatedToOk,
+    EvaluatedToAmbig,
+    EvaluatedToUnknown,
+    EvaluatedToRecur,
+    EvaluatedToErr
+});
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Indicates that trait evaluation caused overflow.
+pub struct OverflowError;
+
+impl_stable_hash_for!(struct OverflowError { });
+
+impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
+    fn from(OverflowError: OverflowError) -> SelectionError<'tcx> {
+        SelectionError::Overflow
+    }
+}
+
 #[derive(Clone)]
 pub struct EvaluationCache<'tcx> {
     hashmap: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>
@@ -421,6 +446,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -433,6 +459,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: Some(mode),
             intercrate_ambiguity_causes: None,
             allow_negative_impls: false,
+            query_mode: TraitQueryMode::Standard,
         }
     }
 
@@ -445,6 +472,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             intercrate: None,
             intercrate_ambiguity_causes: None,
             allow_negative_impls,
+            query_mode: TraitQueryMode::Standard,
+        }
+    }
+
+    pub fn with_query_mode(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
+                           query_mode: TraitQueryMode) -> SelectionContext<'cx, 'gcx, 'tcx> {
+        debug!("with_query_mode({:?})", query_mode);
+        SelectionContext {
+            infcx,
+            freshener: infcx.freshener(),
+            intercrate: None,
+            intercrate_ambiguity_causes: None,
+            allow_negative_impls: false,
+            query_mode,
         }
     }
 
@@ -528,12 +569,27 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         assert!(!obligation.predicate.has_escaping_regions());
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
-        let ret = match self.candidate_from_obligation(&stack)? {
-            None => None,
-            Some(candidate) => Some(self.confirm_candidate(obligation, candidate)?)
+
+        let candidate = match self.candidate_from_obligation(&stack) {
+            Err(SelectionError::Overflow) => {
+                // In standard mode, overflow must have been caught and reported
+                // earlier.
+                assert!(self.query_mode == TraitQueryMode::Canonical);
+                return Err(SelectionError::Overflow);
+            },
+            Err(e) => { return Err(e); },
+            Ok(None) => { return Ok(None); },
+            Ok(Some(candidate)) => candidate
         };
 
-        Ok(ret)
+        match self.confirm_candidate(obligation, candidate) {
+            Err(SelectionError::Overflow) => {
+                assert!(self.query_mode == TraitQueryMode::Canonical);
+                return Err(SelectionError::Overflow);
+            },
+            Err(e) => Err(e),
+            Ok(candidate) => Ok(Some(candidate))
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -547,32 +603,30 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // we can be sure it does not.
 
     /// Evaluates whether the obligation `obligation` can be satisfied (by any means).
-    pub fn evaluate_obligation(&mut self,
-                               obligation: &PredicateObligation<'tcx>)
-                               -> bool
+    pub fn predicate_may_hold_fatal(&mut self,
+                                    obligation: &PredicateObligation<'tcx>)
+                                    -> bool
     {
-        debug!("evaluate_obligation({:?})",
+        debug!("predicate_may_hold_fatal({:?})",
                obligation);
 
-        self.probe(|this, _| {
-            this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
-                .may_apply()
-        })
+        // This fatal query is a stopgap that should only be used in standard mode,
+        // where we do not expect overflow to be propagated.
+        assert!(self.query_mode == TraitQueryMode::Standard);
+
+        self.evaluate_obligation_recursively(obligation)
+            .expect("Overflow should be caught earlier in standard query mode")
+            .may_apply()
     }
 
-    /// Evaluates whether the obligation `obligation` can be satisfied,
-    /// and returns `false` if not certain. However, this is not entirely
-    /// accurate if inference variables are involved.
-    pub fn evaluate_obligation_conservatively(&mut self,
-                                              obligation: &PredicateObligation<'tcx>)
-                                              -> bool
+    /// Evaluates whether the obligation `obligation` can be satisfied and returns
+    /// an `EvaluationResult`.
+    pub fn evaluate_obligation_recursively(&mut self,
+                                           obligation: &PredicateObligation<'tcx>)
+                                           -> Result<EvaluationResult, OverflowError>
     {
-        debug!("evaluate_obligation_conservatively({:?})",
-               obligation);
-
         self.probe(|this, _| {
             this.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
-                == EvaluatedToOk
         })
     }
 
@@ -582,29 +636,29 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
                                                 stack: TraitObligationStackList<'o, 'tcx>,
                                                 predicates: I)
-                                                -> EvaluationResult
+                                                -> Result<EvaluationResult, OverflowError>
         where I : IntoIterator<Item=&'a PredicateObligation<'tcx>>, 'tcx:'a
     {
         let mut result = EvaluatedToOk;
         for obligation in predicates {
-            let eval = self.evaluate_predicate_recursively(stack, obligation);
+            let eval = self.evaluate_predicate_recursively(stack, obligation)?;
             debug!("evaluate_predicate_recursively({:?}) = {:?}",
                    obligation, eval);
             if let EvaluatedToErr = eval {
                 // fast-path - EvaluatedToErr is the top of the lattice,
                 // so we don't need to look on the other predicates.
-                return EvaluatedToErr;
+                return Ok(EvaluatedToErr);
             } else {
                 result = cmp::max(result, eval);
             }
         }
-        result
+        Ok(result)
     }
 
     fn evaluate_predicate_recursively<'o>(&mut self,
                                           previous_stack: TraitObligationStackList<'o, 'tcx>,
                                           obligation: &PredicateObligation<'tcx>)
-                                           -> EvaluationResult
+                                           -> Result<EvaluationResult, OverflowError>
     {
         debug!("evaluate_predicate_recursively({:?})",
                obligation);
@@ -620,11 +674,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // does this code ever run?
                 match self.infcx.subtype_predicate(&obligation.cause, obligation.param_env, p) {
                     Some(Ok(InferOk { obligations, .. })) => {
-                        self.evaluate_predicates_recursively(previous_stack, &obligations);
-                        EvaluatedToOk
+                        self.evaluate_predicates_recursively(previous_stack, &obligations)
                     },
-                    Some(Err(_)) => EvaluatedToErr,
-                    None => EvaluatedToAmbig,
+                    Some(Err(_)) => Ok(EvaluatedToErr),
+                    None => Ok(EvaluatedToAmbig),
                 }
             }
 
@@ -636,21 +689,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     Some(obligations) =>
                         self.evaluate_predicates_recursively(previous_stack, obligations.iter()),
                     None =>
-                        EvaluatedToAmbig,
+                        Ok(EvaluatedToAmbig),
                 }
             }
 
             ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => {
                 // we do not consider region relationships when
                 // evaluating trait matches
-                EvaluatedToOk
+                Ok(EvaluatedToOk)
             }
 
             ty::Predicate::ObjectSafe(trait_def_id) => {
                 if self.tcx().is_object_safe(trait_def_id) {
-                    EvaluatedToOk
+                    Ok(EvaluatedToOk)
                 } else {
-                    EvaluatedToErr
+                    Ok(EvaluatedToErr)
                 }
             }
 
@@ -668,10 +721,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         result
                     }
                     Ok(None) => {
-                        EvaluatedToAmbig
+                        Ok(EvaluatedToAmbig)
                     }
                     Err(_) => {
-                        EvaluatedToErr
+                        Ok(EvaluatedToErr)
                     }
                 }
             }
@@ -680,13 +733,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 match self.infcx.closure_kind(closure_def_id, closure_substs) {
                     Some(closure_kind) => {
                         if closure_kind.extends(kind) {
-                            EvaluatedToOk
+                            Ok(EvaluatedToOk)
                         } else {
-                            EvaluatedToErr
+                            Ok(EvaluatedToErr)
                         }
                     }
                     None => {
-                        EvaluatedToAmbig
+                        Ok(EvaluatedToAmbig)
                     }
                 }
             }
@@ -707,16 +760,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                 promoted: None
                             };
                             match self.tcx().const_eval(param_env.and(cid)) {
-                                Ok(_) => EvaluatedToOk,
-                                Err(_) => EvaluatedToErr
+                                Ok(_) => Ok(EvaluatedToOk),
+                                Err(_) => Ok(EvaluatedToErr)
                             }
                         } else {
-                            EvaluatedToErr
+                            Ok(EvaluatedToErr)
                         }
                     }
                     None => {
                         // Inference variables still left in param_env or substs.
-                        EvaluatedToAmbig
+                        Ok(EvaluatedToAmbig)
                     }
                 }
             }
@@ -726,7 +779,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn evaluate_trait_predicate_recursively<'o>(&mut self,
                                                 previous_stack: TraitObligationStackList<'o, 'tcx>,
                                                 mut obligation: TraitObligation<'tcx>)
-                                                -> EvaluationResult
+                                                -> Result<EvaluationResult, OverflowError>
     {
         debug!("evaluate_trait_predicate_recursively({:?})",
                obligation);
@@ -745,22 +798,23 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             debug!("CACHE HIT: EVAL({:?})={:?}",
                    fresh_trait_ref,
                    result);
-            return result;
+            return Ok(result);
         }
 
         let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
+        let result = result?;
 
         debug!("CACHE MISS: EVAL({:?})={:?}",
                fresh_trait_ref,
                result);
         self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
 
-        result
+        Ok(result)
     }
 
     fn evaluate_stack<'o>(&mut self,
                           stack: &TraitObligationStack<'o, 'tcx>)
-                          -> EvaluationResult
+                          -> Result<EvaluationResult, OverflowError>
     {
         // In intercrate mode, whenever any of the types are unbound,
         // there can always be an impl. Even if there are no impls in
@@ -815,7 +869,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     }
                 }
             }
-            return EvaluatedToAmbig;
+            return Ok(EvaluatedToAmbig);
         }
         if unbound_input_types &&
               stack.iter().skip(1).any(
@@ -825,7 +879,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         {
             debug!("evaluate_stack({:?}) --> unbound argument, recursive --> giving up",
                    stack.fresh_trait_ref);
-            return EvaluatedToUnknown;
+            return Ok(EvaluatedToUnknown);
         }
 
         // If there is any previous entry on the stack that precisely
@@ -860,18 +914,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             if self.coinductive_match(cycle) {
                 debug!("evaluate_stack({:?}) --> recursive, coinductive",
                        stack.fresh_trait_ref);
-                return EvaluatedToOk;
+                return Ok(EvaluatedToOk);
             } else {
                 debug!("evaluate_stack({:?}) --> recursive, inductive",
                        stack.fresh_trait_ref);
-                return EvaluatedToRecur;
+                return Ok(EvaluatedToRecur);
             }
         }
 
         match self.candidate_from_obligation(stack) {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
-            Ok(None) => EvaluatedToAmbig,
-            Err(..) => EvaluatedToErr
+            Ok(None) => Ok(EvaluatedToAmbig),
+            Err(Overflow) => Err(OverflowError),
+            Err(..) => Ok(EvaluatedToErr)
         }
     }
 
@@ -909,7 +964,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn evaluate_candidate<'o>(&mut self,
                               stack: &TraitObligationStack<'o, 'tcx>,
                               candidate: &SelectionCandidate<'tcx>)
-                              -> EvaluationResult
+                              -> Result<EvaluationResult, OverflowError>
     {
         debug!("evaluate_candidate: depth={} candidate={:?}",
                stack.obligation.recursion_depth, candidate);
@@ -921,12 +976,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         stack.list(),
                         selection.nested_obligations().iter())
                 }
-                Err(..) => EvaluatedToErr
+                Err(..) => Ok(EvaluatedToErr)
             }
-        });
+        })?;
         debug!("evaluate_candidate: depth={} result={:?}",
                stack.obligation.recursion_depth, result);
-        result
+        Ok(result)
     }
 
     fn check_evaluation_cache(&self,
@@ -1000,7 +1055,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // not update) the cache.
         let recursion_limit = *self.infcx.tcx.sess.recursion_limit.get();
         if stack.obligation.recursion_depth >= recursion_limit {
-            self.infcx().report_overflow_error(&stack.obligation, true);
+            match self.query_mode {
+                TraitQueryMode::Standard => {
+                    self.infcx().report_overflow_error(&stack.obligation, true);
+                },
+                TraitQueryMode::Canonical => {
+                    return Err(Overflow);
+                },
+            }
         }
 
         // Check the cache. Note that we skolemize the trait-ref
@@ -1081,9 +1143,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     debug!("evaluate_stack: intercrate_ambiguity_causes is some");
                     // Heuristics: show the diagnostics when there are no candidates in crate.
                     if let Ok(candidate_set) = self.assemble_candidates(stack) {
-                        if !candidate_set.ambiguous && candidate_set.vec.iter().all(|c| {
-                            !self.evaluate_candidate(stack, &c).may_apply()
-                        }) {
+                        let no_candidates_apply =
+                            candidate_set
+                            .vec
+                            .iter()
+                            .map(|c| self.evaluate_candidate(stack, &c))
+                            .collect::<Result<Vec<_>, OverflowError>>()?
+                            .iter()
+                            .all(|r| !r.may_apply());
+                        if !candidate_set.ambiguous && no_candidates_apply {
                             let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                             let self_ty = trait_ref.self_ty();
                             let trait_desc = trait_ref.to_string();
@@ -1151,18 +1219,21 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         // Winnow, but record the exact outcome of evaluation, which
-        // is needed for specialization.
-        let mut candidates: Vec<_> = candidates.into_iter().filter_map(|c| {
-            let eval = self.evaluate_candidate(stack, &c);
-            if eval.may_apply() {
-                Some(EvaluatedCandidate {
+        // is needed for specialization. Propagate overflow if it occurs.
+        let candidates: Result<Vec<Option<EvaluatedCandidate>>, _> = candidates
+            .into_iter()
+            .map(|c| match self.evaluate_candidate(stack, &c) {
+                Ok(eval) if eval.may_apply() => Ok(Some(EvaluatedCandidate {
                     candidate: c,
                     evaluation: eval,
-                })
-            } else {
-                None
-            }
-        }).collect();
+                })),
+                Ok(_) => Ok(None),
+                Err(OverflowError) => Err(Overflow),
+            })
+            .collect();
+
+        let mut candidates: Vec<EvaluatedCandidate> =
+            candidates?.into_iter().filter_map(|c| c).collect();
 
         // If there are STILL multiple candidate, we can further
         // reduce the list by dropping duplicates -- including
@@ -1537,12 +1608,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let matching_bounds =
             all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
 
-        let matching_bounds =
-            matching_bounds.filter(
-                |bound| self.evaluate_where_clause(stack, bound.clone()).may_apply());
-
-        let param_candidates =
-            matching_bounds.map(|bound| ParamCandidate(bound));
+        // keep only those bounds which may apply, and propagate overflow if it occurs
+        let mut param_candidates = vec![];
+        for bound in matching_bounds {
+            let wc = self.evaluate_where_clause(stack, bound.clone())?;
+            if wc.may_apply() {
+                param_candidates.push(ParamCandidate(bound));
+            }
+        }
 
         candidates.vec.extend(param_candidates);
 
@@ -1552,14 +1625,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn evaluate_where_clause<'o>(&mut self,
                                  stack: &TraitObligationStack<'o, 'tcx>,
                                  where_clause_trait_ref: ty::PolyTraitRef<'tcx>)
-                                 -> EvaluationResult
+                                 -> Result<EvaluationResult, OverflowError>
     {
         self.probe(move |this, _| {
             match this.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
                     this.evaluate_predicates_recursively(stack.list(), obligations.iter())
                 }
-                Err(()) => EvaluatedToErr
+                Err(()) => Ok(EvaluatedToErr)
             }
         })
     }

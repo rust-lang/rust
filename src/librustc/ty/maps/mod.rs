@@ -32,8 +32,9 @@ use mir;
 use mir::interpret::{GlobalId};
 use session::{CompileResult, CrateDisambiguator};
 use session::config::OutputFilenames;
-use traits::Vtable;
-use traits::query::{CanonicalProjectionGoal, CanonicalTyGoal, NoSolution};
+use traits::{self, Vtable};
+use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal,
+                    CanonicalTyGoal, NoSolution};
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::specialization_graph;
@@ -432,6 +433,12 @@ define_maps! { <'tcx>
         Lrc<Canonical<'tcx, canonical::QueryResult<'tcx, DropckOutlivesResult<'tcx>>>>,
         NoSolution,
     >,
+
+    /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or
+    /// `infcx.predicate_must_hold()` instead.
+    [] fn evaluate_obligation: EvaluateObligation(
+        CanonicalPredicateGoal<'tcx>
+    ) -> Result<traits::EvaluationResult, traits::OverflowError>,
 
     [] fn substitute_normalize_and_test_predicates:
         substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,

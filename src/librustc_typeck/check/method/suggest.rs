@@ -19,7 +19,7 @@ use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
 use namespace::Namespace;
-use rustc::traits::{Obligation, SelectionContext};
+use rustc::traits::Obligation;
 use util::nodemap::FxHashSet;
 
 use syntax::ast;
@@ -65,7 +65,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                              self.body_id,
                                              self.param_env,
                                              poly_trait_ref.to_predicate());
-                        SelectionContext::new(self).evaluate_obligation(&obligation)
+                        self.predicate_may_hold(&obligation)
                     })
                 })
             }

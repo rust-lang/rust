@@ -41,7 +41,7 @@ pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
 pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
-pub use self::select::IntercrateAmbiguityCause;
+pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
 pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::{SpecializesCache, find_associated_item};
 pub use self::engine::TraitEngine;
@@ -72,6 +72,19 @@ pub mod query;
 pub enum IntercrateMode {
     Issue43355,
     Fixed
+}
+
+// The mode that trait queries run in
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum TraitQueryMode {
+    // Standard/un-canonicalized queries get accurate
+    // spans etc. passed in and hence can do reasonable
+    // error reporting on their own.
+    Standard,
+    // Canonicalized queries get dummy spans and hence
+    // must generally propagate errors to
+    // pre-canonicalization callsites.
+    Canonical,
 }
 
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
@@ -349,6 +362,7 @@ pub enum SelectionError<'tcx> {
                                 ty::error::TypeError<'tcx>),
     TraitNotObjectSafe(DefId),
     ConstEvalFailure(ConstEvalErr<'tcx>),
+    Overflow,
 }
 
 pub struct FulfillmentError<'tcx> {
@@ -550,8 +564,7 @@ pub fn type_known_to_meet_bound<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx
         predicate: trait_ref.to_predicate(),
     };
 
-    let result = SelectionContext::new(infcx)
-        .evaluate_obligation_conservatively(&obligation);
+    let result = infcx.predicate_must_hold(&obligation);
     debug!("type_known_to_meet_ty={:?} bound={} => {:?}",
            ty, infcx.tcx.item_path_str(def_id), result);
 

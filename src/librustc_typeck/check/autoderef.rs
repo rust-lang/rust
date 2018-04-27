@@ -120,15 +120,15 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
 
         let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
-        let mut selcx = traits::SelectionContext::new(self.fcx);
         let obligation = traits::Obligation::new(cause.clone(),
                                                  self.fcx.param_env,
                                                  trait_ref.to_predicate());
-        if !selcx.evaluate_obligation(&obligation) {
+        if !self.fcx.predicate_may_hold(&obligation) {
             debug!("overloaded_deref_ty: cannot match obligation");
             return None;
         }
 
+        let mut selcx = traits::SelectionContext::new(self.fcx);
         let normalized = traits::normalize_projection_type(&mut selcx,
                                                            self.fcx.param_env,
                                                            ty::ProjectionTy::from_ref_and_name(
