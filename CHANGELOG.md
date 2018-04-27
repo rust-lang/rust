@@ -615,6 +615,7 @@ All notable changes to this project will be documented in this file.
 [`eq_op`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#eq_op
 [`erasing_op`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#erasing_op
 [`eval_order_dependence`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#eval_order_dependence
+[`excessive_precision`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#excessive_precision
 [`expl_impl_clone_on_copy`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#expl_impl_clone_on_copy
 [`explicit_counter_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#explicit_counter_loop
 [`explicit_into_iter_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#explicit_into_iter_loop
@@ -644,6 +645,7 @@ All notable changes to this project will be documented in this file.
 [`inconsistent_digit_grouping`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inconsistent_digit_grouping
 [`indexing_slicing`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#indexing_slicing
 [`ineffective_bit_mask`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#ineffective_bit_mask
+[`infallible_destructuring_match`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#infallible_destructuring_match
 [`infinite_iter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#infinite_iter
 [`inline_always`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inline_always
 [`inline_fn_without_body`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inline_fn_without_body

@@ -1,4 +1,4 @@
-#![feature(exhaustive_patterns)]
+#![feature(exhaustive_patterns, never_type)]
 #![allow(let_and_return)]
 
 enum SingleVariantEnum {

@@ -6,7 +6,7 @@ use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::traits;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;

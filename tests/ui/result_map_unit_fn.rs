@@ -1,3 +1,4 @@
+#![feature(never_type)]
 #![warn(result_map_unit_fn)]
 #![allow(unused)]
 
