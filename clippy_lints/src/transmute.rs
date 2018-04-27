@@ -52,7 +52,7 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// core::intrinsics::transmute(t)` // where the result type is the same as
-/// `*t` or `&t`'s
+/// // `*t` or `&t`'s
 /// ```
 declare_clippy_lint! {
     pub CROSSPOINTER_TRANSMUTE,
