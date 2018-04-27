@@ -19,6 +19,7 @@
 #[macro_use]
 extern crate rustc;
 extern crate rustc_typeck;
+extern crate rustc_target;
 extern crate syntax;
 extern crate syntax_pos;
 
@@ -516,6 +517,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         eta_reduction::REDUNDANT_CLOSURE,
         eval_order_dependence::DIVERGING_SUB_EXPRESSION,
         eval_order_dependence::EVAL_ORDER_DEPENDENCE,
+        excessive_precision::EXCESSIVE_PRECISION,
         explicit_write::EXPLICIT_WRITE,
         format::USELESS_FORMAT,
         formatting::POSSIBLE_MISSING_COMMA,
@@ -692,6 +694,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         enum_variants::MODULE_INCEPTION,
         eq_op::OP_REF,
         eta_reduction::REDUNDANT_CLOSURE,
+        excessive_precision::EXCESSIVE_PRECISION,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
         if_let_redundant_pattern_matching::IF_LET_REDUNDANT_PATTERN_MATCHING,

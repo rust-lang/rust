@@ -5,7 +5,7 @@ use rustc::ty;
 use rustc::hir::def::Def;
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::abi::Abi;
+use rustc_target::spec::abi::Abi;
 use syntax::codemap::Span;
 use utils::{iter_input_pats, span_lint, type_is_unsafe_function};
 

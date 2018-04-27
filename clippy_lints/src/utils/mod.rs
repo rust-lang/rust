@@ -8,7 +8,7 @@ use rustc::hir::map::Node;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, layout};
+use rustc::ty::{self, Ty, TyCtxt, layout::{self, IntegerExt}};
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
