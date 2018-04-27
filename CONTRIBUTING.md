@@ -9,6 +9,16 @@ visit the `#clippy` IRC channel on `irc.mozilla.org`.
 
 All contributors are expected to follow the [Rust Code of Conduct](http://www.rust-lang.org/conduct.html).
 
+* [Getting started](#getting-started)
+  * [Finding something to fix/improve](#finding-something-to-fiximprove)
+* [Writing code](#writing-code)
+  * [Author lint](#author-lint)
+  * [Documentation](#documentation)
+  * [Running test suite](#running-test-suite)
+  * [Testing manually](#testing-manually)
+  * [How Clippy works](#how-clippy-works)
+* [Contributions](#contributions)
+
 ## Getting started
 
 High level approach:
@@ -48,7 +58,7 @@ be more involved and require verifying types. The
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 
-### Writing code
+## Writing code
 
 Compiling clippy from scratch can take almost a minute or more depending on your machine.
 However, since Rust 1.24.0 incremental compilation is enabled by default and compile times for small changes should be quick.
@@ -59,7 +69,7 @@ to lint-writing, though it does get into advanced stuff. Most lints consist of a
 of this.
 
 
-#### Author lint
+### Author lint
 
 There is also the internal `author` lint to generate clippy code that detects the offending pattern. It does not work for all of the Rust syntax, but can give a good starting point.
 
@@ -96,7 +106,7 @@ if_chain! {
 
 If the command was executed successfully, you can copy the code over to where you are implementing your lint.
 
-#### Documentation
+### Documentation
 
 Please document your lint with a doc comment akin to the following:
 
@@ -122,17 +132,19 @@ Once your lint is merged it will show up in the [lint list](https://rust-lang-nu
 
 ### Running test suite
 
-Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
-Of course there's little sense in writing the output yourself or copying it around.
-Therefore you can simply run `tests/ui/update-all-references.sh` (after running
-`cargo test`) and check whether the output looks as you expect with `git diff`. Commit all
-`*.stderr` files, too.
+Use `cargo test` to run the whole testsuite.
 
 If you don't want to wait for all tests to finish, you can also execute a single test file by using `TESTNAME` to specify the test to run:
 
 ```bash
 TESTNAME=ui/empty_line_after_outer_attr cargo test --test compile-test
 ```
+
+Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
+Of course there's little sense in writing the output yourself or copying it around.
+Therefore you should use `tests/ui/update-all-references.sh` (after running
+`cargo test`) and check whether the output looks as you expect with `git diff`. Commit all
+`*.stderr` files, too.
 
 ### Testing manually
 
