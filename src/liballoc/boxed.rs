@@ -184,6 +184,7 @@ impl<T: ?Sized> Box<T> {
 
     #[unstable(feature = "ptr_internals", issue = "0", reason = "use into_raw_non_null instead")]
     #[inline]
+    #[doc(hidden)]
     pub fn into_unique(b: Box<T>) -> Unique<T> {
         let unique = b.0;
         mem::forget(b);
