@@ -19,6 +19,8 @@
 #[macro_use]
 extern crate derive_new;
 extern crate diff;
+#[macro_use]
+extern crate failure;
 extern crate getopts;
 extern crate itertools;
 #[cfg(test)]
@@ -37,7 +39,6 @@ extern crate toml;
 extern crate unicode_segmentation;
 
 use std::collections::HashMap;
-use std::error;
 use std::fmt;
 use std::io::{self, stdout, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
@@ -53,6 +54,7 @@ use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 
 use comment::{CharClasses, FullCodeCharKind, LineClasses};
+use failure::Fail;
 use issues::{BadIssueSeeker, Issue};
 use shape::Indent;
 use utils::use_colored_tty;
@@ -62,8 +64,7 @@ pub use config::options::CliOptions;
 pub use config::summary::Summary;
 pub use config::{file_lines, load_config, Config, WriteMode};
 
-pub type FmtError = Box<error::Error + Send + Sync>;
-pub type FmtResult<T> = std::result::Result<T, FmtError>;
+pub type FmtResult<T> = std::result::Result<T, failure::Error>;
 
 pub const WRITE_MODE_LIST: &str =
     "[replace|overwrite|display|plain|diff|coverage|checkstyle|check]";
@@ -109,31 +110,24 @@ pub(crate) type FileMap = Vec<FileRecord>;
 
 pub(crate) type FileRecord = (FileName, String);
 
-#[derive(Clone, Copy)]
+#[derive(Fail, Debug, Clone, Copy)]
 pub enum ErrorKind {
     // Line has exceeded character limit (found, maximum)
+    #[fail(
+        display = "line formatted, but exceeded maximum width (maximum: {} (see `max_width` option), found: {})",
+        _0,
+        _1
+    )]
     LineOverflow(usize, usize),
     // Line ends in whitespace
+    #[fail(display = "left behind trailing whitespace")]
     TrailingWhitespace,
     // TODO or FIXME item without an issue number
+    #[fail(display = "found {}", _0)]
     BadIssue(Issue),
     // License check has failed
+    #[fail(display = "license check failed")]
     LicenseCheck,
-}
-
-impl fmt::Display for ErrorKind {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match *self {
-            ErrorKind::LineOverflow(found, maximum) => write!(
-                fmt,
-                "line formatted, but exceeded maximum width (maximum: {} (see `max_width` option), found: {})",
-                maximum, found,
-            ),
-            ErrorKind::TrailingWhitespace => write!(fmt, "left behind trailing whitespace"),
-            ErrorKind::BadIssue(issue) => write!(fmt, "found {}", issue),
-            ErrorKind::LicenseCheck => write!(fmt, "license check failed"),
-        }
-    }
 }
 
 // Formatting errors that are identified *after* rustfmt has run.
@@ -901,7 +895,7 @@ pub enum Input {
 
 pub fn format_and_emit_report(input: Input, config: &Config) -> FmtResult<Summary> {
     if !config.version_meets_requirement() {
-        return Err(FmtError::from("Version mismatch"));
+        return Err(format_err!("Version mismatch"));
     }
     let out = &mut stdout();
     match format_input(input, config, Some(out)) {

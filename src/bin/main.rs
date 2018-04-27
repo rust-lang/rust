@@ -11,6 +11,7 @@
 #![cfg(not(test))]
 
 extern crate env_logger;
+extern crate failure;
 extern crate getopts;
 extern crate rustfmt_nightly as rustfmt;
 
@@ -18,6 +19,8 @@ use std::env;
 use std::fs::File;
 use std::io::{self, stdout, Read, Write};
 use std::path::PathBuf;
+
+use failure::err_msg;
 
 use getopts::{Matches, Options};
 
@@ -167,7 +170,7 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             Ok((WriteMode::None, Summary::default()))
         }
         Operation::ConfigOutputDefault { path } => {
-            let toml = Config::default().all_options().to_toml()?;
+            let toml = Config::default().all_options().to_toml().map_err(err_msg)?;
             if let Some(path) = path {
                 let mut file = File::create(path)?;
                 file.write_all(toml.as_bytes())?;
@@ -186,7 +189,9 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
 
             // parse file_lines
             if let Some(ref file_lines) = matches.opt_str("file-lines") {
-                config.set().file_lines(file_lines.parse()?);
+                config
+                    .set()
+                    .file_lines(file_lines.parse().map_err(err_msg)?);
                 for f in config.file_lines().files() {
                     match *f {
                         FileName::Custom(ref f) if f == "stdin" => {}
@@ -273,7 +278,7 @@ fn format(
     // that were used during formatting as TOML.
     if let Some(path) = minimal_config_path {
         let mut file = File::create(path)?;
-        let toml = config.used_options().to_toml()?;
+        let toml = config.used_options().to_toml().map_err(err_msg)?;
         file.write_all(toml.as_bytes())?;
     }
 

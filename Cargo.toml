@@ -47,6 +47,7 @@ getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.5.1"
 rustc-ap-syntax = "110.0.0"
+failure = "0.1.1"
 
 [dev-dependencies]
 assert_cli = "0.5"
