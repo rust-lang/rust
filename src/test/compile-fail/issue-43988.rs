@@ -14,12 +14,12 @@ fn main() {
 
     #[inline]
     let _a = 4;
-    //~^^ ERROR attribute should be applied to function
+    //~^^ ERROR attribute should be applied to function or closure
 
 
     #[inline(XYZ)]
     let _b = 4;
-    //~^^ ERROR attribute should be applied to function
+    //~^^ ERROR attribute should be applied to function or closure
 
     #[repr(nothing)]
     let _x = 0;
@@ -40,7 +40,7 @@ fn main() {
 
     #[inline(ABC)]
     foo();
-    //~^^ ERROR attribute should be applied to function
+    //~^^ ERROR attribute should be applied to function or closure
 
     let _z = #[repr] 1;
     //~^ ERROR attribute should not be applied to an expression

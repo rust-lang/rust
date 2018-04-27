@@ -30,6 +30,7 @@ enum Target {
     ForeignMod,
     Expression,
     Statement,
+    Closure,
     Other,
 }
 
@@ -103,14 +104,14 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         self.check_repr(item, target);
     }
 
-    /// Check if an `#[inline]` is applied to a function.
+    /// Check if an `#[inline]` is applied to a function or a closure.
     fn check_inline(&self, attr: &hir::Attribute, span: &Span, target: Target) {
-        if target != Target::Fn {
+        if target != Target::Fn && target != Target::Closure {
             struct_span_err!(self.tcx.sess,
                              attr.span,
                              E0518,
-                             "attribute should be applied to function")
-                .span_label(*span, "not a function")
+                             "attribute should be applied to function or closure")
+                .span_label(*span, "not a function or closure")
                 .emit();
         }
     }
@@ -286,9 +287,13 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     }
 
     fn check_expr_attributes(&self, expr: &hir::Expr) {
+        let target = match expr.node {
+            hir::ExprClosure(..) => Target::Closure,
+            _ => Target::Expression,
+        };
         for attr in expr.attrs.iter() {
             if attr.check_name("inline") {
-                self.check_inline(attr, &expr.span, Target::Expression);
+                self.check_inline(attr, &expr.span, target);
             }
             if attr.check_name("repr") {
                 self.emit_repr_error(
