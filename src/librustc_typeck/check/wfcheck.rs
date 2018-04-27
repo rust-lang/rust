@@ -675,7 +675,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
             // local so it should be okay to just unwrap everything.
             let trait_def_id = impl_params[&name];
             let trait_decl_span = tcx.def_span(trait_def_id);
-            error_194(tcx, type_span, trait_decl_span, &name[..]);
+            error_194(tcx, type_span, trait_decl_span, &name.as_str()[..]);
         }
     }
 }
