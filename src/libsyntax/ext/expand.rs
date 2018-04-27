@@ -16,7 +16,7 @@ use config::{is_test_or_bench, StripUnconfigured};
 use errors::FatalError;
 use ext::base::*;
 use ext::derive::{add_derived_markers, collect_derives};
-use ext::hygiene::{Mark, SyntaxContext};
+use ext::hygiene::{self, Mark, SyntaxContext};
 use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
 use fold;
@@ -502,6 +502,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 span: None,
                 allow_internal_unstable: false,
                 allow_internal_unsafe: false,
+                edition: hygiene::default_edition(),
             }
         });
 
@@ -642,6 +643,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     span: def_site_span,
                     allow_internal_unstable,
                     allow_internal_unsafe,
+                    edition: hygiene::default_edition(),
                 },
             });
             Ok(())
@@ -688,6 +690,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             span: tt_span,
                             allow_internal_unstable,
                             allow_internal_unsafe: false,
+                            edition: hygiene::default_edition(),
                         }
                     });
 
@@ -728,6 +731,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             // FIXME probably want to follow macro_rules macros here.
                             allow_internal_unstable: false,
                             allow_internal_unsafe: false,
+                            edition: hygiene::default_edition(),
                         },
                     });
 
@@ -802,6 +806,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 span: None,
                 allow_internal_unstable: false,
                 allow_internal_unsafe: false,
+                edition: hygiene::default_edition(),
             }
         };
 

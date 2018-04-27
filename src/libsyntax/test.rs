@@ -29,7 +29,7 @@ use entry::{self, EntryPointType};
 use ext::base::{ExtCtxt, Resolver};
 use ext::build::AstBuilder;
 use ext::expand::ExpansionConfig;
-use ext::hygiene::{Mark, SyntaxContext};
+use ext::hygiene::{self, Mark, SyntaxContext};
 use fold::Folder;
 use feature_gate::Features;
 use util::move_map::MoveMap;
@@ -300,6 +300,7 @@ fn generate_test_harness(sess: &ParseSess,
             span: None,
             allow_internal_unstable: true,
             allow_internal_unsafe: false,
+            edition: hygiene::default_edition(),
         }
     });
 

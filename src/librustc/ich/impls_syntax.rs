@@ -132,6 +132,15 @@ impl_stable_hash_for!(struct ::syntax::attr::Stability {
 });
 
 impl<'a> HashStable<StableHashingContext<'a>>
+for ::syntax::edition::Edition {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>>
 for ::syntax::attr::StabilityLevel {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
@@ -389,6 +398,7 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::NameAndSpan {
     format,
     allow_internal_unstable,
     allow_internal_unsafe,
+    edition,
     span
 });
 

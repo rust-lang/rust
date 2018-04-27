@@ -10,7 +10,7 @@
 
 use attr::HasAttrs;
 use ast;
-use codemap::{ExpnInfo, NameAndSpan, ExpnFormat};
+use codemap::{hygiene, ExpnInfo, NameAndSpan, ExpnFormat};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use parse::parser::PathStyle;
@@ -65,6 +65,7 @@ pub fn add_derived_markers<T>(cx: &mut ExtCtxt, span: Span, traits: &[ast::Path]
             span: None,
             allow_internal_unstable: true,
             allow_internal_unsafe: false,
+            edition: hygiene::default_edition(),
         },
     });
 

@@ -14,7 +14,7 @@ use std::cell::Cell;
 use ext::hygiene::{Mark, SyntaxContext};
 use symbol::{Symbol, keywords};
 use syntax_pos::{DUMMY_SP, Span};
-use codemap::{ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned, respan};
+use codemap::{ExpnInfo, NameAndSpan, MacroAttribute, dummy_spanned, hygiene, respan};
 use ptr::P;
 use tokenstream::TokenStream;
 
@@ -30,6 +30,7 @@ fn ignored_span(sp: Span) -> Span {
             span: None,
             allow_internal_unstable: true,
             allow_internal_unsafe: false,
+            edition: hygiene::default_edition(),
         }
     });
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
