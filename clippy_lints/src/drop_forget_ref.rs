@@ -60,7 +60,7 @@ declare_clippy_lint! {
 /// ```rust
 /// let x:i32 = 42;   // i32 implements Copy
 /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
-/// original unaffected
+/// // original unaffected
 /// ```
 declare_clippy_lint! {
     pub DROP_COPY,
@@ -87,7 +87,7 @@ declare_clippy_lint! {
 /// ```rust
 /// let x:i32 = 42;     // i32 implements Copy
 /// std::mem::forget(x) // A copy of x is passed to the function, leaving the
-/// original unaffected
+/// // original unaffected
 /// ```
 declare_clippy_lint! {
     pub FORGET_COPY,
