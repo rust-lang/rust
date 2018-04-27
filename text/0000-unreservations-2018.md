@@ -8,7 +8,7 @@
 
 We unreserve:
 + `pure`
-+ `unsize`
++ `unsized`
 + `sizeof`
 + `alignof`
 + `offsetof`
@@ -37,7 +37,7 @@ used as general identifiers. This is done immediately and on edition 2015.
 
 The keywords to unreserve are:
 + `pure`
-+ `unsize`
++ `unsized`
 + `sizeof`
 + `alignof`
 + `offsetof`
@@ -132,7 +132,7 @@ other than `pure`.
 In both 1. and 2., `pure` can be contextual.
 We also don't think that the drawbacks are significant for `pure`.
 
-## Rationale for `unsize`
+## Rationale for `unsized`
 
 This would be a modifier on types, but we already have `<T: ?Sized>` and we
 could have `T: !Sized` so there seems to be no need for keeping `unsized`.
