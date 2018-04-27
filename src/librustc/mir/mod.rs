@@ -45,6 +45,8 @@ use syntax_pos::{Span, DUMMY_SP};
 use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::Float;
 
+pub use mir::interpret::AssertMessage;
+
 mod cache;
 pub mod tcx;
 pub mod visit;
@@ -1132,23 +1134,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     write!(fmt, "!")?;
                 }
                 write!(fmt, "{:?}, ", cond)?;
-
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        write!(fmt, "{:?}, {:?}, {:?}",
-                               "index out of bounds: the len is {} but the index is {}",
-                               len, index)?;
-                    }
-                    AssertMessage::Math(ref err) => {
-                        write!(fmt, "{:?}", err.description())?;
-                    }
-                    AssertMessage::GeneratorResumedAfterReturn => {
-                        write!(fmt, "{:?}", "generator resumed after completion")?;
-                    }
-                    AssertMessage::GeneratorResumedAfterPanic => {
-                        write!(fmt, "{:?}", "generator resumed after panicking")?;
-                    }
-                }
+                write!(fmt, "{:?}", msg)?;
 
                 write!(fmt, ")")
             },
@@ -1203,17 +1189,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
         }
     }
-}
-
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum AssertMessage<'tcx> {
-    BoundsCheck {
-        len: Operand<'tcx>,
-        index: Operand<'tcx>
-    },
-    Math(EvalErrorKind<'tcx>),
-    GeneratorResumedAfterReturn,
-    GeneratorResumedAfterPanic,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2281,8 +2256,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             },
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    AssertMessage::BoundsCheck {
+                let msg = if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
+                    EvalErrorKind::BoundsCheck {
                         len: len.fold_with(folder),
                         index: index.fold_with(folder),
                     }
@@ -2331,7 +2306,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             },
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
                         len.visit_with(visitor) || index.visit_with(visitor)
                     } else {
                         false

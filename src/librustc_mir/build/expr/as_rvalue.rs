@@ -85,9 +85,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.push_assign(block, source_info, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.to_copy(), minval));
 
-                    let err = EvalErrorKind::OverflowNeg;
                     block = this.assert(block, Operand::Move(is_min), false,
-                                        AssertMessage::Math(err), expr_span);
+                                        EvalErrorKind::OverflowNeg, expr_span);
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
@@ -313,7 +312,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let err = EvalErrorKind::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false,
-                                AssertMessage::Math(err), span);
+                                err, span);
 
             block.and(Rvalue::Use(Operand::Move(val)))
         } else {
@@ -336,7 +335,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.to_copy(), zero));
 
                 block = self.assert(block, Operand::Move(is_zero), false,
-                                    AssertMessage::Math(zero_err), span);
+                                    zero_err, span);
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
@@ -361,7 +360,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
                     block = self.assert(block, Operand::Move(of), false,
-                                        AssertMessage::Math(overflow_err), span);
+                                        overflow_err, span);
                 }
             }
 

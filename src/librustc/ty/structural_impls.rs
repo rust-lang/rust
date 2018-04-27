@@ -474,8 +474,18 @@ impl<'a, 'tcx> Lift<'tcx> for ConstEvalErr<'a> {
 impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
     type Lifted = interpret::EvalError<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        Some(interpret::EvalError {
+            kind: tcx.lift(&self.kind)?,
+            backtrace: self.backtrace.clone(),
+        })
+    }
+}
+
+impl<'a, 'tcx, O: Lift<'tcx>> Lift<'tcx> for interpret::EvalErrorKind<'a, O> {
+    type Lifted = interpret::EvalErrorKind<'tcx, <O as Lift<'tcx>>::Lifted>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         use ::mir::interpret::EvalErrorKind::*;
-        let kind = match self.kind {
+        Some(match *self {
             MachineError(ref err) => MachineError(err.clone()),
             FunctionPointerTyMismatch(a, b) => FunctionPointerTyMismatch(
                 tcx.lift(&a)?,
@@ -504,7 +514,10 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             Unimplemented(ref s) => Unimplemented(s.clone()),
             DerefFunctionPointer => DerefFunctionPointer,
             ExecuteMemory => ExecuteMemory,
-            ArrayIndexOutOfBounds(sp, a, b) => ArrayIndexOutOfBounds(sp, a, b),
+            BoundsCheck { ref len, ref index } => BoundsCheck {
+                len: tcx.lift(len)?,
+                index: tcx.lift(index)?,
+            },
             Intrinsic(ref s) => Intrinsic(s.clone()),
             InvalidChar(c) => InvalidChar(c),
             StackFrameLimitReached => StackFrameLimitReached,
@@ -570,10 +583,8 @@ impl<'a, 'tcx> Lift<'tcx> for interpret::EvalError<'a> {
             Overflow(op) => Overflow(op),
             DivisionByZero => DivisionByZero,
             RemainderByZero => RemainderByZero,
-        };
-        Some(interpret::EvalError {
-            kind: kind,
-            backtrace: self.backtrace.clone(),
+            GeneratorResumedAfterReturn => GeneratorResumedAfterReturn,
+            GeneratorResumedAfterPanic => GeneratorResumedAfterPanic,
         })
     }
 }

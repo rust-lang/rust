@@ -511,17 +511,13 @@ macro_rules! make_mir_visitor {
             fn super_assert_message(&mut self,
                                     msg: & $($mutability)* AssertMessage<'tcx>,
                                     location: Location) {
-                match *msg {
-                    AssertMessage::BoundsCheck {
+                use mir::interpret::EvalErrorKind::*;
+                if let BoundsCheck {
                         ref $($mutability)* len,
                         ref $($mutability)* index
-                    } => {
-                        self.visit_operand(len, location);
-                        self.visit_operand(index, location);
-                    }
-                    AssertMessage::Math(_) => {},
-                    AssertMessage::GeneratorResumedAfterReturn => {},
-                    AssertMessage::GeneratorResumedAfterPanic => {},
+                    } = *msg {
+                    self.visit_operand(len, location);
+                    self.visit_operand(index, location);
                 }
             }
 

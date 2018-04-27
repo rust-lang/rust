@@ -535,8 +535,8 @@ for ::mir::interpret::EvalError<'gcx> {
     }
 }
 
-impl<'a, 'gcx> HashStable<StableHashingContext<'a>>
-for ::mir::interpret::EvalErrorKind<'gcx> {
+impl<'a, 'gcx, O: HashStable<StableHashingContext<'a>>> HashStable<StableHashingContext<'a>>
+for ::mir::interpret::EvalErrorKind<'gcx, O> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
@@ -578,6 +578,8 @@ for ::mir::interpret::EvalErrorKind<'gcx> {
             OverflowNeg |
             RemainderByZero |
             DivisionByZero |
+            GeneratorResumedAfterReturn |
+            GeneratorResumedAfterPanic |
             ReferencedConstant => {}
             MachineError(ref err) => err.hash_stable(hcx, hasher),
             FunctionPointerTyMismatch(a, b) => {
@@ -597,10 +599,9 @@ for ::mir::interpret::EvalErrorKind<'gcx> {
             },
             InvalidBoolOp(bop) => bop.hash_stable(hcx, hasher),
             Unimplemented(ref s) => s.hash_stable(hcx, hasher),
-            ArrayIndexOutOfBounds(sp, a, b) => {
-                sp.hash_stable(hcx, hasher);
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher)
+            BoundsCheck { ref len, ref index } => {
+                len.hash_stable(hcx, hasher);
+                index.hash_stable(hcx, hasher)
             },
             Intrinsic(ref s) => s.hash_stable(hcx, hasher),
             InvalidChar(c) => c.hash_stable(hcx, hasher),
