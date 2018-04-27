@@ -20,7 +20,7 @@ use rustc::ty::maps::Providers;
 use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Place};
 use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
 use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::ClosureRegionRequirements;
+use rustc::mir::{ClosureRegionRequirements, Local};
 
 use rustc_data_structures::control_flow_graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
@@ -729,6 +729,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         erased_drop_place_ty: ty::Ty<'gcx>,
         span: Span,
     ) {
+        let gcx = self.tcx.global_tcx();
+        let drop_field = |
+            mir: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
+            (index, field): (usize, ty::Ty<'gcx>),
+        | {
+            let field_ty = gcx.normalize_erasing_regions(mir.param_env, field);
+            let place = drop_place.clone().field(Field::new(index), field_ty);
+
+            mir.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span);
+        };
+
         match erased_drop_place_ty.sty {
             // When a struct is being dropped, we need to check
             // whether it has a destructor, if it does, then we can
@@ -737,14 +748,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // destructor but `bar` does not, we will only check for
             // borrows of `x.foo` and not `x.bar`. See #47703.
             ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
-                for (index, field) in def.all_fields().enumerate() {
-                    let gcx = self.tcx.global_tcx();
-                    let field_ty = field.ty(gcx, substs);
-                    let field_ty = gcx.normalize_erasing_regions(self.param_env, field_ty);
-                    let place = drop_place.clone().field(Field::new(index), field_ty);
-
-                    self.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span);
-                }
+                def.all_fields()
+                    .map(|field| field.ty(gcx, substs))
+                    .enumerate()
+                    .for_each(|field| drop_field(self, field));
+            }
+            // Same as above, but for tuples.
+            ty::TyTuple(tys) => {
+                tys.iter().cloned().enumerate()
+                    .for_each(|field| drop_field(self, field));
+            }
+            // Closures and generators also have disjoint fields, but they are only
+            // directly accessed in the body of the closure/generator.
+            ty::TyClosure(def, substs)
+            | ty::TyGenerator(def, substs, ..)
+                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+            => {
+                substs.upvar_tys(def, self.tcx).enumerate()
+                    .for_each(|field| drop_field(self, field));
             }
             _ => {
                 // We have now refined the type of the value being
@@ -752,7 +773,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // subfield; so check whether that field's type still
                 // "needs drop". If so, we assume that the destructor
                 // may access any data it likes (i.e., a Deep Write).
-                let gcx = self.tcx.global_tcx();
                 if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
                     self.access_place(
                         ContextKind::Drop.new(loc),
