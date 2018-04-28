@@ -119,6 +119,17 @@ impl PartialEq for UseTree {
 }
 impl Eq for UseTree {}
 
+impl Spanned for UseTree {
+    fn span(&self) -> Span {
+        let lo = if let Some(ref attrs) = self.attrs {
+            attrs.iter().next().map_or(self.span.lo(), |a| a.span.lo())
+        } else {
+            self.span.lo()
+        };
+        mk_sp(lo, self.span.hi())
+    }
+}
+
 impl UseSegment {
     // Clone a version of self with any top-level alias removed.
     fn remove_alias(&self) -> UseSegment {
@@ -268,7 +279,7 @@ impl UseTree {
                     use_tree,
                     None,
                     Some(item.vis.clone()),
-                    Some(item.span().lo()),
+                    Some(item.span.lo()),
                     if item.attrs.is_empty() {
                         None
                     } else {
