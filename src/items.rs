@@ -453,35 +453,39 @@ impl<'a> FmtVisitor<'a> {
 
         self.last_pos = body_start;
 
-        self.block_indent = self.block_indent.block_indent(self.config);
-        let variant_list = self.format_variant_list(enum_def, body_start, span.hi() - BytePos(1));
-        match variant_list {
-            Some(ref body_str) => self.push_str(body_str),
-            None => self.format_missing_no_indent(span.hi() - BytePos(1)),
+        match self.format_variant_list(enum_def, body_start, span.hi()) {
+            Some(ref s) if enum_def.variants.is_empty() => self.push_str(s),
+            rw => {
+                self.push_rewrite(mk_sp(body_start, span.hi()), rw);
+                self.block_indent = self.block_indent.block_unindent(self.config);
+            }
         }
-        self.block_indent = self.block_indent.block_unindent(self.config);
-
-        if variant_list.is_some() || contains_comment(&enum_snippet[brace_pos..]) {
-            let indent_str = self.block_indent.to_string(self.config);
-            self.push_str(&indent_str);
-        }
-        self.push_str("}");
-        self.last_pos = span.hi();
     }
 
     // Format the body of an enum definition
     fn format_variant_list(
-        &self,
+        &mut self,
         enum_def: &ast::EnumDef,
         body_lo: BytePos,
         body_hi: BytePos,
     ) -> Option<String> {
         if enum_def.variants.is_empty() {
-            return None;
+            let mut buffer = String::with_capacity(128);
+            // 1 = "}"
+            let span = mk_sp(body_lo, body_hi - BytePos(1));
+            format_empty_struct_or_tuple(
+                &self.get_context(),
+                span,
+                self.block_indent,
+                &mut buffer,
+                "",
+                "}",
+            );
+            return Some(buffer);
         }
         let mut result = String::with_capacity(1024);
-        let indentation = self.block_indent.to_string_with_newline(self.config);
-        result.push_str(&indentation);
+        let original_offset = self.block_indent;
+        self.block_indent = self.block_indent.block_indent(self.config);
 
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
@@ -526,7 +530,8 @@ impl<'a> FmtVisitor<'a> {
 
         let list = write_list(&items, &fmt)?;
         result.push_str(&list);
-        result.push('\n');
+        result.push_str(&original_offset.to_string_with_newline(self.config));
+        result.push('}');
         Some(result)
     }
 
