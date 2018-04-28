@@ -10,7 +10,7 @@
 
 // ignore-pretty pretty-printing is unhygienic
 
-#![feature(decl_macro, proc_macro_path_invoc)]
+#![feature(decl_macro)]
 #![allow(unused)]
 
 mod foo {

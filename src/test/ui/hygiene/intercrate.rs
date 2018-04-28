@@ -14,7 +14,7 @@
 
 // error-pattern:type `fn() -> u32 {intercrate::foo::bar::f}` is private
 
-#![feature(decl_macro, proc_macro_path_invoc)]
+#![feature(decl_macro)]
 
 extern crate intercrate;
 

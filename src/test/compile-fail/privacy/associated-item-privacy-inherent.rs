@@ -10,7 +10,6 @@
 
 #![feature(decl_macro, associated_type_defaults)]
 #![allow(unused, private_in_public)]
-#![feature(proc_macro_path_invoc)]
 
 mod priv_nominal {
     pub struct Pub;
