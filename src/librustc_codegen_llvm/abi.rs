@@ -476,6 +476,15 @@ impl<'a, 'tcx> FnTypeExt<'a, 'tcx> for FnType<'tcx, Ty<'tcx>> {
                 }
             }
 
+            // HACK(nox): Pointee alignment for indirect sret arguments make
+            // LLVM unhappy at least on i686-pc-windows, and that leads to some
+            // tests failing (namely extern-pass-TwoU64s and struct-return).
+            if is_return {
+                if let PassMode::Indirect(ref mut attrs) = arg.mode {
+                    attrs.pointee_align = None;
+                }
+            }
+
             arg
         };
 
