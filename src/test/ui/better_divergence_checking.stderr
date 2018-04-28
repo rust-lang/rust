@@ -1,0 +1,17 @@
+error: unreachable expression
+  --> $DIR/better_divergence_checking.rs:16:40
+   |
+LL |   pub fn uninhabited_parameter(_v: Void) {
+   |  ________________________________________^
+LL | |     //~^ ERROR unreachable expression
+LL | | }
+   | |_^
+   |
+note: lint level defined here
+  --> $DIR/better_divergence_checking.rs:12:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

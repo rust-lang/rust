@@ -1,0 +1,27 @@
+error[E0004]: non-exhaustive patterns: type (Void,) is non-empty
+  --> $DIR/feature-gate-better_divergence_checking.rs:15:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/feature-gate-better_divergence_checking.rs:15:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+
+error[E0004]: non-exhaustive patterns: type [Void; 1] is non-empty
+  --> $DIR/feature-gate-better_divergence_checking.rs:18:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+   |
+help: Please ensure that all possible cases are being handled; possibly adding wildcards or more match arms.
+  --> $DIR/feature-gate-better_divergence_checking.rs:18:19
+   |
+LL |     let _ = match x {}; //~ ERROR non-exhaustive
+   |                   ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0004`.
