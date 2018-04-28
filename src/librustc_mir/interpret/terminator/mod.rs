@@ -161,6 +161,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                         }
                         Overflow(op) => Err(Overflow(op).into()),
                         OverflowNeg => Err(OverflowNeg.into()),
+                        DivisionByZero => Err(DivisionByZero.into()),
+                        RemainderByZero => Err(RemainderByZero.into()),
                         GeneratorResumedAfterReturn |
                         GeneratorResumedAfterPanic => unimplemented!(),
                         _ => bug!(),

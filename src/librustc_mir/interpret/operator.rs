@@ -140,7 +140,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 return Ok((PrimVal::from_bool(op(&l, &r)), false));
             }
             let op: Option<fn(i128, i128) -> (i128, bool)> = match bin_op {
-                Rem | Div if r == 0 => return Ok((PrimVal::Bytes(l), true)),
+                Div if r == 0 => return err!(DivisionByZero),
+                Rem if r == 0 => return err!(RemainderByZero),
                 Div => Some(i128::overflowing_div),
                 Rem => Some(i128::overflowing_rem),
                 Add => Some(i128::overflowing_add),
@@ -221,7 +222,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                     Add => u128::overflowing_add,
                     Sub => u128::overflowing_sub,
                     Mul => u128::overflowing_mul,
-                    Rem | Div if r == 0 => return Ok((PrimVal::Bytes(l), true)),
+                    Div if r == 0 => return err!(DivisionByZero),
+                    Rem if r == 0 => return err!(RemainderByZero),
                     Div => u128::overflowing_div,
                     Rem => u128::overflowing_rem,
                     _ => bug!(),

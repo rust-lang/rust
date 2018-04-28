@@ -1134,7 +1134,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                     write!(fmt, "!")?;
                 }
                 write!(fmt, "{:?}, ", cond)?;
-                write!(fmt, "{:?}", msg)?;
+                write!(fmt, "\"{:?}\"", msg)?;
 
                 write!(fmt, ")")
             },
