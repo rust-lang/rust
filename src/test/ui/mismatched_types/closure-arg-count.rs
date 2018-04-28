@@ -39,7 +39,13 @@ fn main() {
 
     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
     //~^ ERROR function is expected to take
+
+    call(Foo);
+    //~^ ERROR function is expected to take
 }
 
 fn foo() {}
 fn qux(x: usize, y: usize) {}
+
+fn call<F, R>(_: F) where F: FnOnce() -> R {}
+struct Foo(u8);

@@ -116,6 +116,21 @@ error[E0593]: function is expected to take 1 argument, but it takes 2 arguments
 LL |     let _it = vec![1, 2, 3].into_iter().map(usize::checked_add);
    |                                         ^^^ expected function that takes 1 argument
 
-error: aborting due to 12 previous errors
+error[E0593]: function is expected to take 0 arguments, but it takes 1 argument
+  --> $DIR/closure-arg-count.rs:43:5
+   |
+LL |     call(Foo);
+   |     ^^^^ expected function that takes 0 arguments
+...
+LL | struct Foo(u8);
+   | --------------- takes 1 argument
+   |
+note: required by `call`
+  --> $DIR/closure-arg-count.rs:50:1
+   |
+LL | fn call<F, R>(_: F) where F: FnOnce() -> R {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0593`.
