@@ -70,7 +70,7 @@ pub fn format_expr(
             expr.span,
             context,
             shape,
-            None,
+            choose_separator_tactic(context, expr.span),
             None,
         ),
         ast::ExprKind::Lit(ref l) => rewrite_literal(context, l, shape),
@@ -1336,6 +1336,18 @@ const SPECIAL_MACRO_WHITELIST: &[(&str, usize)] = &[
     ("debug_assert_ne!", 2),
 ];
 
+fn choose_separator_tactic(context: &RewriteContext, span: Span) -> Option<SeparatorTactic> {
+    if context.inside_macro() {
+        if span_ends_with_comma(context, span) {
+            Some(SeparatorTactic::Always)
+        } else {
+            Some(SeparatorTactic::Never)
+        }
+    } else {
+        None
+    }
+}
+
 pub fn rewrite_call(
     context: &RewriteContext,
     callee: &str,
@@ -1350,15 +1362,7 @@ pub fn rewrite_call(
         shape,
         span,
         context.config.width_heuristics().fn_call_width,
-        if context.inside_macro() {
-            if span_ends_with_comma(context, span) {
-                Some(SeparatorTactic::Always)
-            } else {
-                Some(SeparatorTactic::Never)
-            }
-        } else {
-            None
-        },
+        choose_separator_tactic(context, span),
     )
 }
 
@@ -1436,11 +1440,14 @@ pub fn is_nested_call(expr: &ast::Expr) -> bool {
 pub fn span_ends_with_comma(context: &RewriteContext, span: Span) -> bool {
     let mut result: bool = Default::default();
     let mut prev_char: char = Default::default();
+    let closing_delimiters = &[')', '}', ']'];
 
     for (kind, c) in CharClasses::new(context.snippet(span).chars()) {
         match c {
             _ if kind.is_comment() || c.is_whitespace() => continue,
-            ')' | '}' => result = result && prev_char != ')' && prev_char != '}',
+            c if closing_delimiters.contains(&c) => {
+                result &= !closing_delimiters.contains(&prev_char);
+            }
             ',' => result = true,
             _ => result = false,
         }
