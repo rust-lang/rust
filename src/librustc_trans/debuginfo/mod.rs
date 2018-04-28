@@ -271,7 +271,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
         None => {}
     };
-    if sig.output().is_never() {
+    if cx.layout_of(sig.output()).abi == ty::layout::Abi::Uninhabited {
         flags = flags | DIFlags::FlagNoReturn;
     }
 
