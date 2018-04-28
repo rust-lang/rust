@@ -28,9 +28,9 @@ use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
 use ty::relate::RelateResult;
 use traits::{self, ObligationCause, PredicateObligations};
+use rustc_data_structures::lazy_btree_map::LazyBTreeMap;
 use rustc_data_structures::unify as ut;
 use std::cell::{Cell, RefCell, Ref, RefMut};
-use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
 use errors::DiagnosticBuilder;
@@ -187,7 +187,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
 /// region that each late-bound region was replaced with.
-pub type SkolemizationMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
+pub type SkolemizationMap<'tcx> = LazyBTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
@@ -1216,7 +1216,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>)
-        -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+        -> (T, LazyBTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where T : TypeFoldable<'tcx>
     {
         self.tcx.replace_late_bound_regions(
