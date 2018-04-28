@@ -1190,18 +1190,8 @@ pub fn format_struct_struct(
     }
 
     if fields.is_empty() {
-        let snippet = context.snippet(mk_sp(body_lo, span.hi() - BytePos(1)));
-        if snippet.trim().is_empty() {
-            // `struct S {}`
-        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
-            // fix indent
-            result.push_str(snippet.trim_right());
-            result.push('\n');
-            result.push_str(&offset.to_string(context.config));
-        } else {
-            result.push_str(snippet);
-        }
-        result.push('}');
+        let inner_span = mk_sp(body_lo, span.hi() - BytePos(1));
+        format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "", "}");
         return Some(result);
     }
 
@@ -1340,31 +1330,11 @@ fn format_tuple_struct(
     };
 
     if fields.is_empty() {
-        // 3 = `();`
-        let used_width = last_line_used_width(&result, offset.width()) + 3;
-        if used_width > context.config.max_width() {
-            result.push('\n');
-            result.push_str(&offset
-                .block_indent(context.config)
-                .to_string(context.config))
-        }
-        result.push('(');
-        let snippet = context.snippet(mk_sp(
-            body_lo,
-            context
-                .snippet_provider
-                .span_before(mk_sp(body_lo, span.hi()), ")"),
-        ));
-        if snippet.is_empty() {
-            // `struct S ()`
-        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
-            result.push_str(snippet.trim_right());
-            result.push('\n');
-            result.push_str(&offset.to_string(context.config));
-        } else {
-            result.push_str(snippet);
-        }
-        result.push(')');
+        let body_hi = context
+            .snippet_provider
+            .span_before(mk_sp(body_lo, span.hi()), ")");
+        let inner_span = mk_sp(body_lo, body_hi);
+        format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "(", ")");
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
         let fields = &fields.iter().collect::<Vec<_>>();
