@@ -1526,7 +1526,8 @@ pub fn in_rustc_thread<F, R>(f: F) -> Result<R, Box<Any + Send>>
         let thread = cfg.spawn(f);
         thread.unwrap().join()
     } else {
-        Ok(f())
+        let f = panic::AssertUnwindSafe(f);
+        panic::catch_unwind(f)
     }
 }
 
