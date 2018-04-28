@@ -53,6 +53,7 @@ pub enum MarkKind {
 }
 
 impl Mark {
+    #[inline]
     pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
             data.marks.push(MarkData { parent: parent, kind: MarkKind::Legacy, expn_info: None });
@@ -171,6 +172,7 @@ impl HygieneData {
         }
     }
 
+    #[inline]
     fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         GLOBALS.with(|globals| f(&mut *globals.hygiene_data.borrow_mut()))
     }
@@ -181,6 +183,7 @@ pub fn clear_markings() {
 }
 
 impl SyntaxContext {
+    #[inline]
     pub const fn empty() -> Self {
         SyntaxContext(0)
     }
@@ -450,6 +453,7 @@ pub struct NameAndSpan {
 }
 
 impl NameAndSpan {
+    #[inline]
     pub fn name(&self) -> Symbol {
         match self.format {
             ExpnFormat::MacroAttribute(s) |
@@ -479,6 +483,7 @@ pub enum CompilerDesugaringKind {
 }
 
 impl CompilerDesugaringKind {
+    #[inline]
     pub fn as_symbol(&self) -> Symbol {
         use CompilerDesugaringKind::*;
         let s = match *self {
@@ -491,18 +496,21 @@ impl CompilerDesugaringKind {
 }
 
 impl Encodable for SyntaxContext {
+    #[inline]
     fn encode<E: Encoder>(&self, _: &mut E) -> Result<(), E::Error> {
         Ok(()) // FIXME(jseyfried) intercrate hygiene
     }
 }
 
 impl Decodable for SyntaxContext {
+    #[inline]
     fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
         Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
     }
 }
 
 impl Symbol {
+    #[inline]
     pub fn from_ident(ident: Ident) -> Symbol {
         HygieneData::with(|data| {
             let gensym = ident.name.gensymed();
@@ -511,6 +519,7 @@ impl Symbol {
         })
     }
 
+    #[inline]
     pub fn to_ident(self) -> Ident {
         HygieneData::with(|data| {
             match data.gensym_to_ctxt.get(&self) {
