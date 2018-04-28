@@ -10,10 +10,11 @@
 
 use std::borrow::Cow;
 
+use rustc_target::spec::abi;
 use syntax::ast::{self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem,
                   NestedMetaItemKind, Path, Visibility, VisibilityKind};
 use syntax::codemap::{BytePos, Span, NO_EXPANSION};
-use syntax::{abi, ptr};
+use syntax::ptr;
 
 use config::Color;
 use rewrite::RewriteContext;

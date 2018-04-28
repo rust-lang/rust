@@ -15,9 +15,10 @@ use std::cmp::{min, Ordering};
 
 use config::lists::*;
 use regex::Regex;
+use rustc_target::spec::abi;
 use syntax::codemap::{self, BytePos, Span};
 use syntax::visit;
-use syntax::{abi, ast, ptr, symbol};
+use syntax::{ast, ptr, symbol};
 
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
