@@ -134,6 +134,16 @@ pub fn outer_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
 }
 
 #[inline]
+pub fn is_single_line(s: &str) -> bool {
+    s.chars().find(|&c| c == '\n').is_none()
+}
+
+#[inline]
+pub fn first_line_contains_single_line_comment(s: &str) -> bool {
+    s.lines().next().map_or(false, |l| l.contains("//"))
+}
+
+#[inline]
 pub fn last_line_contains_single_line_comment(s: &str) -> bool {
     s.lines().last().map_or(false, |l| l.contains("//"))
 }

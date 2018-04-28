@@ -1242,6 +1242,41 @@ fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> By
     }
 }
 
+// Format tuple or struct without any fields. We need to make sure that the comments
+// inside the delimiters are preserved.
+fn format_empty_struct_or_tuple(
+    context: &RewriteContext,
+    span: Span,
+    offset: Indent,
+    result: &mut String,
+    opener: &str,
+    closer: &str,
+) {
+    // 3 = " {}" or "();"
+    let used_width = last_line_used_width(&result, offset.width()) + 3;
+    if used_width > context.config.max_width() {
+        result.push_str(&offset.to_string_with_newline(context.config))
+    }
+    result.push_str(opener);
+    match rewrite_missing_comment(span, Shape::indented(offset, context.config), context) {
+        Some(ref s) if s.is_empty() => (),
+        Some(ref s) => {
+            if !is_single_line(s) || first_line_contains_single_line_comment(s) {
+                let nested_indent_str = offset
+                    .block_indent(context.config)
+                    .to_string_with_newline(context.config);
+                result.push_str(&nested_indent_str);
+            }
+            result.push_str(s);
+            if last_line_contains_single_line_comment(s) {
+                result.push_str(&offset.to_string_with_newline(context.config));
+            }
+        }
+        None => result.push_str(context.snippet(span)),
+    }
+    result.push_str(closer);
+}
+
 fn format_tuple_struct(
     context: &RewriteContext,
     struct_parts: &StructParts,
