@@ -15,13 +15,14 @@ pub use self::Lit::*;
 pub use self::Token::*;
 
 use ast::{self};
+use edition::Edition;
 use parse::ParseSess;
 use print::pprust;
 use ptr::P;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
-use syntax_pos::{self, Span, FileName};
+use syntax_pos::{self, hygiene, Span, FileName};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
@@ -168,7 +169,11 @@ pub fn is_used_keyword(id: ast::Ident) -> bool {
 
 /// Returns `true` if the token is a keyword reserved for possible future use.
 pub fn is_unused_keyword(id: ast::Ident) -> bool {
-    id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name()
+    let edition = || id.span.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
+                                                                    |einfo| einfo.callee.edition);
+    id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name() ||
+    id.name == keywords::Proc.name() && edition() == Edition::Edition2015 ||
+    id.name == keywords::Async.name() && edition() == Edition::Edition2018
 }
 
 /// Returns `true` if the token is either a special identifier or a keyword.

@@ -383,16 +383,20 @@ declare_keywords! {
     (53, Virtual,            "virtual")
     (54, Yield,              "yield")
 
+    // Edition-specific keywords reserved for future use.
+    (55, Async,              "async") // >= 2018 Edition Only
+    (56, Proc,               "proc") // <= 2015 Edition Only
+
     // Special lifetime names
-    (55, UnderscoreLifetime, "'_")
-    (56, StaticLifetime,     "'static")
+    (57, UnderscoreLifetime, "'_")
+    (58, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (57, Auto,               "auto")
-    (58, Catch,              "catch")
-    (59, Default,            "default")
-    (60, Dyn,                "dyn")
-    (61, Union,              "union")
+    (59, Auto,               "auto")
+    (60, Catch,              "catch")
+    (61, Default,            "default")
+    (62, Dyn,                "dyn")
+    (63, Union,              "union")
 }
 
 // If an interner exists, return it. Otherwise, prepare a fresh one.
