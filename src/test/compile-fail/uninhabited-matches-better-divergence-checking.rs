@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+#![feature(better_divergence_checking)]
 
 enum Void {}
 
@@ -20,10 +22,10 @@ fn main() {
     let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: (Void,) = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; //~ ERROR non-exhaustive
+    let _ = match x {}; // okay
 
     let x: [Void; 1] = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; //~ ERROR non-exhaustive
+    let _ = match x {}; // okay
 
     let x: &[Void] = unsafe { std::mem::uninitialized() };
     let _ = match x {   //~ ERROR non-exhaustive
