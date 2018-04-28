@@ -1,7 +1,7 @@
-- Feature Name: custom_test_frameworks
+- Feature Name: `custom_test_frameworks`
 - Start Date: 2018-01-25
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2318](https://github.com/rust-lang/rfcs/pull/2318)
+- Rust Issue: [rust-lang/rust#50297](https://github.com/rust-lang/rust/issues/50297)
 
 # Summary
 [summary]: #summary
