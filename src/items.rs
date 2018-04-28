@@ -32,11 +32,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::TraitTyParamBounds;
-use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_auto,
-            format_constness, format_defaultness, format_mutability, format_unsafety,
-            format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
-            last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
-            stmt_expr, trimmed_last_line_width};
+use utils::*;
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
