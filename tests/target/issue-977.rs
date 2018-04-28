@@ -4,7 +4,9 @@
 trait NameC {
     // comment
 }
-struct FooC { /* comment */ }
+struct FooC {
+    // comment
+}
 enum MooC {
     // comment
 }

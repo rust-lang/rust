@@ -136,7 +136,9 @@ union Foo {
 union Foo {
     // trailing space ->
 }
-union Foo { /* comment */ }
+union Foo {
+    // comment
+}
 
 union LongUnion {
     a: A,
