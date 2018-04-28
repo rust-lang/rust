@@ -94,6 +94,7 @@ pub trait Add<RHS=Self> {
     type Output;
 
     /// Performs the `+` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn add(self, rhs: RHS) -> Self::Output;
 }
@@ -191,6 +192,7 @@ pub trait Sub<RHS=Self> {
     type Output;
 
     /// Performs the `-` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn sub(self, rhs: RHS) -> Self::Output;
 }
@@ -310,6 +312,7 @@ pub trait Mul<RHS=Self> {
     type Output;
 
     /// Performs the `*` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn mul(self, rhs: RHS) -> Self::Output;
 }
@@ -433,6 +436,7 @@ pub trait Div<RHS=Self> {
     type Output;
 
     /// Performs the `/` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn div(self, rhs: RHS) -> Self::Output;
 }
@@ -517,6 +521,7 @@ pub trait Rem<RHS=Self> {
     type Output = Self;
 
     /// Performs the `%` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: RHS) -> Self::Output;
 }
@@ -601,6 +606,7 @@ pub trait Neg {
     type Output;
 
     /// Performs the unary `-` operation.
+    #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn neg(self) -> Self::Output;
 }

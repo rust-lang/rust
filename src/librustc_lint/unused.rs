@@ -91,23 +91,35 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 let def_id = def.def_id();
                 fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
             }
-
-            if let hir::ExprBinary(bin_op, ..) = expr.node {
-                match bin_op.node {
-                    // Hardcoding the comparison operators here seemed more
-                    // expedient than the refactoring that would be needed to
-                    // look up the `#[must_use]` attribute which does exist on
-                    // the comparison trait methods
-                    hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => {
-                        let msg = "unused comparison which must be used";
-                        cx.span_lint(UNUSED_MUST_USE, expr.span, msg);
-                        op_warned = true;
-                    },
-                    _ => {},
-                }
+            let must_use_op = match expr.node {
+                // Hardcoding operators here seemed more expedient than the
+                // refactoring that would be needed to look up the `#[must_use]`
+                // attribute which does exist on the comparison trait methods
+                hir::ExprBinary(bin_op, ..)  => {
+                    match bin_op.node {
+                        hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | hir::BiGt => {
+                            Some("comparison")
+                        },
+                        hir::BiAdd | hir::BiSub | hir::BiDiv | hir::BiMul | hir::BiRem => {
+                            Some("arithmetic operation")
+                        },
+                        hir::BiAnd | hir::BiOr => {
+                            Some("logical operation")
+                        },
+                        hir::BiBitXor | hir::BiBitAnd | hir::BiBitOr | hir::BiShl | hir::BiShr => {
+                            Some("bitwise operation")
+                        },
+                    }
+                },
+                hir::ExprUnary(..) => Some("unary operation"),
+                _ => None
+            };
+            if let Some(must_use_op) = must_use_op {
+                cx.span_lint(UNUSED_MUST_USE, expr.span,
+                    &format!("unused {} which must be used", must_use_op));
+                op_warned = true;
             }
         }
-
         if !(ty_warned || fn_warned || op_warned) {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
