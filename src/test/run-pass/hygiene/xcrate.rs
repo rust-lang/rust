@@ -12,7 +12,7 @@
 
 // aux-build:xcrate.rs
 
-#![feature(decl_macro, proc_macro_path_invoc)]
+#![feature(decl_macro)]
 
 extern crate xcrate;
 
