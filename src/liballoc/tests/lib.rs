@@ -24,6 +24,7 @@
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(exact_chunks)]
+#![feature(repeat_generic_slice)]
 
 extern crate alloc_system;
 extern crate core;
