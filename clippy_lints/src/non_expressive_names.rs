@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use syntax::codemap::Span;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::visit::{walk_block, walk_expr, walk_pat, Visitor};
@@ -73,7 +73,7 @@ impl LintPass for NonExpressiveNames {
 }
 
 struct ExistingName {
-    interned: InternedString,
+    interned: LocalInternedString,
     span: Span,
     len: usize,
     whitelist: &'static [&'static str],

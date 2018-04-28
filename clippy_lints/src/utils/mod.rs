@@ -116,7 +116,7 @@ pub fn match_def_path(tcx: TyCtxt, def_id: DefId, path: &[&str]) -> bool {
     use syntax::symbol;
 
     struct AbsolutePathBuffer {
-        names: Vec<symbol::InternedString>,
+        names: Vec<symbol::LocalInternedString>,
     }
 
     impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
@@ -302,7 +302,7 @@ pub fn implements_trait<'a, 'tcx>(
         cx.tcx
             .predicate_for_trait_def(cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
     cx.tcx.infer_ctxt().enter(|infcx| {
-        traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
+        traits::SelectionContext::new(&infcx).infcx().predicate_must_hold(&obligation)
     })
 }
 

@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use utils::{match_qpath, paths, span_lint};
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name, NodeId};
 use syntax::codemap::Span;
 use std::collections::{HashMap, HashSet};
@@ -76,7 +76,7 @@ impl EarlyLintPass for Clippy {
                     .find(|item| item.ident.name == "paths")
                 {
                     if let ItemKind::Mod(ref paths_mod) = paths.node {
-                        let mut last_name: Option<InternedString> = None;
+                        let mut last_name: Option<LocalInternedString> = None;
                         for item in &paths_mod.items {
                             let name = item.ident.name.as_str();
                             if let Some(ref last_name) = last_name {

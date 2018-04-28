@@ -4,7 +4,7 @@ use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visit
 use std::collections::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use utils::{in_macro, span_lint};
 
 /// **What it does:** Checks for unused labels.
@@ -30,7 +30,7 @@ declare_clippy_lint! {
 pub struct UnusedLabel;
 
 struct UnusedLabelVisitor<'a, 'tcx: 'a> {
-    labels: HashMap<InternedString, Span>,
+    labels: HashMap<LocalInternedString, Span>,
     cx: &'a LateContext<'a, 'tcx>,
 }
 
