@@ -4,7 +4,7 @@ use rustc::lint::*;
 use std::ops::Deref;
 use syntax::ast::LitKind;
 use syntax::ptr;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use syntax_pos::Span;
 use utils::{is_expn_of, match_def_path, match_path, resolve_node, span_lint, span_lint_and_sugg};
 use utils::{opt_def_id, paths, last_path_segment};
@@ -389,7 +389,7 @@ where
 }
 
 /// Check for fmtstr = "... \n"
-fn has_newline_end(args: &HirVec<Expr>, fmtstr: InternedString, fmtlen: usize) -> bool {
+fn has_newline_end(args: &HirVec<Expr>, fmtstr: LocalInternedString, fmtlen: usize) -> bool {
     if_chain! {
         // check the final format string part
         if let Some('\n') = fmtstr.chars().last();
@@ -407,7 +407,7 @@ fn has_newline_end(args: &HirVec<Expr>, fmtstr: InternedString, fmtlen: usize) -
 }
 
 /// Check for writeln!(v, "") / println!("")
-fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: InternedString, fmtlen: usize) -> Option<Span> {
+fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: LocalInternedString, fmtlen: usize) -> Option<Span> {
     if_chain! {
         // check that the string is empty
         if fmtlen == 1;
@@ -427,7 +427,7 @@ fn has_empty_arg<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, fmtstr: Inter
 }
 
 /// Returns the slice of format string parts in an `Arguments::new_v1` call.
-fn get_argument_fmtstr_parts(expr: &Expr) -> Option<(InternedString, usize)> {
+fn get_argument_fmtstr_parts(expr: &Expr) -> Option<(LocalInternedString, usize)> {
     if_chain! {
         if let ExprAddrOf(_, ref expr) = expr.node; // &["…", "…", …]
         if let ExprArray(ref exprs) = expr.node;

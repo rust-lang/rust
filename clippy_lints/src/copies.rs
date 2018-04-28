@@ -3,7 +3,7 @@ use rustc::ty::Ty;
 use rustc::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use syntax::util::small_vector::SmallVector;
 use utils::{SpanlessEq, SpanlessHash};
 use utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
@@ -262,8 +262,8 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 }
 
 /// Return the list of bindings in a pattern.
-fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, Ty<'tcx>>) {
+fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<LocalInternedString, Ty<'tcx>> {
+    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<LocalInternedString, Ty<'tcx>>) {
         match pat.node {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
             PatKind::TupleStruct(_, ref pats, _) => for pat in pats {

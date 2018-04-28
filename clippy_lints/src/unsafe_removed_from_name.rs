@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use syntax::ast::*;
 use syntax::codemap::Span;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use utils::span_lint;
 
 /// **What it does:** Checks for imports that remove "unsafe" from an item's
@@ -75,6 +75,6 @@ fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext, spa
     }
 }
 
-fn contains_unsafe(name: &InternedString) -> bool {
+fn contains_unsafe(name: &LocalInternedString) -> bool {
     name.contains("Unsafe") || name.contains("unsafe")
 }
