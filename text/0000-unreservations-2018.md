@@ -8,7 +8,6 @@
 
 We unreserve:
 + `pure`
-+ `unsized`
 + `sizeof`
 + `alignof`
 + `offsetof`
@@ -37,7 +36,6 @@ used as general identifiers. This is done immediately and on edition 2015.
 
 The keywords to unreserve are:
 + `pure`
-+ `unsized`
 + `sizeof`
 + `alignof`
 + `offsetof`
@@ -132,11 +130,6 @@ other than `pure`.
 In both 1. and 2., `pure` can be contextual.
 We also don't think that the drawbacks are significant for `pure`.
 
-## Rationale for `unsized`
-
-This would be a modifier on types, but we already have `<T: ?Sized>` and we
-could have `T: !Sized` so there seems to be no need for keeping `unsized`.
-
 ## Rationale for `sizeof`, `alignof`, and `offsetof`
 
 We already have [`std::mem::size_of`](https://doc.rust-lang.org/nightly/std/mem/fn.size_of.html) and similar which
@@ -225,7 +218,18 @@ Additionally, there are known potential use cases / RFCs for:
 
 ## Possible future unreservations
 
-## `priv`
+### `unsized`
+
+This would be a modifier on types, but we already have `<T: ?Sized>` and we
+could have `T: !Sized` so there seems to be no need for keeping `unsized`.
+
+However, `unsized type` or `unsized struct` might be a desirable syntax for
+declaring a *dynamically sized type (DST)* or completely unsized type.
+Therefore, we will hold of on unreserving `unsized` until we have a better
+ideas of how custom DSTs will work and it's clear we don't need `unsized`
+as a keyword.
+
+### `priv`
 
 Here, `priv` is a privacy / visibility modifier on things like fields, and items.
 An example:
