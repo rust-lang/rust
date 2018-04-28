@@ -38,7 +38,7 @@ use super::Clean;
 ///
 /// The returned value is `None` if the definition could not be inlined,
 /// and `Some` of a vector of items if it was successfully expanded.
-pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
+pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name, visited: &mut FxHashSet<DefId>)
                   -> Option<Vec<clean::Item>> {
     if def == Def::Err { return None }
     let did = def.def_id();
@@ -87,7 +87,7 @@ pub fn try_inline(cx: &DocContext, def: Def, name: ast::Name)
         Def::StructCtor(..) => return Some(Vec::new()),
         Def::Mod(did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Module);
-            clean::ModuleItem(build_module(cx, did))
+            clean::ModuleItem(build_module(cx, did, visited))
         }
         Def::Static(did, mtbl) => {
             record_extern_fqn(cx, did, clean::TypeKind::Static);
@@ -385,24 +385,24 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
     });
 }
 
-fn build_module(cx: &DocContext, did: DefId) -> clean::Module {
+fn build_module(cx: &DocContext, did: DefId, visited: &mut FxHashSet<DefId>) -> clean::Module {
     let mut items = Vec::new();
-    fill_in(cx, did, &mut items);
+    fill_in(cx, did, &mut items, visited);
     return clean::Module {
         items,
         is_crate: false,
     };
 
-    fn fill_in(cx: &DocContext, did: DefId, items: &mut Vec<clean::Item>) {
+    fn fill_in(cx: &DocContext, did: DefId, items: &mut Vec<clean::Item>,
+               visited: &mut FxHashSet<DefId>) {
         // If we're re-exporting a re-export it may actually re-export something in
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
-        let mut visited = FxHashSet();
         for &item in cx.tcx.item_children(did).iter() {
             let def_id = item.def.def_id();
             if item.vis == ty::Visibility::Public {
-                if !visited.insert(def_id) { continue }
-                if let Some(i) = try_inline(cx, item.def, item.ident.name) {
+                if did == def_id || !visited.insert(def_id) { continue }
+                if let Some(i) = try_inline(cx, item.def, item.ident.name, visited) {
                     items.extend(i)
                 }
             }

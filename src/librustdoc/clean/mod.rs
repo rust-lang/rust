@@ -3673,7 +3673,8 @@ impl Clean<Vec<Item>> for doctree::Import {
         } else {
             let name = self.name;
             if !denied {
-                if let Some(items) = inline::try_inline(cx, path.def, name) {
+                let mut visited = FxHashSet();
+                if let Some(items) = inline::try_inline(cx, path.def, name, &mut visited) {
                     return items;
                 }
             }
