@@ -127,7 +127,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                                            ret_bx,
                                            llblock(this, cleanup),
                                            cleanup_bundle);
-                fn_ty.apply_attrs_callsite(invokeret);
+                fn_ty.apply_attrs_callsite(&bx, invokeret);
 
                 if let Some((ret_dest, target)) = destination {
                     let ret_bx = this.build_block(target);
@@ -136,7 +136,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 }
             } else {
                 let llret = bx.call(fn_ptr, &llargs, cleanup_bundle);
-                fn_ty.apply_attrs_callsite(llret);
+                fn_ty.apply_attrs_callsite(&bx, llret);
                 if this.mir[bb].is_cleanup {
                     // Cleanup is always the cold path. Don't inline
                     // drop glue. Also, when there is a deeply-nested

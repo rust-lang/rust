@@ -14,7 +14,7 @@ pub use self::Primitive::*;
 use spec::Target;
 
 use std::cmp;
-use std::ops::{Add, Deref, Sub, Mul, AddAssign, RangeInclusive};
+use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 pub mod call;
 
@@ -543,6 +543,23 @@ impl Scalar {
         } else {
             false
         }
+    }
+
+    /// Returns the valid range as a `x..y` range.
+    ///
+    /// If `x` and `y` are equal, the range is full, not empty.
+    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: C) -> Range<u128> {
+        // For a (max) value of -1, max will be `-1 as usize`, which overflows.
+        // However, that is fine here (it would still represent the full range),
+        // i.e., if the range is everything.
+        let bits = self.value.size(cx).bits();
+        assert!(bits <= 128);
+        let mask = !0u128 >> (128 - bits);
+        let start = self.valid_range.start;
+        let end = self.valid_range.end;
+        assert_eq!(start, start & mask);
+        assert_eq!(end, end & mask);
+        start..(end.wrapping_add(1) & mask)
     }
 }
 

@@ -91,24 +91,15 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         }
 
         let scalar_load_metadata = |load, scalar: &layout::Scalar| {
-            let (min, max) = (scalar.valid_range.start, scalar.valid_range.end);
-            let max_next = max.wrapping_add(1);
-            let bits = scalar.value.size(bx.cx).bits();
-            assert!(bits <= 128);
-            let mask = !0u128 >> (128 - bits);
-            // For a (max) value of -1, max will be `-1 as usize`, which overflows.
-            // However, that is fine here (it would still represent the full range),
-            // i.e., if the range is everything.  The lo==hi case would be
-            // rejected by the LLVM verifier (it would mean either an
-            // empty set, which is impossible, or the entire range of the
-            // type, which is pointless).
+            let vr = scalar.valid_range.clone();
             match scalar.value {
-                layout::Int(..) if max_next & mask != min & mask => {
-                    // llvm::ConstantRange can deal with ranges that wrap around,
-                    // so an overflow on (max + 1) is fine.
-                    bx.range_metadata(load, min..max_next);
+                layout::Int(..) => {
+                    let range = scalar.valid_range_exclusive(bx.cx);
+                    if range.start != range.end {
+                        bx.range_metadata(load, range);
+                    }
                 }
-                layout::Pointer if 0 < min && min < max => {
+                layout::Pointer if vr.start < vr.end && !vr.contains(&0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
