@@ -4,18 +4,22 @@
 // Imports.
 
 // Long import.
-use exceedingly::loooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
-                                                                                             ItemB};
-use exceedingly::looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{ItemA,
-                                                                                                ItemB};
+use exceedingly::loooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{
+    ItemA, ItemB,
+};
+use exceedingly::looooooooooooooooooooooooooooooooooooooooooooooooooooooooooong::import::path::{
+    ItemA, ItemB,
+};
 use syntax::ast::{ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
 
-use list::{// Another item
-           AnotherItem, // Another Comment
-           // Last Item
-           LastItem,
-           // Some item
-           SomeItem /* Comment */};
+use list::{
+    // Another item
+    AnotherItem, // Another Comment
+    // Last Item
+    LastItem,
+    // Some item
+    SomeItem, /* Comment */
+};
 
 use test::{/* A */ self /* B */, Other /* C */};
 
@@ -28,11 +32,14 @@ use std::io;
 use std::io;
 
 mod Foo {
-    pub use syntax::ast::{ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+    pub use syntax::ast::{
+        ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic,
+    };
 
     mod Foo2 {
-        pub use syntax::ast::{self, ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod,
-                              ItemStatic};
+        pub use syntax::ast::{
+            self, ItemDefaultImpl, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic,
+        };
     }
 }
 
@@ -72,24 +79,32 @@ use foo::issue_1356::*;
 use self::unix::{};
 
 // nested imports
-use foo::{a,
-          b,
-          bar::{baz,
-                foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz},
-                qux,
-                xxxxxxxxxxx,
-                yyyyyyyyyyyyy,
-                zzzzzzzzzzzzzzzz},
-          boo,
-          c};
+use foo::{
+    a,
+    b,
+    bar::{
+        baz,
+        foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz},
+        qux,
+        xxxxxxxxxxx,
+        yyyyyyyyyyyyy,
+        zzzzzzzzzzzzzzzz,
+    },
+    boo,
+    c,
+};
 
-use fooo::{baar::foobar::{xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
-                          zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz},
-           bar,
-           bar::*,
-           x,
-           y,
-           z};
+use fooo::{
+    baar::foobar::{
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
+        zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
+    },
+    bar,
+    bar::*,
+    x,
+    y,
+    z,
+};
 
 // nested imports with a single sub-tree.
 use a::b::c::d;
