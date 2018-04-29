@@ -17,9 +17,11 @@ use attr::*;
 use codemap::{LineRangeUtils, SpanUtils};
 use comment::{CodeCharKind, CommentCodeSlices, FindUncommented};
 use config::{BraceStyle, Config};
-use items::{format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
-            rewrite_associated_impl_type, rewrite_associated_type, rewrite_extern_crate,
-            rewrite_type_alias, FnSig, StaticParts, StructParts};
+use items::{
+    format_impl, format_trait, format_trait_alias, is_mod_decl, is_use_item,
+    rewrite_associated_impl_type, rewrite_associated_type, rewrite_extern_crate,
+    rewrite_type_alias, FnSig, StaticParts, StructParts,
+};
 use macros::{rewrite_macro, rewrite_macro_def, MacroPosition};
 use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};

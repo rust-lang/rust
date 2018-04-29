@@ -1042,8 +1042,10 @@ Item layout inside a imports block
 ```rust
 use foo::{xxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzzz};
 
-use foo::{aaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbb, cccccccccccccccccc, dddddddddddddddddd,
-          eeeeeeeeeeeeeeeeee, ffffffffffffffffff};
+use foo::{
+    aaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbb, cccccccccccccccccc, dddddddddddddddddd,
+    eeeeeeeeeeeeeeeeee, ffffffffffffffffff,
+};
 ```
 
 #### `"Horizontal"`:
@@ -1061,27 +1063,33 @@ use foo::{aaa, bbb, ccc, ddd, eee, fff};
 ```rust
 use foo::{xxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzzz};
 
-use foo::{aaaaaaaaaaaaaaaaaa,
-          bbbbbbbbbbbbbbbbbb,
-          cccccccccccccccccc,
-          dddddddddddddddddd,
-          eeeeeeeeeeeeeeeeee,
-          ffffffffffffffffff};
+use foo::{
+    aaaaaaaaaaaaaaaaaa,
+    bbbbbbbbbbbbbbbbbb,
+    cccccccccccccccccc,
+    dddddddddddddddddd,
+    eeeeeeeeeeeeeeeeee,
+    ffffffffffffffffff,
+};
 ```
 
 #### `"Vertical"`:
 
 ```rust
-use foo::{xxx,
-          yyy,
-          zzz};
+use foo::{
+    xxx,
+    yyy,
+    zzz,
+};
 
-use foo::{aaa,
-          bbb,
-          ccc,
-          ddd,
-          eee,
-          fff};
+use foo::{
+    aaa,
+    bbb,
+    ccc,
+    ddd,
+    eee,
+    fff,
+};
 ```
 
 ## `merge_imports`
@@ -2036,7 +2044,7 @@ fn foo() {
 
 ## `required_version`
 
-Require a specific version of rustfmt. If you want to make sure that the 
+Require a specific version of rustfmt. If you want to make sure that the
 specific version of rustfmt is used in your CI, use this option.
 
 - **Default value**: `CARGO_PKG_VERSION`

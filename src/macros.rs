@@ -33,8 +33,10 @@ use syntax::util::ThinVec;
 use syntax::{ast, ptr};
 
 use codemap::SpanUtils;
-use comment::{contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented,
-              FullCodeCharKind, LineClasses};
+use comment::{
+    contains_comment, remove_trailing_white_spaces, CharClasses, FindUncommented, FullCodeCharKind,
+    LineClasses,
+};
 use expr::rewrite_array;
 use lists::{itemize_list, write_list, ListFormatting};
 use overflow;

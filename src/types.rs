@@ -18,16 +18,19 @@ use syntax::symbol::keywords;
 
 use codemap::SpanUtils;
 use config::{IndentStyle, TypeDensity};
-use expr::{rewrite_assign_rhs, rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts,
-           ToExpr};
+use expr::{
+    rewrite_assign_rhs, rewrite_pair, rewrite_tuple, rewrite_unary_prefix, PairParts, ToExpr,
+};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::{colon_spaces, extra_offset, first_line_width, format_abi, format_mutability,
-            last_line_width, mk_sp};
+use utils::{
+    colon_spaces, extra_offset, first_line_width, format_abi, format_mutability, last_line_width,
+    mk_sp,
+};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum PathContext {

@@ -23,7 +23,9 @@ use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListIte
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp, paren_overhead};
+use utils::{
+    count_newlines, extra_offset, first_line_width, last_line_width, mk_sp, paren_overhead,
+};
 
 use std::cmp::min;
 

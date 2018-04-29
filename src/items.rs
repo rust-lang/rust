@@ -21,11 +21,15 @@ use syntax::visit;
 use syntax::{ast, ptr, symbol};
 
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-              recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented};
+use comment::{
+    combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
+    recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented,
+};
 use config::{BraceStyle, Config, Density, IndentStyle};
-use expr::{format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs,
-           rewrite_assign_rhs_with, ExprType, RhsTactics};
+use expr::{
+    format_expr, is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, rewrite_assign_rhs_with,
+    ExprType, RhsTactics,
+};
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use macros::{rewrite_macro, MacroPosition};
 use overflow;
@@ -33,11 +37,13 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::TraitTyParamBounds;
-use utils::{colon_spaces, contains_skip, first_line_width, format_abi, format_auto,
-            format_constness, format_defaultness, format_mutability, format_unsafety,
-            format_visibility, is_attributes_extendable, last_line_contains_single_line_comment,
-            last_line_used_width, last_line_width, mk_sp, semicolon_for_expr, starts_with_newline,
-            stmt_expr, trimmed_last_line_width};
+use utils::{
+    colon_spaces, contains_skip, first_line_width, format_abi, format_auto, format_constness,
+    format_defaultness, format_mutability, format_unsafety, format_visibility,
+    is_attributes_extendable, last_line_contains_single_line_comment, last_line_used_width,
+    last_line_width, mk_sp, semicolon_for_expr, starts_with_newline, stmt_expr,
+    trimmed_last_line_width,
+};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
