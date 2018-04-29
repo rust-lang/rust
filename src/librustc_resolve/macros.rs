@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {AmbiguityError, Resolver, ResolutionError, resolve_error};
+use {ResolvePath, AmbiguityError, Resolver, ResolutionError, resolve_error};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult};
 use Namespace::{self, MacroNS};
 use build_reduced_graph::BuildReducedGraphVisitor;
@@ -439,25 +439,32 @@ impl<'a> Resolver<'a> {
                 return Err(Determinacy::Determined);
             }
 
-            let def = match self.resolve_path(&path, Some(MacroNS), false, span, None) {
-                PathResult::NonModule(path_res) => match path_res.base_def() {
-                    Def::Err => Err(Determinacy::Determined),
-                    def @ _ => {
-                        if path_res.unresolved_segments() > 0 {
-                            self.found_unresolved_macro = true;
-                            self.session.span_err(span, "fail to resolve non-ident macro path");
-                            Err(Determinacy::Determined)
-                        } else {
-                            Ok(def)
+            let def = {
+                let resolve_path = ResolvePath {
+                                       ident : &path,
+                                       source : None,
+                                       speculative : false,
+                                   };
+                match self.resolve_path(&resolve_path, Some(MacroNS), false, span) {
+                    PathResult::NonModule(path_res) => match path_res.base_def() {
+                        Def::Err => Err(Determinacy::Determined),
+                        def @ _ => {
+                            if path_res.unresolved_segments() > 0 {
+                                self.found_unresolved_macro = true;
+                                self.session.span_err(span, "fail to resolve non-ident macro path");
+                                Err(Determinacy::Determined)
+                            } else {
+                                Ok(def)
+                            }
                         }
-                    }
-                },
-                PathResult::Module(..) => unreachable!(),
-                PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
-                _ => {
-                    self.found_unresolved_macro = true;
-                    Err(Determinacy::Determined)
-                },
+                    },
+                    PathResult::Module(..) => unreachable!(),
+                    PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
+                    _ => {
+                        self.found_unresolved_macro = true;
+                        Err(Determinacy::Determined)
+                    },
+                }
             };
             self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
                 .push((path.into_boxed_slice(), span));
@@ -617,7 +624,12 @@ impl<'a> Resolver<'a> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            match self.resolve_path(&path, Some(MacroNS), true, span, None) {
+            let resolve_path = ResolvePath {
+                                   ident : &path,
+                                   source : None,
+                                   speculative : true,
+                               };
+            match self.resolve_path(&resolve_path, Some(MacroNS), true, span) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));

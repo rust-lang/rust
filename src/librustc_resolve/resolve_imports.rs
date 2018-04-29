@@ -10,7 +10,7 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {AmbiguityError, Module, PerNS};
+use {ResolvePath, AmbiguityError, Module, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
@@ -535,8 +535,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will not define any names
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
-            let result = self.resolve_path(&directive.module_path[..], None, false,
-                                           directive.span, Some(directive.id));
+            let resolve_path = ResolvePath {
+                                   ident : &directive.module_path[..],
+                                   source : Some(directive.id),
+                                   speculative : false,
+                               };
+            let result = self.resolve_path(&resolve_path, None, false, directive.span);
             directive.vis.set(vis);
 
             match result {
@@ -664,7 +668,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             }
         }
 
-        let module_result = self.resolve_path(&module_path, None, true, span, Some(directive.id));
+        let module_resolve_path = ResolvePath {
+                                      ident : &module_path,
+                                      source : Some(directive.id),
+                                      speculative : false,
+                                  };
+        let module_result = self.resolve_path(&module_resolve_path, None, true, span);
         let module = match module_result {
             PathResult::Module(module) => module,
             PathResult::Failed(span, msg, false) => {
@@ -678,8 +687,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 if !self_path.is_empty() && !is_special(self_path[0]) &&
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
-                    self_result = Some(self.resolve_path(&self_path, None, false,
-                                                         span, None));
+
+                    let self_resolve_path = ResolvePath {
+                                                ident : &self_path,
+                                                source : None,
+                                                speculative : true,
+                                            };
+                    self_result = Some(self.resolve_path(&self_resolve_path, None, false, span));
                 }
                 return if let Some(PathResult::Module(..)) = self_result {
                     Some((span, format!("Did you mean `{}`?", names_to_string(&self_path[..]))))
