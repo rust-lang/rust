@@ -76,7 +76,9 @@ static mut HOOK: Hook = Hook::Default;
 /// is invoked. As such, the hook will run with both the aborting and unwinding
 /// runtimes. The default hook prints a message to standard error and generates
 /// a backtrace if requested, but this behavior can be customized with the
-/// `set_hook` and `take_hook` functions.
+/// `set_hook` and [`take_hook`] functions.
+///
+/// [`take_hook`]: ./fn.take_hook.html
 ///
 /// The hook is provided with a `PanicInfo` struct which contains information
 /// about the origin of the panic, including the payload passed to `panic!` and
@@ -120,6 +122,10 @@ pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
 }
 
 /// Unregisters the current panic hook, returning it.
+///
+/// *See also the function [`set_hook`].*
+///
+/// [`set_hook`]: ./fn.set_hook.html
 ///
 /// If no custom hook is registered, the default hook will be returned.
 ///
