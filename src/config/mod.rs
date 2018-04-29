@@ -62,7 +62,7 @@ create_config! {
     where_single_line: bool, false, false, "Force where clauses to be on a single line";
 
     // Imports
-    imports_indent: IndentStyle, IndentStyle::Visual, false, "Indent of imports";
+    imports_indent: IndentStyle, IndentStyle::Block, false, "Indent of imports";
     imports_layout: ListTactic, ListTactic::Mixed, false, "Item layout inside a import block";
     merge_imports: bool, false, false, "Merge imports";
 
