@@ -21,6 +21,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
@@ -240,6 +241,22 @@ impl<'tcx> Mir<'tcx> {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             if self.local_decls[local].is_user_variable {
+                Some(local)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns an iterator over all user-declared mutable arguments and locals.
+    #[inline]
+    pub fn mut_vars_and_args_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+        (1..self.local_decls.len()).filter_map(move |index| {
+            let local = Local::new(index);
+            let decl = &self.local_decls[local];
+            if (decl.is_user_variable || index < self.arg_count + 1)
+               && decl.mutability == Mutability::Mut
+            {
                 Some(local)
             } else {
                 None
@@ -2027,6 +2044,12 @@ pub struct UnsafetyCheckResult {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorLayout<'tcx> {
     pub fields: Vec<LocalDecl<'tcx>>,
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct BorrowCheckResult<'gcx> {
+    pub closure_requirements: Option<ClosureRegionRequirements<'gcx>>,
+    pub used_mut_upvars: SmallVec<[Field; 8]>,
 }
 
 /// After we borrow check a closure, we are left with various
