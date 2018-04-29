@@ -1045,6 +1045,30 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                         span_err!(diagnostic, item.span, E0589,
                                   "invalid `repr(align)` attribute: {}", literal_error);
                     }
+                } else {
+                    if let Some(meta_item) = item.meta_item() {
+                        if meta_item.ident.name == "align" {
+                            if let MetaItemKind::NameValue(ref value) = meta_item.node {
+                                recognised = true;
+                                let mut err = struct_span_err!(diagnostic, item.span, E0693,
+                                    "incorrect `repr(align)` attribute format");
+                                match value.node {
+                                    ast::LitKind::Int(int, ast::LitIntType::Unsuffixed) => {
+                                        err.span_suggestion(item.span,
+                                                            "use parentheses instead",
+                                                            format!("align({})", int));
+                                    }
+                                    ast::LitKind::Str(s, _) => {
+                                        err.span_suggestion(item.span,
+                                                            "use parentheses instead",
+                                                            format!("align({})", s));
+                                    }
+                                    _ => {}
+                                }
+                                err.emit();
+                            }
+                        }
+                    }
                 }
                 if !recognised {
                     // Not a word we recognize

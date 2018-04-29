@@ -324,4 +324,5 @@ register_diagnostics! {
     E0589, // invalid `repr(align)` attribute
     E0629, // missing 'feature' (rustc_const_unstable)
     E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
+    E0693, // incorrect `repr(align)` attribute format
 }
