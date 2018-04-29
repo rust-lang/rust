@@ -65,7 +65,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         RawVec {
             ptr: Unique::empty(),
             // FIXME(mark-i-m): use `cap` when ifs are allowed in const
-            cap: [0, !0][(mem::size_of::<T>() != 0) as usize],
+            cap: [0, !0][(mem::size_of::<T>() == 0) as usize],
             a,
         }
     }
