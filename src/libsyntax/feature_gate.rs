@@ -90,24 +90,24 @@ macro_rules! declare_features {
         }
     };
 
-    ($((removed, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
+    ($((removed, $feature: ident, $ver: expr, $issue: expr, None, $reason: expr),)+) => {
         /// Represents unstable features which have since been removed (it was once Active)
-        const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
-            $((stringify!($feature), $ver, $issue)),+
+        const REMOVED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
+            $((stringify!($feature), $ver, $issue, $reason)),+
         ];
     };
 
     ($((stable_removed, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Represents stable features which have since been removed (it was once Accepted)
-        const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
-            $((stringify!($feature), $ver, $issue)),+
+        const STABLE_REMOVED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
+            $((stringify!($feature), $ver, $issue, None)),+
         ];
     };
 
     ($((accepted, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Those language feature has since been Accepted (it was once Active)
-        const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
-            $((stringify!($feature), $ver, $issue)),+
+        const ACCEPTED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
+            $((stringify!($feature), $ver, $issue, None)),+
         ];
     }
 }
@@ -460,29 +460,29 @@ declare_features! (
 );
 
 declare_features! (
-    (removed, import_shadowing, "1.0.0", None, None),
-    (removed, managed_boxes, "1.0.0", None, None),
+    (removed, import_shadowing, "1.0.0", None, None, None),
+    (removed, managed_boxes, "1.0.0", None, None, None),
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
-    (removed, negate_unsigned, "1.0.0", Some(29645), None),
-    (removed, reflect, "1.0.0", Some(27749), None),
+    (removed, negate_unsigned, "1.0.0", Some(29645), None, None),
+    (removed, reflect, "1.0.0", Some(27749), None, None),
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
-    (removed, opt_out_copy, "1.0.0", None, None),
-    (removed, quad_precision_float, "1.0.0", None, None),
-    (removed, struct_inherit, "1.0.0", None, None),
-    (removed, test_removed_feature, "1.0.0", None, None),
-    (removed, visible_private_types, "1.0.0", None, None),
-    (removed, unsafe_no_drop_flag, "1.0.0", None, None),
+    (removed, opt_out_copy, "1.0.0", None, None, None),
+    (removed, quad_precision_float, "1.0.0", None, None, None),
+    (removed, struct_inherit, "1.0.0", None, None, None),
+    (removed, test_removed_feature, "1.0.0", None, None, None),
+    (removed, visible_private_types, "1.0.0", None, None, None),
+    (removed, unsafe_no_drop_flag, "1.0.0", None, None, None),
     // Allows using items which are missing stability attributes
     // rustc internal
-    (removed, unmarked_api, "1.0.0", None, None),
-    (removed, pushpop_unsafe, "1.2.0", None, None),
-    (removed, allocator, "1.0.0", None, None),
-    // Allows the `#[simd]` attribute -- removed in favor of `#[repr(simd)]`
-    (removed, simd, "1.0.0", Some(27731), None),
-    // Merged into `slice_patterns`
-    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None),
-    // Subsumed by `use`
-    (removed, macro_reexport, "1.0.0", Some(29638), None),
+    (removed, unmarked_api, "1.0.0", None, None, None),
+    (removed, pushpop_unsafe, "1.2.0", None, None, None),
+    (removed, allocator, "1.0.0", None, None, None),
+    (removed, simd, "1.0.0", Some(27731), None,
+     Some("removed in favor of `#[repr(simd)]`")),
+    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None,
+     Some("merged into `#![feature(slice_patterns)]`")),
+    (removed, macro_reexport, "1.0.0", Some(29638), None,
+     Some("subsumed by `#![feature(use_extern_macros)]` and `pub use`")),
 );
 
 declare_features! (
@@ -1200,7 +1200,7 @@ fn find_lang_feature_issue(feature: &str) -> Option<u32> {
         let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
             .find(|t| t.0 == feature);
         match found {
-            Some(&(_, _, issue)) => issue,
+            Some(&(_, _, issue, _)) => issue,
             None => panic!("Feature `{}` is not declared anywhere", feature),
         }
     }
@@ -1814,8 +1814,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                     crate_edition: Edition) -> Features {
-    fn feature_removed(span_handler: &Handler, span: Span) {
-        span_err!(span_handler, span, E0557, "feature has been removed");
+    fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
+        let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
+        if let Some(reason) = reason {
+            err.span_note(span, reason);
+        }
+        err.emit();
     }
 
     let mut features = Features::new();
@@ -1848,19 +1852,19 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                         set(&mut features, mi.span);
                         feature_checker.collect(&features, mi.span);
                     }
-                    else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
-                            .find(|& &(n, _, _)| name == n)
+                    else if let Some(&(.., reason)) = REMOVED_FEATURES.iter()
+                            .find(|& &(n, ..)| name == n)
                         .or_else(|| STABLE_REMOVED_FEATURES.iter()
-                            .find(|& &(n, _, _)| name == n)) {
-                        feature_removed(span_handler, mi.span);
+                            .find(|& &(n, ..)| name == n)) {
+                        feature_removed(span_handler, mi.span, reason);
                     }
-                    else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
-                        .find(|& &(n, _, _)| name == n) {
+                    else if let Some(&(..)) = ACCEPTED_FEATURES.iter()
+                        .find(|& &(n, ..)| name == n) {
                         features.declared_stable_lang_features.push((name, mi.span));
                     } else if let Some(&edition) = ALL_EDITIONS.iter()
                                                               .find(|e| name == e.feature_name()) {
                         if edition <= crate_edition {
-                            feature_removed(span_handler, mi.span);
+                            feature_removed(span_handler, mi.span, None);
                         } else {
                             for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
                                 if let Some(f_edition) = f_edition {
