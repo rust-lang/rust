@@ -18,7 +18,7 @@ extern crate rustfmt_nightly as rustfmt;
 use std::env;
 use std::fs::File;
 use std::io::{self, stdout, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use failure::err_msg;
 
@@ -182,7 +182,7 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
         Operation::Stdin { input } => {
             // try to read config from local directory
             let options = CliOptions::from_matches(&matches)?;
-            let (mut config, _) = load_config(None, Some(&options))?;
+            let (mut config, _) = load_config(Some(Path::new(".")), Some(&options))?;
 
             // write_mode is always Plain for Stdin.
             config.set().write_mode(WriteMode::Plain);
