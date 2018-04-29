@@ -2839,7 +2839,8 @@ impl<'a> Resolver<'a> {
                 let item_span = path.ident[path.ident.len() - 1].span;
                 let (mod_prefix, mod_str) = if path.ident.len() == 1 {
                     (format!(""), format!("this scope"))
-                } else if path.ident.len() == 2 && path.ident[0].name == keywords::CrateRoot.name() {
+                } else if path.ident.len() == 2 &&
+                          path.ident[0].name == keywords::CrateRoot.name() {
                     (format!(""), format!("the crate root"))
                 } else {
                     let mod_path = ResolvePath {
@@ -3176,7 +3177,8 @@ impl<'a> Resolver<'a> {
                                    source : Some(id),
                                    speculative : false,
                                };
-            let res = self.smart_resolve_path_fragment(id, None, &resolve_path, span, PathSource::TraitItem(ns));
+            let res = self.smart_resolve_path_fragment(id, None, &resolve_path,
+                                                       span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.ident.len() - qself.position - 1
             ));
@@ -3243,10 +3245,7 @@ impl<'a> Resolver<'a> {
                     path: &ResolvePath,
                     opt_ns: Option<Namespace>, // `None` indicates a module path
                     record_used: bool,
-                    path_span: Span)//,
-                    //node_id: Option<NodeId>) // None indicates that we don't care about linting
-                                             // `::module` paths
-                    -> PathResult<'a> {
+                    path_span: Span) -> PathResult<'a> {
         let mut module = None;
         let mut allow_super = true;
 
