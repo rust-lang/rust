@@ -15,6 +15,7 @@ use syntax::ast::{self, UseTreeKind};
 use syntax::codemap::{self, BytePos, Span, DUMMY_SP};
 
 use codemap::SpanUtils;
+use comment::combine_strs_with_missing_comments;
 use config::IndentStyle;
 use lists::{definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator};
 use rewrite::{Rewrite, RewriteContext};
@@ -118,6 +119,17 @@ impl PartialEq for UseTree {
 }
 impl Eq for UseTree {}
 
+impl Spanned for UseTree {
+    fn span(&self) -> Span {
+        let lo = if let Some(ref attrs) = self.attrs {
+            attrs.iter().next().map_or(self.span.lo(), |a| a.span.lo())
+        } else {
+            self.span.lo()
+        };
+        mk_sp(lo, self.span.hi())
+    }
+}
+
 impl UseSegment {
     // Clone a version of self with any top-level alias removed.
     fn remove_alias(&self) -> UseSegment {
@@ -219,26 +231,26 @@ impl fmt::Display for UseTree {
 impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
     pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let mut result = String::with_capacity(256);
-        if let Some(ref attrs) = self.attrs {
-            result.push_str(&attrs.rewrite(context, shape)?);
-            if !result.is_empty() {
-                result.push_str(&shape.indent.to_string_with_newline(context.config));
-            }
-        }
-
         let vis = self.visibility
             .as_ref()
             .map_or(Cow::from(""), |vis| ::utils::format_visibility(&vis));
-        result.push_str(&self.rewrite(context, shape.offset_left(vis.len())?)
+        let use_str = self.rewrite(context, shape.offset_left(vis.len())?)
             .map(|s| {
                 if s.is_empty() {
                     s.to_owned()
                 } else {
                     format!("{}use {};", vis, s)
                 }
-            })?);
-        Some(result)
+            })?;
+        if let Some(ref attrs) = self.attrs {
+            let attr_str = attrs.rewrite(context, shape)?;
+            let lo = attrs.last().as_ref()?.span().hi();
+            let hi = self.span.lo();
+            let span = mk_sp(lo, hi);
+            combine_strs_with_missing_comments(context, &attr_str, &use_str, span, shape, false)
+        } else {
+            Some(use_str)
+        }
     }
 
     // FIXME: Use correct span?
@@ -267,7 +279,7 @@ impl UseTree {
                     use_tree,
                     None,
                     Some(item.vis.clone()),
-                    Some(item.span().lo()),
+                    Some(item.span.lo()),
                     if item.attrs.is_empty() {
                         None
                     } else {

@@ -258,3 +258,7 @@ pub enum QlError {
     #[fail(display = "Could not find {}: Found: {}, expected: {:?}", 0, 1, 2)]
     ResolveError(&'static str, String, Option<String>),
 }
+
+// #2594
+enum Foo {}
+enum Bar {}

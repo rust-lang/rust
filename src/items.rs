@@ -37,13 +37,7 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use spanned::Spanned;
 use types::TraitTyParamBounds;
-use utils::{
-    colon_spaces, contains_skip, first_line_width, format_abi, format_auto, format_constness,
-    format_defaultness, format_mutability, format_unsafety, format_visibility,
-    is_attributes_extendable, last_line_contains_single_line_comment, last_line_used_width,
-    last_line_width, mk_sp, semicolon_for_expr, starts_with_newline, stmt_expr,
-    trimmed_last_line_width,
-};
+use utils::*;
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
@@ -464,35 +458,39 @@ impl<'a> FmtVisitor<'a> {
 
         self.last_pos = body_start;
 
-        self.block_indent = self.block_indent.block_indent(self.config);
-        let variant_list = self.format_variant_list(enum_def, body_start, span.hi() - BytePos(1));
-        match variant_list {
-            Some(ref body_str) => self.push_str(body_str),
-            None => self.format_missing_no_indent(span.hi() - BytePos(1)),
+        match self.format_variant_list(enum_def, body_start, span.hi()) {
+            Some(ref s) if enum_def.variants.is_empty() => self.push_str(s),
+            rw => {
+                self.push_rewrite(mk_sp(body_start, span.hi()), rw);
+                self.block_indent = self.block_indent.block_unindent(self.config);
+            }
         }
-        self.block_indent = self.block_indent.block_unindent(self.config);
-
-        if variant_list.is_some() || contains_comment(&enum_snippet[brace_pos..]) {
-            let indent_str = self.block_indent.to_string(self.config);
-            self.push_str(&indent_str);
-        }
-        self.push_str("}");
-        self.last_pos = span.hi();
     }
 
     // Format the body of an enum definition
     fn format_variant_list(
-        &self,
+        &mut self,
         enum_def: &ast::EnumDef,
         body_lo: BytePos,
         body_hi: BytePos,
     ) -> Option<String> {
         if enum_def.variants.is_empty() {
-            return None;
+            let mut buffer = String::with_capacity(128);
+            // 1 = "}"
+            let span = mk_sp(body_lo, body_hi - BytePos(1));
+            format_empty_struct_or_tuple(
+                &self.get_context(),
+                span,
+                self.block_indent,
+                &mut buffer,
+                "",
+                "}",
+            );
+            return Some(buffer);
         }
         let mut result = String::with_capacity(1024);
-        let indentation = self.block_indent.to_string_with_newline(self.config);
-        result.push_str(&indentation);
+        let original_offset = self.block_indent;
+        self.block_indent = self.block_indent.block_indent(self.config);
 
         let itemize_list_with = |one_line_width: usize| {
             itemize_list(
@@ -537,7 +535,8 @@ impl<'a> FmtVisitor<'a> {
 
         let list = write_list(&items, &fmt)?;
         result.push_str(&list);
-        result.push('\n');
+        result.push_str(&original_offset.to_string_with_newline(self.config));
+        result.push('}');
         Some(result)
     }
 
@@ -1201,18 +1200,8 @@ pub fn format_struct_struct(
     }
 
     if fields.is_empty() {
-        let snippet = context.snippet(mk_sp(body_lo, span.hi() - BytePos(1)));
-        if snippet.trim().is_empty() {
-            // `struct S {}`
-        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
-            // fix indent
-            result.push_str(snippet.trim_right());
-            result.push('\n');
-            result.push_str(&offset.to_string(context.config));
-        } else {
-            result.push_str(snippet);
-        }
-        result.push('}');
+        let inner_span = mk_sp(body_lo, span.hi() - BytePos(1));
+        format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "", "}");
         return Some(result);
     }
 
@@ -1251,6 +1240,41 @@ fn get_bytepos_after_visibility(vis: &ast::Visibility, default_span: Span) -> By
         ast::VisibilityKind::Crate(..) | ast::VisibilityKind::Restricted { .. } => vis.span.hi(),
         _ => default_span.lo(),
     }
+}
+
+// Format tuple or struct without any fields. We need to make sure that the comments
+// inside the delimiters are preserved.
+fn format_empty_struct_or_tuple(
+    context: &RewriteContext,
+    span: Span,
+    offset: Indent,
+    result: &mut String,
+    opener: &str,
+    closer: &str,
+) {
+    // 3 = " {}" or "();"
+    let used_width = last_line_used_width(&result, offset.width()) + 3;
+    if used_width > context.config.max_width() {
+        result.push_str(&offset.to_string_with_newline(context.config))
+    }
+    result.push_str(opener);
+    match rewrite_missing_comment(span, Shape::indented(offset, context.config), context) {
+        Some(ref s) if s.is_empty() => (),
+        Some(ref s) => {
+            if !is_single_line(s) || first_line_contains_single_line_comment(s) {
+                let nested_indent_str = offset
+                    .block_indent(context.config)
+                    .to_string_with_newline(context.config);
+                result.push_str(&nested_indent_str);
+            }
+            result.push_str(s);
+            if last_line_contains_single_line_comment(s) {
+                result.push_str(&offset.to_string_with_newline(context.config));
+            }
+        }
+        None => result.push_str(context.snippet(span)),
+    }
+    result.push_str(closer);
 }
 
 fn format_tuple_struct(
@@ -1316,31 +1340,11 @@ fn format_tuple_struct(
     };
 
     if fields.is_empty() {
-        // 3 = `();`
-        let used_width = last_line_used_width(&result, offset.width()) + 3;
-        if used_width > context.config.max_width() {
-            result.push('\n');
-            result.push_str(&offset
-                .block_indent(context.config)
-                .to_string(context.config))
-        }
-        result.push('(');
-        let snippet = context.snippet(mk_sp(
-            body_lo,
-            context
-                .snippet_provider
-                .span_before(mk_sp(body_lo, span.hi()), ")"),
-        ));
-        if snippet.is_empty() {
-            // `struct S ()`
-        } else if snippet.trim_right_matches(&[' ', '\t'][..]).ends_with('\n') {
-            result.push_str(snippet.trim_right());
-            result.push('\n');
-            result.push_str(&offset.to_string(context.config));
-        } else {
-            result.push_str(snippet);
-        }
-        result.push(')');
+        let body_hi = context
+            .snippet_provider
+            .span_before(mk_sp(body_lo, span.hi()), ")");
+        let inner_span = mk_sp(body_lo, body_hi);
+        format_empty_struct_or_tuple(context, inner_span, offset, &mut result, "(", ")");
     } else {
         let shape = Shape::indented(offset, context.config).sub_width(1)?;
         let fields = &fields.iter().collect::<Vec<_>>();

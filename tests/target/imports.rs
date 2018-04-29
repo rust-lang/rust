@@ -110,3 +110,8 @@ use fooo::{
 use a::b::c::d;
 use a::b::c::*;
 use a::b::c::{xxx, yyy, zzz};
+
+// #2645
+/// This line is not affected.
+// This line is deleted.
+use c;
