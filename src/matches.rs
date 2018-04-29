@@ -19,14 +19,18 @@ use syntax::{ast, ptr};
 use codemap::SpanUtils;
 use comment::combine_strs_with_missing_comments;
 use config::{Config, ControlBraceStyle, IndentStyle};
-use expr::{format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line,
-           rewrite_multiple_patterns, ExprType, RhsTactics, ToExpr};
+use expr::{
+    format_expr, is_empty_block, is_simple_block, is_unsafe_block, prefer_next_line,
+    rewrite_multiple_patterns, ExprType, RhsTactics, ToExpr,
+};
 use lists::{itemize_list, write_list, ListFormatting};
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
 use spanned::Spanned;
-use utils::{contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable,
-            mk_sp, ptr_vec_to_ref_vec, trimmed_last_line_width};
+use utils::{
+    contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
+    ptr_vec_to_ref_vec, trimmed_last_line_width,
+};
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
 struct ArmWrapper<'a> {

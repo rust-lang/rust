@@ -24,8 +24,10 @@ use failure::err_msg;
 
 use getopts::{Matches, Options};
 
-use rustfmt::{emit_post_matter, emit_pre_matter, load_config, CliOptions, Config, FmtResult,
-              WriteMode, WRITE_MODE_LIST};
+use rustfmt::{
+    emit_post_matter, emit_pre_matter, load_config, CliOptions, Config, FmtResult, WriteMode,
+    WRITE_MODE_LIST,
+};
 use rustfmt::{format_and_emit_report, FileName, Input, Summary};
 
 fn main() {

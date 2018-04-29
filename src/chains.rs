@@ -70,8 +70,10 @@ use expr::rewrite_call;
 use macros::convert_try_mac;
 use rewrite::{Rewrite, RewriteContext};
 use shape::Shape;
-use utils::{first_line_width, last_line_extendable, last_line_width, mk_sp,
-            trimmed_last_line_width, wrap_str};
+use utils::{
+    first_line_width, last_line_extendable, last_line_width, mk_sp, trimmed_last_line_width,
+    wrap_str,
+};
 
 use std::borrow::Cow;
 use std::cmp::min;

@@ -19,11 +19,15 @@ use syntax::{ast, ptr};
 use chains::rewrite_chain;
 use closures;
 use codemap::{LineRangeUtils, SpanUtils};
-use comment::{combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-              rewrite_comment, rewrite_missing_comment, CharClasses, FindUncommented};
+use comment::{
+    combine_strs_with_missing_comments, contains_comment, recover_comment_removed, rewrite_comment,
+    rewrite_missing_comment, CharClasses, FindUncommented,
+};
 use config::{Config, ControlBraceStyle, IndentStyle};
-use lists::{definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting,
-            struct_lit_shape, struct_lit_tactic, write_list, ListFormatting, ListItem, Separator};
+use lists::{
+    definitive_tactic, itemize_list, shape_for_tactic, struct_lit_formatting, struct_lit_shape,
+    struct_lit_tactic, write_list, ListFormatting, ListItem, Separator,
+};
 use macros::{rewrite_macro, MacroArg, MacroPosition};
 use matches::rewrite_match;
 use overflow;
@@ -33,9 +37,11 @@ use shape::{Indent, Shape};
 use spanned::Spanned;
 use string::{rewrite_string, StringFormat};
 use types::{can_be_overflowed_type, rewrite_path, PathContext};
-use utils::{colon_spaces, contains_skip, count_newlines, first_line_width, inner_attributes,
-            last_line_extendable, last_line_width, mk_sp, outer_attributes, paren_overhead,
-            ptr_vec_to_ref_vec, semicolon_for_stmt, wrap_str};
+use utils::{
+    colon_spaces, contains_skip, count_newlines, first_line_width, inner_attributes,
+    last_line_extendable, last_line_width, mk_sp, outer_attributes, paren_overhead,
+    ptr_vec_to_ref_vec, semicolon_for_stmt, wrap_str,
+};
 use vertical::rewrite_with_alignment;
 use visitor::FmtVisitor;
 
