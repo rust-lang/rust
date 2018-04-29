@@ -1697,27 +1697,169 @@ impl<T> [T] {
         }
     }
 
-    // #[unstable(feature = "slice_align_to", issue = "44488")]
-    // pub fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
-    //     // First, find at what point do we split between the first and 2nd slice.
-    //     let x = self.as_ptr();
-    //     let offset = x.align_offset(::mem::align_of::<U>());
-    //     if offset > x * ::mem::size_of::<T>() {
-    //         return (self, [], []);
-    //     }
+    /// Function to calculate lenghts of the middle and trailing slice for `align_to{,_mut}`.
+    fn align_to_offsets<U>(&self) -> (usize, usize) {
+        // What we gonna do about `rest` is figure out what multiple of `U`s we can put in a
+        // lowest number of `T`s. And how many `T`s we need for each such "multiple".
+        //
+        // Consider for example T=u8 U=u16. Then we can put 1 U in 2 Ts. Simple. Now, consider
+        // for example a case where size_of::<T> = 16, size_of::<U> = 24. We can put 2 Us in
+        // place of every 3 Ts in the `rest` slice. A bit more complicated.
+        //
+        // Formula to calculate this is:
+        //
+        // Us = lcm(size_of::<T>, size_of::<U>) / size_of::<U>
+        // Ts = lcm(size_of::<T>, size_of::<U>) / size_of::<T>
+        //
+        // Expanded and simplified:
+        //
+        // Us = size_of::<T> / gcd(size_of::<T>, size_of::<U>)
+        // Ts = size_of::<U> / gcd(size_of::<T>, size_of::<U>)
+        //
+        // Luckily since all this is constant-evaluated... performance here matters not!
+        #[inline]
+        fn gcd(a: usize, b: usize) -> usize {
+            // iterative stein’s algorithm
+            // We should still make this `const fn` (and revert to recursive algorithm if we do)
+            // because relying on llvm to consteval all this is… well, it makes me
+            let (ctz_a, mut ctz_b) = unsafe {
+                if a == 0 { return b; }
+                if b == 0 { return a; }
+                (::intrinsics::cttz_nonzero(a), ::intrinsics::cttz_nonzero(b))
+            };
+            let k = ctz_a.min(ctz_b);
+            let mut a = a >> ctz_a;
+            let mut b = b;
+            loop {
+                // remove all factors of 2 from b
+                b >>= ctz_b;
+                if a > b {
+                    ::mem::swap(&mut a, &mut b);
+                }
+                b = b - a;
+                unsafe {
+                    if b == 0 {
+                        break;
+                    }
+                    ctz_b = ::intrinsics::cttz_nonzero(b);
+                }
+            }
+            return a << k;
+        }
+        let gcd: usize = gcd(::mem::size_of::<T>(), ::mem::size_of::<U>());
+        let ts: usize = ::mem::size_of::<U>() / gcd;
+        let us: usize = ::mem::size_of::<T>() / gcd;
 
-    // }
+        // Armed with this knowledge, we can find how many `U`s we can fit!
+        let us_len = self.len() / ts * us;
+        // And how many `T`s will be in the trailing slice!
+        let ts_len = self.len() % ts;
+        return (us_len, ts_len);
+    }
 
-    // #[unstable(feature = "slice_align_to", issue = "44488")]
-    // pub fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
-    // }
-}}
+    /// Transmute the slice to a slice of another type, ensuring aligment of the types is
+    /// maintained.
+    ///
+    /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
+    /// slice of a new type, and the suffix slice. The middle slice will have the greatest length
+    /// possible for a given type and input slice.
+    ///
+    /// This method has no purpose when either input element `T` or output element `U` are
+    /// zero-sized and will return the original slice without splitting anything.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is essentially a `transmute` with respect to the elements in the returned
+    /// middle slice, so all the usual caveats pertaining to `transmute::<T, U>` also apply here.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(slice_align_to)]
+    /// unsafe {
+    ///     let bytes: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
+    ///     let (prefix, shorts, suffix) = bytes.align_to::<u16>();
+    ///     // less_efficient_algorithm_for_bytes(prefix);
+    ///     // more_efficient_algorithm_for_aligned_shorts(shorts);
+    ///     // less_efficient_algorithm_for_bytes(suffix);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_align_to", issue = "44488")]
+    #[cfg(not(stage0))]
+    pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
+        // Note that most of this function will be constant-evaluated,
+        if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
+            // handle ZSTs specially, which is – don't handle them at all.
+            return (self, &[], &[]);
+        }
+        let ptr = self.as_ptr();
+        let offset = ::intrinsics::align_offset(ptr, ::mem::align_of::<U>());
+        if offset > self.len() {
+            return (self, &[], &[]);
+        } else {
+            let (left, rest) = self.split_at(offset);
+            let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            return (left,
+                    from_raw_parts(rest.as_ptr() as *const U, us_len),
+                    from_raw_parts(rest.as_ptr().offset((rest.len() - ts_len) as isize), ts_len))
+        }
+    }
 
-#[lang = "slice"]
-#[cfg(not(test))]
-#[cfg(not(stage0))]
-impl<T> [T] {
-    slice_core_methods!();
+    /// Transmute the slice to a slice of another type, ensuring aligment of the types is
+    /// maintained.
+    ///
+    /// This method splits the slice into three distinct slices: prefix, correctly aligned middle
+    /// slice of a new type, and the suffix slice. The middle slice will have the greatest length
+    /// possible for a given type and input slice.
+    ///
+    /// This method has no purpose when either input element `T` or output element `U` are
+    /// zero-sized and will return the original slice without splitting anything.
+    ///
+    /// # Unsafety
+    ///
+    /// This method is essentially a `transmute` with respect to the elements in the returned
+    /// middle slice, so all the usual caveats pertaining to `transmute::<T, U>` also apply here.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(slice_align_to)]
+    /// unsafe {
+    ///     let mut bytes: [u8; 7] = [1, 2, 3, 4, 5, 6, 7];
+    ///     let (prefix, shorts, suffix) = bytes.align_to_mut::<u16>();
+    ///     // less_efficient_algorithm_for_bytes(prefix);
+    ///     // more_efficient_algorithm_for_aligned_shorts(shorts);
+    ///     // less_efficient_algorithm_for_bytes(suffix);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_align_to", issue = "44488")]
+    #[cfg(not(stage0))]
+    pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
+        // Note that most of this function will be constant-evaluated,
+        if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
+            // handle ZSTs specially, which is – don't handle them at all.
+            return (self, &mut [], &mut []);
+        }
+
+        // First, find at what point do we split between the first and 2nd slice. Easy with
+        // ptr.align_offset.
+        let ptr = self.as_ptr();
+        let offset = ::intrinsics::align_offset(ptr, ::mem::align_of::<U>());
+        if offset > self.len() {
+            return (self, &mut [], &mut []);
+        } else {
+            let (left, rest) = self.split_at_mut(offset);
+            let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            let mut_ptr = rest.as_mut_ptr();
+            return (left,
+                    from_raw_parts_mut(mut_ptr as *mut U, us_len),
+                    from_raw_parts_mut(mut_ptr.offset((rest.len() - ts_len) as isize), ts_len))
+        }
+    }
 }
 
 #[lang = "slice_u8"]
