@@ -10,6 +10,8 @@
 
 // compile-pass
 
+#![feature(box_syntax)]
+#![feature(box_patterns)]
 #![warn(unused)] // UI tests pass `-A unused` (#43896)
 
 struct SoulHistory {
@@ -36,11 +38,15 @@ fn main() {
         hours_are_suns = false;
     }
 
-    let bag = &Large::Suit {
+    let bag = Large::Suit {
         case: ()
     };
 
-    match bag {
+    match &bag {
         &Large::Suit { case } => {}
+    };
+
+    match box bag {
+        box Large::Suit { case } => {}
     };
 }

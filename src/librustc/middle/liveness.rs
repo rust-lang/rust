@@ -430,8 +430,9 @@ fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
                     }
                     break;
                 }
-                hir::PatKind::Ref(ref deref_pat, _) => {
-                    pat = deref_pat;
+                hir::PatKind::Ref(ref inner_pat, _) |
+                hir::PatKind::Box(ref inner_pat) => {
+                    pat = inner_pat;
                 }
                 _ => break
             }
