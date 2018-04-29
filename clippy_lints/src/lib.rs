@@ -16,6 +16,7 @@
 #![feature(iterator_find_map)]
 
 
+extern crate cargo_metadata;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_typeck;
@@ -79,6 +80,9 @@ macro_rules! declare_clippy_lint {
         declare_lint! { pub $name, Allow, $description }
     };
     { pub $name:tt, restriction, $description:tt } => {
+        declare_lint! { pub $name, Allow, $description }
+    };
+    { pub $name:tt, cargo, $description:tt } => {
         declare_lint! { pub $name, Allow, $description }
     };
     { pub $name:tt, nursery, $description:tt } => {
@@ -158,6 +162,7 @@ pub mod minmax;
 pub mod misc;
 pub mod misc_early;
 pub mod missing_doc;
+pub mod multiple_crate_versions;
 pub mod mut_mut;
 pub mod mut_reference;
 pub mod mutex_atomic;
@@ -412,6 +417,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box question_mark::QuestionMarkPass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_late_lint_pass(box redundant_field_names::RedundantFieldNames);
+    reg.register_early_lint_pass(box multiple_crate_versions::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
     reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
 
@@ -893,6 +899,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         mutex_atomic::MUTEX_ATOMIC,
         types::BOX_VEC,
         vec::USELESS_VEC,
+    ]);
+
+    reg.register_lint_group("clippy_cargo", vec![
+        multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
     ]);
 
     reg.register_lint_group("clippy_nursery", vec![
