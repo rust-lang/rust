@@ -18,6 +18,10 @@ struct SoulHistory {
     endless_and_singing: bool
 }
 
+enum Large {
+    Suit { case: () }
+}
+
 fn main() {
     let i_think_continually = 2;
     let who_from_the_womb_remembered = SoulHistory {
@@ -31,4 +35,12 @@ fn main() {
                          endless_and_singing: true } = who_from_the_womb_remembered {
         hours_are_suns = false;
     }
+
+    let bag = &Large::Suit {
+        case: ()
+    };
+
+    match bag {
+        &Large::Suit { case } => {}
+    };
 }
