@@ -58,6 +58,8 @@ pub fn opts() -> TargetOptions {
     // they'll be included from there.
     base.pre_link_objects_exe_crt.push("crt1.o".to_string());
     base.pre_link_objects_exe_crt.push("crti.o".to_string());
+    base.pre_link_objects_exe_crt_sys.push("crtbegin.o".to_string());
+    base.post_link_objects_crt_sys.push("crtend.o".to_string());
     base.post_link_objects_crt.push("crtn.o".to_string());
 
     // These targets statically link libc by default
