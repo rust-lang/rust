@@ -10,6 +10,8 @@
 
 // Test that Vec::new() can be used for constants
 
+#![feature(const_vec_new)]
+
 const MY_VEC: Vec<usize> = Vec::new();
 
 pub fn main() {}
