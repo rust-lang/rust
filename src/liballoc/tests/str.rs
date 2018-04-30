@@ -291,11 +291,14 @@ fn test_replace_pattern() {
     assert_eq!(data.replace(|c| c == 'γ', "😺😺😺"), "abcdαβ😺😺😺δabcdαβ😺😺😺δ");
 }
 
+// The current implementation of SliceIndex fails to handle methods
+// orthogonally from range types; therefore, it is worth testing
+// all of the indexing operations on each input.
 mod slice_index {
     // Test a slicing operation **that should succeed,**
     // testing it on all of the indexing methods.
     //
-    // DO NOT use this in `should_panic` tests, unless you are testing the macro itself.
+    // This is not suitable for testing failure on invalid inputs.
     macro_rules! assert_range_eq {
         ($s:expr, $range:expr, $expected:expr)
         => {
@@ -340,7 +343,7 @@ mod slice_index {
     // because if it can't, then what are we even doing here?
     //
     // (Be aware this only demonstrates the ability to detect bugs
-    //  in the FIRST method it calls, as the macro is not designed
+    //  in the FIRST method that panics, as the macro is not designed
     //  to be used in `should_panic`)
     #[test]
     #[should_panic(expected = "out of bounds")]
@@ -363,8 +366,8 @@ mod slice_index {
     // and `None` test cases for get/get_mut.
     macro_rules! panic_cases {
         ($(
-            mod $case_name:ident {
-                let DATA = $data:expr;
+            in mod $case_name:ident {
+                data: $data:expr;
 
                 // optional:
                 //
@@ -373,14 +376,11 @@ mod slice_index {
                 // straddles the boundary between valid and invalid.
                 // (such as the input `len..len`, which is just barely valid)
                 $(
-                    let GOOD_INPUT = $good:expr;
-                    let GOOD_OUTPUT = $output:expr;
+                    good: data[$good:expr] == $output:expr;
                 )*
 
-                let BAD_INPUT = $bad:expr;
-                const EXPECT_MSG = $expect_msg:expr; // must be a literal
-
-                !!generate_tests!!
+                bad: data[$bad:expr];
+                message: $expect_msg:expr; // must be a literal
             }
         )*) => {$(
             mod $case_name {
@@ -509,114 +509,72 @@ mod slice_index {
     }
 
     panic_cases! {
-        mod rangefrom_len {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = 6..;
-            let GOOD_OUTPUT = "";
-
-            let BAD_INPUT = 7..;
-            const EXPECT_MSG = "out of bounds";
-
-            !!generate_tests!!
+        in mod rangefrom_len {
+            data: "abcdef";
+            good: data[6..] == "";
+            bad: data[7..];
+            message: "out of bounds";
         }
 
-        mod rangeto_len {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = ..6;
-            let GOOD_OUTPUT = "abcdef";
-
-            let BAD_INPUT = ..7;
-            const EXPECT_MSG = "out of bounds";
-
-            !!generate_tests!!
+        in mod rangeto_len {
+            data: "abcdef";
+            good: data[..6] == "abcdef";
+            bad: data[..7];
+            message: "out of bounds";
         }
 
-        mod rangetoinclusive_len {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = ..=5;
-            let GOOD_OUTPUT = "abcdef";
-
-            let BAD_INPUT = ..=6;
-            const EXPECT_MSG = "out of bounds";
-
-            !!generate_tests!!
+        in mod rangetoinclusive_len {
+            data: "abcdef";
+            good: data[..=5] == "abcdef";
+            bad: data[..=6];
+            message: "out of bounds";
         }
 
-        mod range_len_len {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = 6..6;
-            let GOOD_OUTPUT = "";
-
-            let BAD_INPUT = 7..7;
-            const EXPECT_MSG = "out of bounds";
-
-            !!generate_tests!!
+        in mod range_len_len {
+            data: "abcdef";
+            good: data[6..6] == "";
+            bad: data[7..7];
+            message: "out of bounds";
         }
 
-        mod rangeinclusive_len_len {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = 6..=5;
-            let GOOD_OUTPUT = "";
-
-            let BAD_INPUT = 7..=6;
-            const EXPECT_MSG = "out of bounds";
-
-            !!generate_tests!!
+        in mod rangeinclusive_len_len {
+            data: "abcdef";
+            good: data[6..=5] == "";
+            bad: data[7..=6];
+            message: "out of bounds";
         }
     }
 
     panic_cases! {
-        mod range_neg_width {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = 4..4;
-            let GOOD_OUTPUT = "";
-
-            let BAD_INPUT = 4..3;
-            const EXPECT_MSG = "begin <= end (4 <= 3)";
-
-            !!generate_tests!!
+        in mod range_neg_width {
+            data: "abcdef";
+            good: data[4..4] == "";
+            bad: data[4..3];
+            message: "begin <= end (4 <= 3)";
         }
 
-        mod rangeinclusive_neg_width {
-            let DATA = "abcdef";
-
-            let GOOD_INPUT = 4..=3;
-            let GOOD_OUTPUT = "";
-
-            let BAD_INPUT = 4..=2;
-            const EXPECT_MSG = "begin <= end (4 <= 3)";
-
-            !!generate_tests!!
+        in mod rangeinclusive_neg_width {
+            data: "abcdef";
+            good: data[4..=3] == "";
+            bad: data[4..=2];
+            message: "begin <= end (4 <= 3)";
         }
     }
 
     mod overflow {
         panic_cases! {
-
-            mod rangeinclusive {
-                let DATA = "hello";
-
+            in mod rangeinclusive {
+                data: "hello";
                 // note: using 0 specifically ensures that the result of overflowing is 0..0,
                 //       so that `get` doesn't simply return None for the wrong reason.
-                let BAD_INPUT = 0..=usize::max_value();
-                const EXPECT_MSG = "maximum usize";
-
-                !!generate_tests!!
+                bad: data[0..=usize::max_value()];
+                message: "maximum usize";
             }
 
-            mod rangetoinclusive {
-                let DATA = "hello";
-
-                let BAD_INPUT = ..=usize::max_value();
-                const EXPECT_MSG = "maximum usize";
-
-                !!generate_tests!!
+            in mod rangetoinclusive {
+                data: "hello";
+                bad: data[..=usize::max_value()];
+                message: "maximum usize";
             }
         }
     }
@@ -635,74 +593,53 @@ mod slice_index {
         // because some of the logic may be duplicated as part of micro-optimizations
         // to dodge unicode boundary checks on half-ranges.
         panic_cases! {
-            mod range_1 {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = super::BAD_START..super::GOOD_END;
-                const EXPECT_MSG =
+            in mod range_1 {
+                data: super::DATA;
+                bad: data[super::BAD_START..super::GOOD_END];
+                message:
                     "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
-
-                !!generate_tests!!
             }
 
-            mod range_2 {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = super::GOOD_START..super::BAD_END;
-                const EXPECT_MSG =
+            in mod range_2 {
+                data: super::DATA;
+                bad: data[super::GOOD_START..super::BAD_END];
+                message:
                     "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
-
-                !!generate_tests!!
             }
 
-            mod rangefrom {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = super::BAD_START..;
-                const EXPECT_MSG =
+            in mod rangefrom {
+                data: super::DATA;
+                bad: data[super::BAD_START..];
+                message:
                     "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
-
-                !!generate_tests!!
             }
 
-            mod rangeto {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = ..super::BAD_END;
-                const EXPECT_MSG =
+            in mod rangeto {
+                data: super::DATA;
+                bad: data[..super::BAD_END];
+                message:
                     "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
-
-                !!generate_tests!!
             }
 
-            mod rangeinclusive_1 {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = super::BAD_START..=super::GOOD_END_INCL;
-                const EXPECT_MSG =
+            in mod rangeinclusive_1 {
+                data: super::DATA;
+                bad: data[super::BAD_START..=super::GOOD_END_INCL];
+                message:
                     "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
-
-                !!generate_tests!!
             }
 
-            mod rangeinclusive_2 {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = super::GOOD_START..=super::BAD_END_INCL;
-                const EXPECT_MSG =
+            in mod rangeinclusive_2 {
+                data: super::DATA;
+                bad: data[super::GOOD_START..=super::BAD_END_INCL];
+                message:
                     "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
-
-                !!generate_tests!!
             }
 
-            mod rangetoinclusive {
-                let DATA = super::DATA;
-
-                let BAD_INPUT = ..=super::BAD_END_INCL;
-                const EXPECT_MSG =
+            in mod rangetoinclusive {
+                data: super::DATA;
+                bad: data[..=super::BAD_END_INCL];
+                message:
                     "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
-
-                !!generate_tests!!
             }
         }
     }
