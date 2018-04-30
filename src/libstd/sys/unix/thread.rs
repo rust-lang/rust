@@ -326,11 +326,23 @@ pub mod guard {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
             // stack overflow.
-            let result = mmap(stackaddr, PAGE_SIZE, PROT_NONE,
-                              MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+            if cfg!(target_os = "netbsd") {
+                let result = mmap(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                                   MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+                if result != stackaddr || result == MAP_FAILED {
+                    panic!("failed to allocate a guard page");
+                }
+                let result = mprotect(stackaddr, PAGE_SIZE, 0);
 
-            if result != stackaddr || result == MAP_FAILED {
-                panic!("failed to allocate a guard page");
+                if result != 0 {
+                    panic!("unable to protect the guard page");
+                }
+            } else {
+                let result = mmap(stackaddr, PAGE_SIZE, PROT_NONE,
+                                  MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+                if result != stackaddr || result == MAP_FAILED {
+                    panic!("failed to allocate a guard page");
+                }
             }
 
             let guardaddr = stackaddr as usize;
