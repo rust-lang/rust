@@ -474,9 +474,6 @@ declare_features! (
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
 
     (active, abi_amdgpu_kernel, "1.29.0", Some(51575), None),
-
-    // Enables improved divegence checking in functions/match arms.
-    (active, better_divergence_checking, "1.279.0", Some(50262), None),
 );
 
 declare_features! (
