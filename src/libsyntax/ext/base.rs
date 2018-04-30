@@ -738,6 +738,7 @@ pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub ecfg: expand::ExpansionConfig<'a>,
     pub root_path: PathBuf,
+    pub context_path: Option<Rc<ast::Path>>,
     pub resolver: &'a mut Resolver,
     pub resolve_err_count: usize,
     pub current_expansion: ExpansionData,
@@ -755,6 +756,7 @@ impl<'a> ExtCtxt<'a> {
             root_path: PathBuf::new(),
             resolver,
             resolve_err_count: 0,
+            context_path: None,
             current_expansion: ExpansionData {
                 mark: Mark::root(),
                 depth: 0,

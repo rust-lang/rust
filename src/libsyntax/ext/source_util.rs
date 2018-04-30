@@ -74,6 +74,19 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
     base::MacEager::expr(cx.expr_str(topmost, Symbol::intern(&loc.file.name.to_string())))
 }
 
+pub fn expand_function<'cx>(cx: &'cx mut ExtCtxt,
+                       sp: Span, tts: &[tokenstream::TokenTree])
+                   -> Box<base::MacResult+'static> {
+    base::check_zero_tts(cx, sp, tts, "function!");
+
+    let topmost = cx.expansion_cause().unwrap_or(sp);
+    let symbol = match cx.context_path.as_ref() {
+        None => Symbol::intern(""),
+        Some(path) => Symbol::intern((*path).to_string().as_str())
+    };
+    base::MacEager::expr(cx.expr_str(topmost, symbol))
+}
+
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[tokenstream::TokenTree])
                         -> Box<base::MacResult+'static> {
     let s = pprust::tts_to_string(tts);
