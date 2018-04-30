@@ -602,7 +602,9 @@ mod slice_index {
             mod rangeinclusive {
                 let DATA = "hello";
 
-                let BAD_INPUT = 1..=usize::max_value();
+                // note: using 0 specifically ensures that the result of overflowing is 0..0,
+                //       so that `get` doesn't simply return None for the wrong reason.
+                let BAD_INPUT = 0..=usize::max_value();
                 const EXPECT_MSG = "maximum usize";
 
                 !!generate_tests!!
