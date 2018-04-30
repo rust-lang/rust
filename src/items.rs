@@ -604,7 +604,7 @@ impl<'a> FmtVisitor<'a> {
                 (_, Const(..)) => Ordering::Greater,
                 (Macro(..), _) => Ordering::Less,
                 (_, Macro(..)) => Ordering::Greater,
-                _ => Ordering::Less,
+                _ => a.span.lo().cmp(&b.span.lo()),
             });
             let mut prev_kind = None;
             for (buf, item) in buffer {
