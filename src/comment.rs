@@ -1139,6 +1139,7 @@ impl<'a> CommentReducer<'a> {
 
 impl<'a> Iterator for CommentReducer<'a> {
     type Item = char;
+
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let mut c = self.iter.next()?;

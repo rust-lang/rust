@@ -239,6 +239,7 @@ impl WidthHeuristics {
             single_line_if_else_max_width: 0,
         }
     }
+
     // scale the default WidthHeuristics according to max_width
     pub fn scaled(max_width: usize) -> WidthHeuristics {
         let mut max_width_ratio: f32 = max_width as f32 / 100.0; // 100 is the default width -> default ratio is 1

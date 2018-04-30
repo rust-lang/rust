@@ -799,9 +799,11 @@ mod test {
             fn bump(&mut self) {
                 self.input.next().unwrap();
             }
+
             fn eat(&mut self, c: char) {
                 assert!(self.input.next().unwrap() == c);
             }
+
             fn push_segment(
                 result: &mut Vec<UseSegment>,
                 buf: &mut String,
@@ -825,6 +827,7 @@ mod test {
                     }
                 }
             }
+
             fn parse_in_list(&mut self) -> UseTree {
                 let mut result = vec![];
                 let mut buf = String::new();
