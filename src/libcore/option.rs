@@ -878,7 +878,7 @@ impl<T: Default> Option<T> {
     }
 }
 
-# [unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
 impl<T: Deref> Option<T> {
     /// Converts from `&Option<T>` to `Option<&T::Target>`.
     ///

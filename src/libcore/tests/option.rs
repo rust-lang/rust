@@ -304,7 +304,15 @@ fn test_option_deref() {
     let ref_option = &Some(&42);
     assert_eq!(ref_option.deref(), Some(&42));
 
+    let ref_option = &Some(String::from("a result"));
+    assert_eq!(ref_option.deref(), Some("a result"));
+
+    let ref_option = &Some(vec![1, 2, 3, 4, 5]);
+    assert_eq!(ref_option.deref(), Some(&[1, 2, 3, 4, 5][..]));
+
     // None: &Option<T: Deref>>::None -> None
     let ref_option: &Option<&i32> = &None;
     assert_eq!(ref_option.deref(), None);
+
+
 }
