@@ -111,6 +111,7 @@ use ty::{self, TyCtxt};
 use lint;
 use util::nodemap::{NodeMap, NodeSet};
 
+use std::collections::VecDeque;
 use std::{fmt, usize};
 use std::io::prelude::*;
 use std::io;
@@ -420,21 +421,35 @@ fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
         // phased out in favor of `HirId`s; however, we need to match the signature of
         // `each_binding`, which uses `NodeIds`.
         let mut shorthand_field_ids = NodeSet();
-        loop {
+        let mut pats = VecDeque::new();
+        pats.push_back(pat);
+        while let Some(pat) = pats.pop_front() {
+            use hir::PatKind::*;
             match pat.node {
-                hir::PatKind::Struct(_, ref fields, _) => {
+                Binding(_, _, _, ref inner_pat) => {
+                    pats.extend(inner_pat.iter());
+                }
+                Struct(_, ref fields, _) => {
                     for field in fields {
                         if field.node.is_shorthand {
                             shorthand_field_ids.insert(field.node.pat.id);
                         }
                     }
-                    break;
                 }
-                hir::PatKind::Ref(ref inner_pat, _) |
-                hir::PatKind::Box(ref inner_pat) => {
-                    pat = inner_pat;
+                Ref(ref inner_pat, _) |
+                Box(ref inner_pat) => {
+                    pats.push_back(inner_pat);
                 }
-                _ => break
+                TupleStruct(_, ref inner_pats, _) |
+                Tuple(ref inner_pats, _) => {
+                    pats.extend(inner_pats.iter());
+                }
+                Slice(ref pre_pats, ref inner_pat, ref post_pats) => {
+                    pats.extend(pre_pats.iter());
+                    pats.extend(inner_pat.iter());
+                    pats.extend(post_pats.iter());
+                }
+                _ => {}
             }
         }
 

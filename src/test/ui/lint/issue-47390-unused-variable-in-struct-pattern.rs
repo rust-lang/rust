@@ -20,9 +20,12 @@ struct SoulHistory {
     endless_and_singing: bool
 }
 
+#[derive(Clone, Copy)]
 enum Large {
     Suit { case: () }
 }
+
+struct Tuple(Large, ());
 
 fn main() {
     let i_think_continually = 2;
@@ -42,11 +45,33 @@ fn main() {
         case: ()
     };
 
+    // Plain struct
+    match bag {
+        Large::Suit { case } => {}
+    };
+
+    // Referenced struct
     match &bag {
         &Large::Suit { case } => {}
     };
 
+    // Boxed struct
     match box bag {
         box Large::Suit { case } => {}
+    };
+
+    // Tuple with struct
+    match (bag,) {
+        (Large::Suit { case },) => {}
+    };
+
+    // Slice with struct
+    match [bag] {
+        [Large::Suit { case }] => {}
+    };
+
+    // Tuple struct with struct
+    match Tuple(bag, ()) {
+        Tuple(Large::Suit { case }, ()) => {}
     };
 }
