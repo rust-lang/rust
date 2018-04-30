@@ -124,6 +124,7 @@
 #![feature(pointer_methods)]
 #![feature(inclusive_range_fields)]
 #![cfg_attr(stage0, feature(generic_param_attrs))]
+#![feature(rustc_const_unstable)]
 
 #![cfg_attr(not(test), feature(fn_traits, i128))]
 #![cfg_attr(test, feature(test))]
