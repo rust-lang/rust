@@ -106,13 +106,6 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_foreign_item(self) -> ast::ForeignItem {
-        match self {
-            Annotatable::ForeignItem(i) => i.into_inner(),
-            _ => panic!("expected foreign item")
-        }
-    }
-
     pub fn expect_stmt(self) -> ast::Stmt {
         match self {
             Annotatable::Stmt(stmt) => stmt.into_inner(),

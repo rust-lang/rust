@@ -149,8 +149,6 @@ impl ExpansionKind {
                 Expansion::ImplItems(items.map(Annotatable::expect_impl_item).collect()),
             ExpansionKind::TraitItems =>
                 Expansion::TraitItems(items.map(Annotatable::expect_trait_item).collect()),
-            ExpansionKind::ForeignItems =>
-                Expansion::ForeignItems(items.map(Annotatable::expect_foreign_item).collect()),
             ExpansionKind::Stmts => Expansion::Stmts(items.map(Annotatable::expect_stmt).collect()),
             ExpansionKind::Expr => Expansion::Expr(
                 items.next().expect("expected exactly one expression").expect_expr()
