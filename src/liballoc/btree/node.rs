@@ -60,12 +60,12 @@ pub const CAPACITY: usize = 2 * B - 1;
 ///
 /// See also rust-lang/rfcs#197, which would make this structure significantly more safe by
 /// avoiding accidentally dropping unused and uninitialized keys and values.
+///
+/// We put the metadata first so that its position is the same for every `K` and `V`, in order
+/// to statically allocate a single dummy node to avoid allocations. This struct is `repr(C)` to
+/// prevent them from being reordered.
+#[repr(C)]
 struct LeafNode<K, V> {
-    /// The arrays storing the actual data of the node. Only the first `len` elements of each
-    /// array are initialized and valid.
-    keys: [K; CAPACITY],
-    vals: [V; CAPACITY],
-
     /// We use `*const` as opposed to `*mut` so as to be covariant in `K` and `V`.
     /// This either points to an actual node or is null.
     parent: *const InternalNode<K, V>,
@@ -77,10 +77,14 @@ struct LeafNode<K, V> {
 
     /// The number of keys and values this node stores.
     ///
-    /// This is at the end of the node's representation and next to `parent_idx` to encourage
-    /// the compiler to join `len` and `parent_idx` into the same 32-bit word, reducing space
-    /// overhead.
+    /// This next to `parent_idx` to encourage the compiler to join `len` and
+    /// `parent_idx` into the same 32-bit word, reducing space overhead.
     len: u16,
+
+    /// The arrays storing the actual data of the node. Only the first `len` elements of each
+    /// array are initialized and valid.
+    keys: [K; CAPACITY],
+    vals: [V; CAPACITY],
 }
 
 impl<K, V> LeafNode<K, V> {
