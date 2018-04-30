@@ -292,19 +292,194 @@ fn test_replace_pattern() {
 }
 
 mod slice_index {
+    // Test a slicing operation **that should succeed,**
+    // testing it on all of the indexing methods.
+    //
+    // DO NOT use this in `should_panic` tests, unless you are testing the macro itself.
+    macro_rules! assert_range_eq {
+        ($s:expr, $range:expr, $expected:expr)
+        => {
+            let mut s: String = $s.to_owned();
+            let mut expected: String = $expected.to_owned();
+            {
+                let s: &str = &s;
+                let expected: &str = &expected;
+
+                assert_eq!(&s[$range], expected, "(in assertion for: index)");
+                assert_eq!(s.get($range), Some(expected), "(in assertion for: get)");
+                unsafe {
+                    assert_eq!(
+                        s.get_unchecked($range), expected,
+                        "(in assertion for: get_unchecked)",
+                    );
+                }
+            }
+            {
+                let s: &mut str = &mut s;
+                let expected: &mut str = &mut expected;
+
+                assert_eq!(
+                    &mut s[$range], expected,
+                    "(in assertion for: index_mut)",
+                );
+                assert_eq!(
+                    s.get_mut($range), Some(&mut expected[..]),
+                    "(in assertion for: get_mut)",
+                );
+                unsafe {
+                    assert_eq!(
+                        s.get_unchecked_mut($range), expected,
+                        "(in assertion for: get_unchecked_mut)",
+                    );
+                }
+            }
+        }
+    }
+
+    // Make sure the macro can actually detect bugs,
+    // because if it can't, then what are we even doing here?
+    //
+    // (Be aware this only demonstrates the ability to detect bugs
+    //  in the FIRST method it calls, as the macro is not designed
+    //  to be used in `should_panic`)
     #[test]
-    fn test_slice() {
-        assert_eq!("ab", &"abc"[0..2]);
-        assert_eq!("bc", &"abc"[1..3]);
-        assert_eq!("", &"abc"[1..1]);
-        assert_eq!("\u{65e5}", &"\u{65e5}\u{672c}"[0..3]);
+    #[should_panic(expected = "out of bounds")]
+    fn assert_range_eq_can_fail_by_panic() {
+        assert_range_eq!("abc", 0..5, "abc");
+    }
+
+    // (Be aware this only demonstrates the ability to detect bugs
+    //  in the FIRST method it calls, as the macro is not designed
+    //  to be used in `should_panic`)
+    #[test]
+    #[should_panic(expected = "==")]
+    fn assert_range_eq_can_fail_by_inequality() {
+        assert_range_eq!("abc", 0..2, "abc");
+    }
+
+    // Generates test cases for bad index operations.
+    //
+    // This generates `should_panic` test cases for Index/IndexMut
+    // and `None` test cases for get/get_mut.
+    macro_rules! panic_cases {
+        ($(
+            mod $case_name:ident {
+                let DATA = $data:expr;
+
+                // optional:
+                //
+                // a similar input for which DATA[input] succeeds, and the corresponding
+                // output str. This helps validate "critical points" where an input range
+                // straddles the boundary between valid and invalid.
+                // (such as the input `len..len`, which is just barely valid)
+                $(
+                    let GOOD_INPUT = $good:expr;
+                    let GOOD_OUTPUT = $output:expr;
+                )*
+
+                let BAD_INPUT = $bad:expr;
+                const EXPECT_MSG = $expect_msg:expr; // must be a literal
+
+                !!generate_tests!!
+            }
+        )*) => {$(
+            mod $case_name {
+                #[test]
+                fn pass() {
+                    let mut v: String = $data.into();
+
+                    $( assert_range_eq!(v, $good, $output); )*
+
+                    {
+                        let v: &str = &v;
+                        assert_eq!(v.get($bad), None, "(in None assertion for get)");
+                    }
+
+                    {
+                        let v: &mut str = &mut v;
+                        assert_eq!(v.get_mut($bad), None, "(in None assertion for get_mut)");
+                    }
+                }
+
+                #[test]
+                #[should_panic(expected = $expect_msg)]
+                fn index_fail() {
+                    let v: String = $data.into();
+                    let v: &str = &v;
+                    let _v = &v[$bad];
+                }
+
+                #[test]
+                #[should_panic(expected = $expect_msg)]
+                fn index_mut_fail() {
+                    let mut v: String = $data.into();
+                    let v: &mut str = &mut v;
+                    let _v = &mut v[$bad];
+                }
+            }
+        )*};
+    }
+
+    #[test]
+    fn simple_ascii() {
+        assert_range_eq!("abc", .., "abc");
+
+        assert_range_eq!("abc", 0..2, "ab");
+        assert_range_eq!("abc", 0..=1, "ab");
+        assert_range_eq!("abc", ..2, "ab");
+        assert_range_eq!("abc", ..=1, "ab");
+
+        assert_range_eq!("abc", 1..3, "bc");
+        assert_range_eq!("abc", 1..=2, "bc");
+        assert_range_eq!("abc", 1..1, "");
+        assert_range_eq!("abc", 1..=0, "");
+    }
+
+    #[test]
+    fn simple_unicode() {
+        // 日本
+        assert_range_eq!("\u{65e5}\u{672c}", .., "\u{65e5}\u{672c}");
+
+        assert_range_eq!("\u{65e5}\u{672c}", 0..3, "\u{65e5}");
+        assert_range_eq!("\u{65e5}\u{672c}", 0..=2, "\u{65e5}");
+        assert_range_eq!("\u{65e5}\u{672c}", ..3, "\u{65e5}");
+        assert_range_eq!("\u{65e5}\u{672c}", ..=2, "\u{65e5}");
+
+        assert_range_eq!("\u{65e5}\u{672c}", 3..6, "\u{672c}");
+        assert_range_eq!("\u{65e5}\u{672c}", 3..=5, "\u{672c}");
+        assert_range_eq!("\u{65e5}\u{672c}", 3.., "\u{672c}");
 
         let data = "ประเทศไทย中华";
-        assert_eq!("ป", &data[0..3]);
-        assert_eq!("ร", &data[3..6]);
-        assert_eq!("", &data[3..3]);
-        assert_eq!("华", &data[30..33]);
+        assert_range_eq!(data, 0..3, "ป");
+        assert_range_eq!(data, 3..6, "ร");
+        assert_range_eq!(data, 3..3, "");
+        assert_range_eq!(data, 30..33, "华");
 
+        /*0: 中
+          3: 华
+          6: V
+          7: i
+          8: ệ
+         11: t
+         12:
+         13: N
+         14: a
+         15: m */
+        let ss = "中华Việt Nam";
+        assert_range_eq!(ss, 3..6, "华");
+        assert_range_eq!(ss, 6..16, "Việt Nam");
+        assert_range_eq!(ss, 6..=15, "Việt Nam");
+        assert_range_eq!(ss, 6.., "Việt Nam");
+
+        assert_range_eq!(ss, 0..3, "中");
+        assert_range_eq!(ss, 3..7, "华V");
+        assert_range_eq!(ss, 3..=6, "华V");
+        assert_range_eq!(ss, 3..3, "");
+        assert_range_eq!(ss, 3..=2, "");
+    }
+
+    #[test]
+    fn simple_big() {
         fn a_million_letter_x() -> String {
             let mut i = 0;
             let mut rs = String::new();
@@ -324,33 +499,7 @@ mod slice_index {
             rs
         }
         let letters = a_million_letter_x();
-        assert_eq!(half_a_million_letter_x(), &letters[0..3 * 500000]);
-    }
-
-    #[test]
-    fn test_slice_2() {
-        let ss = "中华Việt Nam";
-
-        assert_eq!("华", &ss[3..6]);
-        assert_eq!("Việt Nam", &ss[6..16]);
-
-        assert_eq!("ab", &"abc"[0..2]);
-        assert_eq!("bc", &"abc"[1..3]);
-        assert_eq!("", &"abc"[1..1]);
-
-        assert_eq!("中", &ss[0..3]);
-        assert_eq!("华V", &ss[3..7]);
-        assert_eq!("", &ss[3..3]);
-        /*0: 中
-          3: 华
-          6: V
-          7: i
-          8: ệ
-         11: t
-         12:
-         13: N
-         14: a
-         15: m */
+        assert_range_eq!(letters, 0..3 * 500000, half_a_million_letter_x());
     }
 
     #[test]
@@ -359,55 +508,210 @@ mod slice_index {
         &"中华Việt Nam"[0..2];
     }
 
-    #[test]
-    #[should_panic]
-    fn test_str_slice_rangetoinclusive_max_panics() {
-        &"hello"[..=usize::max_value()];
-    }
+    panic_cases! {
+        mod rangefrom_len {
+            let DATA = "abcdef";
 
-    #[test]
-    #[should_panic]
-    fn test_str_slice_rangeinclusive_max_panics() {
-        &"hello"[1..=usize::max_value()];
-    }
+            let GOOD_INPUT = 6..;
+            let GOOD_OUTPUT = "";
 
-    #[test]
-    #[should_panic]
-    fn test_str_slicemut_rangetoinclusive_max_panics() {
-        let mut s = "hello".to_owned();
-        let s: &mut str = &mut s;
-        &mut s[..=usize::max_value()];
-    }
+            let BAD_INPUT = 7..;
+            const EXPECT_MSG = "out of bounds";
 
-    #[test]
-    #[should_panic]
-    fn test_str_slicemut_rangeinclusive_max_panics() {
-        let mut s = "hello".to_owned();
-        let s: &mut str = &mut s;
-        &mut s[1..=usize::max_value()];
-    }
-
-    #[test]
-    fn test_str_get_maxinclusive() {
-        let mut s = "hello".to_owned();
-        {
-            let s: &str = &s;
-            assert_eq!(s.get(..=usize::max_value()), None);
-            assert_eq!(s.get(1..=usize::max_value()), None);
+            !!generate_tests!!
         }
-        {
-            let s: &mut str = &mut s;
-            assert_eq!(s.get(..=usize::max_value()), None);
-            assert_eq!(s.get(1..=usize::max_value()), None);
+
+        mod rangeto_len {
+            let DATA = "abcdef";
+
+            let GOOD_INPUT = ..6;
+            let GOOD_OUTPUT = "abcdef";
+
+            let BAD_INPUT = ..7;
+            const EXPECT_MSG = "out of bounds";
+
+            !!generate_tests!!
+        }
+
+        mod rangetoinclusive_len {
+            let DATA = "abcdef";
+
+            let GOOD_INPUT = ..=5;
+            let GOOD_OUTPUT = "abcdef";
+
+            let BAD_INPUT = ..=6;
+            const EXPECT_MSG = "out of bounds";
+
+            !!generate_tests!!
+        }
+
+        mod range_len_len {
+            let DATA = "abcdef";
+
+            let GOOD_INPUT = 6..6;
+            let GOOD_OUTPUT = "";
+
+            let BAD_INPUT = 7..7;
+            const EXPECT_MSG = "out of bounds";
+
+            !!generate_tests!!
+        }
+
+        mod rangeinclusive_len_len {
+            let DATA = "abcdef";
+
+            let GOOD_INPUT = 6..=5;
+            let GOOD_OUTPUT = "";
+
+            let BAD_INPUT = 7..=6;
+            const EXPECT_MSG = "out of bounds";
+
+            !!generate_tests!!
+        }
+    }
+
+    panic_cases! {
+        mod range_neg_width {
+            let DATA = "abcdef";
+
+            let GOOD_INPUT = 4..4;
+            let GOOD_OUTPUT = "";
+
+            let BAD_INPUT = 4..3;
+            const EXPECT_MSG = "begin <= end (4 <= 3)";
+
+            !!generate_tests!!
+        }
+
+        mod rangeinclusive_neg_width {
+            let DATA = "abcdef";
+
+            let GOOD_INPUT = 4..=3;
+            let GOOD_OUTPUT = "";
+
+            let BAD_INPUT = 4..=2;
+            const EXPECT_MSG = "begin <= end (4 <= 3)";
+
+            !!generate_tests!!
+        }
+    }
+
+    mod overflow {
+        panic_cases! {
+
+            mod rangeinclusive {
+                let DATA = "hello";
+
+                let BAD_INPUT = 1..=usize::max_value();
+                const EXPECT_MSG = "maximum usize";
+
+                !!generate_tests!!
+            }
+
+            mod rangetoinclusive {
+                let DATA = "hello";
+
+                let BAD_INPUT = ..=usize::max_value();
+                const EXPECT_MSG = "maximum usize";
+
+                !!generate_tests!!
+            }
+        }
+    }
+
+    mod boundary {
+        const DATA: &'static str = "abcαβγ";
+
+        const BAD_START: usize = 4;
+        const GOOD_START: usize = 3;
+        const BAD_END: usize = 6;
+        const GOOD_END: usize = 7;
+        const BAD_END_INCL: usize = BAD_END - 1;
+        const GOOD_END_INCL: usize = GOOD_END - 1;
+
+        // it is especially important to test all of the different range types here
+        // because some of the logic may be duplicated as part of micro-optimizations
+        // to dodge unicode boundary checks on half-ranges.
+        panic_cases! {
+            mod range_1 {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = super::BAD_START..super::GOOD_END;
+                const EXPECT_MSG =
+                    "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
+
+                !!generate_tests!!
+            }
+
+            mod range_2 {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = super::GOOD_START..super::BAD_END;
+                const EXPECT_MSG =
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+
+                !!generate_tests!!
+            }
+
+            mod rangefrom {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = super::BAD_START..;
+                const EXPECT_MSG =
+                    "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
+
+                !!generate_tests!!
+            }
+
+            mod rangeto {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = ..super::BAD_END;
+                const EXPECT_MSG =
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+
+                !!generate_tests!!
+            }
+
+            mod rangeinclusive_1 {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = super::BAD_START..=super::GOOD_END_INCL;
+                const EXPECT_MSG =
+                    "byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of";
+
+                !!generate_tests!!
+            }
+
+            mod rangeinclusive_2 {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = super::GOOD_START..=super::BAD_END_INCL;
+                const EXPECT_MSG =
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+
+                !!generate_tests!!
+            }
+
+            mod rangetoinclusive {
+                let DATA = super::DATA;
+
+                let BAD_INPUT = ..=super::BAD_END_INCL;
+                const EXPECT_MSG =
+                    "byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of";
+
+                !!generate_tests!!
+            }
         }
     }
 
     const LOREM_PARAGRAPH: &'static str = "\
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
-    ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
-    eros. Suspendisse sit amet magna mollis, mollis nunc luctus, imperdiet mi. Integer fringilla non \
-    sem ut lacinia. Fusce varius tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec \
-    tempus vel, gravida nec quam.";
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem \
+    sit amet dolor ultricies condimentum. Praesent iaculis purus elit, ac malesuada \
+    quam malesuada in. Duis sed orci eros. Suspendisse sit amet magna mollis, mollis \
+    nunc luctus, imperdiet mi. Integer fringilla non sem ut lacinia. Fusce varius \
+    tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec tempus vel, \
+    gravida nec quam.";
 
     // check the panic includes the prefix of the sliced string
     #[test]
@@ -420,31 +724,6 @@ mod slice_index {
     #[should_panic(expected="luctus, im`[...]")]
     fn test_slice_fail_truncated_2() {
         &LOREM_PARAGRAPH[..1024];
-    }
-
-    #[test]
-    #[should_panic(expected="byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of")]
-    fn test_slice_fail_boundary_1() {
-        &"abcαβγ"[4..];
-    }
-
-    #[test]
-    #[should_panic(expected="byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of")]
-    fn test_slice_fail_boundary_2() {
-        &"abcαβγ"[2..6];
-    }
-
-    #[test]
-    fn test_slice_from() {
-        assert_eq!(&"abcd"[0..], "abcd");
-        assert_eq!(&"abcd"[2..], "cd");
-        assert_eq!(&"abcd"[4..], "");
-    }
-    #[test]
-    fn test_slice_to() {
-        assert_eq!(&"abcd"[..0], "");
-        assert_eq!(&"abcd"[..2], "ab");
-        assert_eq!(&"abcd"[..4], "abcd");
     }
 }
 

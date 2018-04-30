@@ -376,48 +376,254 @@ fn test_windows_zip() {
     assert_eq!(res, [14, 18, 22, 26]);
 }
 
-#[test]
-fn get_range() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    assert_eq!(v.get(..), Some(&[0, 1, 2, 3, 4, 5][..]));
-    assert_eq!(v.get(..2), Some(&[0, 1][..]));
-    assert_eq!(v.get(2..), Some(&[2, 3, 4, 5][..]));
-    assert_eq!(v.get(1..4), Some(&[1, 2, 3][..]));
-    assert_eq!(v.get(7..), None);
-    assert_eq!(v.get(7..10), None);
-}
+mod slice_index {
+    // Test a slicing operation that should succeed,
+    // testing it on all of the indexing methods.
+    macro_rules! assert_range_eq {
+        ($arr:expr, $range:expr, $expected:expr)
+        => {
+            let mut arr = $arr;
+            let mut expected = $expected;
+            {
+                let s: &[_] = &arr;
+                let expected: &[_] = &expected;
 
-#[test]
-fn get_mut_range() {
-    let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-    assert_eq!(v.get_mut(..), Some(&mut [0, 1, 2, 3, 4, 5][..]));
-    assert_eq!(v.get_mut(..2), Some(&mut [0, 1][..]));
-    assert_eq!(v.get_mut(2..), Some(&mut [2, 3, 4, 5][..]));
-    assert_eq!(v.get_mut(1..4), Some(&mut [1, 2, 3][..]));
-    assert_eq!(v.get_mut(7..), None);
-    assert_eq!(v.get_mut(7..10), None);
-}
+                assert_eq!(&s[$range], expected, "(in assertion for: index)");
+                assert_eq!(s.get($range), Some(expected), "(in assertion for: get)");
+                unsafe {
+                    assert_eq!(
+                        s.get_unchecked($range), expected,
+                        "(in assertion for: get_unchecked)",
+                    );
+                }
+            }
+            {
+                let s: &mut [_] = &mut arr;
+                let expected: &mut [_] = &mut expected;
 
-#[test]
-fn get_unchecked_range() {
-    unsafe {
-        let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-        assert_eq!(v.get_unchecked(..), &[0, 1, 2, 3, 4, 5][..]);
-        assert_eq!(v.get_unchecked(..2), &[0, 1][..]);
-        assert_eq!(v.get_unchecked(2..), &[2, 3, 4, 5][..]);
-        assert_eq!(v.get_unchecked(1..4), &[1, 2, 3][..]);
+                assert_eq!(
+                    &mut s[$range], expected,
+                    "(in assertion for: index_mut)",
+                );
+                assert_eq!(
+                    s.get_mut($range), Some(&mut expected[..]),
+                    "(in assertion for: get_mut)",
+                );
+                unsafe {
+                    assert_eq!(
+                        s.get_unchecked_mut($range), expected,
+                        "(in assertion for: get_unchecked_mut)",
+                    );
+                }
+            }
+        }
     }
-}
 
-#[test]
-fn get_unchecked_mut_range() {
-    unsafe {
-        let v: &mut [i32] = &mut [0, 1, 2, 3, 4, 5];
-        assert_eq!(v.get_unchecked_mut(..), &mut [0, 1, 2, 3, 4, 5][..]);
-        assert_eq!(v.get_unchecked_mut(..2), &mut [0, 1][..]);
-        assert_eq!(v.get_unchecked_mut(2..), &mut[2, 3, 4, 5][..]);
-        assert_eq!(v.get_unchecked_mut(1..4), &mut [1, 2, 3][..]);
+    // Make sure the macro can actually detect bugs,
+    // because if it can't, then what are we even doing here?
+    //
+    // (Be aware this only demonstrates the ability to detect bugs
+    //  in the FIRST method it calls, as the macro is not designed
+    //  to be used in `should_panic`)
+    #[test]
+    #[should_panic(expected = "out of range")]
+    fn assert_range_eq_can_fail_by_panic() {
+        assert_range_eq!([0, 1, 2], 0..5, [0, 1, 2]);
     }
+
+    // (Be aware this only demonstrates the ability to detect bugs
+    //  in the FIRST method it calls, as the macro is not designed
+    //  to be used in `should_panic`)
+    #[test]
+    #[should_panic(expected = "==")]
+    fn assert_range_eq_can_fail_by_inequality() {
+        assert_range_eq!([0, 1, 2], 0..2, [0, 1, 2]);
+    }
+
+    // Test cases for bad index operations.
+    //
+    // This generates `should_panic` test cases for Index/IndexMut
+    // and `None` test cases for get/get_mut.
+    macro_rules! panic_cases {
+        ($(
+            mod $case_name:ident {
+                let DATA: $Data: ty = $data:expr;
+
+                // optional:
+                //
+                // a similar input for which DATA[input] succeeds, and the corresponding
+                // output as an array.  This helps validate "critical points" where an
+                // input range straddles the boundary between valid and invalid.
+                // (such as the input `len..len`, which is just barely valid)
+                $(
+                    let GOOD_INPUT = $good:expr;
+                    let GOOD_OUTPUT = $output:expr;
+                )*
+
+                let BAD_INPUT = $bad:expr;
+                const EXPECT_MSG = $expect_msg:expr;
+
+                !!generate_tests!!
+            }
+        )*) => {$(
+            mod $case_name {
+                #[test]
+                fn pass() {
+                    let mut v: $Data = $data;
+
+                    $( assert_range_eq!($data, $good, $output); )*
+
+                    {
+                        let v: &[_] = &v;
+                        assert_eq!(v.get($bad), None, "(in None assertion for get)");
+                    }
+
+                    {
+                        let v: &mut [_] = &mut v;
+                        assert_eq!(v.get_mut($bad), None, "(in None assertion for get_mut)");
+                    }
+                }
+
+                #[test]
+                #[should_panic(expected = $expect_msg)]
+                fn index_fail() {
+                    let v: $Data = $data;
+                    let v: &[_] = &v;
+                    let _v = &v[$bad];
+                }
+
+                #[test]
+                #[should_panic(expected = $expect_msg)]
+                fn index_mut_fail() {
+                    let mut v: $Data = $data;
+                    let v: &mut [_] = &mut v;
+                    let _v = &mut v[$bad];
+                }
+            }
+        )*};
+    }
+
+    #[test]
+    fn simple() {
+        let v = [0, 1, 2, 3, 4, 5];
+
+        assert_range_eq!(v, .., [0, 1, 2, 3, 4, 5]);
+        assert_range_eq!(v, ..2, [0, 1]);
+        assert_range_eq!(v, ..=1, [0, 1]);
+        assert_range_eq!(v, 2.., [2, 3, 4, 5]);
+        assert_range_eq!(v, 1..4, [1, 2, 3]);
+        assert_range_eq!(v, 1..=3, [1, 2, 3]);
+    }
+
+    panic_cases! {
+        mod rangefrom_len {
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = 6..;
+            let GOOD_OUTPUT = [];
+
+            let BAD_INPUT = 7..;
+            const EXPECT_MSG = "but ends at"; // perhaps not ideal
+
+            !!generate_tests!!
+        }
+
+        mod rangeto_len {
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = ..6;
+            let GOOD_OUTPUT = [0, 1, 2, 3, 4, 5];
+
+            let BAD_INPUT = ..7;
+            const EXPECT_MSG = "out of range";
+
+            !!generate_tests!!
+        }
+
+        mod rangetoinclusive_len {
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = ..=5;
+            let GOOD_OUTPUT = [0, 1, 2, 3, 4, 5];
+
+            let BAD_INPUT = ..=6;
+            const EXPECT_MSG = "out of range";
+
+            !!generate_tests!!
+        }
+
+        mod range_len_len {
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = 6..6;
+            let GOOD_OUTPUT = [];
+
+            let BAD_INPUT = 7..7;
+            const EXPECT_MSG = "out of range";
+
+            !!generate_tests!!
+        }
+
+        mod rangeinclusive_len_len{
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = 6..=5;
+            let GOOD_OUTPUT = [];
+
+            let BAD_INPUT = 7..=6;
+            const EXPECT_MSG = "out of range";
+
+            !!generate_tests!!
+        }
+    }
+
+    panic_cases! {
+        mod range_neg_width {
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = 4..4;
+            let GOOD_OUTPUT = [];
+
+            let BAD_INPUT = 4..3;
+            const EXPECT_MSG = "but ends at";
+
+            !!generate_tests!!
+        }
+
+        mod rangeinclusive_neg_width {
+            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+
+            let GOOD_INPUT = 4..=3;
+            let GOOD_OUTPUT = [];
+
+            let BAD_INPUT = 4..=2;
+            const EXPECT_MSG = "but ends at";
+
+            !!generate_tests!!
+        }
+    }
+
+    panic_cases! {
+        mod rangeinclusive_overflow {
+            let DATA: [i32; 2] = [0, 1];
+
+            // note: using 0 specifically ensures that the result of overflowing is 0..0,
+            //       so that `get` doesn't simply return None for the wrong reason.
+            let BAD_INPUT = 0 ..= ::std::usize::MAX;
+            const EXPECT_MSG = "maximum usize";
+
+            !!generate_tests!!
+        }
+
+        mod rangetoinclusive_overflow {
+            let DATA: [i32; 2] = [0, 1];
+
+            let BAD_INPUT = ..= ::std::usize::MAX;
+            const EXPECT_MSG = "maximum usize";
+
+            !!generate_tests!!
+        }
+    } // panic_cases!
 }
 
 #[test]
