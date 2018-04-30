@@ -2262,6 +2262,12 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
     panic!("slice index starts at {} but ends at {}", index, end);
 }
 
+#[inline(never)]
+#[cold]
+fn slice_index_overflow_fail() -> ! {
+    panic!("attempted to index slice up to maximum usize");
+}
+
 /// A helper trait used for indexing operations.
 #[unstable(feature = "slice_get_slice", issue = "35729")]
 #[rustc_on_unimplemented = "slice indices are of type `usize` or ranges of `usize`"]
@@ -2538,15 +2544,13 @@ impl<T> SliceIndex<[T]> for ops::RangeInclusive<usize> {
 
     #[inline]
     fn index(self, slice: &[T]) -> &[T] {
-        assert!(self.end != usize::max_value(),
-            "attempted to index slice up to maximum usize");
+        if self.end == usize::max_value() { slice_index_overflow_fail(); }
         (self.start..self.end + 1).index(slice)
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut [T] {
-        assert!(self.end != usize::max_value(),
-            "attempted to index slice up to maximum usize");
+        if self.end == usize::max_value() { slice_index_overflow_fail(); }
         (self.start..self.end + 1).index_mut(slice)
     }
 }

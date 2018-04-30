@@ -1849,6 +1849,12 @@ mod traits {
         }
     }
 
+    #[inline(never)]
+    #[cold]
+    fn str_index_overflow_fail() -> ! {
+        panic!("attempted to index str up to maximum usize");
+    }
+
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeFull {
         type Output = str;
@@ -2053,14 +2059,12 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (self.start..self.end+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (self.start..self.end+1).index_mut(slice)
         }
     }
@@ -2098,14 +2102,12 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (..self.end+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (..self.end+1).index_mut(slice)
         }
     }
