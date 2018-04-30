@@ -31,6 +31,7 @@ enum Target {
     Expression,
     Statement,
     Closure,
+    Static,
     Other,
 }
 
@@ -43,6 +44,7 @@ impl Target {
             hir::ItemEnum(..) => Target::Enum,
             hir::ItemConst(..) => Target::Const,
             hir::ItemForeignMod(..) => Target::ForeignMod,
+            hir::ItemStatic(..) => Target::Static,
             _ => Target::Other,
         }
     }
@@ -102,6 +104,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         }
 
         self.check_repr(item, target);
+        self.check_used(item, target);
     }
 
     /// Check if an `#[inline]` is applied to a function or a closure.
@@ -302,6 +305,15 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                     &format!("attribute should not be applied to an expression"),
                     &format!("not defining a struct, enum or union"),
                 );
+            }
+        }
+    }
+
+    fn check_used(&self, item: &hir::Item, target: Target) {
+        for attr in &item.attrs {
+            if attr.name().map(|name| name == "used").unwrap_or(false) && target != Target::Static {
+                self.tcx.sess
+                    .span_err(attr.span, "attribute must be applied to a `static` variable");
             }
         }
     }

@@ -1118,6 +1118,7 @@ impl CStr {
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
+    /// [`Owned`]: ../borrow/enum.Cow.html#variant.Owned
     /// [`str`]: ../primitive.str.html
     /// [`String`]: ../string/struct.String.html
     ///

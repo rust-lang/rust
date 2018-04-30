@@ -602,6 +602,8 @@ unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
 /// `Pin` pointer.
 ///
 /// This trait is automatically implemented for almost every type.
+///
+/// [`Pin`]: ../mem/struct.Pin.html
 #[unstable(feature = "pin", issue = "49150")]
 pub unsafe auto trait Unpin {}
 

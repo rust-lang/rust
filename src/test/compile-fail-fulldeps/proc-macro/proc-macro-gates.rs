@@ -24,8 +24,16 @@ use foo::*;
 #[foo::a] //~ ERROR: paths of length greater than one
 fn _test() {}
 
+fn _test_inner() {
+    #![a] // OK
+}
+
 #[a] //~ ERROR: custom attributes cannot be applied to modules
 mod _test2 {}
+
+mod _test2_inner {
+    #![a] //~ ERROR: custom attributes cannot be applied to modules
+}
 
 #[a = y] //~ ERROR: must only be followed by a delimiter token
 fn _test3() {}
@@ -36,19 +44,40 @@ fn _test4() {}
 #[a () = ] //~ ERROR: must only be followed by a delimiter token
 fn _test5() {}
 
-fn main() {
+fn attrs() {
+    // Statement, item
+    #[a] // OK
+    struct S;
+
+    // Statement, macro
+    #[a] //~ ERROR: custom attributes cannot be applied to statements
+    println!();
+
+    // Statement, semi
+    #[a] //~ ERROR: custom attributes cannot be applied to statements
+    S;
+
+    // Statement, local
     #[a] //~ ERROR: custom attributes cannot be applied to statements
     let _x = 2;
-    let _x = #[a] 2;
-    //~^ ERROR: custom attributes cannot be applied to expressions
 
-    let _x: m!(u32) = 3;
-    //~^ ERROR: procedural macros cannot be expanded to types
-    if let m!(Some(_x)) = Some(3) {
-    //~^ ERROR: procedural macros cannot be expanded to patterns
-    }
-    let _x = m!(3);
-    //~^ ERROR: procedural macros cannot be expanded to expressions
-    m!(let _x = 3;);
-    //~^ ERROR: procedural macros cannot be expanded to statements
+    // Expr
+    let _x = #[a] 2; //~ ERROR: custom attributes cannot be applied to expressions
+
+    // Opt expr
+    let _x = [#[a] 2]; //~ ERROR: custom attributes cannot be applied to expressions
+
+    // Expr macro
+    let _x = #[a] println!(); //~ ERROR: custom attributes cannot be applied to expressions
+}
+
+fn main() {
+    let _x: m!(u32) = 3; //~ ERROR: procedural macros cannot be expanded to types
+    if let m!(Some(_x)) = Some(3) {} //~ ERROR: procedural macros cannot be expanded to patterns
+
+    m!(struct S;); //~ ERROR: procedural macros cannot be expanded to statements
+    m!(let _x = 3;); //~ ERROR: procedural macros cannot be expanded to statements
+
+    let _x = m!(3); //~ ERROR: procedural macros cannot be expanded to expressions
+    let _x = [m!(3)]; //~ ERROR: procedural macros cannot be expanded to expressions
 }

@@ -322,7 +322,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Vec<T> {
+    #[rustc_const_unstable(feature = "const_vec_new")]
+    pub const fn new() -> Vec<T> {
         Vec {
             buf: RawVec::new(),
             len: 0,

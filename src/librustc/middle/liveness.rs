@@ -111,6 +111,7 @@ use ty::{self, TyCtxt};
 use lint;
 use util::nodemap::{NodeMap, NodeSet};
 
+use std::collections::VecDeque;
 use std::{fmt, usize};
 use std::io::prelude::*;
 use std::io;
@@ -412,18 +413,43 @@ fn visit_local<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, local: &'tcx hir::Local) {
 }
 
 fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
-    for pat in &arm.pats {
-        // for struct patterns, take note of which fields used shorthand (`x` rather than `x: x`)
+    for mut pat in &arm.pats {
+        // For struct patterns, take note of which fields used shorthand
+        // (`x` rather than `x: x`).
         //
-        // FIXME: according to the rust-lang-nursery/rustc-guide book, `NodeId`s are to be phased
-        // out in favor of `HirId`s; however, we need to match the signature of `each_binding`,
-        // which uses `NodeIds`.
+        // FIXME: according to the rust-lang-nursery/rustc-guide book, `NodeId`s are to be
+        // phased out in favor of `HirId`s; however, we need to match the signature of
+        // `each_binding`, which uses `NodeIds`.
         let mut shorthand_field_ids = NodeSet();
-        if let hir::PatKind::Struct(_, ref fields, _) = pat.node {
-            for field in fields {
-                if field.node.is_shorthand {
-                    shorthand_field_ids.insert(field.node.pat.id);
+        let mut pats = VecDeque::new();
+        pats.push_back(pat);
+        while let Some(pat) = pats.pop_front() {
+            use hir::PatKind::*;
+            match pat.node {
+                Binding(_, _, _, ref inner_pat) => {
+                    pats.extend(inner_pat.iter());
                 }
+                Struct(_, ref fields, _) => {
+                    for field in fields {
+                        if field.node.is_shorthand {
+                            shorthand_field_ids.insert(field.node.pat.id);
+                        }
+                    }
+                }
+                Ref(ref inner_pat, _) |
+                Box(ref inner_pat) => {
+                    pats.push_back(inner_pat);
+                }
+                TupleStruct(_, ref inner_pats, _) |
+                Tuple(ref inner_pats, _) => {
+                    pats.extend(inner_pats.iter());
+                }
+                Slice(ref pre_pats, ref inner_pat, ref post_pats) => {
+                    pats.extend(pre_pats.iter());
+                    pats.extend(inner_pat.iter());
+                    pats.extend(post_pats.iter());
+                }
+                _ => {}
             }
         }
 
