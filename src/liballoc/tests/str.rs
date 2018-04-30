@@ -291,113 +291,160 @@ fn test_replace_pattern() {
     assert_eq!(data.replace(|c| c == 'γ', "😺😺😺"), "abcdαβ😺😺😺δabcdαβ😺😺😺δ");
 }
 
-#[test]
-fn test_slice() {
-    assert_eq!("ab", &"abc"[0..2]);
-    assert_eq!("bc", &"abc"[1..3]);
-    assert_eq!("", &"abc"[1..1]);
-    assert_eq!("\u{65e5}", &"\u{65e5}\u{672c}"[0..3]);
+mod slice_index {
+    #[test]
+    fn test_slice() {
+        assert_eq!("ab", &"abc"[0..2]);
+        assert_eq!("bc", &"abc"[1..3]);
+        assert_eq!("", &"abc"[1..1]);
+        assert_eq!("\u{65e5}", &"\u{65e5}\u{672c}"[0..3]);
 
-    let data = "ประเทศไทย中华";
-    assert_eq!("ป", &data[0..3]);
-    assert_eq!("ร", &data[3..6]);
-    assert_eq!("", &data[3..3]);
-    assert_eq!("华", &data[30..33]);
+        let data = "ประเทศไทย中华";
+        assert_eq!("ป", &data[0..3]);
+        assert_eq!("ร", &data[3..6]);
+        assert_eq!("", &data[3..3]);
+        assert_eq!("华", &data[30..33]);
 
-    fn a_million_letter_x() -> String {
-        let mut i = 0;
-        let mut rs = String::new();
-        while i < 100000 {
-            rs.push_str("华华华华华华华华华华");
-            i += 1;
+        fn a_million_letter_x() -> String {
+            let mut i = 0;
+            let mut rs = String::new();
+            while i < 100000 {
+                rs.push_str("华华华华华华华华华华");
+                i += 1;
+            }
+            rs
         }
-        rs
-    }
-    fn half_a_million_letter_x() -> String {
-        let mut i = 0;
-        let mut rs = String::new();
-        while i < 100000 {
-            rs.push_str("华华华华华");
-            i += 1;
+        fn half_a_million_letter_x() -> String {
+            let mut i = 0;
+            let mut rs = String::new();
+            while i < 100000 {
+                rs.push_str("华华华华华");
+                i += 1;
+            }
+            rs
         }
-        rs
+        let letters = a_million_letter_x();
+        assert_eq!(half_a_million_letter_x(), &letters[0..3 * 500000]);
     }
-    let letters = a_million_letter_x();
-    assert_eq!(half_a_million_letter_x(), &letters[0..3 * 500000]);
-}
 
-#[test]
-fn test_slice_2() {
-    let ss = "中华Việt Nam";
+    #[test]
+    fn test_slice_2() {
+        let ss = "中华Việt Nam";
 
-    assert_eq!("华", &ss[3..6]);
-    assert_eq!("Việt Nam", &ss[6..16]);
+        assert_eq!("华", &ss[3..6]);
+        assert_eq!("Việt Nam", &ss[6..16]);
 
-    assert_eq!("ab", &"abc"[0..2]);
-    assert_eq!("bc", &"abc"[1..3]);
-    assert_eq!("", &"abc"[1..1]);
+        assert_eq!("ab", &"abc"[0..2]);
+        assert_eq!("bc", &"abc"[1..3]);
+        assert_eq!("", &"abc"[1..1]);
 
-    assert_eq!("中", &ss[0..3]);
-    assert_eq!("华V", &ss[3..7]);
-    assert_eq!("", &ss[3..3]);
-    /*0: 中
-      3: 华
-      6: V
-      7: i
-      8: ệ
-     11: t
-     12:
-     13: N
-     14: a
-     15: m */
-}
-
-#[test]
-#[should_panic]
-fn test_slice_fail() {
-    &"中华Việt Nam"[0..2];
-}
-
-#[test]
-#[should_panic]
-fn test_str_slice_rangetoinclusive_max_panics() {
-    &"hello"[..=usize::max_value()];
-}
-
-#[test]
-#[should_panic]
-fn test_str_slice_rangeinclusive_max_panics() {
-    &"hello"[1..=usize::max_value()];
-}
-
-#[test]
-#[should_panic]
-fn test_str_slicemut_rangetoinclusive_max_panics() {
-    let mut s = "hello".to_owned();
-    let s: &mut str = &mut s;
-    &mut s[..=usize::max_value()];
-}
-
-#[test]
-#[should_panic]
-fn test_str_slicemut_rangeinclusive_max_panics() {
-    let mut s = "hello".to_owned();
-    let s: &mut str = &mut s;
-    &mut s[1..=usize::max_value()];
-}
-
-#[test]
-fn test_str_get_maxinclusive() {
-    let mut s = "hello".to_owned();
-    {
-        let s: &str = &s;
-        assert_eq!(s.get(..=usize::max_value()), None);
-        assert_eq!(s.get(1..=usize::max_value()), None);
+        assert_eq!("中", &ss[0..3]);
+        assert_eq!("华V", &ss[3..7]);
+        assert_eq!("", &ss[3..3]);
+        /*0: 中
+          3: 华
+          6: V
+          7: i
+          8: ệ
+         11: t
+         12:
+         13: N
+         14: a
+         15: m */
     }
-    {
+
+    #[test]
+    #[should_panic]
+    fn test_slice_fail() {
+        &"中华Việt Nam"[0..2];
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_str_slice_rangetoinclusive_max_panics() {
+        &"hello"[..=usize::max_value()];
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_str_slice_rangeinclusive_max_panics() {
+        &"hello"[1..=usize::max_value()];
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_str_slicemut_rangetoinclusive_max_panics() {
+        let mut s = "hello".to_owned();
         let s: &mut str = &mut s;
-        assert_eq!(s.get(..=usize::max_value()), None);
-        assert_eq!(s.get(1..=usize::max_value()), None);
+        &mut s[..=usize::max_value()];
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_str_slicemut_rangeinclusive_max_panics() {
+        let mut s = "hello".to_owned();
+        let s: &mut str = &mut s;
+        &mut s[1..=usize::max_value()];
+    }
+
+    #[test]
+    fn test_str_get_maxinclusive() {
+        let mut s = "hello".to_owned();
+        {
+            let s: &str = &s;
+            assert_eq!(s.get(..=usize::max_value()), None);
+            assert_eq!(s.get(1..=usize::max_value()), None);
+        }
+        {
+            let s: &mut str = &mut s;
+            assert_eq!(s.get(..=usize::max_value()), None);
+            assert_eq!(s.get(1..=usize::max_value()), None);
+        }
+    }
+
+    const LOREM_PARAGRAPH: &'static str = "\
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
+    ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
+    eros. Suspendisse sit amet magna mollis, mollis nunc luctus, imperdiet mi. Integer fringilla non \
+    sem ut lacinia. Fusce varius tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec \
+    tempus vel, gravida nec quam.";
+
+    // check the panic includes the prefix of the sliced string
+    #[test]
+    #[should_panic(expected="byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
+    fn test_slice_fail_truncated_1() {
+        &LOREM_PARAGRAPH[..1024];
+    }
+    // check the truncation in the panic message
+    #[test]
+    #[should_panic(expected="luctus, im`[...]")]
+    fn test_slice_fail_truncated_2() {
+        &LOREM_PARAGRAPH[..1024];
+    }
+
+    #[test]
+    #[should_panic(expected="byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of")]
+    fn test_slice_fail_boundary_1() {
+        &"abcαβγ"[4..];
+    }
+
+    #[test]
+    #[should_panic(expected="byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of")]
+    fn test_slice_fail_boundary_2() {
+        &"abcαβγ"[2..6];
+    }
+
+    #[test]
+    fn test_slice_from() {
+        assert_eq!(&"abcd"[0..], "abcd");
+        assert_eq!(&"abcd"[2..], "cd");
+        assert_eq!(&"abcd"[4..], "");
+    }
+    #[test]
+    fn test_slice_to() {
+        assert_eq!(&"abcd"[..0], "");
+        assert_eq!(&"abcd"[..2], "ab");
+        assert_eq!(&"abcd"[..4], "abcd");
     }
 }
 
@@ -445,50 +492,6 @@ fn test_is_char_boundary() {
                     "{} should not be a char boundary in {:?}", i + j, s);
         }
     }
-}
-const LOREM_PARAGRAPH: &'static str = "\
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
-ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
-eros. Suspendisse sit amet magna mollis, mollis nunc luctus, imperdiet mi. Integer fringilla non \
-sem ut lacinia. Fusce varius tortor a risus porttitor hendrerit. Morbi mauris dui, ultricies nec \
-tempus vel, gravida nec quam.";
-
-// check the panic includes the prefix of the sliced string
-#[test]
-#[should_panic(expected="byte index 1024 is out of bounds of `Lorem ipsum dolor sit amet")]
-fn test_slice_fail_truncated_1() {
-    &LOREM_PARAGRAPH[..1024];
-}
-// check the truncation in the panic message
-#[test]
-#[should_panic(expected="luctus, im`[...]")]
-fn test_slice_fail_truncated_2() {
-    &LOREM_PARAGRAPH[..1024];
-}
-
-#[test]
-#[should_panic(expected="byte index 4 is not a char boundary; it is inside 'α' (bytes 3..5) of")]
-fn test_slice_fail_boundary_1() {
-    &"abcαβγ"[4..];
-}
-
-#[test]
-#[should_panic(expected="byte index 6 is not a char boundary; it is inside 'β' (bytes 5..7) of")]
-fn test_slice_fail_boundary_2() {
-    &"abcαβγ"[2..6];
-}
-
-#[test]
-fn test_slice_from() {
-    assert_eq!(&"abcd"[0..], "abcd");
-    assert_eq!(&"abcd"[2..], "cd");
-    assert_eq!(&"abcd"[4..], "");
-}
-#[test]
-fn test_slice_to() {
-    assert_eq!(&"abcd"[..0], "");
-    assert_eq!(&"abcd"[..2], "ab");
-    assert_eq!(&"abcd"[..4], "abcd");
 }
 
 #[test]
