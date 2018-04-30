@@ -230,7 +230,10 @@ impl f64 {
 
     /// Calculates the Euclidean modulo (self mod rhs), which is never negative.
     ///
-    /// In particular, the result `n` satisfies `0 <= n < rhs.abs()`.
+    /// In particular, the return value `r` satisfies `0.0 <= r < rhs.abs()` in
+    /// most cases.  However, due to a floating point round-off error it can
+    /// result in `r == rhs.abs()`, violating the mathematical definition, if
+    /// `self` is much smaller than `rhs.abs()` in magnitude and `self < 0.0`.
     ///
     /// # Examples
     ///
@@ -242,6 +245,8 @@ impl f64 {
     /// assert_eq!((-a).mod_euc(b), 1.0);
     /// assert_eq!(a.mod_euc(-b), 3.0);
     /// assert_eq!((-a).mod_euc(-b), 1.0);
+    /// // limitation due to round-off error
+    /// assert!((-std::f64::EPSILON).mod_euc(3.0) != 0.0);
     /// ```
     #[inline]
     #[unstable(feature = "euclidean_division", issue = "49048")]
