@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
+// must-compile-successfully
 
-#![feature(stmt_expr_attributes)]
 #![warn(unused_attributes)] //~ NOTE lint level defined here
 
-fn foo<#[derive(Debug)] T>() { //~ WARN unused attribute
+fn foo() {
     match 0 {
         #[derive(Debug)] //~ WARN unused attribute
         _ => (),
@@ -39,10 +38,6 @@ fn main() {
     // fold_stmt (Local)
     #[derive(Debug)] //~ WARN unused attribute
     let _ = "Hello, world!";
-
-    // fold_expr
-    let _ = #[derive(Debug)] "Hello, world!";
-    //~^ WARN unused attribute
 
     let _ = [
         // fold_opt_expr
