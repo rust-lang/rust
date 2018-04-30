@@ -26,7 +26,7 @@ use std::process::{Command, Stdio};
 
 use build_helper::output;
 
-use {Compiler, Mode};
+use {Compiler, Mode, LLVM_TOOLS};
 use channel;
 use util::{libdir, is_dylib, exe};
 use builder::{Builder, RunConfig, ShouldRun, Step};
@@ -501,6 +501,24 @@ impl Step for Rustc {
                     .join(&exe);
                 t!(fs::create_dir_all(&dst.parent().unwrap()));
                 builder.copy(&src, &dst);
+            }
+
+            if builder.config.ship_llvm_tools {
+                let src = builder.sysroot_libdir(compiler, host)
+                    .parent()
+                    .unwrap()
+                    .join("bin");
+
+                let dst = image.join("lib/rustlib")
+                    .join(&*host)
+                    .join("bin");
+
+                t!(fs::create_dir_all(&dst.parent().unwrap()));
+
+                for tool in LLVM_TOOLS {
+                    let exe = exe(tool, &compiler.host);
+                    builder.copy(&src.join(&exe), &dst.join(&exe));
+                }
             }
 
             // Man pages

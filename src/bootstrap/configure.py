@@ -335,6 +335,7 @@ for key in known_args:
     elif option.name == 'full-tools':
         set('rust.codegen-backends', ['llvm', 'emscripten'])
         set('rust.lld', True)
+        set('rust.llvm-tools', True)
         set('build.extended', True)
     elif option.name == 'option-checking':
         # this was handled above

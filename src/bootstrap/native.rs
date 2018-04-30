@@ -167,8 +167,11 @@ impl Step for Llvm {
         // which saves both memory during parallel links and overall disk space
         // for the tools.  We don't distribute any of those tools, so this is
         // just a local concern.  However, it doesn't work well everywhere.
-        if target.contains("linux-gnu") || target.contains("apple-darwin") {
-           cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+        //
+        // If we are shipping llvm tools then we statically link them LLVM
+        if (target.contains("linux-gnu") || target.contains("apple-darwin")) &&
+            !builder.config.ship_llvm_tools  {
+                cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
         if target.contains("msvc") {
