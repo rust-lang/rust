@@ -425,16 +425,16 @@ impl<'a> Resolver<'a> {
                                   kind: MacroKind, force: bool)
                                   -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
-        let path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
+        let segments: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         let path = ResolvePath {
-            ident: &path,
+            segments: &segments,
             source: None,
         };
         let invocation = self.invocations[&scope];
         let module = invocation.module.get();
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
 
-        if path.ident.len() > 1 {
+        if path.segments.len() > 1 {
             if !self.use_extern_macros && self.gated_errors.insert(span) {
                 let msg = "non-ident macro paths are experimental";
                 let feature = "use_extern_macros";
@@ -468,12 +468,12 @@ impl<'a> Resolver<'a> {
             return def;
         }
 
-        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, path.ident[0],
-                                                          false);
+        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope,
+                                                          path.segments[0], false);
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path.ident[0], MacroNS, false, span) {
+            match self.resolve_lexical_macro_path_segment(path.segments[0], MacroNS, false, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
@@ -484,7 +484,7 @@ impl<'a> Resolver<'a> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path.ident[0], span, kind));
+            .push((scope, path.segments[0], span, kind));
 
         result
     }
@@ -623,7 +623,7 @@ impl<'a> Resolver<'a> {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
             let path = ResolvePath {
-                ident: &path,
+                segments: &path,
                 source: None,
             };
             match self.resolve_path(&path, Some(MacroNS), true, span) {

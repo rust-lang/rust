@@ -85,7 +85,7 @@ mod build_reduced_graph;
 mod resolve_imports;
 
 pub struct ResolvePath<'a> {
-    ident: &'a [Ident],
+    segments: &'a [Ident],
     /// NodeId of the path that we are attempting to resolve. When None, this path is being
     /// speculatively resolved and we should not emit errors or lints about it
     source: Option<NodeId>,
@@ -1663,7 +1663,7 @@ impl<'a> Resolver<'a> {
             .collect();
 
         let path = ResolvePath {
-            ident: &path,
+            segments: &path,
             source: None,
         };
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
@@ -2364,7 +2364,7 @@ impl<'a> Resolver<'a> {
                 .map(|seg| seg.ident)
                 .collect();
             let path = ResolvePath {
-                ident: &path,
+                segments: &path,
                 source: Some(trait_ref.ref_id),
             };
             let def = self.smart_resolve_path_fragment(
@@ -2803,7 +2803,7 @@ impl<'a> Resolver<'a> {
             .map(|seg| seg.ident)
             .collect::<Vec<_>>();
         let resolve_path = ResolvePath {
-            ident: &segments,
+            segments: &segments,
             source: Some(id),
         };
         self.smart_resolve_path_fragment(id, qself, &resolve_path, path.span, source)
@@ -2816,7 +2816,7 @@ impl<'a> Resolver<'a> {
                                    span: Span,
                                    source: PathSource)
                                    -> PathResolution {
-        let ident_span = path.ident.last().map_or(span, |ident| ident.span);
+        let ident_span = path.segments.last().map_or(span, |ident| ident.span);
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
         let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
@@ -2825,23 +2825,23 @@ impl<'a> Resolver<'a> {
         let report_errors = |this: &mut Self, def: Option<Def>| {
             // Make the base error.
             let expected = source.descr_expected();
-            let path_str = names_to_string(path.ident);
+            let path_str = names_to_string(path.segments);
             let code = source.error_code(def.is_some());
             let (base_msg, fallback_label, base_span) = if let Some(def) = def {
                 (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
                  format!("not a {}", expected),
                  span)
             } else {
-                let item_str = path.ident[path.ident.len() - 1];
-                let item_span = path.ident[path.ident.len() - 1].span;
-                let (mod_prefix, mod_str) = if path.ident.len() == 1 {
+                let item_str = path.segments[path.segments.len() - 1];
+                let item_span = path.segments[path.segments.len() - 1].span;
+                let (mod_prefix, mod_str) = if path.segments.len() == 1 {
                     (format!(""), format!("this scope"))
-                } else if path.ident.len() == 2 &&
-                          path.ident[0].name == keywords::CrateRoot.name() {
+                } else if path.segments.len() == 2 &&
+                          path.segments[0].name == keywords::CrateRoot.name() {
                     (format!(""), format!("the crate root"))
                 } else {
                     let mod_path = ResolvePath {
-                        ident: &path.ident[..path.ident.len() - 1],
+                        segments: &path.segments[..path.segments.len() - 1],
                         source: Some(id),
                     };
                     let mod_prefix = match this.resolve_path(&mod_path, Some(TypeNS),
@@ -2849,7 +2849,7 @@ impl<'a> Resolver<'a> {
                         PathResult::Module(module) => module.def(),
                         _ => None,
                     }.map_or(format!(""), |def| format!("{} ", def.kind_name()));
-                    (mod_prefix, format!("`{}`", names_to_string(mod_path.ident)))
+                    (mod_prefix, format!("`{}`", names_to_string(mod_path.segments)))
                 };
                 (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                  format!("not found in {}", mod_str),
@@ -2859,13 +2859,13 @@ impl<'a> Resolver<'a> {
             let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
             // Emit special messages for unresolved `Self` and `self`.
-            if is_self_type(path.ident, ns) {
+            if is_self_type(path.segments, ns) {
                 __diagnostic_used!(E0411);
                 err.code(DiagnosticId::Error("E0411".into()));
                 err.span_label(span, "`Self` is only available in traits and impls");
                 return (err, Vec::new());
             }
-            if is_self_value(path.ident, ns) {
+            if is_self_value(path.segments, ns) {
                 __diagnostic_used!(E0424);
                 err.code(DiagnosticId::Error("E0424".into()));
                 err.span_label(span, format!("`self` value is only available in \
@@ -2874,7 +2874,7 @@ impl<'a> Resolver<'a> {
             }
 
             // Try to lookup the name in more relaxed fashion for better error reporting.
-            let ident = *path.ident.last().unwrap();
+            let ident = *path.segments.last().unwrap();
             let candidates = this.lookup_import_candidates(ident.name, ns, is_expected);
             if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates =
@@ -2895,9 +2895,10 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            if path.ident.len() == 1 && this.self_type_is_available(span) {
+            if path.segments.len() == 1 && this.self_type_is_available(span) {
                 if let Some(candidate) = this.lookup_assoc_candidate(ident, ns, is_expected) {
-                    let self_is_available = this.self_value_is_available(path.ident[0].span, span);
+                    let self_is_available = this.self_value_is_available(path.segments[0].span,
+                                                                         span);
                     match candidate {
                         AssocSuggestion::Field => {
                             err.span_suggestion(span, "try",
@@ -2923,7 +2924,8 @@ impl<'a> Resolver<'a> {
             let mut levenshtein_worked = false;
 
             // Try Levenshtein.
-            if let Some(candidate) = this.lookup_typo_candidate(path.ident, ns, is_expected, span) {
+            if let Some(candidate) = this.lookup_typo_candidate(path.segments, ns, is_expected,
+                                                                span) {
                 err.span_label(ident_span, format!("did you mean `{}`?", candidate));
                 levenshtein_worked = true;
             }
@@ -3051,7 +3053,7 @@ impl<'a> Resolver<'a> {
                 // or `<T>::A::B`. If `B` should be resolved in value namespace then
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
-                    let item_name = *path.ident.last().unwrap();
+                    let item_name = *path.segments.last().unwrap();
                     let traits = self.get_traits_containing_item(item_name, ns);
                     self.trait_map.insert(id, traits);
                 }
@@ -3138,10 +3140,10 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_global = self.global_macros.get(&path.ident[0].name).cloned()
+        let is_global = self.global_macros.get(&path.segments[0].name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
         if primary_ns != MacroNS && (is_global ||
-                                     self.macro_names.contains(&path.ident[0].modern())) {
+                                     self.macro_names.contains(&path.segments[0].modern())) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
@@ -3163,19 +3165,19 @@ impl<'a> Resolver<'a> {
             if qself.position == 0 {
                 // FIXME: Create some fake resolution that can't possibly be a type.
                 return Some(PathResolution::with_unresolved_segments(
-                    Def::Mod(DefId::local(CRATE_DEF_INDEX)), path.ident.len()
+                    Def::Mod(DefId::local(CRATE_DEF_INDEX)), path.segments.len()
                 ));
             }
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
-            let ns = if qself.position + 1 == path.ident.len() { ns } else { TypeNS };
+            let ns = if qself.position + 1 == path.segments.len() { ns } else { TypeNS };
             let path = ResolvePath {
-                ident: &path.ident[..qself.position + 1],
+                segments: &path.segments[..qself.position + 1],
                 source: Some(id),
             };
             let res = self.smart_resolve_path_fragment(id, None, &path,
                                                        span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
-                res.base_def(), res.unresolved_segments() + path.ident.len() - qself.position - 1
+                res.base_def(), res.unresolved_segments() + path.segments.len() - qself.position - 1
             ));
         }
 
@@ -3197,11 +3199,11 @@ impl<'a> Resolver<'a> {
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
             PathResult::Module(..) | PathResult::Failed(..)
-                    if (ns == TypeNS || path.ident.len() > 1) &&
+                    if (ns == TypeNS || path.segments.len() > 1) &&
                        self.primitive_type_table.primitive_types
-                           .contains_key(&path.ident[0].name) => {
-                let prim = self.primitive_type_table.primitive_types[&path.ident[0].name];
-                PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.ident.len() - 1)
+                           .contains_key(&path.segments[0].name) => {
+                let prim = self.primitive_type_table.primitive_types[&path.segments[0].name];
+                PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.segments.len() - 1)
             }
             PathResult::Module(module) => PathResolution::new(module.def().unwrap()),
             PathResult::Failed(span, msg, false) => {
@@ -3212,12 +3214,12 @@ impl<'a> Resolver<'a> {
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
-        if path.ident.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
-           path.ident[0].name != keywords::CrateRoot.name() &&
-           path.ident[0].name != keywords::DollarCrate.name() {
+        if path.segments.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
+           path.segments[0].name != keywords::CrateRoot.name() &&
+           path.segments[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 let path = ResolvePath {
-                    ident: &[*path.ident.last().unwrap()],
+                    segments: &[*path.segments.last().unwrap()],
                     source: None,
                 };
                 match self.resolve_path(&path, Some(ns), false, span) {
@@ -3243,9 +3245,9 @@ impl<'a> Resolver<'a> {
         let mut module = None;
         let mut allow_super = true;
 
-        for (i, &ident) in path.ident.iter().enumerate() {
+        for (i, &ident) in path.segments.iter().enumerate() {
             debug!("resolve_path ident {} {:?}", i, ident);
-            let is_last = i == path.ident.len() - 1;
+            let is_last = i == path.segments.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
             let name = ident.name;
 
@@ -3275,7 +3277,7 @@ impl<'a> Resolver<'a> {
                 if (i == 0 && name == keywords::CrateRoot.name()) ||
                    (i == 0 && name == keywords::Crate.name()) ||
                    (i == 1 && name == keywords::Crate.name() &&
-                              path.ident[0].name == keywords::CrateRoot.name()) {
+                              path.segments[0].name == keywords::CrateRoot.name()) {
                     // `::a::b` or `::crate::a::b`
                     module = Some(self.resolve_crate_root(ident.span.ctxt(), false));
                     continue
@@ -3284,7 +3286,7 @@ impl<'a> Resolver<'a> {
                     module = Some(self.resolve_crate_root(ident.span.ctxt(), true));
                     continue
                 } else if i == 1 && !token::is_path_segment_keyword(ident) {
-                    let prev_name = path.ident[0].name;
+                    let prev_name = path.segments[0].name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&
                        // Note: When this feature stabilizes, this should
@@ -3310,14 +3312,14 @@ impl<'a> Resolver<'a> {
                name == keywords::Extern.name() && i != 0 ||
                // we allow crate::foo and ::crate::foo but nothing else
                name == keywords::Crate.name() && i > 1 &&
-                    path.ident[0].name != keywords::CrateRoot.name() ||
-               name == keywords::Crate.name() && path.ident.len() == 1 {
+                    path.segments[0].name != keywords::CrateRoot.name() ||
+               name == keywords::Crate.name() && path.segments.len() == 1 {
                 let name_str = if name == keywords::CrateRoot.name() {
                     format!("crate root")
                 } else {
                     format!("`{}`", name)
                 };
-                let msg = if i == 1 && path.ident[0].name == keywords::CrateRoot.name() {
+                let msg = if i == 1 && path.segments[0].name == keywords::CrateRoot.name() {
                     format!("global paths cannot start with {}", name_str)
                 } else {
                     format!("{} in paths can only be used in start position", name_str)
@@ -3336,7 +3338,7 @@ impl<'a> Resolver<'a> {
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
                         return PathResult::NonModule(PathResolution::with_unresolved_segments(
-                            def, path.ident.len() - 1
+                            def, path.segments.len() - 1
                         ));
                     }
                     _ => Err(if record_used { Determined } else { Undetermined }),
@@ -3353,7 +3355,7 @@ impl<'a> Resolver<'a> {
                         return PathResult::NonModule(err_path_resolution());
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         return PathResult::NonModule(PathResolution::with_unresolved_segments(
-                            def, path.ident.len() - i - 1
+                            def, path.segments.len() - i - 1
                         ));
                     } else {
                         return PathResult::Failed(ident.span,
@@ -3364,7 +3366,7 @@ impl<'a> Resolver<'a> {
                     if let Some(id) = path.source {
                         if i == 1 && self.session.features_untracked().crate_in_paths
                                   && !self.session.rust_2018() {
-                            let prev_name = path.ident[0].name;
+                            let prev_name = path.segments[0].name;
                             if prev_name == keywords::Extern.name() ||
                                prev_name == keywords::CrateRoot.name() {
                                 let mut is_crate = false;
@@ -3393,7 +3395,7 @@ impl<'a> Resolver<'a> {
                     if let Some(module) = module {
                         if opt_ns.is_some() && !module.is_normal() {
                             return PathResult::NonModule(PathResolution::with_unresolved_segments(
-                                module.def().unwrap(), path.ident.len() - i
+                                module.def().unwrap(), path.segments.len() - i
                             ));
                         }
                     }
@@ -3412,7 +3414,7 @@ impl<'a> Resolver<'a> {
                     } else if i == 0 {
                         format!("Use of undeclared type or module `{}`", ident)
                     } else {
-                        format!("Could not find `{}` in `{}`", ident, path.ident[i - 1])
+                        format!("Could not find `{}` in `{}`", ident, path.segments[i - 1])
                     };
                     return PathResult::Failed(ident.span, msg, is_last);
                 }
@@ -3633,7 +3635,7 @@ impl<'a> Resolver<'a> {
         } else {
             // Search in module.
             let mod_path = ResolvePath {
-                ident: &path[..path.len() - 1],
+                segments: &path[..path.len() - 1],
                 source: None,
             };
             if let PathResult::Module(module) = self.resolve_path(&mod_path, Some(TypeNS),
@@ -4057,7 +4059,7 @@ impl<'a> Resolver<'a> {
                     .collect::<Vec<_>>();
                 let span = path.span;
                 let path = ResolvePath {
-                    ident: &segments,
+                    segments: &segments,
                     source: None,
                 };
                 let def = self.smart_resolve_path_fragment(id, None, &path, span,
