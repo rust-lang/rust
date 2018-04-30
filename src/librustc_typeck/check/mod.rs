@@ -434,12 +434,14 @@ pub enum PlaceOp {
 /// wake). Tracked semi-automatically (through type variables marked
 /// as diverging), with some manual adjustments for control-flow
 /// primitives (approximating a CFG).
+///
 /// We know a node diverges in the following (conservative) situations:
 /// - A function with a parameter whose type is uninhabited necessarily diverges.
 /// - A match expression with no arms necessarily diverges.
 /// - A match expression whose arms patterns all diverge necessarily diverges.
 /// - A match expression whose arms all diverge necessarily diverges.
 /// - An expression whose type is uninhabited necessarily diverges.
+///
 /// In the above, the node will be marked as diverging `Always` or `WarnedAlways`.
 /// In any other situation, it will be marked as `Maybe`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
