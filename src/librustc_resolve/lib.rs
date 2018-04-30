@@ -84,11 +84,11 @@ mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
 
-pub struct ResolvePath<'a>
-{
-    ident : &'a [Ident],
-    source : Option<NodeId>,    // None if this path is speculative
-    speculative : bool,
+pub struct ResolvePath<'a> {
+    ident: &'a [Ident],
+    /// NodeId of the path that we are attempting to resolve. When None, this path is being
+    /// speculatively resolved and we should not emit errors or lints about it
+    source: Option<NodeId>,
 }
 
 /// A free importable items suggested in case of resolution failure.
@@ -1662,17 +1662,16 @@ impl<'a> Resolver<'a> {
             .map(|seg| Ident::new(seg.name, span))
             .collect();
 
-        let resolve_path = ResolvePath {
-                               ident : &path,
-                               source : None,
-                               speculative : true,
-                           };
+        let path = ResolvePath {
+            ident: &path,
+            source: None,
+        };
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        match self.resolve_path(&resolve_path, Some(namespace), true, span) {
+        match self.resolve_path(&path, Some(namespace), true, span) {
             PathResult::Module(module) => *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
-            PathResult::NonModule(..) => match self.resolve_path(&resolve_path, None, true, span) {
+            PathResult::NonModule(..) => match self.resolve_path(&path, None, true, span) {
                 PathResult::Failed(span, msg, _) => {
                     error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 }
@@ -2365,10 +2364,9 @@ impl<'a> Resolver<'a> {
                 .map(|seg| seg.ident)
                 .collect();
             let path = ResolvePath {
-                           ident : &path,
-                           source : Some(trait_ref.ref_id),
-                           speculative : false,
-                       };
+                ident: &path,
+                source: Some(trait_ref.ref_id),
+            };
             let def = self.smart_resolve_path_fragment(
                 trait_ref.ref_id,
                 None,
@@ -2805,10 +2803,9 @@ impl<'a> Resolver<'a> {
             .map(|seg| seg.ident)
             .collect::<Vec<_>>();
         let resolve_path = ResolvePath {
-                               ident : &segments,
-                               source : Some(id),
-                               speculative : false,
-                           };
+            ident: &segments,
+            source: Some(id),
+        };
         self.smart_resolve_path_fragment(id, qself, &resolve_path, path.span, source)
     }
 
@@ -2844,10 +2841,9 @@ impl<'a> Resolver<'a> {
                     (format!(""), format!("the crate root"))
                 } else {
                     let mod_path = ResolvePath {
-                                       ident : &path.ident[..path.ident.len() - 1],
-                                       source : Some(id),
-                                       speculative : false,
-                                   };
+                        ident: &path.ident[..path.ident.len() - 1],
+                        source: Some(id),
+                    };
                     let mod_prefix = match this.resolve_path(&mod_path, Some(TypeNS),
                                                              false, span) {
                         PathResult::Module(module) => module.def(),
@@ -3172,12 +3168,11 @@ impl<'a> Resolver<'a> {
             }
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.ident.len() { ns } else { TypeNS };
-            let resolve_path = ResolvePath {
-                                   ident : &path.ident[..qself.position + 1],
-                                   source : Some(id),
-                                   speculative : false,
-                               };
-            let res = self.smart_resolve_path_fragment(id, None, &resolve_path,
+            let path = ResolvePath {
+                ident: &path.ident[..qself.position + 1],
+                source: Some(id),
+            };
+            let res = self.smart_resolve_path_fragment(id, None, &path,
                                                        span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.ident.len() - qself.position - 1
@@ -3221,12 +3216,11 @@ impl<'a> Resolver<'a> {
            path.ident[0].name != keywords::CrateRoot.name() &&
            path.ident[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
-                let resolve_path = ResolvePath {
-                                       ident : &[*path.ident.last().unwrap()],
-                                       source : None,
-                                       speculative : true,
-                                   };
-                match self.resolve_path(&resolve_path, Some(ns), false, span) {
+                let path = ResolvePath {
+                    ident: &[*path.ident.last().unwrap()],
+                    source: None,
+                };
+                match self.resolve_path(&path, Some(ns), false, span) {
                     PathResult::NonModule(path_res) => path_res.base_def(),
                     PathResult::Module(module) => module.def().unwrap(),
                     _ => return Some(result),
@@ -3639,10 +3633,9 @@ impl<'a> Resolver<'a> {
         } else {
             // Search in module.
             let mod_path = ResolvePath {
-                               ident : &path[..path.len() - 1],
-                               source : None,
-                               speculative : true,
-                           };
+                ident: &path[..path.len() - 1],
+                source: None,
+            };
             if let PathResult::Module(module) = self.resolve_path(&mod_path, Some(TypeNS),
                                                                   false, span) {
                 add_module_candidates(module, &mut names);
@@ -4062,12 +4055,12 @@ impl<'a> Resolver<'a> {
                 let segments = path.make_root().iter().chain(path.segments.iter())
                     .map(|seg| seg.ident)
                     .collect::<Vec<_>>();
-                let resolve_path = ResolvePath {
-                                       ident : &segments,
-                                       source : None,
-                                       speculative : true,
-                                   };
-                let def = self.smart_resolve_path_fragment(id, None, &resolve_path, path.span,
+                let span = path.span;
+                let path = ResolvePath {
+                    ident: &segments,
+                    source: None,
+                };
+                let def = self.smart_resolve_path_fragment(id, None, &path, span,
                                                            PathSource::Visibility).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
@@ -4076,8 +4069,8 @@ impl<'a> Resolver<'a> {
                     if self.is_accessible(vis) {
                         vis
                     } else {
-                        self.session.span_err(path.span, "visibilities can only be restricted \
-                                                          to ancestor modules");
+                        self.session.span_err(span, "visibilities can only be restricted \
+                                                    to ancestor modules");
                         ty::Visibility::Public
                     }
                 }
