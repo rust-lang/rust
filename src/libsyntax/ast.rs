@@ -833,7 +833,7 @@ impl Stmt {
 
     pub fn is_item(&self) -> bool {
         match self.node {
-            StmtKind::Local(_) => true,
+            StmtKind::Item(_) => true,
             _ => false,
         }
     }

@@ -207,7 +207,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
-    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>)
+    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>, allow_derive: bool)
                               -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
             let name = unwrap_or!(attrs[i].name(), continue);
@@ -227,6 +227,8 @@ impl<'a> base::Resolver for Resolver<'a> {
                 None => {}
             }
         }
+
+        if !allow_derive { return None }
 
         // Check for legacy derives
         for i in 0..attrs.len() {

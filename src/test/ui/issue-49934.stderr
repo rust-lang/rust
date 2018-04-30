@@ -1,0 +1,38 @@
+warning: `#[derive]` does nothing on macro invocations
+  --> $DIR/issue-49934.rs:29:5
+   |
+LL |     #[derive(Debug)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = note: this may become a hard error in a future release
+
+warning: unused attribute
+  --> $DIR/issue-49934.rs:17:9
+   |
+LL |         #[derive(Debug)] //~ WARN unused attribute
+   |         ^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/issue-49934.rs:13:9
+   |
+LL | #![warn(unused_attributes)] //~ NOTE lint level defined here
+   |         ^^^^^^^^^^^^^^^^^
+
+warning: unused attribute
+  --> $DIR/issue-49934.rs:35:5
+   |
+LL |     #[derive(Debug)] //~ WARN unused attribute
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused attribute
+  --> $DIR/issue-49934.rs:39:5
+   |
+LL |     #[derive(Debug)] //~ WARN unused attribute
+   |     ^^^^^^^^^^^^^^^^
+
+warning: unused attribute
+  --> $DIR/issue-49934.rs:44:9
+   |
+LL |         #[derive(Debug)] //~ WARN unused attribute
+   |         ^^^^^^^^^^^^^^^^
+
