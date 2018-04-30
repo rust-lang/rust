@@ -369,9 +369,6 @@ declare_features! (
     // #[doc(include="some-file")]
     (active, external_doc, "1.22.0", Some(44732), None),
 
-    // allow `#[must_use]` on functions and comparison operators (RFC 1940)
-    (active, fn_must_use, "1.21.0", Some(43302), None),
-
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109), None),
 
@@ -591,6 +588,8 @@ declare_features! (
     (accepted, target_feature, "1.27.0", None, None),
     // Trait object syntax with `dyn` prefix
     (accepted, dyn_trait, "1.27.0", Some(44662), None),
+    // allow `#[must_use]` on functions; and, must-use operators (RFC 1940)
+    (accepted, fn_must_use, "1.27.0", Some(43302), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1545,11 +1544,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
                 }
-                if let Some(attr) = attr::find_by_name(&i.attrs[..], "must_use") {
-                    gate_feature_post!(&self, fn_must_use, attr.span,
-                                       "`#[must_use]` on functions is experimental",
-                                       GateStrength::Soft);
-                }
             }
 
             ast::ItemKind::Struct(..) => {
@@ -1581,7 +1575,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "trait aliases are not yet fully implemented");
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, ref impl_items) => {
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,
                                        i.span,
@@ -1593,16 +1587,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, specialization,
                                        i.span,
                                        "specialization is unstable");
-                }
-
-                for impl_item in impl_items {
-                    if let ast::ImplItemKind::Method(..) = impl_item.node {
-                        if let Some(attr) = attr::find_by_name(&impl_item.attrs[..], "must_use") {
-                            gate_feature_post!(&self, fn_must_use, attr.span,
-                                               "`#[must_use]` on methods is experimental",
-                                               GateStrength::Soft);
-                        }
-                    }
                 }
             }
 

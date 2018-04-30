@@ -76,7 +76,6 @@
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(extern_types)]
-#![feature(fn_must_use)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
 #![feature(iterator_flatten)]
@@ -114,6 +113,7 @@
 
 #![cfg_attr(stage0, feature(target_feature))]
 #![cfg_attr(stage0, feature(cfg_target_feature))]
+#![cfg_attr(stage0, feature(fn_must_use))]
 
 #[prelude_import]
 #[allow(unused)]

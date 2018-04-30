@@ -12,14 +12,6 @@ LL |     mod inner { #![macro_escape] }
    |
    = help: consider an outer attribute, #[macro_use] mod ...
 
-warning: `#[must_use]` on functions is experimental (see issue #43302)
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:663:5
-   |
-LL |     #[must_use = "1400"] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add #![feature(fn_must_use)] to the crate attributes to enable
-
 warning: unknown lint: `x5400`
   --> $DIR/issue-43106-gating-of-builtin-attrs.rs:49:33
    |
@@ -799,433 +791,433 @@ LL | #[no_std = "2600"]
    | ^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:692:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:691:17
    |
 LL |     mod inner { #![crate_name="0900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:692:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:691:17
    |
 LL |     mod inner { #![crate_name="0900"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:696:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:695:5
    |
 LL |     #[crate_name = "0900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:696:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:695:5
    |
 LL |     #[crate_name = "0900"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:700:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:699:5
    |
 LL |     #[crate_name = "0900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:700:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:699:5
    |
 LL |     #[crate_name = "0900"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:704:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:703:5
    |
 LL |     #[crate_name = "0900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:704:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:703:5
    |
 LL |     #[crate_name = "0900"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:708:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:707:5
    |
 LL |     #[crate_name = "0900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:708:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:707:5
    |
 LL |     #[crate_name = "0900"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:688:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:687:1
    |
 LL | #[crate_name = "0900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:688:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:687:1
    |
 LL | #[crate_name = "0900"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:717:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:716:17
    |
 LL |     mod inner { #![crate_type="0800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:717:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:716:17
    |
 LL |     mod inner { #![crate_type="0800"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:721:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:720:5
    |
 LL |     #[crate_type = "0800"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:721:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:720:5
    |
 LL |     #[crate_type = "0800"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:725:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:724:5
    |
 LL |     #[crate_type = "0800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:725:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:724:5
    |
 LL |     #[crate_type = "0800"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:729:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:728:5
    |
 LL |     #[crate_type = "0800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:729:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:728:5
    |
 LL |     #[crate_type = "0800"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:733:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:732:5
    |
 LL |     #[crate_type = "0800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:733:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:732:5
    |
 LL |     #[crate_type = "0800"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:713:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:712:1
    |
 LL | #[crate_type = "0800"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:713:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:712:1
    |
 LL | #[crate_type = "0800"]
    | ^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:742:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:741:17
    |
 LL |     mod inner { #![feature(x0600)] }
    |                 ^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:742:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:741:17
    |
 LL |     mod inner { #![feature(x0600)] }
    |                 ^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:746:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:745:5
    |
 LL |     #[feature(x0600)] fn f() { }
    |     ^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:746:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:745:5
    |
 LL |     #[feature(x0600)] fn f() { }
    |     ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:750:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:749:5
    |
 LL |     #[feature(x0600)] struct S;
    |     ^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:750:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:749:5
    |
 LL |     #[feature(x0600)] struct S;
    |     ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:754:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:753:5
    |
 LL |     #[feature(x0600)] type T = S;
    |     ^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:754:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:753:5
    |
 LL |     #[feature(x0600)] type T = S;
    |     ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:758:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:757:5
    |
 LL |     #[feature(x0600)] impl S { }
    |     ^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:758:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:757:5
    |
 LL |     #[feature(x0600)] impl S { }
    |     ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:738:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:737:1
    |
 LL | #[feature(x0600)]
    | ^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:738:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:737:1
    |
 LL | #[feature(x0600)]
    | ^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:768:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:767:17
    |
 LL |     mod inner { #![no_main="0400"] }
    |                 ^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:768:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:767:17
    |
 LL |     mod inner { #![no_main="0400"] }
    |                 ^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:772:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:771:5
    |
 LL |     #[no_main = "0400"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:772:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:771:5
    |
 LL |     #[no_main = "0400"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:776:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:775:5
    |
 LL |     #[no_main = "0400"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:776:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:775:5
    |
 LL |     #[no_main = "0400"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:780:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:779:5
    |
 LL |     #[no_main = "0400"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:780:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:779:5
    |
 LL |     #[no_main = "0400"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:784:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:783:5
    |
 LL |     #[no_main = "0400"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:784:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:783:5
    |
 LL |     #[no_main = "0400"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:764:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:763:1
    |
 LL | #[no_main = "0400"]
    | ^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:764:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:763:1
    |
 LL | #[no_main = "0400"]
    | ^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:806:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:805:17
    |
 LL |     mod inner { #![recursion_limit="0200"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:806:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:805:17
    |
 LL |     mod inner { #![recursion_limit="0200"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:810:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:809:5
    |
 LL |     #[recursion_limit="0200"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:810:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:809:5
    |
 LL |     #[recursion_limit="0200"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:814:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:813:5
    |
 LL |     #[recursion_limit="0200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:814:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:813:5
    |
 LL |     #[recursion_limit="0200"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:818:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:817:5
    |
 LL |     #[recursion_limit="0200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:818:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:817:5
    |
 LL |     #[recursion_limit="0200"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:822:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:821:5
    |
 LL |     #[recursion_limit="0200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:822:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:821:5
    |
 LL |     #[recursion_limit="0200"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:802:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:801:1
    |
 LL | #[recursion_limit="0200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:802:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:801:1
    |
 LL | #[recursion_limit="0200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:831:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:830:17
    |
 LL |     mod inner { #![type_length_limit="0100"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be in the root module
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:831:17
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:830:17
    |
 LL |     mod inner { #![type_length_limit="0100"] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:835:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:834:5
    |
 LL |     #[type_length_limit="0100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:835:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:834:5
    |
 LL |     #[type_length_limit="0100"] fn f() { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:839:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:838:5
    |
 LL |     #[type_length_limit="0100"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:839:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:838:5
    |
 LL |     #[type_length_limit="0100"] struct S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:843:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:842:5
    |
 LL |     #[type_length_limit="0100"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:843:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:842:5
    |
 LL |     #[type_length_limit="0100"] type T = S;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:847:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:846:5
    |
 LL |     #[type_length_limit="0100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:847:5
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:846:5
    |
 LL |     #[type_length_limit="0100"] impl S { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:827:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:826:1
    |
 LL | #[type_length_limit="0100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: crate-level attribute should be an inner attribute: add an exclamation mark: #![foo]
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:827:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:826:1
    |
 LL | #[type_length_limit="0100"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -1309,7 +1301,7 @@ LL | #![proc_macro_derive          = "2500"] //~ WARN unused attribute
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: compilation successful
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:858:1
+  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:857:1
    |
 LL | / fn main() { //~ ERROR compilation successful
 LL | |     println!("Hello World");
