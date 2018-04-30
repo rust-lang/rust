@@ -79,7 +79,7 @@ impl TaggedHashUintPtr {
 ///
 /// Essential invariants of this structure:
 ///
-///   - if t.hashes[i] == EMPTY_BUCKET, then `Bucket::at_index(&t, i).raw`
+///   - if `t.hashes[i] == EMPTY_BUCKET`, then `Bucket::at_index(&t, i).raw`
 ///     points to 'undefined' contents. Don't read from it. This invariant is
 ///     enforced outside this module with the `EmptyBucket`, `FullBucket`,
 ///     and `SafeHash` types.
