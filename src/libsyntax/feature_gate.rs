@@ -475,6 +475,9 @@ declare_features! (
 
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
+
+    // #[panic_implementation]
+    (active, panic_implementation, "1.28.0", Some(44489), None),
 );
 
 declare_features! (
@@ -1068,6 +1071,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                  "wasm_custom_section",
                                  "attribute is currently unstable",
                                  cfg_fn!(wasm_custom_section))),
+
+    // RFC 2070
+    ("panic_implementation", Normal, Gated(Stability::Unstable,
+                           "panic_implementation",
+                           "#[panic_implementation] is an unstable feature",
+                           cfg_fn!(panic_implementation))),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),

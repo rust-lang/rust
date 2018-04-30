@@ -186,7 +186,7 @@ fn default_hook(info: &PanicInfo) {
 
     let location = info.location().unwrap();  // The current implementation always returns Some
 
-    let msg = match info.payload().downcast_ref::<&'static str>() {
+    let msg = match info.payload().downcast_ref::<&str>() {
         Some(s) => *s,
         None => match info.payload().downcast_ref::<String>() {
             Some(s) => &s[..],
@@ -319,6 +319,7 @@ pub fn panicking() -> bool {
 
 /// Entry point of panic from the libcore crate.
 #[cfg(not(test))]
+#[cfg(stage0)]
 #[lang = "panic_fmt"]
 #[unwind(allowed)]
 pub extern fn rust_begin_panic(msg: fmt::Arguments,
@@ -328,12 +329,22 @@ pub extern fn rust_begin_panic(msg: fmt::Arguments,
     begin_panic_fmt(&msg, &(file, line, col))
 }
 
+/// Entry point of panic from the libcore crate.
+#[cfg(not(test))]
+#[cfg(not(stage0))]
+#[panic_implementation]
+#[unwind(allowed)]
+pub fn rust_begin_panic(info: &PanicInfo) -> ! {
+    continue_panic_fmt(&info)
+}
+
 /// The entry point for panicking with a formatted message.
 ///
 /// This is designed to reduce the amount of code required at the call
 /// site as much as possible (so that `panic!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
+#[cfg(stage0)]
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
@@ -381,12 +392,92 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments,
     }
 }
 
+/// The entry point for panicking with a formatted message.
+///
+/// This is designed to reduce the amount of code required at the call
+/// site as much as possible (so that `panic!()` has as low an impact
+/// on (e.g.) the inlining of other functions as possible), by moving
+/// the actual formatting into this shared place.
+#[cfg(not(stage0))]
+#[unstable(feature = "libstd_sys_internals",
+           reason = "used by the panic! macro",
+           issue = "0")]
+#[inline(never)] #[cold]
+pub fn begin_panic_fmt(msg: &fmt::Arguments,
+                       file_line_col: &(&'static str, u32, u32)) -> ! {
+    let (file, line, col) = *file_line_col;
+    let info = PanicInfo::internal_constructor(
+        Some(msg),
+        Location::internal_constructor(file, line, col),
+    );
+    continue_panic_fmt(&info)
+}
+
+#[cfg(not(stage0))]
+fn continue_panic_fmt(info: &PanicInfo) -> ! {
+    use fmt::Write;
+
+    // We do two allocations here, unfortunately. But (a) they're
+    // required with the current scheme, and (b) we don't handle
+    // panic + OOM properly anyway (see comment in begin_panic
+    // below).
+
+    let loc = info.location().unwrap(); // The current implementation always returns Some
+    let file_line_col = (loc.file(), loc.line(), loc.column());
+    rust_panic_with_hook(
+        &mut PanicPayload::new(info.payload(), info.message()),
+        info.message(),
+        &file_line_col);
+
+    struct PanicPayload<'a> {
+        payload: &'a (Any + Send),
+        msg: Option<&'a fmt::Arguments<'a>>,
+        string: Option<String>,
+    }
+
+    impl<'a> PanicPayload<'a> {
+        fn new(payload: &'a (Any + Send), msg: Option<&'a fmt::Arguments<'a>>) -> PanicPayload<'a> {
+            PanicPayload { payload, msg, string: None }
+        }
+
+
+        fn fill(&mut self) -> Option<&mut String> {
+            if let Some(msg) = self.msg.take() {
+                Some(self.string.get_or_insert_with(|| {
+                    let mut s = String::new();
+                    drop(s.write_fmt(*msg));
+                    s
+                }))
+            } else {
+                None
+            }
+        }
+    }
+
+    unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
+        fn box_me_up(&mut self) -> *mut (Any + Send) {
+            if let Some(string) = self.fill() {
+                let contents = mem::replace(string, String::new());
+                Box::into_raw(Box::new(contents))
+            } else {
+                // We can't go from &(Any+Send) to Box<Any+Send> so the payload is lost here
+                struct NoPayload;
+                Box::into_raw(Box::new(NoPayload))
+            }
+        }
+
+        fn get(&mut self) -> &(Any + Send) {
+            self.payload
+        }
+    }
+}
+
 /// This is the entry point of panicking for panic!() and assert!().
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
-pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u32)) -> ! {
+pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&str, u32, u32)) -> ! {
     // Note that this should be the only allocation performed in this code path.
     // Currently this means that panic!() on OOM will invoke this code path,
     // but then again we're not really ready for panic on OOM anyway. If
@@ -431,7 +522,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
 /// abort or unwind.
 fn rust_panic_with_hook(payload: &mut BoxMeUp,
                         message: Option<&fmt::Arguments>,
-                        file_line_col: &(&'static str, u32, u32)) -> ! {
+                        file_line_col: &(&str, u32, u32)) -> ! {
     let (file, line, col) = *file_line_col;
 
     let panics = update_panic_count(1);

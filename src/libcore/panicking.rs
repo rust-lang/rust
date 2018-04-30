@@ -36,7 +36,33 @@
                       and related macros",
             issue = "0")]
 
+#[cfg(not(stage0))]
+use any::Any;
 use fmt;
+#[cfg(not(stage0))]
+use panic::{Location, PanicInfo};
+
+#[cfg(not(stage0))]
+#[allow(improper_ctypes)] // PanicInfo contains a trait object which is not FFI safe
+extern "C" {
+    #[lang = "panic_impl"]
+    fn panic_impl(pi: &PanicInfo) -> !;
+}
+
+#[cfg(not(stage0))]
+#[cold] #[inline(never)]
+pub fn panic_payload<M>(msg: M, file_line_col: &(&'static str, u32, u32)) -> !
+where
+    M: Any + Send,
+{
+    let (file, line, col) = *file_line_col;
+    let mut pi = PanicInfo::internal_constructor(
+        None,
+        Location::internal_constructor(file, line, col),
+    );
+    pi.set_payload(&msg);
+    unsafe { panic_impl(&pi) }
+}
 
 #[cold] #[inline(never)] // this is the slow path, always
 #[lang = "panic"]
@@ -59,6 +85,7 @@ fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
                            len, index), file_line_col)
 }
 
+#[cfg(stage0)]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
     #[allow(improper_ctypes)]
@@ -69,4 +96,17 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
     }
     let (file, line, col) = *file_line_col;
     unsafe { panic_impl(fmt, file, line, col) }
+}
+
+#[cfg(not(stage0))]
+#[cold] #[inline(never)]
+pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
+    struct NoPayload;
+
+    let (file, line, col) = *file_line_col;
+    let pi = PanicInfo::internal_constructor(
+        Some(&fmt),
+        Location::internal_constructor(file, line, col),
+    );
+    unsafe { panic_impl(&pi) }
 }

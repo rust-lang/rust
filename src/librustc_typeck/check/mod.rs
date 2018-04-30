@@ -96,7 +96,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{UnpackedKind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate};
+use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate, RegionKind};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
@@ -1127,6 +1127,48 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
                 }
             }
         }
+    }
+
+    // Check that a function marked as `#[panic_implementation]` has signature `fn(&PanicInfo) -> !`
+    if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
+        if panic_impl_did == fn_hir_id.owner_def_id() {
+            if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {
+                if ret_ty.sty != ty::TyNever {
+                    fcx.tcx.sess.span_err(
+                        decl.output.span(),
+                        "return type should be `!`",
+                    );
+                }
+
+                let inputs = fn_sig.inputs();
+                let span = fcx.tcx.hir.span(fn_id);
+                if inputs.len() == 1 {
+                    let arg_is_panic_info = match inputs[0].sty {
+                        ty::TyRef(region, ty::TypeAndMut { ty, mutbl }) => match ty.sty {
+                            ty::TyAdt(ref adt, _) => {
+                                adt.did == panic_info_did &&
+                                    mutbl == hir::Mutability::MutImmutable &&
+                                    *region != RegionKind::ReStatic
+                            },
+                            _ => false,
+                        },
+                        _ => false,
+                    };
+
+                    if !arg_is_panic_info {
+                        fcx.tcx.sess.span_err(
+                            decl.inputs[0].span,
+                            "argument should be `&PanicInfo`",
+                        );
+                    }
+                } else {
+                    fcx.tcx.sess.span_err(span, "function should have one argument");
+                }
+            } else {
+                fcx.tcx.sess.err("language item required, but not found: `panic_info`");
+            }
+        }
+
     }
 
     (fcx, gen_ty)

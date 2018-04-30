@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// note-pattern: first defined in crate `std`.
-
-// Test for issue #31788 and E0152
+// compile-flags:-C panic=abort
 
 #![feature(lang_items)]
+#![feature(panic_implementation)]
+#![no_std]
+#![no_main]
 
-use std::panic::PanicInfo;
+use core::panic::PanicInfo;
 
-#[lang = "panic_impl"]
-fn panic_impl(info: &PanicInfo) -> ! {
-//~^ ERROR: duplicate lang item found: `panic_impl`.
+#[panic_implementation]
+fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
-fn main() {}
+#[lang = "panic_impl"]
+fn panic2(info: &PanicInfo) -> ! { //~ ERROR duplicate lang item found: `panic_impl`.
+    loop {}
+}

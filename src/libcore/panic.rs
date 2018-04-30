@@ -35,6 +35,7 @@ use fmt;
 ///
 /// panic!("Normal panic");
 /// ```
+#[cfg_attr(not(stage0), lang = "panic_info")]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {
@@ -53,7 +54,8 @@ impl<'a> PanicInfo<'a> {
     pub fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
                                 location: Location<'a>)
                                 -> Self {
-        PanicInfo { payload: &(), location, message }
+        struct NoPayload;
+        PanicInfo { payload: &NoPayload, location, message }
     }
 
     #[doc(hidden)]
@@ -121,7 +123,7 @@ impl<'a> PanicInfo<'a> {
     #[stable(feature = "panic_hooks", since = "1.10.0")]
     pub fn location(&self) -> Option<&Location> {
         // NOTE: If this is changed to sometimes return None,
-        // deal with that case in std::panicking::default_hook.
+        // deal with that case in std::panicking::default_hook and std::panicking::begin_panic_fmt.
         Some(&self.location)
     }
 }

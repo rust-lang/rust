@@ -317,6 +317,8 @@
 #![cfg_attr(windows, feature(used))]
 #![feature(doc_alias)]
 #![feature(float_internals)]
+#![feature(panic_info_message)]
+#![cfg_attr(not(stage0), feature(panic_implementation))]
 
 #![default_lib_allocator]
 

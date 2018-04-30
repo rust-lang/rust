@@ -9,6 +9,7 @@
 // except according to those terms.
 
 /// Entry point of thread panic, for details, see std::macros
+#[cfg(stage0)]
 #[macro_export]
 #[allow_internal_unstable]
 #[stable(feature = "core", since = "1.6.0")]
@@ -18,6 +19,27 @@ macro_rules! panic {
     );
     ($msg:expr) => ({
         $crate::panicking::panic(&($msg, file!(), line!(), __rust_unstable_column!()))
+    });
+    ($msg:expr,) => (
+        panic!($msg)
+    );
+    ($fmt:expr, $($arg:tt)+) => ({
+        $crate::panicking::panic_fmt(format_args!($fmt, $($arg)*),
+                                     &(file!(), line!(), __rust_unstable_column!()))
+    });
+}
+
+/// Entry point of thread panic, for details, see std::macros
+#[cfg(not(stage0))]
+#[macro_export]
+#[allow_internal_unstable]
+#[stable(feature = "core", since = "1.6.0")]
+macro_rules! panic {
+    () => (
+        panic!("explicit panic")
+    );
+    ($msg:expr) => ({
+        $crate::panicking::panic_payload($msg, &(file!(), line!(), __rust_unstable_column!()))
     });
     ($msg:expr,) => (
         panic!($msg)
