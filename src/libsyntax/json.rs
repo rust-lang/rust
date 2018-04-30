@@ -23,7 +23,7 @@ use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
-use errors::DiagnosticId;
+use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 
 use rustc_data_structures::sync::{self, Lrc};
@@ -39,7 +39,7 @@ pub struct JsonEmitter {
     cm: Lrc<CodeMapper + sync::Send + sync::Sync>,
     pretty: bool,
     /// Whether "approximate suggestions" are enabled in the config
-    approximate_suggestions: bool,
+    suggestion_applicability: bool,
     ui_testing: bool,
 }
 
@@ -47,13 +47,13 @@ impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
                   code_map: Lrc<CodeMap>,
                   pretty: bool,
-                  approximate_suggestions: bool) -> JsonEmitter {
+                  suggestion_applicability: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
             cm: code_map,
             pretty,
-            approximate_suggestions,
+            suggestion_applicability,
             ui_testing: false,
         }
     }
@@ -68,13 +68,13 @@ impl JsonEmitter {
                registry: Option<Registry>,
                code_map: Lrc<CodeMap>,
                pretty: bool,
-               approximate_suggestions: bool) -> JsonEmitter {
+               suggestion_applicability: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
             cm: code_map,
             pretty,
-            approximate_suggestions,
+            suggestion_applicability,
             ui_testing: false,
         }
     }
@@ -138,7 +138,7 @@ struct DiagnosticSpan {
     suggested_replacement: Option<String>,
     /// If the suggestion is approximate
     #[rustc_serialize_exclude_null]
-    suggestion_approximate: Option<bool>,
+    suggestion_applicability: Option<Applicability>,
     /// Macro invocations that created the code at this span, if any.
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
@@ -239,7 +239,7 @@ impl Diagnostic {
 
 impl DiagnosticSpan {
     fn from_span_label(span: SpanLabel,
-                       suggestion: Option<(&String, bool)>,
+                       suggestion: Option<(&String, Applicability)>,
                        je: &JsonEmitter)
                        -> DiagnosticSpan {
         Self::from_span_etc(span.span,
@@ -252,7 +252,7 @@ impl DiagnosticSpan {
     fn from_span_etc(span: Span,
                      is_primary: bool,
                      label: Option<String>,
-                     suggestion: Option<(&String, bool)>,
+                     suggestion: Option<(&String, Applicability)>,
                      je: &JsonEmitter)
                      -> DiagnosticSpan {
         // obtain the full backtrace from the `macro_backtrace`
@@ -272,7 +272,7 @@ impl DiagnosticSpan {
     fn from_span_full(span: Span,
                       is_primary: bool,
                       label: Option<String>,
-                      suggestion: Option<(&String, bool)>,
+                      suggestion: Option<(&String, Applicability)>,
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
@@ -301,7 +301,7 @@ impl DiagnosticSpan {
             })
         });
 
-        let suggestion_approximate = if je.approximate_suggestions {
+        let suggestion_applicability = if je.suggestion_applicability {
              suggestion.map(|x| x.1)
         } else {
             None
@@ -318,7 +318,7 @@ impl DiagnosticSpan {
             is_primary,
             text: DiagnosticSpanLine::from_span(span, je),
             suggested_replacement: suggestion.map(|x| x.0.clone()),
-            suggestion_approximate,
+            suggestion_applicability,
             expansion: backtrace_step,
             label,
         }
@@ -344,7 +344,7 @@ impl DiagnosticSpan {
                               };
                               DiagnosticSpan::from_span_label(span_label,
                                                               Some((&suggestion_inner.snippet,
-                                                                   suggestion.approximate)),
+                                                                   suggestion.applicability)),
                                                               je)
                           })
                       })

@@ -56,6 +56,14 @@ mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileMap, FileName, MultiSpan, Span, NO_EXPANSION};
 
+#[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+pub enum Applicability {
+    MachineApplicable,
+    HasPlaceholders,
+    MaybeIncorrect,
+    Unspecified
+}
+
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
@@ -87,7 +95,7 @@ pub struct CodeSuggestion {
     /// Sometimes we may show suggestions with placeholders,
     /// which are useful for users but not useful for
     /// tools like rustfix
-    pub approximate: bool,
+    pub applicability: Applicability,
 }
 
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
