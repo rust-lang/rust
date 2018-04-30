@@ -1996,7 +1996,7 @@
         if (e.parentNode.id === "main") {
             var otherMessage;
             if (hasClass(e, "type-decl")) {
-                otherMessage = '&nbsp;Show&nbsp;type&nbsp;declaration';
+                otherMessage = '&nbsp;Show&nbsp;declaration';
             }
             e.parentNode.insertBefore(createToggle(otherMessage), e);
             if (otherMessage && getCurrentValue('rustdoc-item-declarations') !== "false") {
