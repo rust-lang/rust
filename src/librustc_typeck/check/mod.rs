@@ -542,7 +542,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// you get indicates whether any subexpression that was
     /// evaluating up to and including `X` diverged.
     ///
-    /// We use this flag for two purposes:
+    /// We currently use this flag only for diagnostic purposes:
     ///
     /// - To warn about unreachable code: if, after processing a
     ///   sub-expression but before we have applied the effects of the
@@ -556,16 +556,8 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ///   foo();}` or `{return; 22}`, where we would warn on the
     ///   `foo()` or `22`.
     ///
-    /// - To permit assignment into a local variable or other place
-    ///   (including the "return slot") of type `!`.  This is allowed
-    ///   if **either** the type of value being assigned is `!`, which
-    ///   means the current code is dead, **or** the expression's
-    ///   diverging flag is true, which means that a diverging value was
-    ///   wrapped (e.g., `let x: ! = foo(return)`).
-    ///
-    /// To repeat the last point: an expression represents dead-code
-    /// if, after checking it, **either** its type is `!` OR the
-    /// diverges flag is set to something other than `Maybe`.
+    /// An expression represents dead-code if, after checking it,
+    /// the diverges flag is set to something other than `Maybe`.
     diverges: Cell<Diverges>,
 
     /// Whether any child nodes have any type errors.
@@ -2999,8 +2991,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             &self.cause(return_expr.span,
                                         ObligationCauseCode::ReturnType(return_expr.id)),
                             return_expr,
-                            return_expr_ty,
-                            self.diverges.get());
+                            return_expr_ty);
     }
 
 
@@ -3031,13 +3022,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
 
         let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
-        coerce.coerce(self, &if_cause, then_expr, then_ty, then_diverges);
+        coerce.coerce(self, &if_cause, then_expr, then_ty);
 
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
 
-            coerce.coerce(self, &if_cause, else_expr, else_ty, else_diverges);
+            coerce.coerce(self, &if_cause, else_expr, else_ty);
 
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
@@ -3722,7 +3713,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprBreak(destination, ref expr_opt) => {
               if let Some(target_id) = destination.target_id.opt_id() {
-                  let (e_ty, e_diverges, cause);
+                  let (e_ty, cause);
                   if let Some(ref e) = *expr_opt {
                       // If this is a break with a value, we need to type-check
                       // the expression. Get an expected type from the loop context.
@@ -3741,13 +3732,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                       // Recurse without `enclosing_breakables` borrowed.
                       e_ty = self.check_expr_with_hint(e, coerce_to);
-                      e_diverges = self.diverges.get();
                       cause = self.misc(e.span);
                   } else {
                       // Otherwise, this is a break *without* a value. That's
                       // always legal, and is equivalent to `break ()`.
                       e_ty = tcx.mk_nil();
-                      e_diverges = Diverges::Maybe;
                       cause = self.misc(expr.span);
                   }
 
@@ -3758,7 +3747,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let ctxt = enclosing_breakables.find_breakable(target_id);
                   if let Some(ref mut coerce) = ctxt.coerce {
                       if let Some(ref e) = *expr_opt {
-                          coerce.coerce(self, &cause, e, e_ty, e_diverges);
+                          coerce.coerce(self, &cause, e, e_ty);
                       } else {
                           assert!(e_ty.is_nil());
                           coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
@@ -3964,7 +3953,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   for e in args {
                       let e_ty = self.check_expr_with_hint(e, coerce_to);
                       let cause = self.misc(e.span);
-                      coerce.coerce(self, &cause, e, e_ty, self.diverges.get());
+                      coerce.coerce(self, &cause, e, e_ty);
                   }
                   coerce.complete(self)
               } else {
@@ -4375,8 +4364,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 coerce.coerce(self,
                               &cause,
                               tail_expr,
-                              tail_expr_ty,
-                              self.diverges.get());
+                              tail_expr_ty);
             } else {
                 // Subtle: if there is no explicit tail expression,
                 // that is typically equivalent to a tail expression
