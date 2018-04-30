@@ -376,9 +376,12 @@ fn test_windows_zip() {
     assert_eq!(res, [14, 18, 22, 26]);
 }
 
+// The current implementation of SliceIndex fails to handle methods
+// orthogonally from range types; therefore, it is worth testing
+// all of the indexing operations on each input.
 mod slice_index {
-    // Test a slicing operation that should succeed,
-    // testing it on all of the indexing methods.
+    // This checks all six indexing methods, given an input range that
+    // should succeed. (it is NOT suitable for testing invalid inputs)
     macro_rules! assert_range_eq {
         ($arr:expr, $range:expr, $expected:expr)
         => {
@@ -423,7 +426,7 @@ mod slice_index {
     // because if it can't, then what are we even doing here?
     //
     // (Be aware this only demonstrates the ability to detect bugs
-    //  in the FIRST method it calls, as the macro is not designed
+    //  in the FIRST method that panics, as the macro is not designed
     //  to be used in `should_panic`)
     #[test]
     #[should_panic(expected = "out of range")]
@@ -446,30 +449,29 @@ mod slice_index {
     // and `None` test cases for get/get_mut.
     macro_rules! panic_cases {
         ($(
-            mod $case_name:ident {
-                let DATA: $Data: ty = $data:expr;
+            // each test case needs a unique name to namespace the tests
+            in mod $case_name:ident {
+                data: $data:expr;
 
                 // optional:
                 //
-                // a similar input for which DATA[input] succeeds, and the corresponding
-                // output as an array.  This helps validate "critical points" where an
-                // input range straddles the boundary between valid and invalid.
+                // one or more similar inputs for which data[input] succeeds,
+                // and the corresponding output as an array.  This helps validate
+                // "critical points" where an input range straddles the boundary
+                // between valid and invalid.
                 // (such as the input `len..len`, which is just barely valid)
                 $(
-                    let GOOD_INPUT = $good:expr;
-                    let GOOD_OUTPUT = $output:expr;
+                    good: data[$good:expr] == $output:expr;
                 )*
 
-                let BAD_INPUT = $bad:expr;
-                const EXPECT_MSG = $expect_msg:expr;
-
-                !!generate_tests!!
+                bad: data[$bad:expr];
+                message: $expect_msg:expr;
             }
         )*) => {$(
             mod $case_name {
                 #[test]
                 fn pass() {
-                    let mut v: $Data = $data;
+                    let mut v = $data;
 
                     $( assert_range_eq!($data, $good, $output); )*
 
@@ -487,7 +489,7 @@ mod slice_index {
                 #[test]
                 #[should_panic(expected = $expect_msg)]
                 fn index_fail() {
-                    let v: $Data = $data;
+                    let v = $data;
                     let v: &[_] = &v;
                     let _v = &v[$bad];
                 }
@@ -495,7 +497,7 @@ mod slice_index {
                 #[test]
                 #[should_panic(expected = $expect_msg)]
                 fn index_mut_fail() {
-                    let mut v: $Data = $data;
+                    let mut v = $data;
                     let v: &mut [_] = &mut v;
                     let _v = &mut v[$bad];
                 }
@@ -516,112 +518,80 @@ mod slice_index {
     }
 
     panic_cases! {
-        mod rangefrom_len {
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod rangefrom_len {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = 6..;
-            let GOOD_OUTPUT = [];
-
-            let BAD_INPUT = 7..;
-            const EXPECT_MSG = "but ends at"; // perhaps not ideal
-
-            !!generate_tests!!
+            good: data[6..] == [];
+            bad: data[7..];
+            message: "but ends at"; // perhaps not ideal
         }
 
-        mod rangeto_len {
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod rangeto_len {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = ..6;
-            let GOOD_OUTPUT = [0, 1, 2, 3, 4, 5];
-
-            let BAD_INPUT = ..7;
-            const EXPECT_MSG = "out of range";
-
-            !!generate_tests!!
+            good: data[..6] == [0, 1, 2, 3, 4, 5];
+            bad: data[..7];
+            message: "out of range";
         }
 
-        mod rangetoinclusive_len {
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod rangetoinclusive_len {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = ..=5;
-            let GOOD_OUTPUT = [0, 1, 2, 3, 4, 5];
-
-            let BAD_INPUT = ..=6;
-            const EXPECT_MSG = "out of range";
-
-            !!generate_tests!!
+            good: data[..=5] == [0, 1, 2, 3, 4, 5];
+            bad: data[..=6];
+            message: "out of range";
         }
 
-        mod range_len_len {
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod range_len_len {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = 6..6;
-            let GOOD_OUTPUT = [];
-
-            let BAD_INPUT = 7..7;
-            const EXPECT_MSG = "out of range";
-
-            !!generate_tests!!
+            good: data[6..6] == [];
+            bad: data[7..7];
+            message: "out of range";
         }
 
-        mod rangeinclusive_len_len{
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod rangeinclusive_len_len {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = 6..=5;
-            let GOOD_OUTPUT = [];
-
-            let BAD_INPUT = 7..=6;
-            const EXPECT_MSG = "out of range";
-
-            !!generate_tests!!
+            good: data[6..=5] == [];
+            bad: data[7..=6];
+            message: "out of range";
         }
     }
 
     panic_cases! {
-        mod range_neg_width {
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod range_neg_width {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = 4..4;
-            let GOOD_OUTPUT = [];
-
-            let BAD_INPUT = 4..3;
-            const EXPECT_MSG = "but ends at";
-
-            !!generate_tests!!
+            good: data[4..4] == [];
+            bad: data[4..3];
+            message: "but ends at";
         }
 
-        mod rangeinclusive_neg_width {
-            let DATA: [i32; 6] = [0, 1, 2, 3, 4, 5];
+        in mod rangeinclusive_neg_width {
+            data: [0, 1, 2, 3, 4, 5];
 
-            let GOOD_INPUT = 4..=3;
-            let GOOD_OUTPUT = [];
-
-            let BAD_INPUT = 4..=2;
-            const EXPECT_MSG = "but ends at";
-
-            !!generate_tests!!
+            good: data[4..=3] == [];
+            bad: data[4..=2];
+            message: "but ends at";
         }
     }
 
     panic_cases! {
-        mod rangeinclusive_overflow {
-            let DATA: [i32; 2] = [0, 1];
+        in mod rangeinclusive_overflow {
+            data: [0, 1];
 
             // note: using 0 specifically ensures that the result of overflowing is 0..0,
             //       so that `get` doesn't simply return None for the wrong reason.
-            let BAD_INPUT = 0 ..= ::std::usize::MAX;
-            const EXPECT_MSG = "maximum usize";
-
-            !!generate_tests!!
+            bad: data[0 ..= ::std::usize::MAX];
+            message: "maximum usize";
         }
 
-        mod rangetoinclusive_overflow {
-            let DATA: [i32; 2] = [0, 1];
+        in mod rangetoinclusive_overflow {
+            data: [0, 1];
 
-            let BAD_INPUT = ..= ::std::usize::MAX;
-            const EXPECT_MSG = "maximum usize";
-
-            !!generate_tests!!
+            bad: data[..= ::std::usize::MAX];
+            message: "maximum usize";
         }
     } // panic_cases!
 }
