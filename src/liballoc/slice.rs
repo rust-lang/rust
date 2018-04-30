@@ -566,18 +566,18 @@ impl<T: Clone, V: Borrow<[T]>> SliceConcatExt<T> for [V] {
     }
 
     fn join(&self, sep: &T) -> Vec<T> {
-        let size = self.iter().fold(0, |acc, v| acc + v.borrow().len());
-        let mut result = Vec::with_capacity(size + self.len());
-        let mut first = true;
-        for v in self {
-            if first {
-                first = false
-            } else {
-                result.push(sep.clone())
+        let mut iter = self.iter();
+        iter.next().map_or(vec![], |first| {
+            let size = self.iter().fold(0, |acc, v| acc + v.borrow().len());
+            let mut result = Vec::with_capacity(size + self.len());
+            result.extend_from_slice(first.borrow());
+
+            for v in iter {
+                result.push(sep.clone());
+                result.extend_from_slice(v.borrow())
             }
-            result.extend_from_slice(v.borrow())
-        }
-        result
+            result
+        })
     }
 
     fn connect(&self, sep: &T) -> Vec<T> {
