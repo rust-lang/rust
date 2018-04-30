@@ -523,7 +523,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeMap<K, V> {
         BTreeMap {
-            root: node::Root::new_leaf(),
+            root: node::Root::shared_empty_root(),
             length: 0,
         }
     }
@@ -544,7 +544,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        // FIXME(gereeter) .clear() allocates
         *self = BTreeMap::new();
     }
 
@@ -687,6 +686,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        if self.root.is_shared_root() {
+            self.root = node::Root::new_leaf();
+        }
+
         match self.entry(key) {
             Occupied(mut entry) => Some(entry.insert(value)),
             Vacant(entry) => {
@@ -890,6 +893,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
+        if self.root.is_shared_root() {
+            self.root = node::Root::new_leaf();
+        }
+
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => {
                 Occupied(OccupiedEntry {
@@ -910,6 +917,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
+        if self.root.is_shared_root() {
+            self.root = node::Root::new_leaf();
+        }
+
         let mut cur_node = last_leaf_edge(self.root.as_mut()).into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {

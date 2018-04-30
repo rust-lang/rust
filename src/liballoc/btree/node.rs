@@ -103,6 +103,18 @@ impl<K, V> LeafNode<K, V> {
     }
 }
 
+// We need to implement Sync here in order to make a static instance
+unsafe impl Sync for LeafNode<(), ()> {}
+
+// An empty node used as a placeholder for the root node, to avoid allocations
+static EMPTY_ROOT_NODE: LeafNode<(), ()> = LeafNode {
+    parent: ptr::null(),
+    parent_idx: 0,
+    len: 0,
+    keys: [(); CAPACITY],
+    vals: [(); CAPACITY],
+};
+
 /// The underlying representation of internal nodes. As with `LeafNode`s, these should be hidden
 /// behind `BoxedNode`s to prevent dropping uninitialized keys and values. Any pointer to an
 /// `InternalNode` can be directly casted to a pointer to the underlying `LeafNode` portion of the
@@ -172,6 +184,24 @@ unsafe impl<K: Sync, V: Sync> Sync for Root<K, V> { }
 unsafe impl<K: Send, V: Send> Send for Root<K, V> { }
 
 impl<K, V> Root<K, V> {
+    pub fn is_shared_root(&self) -> bool {
+        ptr::eq(
+            self.node.as_ptr().as_ptr(),
+            &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V>,
+        )
+    }
+
+    pub fn shared_empty_root() -> Self {
+        Root {
+            node: unsafe {
+                BoxedNode::from_ptr(NonNull::new_unchecked(
+                    &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V> as *mut _
+                ))
+            },
+            height: 0,
+        }
+    }
+
     pub fn new_leaf() -> Self {
         Root {
             node: BoxedNode::from_leaf(Box::new(unsafe { LeafNode::new() })),
