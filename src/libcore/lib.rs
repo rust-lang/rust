@@ -41,7 +41,7 @@
 //!   dictate the panic message, the file at which panic was invoked, and the
 //!   line and column inside the file. It is up to consumers of this core
 //!   library to define this panic function; it is only required to never
-//!   return. This requires a `lang` attribute named `panic_fmt`.
+//!   return. This requires a `lang` attribute named `panic_impl`.
 //!
 //! * `rust_eh_personality` - is used by the failure mechanisms of the
 //!    compiler. This is often mapped to GCC's personality function, but crates
