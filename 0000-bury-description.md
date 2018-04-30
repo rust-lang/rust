@@ -31,7 +31,7 @@ Users of the `Error` trait can then pretend this method does not exist.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-When users start omitting bespoke `description()` implementations, code that still uses this method will start getting empty strings instead of human-written description. If this becomes a problem, the `description()` method can also be formally deprecated (with the `#[deprecated]` attribute). However, there's no urgency to remove existing implementations of `description()`, so this RFC does not propose formal deprecation at this time to avoid unnecessary warnings during the transition.
+When users start omitting bespoke `description()` implementations, code that still uses this method will start getting default strings instead of human-written description. If this becomes a problem, the `description()` method can also be formally deprecated (with the `#[deprecated]` attribute). However, there's no urgency to remove existing implementations of `description()`, so this RFC does not propose formal deprecation at this time to avoid unnecessary warnings during the transition.
 
 # Rationale and alternatives
 [alternatives]: #alternatives
