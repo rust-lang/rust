@@ -18,7 +18,7 @@ use list::{
     // Last Item
     LastItem,
     // Some item
-    SomeItem, /* Comment */
+    SomeItem, // Comment
 };
 
 use test::{/* A */ self /* B */, Other /* C */};
