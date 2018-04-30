@@ -4210,6 +4210,7 @@ impl fmt::Display for TryFromIntError {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl From<!> for TryFromIntError {
+    #[allow(unreachable_code)]
     fn from(never: !) -> TryFromIntError {
         never
     }

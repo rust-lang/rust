@@ -1060,7 +1060,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // If any of a function's parameters have a type that is uninhabited, then it
         // may never be called (because its arguments cannot be constructed). Therefore,
         // it must always diverge.
-        if fcx.tcx.features().better_divergence_checking {
+        if fcx.tcx.features().exhaustive_patterns {
             if arg_ty.conservative_is_uninhabited() {
                 fcx.diverges.set(fcx.diverges.get() | Diverges::Always);
             }
@@ -3673,7 +3673,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Any expression that produces a value of an uninhabited type must have diverged.
         if ty.conservative_is_uninhabited() {
-            if ty.is_never() || self.tcx.features().better_divergence_checking {
+            if ty.is_never() || self.tcx.features().exhaustive_patterns {
                 self.diverges.set(self.diverges.get() | Diverges::Always);
             }
         }

@@ -227,7 +227,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
-                    if self.tcx.features().better_divergence_checking {
+                    if self.tcx.features().exhaustive_patterns {
                         pat_ty.conservative_is_uninhabited()
                     } else {
                         match pat_ty.sty {

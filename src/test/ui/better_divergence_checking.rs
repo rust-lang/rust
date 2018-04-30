@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(better_divergence_checking)]
+#![feature(exhaustive_patterns)]
 #![deny(unreachable_code)]
 
 pub enum Void {}
