@@ -353,6 +353,7 @@ pub use core::{assert_eq, assert_ne, debug_assert, debug_assert_eq, debug_assert
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::{unreachable, unimplemented, write, writeln, try};
 
+#[allow(unused_imports)] // macros from `alloc` are not used on all platforms
 #[macro_use]
 extern crate alloc as alloc_crate;
 extern crate alloc_system;
