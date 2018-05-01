@@ -188,10 +188,17 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             match pred {
                 ty::Predicate::Trait(trait_ref) => {
                     if trait_ref.def_id() == trait_def_id {
-                        false
-                    } else {
-                        true
+                        use ty::TypeVariants::TyParam;
+                        if let TyParam(param) = trait_ref.skip_binder().self_ty().sty {
+                            if param.is_self() {
+                                debug!(
+                                    "compare_impl_method: removing `{:?}` from trait_m_predicates",
+                                    pred);
+                                return false;
+                            }
+                        }
                     }
+                    true
                 }
                 _ => true
             }
