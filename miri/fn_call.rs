@@ -2,9 +2,9 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Align, LayoutOf};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
+use rustc_target::spec::abi::Abi;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::attr;
-use syntax::abi::Abi;
 use syntax::codemap::Span;
 
 use std::mem;
@@ -177,7 +177,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
             Some(name) => name.as_str(),
-            None => self.tcx.item_name(def_id),
+            None => self.tcx.item_name(def_id).as_str(),
         };
 
         match &link_name[..] {
