@@ -77,14 +77,16 @@ fn checked_sub() {
     assert_eq!(zero.checked_sub(one_sec), None);
 }
 
-#[test] #[should_panic]
+#[test]
+#[should_panic]
 fn sub_bad1() {
-    Duration::new(0, 0) - Duration::new(0, 1);
+    let _ = Duration::new(0, 0) - Duration::new(0, 1);
 }
 
-#[test] #[should_panic]
+#[test]
+#[should_panic]
 fn sub_bad2() {
-    Duration::new(0, 0) - Duration::new(1, 0);
+    let _ = Duration::new(0, 0) - Duration::new(1, 0);
 }
 
 #[test]
