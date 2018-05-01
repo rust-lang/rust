@@ -1496,10 +1496,10 @@ impl IntoRawFd for UnixDatagram {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 pub struct UnixSeqpacketListener(Socket);
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl fmt::Debug for UnixSeqpacketListener {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixSeqpacketListener");
@@ -1528,7 +1528,7 @@ impl UnixSeqpacketListener {
     ///     }
     /// };
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixSeqpacketListener> {
         fn inner(path: &Path) -> io::Result<UnixSeqpacketListener> {
             unsafe {
@@ -1565,7 +1565,7 @@ impl UnixSeqpacketListener {
     ///     Err(e) => println!("accept function failed: {:?}", e),
     /// }
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn accept(&self) -> io::Result<(UnixSeqpacket, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as libc::socklen_t;
@@ -1590,7 +1590,7 @@ impl UnixSeqpacketListener {
     ///
     /// let listener_copy = listener.try_clone().expect("try_clone failed");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn try_clone(&self) -> io::Result<UnixSeqpacketListener> {
         self.0.duplicate().map(UnixSeqpacketListener)
     }
@@ -1607,7 +1607,7 @@ impl UnixSeqpacketListener {
     ///
     /// let addr = listener.local_addr().expect("Couldn't get local address");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
@@ -1624,7 +1624,7 @@ impl UnixSeqpacketListener {
     ///
     /// listener.set_nonblocking(true).expect("Couldn't set non blocking");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
@@ -1643,7 +1643,7 @@ impl UnixSeqpacketListener {
     ///     println!("Got error: {:?}", err);
     /// }
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -1680,34 +1680,34 @@ impl UnixSeqpacketListener {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn incoming<'a>(&'a self) -> IncomingSeqpacket<'a> {
         IncomingSeqpacket { listener: self }
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl AsRawFd for UnixSeqpacketListener {
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl FromRawFd for UnixSeqpacketListener {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixSeqpacketListener {
         UnixSeqpacketListener(Socket::from_inner(fd))
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl IntoRawFd for UnixSeqpacketListener {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl<'a> IntoIterator for &'a UnixSeqpacketListener {
     type Item = io::Result<UnixSeqpacket>;
     type IntoIter = IncomingSeqpacket<'a>;
@@ -1749,12 +1749,12 @@ impl<'a> IntoIterator for &'a UnixSeqpacketListener {
 /// }
 /// ```
 #[derive(Debug)]
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 pub struct IncomingSeqpacket<'a> {
     listener: &'a UnixSeqpacketListener,
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl<'a> Iterator for IncomingSeqpacket<'a> {
     type Item = io::Result<UnixSeqpacket>;
 
@@ -1785,10 +1785,10 @@ impl<'a> Iterator for IncomingSeqpacket<'a> {
 /// let count = socket.recv(&mut buf).unwrap();
 /// println!("socket {:?} sent {:?}", path, &buf[..count]);
 /// ```
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 pub struct UnixSeqpacket(Socket);
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl fmt::Debug for UnixSeqpacket {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut builder = fmt.debug_struct("UnixSeqpacket");
@@ -1820,7 +1820,7 @@ impl UnixSeqpacket {
     ///     }
     /// };
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixSeqpacket> {
         fn inner(path: &Path) -> io::Result<UnixSeqpacket> {
             unsafe {
@@ -1852,7 +1852,7 @@ impl UnixSeqpacket {
     ///     }
     /// };
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn pair() -> io::Result<(UnixSeqpacket, UnixSeqpacket)> {
         let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
         Ok((UnixSeqpacket(i1), UnixSeqpacket(i2)))
@@ -1874,7 +1874,7 @@ impl UnixSeqpacket {
     ///
     /// let sock_copy = socket.try_clone().expect("try_clone failed");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn try_clone(&self) -> io::Result<UnixSeqpacket> {
         self.0.duplicate().map(UnixSeqpacket)
     }
@@ -1891,7 +1891,7 @@ impl UnixSeqpacket {
     ///
     /// let addr = socket.local_addr().expect("Couldn't get local address");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getsockname(*self.0.as_inner(), addr, len) })
     }
@@ -1908,7 +1908,7 @@ impl UnixSeqpacket {
     ///
     /// let addr = socket.peer_addr().expect("Couldn't get peer address");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         SocketAddr::new(|addr, len| unsafe { libc::getpeername(*self.0.as_inner(), addr, len) })
     }
@@ -1927,7 +1927,7 @@ impl UnixSeqpacket {
     /// let mut buf = vec![0; 10];
     /// socket.recv(buf.as_mut_slice()).expect("recv function failed");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
     }
@@ -1945,7 +1945,7 @@ impl UnixSeqpacket {
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
     /// socket.send(b"omelette au fromage").expect("send_to function failed");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
@@ -1988,7 +1988,7 @@ impl UnixSeqpacket {
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_RCVTIMEO)
     }
@@ -2030,7 +2030,7 @@ impl UnixSeqpacket {
     /// let err = result.unwrap_err();
     /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
         self.0.set_timeout(timeout, libc::SO_SNDTIMEO)
     }
@@ -2049,7 +2049,7 @@ impl UnixSeqpacket {
     ///     .expect("set_read_timeout function failed");
     /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_RCVTIMEO)
     }
@@ -2068,7 +2068,7 @@ impl UnixSeqpacket {
     ///     .expect("set_write_timeout function failed");
     /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.0.timeout(libc::SO_SNDTIMEO)
     }
@@ -2084,7 +2084,7 @@ impl UnixSeqpacket {
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
     /// socket.set_nonblocking(true).expect("set_nonblocking function failed");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
@@ -2102,7 +2102,7 @@ impl UnixSeqpacket {
     ///     println!("Got error: {:?}", err);
     /// }
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.0.take_error()
     }
@@ -2123,27 +2123,27 @@ impl UnixSeqpacket {
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
     /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
     /// ```
-    #[unstable(feature = "unix_socket", issue = "0")]
+    #[unstable(feature = "unix_socket_seqpacket", issue = "0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl AsRawFd for UnixSeqpacket {
     fn as_raw_fd(&self) -> RawFd {
         *self.0.as_inner()
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl FromRawFd for UnixSeqpacket {
     unsafe fn from_raw_fd(fd: RawFd) -> UnixSeqpacket {
         UnixSeqpacket(Socket::from_inner(fd))
     }
 }
 
-#[unstable(feature = "unix_socket", issue = "0")]
+#[unstable(feature = "unix_socket_seqpacket", issue = "0")]
 impl IntoRawFd for UnixSeqpacket {
     fn into_raw_fd(self) -> RawFd {
         self.0.into_inner()
