@@ -16,6 +16,7 @@ license = "MPL-2.0"
 keywords = ["clippy", "lint", "plugin"]
 
 [dependencies]
+cargo_metadata = "0.5"
 itertools = "0.7"
 lazy_static = "1.0"
 matches = "0.1.2"

@@ -24,6 +24,7 @@ lint_levels = {
     "restriction": 'Allow',
     "pedantic": 'Allow',
     "nursery": 'Allow',
+    "cargo": 'Allow',
 }
 
 

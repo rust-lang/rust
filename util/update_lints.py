@@ -129,6 +129,7 @@ def main(print_only=False, check=False):
         "perf": [],
         "restriction": [],
         "pedantic": [],
+        "cargo": [],
         "nursery": [],
     }
 
