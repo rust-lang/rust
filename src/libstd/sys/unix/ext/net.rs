@@ -1472,7 +1472,7 @@ impl IntoRawFd for UnixDatagram {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_socket)]
+/// #![feature(unix_socket_seqpacket)]
 /// use std::thread;
 /// use std::os::unix::net::{UnixSeqpacket, UnixSeqpacketListener};
 ///
@@ -1517,7 +1517,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacketListener;
     ///
     /// let listener = match UnixSeqpacketListener::bind("/path/to/the/socket") {
@@ -1555,7 +1555,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacketListener;
     ///
     /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
@@ -1583,7 +1583,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacketListener;
     ///
     /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
@@ -1600,7 +1600,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacketListener;
     ///
     /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
@@ -1617,7 +1617,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacketListener;
     ///
     /// let listener = UnixSeqpacketListener::bind("/path/to/the/socket").unwrap();
@@ -1634,7 +1634,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacketListener;
     ///
     /// let listener = UnixSeqpacketListener::bind("/tmp/sock").unwrap();
@@ -1659,7 +1659,7 @@ impl UnixSeqpacketListener {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::thread;
     /// use std::os::unix::net::{UnixSeqpacket, UnixSeqpacketListener};
     ///
@@ -1727,7 +1727,7 @@ impl<'a> IntoIterator for &'a UnixSeqpacketListener {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_socket)]
+/// #![feature(unix_socket_seqpacket)]
 /// use std::thread;
 /// use std::os::unix::net::{UnixSeqpacket, UnixSeqpacketListener};
 ///
@@ -1775,7 +1775,7 @@ impl<'a> Iterator for IncomingSeqpacket<'a> {
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(unix_socket)]
+/// #![feature(unix_socket_seqpacket)]
 /// use std::os::unix::net::UnixSeqpacket;
 ///
 /// let path = "/path/to/my/socket";
@@ -1809,7 +1809,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = match UnixSeqpacket::connect("/tmp/socket") {
@@ -1841,7 +1841,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let (sock1, sock2) = match UnixSeqpacket::pair() {
@@ -1867,7 +1867,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -1884,7 +1884,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -1901,7 +1901,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -1920,7 +1920,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -1939,7 +1939,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -1965,7 +1965,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::time::Duration;
     ///
@@ -1978,7 +1978,7 @@ impl UnixSeqpacket {
     /// method:
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::io;
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::time::Duration;
@@ -2007,7 +2007,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::time::Duration;
     ///
@@ -2020,7 +2020,7 @@ impl UnixSeqpacket {
     /// method:
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::io;
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::time::Duration;
@@ -2040,7 +2040,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::time::Duration;
     ///
@@ -2059,7 +2059,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::time::Duration;
     ///
@@ -2078,7 +2078,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -2094,7 +2094,7 @@ impl UnixSeqpacket {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     ///
     /// let socket = UnixSeqpacket::connect("/path/to/the/socket").unwrap();
@@ -2116,7 +2116,7 @@ impl UnixSeqpacket {
     /// [`Shutdown`]: ../../../../std/net/enum.Shutdown.html
     ///
     /// ```no_run
-    /// #![feature(unix_socket)]
+    /// #![feature(unix_socket_seqpacket)]
     /// use std::os::unix::net::UnixSeqpacket;
     /// use std::net::Shutdown;
     ///
