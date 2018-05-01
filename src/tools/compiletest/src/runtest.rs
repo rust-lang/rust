@@ -2605,7 +2605,10 @@ impl<'test> TestCx<'test> {
         }
 
         let fixture_path = expected_output_path(&self.testpaths, None, &None, UI_FIXED);
-        if fixture_path.exists() {
+
+        // TODO(killercup): Add `nll.rs.fixed` files matching
+        let nll = self.config.compare_mode.as_ref().map(|x| *x == CompareMode::Nll).unwrap_or(false);
+        if fixture_path.exists() && !nll {
             use std::collections::HashSet;
             use rustfix::{apply_suggestions, get_suggestions_from_json};
 

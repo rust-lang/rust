@@ -95,9 +95,9 @@ impl fmt::Display for Mode {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum CompareMode {
-    Nll
+    Nll,
 }
 
 impl CompareMode {
