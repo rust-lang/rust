@@ -1,6 +1,8 @@
-use super::{Pointer, EvalResult, PrimVal, EvalContext};
+use mir;
 use rustc::ty::Ty;
 use rustc::ty::layout::LayoutOf;
+
+use super::{Pointer, EvalResult, PrimVal, EvalContext};
 
 pub trait EvalContextExt<'tcx> {
     fn wrapping_pointer_offset(
@@ -63,7 +65,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
             Ok(ptr)
         } else {
-            err!(OverflowingMath)
+            err!(Overflow(mir::BinOp::Mul))
         };
     }
 }
