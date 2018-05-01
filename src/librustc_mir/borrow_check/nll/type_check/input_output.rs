@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let anon_defn_ty = anon_defn_ty.subst(tcx, anon_decl.substs);
                 let anon_defn_ty = renumber::renumber_regions(
                     cx.infcx,
-                    TyContext::Location(start_position),
+                    TyContext::Location(Location::START),
                     &anon_defn_ty,
                 );
                 debug!(
@@ -134,7 +134,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }).unwrap_or_else(|terr| {
                 span_mirbug!(
                     self,
-                    start_position,
+                    Location::START,
                     "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
                     output_ty,
                     mir_output_ty,
