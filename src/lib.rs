@@ -12,6 +12,7 @@
 #![feature(decl_macro)]
 // FIXME(cramertj) remove after match_default_bindings merges
 #![allow(stable_features)]
+#![allow(unused_attributes)]
 #![feature(match_default_bindings)]
 #![feature(type_ascription)]
 #![feature(unicode_internals)]
