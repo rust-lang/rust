@@ -56,7 +56,7 @@ fn call_foo_f() {
 }
 
 fn array_a() {
-    // Accepted: return is coerced to `!` just fine, but `22` cannot be.
+    // Return is coerced to `!` just fine, but `22` cannot be.
     let x: [!; 2] = [return, 22]; //~ ERROR mismatched types
 }
 
