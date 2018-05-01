@@ -57,16 +57,17 @@ impl MultiItemModifier for ProcMacroDerive {
             Annotatable::Stmt(_) |
             Annotatable::Expr(_) => {
                 ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to struct/enum items");
+                                    applied to a struct, enum, or union");
                 return Vec::new()
             }
         };
         match item.node {
             ItemKind::Struct(..) |
-            ItemKind::Enum(..) => {},
+            ItemKind::Enum(..) |
+            ItemKind::Union(..) => {},
             _ => {
                 ecx.span_err(span, "proc-macro derives may only be \
-                                    applied to struct/enum items");
+                                    applied to a struct, enum, or union");
                 return Vec::new()
             }
         }
