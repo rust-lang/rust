@@ -174,6 +174,11 @@ impl Step for Llvm {
                 cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
+        // For distribution we want the LLVM tools to be *statically* linked to libstdc++
+        if builder.config.ship_llvm_tools {
+            cfg.define("CMAKE_EXE_LINKER_FLAGS", "-Wl,-Bsymbolic -static-libstdc++");
+        }
+
         if target.contains("msvc") {
             cfg.define("LLVM_USE_CRT_DEBUG", "MT");
             cfg.define("LLVM_USE_CRT_RELEASE", "MT");
