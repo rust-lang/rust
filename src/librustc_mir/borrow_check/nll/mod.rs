@@ -38,7 +38,6 @@ mod universal_regions;
 use self::region_infer::RegionInferenceContext;
 use self::universal_regions::UniversalRegions;
 
-
 /// Rewrites the regions in the MIR to use NLL variables, also
 /// scraping out the set of universal regions (e.g., region parameters)
 /// declared on the function. That set will need to be given to
