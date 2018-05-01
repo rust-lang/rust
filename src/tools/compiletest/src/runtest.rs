@@ -2606,8 +2606,11 @@ impl<'test> TestCx<'test> {
 
         let fixture_path = expected_output_path(&self.testpaths, None, &None, UI_FIXED);
 
-        // TODO(killercup): Add `nll.rs.fixed` files matching
-        let nll = self.config.compare_mode.as_ref().map(|x| *x == CompareMode::Nll).unwrap_or(false);
+        // FIXME(killercup): Add `nll.rs.fixed` files matching
+        let nll = self.config.compare_mode
+            .as_ref()
+            .map(|x| *x == CompareMode::Nll)
+            .unwrap_or(false);
         if fixture_path.exists() && !nll {
             use std::collections::HashSet;
             use rustfix::{apply_suggestions, get_suggestions_from_json};
@@ -2620,7 +2623,7 @@ impl<'test> TestCx<'test> {
             let errors = self.compare_output("rs.fixed", &fixed_code, &expected_fixed);
             if errors > 0 {
                 panic!("rustfix produced different fixed file!");
-                // TODO: Add info for update-references.sh call
+                // FIXME(killercup): Add info for update-references.sh call
             }
         }
     }
