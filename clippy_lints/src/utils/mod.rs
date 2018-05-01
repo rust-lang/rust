@@ -9,7 +9,7 @@ use rustc::lint::{LateContext, Level, Lint, LintContext};
 use rustc::session::Session;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, layout::{self, IntegerExt}};
-use rustc_errors;
+use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
 use std::borrow::Cow;
 use std::env;
 use std::mem;
@@ -645,12 +645,12 @@ pub fn multispan_sugg<I>(db: &mut DiagnosticBuilder, help_msg: String, sugg: I)
 where
     I: IntoIterator<Item = (Span, String)>,
 {
-    let sugg = rustc_errors::CodeSuggestion {
+    let sugg = CodeSuggestion {
         substitutions: vec![
-            rustc_errors::Substitution {
+            Substitution {
                 parts: sugg.into_iter()
                     .map(|(span, snippet)| {
-                        rustc_errors::SubstitutionPart {
+                        SubstitutionPart {
                             snippet,
                             span,
                         }
@@ -660,7 +660,7 @@ where
         ],
         msg: help_msg,
         show_code_when_inline: true,
-        approximate: false,
+        applicability: Applicability::Unspecified,
     };
     db.suggestions.push(sugg);
 }
