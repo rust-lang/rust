@@ -391,7 +391,7 @@ declare_features! (
     (active, generic_associated_types, "1.23.0", Some(44265), None),
 
     // Resolve absolute paths as paths from other crates
-    (active, extern_absolute_paths, "1.24.0", Some(44660), None),
+    (active, extern_absolute_paths, "1.24.0", Some(44660), Some(Edition::Edition2018)),
 
     // `foo.rs` as an alternative to `foo/mod.rs`
     (active, non_modrs_mods, "1.24.0", Some(44660), Some(Edition::Edition2018)),
@@ -460,6 +460,9 @@ declare_features! (
 
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
+
+    // Access to crate names passed via `--extern` through prelude
+    (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
 );
 
 declare_features! (
