@@ -247,7 +247,8 @@ impl Rewrite for ast::MetaItem {
                     config: context.config,
                 };
                 let item_str = write_list(&item_vec, &fmt)?;
-                let one_line_budget = shape.offset_left(name.len())?.sub_width(2)?.width;
+                // 3 = "()" and "]"
+                let one_line_budget = shape.offset_left(name.len())?.sub_width(3)?.width;
                 if context.config.indent_style() == IndentStyle::Visual
                     || (!item_str.contains('\n') && item_str.len() <= one_line_budget)
                 {
