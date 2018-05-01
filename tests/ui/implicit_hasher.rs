@@ -83,4 +83,11 @@ macro_rules! gen {
 gen!(impl);
 gen!(fn bar);
 
+// When the macro is in a different file, the suggestion spans can't be combined properly
+// and should not cause an ICE
+// See #2707
+#[macro_use]
+#[path = "../auxiliary/test_macro.rs"] pub mod test_macro;
+__implicit_hasher_test_macro!(impl<K, V> for HashMap<K, V> where V: test_macro::A);
+
 fn main() {}
