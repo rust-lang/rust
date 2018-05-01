@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
+use spec::{PanicStrategy, Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -21,7 +21,6 @@ pub fn target() -> TargetResult {
         target_os: "none".to_string(),
         target_env: "".to_string(),
         target_vendor: "".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
             executables: true,

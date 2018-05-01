@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use spec::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let base = super::linux_musl_base::opts();
@@ -25,7 +25,6 @@ pub fn target() -> TargetResult {
         target_os: "linux".to_string(),
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
 
         // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
         // target.

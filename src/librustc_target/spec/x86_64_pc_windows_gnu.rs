@@ -26,7 +26,6 @@ pub fn target() -> TargetResult {
         target_os: "windows".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "pc".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

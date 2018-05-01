@@ -27,7 +27,6 @@ pub fn target() -> TargetResult {
         target_os: "macos".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

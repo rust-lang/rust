@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkArgs, LinkerFlavor, TargetOptions};
+use spec::{LinkerFlavor, LinkArgs, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
