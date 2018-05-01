@@ -1861,6 +1861,14 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
+    pub fn to_byval_value(&self) -> Option<Value> {
+        match self.val {
+            ConstVal::Value(val) => val.to_byval_value(),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn to_primval(&self) -> Option<PrimVal> {
         match self.val {
             ConstVal::Value(val) => val.to_primval(),

@@ -20,7 +20,7 @@ use interpret::{const_val_field, const_variant_index, self};
 
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::interpret::{PrimVal, GlobalId, ConstValue};
+use rustc::mir::interpret::{PrimVal, GlobalId, ConstValue, Value};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, Region};
 use rustc::ty::layout::Size;
 use rustc::ty::subst::{Substs, Kind};
@@ -1040,11 +1040,27 @@ pub fn compare_const_vals<'a, 'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
+
+    let from_bool = |v: bool| {
+        if v {
+            Some(Ordering::Equal)
+        } else {
+            None
+        }
+    };
+
+    let fallback = || from_bool(a == b);
+
+    // Use the fallback if any type differs
+    if a.ty != b.ty || a.ty != ty {
+        return fallback();
+    }
+
     // FIXME: This should use assert_bits(ty) instead of use_bits
     // but triggers possibly bugs due to mismatching of arrays and slices
     if let (Some(a), Some(b)) = (a.to_bits(ty), b.to_bits(ty)) {
         use ::rustc_apfloat::Float;
-        match ty.sty {
+        return match ty.sty {
             ty::TyFloat(ast::FloatTy::F32) => {
                 let l = ::rustc_apfloat::ieee::Single::from_bits(a);
                 let r = ::rustc_apfloat::ieee::Single::from_bits(b);
@@ -1062,13 +1078,36 @@ pub fn compare_const_vals<'a, 'tcx>(
             },
             _ => Some(a.cmp(&b)),
         }
-    } else {
-        if a == b {
-            Some(Ordering::Equal)
-        } else {
-            None
+    }
+
+    if let ty::TyRef(_, rty, _) = ty.sty {
+        if let ty::TyStr = rty.sty {
+            match (a.to_byval_value(), b.to_byval_value()) {
+                (
+                    Some(Value::ByValPair(
+                        PrimVal::Ptr(ptr_a),
+                        PrimVal::Bytes(size_a))
+                    ),
+                    Some(Value::ByValPair(
+                        PrimVal::Ptr(ptr_b),
+                        PrimVal::Bytes(size_b))
+                    )
+                ) if size_a == size_b => {
+                    if ptr_a.offset == Size::from_bytes(0) && ptr_b.offset == Size::from_bytes(0) {
+                        let map = tcx.alloc_map.lock();
+                        let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
+                        let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
+                        if alloc_a.bytes.len() as u64 == size_a as u64 {
+                            return from_bool(alloc_a == alloc_b);
+                        }
+                    }
+                }
+                _ => (),
+            }
         }
     }
+
+    fallback()
 }
 
 // FIXME: Combine with rustc_mir::hair::cx::const_eval_literal
@@ -1083,7 +1122,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
     let lit = match *lit {
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
-            let id = tcx.allocate_cached(s.as_bytes());
+            let id = tcx.allocate_bytes(s.as_bytes());
             let ptr = MemoryPointer::new(id, Size::from_bytes(0));
             ConstValue::ByValPair(
                 PrimVal::Ptr(ptr),
@@ -1091,7 +1130,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             )
         },
         LitKind::ByteStr(ref data) => {
-            let id = tcx.allocate_cached(data);
+            let id = tcx.allocate_bytes(data);
             let ptr = MemoryPointer::new(id, Size::from_bytes(0));
             ConstValue::ByVal(PrimVal::Ptr(ptr))
         },

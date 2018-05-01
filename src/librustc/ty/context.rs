@@ -960,10 +960,6 @@ struct InterpretInternerInner<'tcx> {
     /// Inverse map of `statics`
     /// Used so we don't allocate a new pointer every time we need one
     static_cache: FxHashMap<DefId, interpret::AllocId>,
-
-    /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
-    /// allocations for string and bytestring literals.
-    literal_alloc_cache: FxHashMap<Vec<u8>, interpret::AllocId>,
 }
 
 impl<'tcx> InterpretInterner<'tcx> {
@@ -1123,22 +1119,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Allocates a byte or string literal for `mir::interpret`
-    pub fn allocate_cached(self, bytes: &[u8]) -> interpret::AllocId {
-        // check whether we already allocated this literal or a constant with the same memory
-        if let Some(&alloc_id) = self.interpret_interner.inner.borrow()
-                                     .literal_alloc_cache.get(bytes) {
-            return alloc_id;
-        }
+    pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
         // create an allocation that just contains these bytes
         let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes);
         let alloc = self.intern_const_alloc(alloc);
 
         // the next unique id
         let id = self.interpret_interner.reserve();
-        // make the allocation identifiable
-        self.interpret_interner.inner.borrow_mut().alloc_by_id.insert(id, alloc);
-        // cache it for the future
-        self.interpret_interner.inner.borrow_mut().literal_alloc_cache.insert(bytes.to_owned(), id);
+        self.interpret_interner.intern_at_reserved(id, alloc);
         id
     }
 

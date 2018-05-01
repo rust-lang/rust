@@ -229,7 +229,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
     }
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
-        let ptr = self.memory.allocate_cached(s.as_bytes());
+        let ptr = self.memory.allocate_bytes(s.as_bytes());
         Ok(Value::ByValPair(
             PrimVal::Ptr(ptr),
             PrimVal::from_u128(s.len() as u128),

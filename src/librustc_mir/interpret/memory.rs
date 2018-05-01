@@ -76,8 +76,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         MemoryPointer::new(id, Size::from_bytes(0))
     }
 
-    pub fn allocate_cached(&mut self, bytes: &[u8]) -> MemoryPointer {
-        let id = self.tcx.allocate_cached(bytes);
+    pub fn allocate_bytes(&mut self, bytes: &[u8]) -> MemoryPointer {
+        let id = self.tcx.allocate_bytes(bytes);
         MemoryPointer::new(id, Size::from_bytes(0))
     }
 
