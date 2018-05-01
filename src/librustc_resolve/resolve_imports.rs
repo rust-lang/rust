@@ -33,7 +33,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 
 use std::cell::{Cell, RefCell};
-use std::mem;
+use std::{mem, ptr};
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -89,6 +89,8 @@ enum SingleImports<'a> {
     None,
     /// Only the given single import can define the name in the namespace.
     MaybeOne(&'a ImportDirective<'a>),
+    /// Only one of these two single imports can define the name in the namespace.
+    MaybeTwo(&'a ImportDirective<'a>, &'a ImportDirective<'a>),
     /// At least one single import will define the name in the namespace.
     AtLeastOne,
 }
@@ -101,21 +103,28 @@ impl<'a> Default for SingleImports<'a> {
 }
 
 impl<'a> SingleImports<'a> {
-    fn add_directive(&mut self, directive: &'a ImportDirective<'a>) {
+    fn add_directive(&mut self, directive: &'a ImportDirective<'a>, use_extern_macros: bool) {
         match *self {
             SingleImports::None => *self = SingleImports::MaybeOne(directive),
-            // If two single imports can define the name in the namespace, we can assume that at
-            // least one of them will define it since otherwise both would have to define only one
-            // namespace, leading to a duplicate error.
-            SingleImports::MaybeOne(_) => *self = SingleImports::AtLeastOne,
+            SingleImports::MaybeOne(directive_one) => *self = if use_extern_macros {
+                SingleImports::MaybeTwo(directive_one, directive)
+            } else {
+                SingleImports::AtLeastOne
+            },
+            // If three single imports can define the name in the namespace, we can assume that at
+            // least one of them will define it since otherwise we'd get duplicate errors in one of
+            // other namespaces.
+            SingleImports::MaybeTwo(..) => *self = SingleImports::AtLeastOne,
             SingleImports::AtLeastOne => {}
         };
     }
 
-    fn directive_failed(&mut self) {
+    fn directive_failed(&mut self, dir: &'a ImportDirective<'a>) {
         match *self {
             SingleImports::None => unreachable!(),
             SingleImports::MaybeOne(_) => *self = SingleImports::None,
+            SingleImports::MaybeTwo(dir1, dir2) =>
+                *self = SingleImports::MaybeOne(if ptr::eq(dir1, dir) { dir1 } else { dir2 }),
             SingleImports::AtLeastOne => {}
         }
     }
@@ -199,23 +208,50 @@ impl<'a> Resolver<'a> {
         }
 
         // Check if a single import can still define the name.
+        let resolve_single_import = |this: &mut Self, directive: &'a ImportDirective<'a>| {
+            let module = match directive.imported_module.get() {
+                Some(module) => module,
+                None => return false,
+            };
+            let ident = match directive.subclass {
+                SingleImport { source, .. } => source,
+                _ => unreachable!(),
+            };
+            match this.resolve_ident_in_module(module, ident, ns, false, false, path_span) {
+                Err(Determined) => {}
+                _ => return false,
+            }
+            true
+        };
         match resolution.single_imports {
             SingleImports::AtLeastOne => return Err(Undetermined),
-            SingleImports::MaybeOne(directive) if self.is_accessible(directive.vis.get()) => {
-                let module = match directive.imported_module.get() {
-                    Some(module) => module,
-                    None => return Err(Undetermined),
-                };
-                let ident = match directive.subclass {
-                    SingleImport { source, .. } => source,
-                    _ => unreachable!(),
-                };
-                match self.resolve_ident_in_module(module, ident, ns, false, false, path_span) {
-                    Err(Determined) => {}
-                    _ => return Err(Undetermined),
+            SingleImports::MaybeOne(directive) => {
+                let accessible = self.is_accessible(directive.vis.get());
+                if accessible {
+                    if !resolve_single_import(self, directive) {
+                        return Err(Undetermined)
+                    }
                 }
             }
-            SingleImports::MaybeOne(_) | SingleImports::None => {},
+            SingleImports::MaybeTwo(directive1, directive2) => {
+                let accessible1 = self.is_accessible(directive1.vis.get());
+                let accessible2 = self.is_accessible(directive2.vis.get());
+                if accessible1 && accessible2 {
+                    if !resolve_single_import(self, directive1) &&
+                       !resolve_single_import(self, directive2) {
+                        return Err(Undetermined)
+                    }
+                } else if accessible1 {
+                    if !resolve_single_import(self, directive1) {
+                        return Err(Undetermined)
+                    }
+                } else {
+                    if !resolve_single_import(self, directive2) {
+                        return Err(Undetermined)
+                    }
+                }
+            }
+            SingleImports::None => {},
         }
 
         let no_unresolved_invocations =
@@ -281,7 +317,7 @@ impl<'a> Resolver<'a> {
             SingleImport { target, .. } => {
                 self.per_ns(|this, ns| {
                     let mut resolution = this.resolution(current_module, target, ns).borrow_mut();
-                    resolution.single_imports.add_directive(directive);
+                    resolution.single_imports.add_directive(directive, this.use_extern_macros);
                 });
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
@@ -575,7 +611,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 Err(Undetermined) => indeterminate = true,
                 Err(Determined) => {
                     this.update_resolution(parent, target, ns, |_, resolution| {
-                        resolution.single_imports.directive_failed()
+                        resolution.single_imports.directive_failed(directive)
                     });
                 }
                 Ok(binding) if !binding.is_importable() => {
