@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
-use utils::{comparisons, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
+use utils::{comparisons, differing_macro_contexts, higher, in_constant, in_external_macro, in_macro, last_path_segment, match_def_path, match_path,
             match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
             span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
 use utils::paths;
@@ -1714,6 +1714,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitHasher {
                 vis.visit_ty(ty);
 
                 for target in &vis.found {
+                    if differing_macro_contexts(item.span, target.span()) {
+                        return;
+                    }
+
                     let generics_suggestion_span = generics.span.substitute_dummy({
                         let pos = snippet_opt(cx, item.span.until(target.span()))
                             .and_then(|snip| Some(item.span.lo() + BytePos(snip.find("impl")? as u32 + 4)))
