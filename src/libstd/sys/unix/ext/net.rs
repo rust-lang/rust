@@ -1514,12 +1514,6 @@ impl fmt::Debug for UnixSeqpacketListener {
 impl UnixSeqpacketListener {
     /// Creates a new `UnixSeqpacketListener` bound to the specified socket.
     ///
-    /// Linux provides, as a nonportable extension, a separate "abstract"
-    /// address namespace as opposed to filesystem-based addressing. If `path`
-    /// begins with a null byte, it will be interpreted as an "abstract"
-    /// address. Otherwise, it will be interpreted as a "pathname" address,
-    /// corresponding to a path on the filesystem.
-    ///
     /// # Examples
     ///
     /// ```no_run
@@ -1811,12 +1805,6 @@ impl fmt::Debug for UnixSeqpacket {
 
 impl UnixSeqpacket {
     /// Connects to the socket named by `path`.
-    ///
-    /// Linux provides, as a nonportable extension, a separate "abstract"
-    /// address namespace as opposed to filesystem-based addressing. If `path`
-    /// begins with a null byte, it will be interpreted as an "abstract"
-    /// address. Otherwise, it will be interpreted as a "pathname" address,
-    /// corresponding to a path on the filesystem.
     ///
     /// # Examples
     ///
