@@ -59,7 +59,6 @@ impl LocationTable {
         }
     }
 
-    #[allow(dead_code)] // TODO
     crate fn all_points(&self) -> impl Iterator<Item = LocationIndex> {
         (0..self.num_points).map(LocationIndex::new)
     }
