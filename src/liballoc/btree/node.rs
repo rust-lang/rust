@@ -107,10 +107,12 @@ impl<K, V> LeafNode<K, V> {
     }
 }
 
-// We need to implement Sync here in order to make a static instance
+// We need to implement Sync here in order to make a static instance.
 unsafe impl Sync for LeafNode<(), ()> {}
 
-// An empty node used as a placeholder for the root node, to avoid allocations
+// An empty node used as a placeholder for the root node, to avoid allocations.
+// We use () in order to save space, since no operation on an empty tree will
+// ever take a pointer past the first key.
 static EMPTY_ROOT_NODE: LeafNode<(), ()> = LeafNode {
     parent: ptr::null(),
     parent_idx: 0,
@@ -539,26 +541,39 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         }
     }
 
-    pub fn keys_mut(&mut self) -> &mut [K] {
+    fn keys_mut(&mut self) -> &mut [K] {
         unsafe { self.reborrow_mut().into_key_slice_mut() }
     }
 
-    pub fn vals_mut(&mut self) -> &mut [V] {
+    fn vals_mut(&mut self) -> &mut [V] {
         unsafe { self.reborrow_mut().into_val_slice_mut() }
     }
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
     fn into_key_slice(self) -> &'a [K] {
-        unsafe {
-            slice::from_raw_parts(
-                self.as_leaf().keys.as_ptr(),
-                self.len()
-            )
+        // When taking a pointer to the keys, if our key has a stricter
+        // alignment requirement than the shared root does, then the pointer
+        // would be out of bounds, which LLVM assumes will not happen. If the
+        // alignment is more strict, we need to make an empty slice that doesn't
+        // use an out of bounds pointer.
+        if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
+            &[]
+        } else {
+            // Here either it's not the root, or the alignment is less strict,
+            // in which case the keys pointer will point "one-past-the-end" of
+            // the node, which is allowed by LLVM.
+            unsafe {
+                slice::from_raw_parts(
+                    self.as_leaf().keys.as_ptr(),
+                    self.len()
+                )
+            }
         }
     }
 
     fn into_val_slice(self) -> &'a [V] {
+        debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts(
                 self.as_leaf().vals.as_ptr(),
@@ -583,15 +598,20 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     }
 
     fn into_key_slice_mut(mut self) -> &'a mut [K] {
-        unsafe {
-            slice::from_raw_parts_mut(
-                &mut self.as_leaf_mut().keys as *mut [K] as *mut K,
-                self.len()
-            )
+        if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
+            &mut []
+        } else {
+            unsafe {
+                slice::from_raw_parts_mut(
+                    &mut self.as_leaf_mut().keys as *mut [K] as *mut K,
+                    self.len()
+                )
+            }
         }
     }
 
     fn into_val_slice_mut(mut self) -> &'a mut [V] {
+        debug_assert!(!self.is_shared_root());
         unsafe {
             slice::from_raw_parts_mut(
                 &mut self.as_leaf_mut().vals as *mut [V] as *mut V,
