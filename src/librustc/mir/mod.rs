@@ -1133,10 +1133,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, ", cond)?;
-                write!(fmt, "\"{:?}\"", msg)?;
-
-                write!(fmt, ")")
+                write!(fmt, "{:?}, \"{:?}\")", cond, msg)
             },
             FalseEdges { .. } => write!(fmt, "falseEdges"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
