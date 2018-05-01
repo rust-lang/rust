@@ -31,7 +31,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(nonzero)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![cfg_attr(stage0, feature(try_trait))]

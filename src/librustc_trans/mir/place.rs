@@ -99,7 +99,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                         bx.range_metadata(load, range);
                     }
                 }
-                layout::Pointer if vr.start < vr.end && !vr.contains(&0) => {
+                layout::Pointer if vr.start() < vr.end() && !vr.contains(&0) => {
                     bx.nonnull_metadata(load);
                 }
                 _ => {}
@@ -287,7 +287,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                 ..
             } => {
                 let niche_llty = discr.layout.immediate_llvm_type(bx.cx);
-                if niche_variants.start == niche_variants.end {
+                if niche_variants.start() == niche_variants.end() {
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_start == 0 {
                         // HACK(eddyb) Using `C_null` as it works on all types.
@@ -296,13 +296,13 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
                         C_uint_big(niche_llty, niche_start)
                     };
                     bx.select(bx.icmp(llvm::IntEQ, lldiscr, niche_llval),
-                        C_uint(cast_to, niche_variants.start as u64),
+                        C_uint(cast_to, *niche_variants.start() as u64),
                         C_uint(cast_to, dataful_variant as u64))
                 } else {
                     // Rebase from niche values to discriminant values.
-                    let delta = niche_start.wrapping_sub(niche_variants.start as u128);
+                    let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
                     let lldiscr = bx.sub(lldiscr, C_uint_big(niche_llty, delta));
-                    let lldiscr_max = C_uint(niche_llty, niche_variants.end as u64);
+                    let lldiscr_max = C_uint(niche_llty, *niche_variants.end() as u64);
                     bx.select(bx.icmp(llvm::IntULE, lldiscr, lldiscr_max),
                         bx.intcast(lldiscr, cast_to, false),
                         C_uint(cast_to, dataful_variant as u64))
@@ -352,7 +352,7 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
 
                     let niche = self.project_field(bx, 0);
                     let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
-                    let niche_value = ((variant_index - niche_variants.start) as u128)
+                    let niche_value = ((variant_index - *niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_value == 0 {

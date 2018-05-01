@@ -917,8 +917,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 niche_start,
                 ..
             } => {
-                let variants_start = niche_variants.start as u128;
-                let variants_end = niche_variants.end as u128;
+                let variants_start = *niche_variants.start() as u128;
+                let variants_end = *niche_variants.end() as u128;
                 match raw_discr {
                     PrimVal::Ptr(_) => {
                         assert!(niche_start == 0);
@@ -984,7 +984,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 if variant_index != dataful_variant {
                     let (niche_dest, niche) =
                         self.place_field(dest, mir::Field::new(0), layout)?;
-                    let niche_value = ((variant_index - niche_variants.start) as u128)
+                    let niche_value = ((variant_index - niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
                     self.write_primval(niche_dest, PrimVal::Bytes(niche_value), niche.ty)?;
                 }

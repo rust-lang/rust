@@ -555,8 +555,8 @@ impl Scalar {
         let bits = self.value.size(cx).bits();
         assert!(bits <= 128);
         let mask = !0u128 >> (128 - bits);
-        let start = self.valid_range.start;
-        let end = self.valid_range.end;
+        let start = *self.valid_range.start();
+        let end = *self.valid_range.end();
         assert_eq!(start, start & mask);
         assert_eq!(end, end & mask);
         start..(end.wrapping_add(1) & mask)

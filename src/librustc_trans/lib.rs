@@ -29,7 +29,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
