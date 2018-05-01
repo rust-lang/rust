@@ -50,12 +50,14 @@ use std::iter;
 
 use self::borrow_set::{BorrowSet, BorrowData};
 use self::flows::Flows;
+use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
 
 crate mod borrow_set;
 mod error_reporting;
 mod flows;
+mod location;
 crate mod place_ext;
 mod prefixes;
 
@@ -110,6 +112,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mut mir: Mir<'tcx> = input_mir.clone();
     let free_regions = nll::replace_regions_in_mir(infcx, def_id, param_env, &mut mir);
     let mir = &mir; // no further changes
+    let location_table = &LocationTable::new(mir);
 
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx) {
         Ok(move_data) => move_data,
@@ -199,6 +202,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         def_id,
         free_regions,
         mir,
+        location_table,
         param_env,
         &mut flow_inits,
         &mdpe.move_data,

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use borrow_check::borrow_set::BorrowSet;
+use borrow_check::location::LocationTable;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{ClosureRegionRequirements, ClosureOutlivesSubject, Mir};
 use rustc::infer::InferCtxt;
@@ -70,6 +71,7 @@ pub(in borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
     mir: &Mir<'tcx>,
+    _location_table: &LocationTable,
     param_env: ty::ParamEnv<'gcx>,
     flow_inits: &mut FlowAtLocation<MaybeInitializedPlaces<'cx, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
