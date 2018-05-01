@@ -101,6 +101,10 @@ impl<K, V> LeafNode<K, V> {
             len: 0
         }
     }
+
+    fn is_shared_root(&self) -> bool {
+        self as *const _ == &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V>
+    }
 }
 
 // We need to implement Sync here in order to make a static instance
@@ -185,10 +189,7 @@ unsafe impl<K: Send, V: Send> Send for Root<K, V> { }
 
 impl<K, V> Root<K, V> {
     pub fn is_shared_root(&self) -> bool {
-        ptr::eq(
-            self.node.as_ptr().as_ptr(),
-            &EMPTY_ROOT_NODE as *const _ as *const LeafNode<K, V>,
-        )
+        self.as_ref().is_shared_root()
     }
 
     pub fn shared_empty_root() -> Self {
@@ -385,6 +386,10 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         unsafe {
             self.node.as_ref()
         }
+    }
+
+    pub fn is_shared_root(&self) -> bool {
+        self.as_leaf().is_shared_root()
     }
 
     pub fn keys(&self) -> &[K] {

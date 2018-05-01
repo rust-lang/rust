@@ -686,10 +686,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        if self.root.is_shared_root() {
-            self.root = node::Root::new_leaf();
-        }
-
         match self.entry(key) {
             Occupied(mut entry) => Some(entry.insert(value)),
             Vacant(entry) => {
@@ -1301,6 +1297,10 @@ impl<K, V> Drop for IntoIter<K, V> {
         self.for_each(drop);
         unsafe {
             let leaf_node = ptr::read(&self.front).into_node();
+            if leaf_node.is_shared_root() {
+                return;
+            }
+
             if let Some(first_parent) = leaf_node.deallocate_and_ascend() {
                 let mut cur_node = first_parent.into_node();
                 while let Some(parent) = cur_node.deallocate_and_ascend() {
