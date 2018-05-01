@@ -301,9 +301,7 @@ pub fn implements_trait<'a, 'tcx>(
     let obligation =
         cx.tcx
             .predicate_for_trait_def(cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        traits::SelectionContext::new(&infcx).infcx().predicate_must_hold(&obligation)
-    })
+    cx.tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold(&obligation))
 }
 
 /// Check whether this type implements Drop.
