@@ -35,7 +35,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
-use autofix::run_rustfix;
 use extract_gdb_version;
 
 /// The name of the environment variable that holds dynamic library locations.
@@ -2607,10 +2606,14 @@ impl<'test> TestCx<'test> {
 
         let fixture_path = expected_output_path(&self.testpaths, None, &None, UI_FIXED);
         if fixture_path.exists() {
+            use std::collections::HashSet;
+            use rustfix::{apply_suggestions, get_suggestions_from_json};
+
             let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
                 .unwrap();
             let expected_fixed = self.load_expected_output_from_path(&fixture_path).unwrap();
-            let fixed_code = run_rustfix(&unfixed_code, &proc_res.stderr);
+            let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
             let errors = self.compare_output("rs.fixed", &fixed_code, &expected_fixed);
             if errors > 0 {
                 panic!("rustfix produced different fixed file!");

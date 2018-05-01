@@ -53,7 +53,6 @@ pub mod common;
 pub mod errors;
 mod raise_fd_limit;
 mod read2;
-mod autofix;
 
 fn main() {
     env_logger::init();
