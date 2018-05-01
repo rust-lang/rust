@@ -23,7 +23,6 @@
 use llvm::{self, ValueRef};
 use llvm::AttributePlace::Function;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_target::spec::PanicStrategy;
 use abi::{Abi, FnType, FnTypeExt};

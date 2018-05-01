@@ -17,7 +17,9 @@ enum Void {}
 
 impl From<Void> for i32 {
     fn from(v: Void) -> i32 {
+        //~^ WARN unreachable expression
         match v {}
+        //~^ WARN unreachable expression
     }
 }
 
@@ -39,6 +41,7 @@ fn qux(x: Result<u32, Void>) -> Result<u32, i32> {
 fn vom(x: Result<u32, Void>) -> Result<u32, i32> {
     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
     //~^ WARN unreachable pattern
+    //~| WARN unreachable expression
     Ok(y)
 }
 
