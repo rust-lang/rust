@@ -42,9 +42,10 @@ use fmt;
 #[cfg(not(stage0))]
 use panic::{Location, PanicInfo};
 
+// NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
 #[cfg(not(stage0))]
 #[allow(improper_ctypes)] // PanicInfo contains a trait object which is not FFI safe
-extern "C" {
+extern "Rust" {
     #[lang = "panic_impl"]
     fn panic_impl(pi: &PanicInfo) -> !;
 }
