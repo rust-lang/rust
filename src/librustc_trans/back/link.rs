@@ -85,6 +85,7 @@ pub fn get_linker(sess: &Session) -> (PathBuf, Command) {
 
     let linker_path = sess.opts.cg.linker.as_ref().map(|s| &**s)
         .or(sess.target.target.options.linker.as_ref().map(|s| s.as_ref()))
+        // TODO(japaric) I highly likely broke this logic
         .unwrap_or(match sess.linker_flavor() {
             LinkerFlavor::Msvc => {
                 msvc_tool.as_ref().map(|t| t.path()).unwrap_or("link.exe".as_ref())
