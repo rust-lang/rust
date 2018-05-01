@@ -1171,13 +1171,6 @@ impl RegionKind {
         }
     }
 
-    pub fn needs_infer(&self) -> bool {
-        match *self {
-            ty::ReVar(..) | ty::ReSkolemized(..) => true,
-            _ => false
-        }
-    }
-
     pub fn escapes_depth(&self, depth: u32) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
@@ -1195,20 +1188,29 @@ impl RegionKind {
         }
     }
 
+    pub fn keep_in_local_tcx(&self) -> bool {
+        if let ty::ReVar(..) = self {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn type_flags(&self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
+
+        if self.keep_in_local_tcx() {
+            flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
+        }
 
         match *self {
             ty::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
-                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReSkolemized(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::HAS_RE_SKOL;
-                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReLateBound(..) => { }
             ty::ReEarlyBound(..) => {

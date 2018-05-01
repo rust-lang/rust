@@ -2119,7 +2119,7 @@ macro_rules! intern_method {
                                             $alloc_method:ident,
                                             $alloc_to_key:expr,
                                             $alloc_to_ret:expr,
-                                            $needs_infer:expr) -> $ty:ty) => {
+                                            $keep_in_local_tcx:expr) -> $ty:ty) => {
         impl<'a, 'gcx, $lt_tcx> TyCtxt<'a, 'gcx, $lt_tcx> {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
                 {
@@ -2137,7 +2137,7 @@ macro_rules! intern_method {
                 // HACK(eddyb) Depend on flags being accurate to
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
-                if !($needs_infer)(&v) {
+                if !($keep_in_local_tcx)(&v) {
                     if !self.is_global() {
                         let v = unsafe {
                             mem::transmute(v)
@@ -2165,7 +2165,7 @@ macro_rules! intern_method {
 }
 
 macro_rules! direct_interners {
-    ($lt_tcx:tt, $($name:ident: $method:ident($needs_infer:expr) -> $ty:ty),+) => {
+    ($lt_tcx:tt, $($name:ident: $method:ident($keep_in_local_tcx:expr) -> $ty:ty),+) => {
         $(impl<$lt_tcx> PartialEq for Interned<$lt_tcx, $ty> {
             fn eq(&self, other: &Self) -> bool {
                 self.0 == other.0
@@ -2180,7 +2180,10 @@ macro_rules! direct_interners {
             }
         }
 
-        intern_method!($lt_tcx, $name: $method($ty, alloc, |x| x, |x| x, $needs_infer) -> $ty);)+
+        intern_method!(
+            $lt_tcx,
+            $name: $method($ty, alloc, |x| x, |x| x, $keep_in_local_tcx) -> $ty
+        );)+
     }
 }
 
@@ -2189,12 +2192,7 @@ pub fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 }
 
 direct_interners!('tcx,
-    region: mk_region(|r| {
-        match r {
-            &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
-            _ => false
-        }
-    }) -> RegionKind,
+    region: mk_region(|r: &RegionKind| r.keep_in_local_tcx()) -> RegionKind,
     const_: mk_const(|c: &Const| keep_local(&c.ty) || keep_local(&c.val)) -> Const<'tcx>
 );
 
