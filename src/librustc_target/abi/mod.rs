@@ -326,9 +326,9 @@ impl AddAssign for Size {
 }
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
-/// Each field is a power of two, giving the alignment a maximum value of
-/// 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a i32,
-/// with a maximum capacity of 2<sup>31</sup> - 1 or 2147483647.
+/// Each field is a power of two, giving the alignment a maximum value
+/// of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a
+/// maximum capacity of 2<sup>29</sup> or 536870912.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Align {
     abi_pow2: u8,
@@ -356,7 +356,7 @@ impl Align {
             }
             if bytes != 1 {
                 Err(format!("`{}` is not a power of 2", align))
-            } else if pow > 30 {
+            } else if pow > 29 {
                 Err(format!("`{}` is too large", align))
             } else {
                 Ok(pow)
