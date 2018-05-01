@@ -69,8 +69,6 @@ pub fn naked(val: ValueRef, is_naked: bool) {
 }
 
 pub fn set_frame_pointer_elimination(cx: &CodegenCx, llfn: ValueRef) {
-    // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
-    // parameter.
     if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
