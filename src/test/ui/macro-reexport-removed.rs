@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:derive-a.rs
-// aux-build:derive-reexport.rs
-// ignore-stage1
+// aux-build:two_macros.rs
 
-#[macro_use]
-extern crate derive_reexport;
+#![feature(macro_reexport)] //~ ERROR feature has been removed
 
-#[derive(Debug, PartialEq, A, Eq, Copy, Clone)]
-struct A;
+#[macro_reexport(macro_one)] //~ ERROR attribute `macro_reexport` is currently unknown
+extern crate two_macros;
 
 fn main() {}

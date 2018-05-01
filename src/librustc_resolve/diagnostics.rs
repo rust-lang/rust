@@ -1395,35 +1395,6 @@ If you would like to import all exported macros, write `macro_use` with no
 arguments.
 "##,
 
-E0467: r##"
-Macro re-export declarations were empty or malformed.
-
-Erroneous code examples:
-
-```compile_fail,E0467
-#[macro_reexport]                    // error: no macros listed for export
-extern crate core as macros_for_good;
-
-#[macro_reexport(fun_macro = "foo")] // error: not a macro identifier
-extern crate core as other_macros_for_good;
-```
-
-This is a syntax error at the level of attribute declarations.
-
-Currently, `macro_reexport` requires at least one macro name to be listed.
-Unlike `macro_use`, listing no names does not re-export all macros from the
-given crate.
-
-Decide which macros you would like to export and list them properly.
-
-These are proper re-export declarations:
-
-```ignore (cannot-doctest-multicrate-project)
-#[macro_reexport(some_macro, another_macro)]
-extern crate macros_for_good;
-```
-"##,
-
 E0468: r##"
 A non-root module attempts to import macros from another crate.
 
@@ -1493,48 +1464,6 @@ macro_rules! drink {
 // In your crate:
 #[macro_use(eat, drink)]
 extern crate some_crate; //ok!
-```
-"##,
-
-E0470: r##"
-A macro listed for re-export was not found.
-
-Erroneous code example:
-
-```compile_fail,E0470
-#[macro_reexport(drink, be_merry)]
-extern crate alloc;
-
-fn main() {
-    // ...
-}
-```
-
-Either the listed macro is not contained in the imported crate, or it is not
-exported from the given crate.
-
-This could be caused by a typo. Did you misspell the macro's name?
-
-Double-check the names of the macros listed for re-export, and that the crate
-in question exports them.
-
-A working version:
-
-```ignore (cannot-doctest-multicrate-project)
-// In some_crate crate:
-#[macro_export]
-macro_rules! eat {
-    ...
-}
-
-#[macro_export]
-macro_rules! drink {
-    ...
-}
-
-// In your_crate:
-#[macro_reexport(eat, drink)]
-extern crate some_crate;
 ```
 "##,
 
@@ -1715,6 +1644,8 @@ register_diagnostics! {
 //  E0421, merged into 531
     E0531, // unresolved pattern path kind `name`
 //  E0427, merged into 530
+//  E0467, removed
+//  E0470, removed
     E0573,
     E0574,
     E0575,
