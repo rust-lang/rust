@@ -244,6 +244,18 @@ fn main() {
 ```
 "##,
 
+E0589: r##"
+The value of `N` that was specified for `repr(align(N))` was not a power
+of two, or was greater than 2^29.
+
+```compile_fail,E0589
+#[repr(align(15))] // error: invalid `repr(align)` attribute: not a power of two
+enum Foo {
+    Bar(u64),
+}
+```
+"##,
+
 E0658: r##"
 An unstable feature was used.
 
@@ -321,7 +333,6 @@ register_diagnostics! {
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0584, // file for module `..` found at both .. and ..
-    E0589, // invalid `repr(align)` attribute
     E0629, // missing 'feature' (rustc_const_unstable)
     E0630, // rustc_const_unstable attribute must be paired with stable/unstable attribute
     E0693, // incorrect `repr(align)` attribute format
