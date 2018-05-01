@@ -42,15 +42,15 @@ pub struct BoolTrie {
 }
 impl BoolTrie {
     pub fn lookup(&self, c: char) -> bool {
-        let c = c as usize;
+        let c = c as u32;
         if c < 0x800 {
-            trie_range_leaf(c, self.r1[c >> 6])
+            trie_range_leaf(c, self.r1[(c >> 6) as usize])
         } else if c < 0x10000 {
-            let child = self.r2[(c >> 6) - 0x20];
+            let child = self.r2[(c >> 6) as usize - 0x20];
             trie_range_leaf(c, self.r3[child as usize])
         } else {
-            let child = self.r4[(c >> 12) - 0x10];
-            let leaf = self.r5[((child as usize) << 6) + ((c >> 6) & 0x3f)];
+            let child = self.r4[(c >> 12) as usize - 0x10];
+            let leaf = self.r5[((child as usize) << 6) + ((c >> 6) as usize & 0x3f)];
             trie_range_leaf(c, self.r6[leaf as usize])
         }
     }
@@ -63,14 +63,14 @@ pub struct SmallBoolTrie {
 
 impl SmallBoolTrie {
     pub fn lookup(&self, c: char) -> bool {
-        let c = c as usize;
-        match self.r1.get(c >> 6) {
+        let c = c as u32;
+        match self.r1.get((c >> 6) as usize) {
             Some(&child) => trie_range_leaf(c, self.r2[child as usize]),
             None => false,
         }
     }
 }
 
-fn trie_range_leaf(c: usize, bitmap_chunk: u64) -> bool {
+fn trie_range_leaf(c: u32, bitmap_chunk: u64) -> bool {
     ((bitmap_chunk >> (c & 63)) & 1) != 0
 }
