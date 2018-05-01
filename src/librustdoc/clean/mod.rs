@@ -4048,7 +4048,6 @@ where
 
     let old_bounds = mem::replace(&mut *cx.impl_trait_bounds.borrow_mut(), bounds);
     let r = f();
-    assert!(cx.impl_trait_bounds.borrow().is_empty());
     *cx.impl_trait_bounds.borrow_mut() = old_bounds;
     r
 }
