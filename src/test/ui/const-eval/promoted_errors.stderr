@@ -2,7 +2,7 @@ warning: constant evaluation error
   --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 0u32 - 1);
-   |                    ^^^^^^^^ attempted to do overflowing math
+   |                    ^^^^^^^^ attempt to subtract with overflow
    |
    = note: #[warn(const_err)] on by default
 
@@ -10,13 +10,13 @@ warning: constant evaluation error
   --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 0u32 - 1);
-   |                    ^^^^^^^^ attempted to do overflowing math
+   |                    ^^^^^^^^ attempt to subtract with overflow
 
 warning: constant evaluation error
   --> $DIR/promoted_errors.rs:17:14
    |
 LL |     let _x = 0u32 - 1;
-   |              ^^^^^^^^ attempted to do overflowing math
+   |              ^^^^^^^^ attempt to subtract with overflow
 
 warning: attempt to divide by zero
   --> $DIR/promoted_errors.rs:19:20
@@ -28,7 +28,7 @@ warning: constant evaluation error
   --> $DIR/promoted_errors.rs:19:20
    |
 LL |     println!("{}", 1/(1-1));
-   |                    ^^^^^^^ attempted to do overflowing math
+   |                    ^^^^^^^ attempt to divide by zero
 
 warning: attempt to divide by zero
   --> $DIR/promoted_errors.rs:22:14
@@ -40,11 +40,11 @@ warning: constant evaluation error
   --> $DIR/promoted_errors.rs:22:14
    |
 LL |     let _x = 1/(1-1);
-   |              ^^^^^^^ attempted to do overflowing math
+   |              ^^^^^^^ attempt to divide by zero
 
 warning: constant evaluation error
   --> $DIR/promoted_errors.rs:25:20
    |
 LL |     println!("{}", 1/(false as u32));
-   |                    ^^^^^^^^^^^^^^^^ attempted to do overflowing math
+   |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
 

@@ -15,7 +15,6 @@
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
-use rustc_const_math::ConstMathErr;
 use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
@@ -26,7 +25,7 @@ use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
-use mir::interpret::{Value, PrimVal};
+use mir::interpret::{Value, PrimVal, EvalErrorKind};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -43,6 +42,10 @@ use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
+use rustc_apfloat::ieee::{Single, Double};
+use rustc_apfloat::Float;
+
+pub use mir::interpret::AssertMessage;
 
 mod cache;
 pub mod tcx;
@@ -1130,26 +1133,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, ", cond)?;
-
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        write!(fmt, "{:?}, {:?}, {:?}",
-                               "index out of bounds: the len is {} but the index is {}",
-                               len, index)?;
-                    }
-                    AssertMessage::Math(ref err) => {
-                        write!(fmt, "{:?}", err.description())?;
-                    }
-                    AssertMessage::GeneratorResumedAfterReturn => {
-                        write!(fmt, "{:?}", "generator resumed after completion")?;
-                    }
-                    AssertMessage::GeneratorResumedAfterPanic => {
-                        write!(fmt, "{:?}", "generator resumed after panicking")?;
-                    }
-                }
-
-                write!(fmt, ")")
+                write!(fmt, "{:?}, \"{:?}\")", cond, msg)
             },
             FalseEdges { .. } => write!(fmt, "falseEdges"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
@@ -1202,17 +1186,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
         }
     }
-}
-
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum AssertMessage<'tcx> {
-    BoundsCheck {
-        len: Operand<'tcx>,
-        index: Operand<'tcx>
-    },
-    Math(ConstMathErr),
-    GeneratorResumedAfterReturn,
-    GeneratorResumedAfterPanic,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1915,12 +1888,13 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
 
 pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
-    use rustc_const_math::ConstFloat;
     match (value, &ty.sty) {
         (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
         (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
-        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(fty)) =>
-            write!(f, "{}", ConstFloat { bits, ty: fty }),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F32)) =>
+            write!(f, "{}f32", Single::from_bits(bits)),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F64)) =>
+            write!(f, "{}f64", Double::from_bits(bits)),
         (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
         (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
         (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
@@ -2279,8 +2253,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             },
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    AssertMessage::BoundsCheck {
+                let msg = if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
+                    EvalErrorKind::BoundsCheck {
                         len: len.fold_with(folder),
                         index: index.fold_with(folder),
                     }
@@ -2329,7 +2303,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             },
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
                         len.visit_with(visitor) || index.visit_with(visitor)
                     } else {
                         false

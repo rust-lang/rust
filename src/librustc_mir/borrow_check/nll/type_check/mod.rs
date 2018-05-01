@@ -22,6 +22,7 @@ use rustc::infer::region_constraints::{GenericKind, RegionConstraintData};
 use rustc::infer::{InferCtxt, InferOk, InferResult, LateBoundRegionConversionTime, UnitResult};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::*;
 use rustc::traits::query::NoSolution;
 use rustc::traits::{self, Normalized, TraitEngine};
@@ -928,7 +929,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
-                if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                if let BoundsCheck { ref len, ref index } = *msg {
                     if len.ty(mir, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }

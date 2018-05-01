@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::{fmt, env};
 
 use mir;
@@ -8,18 +7,16 @@ use super::{
     MemoryPointer, Lock, AccessKind
 };
 
-use rustc_const_math::ConstMathErr;
-use syntax::codemap::Span;
 use backtrace::Backtrace;
 
 #[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
-    pub kind: EvalErrorKind<'tcx>,
+    pub kind: EvalErrorKind<'tcx, u64>,
     pub backtrace: Option<Backtrace>,
 }
 
-impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
-    fn from(kind: EvalErrorKind<'tcx>) -> Self {
+impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
+    fn from(kind: EvalErrorKind<'tcx, u64>) -> Self {
         let backtrace = match env::var("MIRI_BACKTRACE") {
             Ok(ref val) if !val.is_empty() => Some(Backtrace::new_unresolved()),
             _ => None
@@ -31,8 +28,10 @@ impl<'tcx> From<EvalErrorKind<'tcx>> for EvalError<'tcx> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum EvalErrorKind<'tcx> {
+pub type AssertMessage<'tcx> = EvalErrorKind<'tcx, mir::Operand<'tcx>>;
+
+#[derive(Clone, RustcEncodable, RustcDecodable)]
+pub enum EvalErrorKind<'tcx, O> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant
     MachineError(String),
@@ -60,10 +59,12 @@ pub enum EvalErrorKind<'tcx> {
     Unimplemented(String),
     DerefFunctionPointer,
     ExecuteMemory,
-    ArrayIndexOutOfBounds(Span, u64, u64),
-    Math(Span, ConstMathErr),
+    BoundsCheck { len: O, index: O },
+    Overflow(mir::BinOp),
+    OverflowNeg,
+    DivisionByZero,
+    RemainderByZero,
     Intrinsic(String),
-    OverflowingMath,
     InvalidChar(u128),
     StackFrameLimitReached,
     OutOfTls,
@@ -121,14 +122,16 @@ pub enum EvalErrorKind<'tcx> {
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
     ReferencedConstant,
+    GeneratorResumedAfterReturn,
+    GeneratorResumedAfterPanic,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
-impl<'tcx> Error for EvalError<'tcx> {
-    fn description(&self) -> &str {
+impl<'tcx, O> EvalErrorKind<'tcx, O> {
+    pub fn description(&self) -> &str {
         use self::EvalErrorKind::*;
-        match self.kind {
+        match *self {
             MachineError(ref inner) => inner,
             FunctionPointerTyMismatch(..) =>
                 "tried to call a function through a function pointer of a different type",
@@ -175,14 +178,10 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to dereference a function pointer",
             ExecuteMemory =>
                 "tried to treat a memory pointer as a function pointer",
-            ArrayIndexOutOfBounds(..) =>
+            BoundsCheck{..} =>
                 "array index out of bounds",
-            Math(..) =>
-                "mathematical operation failed",
             Intrinsic(..) =>
                 "intrinsic failed",
-            OverflowingMath =>
-                "attempted to do overflowing math",
             NoMirFor(..) =>
                 "mir not found",
             InvalidChar(..) =>
@@ -232,7 +231,7 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "the evaluated program panicked",
             ReadFromReturnPointer =>
                 "tried to read from the return pointer",
-            EvalErrorKind::PathNotFound(_) =>
+            PathNotFound(_) =>
                 "a path could not be resolved, maybe the crate is not loaded",
             UnimplementedTraitSelection =>
                 "there were unresolved type arguments during trait selection",
@@ -240,14 +239,33 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "encountered constants with type errors, stopping evaluation",
             ReferencedConstant =>
                 "referenced constant has errors",
+            Overflow(mir::BinOp::Add) => "attempt to add with overflow",
+            Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",
+            Overflow(mir::BinOp::Mul) => "attempt to multiply with overflow",
+            Overflow(mir::BinOp::Div) => "attempt to divide with overflow",
+            Overflow(mir::BinOp::Rem) => "attempt to calculate the remainder with overflow",
+            OverflowNeg => "attempt to negate with overflow",
+            Overflow(mir::BinOp::Shr) => "attempt to shift right with overflow",
+            Overflow(mir::BinOp::Shl) => "attempt to shift left with overflow",
+            Overflow(op) => bug!("{:?} cannot overflow", op),
+            DivisionByZero => "attempt to divide by zero",
+            RemainderByZero => "attempt to calculate the remainder with a divisor of zero",
+            GeneratorResumedAfterReturn => "generator resumed after completion",
+            GeneratorResumedAfterPanic => "generator resumed after panicking",
         }
     }
 }
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.kind)
+    }
+}
+
+impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::EvalErrorKind::*;
-        match self.kind {
+        match *self {
             PointerOutOfBounds { ptr, access, allocation_size } => {
                 write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
                        if access { "memory access" } else { "pointer computed" },
@@ -275,14 +293,12 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             FunctionPointerTyMismatch(sig, got) =>
                 write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),
-            ArrayIndexOutOfBounds(span, len, index) =>
-                write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
+            BoundsCheck { ref len, ref index } =>
+                write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             ReallocatedWrongMemoryKind(ref old, ref new) =>
                 write!(f, "tried to reallocate memory from {} to {}", old, new),
             DeallocatedWrongMemoryKind(ref old, ref new) =>
                 write!(f, "tried to deallocate {} memory but gave {} as the kind", old, new),
-            Math(_, ref err) =>
-                write!(f, "{}", err.description()),
             Intrinsic(ref err) =>
                 write!(f, "{}", err),
             InvalidChar(c) =>

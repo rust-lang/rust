@@ -28,13 +28,13 @@ use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_const_math::ConstFloat;
 
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
@@ -1053,24 +1053,22 @@ pub fn compare_const_vals<'a, 'tcx>(
     b: &ConstVal,
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
-    use rustc_const_math::ConstFloat;
     trace!("compare_const_vals: {:?}, {:?}", a, b);
     use rustc::mir::interpret::{Value, PrimVal};
     match (a, b) {
         (&ConstVal::Value(Value::ByVal(PrimVal::Bytes(a))),
          &ConstVal::Value(Value::ByVal(PrimVal::Bytes(b)))) => {
+            use ::rustc_apfloat::Float;
             match ty.sty {
-                ty::TyFloat(ty) => {
-                    let l = ConstFloat {
-                        bits: a,
-                        ty,
-                    };
-                    let r = ConstFloat {
-                        bits: b,
-                        ty,
-                    };
-                    // FIXME(oli-obk): report cmp errors?
-                    l.try_cmp(r).ok()
+                ty::TyFloat(ast::FloatTy::F32) => {
+                    let l = ::rustc_apfloat::ieee::Single::from_bits(a);
+                    let r = ::rustc_apfloat::ieee::Single::from_bits(b);
+                    l.partial_cmp(&r)
+                },
+                ty::TyFloat(ast::FloatTy::F64) => {
+                    let l = ::rustc_apfloat::ieee::Double::from_bits(a);
+                    let r = ::rustc_apfloat::ieee::Double::from_bits(b);
+                    l.partial_cmp(&r)
                 },
                 ty::TyInt(_) => {
                     let a = interpret::sign_extend(tcx, a, ty).expect("layout error for TyInt");
@@ -1148,26 +1146,14 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             Value::ByVal(PrimVal::Bytes(n))
         },
         LitKind::Float(n, fty) => {
-            let n = n.as_str();
-            let mut f = parse_float(&n, fty)?;
-            if neg {
-                f = -f;
-            }
-            let bits = f.bits;
-            Value::ByVal(PrimVal::Bytes(bits))
+            parse_float(n, fty, neg)?
         }
         LitKind::FloatUnsuffixed(n) => {
             let fty = match ty.sty {
                 ty::TyFloat(fty) => fty,
                 _ => bug!()
             };
-            let n = n.as_str();
-            let mut f = parse_float(&n, fty)?;
-            if neg {
-                f = -f;
-            }
-            let bits = f.bits;
-            Value::ByVal(PrimVal::Bytes(bits))
+            parse_float(n, fty, neg)?
         }
         LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
         LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),
@@ -1175,7 +1161,36 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
     Ok(ConstVal::Value(lit))
 }
 
-fn parse_float<'tcx>(num: &str, fty: ast::FloatTy)
-                     -> Result<ConstFloat, ()> {
-    ConstFloat::from_str(num, fty).map_err(|_| ())
+pub fn parse_float(
+    num: Symbol,
+    fty: ast::FloatTy,
+    neg: bool,
+) -> Result<Value, ()> {
+    let num = num.as_str();
+    use rustc_apfloat::ieee::{Single, Double};
+    use rustc_apfloat::Float;
+    let bits = match fty {
+        ast::FloatTy::F32 => {
+            num.parse::<f32>().map_err(|_| ())?;
+            let mut f = num.parse::<Single>().unwrap_or_else(|e| {
+                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            });
+            if neg {
+                f = -f;
+            }
+            f.to_bits()
+        }
+        ast::FloatTy::F64 => {
+            num.parse::<f64>().map_err(|_| ())?;
+            let mut f = num.parse::<Double>().unwrap_or_else(|e| {
+                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
+            });
+            if neg {
+                f = -f;
+            }
+            f.to_bits()
+        }
+    };
+
+    Ok(Value::ByVal(PrimVal::Bytes(bits)))
 }

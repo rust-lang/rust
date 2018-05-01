@@ -18,6 +18,7 @@ use rustc::mir::{Place, PlaceElem, PlaceProjection};
 use rustc::mir::{Mir, Operand, ProjectionElem};
 use rustc::mir::{Rvalue, SourceInfo, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind, VisibilityScope, VisibilityScopeData};
+use rustc::mir::interpret::EvalErrorKind;
 use rustc::mir::visit as mir_visit;
 use rustc::ty::{self, ClosureSubsts, TyCtxt};
 use rustc::util::nodemap::{FxHashMap};
@@ -133,14 +134,18 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                             location: Location) {
         self.record("AssertMessage", msg);
         self.record(match *msg {
-            AssertMessage::BoundsCheck { .. } => "AssertMessage::BoundsCheck",
-            AssertMessage::Math(..) => "AssertMessage::Math",
-            AssertMessage::GeneratorResumedAfterReturn => {
+            EvalErrorKind::BoundsCheck { .. } => "AssertMessage::BoundsCheck",
+            EvalErrorKind::Overflow(..) => "AssertMessage::Overflow",
+            EvalErrorKind::OverflowNeg => "AssertMessage::OverflowNeg",
+            EvalErrorKind::DivisionByZero => "AssertMessage::DivisionByZero",
+            EvalErrorKind::RemainderByZero => "AssertMessage::RemainderByZero",
+            EvalErrorKind::GeneratorResumedAfterReturn => {
                 "AssertMessage::GeneratorResumedAfterReturn"
             }
-            AssertMessage::GeneratorResumedAfterPanic => {
+            EvalErrorKind::GeneratorResumedAfterPanic => {
                 "AssertMessage::GeneratorResumedAfterPanic"
             }
+            _ => bug!(),
         }, msg);
         self.super_assert_message(msg, location);
     }

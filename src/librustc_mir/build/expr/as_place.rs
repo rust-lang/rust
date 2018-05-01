@@ -14,6 +14,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
 use rustc::mir::*;
+use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -73,7 +74,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                            Operand::Copy(Place::Local(idx)),
                                                            Operand::Copy(len.clone())));
 
-                let msg = AssertMessage::BoundsCheck {
+                let msg = BoundsCheck {
                     len: Operand::Move(len),
                     index: Operand::Copy(Place::Local(idx))
                 };

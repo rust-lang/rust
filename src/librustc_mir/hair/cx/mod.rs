@@ -30,9 +30,9 @@ use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
-use rustc_const_math::ConstFloat;
 use rustc_data_structures::sync::Lrc;
 use rustc::mir::interpret::{Value, PrimVal};
+use hair::pattern::parse_float;
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -170,12 +170,11 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         neg: bool,
     ) -> Literal<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
-        let tcx = self.tcx.global_tcx();
 
-        let parse_float = |num: &str, fty| -> ConstFloat {
-            ConstFloat::from_str(num, fty).unwrap_or_else(|_| {
+        let parse_float = |num, fty| -> Value {
+            parse_float(num, fty, neg).unwrap_or_else(|_| {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
-                tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
+                self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
             })
         };
 
@@ -213,26 +212,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             },
             LitKind::Int(n, _) => Value::ByVal(PrimVal::Bytes(clamp(n))),
             LitKind::Float(n, fty) => {
-                let n = n.as_str();
-                let mut f = parse_float(&n, fty);
-                if neg {
-                    f = -f;
-                }
-                let bits = f.bits;
-                Value::ByVal(PrimVal::Bytes(bits))
+                parse_float(n, fty)
             }
             LitKind::FloatUnsuffixed(n) => {
                 let fty = match ty.sty {
                     ty::TyFloat(fty) => fty,
                     _ => bug!()
                 };
-                let n = n.as_str();
-                let mut f = parse_float(&n, fty);
-                if neg {
-                    f = -f;
-                }
-                let bits = f.bits;
-                Value::ByVal(PrimVal::Bytes(bits))
+                parse_float(n, fty)
             }
             LitKind::Bool(b) => Value::ByVal(PrimVal::Bytes(b as u128)),
             LitKind::Char(c) => Value::ByVal(PrimVal::Bytes(c as u128)),

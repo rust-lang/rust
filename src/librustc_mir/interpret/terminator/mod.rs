@@ -148,23 +148,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 if expected == cond_val {
                     self.goto_block(target);
                 } else {
-                    use rustc::mir::AssertMessage::*;
+                    use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let span = terminator.source_info.span;
                             let len = self.eval_operand_to_primval(len)
                                 .expect("can't eval len")
                                 .to_u64()?;
                             let index = self.eval_operand_to_primval(index)
                                 .expect("can't eval index")
                                 .to_u64()?;
-                            err!(ArrayIndexOutOfBounds(span, len, index))
+                            err!(BoundsCheck { len, index })
                         }
-                        Math(ref err) => {
-                            err!(Math(terminator.source_info.span, err.clone()))
-                        }
+                        Overflow(op) => Err(Overflow(op).into()),
+                        OverflowNeg => Err(OverflowNeg.into()),
+                        DivisionByZero => Err(DivisionByZero.into()),
+                        RemainderByZero => Err(RemainderByZero.into()),
                         GeneratorResumedAfterReturn |
                         GeneratorResumedAfterPanic => unimplemented!(),
+                        _ => bug!(),
                     };
                 }
             }

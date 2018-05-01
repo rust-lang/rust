@@ -15,7 +15,6 @@ use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
-use rustc_const_math::MAX_F32_PLUS_HALF_ULP;
 use std::{u128, i128};
 
 use base;
@@ -805,6 +804,10 @@ fn cast_int_to_float(bx: &Builder,
     if is_u128_to_f32 {
         // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
         // and for everything else LLVM's uitofp works just fine.
+        use rustc_apfloat::ieee::Single;
+        use rustc_apfloat::Float;
+        const MAX_F32_PLUS_HALF_ULP: u128 = ((1 << (Single::PRECISION + 1)) - 1)
+                                            << (Single::MAX_EXP - Single::PRECISION as i16);
         let max = C_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
         let overflow = bx.icmp(llvm::IntUGE, x, max);
         let infinity_bits = C_u32(bx.cx, ieee::Single::INFINITY.to_bits() as u32);

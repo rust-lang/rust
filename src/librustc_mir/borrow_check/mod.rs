@@ -18,7 +18,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::lint::builtin::UNUSED_MUT;
-use rustc::mir::{AssertMessage, AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{ClearCrossCrate, Local, Location, Place, Mir, Mutability, Operand};
 use rustc::mir::{Projection, ProjectionElem, Rvalue, Field, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
@@ -586,18 +586,14 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 cleanup: _,
             } => {
                 self.consume_operand(ContextKind::Assert.new(loc), (cond, span), flow_state);
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        self.consume_operand(ContextKind::Assert.new(loc), (len, span), flow_state);
-                        self.consume_operand(
-                            ContextKind::Assert.new(loc),
-                            (index, span),
-                            flow_state,
-                        );
-                    }
-                    AssertMessage::Math(_ /*const_math_err*/) => {}
-                    AssertMessage::GeneratorResumedAfterReturn => {}
-                    AssertMessage::GeneratorResumedAfterPanic => {}
+                use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+                if let BoundsCheck { ref len, ref index } = *msg {
+                    self.consume_operand(ContextKind::Assert.new(loc), (len, span), flow_state);
+                    self.consume_operand(
+                        ContextKind::Assert.new(loc),
+                        (index, span),
+                        flow_state,
+                    );
                 }
             }
 

@@ -13,6 +13,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
 use rustc::mir;
+use rustc::mir::interpret::EvalErrorKind;
 use abi::{Abi, ArgType, ArgTypeExt, FnType, FnTypeExt, LlvmType, PassMode};
 use base;
 use callee;
@@ -311,10 +312,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
                 if !bx.cx.check_overflow {
-                    use rustc_const_math::ConstMathErr::Overflow;
-                    use rustc_const_math::Op::Neg;
-
-                    if let mir::AssertMessage::Math(Overflow(Neg)) = *msg {
+                    if let mir::interpret::EvalErrorKind::OverflowNeg = *msg {
                         const_cond = Some(expected);
                     }
                 }
@@ -354,7 +352,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
 
                 // Put together the arguments to the panic entry point.
                 let (lang_item, args) = match *msg {
-                    mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                    EvalErrorKind::BoundsCheck { ref len, ref index } => {
                         let len = self.trans_operand(&mut bx, len).immediate();
                         let index = self.trans_operand(&mut bx, index).immediate();
 
@@ -366,26 +364,8 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         (lang_items::PanicBoundsCheckFnLangItem,
                          vec![file_line_col, index, len])
                     }
-                    mir::AssertMessage::Math(ref err) => {
-                        let msg_str = Symbol::intern(err.description()).as_str();
-                        let msg_str = C_str_slice(bx.cx, msg_str);
-                        let msg_file_line_col = C_struct(bx.cx,
-                                                     &[msg_str, filename, line, col],
-                                                     false);
-                        let msg_file_line_col = consts::addr_of(bx.cx,
-                                                                msg_file_line_col,
-                                                                align,
-                                                                "panic_loc");
-                        (lang_items::PanicFnLangItem,
-                         vec![msg_file_line_col])
-                    }
-                    mir::AssertMessage::GeneratorResumedAfterReturn |
-                    mir::AssertMessage::GeneratorResumedAfterPanic => {
-                        let str = if let mir::AssertMessage::GeneratorResumedAfterReturn = *msg {
-                            "generator resumed after completion"
-                        } else {
-                            "generator resumed after panicking"
-                        };
+                    _ => {
+                        let str = msg.description();
                         let msg_str = Symbol::intern(str).as_str();
                         let msg_str = C_str_slice(bx.cx, msg_str);
                         let msg_file_line_col = C_struct(bx.cx,

@@ -513,7 +513,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     // it emits in debug mode) is performance, but it doesn't cost us any performance in miri.
                     // If, however, the compiler ever starts transforming unchecked intrinsics into unchecked binops,
                     // we have to go back to just ignoring the overflow here.
-                    return err!(OverflowingMath);
+                    return err!(Overflow(bin_op));
                 }
             }
 
