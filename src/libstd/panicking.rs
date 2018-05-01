@@ -440,12 +440,11 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
             PanicPayload { payload, msg, string: None }
         }
 
-
         fn fill(&mut self) -> Option<&mut String> {
-            if let Some(msg) = self.msg.take() {
+            if let Some(msg) = self.msg.cloned() {
                 Some(self.string.get_or_insert_with(|| {
                     let mut s = String::new();
-                    drop(s.write_fmt(*msg));
+                    drop(s.write_fmt(msg));
                     s
                 }))
             } else {
@@ -459,6 +458,10 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
             if let Some(string) = self.fill() {
                 let contents = mem::replace(string, String::new());
                 Box::into_raw(Box::new(contents))
+            } else if let Some(s) = self.payload.downcast_ref::<&str>() {
+                Box::into_raw(Box::new(s.to_owned()))
+            } else if let Some(s) = self.payload.downcast_ref::<String>() {
+                Box::into_raw(Box::new(s.clone()))
             } else {
                 // We can't go from &(Any+Send) to Box<Any+Send> so the payload is lost here
                 struct NoPayload;
@@ -467,7 +470,11 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
         }
 
         fn get(&mut self) -> &(Any + Send) {
-            self.payload
+            if let Some(s) = self.fill() {
+                s
+            } else {
+                self.payload
+            }
         }
     }
 }
