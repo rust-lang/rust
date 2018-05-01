@@ -101,8 +101,6 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
 #[cfg(not(stage0))]
 #[cold] #[inline(never)]
 pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
-    struct NoPayload;
-
     let (file, line, col) = *file_line_col;
     let pi = PanicInfo::internal_constructor(
         Some(&fmt),
