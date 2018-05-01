@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)] // TODO -- will be used in a later commit, remove then
-
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
