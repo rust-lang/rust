@@ -578,6 +578,55 @@ impl<'a> FmtVisitor<'a> {
 
         combine_strs_with_missing_comments(&context, &attrs_str, &variant_body, span, shape, false)
     }
+
+    fn visit_impl_items(&mut self, items: &[ast::ImplItem]) {
+        if self.get_context().config.reorder_impl_items() {
+            // Create visitor for each items, then reorder them.
+            let mut buffer = vec![];
+            for item in items {
+                self.visit_impl_item(item);
+                buffer.push((self.buffer.clone(), item.clone()));
+                self.buffer.clear();
+            }
+            // type -> const -> macro -> method
+            use ast::ImplItemKind::*;
+            fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
+                match (a, b) {
+                    (Type(..), Type(..)) | (Const(..), Const(..)) => false,
+                    _ => true,
+                }
+            }
+
+            buffer.sort_by(|(_, a), (_, b)| match (&a.node, &b.node) {
+                (Type(..), _) => Ordering::Less,
+                (_, Type(..)) => Ordering::Greater,
+                (Const(..), _) => Ordering::Less,
+                (_, Const(..)) => Ordering::Greater,
+                (Macro(..), _) => Ordering::Less,
+                (_, Macro(..)) => Ordering::Greater,
+                _ => a.span.lo().cmp(&b.span.lo()),
+            });
+            let mut prev_kind = None;
+            for (buf, item) in buffer {
+                // Make sure that there are at least a single empty line between
+                // different impl items.
+                if prev_kind
+                    .as_ref()
+                    .map_or(false, |prev_kind| need_empty_line(prev_kind, &item.node))
+                {
+                    self.push_str("\n");
+                }
+                let indent_str = self.block_indent.to_string_with_newline(self.config);
+                self.push_str(&indent_str);
+                self.push_str(buf.trim());
+                prev_kind = Some(item.node.clone());
+            }
+        } else {
+            for item in items {
+                self.visit_impl_item(item);
+            }
+        }
+    }
 }
 
 pub fn format_impl(
@@ -672,51 +721,7 @@ pub fn format_impl(
             visitor.last_pos = item.span.lo() + BytePos(open_pos as u32);
 
             visitor.visit_attrs(&item.attrs, ast::AttrStyle::Inner);
-            if context.config.reorder_impl_items() {
-                // Create visitor for each items, then reorder them.
-                let mut buffer = vec![];
-                for item in items {
-                    visitor.visit_impl_item(item);
-                    buffer.push((visitor.buffer.clone(), item.clone()));
-                    visitor.buffer.clear();
-                }
-                // type -> const -> macro -> method
-                use ast::ImplItemKind::*;
-                fn need_empty_line(a: &ast::ImplItemKind, b: &ast::ImplItemKind) -> bool {
-                    match (a, b) {
-                        (Type(..), Type(..)) | (Const(..), Const(..)) => false,
-                        _ => true,
-                    }
-                }
-
-                buffer.sort_by(|(_, a), (_, b)| match (&a.node, &b.node) {
-                    (Type(..), _) => Ordering::Less,
-                    (_, Type(..)) => Ordering::Greater,
-                    (Const(..), _) => Ordering::Less,
-                    (_, Const(..)) => Ordering::Greater,
-                    (Macro(..), _) => Ordering::Less,
-                    (_, Macro(..)) => Ordering::Greater,
-                    _ => Ordering::Less,
-                });
-                let mut prev_kind = None;
-                for (buf, item) in buffer {
-                    // Make sure that there are at least a single empty line between
-                    // different impl items.
-                    if prev_kind
-                        .as_ref()
-                        .map_or(false, |prev_kind| need_empty_line(prev_kind, &item.node))
-                    {
-                        visitor.push_str("\n");
-                    }
-                    visitor.push_str(&item_indent.to_string_with_newline(context.config));
-                    visitor.push_str(buf.trim());
-                    prev_kind = Some(item.node.clone());
-                }
-            } else {
-                for item in items {
-                    visitor.visit_impl_item(item);
-                }
-            }
+            visitor.visit_impl_items(items);
 
             visitor.format_missing(item.span.hi() - BytePos(1));
 

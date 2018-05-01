@@ -568,6 +568,7 @@ struct CharsIgnoreNewlineRepr<'a>(Peekable<Chars<'a>>);
 
 impl<'a> Iterator for CharsIgnoreNewlineRepr<'a> {
     type Item = char;
+
     fn next(&mut self) -> Option<char> {
         self.0.next().map(|c| {
             if c == '\r' {
