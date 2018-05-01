@@ -393,11 +393,11 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     pub fn keys(&self) -> &[K] {
-        self.reborrow().into_slices().0
+        self.reborrow().into_key_slice()
     }
 
-    pub fn vals(&self) -> &[V] {
-        self.reborrow().into_slices().1
+    fn vals(&self) -> &[V] {
+        self.reborrow().into_val_slice()
     }
 
     /// Finds the parent of the current node. Returns `Ok(handle)` if the current
@@ -540,28 +540,36 @@ impl<'a, K, V, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     }
 
     pub fn keys_mut(&mut self) -> &mut [K] {
-        unsafe { self.reborrow_mut().into_slices_mut().0 }
+        unsafe { self.reborrow_mut().into_key_slice_mut() }
     }
 
     pub fn vals_mut(&mut self) -> &mut [V] {
-        unsafe { self.reborrow_mut().into_slices_mut().1 }
+        unsafe { self.reborrow_mut().into_val_slice_mut() }
     }
 }
 
 impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Immut<'a>, K, V, Type> {
-    pub fn into_slices(self) -> (&'a [K], &'a [V]) {
+    fn into_key_slice(self) -> &'a [K] {
         unsafe {
-            (
-                slice::from_raw_parts(
-                    self.as_leaf().keys.as_ptr(),
-                    self.len()
-                ),
-                slice::from_raw_parts(
-                    self.as_leaf().vals.as_ptr(),
-                    self.len()
-                )
+            slice::from_raw_parts(
+                self.as_leaf().keys.as_ptr(),
+                self.len()
             )
         }
+    }
+
+    fn into_val_slice(self) -> &'a [V] {
+        unsafe {
+            slice::from_raw_parts(
+                self.as_leaf().vals.as_ptr(),
+                self.len()
+            )
+        }
+    }
+
+    fn into_slices(self) -> (&'a [K], &'a [V]) {
+        let k = unsafe { ptr::read(&self) };
+        (k.into_key_slice(), self.into_val_slice())
     }
 }
 
@@ -574,19 +582,27 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         }
     }
 
-    pub fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
+    fn into_key_slice_mut(mut self) -> &'a mut [K] {
         unsafe {
-            (
-                slice::from_raw_parts_mut(
-                    &mut self.as_leaf_mut().keys as *mut [K] as *mut K,
-                    self.len()
-                ),
-                slice::from_raw_parts_mut(
-                    &mut self.as_leaf_mut().vals as *mut [V] as *mut V,
-                    self.len()
-                )
+            slice::from_raw_parts_mut(
+                &mut self.as_leaf_mut().keys as *mut [K] as *mut K,
+                self.len()
             )
         }
+    }
+
+    fn into_val_slice_mut(mut self) -> &'a mut [V] {
+        unsafe {
+            slice::from_raw_parts_mut(
+                &mut self.as_leaf_mut().vals as *mut [V] as *mut V,
+                self.len()
+            )
+        }
+    }
+
+    fn into_slices_mut(self) -> (&'a mut [K], &'a mut [V]) {
+        let k = unsafe { ptr::read(&self) };
+        (k.into_key_slice_mut(), self.into_val_slice_mut())
     }
 }
 
