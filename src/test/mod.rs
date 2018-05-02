@@ -859,23 +859,27 @@ fn configuration_snippet_tests() {
 }
 
 struct TempFile {
-    file_name: &'static str,
+    path: PathBuf,
 }
 
 fn make_temp_file(file_name: &'static str) -> TempFile {
+    use std::env::var;
     use std::fs::File;
 
-    let mut file = File::create(file_name).expect("Couldn't create temp file");
+    let target_dir = var("CARGO_TARGET_DIR").unwrap_or_else(|_| ".".to_owned());
+    let path = Path::new(&target_dir).join(file_name);
+
+    let mut file = File::create(&path).expect("Couldn't create temp file");
     let content = "fn main() {}\n";
     file.write_all(content.as_bytes())
         .expect("Couldn't write temp file");
-    TempFile { file_name }
+    TempFile { path }
 }
 
 impl Drop for TempFile {
     fn drop(&mut self) {
         use std::fs::remove_file;
-        remove_file(self.file_name).expect("Couldn't delete temp file");
+        remove_file(&self.path).expect("Couldn't delete temp file");
     }
 }
 
