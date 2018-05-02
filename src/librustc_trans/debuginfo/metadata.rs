@@ -555,7 +555,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             false)
         }
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
-        ty::TyRef(_, ty::TypeAndMut{ty, ..}) => {
+        ty::TyRef(_, ty, _) => {
             match ptr_metadata(ty) {
                 Ok(res) => res,
                 Err(metadata) => return metadata,

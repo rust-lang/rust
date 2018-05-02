@@ -454,10 +454,12 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_ptr(mt))
         }
 
-        (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
+        (&ty::TyRef(a_r, a_ty, a_mutbl), &ty::TyRef(b_r, b_ty, b_mutbl)) =>
         {
             let r = relation.relate_with_variance(ty::Contravariant, &a_r, &b_r)?;
-            let mt = relation.relate(a_mt, b_mt)?;
+            let a_mt = ty::TypeAndMut { ty: a_ty, mutbl: a_mutbl };
+            let b_mt = ty::TypeAndMut { ty: b_ty, mutbl: b_mutbl };
+            let mt = relation.relate(&a_mt, &b_mt)?;
             Ok(tcx.mk_ref(r, mt))
         }
 

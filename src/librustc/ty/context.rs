@@ -2351,7 +2351,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_ref(self, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyRef(r, tm))
+        self.mk_ty(TyRef(r, tm.ty, tm.mutbl))
     }
 
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {

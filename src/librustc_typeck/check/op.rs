@@ -197,8 +197,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Ok(method) => {
                 let by_ref_binop = !op.node.is_by_value();
                 if is_assign == IsAssign::Yes || by_ref_binop {
-                    if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                        let mutbl = match mt.mutbl {
+                    if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                        let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
@@ -214,8 +214,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 if by_ref_binop {
-                    if let ty::TyRef(region, mt) = method.sig.inputs()[1].sty {
-                        let mutbl = match mt.mutbl {
+                    if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[1].sty {
+                        let mutbl = match mutbl {
                             hir::MutImmutable => AutoBorrowMutability::Immutable,
                             hir::MutMutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
@@ -262,12 +262,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             op.node.as_str(),
                             lhs_ty);
 
-                        if let TypeVariants::TyRef(_, ref ty_mut) = lhs_ty.sty {
+                        if let TypeVariants::TyRef(_, rty, _) = lhs_ty.sty {
                             if {
                                 !self.infcx.type_moves_by_default(self.param_env,
-                                                                  ty_mut.ty,
+                                                                  rty,
                                                                   lhs_expr.span) &&
-                                    self.lookup_op_method(ty_mut.ty,
+                                    self.lookup_op_method(rty,
                                                           &[rhs_ty],
                                                           Op::Binary(op, is_assign))
                                         .is_ok()
@@ -341,8 +341,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If this function returns true it means a note was printed, so we don't need
         // to print the normal "implementation of `std::ops::Add` might be missing" note
         match (&lhs_ty.sty, &rhs_ty.sty) {
-            (&TyRef(_, ref l_ty), &TyRef(_, ref r_ty))
-            if l_ty.ty.sty == TyStr && r_ty.ty.sty == TyStr => {
+            (&TyRef(_, l_ty, _), &TyRef(_, r_ty, _))
+            if l_ty.sty == TyStr && r_ty.sty == TyStr => {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate two `&str` strings");
                 match codemap.span_to_snippet(lhs_expr.span) {
@@ -353,8 +353,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
                 true
             }
-            (&TyRef(_, ref l_ty), &TyAdt(..))
-            if l_ty.ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
+            (&TyRef(_, l_ty, _), &TyAdt(..))
+            if l_ty.sty == TyStr && &format!("{:?}", rhs_ty) == "std::string::String" => {
                 err.span_label(expr.span,
                     "`+` can't be used to concatenate a `&str` with a `String`");
                 match codemap.span_to_snippet(lhs_expr.span) {

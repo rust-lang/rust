@@ -46,13 +46,13 @@ struct LiteralExpander;
 impl<'tcx> PatternFolder<'tcx> for LiteralExpander {
     fn fold_pattern(&mut self, pat: &Pattern<'tcx>) -> Pattern<'tcx> {
         match (&pat.ty.sty, &*pat.kind) {
-            (&ty::TyRef(_, mt), &PatternKind::Constant { ref value }) => {
+            (&ty::TyRef(_, rty, _), &PatternKind::Constant { ref value }) => {
                 Pattern {
                     ty: pat.ty,
                     span: pat.span,
                     kind: box PatternKind::Deref {
                         subpattern: Pattern {
-                            ty: mt.ty,
+                            ty: rty,
                             span: pat.span,
                             kind: box PatternKind::Constant { value: value.clone() },
                         }
@@ -907,7 +907,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
             ConstantValue(_) => vec![],
             _ => bug!("bad slice pattern {:?} {:?}", ctor, ty)
         },
-        ty::TyRef(_, ref ty_and_mut) => vec![ty_and_mut.ty],
+        ty::TyRef(_, rty, _) => vec![rty],
         ty::TyAdt(adt, substs) => {
             if adt.is_box() {
                 // Use T as the sub pattern type of Box<T>.

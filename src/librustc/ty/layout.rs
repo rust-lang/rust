@@ -501,7 +501,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             // Potentially-fat pointers.
-            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
@@ -1262,7 +1262,7 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
         };
 
         match ty.sty {
-            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail(pointee);
@@ -1560,7 +1560,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             }
 
             // Potentially-fat pointers.
-            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 assert!(i < 2);
 

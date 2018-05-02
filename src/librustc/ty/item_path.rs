@@ -360,8 +360,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyArray(subty, _) |
         ty::TySlice(subty) => characteristic_def_id_of_type(subty),
 
-        ty::TyRawPtr(mt) |
-        ty::TyRef(_, mt) => characteristic_def_id_of_type(mt.ty),
+        ty::TyRawPtr(mt) => characteristic_def_id_of_type(mt.ty),
+
+        ty::TyRef(_, ty, _) => characteristic_def_id_of_type(ty),
 
         ty::TyTuple(ref tys) => tys.iter()
                                    .filter_map(|ty| characteristic_def_id_of_type(ty))

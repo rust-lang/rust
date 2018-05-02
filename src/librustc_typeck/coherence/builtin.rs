@@ -223,12 +223,18 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
             (mt_a.ty, mt_b.ty, unsize_trait, None)
         };
         let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
-            (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
+            (&ty::TyRef(r_a, ty_a, mutbl_a), &ty::TyRef(r_b, ty_b, mutbl_b)) => {
                 infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
+                let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
+                let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
                 check_mutbl(mt_a, mt_b, &|ty| gcx.mk_imm_ref(r_b, ty))
             }
 
-            (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) |
+            (&ty::TyRef(_, ty_a, mutbl_a), &ty::TyRawPtr(mt_b)) => {
+                let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
+                check_mutbl(mt_a, mt_b, &|ty| gcx.mk_imm_ptr(ty))
+            }
+
             (&ty::TyRawPtr(mt_a), &ty::TyRawPtr(mt_b)) => {
                 check_mutbl(mt_a, mt_b, &|ty| gcx.mk_imm_ptr(ty))
             }

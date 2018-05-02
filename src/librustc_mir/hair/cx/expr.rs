@@ -283,7 +283,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprAddrOf(mutbl, ref expr) => {
             let region = match expr_ty.sty {
-                ty::TyRef(r, _) => r,
+                ty::TyRef(r, _, _) => r,
                 _ => span_bug!(expr.span, "type of & not region"),
             };
             ExprKind::Borrow {
@@ -987,13 +987,13 @@ fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // Reconstruct the output assuming it's a reference with the
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-    let (region, mt) = match recv_ty.sty {
-        ty::TyRef(region, mt) => (region, mt),
+    let (region, mutbl) = match recv_ty.sty {
+        ty::TyRef(region, _, mutbl) => (region, mutbl),
         _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
         ty: place_ty,
-        mutbl: mt.mutbl,
+        mutbl,
     });
 
     // construct the complete expression `foo()` for the overloaded call,

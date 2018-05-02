@@ -302,7 +302,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 self.push_type_name(inner_type, output);
             },
-            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, inner_type, mutbl) => {
                 output.push('&');
                 if mutbl == hir::MutMutable {
                     output.push_str("mut ");

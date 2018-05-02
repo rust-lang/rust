@@ -369,8 +369,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let val = self.read_place(base)?;
 
                 let pointee_type = match base_ty.sty {
-                    ty::TyRawPtr(ref tam) |
-                    ty::TyRef(_, ref tam) => tam.ty,
+                    ty::TyRawPtr(ref tam) => tam.ty,
+                    ty::TyRef(_, ty, _) => ty,
                     ty::TyAdt(def, _) if def.is_box() => base_ty.boxed_ty(),
                     _ => bug!("can only deref pointer types"),
                 };

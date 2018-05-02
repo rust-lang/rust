@@ -864,8 +864,8 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
                 ty::TyFnDef(def_id, substs.fold_with(folder))
             }
             ty::TyFnPtr(f) => ty::TyFnPtr(f.fold_with(folder)),
-            ty::TyRef(ref r, tm) => {
-                ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
+            ty::TyRef(ref r, ty, mutbl) => {
+                ty::TyRef(r.fold_with(folder), ty.fold_with(folder), mutbl)
             }
             ty::TyGenerator(did, substs, movability) => {
                 ty::TyGenerator(
@@ -904,7 +904,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyTuple(ts) => ts.visit_with(visitor),
             ty::TyFnDef(_, substs) => substs.visit_with(visitor),
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
-            ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
+            ty::TyRef(r, ty, _) => r.visit_with(visitor) || ty.visit_with(visitor),
             ty::TyGenerator(_did, ref substs, _) => {
                 substs.visit_with(visitor)
             }

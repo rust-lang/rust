@@ -2167,14 +2167,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyChar | ty::TyRawPtr(..) | ty::TyNever |
-            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+            ty::TyRef(_, _, hir::MutImmutable) => {
                 // Implementations provided in libcore
                 None
             }
 
             ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
             ty::TyGenerator(..) | ty::TyGeneratorWitness(..) | ty::TyForeign(..) |
-            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+            ty::TyRef(_, _, hir::MutMutable) => {
                 Never
             }
 
@@ -2263,7 +2263,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyRawPtr(ty::TypeAndMut { ty: element_ty, ..}) |
-            ty::TyRef(_, ty::TypeAndMut { ty: element_ty, ..}) => {
+            ty::TyRef(_, element_ty, _) => {
                 vec![element_ty]
             },
 

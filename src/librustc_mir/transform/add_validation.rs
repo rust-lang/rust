@@ -44,14 +44,14 @@ fn place_context<'a, 'tcx, D>(
                     // A Deref projection may restrict the context, this depends on the type
                     // being deref'd.
                     let context = match ty.sty {
-                        ty::TyRef(re, tam) => {
+                        ty::TyRef(re, _, mutbl) => {
                             let re = match re {
                                 &RegionKind::ReScope(ce) => Some(ce),
                                 &RegionKind::ReErased =>
                                     bug!("AddValidation pass must be run before erasing lifetimes"),
                                 _ => None
                             };
-                            (re, tam.mutbl)
+                            (re, mutbl)
                         }
                         ty::TyRawPtr(_) =>
                             // There is no guarantee behind even a mutable raw pointer,

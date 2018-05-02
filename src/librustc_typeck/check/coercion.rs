@@ -214,7 +214,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
             }
 
-            ty::TyRef(r_b, mt_b) => {
+            ty::TyRef(r_b, ty, mutbl) => {
+                let mt_b = ty::TypeAndMut { ty, mutbl };
                 return self.coerce_borrowed_pointer(a, b, r_b, mt_b);
             }
 
@@ -266,7 +267,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // yield.
 
         let (r_a, mt_a) = match a.sty {
-            ty::TyRef(r_a, mt_a) => {
+            ty::TyRef(r_a, ty, mutbl) => {
+                let mt_a = ty::TypeAndMut { ty, mutbl };
                 coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
                 (r_a, mt_a)
             }
@@ -427,7 +429,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
         let r_borrow = match ty.sty {
-            ty::TyRef(r_borrow, _) => r_borrow,
+            ty::TyRef(r_borrow, _, _) => r_borrow,
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
         let mutbl = match mt_b.mutbl {
@@ -471,12 +473,12 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let reborrow = match (&source.sty, &target.sty) {
-            (&ty::TyRef(_, mt_a), &ty::TyRef(_, mt_b)) => {
-                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
+            (&ty::TyRef(_, ty_a, mutbl_a), &ty::TyRef(_, _, mutbl_b)) => {
+                coerce_mutbls(mutbl_a, mutbl_b)?;
 
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
-                let mutbl = match mt_b.mutbl {
+                let mutbl = match mutbl_b {
                     hir::MutImmutable => AutoBorrowMutability::Immutable,
                     hir::MutMutable => AutoBorrowMutability::Mutable {
                         // We don't allow two-phase borrows here, at least for initial
@@ -487,26 +489,26 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 };
                 Some((Adjustment {
                     kind: Adjust::Deref(None),
-                    target: mt_a.ty
+                    target: ty_a
                 }, Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(r_borrow, mutbl)),
                     target:  self.tcx.mk_ref(r_borrow, ty::TypeAndMut {
-                        mutbl: mt_b.mutbl,
-                        ty: mt_a.ty
+                        mutbl: mutbl_b,
+                        ty: ty_a
                     })
                 }))
             }
-            (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) => {
-                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
+            (&ty::TyRef(_, ty_a, mt_a), &ty::TyRawPtr(ty::TypeAndMut { mutbl: mt_b, .. })) => {
+                coerce_mutbls(mt_a, mt_b)?;
 
                 Some((Adjustment {
                     kind: Adjust::Deref(None),
-                    target: mt_a.ty
+                    target: ty_a
                 }, Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b.mutbl)),
+                    kind: Adjust::Borrow(AutoBorrow::RawPtr(mt_b)),
                     target:  self.tcx.mk_ptr(ty::TypeAndMut {
-                        mutbl: mt_b.mutbl,
-                        ty: mt_a.ty
+                        mutbl: mt_b,
+                        ty: ty_a
                     })
                 }))
             }
@@ -719,7 +721,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
 
         let (is_ref, mt_a) = match a.sty {
-            ty::TyRef(_, mt) => (true, mt),
+            ty::TyRef(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
             ty::TyRawPtr(mt) => (false, mt),
             _ => {
                 return self.unify_and(a, b, identity);
@@ -886,12 +888,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl_adj)), .. }
                 ] => {
                     match self.node_ty(expr.hir_id).sty {
-                        ty::TyRef(_, mt_orig) => {
+                        ty::TyRef(_, _, mt_orig) => {
                             let mutbl_adj: hir::Mutability = mutbl_adj.into();
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
                             // which will be merged into it.
-                            mutbl_adj == mt_orig.mutbl
+                            mutbl_adj == mt_orig
                         }
                         _ => false,
                     }

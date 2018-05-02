@@ -878,9 +878,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let mut trait_type = trait_ref.self_ty();
 
             for refs_remaining in 0..refs_number {
-                if let ty::TypeVariants::TyRef(_, ty::TypeAndMut{ ty: t_type, mutbl: _ }) =
-                    trait_type.sty {
-
+                if let ty::TypeVariants::TyRef(_, t_type, _) = trait_type.sty {
                     trait_type = t_type;
 
                     let substs = self.tcx.mk_substs_trait(trait_type, &[]);

@@ -1913,8 +1913,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                         // Check the kind of deref to decide
                         match base_ty.sty {
-                            ty::TyRef(_, tnm) => {
-                                match tnm.mutbl {
+                            ty::TyRef(_, _, mutbl) => {
+                                match mutbl {
                                     // Shared borrowed data is never mutable
                                     hir::MutImmutable => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
@@ -2348,13 +2348,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                         (
                             ProjectionElem::Deref,
-                            ty::TyRef(
-                                _,
-                                ty::TypeAndMut {
-                                    ty: _,
-                                    mutbl: hir::MutImmutable,
-                                },
-                            ),
+                            ty::TyRef( _, _, hir::MutImmutable),
                             _,
                         ) => {
                             // the borrow goes through a dereference of a shared reference.

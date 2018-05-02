@@ -189,20 +189,17 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             }
             ty::TySlice(_) => "slice".to_string(),
             ty::TyRawPtr(_) => "*-ptr".to_string(),
-            ty::TyRef(region, tymut) => {
+            ty::TyRef(region, ty, mutbl) => {
+                let tymut = ty::TypeAndMut { ty, mutbl };
                 let tymut_string = tymut.to_string();
                 if tymut_string == "_" ||         //unknown type name,
                    tymut_string.len() > 10 ||     //name longer than saying "reference",
                    region.to_string() != ""       //... or a complex type
                 {
-                    match tymut {
-                        ty::TypeAndMut{mutbl, ..} => {
-                            format!("{}reference", match mutbl {
-                                hir::Mutability::MutMutable => "mutable ",
-                                _ => ""
-                            })
-                        }
-                    }
+                    format!("{}reference", match mutbl {
+                        hir::Mutability::MutMutable => "mutable ",
+                        _ => ""
+                    })
                 } else {
                     format!("&{}", tymut_string)
                 }

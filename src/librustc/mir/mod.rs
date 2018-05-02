@@ -29,7 +29,6 @@ use mir::interpret::{Value, PrimVal, EvalErrorKind};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::TypeAndMut;
 use util::ppaux;
 use std::slice;
 use hir::{self, InlineAsm};
@@ -1905,9 +1904,8 @@ pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Resul
             write!(f, "{:?}", ::std::char::from_u32(n as u32).unwrap()),
         (Value::ByVal(PrimVal::Undef), &TyFnDef(did, _)) =>
             write!(f, "{}", item_path_str(did)),
-        (Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)), &TyRef(_, TypeAndMut {
-            ty: &ty::TyS { sty: TyStr, .. }, ..
-        })) => {
+        (Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len)),
+         &TyRef(_, &ty::TyS { sty: TyStr, .. }, _)) => {
             ty::tls::with(|tcx| {
                 let alloc = tcx
                     .interpret_interner

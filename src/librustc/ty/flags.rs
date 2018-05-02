@@ -173,9 +173,9 @@ impl FlagComputation {
                 self.add_ty(m.ty);
             }
 
-            &ty::TyRef(r, ref m) => {
+            &ty::TyRef(r, ty, _) => {
                 self.add_region(r);
-                self.add_ty(m.ty);
+                self.add_ty(ty);
             }
 
             &ty::TyTuple(ref ts) => {

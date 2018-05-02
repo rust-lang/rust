@@ -514,7 +514,7 @@ impl<'tcx> TyS<'tcx> {
                 TypeVariants::TyInfer(InferTy::FloatVar(_)) |
                 TypeVariants::TyInfer(InferTy::FreshIntTy(_)) |
                 TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
-            TypeVariants::TyRef(_, x) => x.ty.is_primitive_ty(),
+            TypeVariants::TyRef(_, x, _) => x.is_primitive_ty(),
             _ => false,
         }
     }

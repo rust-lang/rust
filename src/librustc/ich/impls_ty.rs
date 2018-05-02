@@ -888,9 +888,10 @@ for ty::TypeVariants<'gcx>
             TyRawPtr(pointee_ty) => {
                 pointee_ty.hash_stable(hcx, hasher);
             }
-            TyRef(region, pointee_ty) => {
+            TyRef(region, pointee_ty, mutbl) => {
                 region.hash_stable(hcx, hasher);
                 pointee_ty.hash_stable(hcx, hasher);
+                mutbl.hash_stable(hcx, hasher);
             }
             TyFnDef(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);

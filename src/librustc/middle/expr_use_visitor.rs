@@ -456,7 +456,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
                 let expr_ty = return_if_err!(self.mc.expr_ty(expr));
-                if let ty::TyRef(r, _) = expr_ty.sty {
+                if let ty::TyRef(r, _, _) = expr_ty.sty {
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.borrow_expr(&base, r, bk, AddrOf);
                 }
@@ -859,7 +859,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 // It is also a borrow or copy/move of the value being matched.
                 match bm {
                     ty::BindByReference(m) => {
-                        if let ty::TyRef(r, _) = pat_ty.sty {
+                        if let ty::TyRef(r, _, _) = pat_ty.sty {
                             let bk = ty::BorrowKind::from_mutbl(m);
                             delegate.borrow(pat.id, pat.span, &cmt_pat, r, bk, RefBinding);
                         }

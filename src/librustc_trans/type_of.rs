@@ -250,7 +250,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 return llty;
             }
             let llty = match self.ty.sty {
-                ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+                ty::TyRef(_, ty, _) |
                 ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                     cx.layout_of(ty).llvm_type(cx).ptr_to()
                 }
@@ -418,11 +418,11 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                 });
             }
 
-            ty::TyRef(_, mt) if offset.bytes() == 0 => {
-                let (size, align) = cx.size_and_align_of(mt.ty);
+            ty::TyRef(_, ty, mt) if offset.bytes() == 0 => {
+                let (size, align) = cx.size_and_align_of(ty);
 
-                let kind = match mt.mutbl {
-                    hir::MutImmutable => if cx.type_is_freeze(mt.ty) {
+                let kind = match mt {
+                    hir::MutImmutable => if cx.type_is_freeze(ty) {
                         PointerKind::Frozen
                     } else {
                         PointerKind::Shared

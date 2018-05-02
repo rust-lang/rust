@@ -1012,7 +1012,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let base_ty = self.expr_ty_adjusted(base)?;
 
         let (region, mutbl) = match base_ty.sty {
-            ty::TyRef(region, mt) => (region, mt.mutbl),
+            ty::TyRef(region, _, mutbl) => (region, mutbl),
             _ => {
                 span_bug!(expr.span, "cat_overloaded_place: base is not a reference")
             }
@@ -1046,8 +1046,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let ptr = match base_cmt.ty.sty {
             ty::TyAdt(def, ..) if def.is_box() => Unique,
             ty::TyRawPtr(ref mt) => UnsafePtr(mt.mutbl),
-            ty::TyRef(r, mt) => {
-                let bk = ty::BorrowKind::from_mutbl(mt.mutbl);
+            ty::TyRef(r, _, mutbl) => {
+                let bk = ty::BorrowKind::from_mutbl(mutbl);
                 if implicit { Implicit(bk, r) } else { BorrowedPtr(bk, r) }
             }
             ref ty => bug!("unexpected type in cat_deref: {:?}", ty)

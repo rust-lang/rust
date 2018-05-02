@@ -228,9 +228,9 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 ) -> (ValueRef, ValueRef) {
     debug!("unsize_thin_ptr: {:?} => {:?}", src_ty, dst_ty);
     match (&src_ty.sty, &dst_ty.sty) {
-        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
-         &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
-        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+        (&ty::TyRef(_, a, _),
+         &ty::TyRef(_, b, _)) |
+        (&ty::TyRef(_, a, _),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {

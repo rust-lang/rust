@@ -1011,14 +1011,14 @@ define_print! {
                     })?;
                     tm.ty.print(f, cx)
                 }
-                TyRef(r, ref tm) => {
+                TyRef(r, ty, mutbl) => {
                     write!(f, "&")?;
                     let s = r.print_to_string(cx);
                     write!(f, "{}", s)?;
                     if !s.is_empty() {
                         write!(f, " ")?;
                     }
-                    tm.print(f, cx)
+                    ty::TypeAndMut { ty, mutbl }.print(f, cx)
                 }
                 TyNever => write!(f, "!"),
                 TyTuple(ref tys) => {

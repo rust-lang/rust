@@ -571,7 +571,8 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
-                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bx.cx.layout_of(mt.ty), true),
+                ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+                ty::TyRef(_, ty, _)  => (bx.cx.layout_of(ty), true),
                 _ => (arg.layout, false)
             };
 
@@ -615,8 +616,8 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                 // a pointer in an alloca for debuginfo atm.
                 let mut ops = if env_ref || true { &ops[..] } else { &ops[1..] };
 
-                let ty = if let (true, &ty::TyRef(_, mt)) = (decl.by_ref, &ty.sty) {
-                    mt.ty
+                let ty = if let (true, &ty::TyRef(_, ty, _)) = (decl.by_ref, &ty.sty) {
+                    ty
                 } else {
                     ops = &ops[..ops.len() - 1];
                     ty

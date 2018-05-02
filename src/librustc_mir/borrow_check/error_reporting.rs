@@ -773,8 +773,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     format!("{}", def.non_enum_variant().fields[field.index()].name)
                 },
                 ty::TyTuple(_) => format!("{}", field.index()),
-                ty::TyRef(_, tnm) | ty::TyRawPtr(tnm) => {
-                    self.describe_field_from_ty(&tnm.ty, field)
+                ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                    self.describe_field_from_ty(&ty, field)
                 }
                 ty::TyArray(ty, _) | ty::TySlice(ty) => self.describe_field_from_ty(&ty, field),
                 ty::TyClosure(def_id, _) | ty::TyGenerator(def_id, _, _) => {

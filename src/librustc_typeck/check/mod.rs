@@ -2393,8 +2393,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
 
                 let mut adjustments = autoderef.adjust_steps(needs);
-                if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                    let mutbl = match mt.mutbl {
+                if let ty::TyRef(region, _, r_mutbl) = method.sig.inputs()[0].sty {
+                    let mutbl = match r_mutbl {
                         hir::MutImmutable => AutoBorrowMutability::Immutable,
                         hir::MutMutable => AutoBorrowMutability::Mutable {
                             // Indexing can be desugared to a method call,
@@ -2407,7 +2407,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                         target: self.tcx.mk_ref(region, ty::TypeAndMut {
-                            mutbl: mt.mutbl,
+                            mutbl: r_mutbl,
                             ty: adjusted_ty
                         })
                     });
@@ -3615,8 +3615,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else if let Some(ok) = self.try_overloaded_deref(
                                 expr.span, oprnd_t, needs) {
                             let method = self.register_infer_ok_obligations(ok);
-                            if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                                let mutbl = match mt.mutbl {
+                            if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                                let mutbl = match mutbl {
                                     hir::MutImmutable => AutoBorrowMutability::Immutable,
                                     hir::MutMutable => AutoBorrowMutability::Mutable {
                                         // (It shouldn't actually matter for unary ops whether
@@ -3660,14 +3660,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprAddrOf(mutbl, ref oprnd) => {
             let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                 match ty.sty {
-                    ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
+                    ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                         if self.is_place_expr(&oprnd) {
                             // Places may legitimately have unsized types.
                             // For example, dereferences of a fat pointer and
                             // the last field of a struct can be unsized.
-                            ExpectHasType(mt.ty)
+                            ExpectHasType(ty)
                         } else {
-                            Expectation::rvalue_hint(self, mt.ty)
+                            Expectation::rvalue_hint(self, ty)
                         }
                     }
                     _ => NoExpectation

@@ -80,7 +80,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push('*');
             }
         },
-        ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
+        ty::TyRef(_, inner_type, mutbl) => {
             if !cpp_like_names {
                 output.push('&');
             }

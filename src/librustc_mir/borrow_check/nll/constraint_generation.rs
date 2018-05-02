@@ -270,7 +270,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
-                        ty::TyRef(ref_region, ty::TypeAndMut { ty: _, mutbl }) => {
+                        ty::TyRef(ref_region, _, mutbl) => {
                             let span = self.mir.source_info(location).span;
                             self.regioncx.add_outlives(
                                 span,

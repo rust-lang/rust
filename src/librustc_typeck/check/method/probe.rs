@@ -917,9 +917,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 pick.autoderefs = step.autoderefs;
 
                 // Insert a `&*` or `&mut *` if this is a reference type:
-                if let ty::TyRef(_, mt) = step.self_ty.sty {
+                if let ty::TyRef(_, _, mutbl) = step.self_ty.sty {
                     pick.autoderefs += 1;
-                    pick.autoref = Some(mt.mutbl);
+                    pick.autoref = Some(mutbl);
                 }
 
                 pick
