@@ -454,26 +454,22 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                                  trait_ref: &ty::TraitRef<'tcx>)
                                  -> Vec<traits::PredicateObligation<'tcx>>
     {
-        let mut predicates = self.infcx.tcx.predicates_of(trait_ref.def_id);
-
         // Add in a predicate that `Self:Trait` (where `Trait` is the
         // current trait).
-        // trait_ref can probably be added in as a predicate directly after
-        // instantiation, rather than erasing the substituted type and then
-        // re-instantiating this bound.
-        let identity_trait_ref = ty::TraitRef {
-            def_id: trait_ref.def_id,
-            substs: Substs::identity_for_item(self.infcx.tcx, trait_ref.def_id)
+        let self_trait = if !trait_ref.has_escaping_regions() {
+            Some(trait_ref.to_poly_trait_ref().to_predicate())
+        } else {
+            None
         };
-        predicates.predicates.insert(0, identity_trait_ref.to_poly_trait_ref().to_predicate());
 
-        debug!("nominal_trait_obligations: trait_ref={:?} predicates={:?}",
-               trait_ref, predicates.predicates);
+        let predicates = self.infcx.tcx.predicates_of(trait_ref.def_id)
+                                       .instantiate(self.infcx.tcx, trait_ref.substs)
+                                       .predicates;
 
         let cause = self.cause(traits::ItemObligation(trait_ref.def_id));
-        predicates.instantiate(self.infcx.tcx, trait_ref.substs)
-                  .predicates
-                  .into_iter()
+
+        self_trait.into_iter()
+                  .chain(predicates.into_iter())
                   .map(|pred| traits::Obligation::new(cause.clone(),
                                                       self.param_env,
                                                       pred))
