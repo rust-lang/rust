@@ -1,14 +1,30 @@
-error: compilation successful
-  --> $DIR/borrowing.rs:15:1
+error[E0597]: `a` does not live long enough
+  --> $DIR/borrowing.rs:18:18
    |
-LL | / fn main() { #![rustc_error] // rust-lang/rust#49855
-LL | |     let _b = {
-LL | |         let a = 3;
-LL | |         unsafe { (|| yield &a).resume() }
-...  |
-LL | |     };
-LL | | }
-   | |_^
+LL |         unsafe { (|| yield &a).resume() }
+   |                  ^^^^^^^^^^^^^
+   |                  |
+   |                  borrowed value does not live long enough
+   |                  borrow may end up in a temporary, created here
+LL |         //~^ ERROR: `a` does not live long enough
+LL |     };
+   |     -- temporary later dropped here, potentially using the reference
+   |     |
+   |     borrowed value only lives until here
 
-error: aborting due to previous error
+error[E0597]: `a` does not live long enough
+  --> $DIR/borrowing.rs:24:9
+   |
+LL | /         || {
+LL | |             yield &a
+LL | |             //~^ ERROR: `a` does not live long enough
+LL | |         }
+   | |_________^ borrowed value does not live long enough
+LL |       };
+   |       - borrowed value only lives until here
+LL |   }
+   |   - borrow later used here, when `_b` is dropped
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
