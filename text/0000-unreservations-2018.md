@@ -74,7 +74,7 @@ This keyword used to be used for `pure fn`, that is: as an effect.
 
 When *generic associated types* (GATs) lands, it is likely that people would
 like to use this in their [applicative functor][applicative] and monad libraries,
-which speaks in favor of unreserving `pure`. This use case explicitly mentioned by [`@ubsan`](https://github.com/ubsan/) who requested that the keyword be unreserved for this purpose.
+which speaks in favour of unreserving `pure`. This use case explicitly mentioned by [`@ubsan`](https://github.com/ubsan/) who requested that the keyword be unreserved for this purpose.
 
 ### Potential drawbacks
 
@@ -117,9 +117,9 @@ fn foo() -> Result<i32, Error> {
 
 [Applicative laws]: https://en.wikibooks.org/wiki/Haskell/Applicative_functors#Applicative_functor_laws
 
-While you might think that Haskell developers would be in favor of this,
+While you might think that Haskell developers would be in favour of this,
 that does not seem to be the case. Haskell developers over at
-`#haskell @ freenode` were not particularly in favor of this use as `pure`
+`#haskell @ freenode` were not particularly in favour of this use as `pure`
 in this context as `pure` does not respect the [Applicative laws].
 The desugaring is also not particularly obvious when `pure` is used.
 If we did add sugar for explicit `Ok`-wrapping, we'd probably go with something
@@ -241,9 +241,13 @@ pub struct Bar {
 }
 ```
 
-Since everything is already private by default, `priv` would only be an extra
-hint that users can use to be more explict, but serves no other purpose.
-Further, we could possibly use `pub(self)` for `priv` instead.
+Since fields are already private by default, `priv` would only be an extra
+hint that users can use to be more explicit, but serves no other purpose.
+Note however that `enum` variants are not private by default.
+Neither are items in `trait`s. Annotating items as `priv` in traits could
+potentially be useful for internal `fn`s used in provided `fn` implementations.
+However, we could possibly use `pub(self)` instead of `priv`.
+
 
 Permitting `priv` could also be confusing for readers. Consider for example:
 
