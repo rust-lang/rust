@@ -59,7 +59,7 @@ use std::sync::mpsc::{channel, Sender, Receiver};
 use std::slice;
 use std::time::Instant;
 use std::thread;
-use libc::{c_uint, c_void, c_char, size_t};
+use libc::{c_uint, c_char, size_t};
 
 pub const RELOC_MODEL_ARGS : [(&'static str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
@@ -436,7 +436,7 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext,
 }
 
 unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
-                                        user: *const c_void,
+                                        user: *const ::std::os::raw::c_void,
                                         cookie: c_uint) {
     if user.is_null() {
         return
@@ -449,7 +449,8 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
     report_inline_asm(cgcx, &msg, cookie);
 }
 
-unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
+unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef,
+                                        user: *mut ::std::os::raw::c_void) {
     if user.is_null() {
         return
     }

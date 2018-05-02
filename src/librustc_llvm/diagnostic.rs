@@ -13,7 +13,7 @@
 pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
-use libc::c_uint;
+use std::os::raw::c_uint;
 use std::ptr;
 
 use {DiagnosticInfoRef, TwineRef, ValueRef};

@@ -656,8 +656,11 @@ impl Step for CodegenBackend {
         let mut files = files.into_iter()
             .filter(|f| {
                 let filename = f.file_name().unwrap().to_str().unwrap();
-                is_dylib(filename) && filename.contains("rustc_codegen_llvm-")
+                is_dylib(filename) && (filename.contains("rustc_codegen_llvm-") ||
+                    filename.contains("rustc_llvm-"))
             });
+        let llvm_crate = files.next()
+             .unwrap_or_else(|| panic!("need the rustc_trans llvm dylib") );
         let codegen_backend = match files.next() {
             Some(f) => f,
             None => panic!("no dylibs built for codegen backend?"),
@@ -668,8 +671,13 @@ impl Step for CodegenBackend {
                    f.display());
         }
         let stamp = codegen_backend_stamp(builder, compiler, target, backend);
+
+        let llvm_crate = llvm_crate.to_str().unwrap();
         let codegen_backend = codegen_backend.to_str().unwrap();
-        t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
+        let mut stamp = t!(File::create(&stamp));
+        t!(stamp.write_all(codegen_backend.as_bytes()));
+        t!(stamp.write_all(&[0]));
+        t!(stamp.write_all(llvm_crate.as_bytes()));
     }
 }
 
@@ -750,28 +758,32 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
     // Here we're looking for the output dylib of the `CodegenBackend` step and
     // we're copying that into the `codegen-backends` folder.
     let dst = builder.sysroot_codegen_backends(target_compiler);
+    let sysroot_dst = builder.sysroot_libdir(target_compiler, target);
     t!(fs::create_dir_all(&dst));
-
+    t!(fs::create_dir_all(&sysroot_dst));
     if builder.config.dry_run {
         return;
     }
 
     for backend in builder.config.rust_codegen_backends.iter() {
         let stamp = codegen_backend_stamp(builder, compiler, target, *backend);
-        let mut dylib = String::new();
-        t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
-        let file = Path::new(&dylib);
-        let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_codegen_llvm-xxxxxx.so` to `librustc_codegen_llvm-llvm.so`
-        let target_filename = {
-            let dash = filename.find("-").unwrap();
-            let dot = filename.find(".").unwrap();
-            format!("{}-{}{}",
-                    &filename[..dash],
-                    backend,
-                    &filename[dot..])
-        };
-        builder.copy(&file, &dst.join(target_filename));
+        for file in builder.read_stamp_file(&stamp) {
+            let filename = file.file_name().unwrap().to_str().unwrap();
+            if filename.contains("rustc_llvm") {
+                builder.copy(&file, &sysroot_dst.join(filename));
+            } else {
+                // change `librustc_codegen_llvm-xxxxxx.so` to `librustc_codegen_llvm-llvm.so`
+                let target_filename = {
+                    let dash = filename.find("-").unwrap();
+                    let dot = filename.find(".").unwrap();
+                    format!("{}-{}{}",
+                            &filename[..dash],
+                            backend,
+                            &filename[dot..])
+                };
+                builder.copy(&file, &dst.join(target_filename));
+            }
+        }
     }
 }
 
