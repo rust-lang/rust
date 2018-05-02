@@ -80,18 +80,12 @@ use self::unix::{};
 
 // nested imports
 use foo::{
-    a,
-    b,
+    a, b,
     bar::{
-        baz,
-        foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz},
-        qux,
-        xxxxxxxxxxx,
-        yyyyyyyyyyyyy,
-        zzzzzzzzzzzzzzzz,
+        baz, foo::{a, b, cxxxxxxxxxxxxx, yyyyyyyyyyyyyy, zzzzzzzzzzzzzzzz}, qux, xxxxxxxxxxx,
+        yyyyyyyyyyyyy, zzzzzzzzzzzzzzzz,
     },
-    boo,
-    c,
+    boo, c,
 };
 
 use fooo::{
@@ -99,11 +93,7 @@ use fooo::{
         xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy,
         zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz,
     },
-    bar,
-    bar::*,
-    x,
-    y,
-    z,
+    bar, bar::*, x, y, z,
 };
 
 // nested imports with a single sub-tree.
