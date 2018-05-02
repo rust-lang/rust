@@ -59,12 +59,14 @@ endif
 
 ifdef IS_MSVC
 COMPILE_OBJ = $(CC) -c -Fo:`cygpath -w $(1)` $(2)
+COMPILE_OBJ_CXX = $(CXX) -c -Fo:`cygpath -w $(1)` $(2)
 NATIVE_STATICLIB_FILE = $(1).lib
 NATIVE_STATICLIB = $(TMPDIR)/$(call NATIVE_STATICLIB_FILE,$(1))
 OUT_EXE=-Fe:`cygpath -w $(TMPDIR)/$(call BIN,$(1))` \
 	-Fo:`cygpath -w $(TMPDIR)/$(1).obj`
 else
 COMPILE_OBJ = $(CC) -c -o $(1) $(2)
+COMPILE_OBJ_CXX = $(CXX) -c -o $(1) $(2)
 NATIVE_STATICLIB_FILE = lib$(1).a
 NATIVE_STATICLIB = $(call STATICLIB,$(1))
 OUT_EXE=-o $(TMPDIR)/$(1)
