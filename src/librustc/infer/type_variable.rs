@@ -442,6 +442,11 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
             // If both sides are *unknown*, it hardly matters, does it?
             (&TypeVariableValue::Unknown { universe: universe1 },
              &TypeVariableValue::Unknown { universe: universe2 }) =>  {
+                // If we unify two unbound variables, ?T and ?U, then whatever
+                // value they wind up taking (which must be the same value) must
+                // be nameable by both universes. Therefore, the resulting
+                // universe is the minimum of the two universes, because that is
+                // the one which contains the fewest names in scope.
                 let universe = cmp::min(universe1, universe2);
                 Ok(TypeVariableValue::Unknown { universe })
             }
