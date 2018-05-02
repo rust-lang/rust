@@ -12,8 +12,10 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
 use rustc::hir::{self, ImplPolarity};
-use rustc::traits::{Clause, Clauses, DomainGoal, Goal, PolyDomainGoal, ProgramClause,
-                    WhereClause, FromEnv, WellFormed};
+use rustc::traits::{
+    Clause, Clauses, DomainGoal, FromEnv, Goal, PolyDomainGoal, ProgramClause, WellFormed,
+    WhereClause,
+};
 use rustc::ty::query::Providers;
 use rustc::ty::{self, Slice, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
@@ -101,35 +103,48 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
             Predicate::RegionOutlives(predicate) => predicate.lower(),
             Predicate::TypeOutlives(predicate) => predicate.lower(),
             Predicate::Projection(predicate) => predicate.lower(),
-            Predicate::WellFormed(ty) => ty::Binder::dummy(
-                DomainGoal::WellFormed(WellFormed::Ty(*ty))
-            ),
-            Predicate::ObjectSafe(..) |
-            Predicate::ClosureKind(..) |
-            Predicate::Subtype(..) |
-            Predicate::ConstEvaluatable(..) => {
-                unimplemented!()
+            Predicate::WellFormed(ty) => {
+                ty::Binder::dummy(DomainGoal::WellFormed(WellFormed::Ty(*ty)))
             }
+            Predicate::ObjectSafe(..)
+            | Predicate::ClosureKind(..)
+            | Predicate::Subtype(..)
+            | Predicate::ConstEvaluatable(..) => unimplemented!(),
         }
     }
 }
 
-/// Transforms an existing goal into a FromEnv goal.
-///
 /// Used for lowered where clauses (see rustc guide).
 trait IntoFromEnvGoal {
+    // Transforms an existing goal into a FromEnv goal.
     fn into_from_env_goal(self) -> Self;
 }
 
-impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
+trait IntoWellFormedGoal {
+    fn into_wellformed_goal(self) -> Self;
+}
+
+impl<'tcx> IntoGoal for DomainGoal<'tcx> {
+    // Transforms an existing goal into a WellFormed goal.
     fn into_from_env_goal(self) -> DomainGoal<'tcx> {
         use self::WhereClause::*;
 
         match self {
-            DomainGoal::Holds(Implemented(trait_ref)) => DomainGoal::FromEnv(
-                FromEnv::Trait(trait_ref)
-            ),
+            DomainGoal::Holds(Implemented(trait_ref)) => {
+                DomainGoal::FromEnv(FromEnv::Trait(trait_ref))
+            }
             other => other,
+        }
+    }
+}
+
+impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
+    fn into_wellformed_goal(self) -> DomainGoal<'tcx> {
+        use self::DomainGoal::*;
+        match self {
+            Holds(wc_atom) => WellFormed(wc_atom),
+            WellFormed(..) | FromEnv(..) | WellFormedTy(..) | FromEnvTy(..) | Normalize(..)
+            | RegionOutlives(..) | TypeOutlives(..) => self,
         }
     }
 }
@@ -230,7 +245,7 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // `Implemented(Self: Trait<P1..Pn>)`
     let impl_trait: DomainGoal = trait_pred.lower();
 
-     // `FromEnv(Self: Trait<P1..Pn>)`
+    // `FromEnv(Self: Trait<P1..Pn>)`
     let from_env_goal = impl_trait.into_from_env_goal().into_goal();
     let hypotheses = tcx.intern_goals(&[from_env_goal]);
 
@@ -262,10 +277,50 @@ fn program_clauses_for_trait<'a, 'tcx>(
             goal: goal.into_from_env_goal(),
             hypotheses,
         }))
+        .map(|wc| implied_bound_from_trait(tcx, trait_pred, wc));
+    let wellformed_clauses = where_clauses[1..]
+        .into_iter()
+        .map(|wc| wellformed_from_bound(tcx, trait_pred, wc));
+    tcx.mk_clauses(
+        clauses
+            .chain(implied_bound_clauses)
+            .chain(wellformed_clauses),
+    )
+}
 
-        .map(Clause::ForAll);
+fn wellformed_from_bound<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_pred: ty::TraitPredicate<'tcx>,
+    where_clause: &ty::Predicate<'tcx>,
+) -> Clause<'tcx> {
+    // Rule WellFormed-TraitRef
+    //
+    // For each where clause WC:
+    // forall<Self, P1..Pn> {
+    //   WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
+    // }
 
-    tcx.mk_clauses(clauses.chain(implied_bound_clauses))
+    // WellFormed(Self: Trait<P1..Pn>)
+    let wellformed_trait = DomainGoal::WellFormed(WhereClauseAtom::Implemented(trait_pred));
+    // Impemented(Self: Trait<P1..Pn>)
+    let impl_trait = ty::Binder::dummy(DomainGoal::Holds(WhereClauseAtom::Implemented(trait_pred)));
+    // WellFormed(WC)
+    let wellformed_wc = where_clause
+        .lower()
+        .map_bound(|wc| wc.into_wellformed_goal());
+    // Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
+    let mut where_clauses = vec![impl_trait];
+    where_clauses.push(wellformed_wc);
+    Clause::ForAll(where_clause.lower().map_bound(|_| {
+        ProgramClause {
+            goal: wellformed_trait,
+            hypotheses: tcx.mk_goals(
+                where_clauses
+                    .into_iter()
+                    .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+            ),
+        }
+    }))
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
@@ -307,7 +362,6 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
-
     // Rule WellFormed-Type
     //
     // `struct Ty<P1..Pn> where WC1, ..., WCm`
@@ -328,7 +382,10 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     let well_formed = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
         hypotheses: tcx.mk_goals(
-            where_clauses.iter().cloned().map(|wc| Goal::from_poly_domain_goal(wc, tcx))
+            where_clauses
+                .iter()
+                .cloned()
+                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
         ),
     };
 
@@ -459,7 +516,8 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
             }
 
             if let Some(clauses) = clauses {
-                let mut err = self.tcx
+                let mut err = self
+                    .tcx
                     .sess
                     .struct_span_err(attr.span, "program clause dump");
 
