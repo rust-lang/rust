@@ -69,13 +69,16 @@ impl ExcessivePrecision {
     fn check(&self, sym: &Symbol, fty: &FloatTy) -> Option<String> {
         let max = max_digits(fty);
         let sym_str = sym.as_str();
-        let formatter = FloatFormat::new(&sym_str);
-        let digits = count_digits(&sym_str);
+        if dot_zero_exclusion(&sym_str) {
+            return None
+        }
         // Try to bail out if the float is for sure fine.
         // If its within the 2 decimal digits of being out of precision we
         // check if the parsed representation is the same as the string
         // since we'll need the truncated string anyway.
+        let digits = count_digits(&sym_str);
         if digits > max as usize {
+            let formatter = FloatFormat::new(&sym_str);
             let sr = match *fty {
                 FloatTy::F32 => sym_str.parse::<f32>().map(|f| formatter.format(f)),
                 FloatTy::F64 => sym_str.parse::<f64>().map(|f| formatter.format(f)),
@@ -86,11 +89,29 @@ impl ExcessivePrecision {
             if sym_str == s {
                 None
             } else {
-                Some(s)
+                let di = super::literal_representation::DigitInfo::new(&s, true);
+                Some(di.grouping_hint())
             }
         } else {
             None
         }
+    }
+}
+
+/// Should we exclude the float because it has a .0 suffix
+/// Ex 1_000_000_000.0
+fn dot_zero_exclusion(s: &str) -> bool {
+    if let Some(after_dec) = s.split('.').nth(1) {
+        let mut decpart = after_dec
+            .chars()
+            .take_while(|c| *c != 'e' || *c != 'E');
+
+        match decpart.next() {
+            Some('0') => decpart.count() == 0,
+            _ => false,
+        }
+    } else {
+        false
     }
 }
 
@@ -101,7 +122,9 @@ fn max_digits(fty: &FloatTy) -> u32 {
     }
 }
 
+/// Counts the digits excluding leading zeros
 fn count_digits(s: &str) -> usize {
+    // Note that s does not contain the f32/64 suffix
     s.chars()
         .filter(|c| *c != '-' || *c != '.')
         .take_while(|c| *c != 'e' || *c != 'E')
