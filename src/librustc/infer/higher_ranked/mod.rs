@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // First, we instantiate each bound region in the matcher
             // with a skolemized region.
             let ((a_match, a_value), skol_map) =
-                self.infcx.skolemize_late_bound_regions(a_pair, snapshot);
+                self.infcx.skolemize_late_bound_regions(a_pair);
 
             debug!("higher_ranked_match: a_match={:?}", a_match);
             debug!("higher_ranked_match: skol_map={:?}", skol_map);
