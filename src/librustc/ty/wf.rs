@@ -465,7 +465,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             def_id: trait_ref.def_id,
             substs: Substs::identity_for_item(self.infcx.tcx, trait_ref.def_id)
         };
-        predicates.predicates.push(identity_trait_ref.to_poly_trait_ref().to_predicate());
+        predicates.predicates.insert(0, identity_trait_ref.to_poly_trait_ref().to_predicate());
 
         debug!("nominal_trait_obligations: trait_ref={:?} predicates={:?}",
                trait_ref, predicates.predicates);

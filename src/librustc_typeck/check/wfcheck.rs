@@ -447,6 +447,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     let predicates = predicates.instantiate_identity(fcx.tcx);
     let predicates = fcx.normalize_associated_types_in(span, &predicates);
 
+    debug!("check_where_clauses: predicates={:?}", predicates.predicates);
     let obligations =
         predicates.predicates
                     .iter()
@@ -457,6 +458,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
                                                                 span));
 
     for obligation in obligations {
+        debug!("next obligation cause: {:?}", obligation.cause);
         fcx.register_predicate(obligation);
     }
 }
