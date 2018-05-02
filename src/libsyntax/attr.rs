@@ -1228,10 +1228,7 @@ impl LitKind {
 
         match *self {
             LitKind::Str(string, ast::StrStyle::Cooked) => {
-                let mut escaped = String::new();
-                for ch in string.as_str().chars() {
-                    escaped.extend(ch.escape_unicode());
-                }
+                let escaped = string.as_str().escape_default();
                 Token::Literal(token::Lit::Str_(Symbol::intern(&escaped)), None)
             }
             LitKind::Str(string, ast::StrStyle::Raw(n)) => {

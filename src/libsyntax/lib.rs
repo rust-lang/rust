@@ -25,6 +25,7 @@
 #![feature(non_exhaustive)]
 #![feature(const_atomic_usize_new)]
 #![feature(rustc_attrs)]
+#![feature(str_escape)]
 
 #![recursion_limit="256"]
 
