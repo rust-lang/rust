@@ -30,7 +30,7 @@ impl<'gcx, 'tcx> RegionInferenceContext<'tcx> {
                     &substs.substs[..]
                 ));
             }
-            DefiningTy::Generator(def_id, substs, interior) => {
+            DefiningTy::Generator(def_id, substs, interior, _) => {
                 err.note(&format!(
                     "defining type: {:?} with closure substs {:#?} and interior {:?}",
                     def_id,

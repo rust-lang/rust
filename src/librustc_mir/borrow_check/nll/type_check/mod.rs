@@ -528,7 +528,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }),
                     }
                 }
-                ty::TyGenerator(def_id, substs, _) => {
+                ty::TyGenerator(def_id, substs, _, _) => {
                     // Try pre-transform fields first (upvars and current state)
                     if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field.index()) {
                         return Ok(ty);
@@ -1254,7 +1254,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }),
                 }
             }
-            AggregateKind::Generator(def_id, substs, _) => {
+            AggregateKind::Generator(def_id, substs, _, _) => {
                 // Try pre-transform fields first (upvars and current state)
                 if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field_index) {
                     Ok(ty)
@@ -1497,7 +1497,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
             }
 
-            AggregateKind::Generator(def_id, substs, _) => {
+            AggregateKind::Generator(def_id, substs, _, _) => {
                 tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
             }
 

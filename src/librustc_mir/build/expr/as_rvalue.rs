@@ -185,12 +185,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars, interior } => { // see (*) above
+            ExprKind::Closure { closure_id, substs, upvars, interior } => {
+                // see (*) above
                 let mut operands: Vec<_> =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                let result = if let Some(interior) = interior {
+                let result = if let Some((interior, movability)) = interior {
                     // Add the state operand since it follows the upvars in the generator
                     // struct. See librustc_mir/transform/generator.rs for more details.
                     operands.push(Operand::Constant(box Constant {
@@ -203,7 +204,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             }),
                         },
                     }));
-                    box AggregateKind::Generator(closure_id, substs, interior)
+                    box AggregateKind::Generator(closure_id, substs, interior, movability)
                 } else {
                     box AggregateKind::Closure(closure_id, substs)
                 };

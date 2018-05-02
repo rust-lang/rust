@@ -2453,9 +2453,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_generator(self,
                         id: DefId,
                         closure_substs: ClosureSubsts<'tcx>,
-                        interior: GeneratorInterior<'tcx>)
+                        interior: GeneratorInterior<'tcx>,
+                        movability: hir::GeneratorMovability)
                         -> Ty<'tcx> {
-        self.mk_ty(TyGenerator(id, closure_substs, interior))
+        self.mk_ty(TyGenerator(id, closure_substs, interior, movability))
     }
 
     pub fn mk_generator_witness(self, types: ty::Binder<&'tcx Slice<Ty<'tcx>>>) -> Ty<'tcx> {

@@ -415,8 +415,8 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
-        (&ty::TyGenerator(a_id, a_substs, a_interior),
-         &ty::TyGenerator(b_id, b_substs, b_interior))
+        (&ty::TyGenerator(a_id, a_substs, a_interior, movability),
+         &ty::TyGenerator(b_id, b_substs, b_interior, _))
             if a_id == b_id =>
         {
             // All TyGenerator types with the same id represent
@@ -424,7 +424,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             // all of their regions should be equated.
             let substs = relation.relate(&a_substs, &b_substs)?;
             let interior = relation.relate(&a_interior, &b_interior)?;
-            Ok(tcx.mk_generator(a_id, substs, interior))
+            Ok(tcx.mk_generator(a_id, substs, interior, movability))
         }
 
         (&ty::TyGeneratorWitness(a_types), &ty::TyGeneratorWitness(b_types)) =>
@@ -618,9 +618,8 @@ impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
                            -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        assert_eq!(a.movable, b.movable);
         let witness = relation.relate(&a.witness, &b.witness)?;
-        Ok(ty::GeneratorInterior { witness, movable: a.movable })
+        Ok(ty::GeneratorInterior { witness })
     }
 }
 

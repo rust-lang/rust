@@ -472,7 +472,9 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let closure_ty = cx.tables().expr_ty(expr);
             let (def_id, substs, interior) = match closure_ty.sty {
                 ty::TyClosure(def_id, substs) => (def_id, substs, None),
-                ty::TyGenerator(def_id, substs, interior) => (def_id, substs, Some(interior)),
+                ty::TyGenerator(def_id, substs, interior, movability) =>{
+                    (def_id, substs, Some((interior, movability)))
+                }
                 _ => {
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }

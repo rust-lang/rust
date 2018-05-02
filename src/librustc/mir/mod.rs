@@ -1641,7 +1641,7 @@ pub enum AggregateKind<'tcx> {
     Adt(&'tcx AdtDef, usize, &'tcx Substs<'tcx>, Option<usize>),
 
     Closure(DefId, ClosureSubsts<'tcx>),
-    Generator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
+    Generator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>, hir::GeneratorMovability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1804,7 +1804,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }),
 
-                    AggregateKind::Generator(def_id, _, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Generator(def_id, _, _, _) => ty::tls::with(|tcx| {
                         if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
                             let name = format!("[generator@{:?}]", tcx.hir.span(node_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
@@ -2375,10 +2375,11 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                         AggregateKind::Adt(def, v, substs.fold_with(folder), n),
                     AggregateKind::Closure(id, substs) =>
                         AggregateKind::Closure(id, substs.fold_with(folder)),
-                    AggregateKind::Generator(id, substs, interior) =>
+                    AggregateKind::Generator(id, substs, interior, movablity) =>
                         AggregateKind::Generator(id,
                                                  substs.fold_with(folder),
-                                                 interior.fold_with(folder)),
+                                                 interior.fold_with(folder),
+                                                 movablity),
                 };
                 Aggregate(kind, fields.fold_with(folder))
             }
@@ -2405,7 +2406,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                     AggregateKind::Tuple => false,
                     AggregateKind::Adt(_, _, substs, _) => substs.visit_with(visitor),
                     AggregateKind::Closure(_, substs) => substs.visit_with(visitor),
-                    AggregateKind::Generator(_, substs, interior) => substs.visit_with(visitor) ||
+                    AggregateKind::Generator(_, substs, interior, _) => substs.visit_with(visitor) ||
                         interior.visit_with(visitor),
                 }) || fields.visit_with(visitor)
             }

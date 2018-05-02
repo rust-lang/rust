@@ -2280,7 +2280,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 substs.upvar_tys(def_id, self.tcx()).collect()
             }
 
-            ty::TyGenerator(def_id, ref substs, interior) => {
+            ty::TyGenerator(def_id, ref substs, interior, _) => {
                 substs.upvar_tys(def_id, self.tcx()).chain(iter::once(interior.witness)).collect()
             }
 
@@ -2756,7 +2756,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // type/region parameters
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyGenerator(id, substs, _) => (id, substs),
+            ty::TyGenerator(id, substs, _, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation)
         };
 

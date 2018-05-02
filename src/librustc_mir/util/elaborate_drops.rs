@@ -787,7 +787,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             // This should only happen for the self argument on the resume function.
             // It effetively only contains upvars until the generator transformation runs.
             // See librustc_mir/transform/generator.rs for more details.
-            ty::TyGenerator(def_id, substs, _) => {
+            ty::TyGenerator(def_id, substs, _, _) => {
                 let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
                 self.open_drop_for_tuple(&tys)
             }

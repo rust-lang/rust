@@ -1009,7 +1009,10 @@ struct GeneratorTypes<'tcx> {
     yield_ty: ty::Ty<'tcx>,
 
     /// Types that are captured (see `GeneratorInterior` for more).
-    interior: ty::GeneratorInterior<'tcx>
+    interior: ty::GeneratorInterior<'tcx>,
+
+    /// Indicates if the generator is movable or static (immovable)
+    movability: hir::GeneratorMovability,
 }
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
@@ -1085,12 +1088,13 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator.is_some() && body.is_generator {
         let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        let interior = ty::GeneratorInterior {
-            witness,
-            movable: can_be_generator.unwrap() == hir::GeneratorMovability::Movable,
-        };
+        let interior = ty::GeneratorInterior { witness };
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
-        Some(GeneratorTypes { yield_ty: fcx.yield_ty.unwrap(), interior: interior })
+        Some(GeneratorTypes {
+            yield_ty: fcx.yield_ty.unwrap(),
+            interior: interior,
+            movability: can_be_generator.unwrap(),
+        })
     } else {
         None
     };

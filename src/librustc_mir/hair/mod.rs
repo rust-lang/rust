@@ -268,7 +268,7 @@ pub enum ExprKind<'tcx> {
         closure_id: DefId,
         substs: ClosureSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
-        interior: Option<GeneratorInterior<'tcx>>,
+        interior: Option<(GeneratorInterior<'tcx>, hir::GeneratorMovability)>,
     },
     Literal {
         literal: Literal<'tcx>,

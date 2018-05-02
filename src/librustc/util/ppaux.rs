@@ -1110,9 +1110,9 @@ define_print! {
                     })
                 }
                 TyStr => write!(f, "str"),
-                TyGenerator(did, substs, interior) => ty::tls::with(|tcx| {
+                TyGenerator(did, substs, interior, movability) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
-                    if interior.movable {
+                    if movability == hir::GeneratorMovability::Movable {
                         write!(f, "[generator")?;
                     } else {
                         write!(f, "[static generator")?;

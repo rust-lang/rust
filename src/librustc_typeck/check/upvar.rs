@@ -110,7 +110,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Extract the type of the closure.
         let (closure_def_id, closure_substs) = match self.node_ty(closure_hir_id).sty {
-            ty::TyClosure(def_id, substs) | ty::TyGenerator(def_id, substs, _) => (def_id, substs),
+            ty::TyClosure(def_id, substs) |
+            ty::TyGenerator(def_id, substs, _, _) => (def_id, substs),
             ref t => {
                 span_bug!(
                     span,

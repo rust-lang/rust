@@ -518,7 +518,7 @@ for ::middle::const_val::ErrKind<'gcx> {
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
 
-impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness, movable });
+impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness });
 
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
@@ -908,10 +908,11 @@ for ty::TypeVariants<'gcx>
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
-            TyGenerator(def_id, closure_substs, interior) => {
+            TyGenerator(def_id, closure_substs, interior, movability) => {
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
                 interior.hash_stable(hcx, hasher);
+                movability.hash_stable(hcx, hasher);
             }
             TyGeneratorWitness(types) => {
                 types.hash_stable(hcx, hasher)

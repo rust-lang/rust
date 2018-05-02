@@ -421,7 +421,7 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 sig.abi
             ))
         }
-        ty::TyGenerator(def_id, substs, _) => {
+        ty::TyGenerator(def_id, substs, _, _) => {
             let tcx = cx.tcx;
             let sig = substs.generator_poly_sig(def_id, cx.tcx);
 

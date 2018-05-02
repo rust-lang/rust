@@ -577,7 +577,7 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
             let upvar_tys = match closure_layout.ty.sty {
                 ty::TyClosure(def_id, substs) |
-                ty::TyGenerator(def_id, substs, _) => substs.upvar_tys(def_id, tcx),
+                ty::TyGenerator(def_id, substs, _, _) => substs.upvar_tys(def_id, tcx),
                 _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_layout.ty)
             };
 

@@ -116,7 +116,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let substs = ty::ClosureSubsts { substs };
         let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
-        if let Some(GeneratorTypes { yield_ty, interior }) = generator_types {
+        if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
@@ -127,7 +127,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 liberated_sig.output(),
                 substs.generator_return_ty(expr_def_id, self.tcx),
             );
-            return self.tcx.mk_generator(expr_def_id, substs, interior);
+            return self.tcx.mk_generator(expr_def_id, substs, interior, movability);
         }
 
         debug!(

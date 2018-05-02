@@ -418,11 +418,12 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
                     self.push(&format!("+ substs: {:#?}", substs));
                 }
 
-                AggregateKind::Generator(def_id, substs, interior) => {
+                AggregateKind::Generator(def_id, substs, interior, movability) => {
                     self.push(&format!("generator"));
                     self.push(&format!("+ def_id: {:?}", def_id));
                     self.push(&format!("+ substs: {:#?}", substs));
                     self.push(&format!("+ interior: {:?}", interior));
+                    self.push(&format!("+ movability: {:?}", movability));
                 }
 
                 _ => {}

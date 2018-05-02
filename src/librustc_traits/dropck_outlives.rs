@@ -193,7 +193,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
             .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
             .collect(),
 
-        ty::TyGenerator(def_id, substs, _interior) => {
+        ty::TyGenerator(def_id, substs, _interior, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when generator yields
             // (and is subsequently dropped).

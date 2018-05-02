@@ -591,7 +591,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }
-        ty::TyGenerator(def_id, substs, _) => {
+        ty::TyGenerator(def_id, substs, _, _) => {
             let upvar_tys : Vec<_> = substs.field_tys(def_id, cx.tcx).map(|t| {
                 cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t)
             }).collect();

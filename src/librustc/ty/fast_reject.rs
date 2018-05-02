@@ -90,7 +90,7 @@ pub fn simplify_type<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         ty::TyClosure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
-        ty::TyGenerator(def_id, _, _) => {
+        ty::TyGenerator(def_id, _, _, _) => {
             Some(GeneratorSimplifiedType(def_id))
         }
         ty::TyGeneratorWitness(ref tys) => {

@@ -313,7 +313,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorInterior<'a> {
     type Lifted = ty::GeneratorInterior<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.witness).map(|witness| {
-            ty::GeneratorInterior { witness, movable: self.movable }
+            ty::GeneratorInterior { witness }
         })
     }
 }
@@ -867,8 +867,12 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyRef(ref r, tm) => {
                 ty::TyRef(r.fold_with(folder), tm.fold_with(folder))
             }
-            ty::TyGenerator(did, substs, interior) => {
-                ty::TyGenerator(did, substs.fold_with(folder), interior.fold_with(folder))
+            ty::TyGenerator(did, substs, interior, movability) => {
+                ty::TyGenerator(
+                    did,
+                    substs.fold_with(folder),
+                    interior.fold_with(folder),
+                    movability)
             }
             ty::TyGeneratorWitness(types) => ty::TyGeneratorWitness(types.fold_with(folder)),
             ty::TyClosure(did, substs) => ty::TyClosure(did, substs.fold_with(folder)),
@@ -902,7 +906,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::TyFnDef(_, substs) => substs.visit_with(visitor),
             ty::TyFnPtr(ref f) => f.visit_with(visitor),
             ty::TyRef(r, ref tm) => r.visit_with(visitor) || tm.visit_with(visitor),
-            ty::TyGenerator(_did, ref substs, ref interior) => {
+            ty::TyGenerator(_did, ref substs, ref interior, _) => {
                 substs.visit_with(visitor) || interior.visit_with(visitor)
             }
             ty::TyGeneratorWitness(ref types) => types.visit_with(visitor),
@@ -981,7 +985,7 @@ BraceStructTypeFoldableImpl! {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for ty::GeneratorInterior<'tcx> {
-        witness, movable,
+        witness,
     }
 }
 

@@ -139,7 +139,7 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>),
+    TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>, hir::GeneratorMovability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -420,7 +420,6 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorInterior<'tcx> {
     pub witness: Ty<'tcx>,
-    pub movable: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1605,7 +1604,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyAdt(_, substs) | TyAnon(_, substs) => {
                 substs.regions().collect()
             }
-            TyClosure(_, ref substs) | TyGenerator(_, ref substs, _) => {
+            TyClosure(_, ref substs) | TyGenerator(_, ref substs, _, _) => {
                 substs.substs.regions().collect()
             }
             TyProjection(ref data) => {
