@@ -15,7 +15,6 @@ use dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use dataflow::{drop_flag_effects_for_location, on_lookup_result_bits};
 use dataflow::MoveDataParamEnv;
 use dataflow::{self, do_dataflow, DebugFormatted};
-use rustc::hir;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::middle::const_val::ConstVal;
@@ -42,14 +41,7 @@ impl MirPass for ElaborateDrops {
     {
         debug!("elaborate_drops({:?} @ {:?})", src, mir.span);
 
-        // Don't run on constant MIR, because trans might not be able to
-        // evaluate the modified MIR.
-        // FIXME(eddyb) Remove check after miri is merged.
         let id = tcx.hir.as_local_node_id(src.def_id).unwrap();
-        match (tcx.hir.body_owner_kind(id), src.promoted) {
-            (hir::BodyOwnerKind::Fn, None) => {},
-            _ => return
-        }
         let param_env = tcx.param_env(src.def_id).with_reveal_all();
         let move_data = MoveData::gather_moves(mir, tcx).unwrap();
         let elaborate_patch = {
