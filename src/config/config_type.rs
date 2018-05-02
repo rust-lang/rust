@@ -130,7 +130,7 @@ macro_rules! create_config {
             pub fn $i(&mut self, value: $ty) {
                 (self.0).$i.2 = value;
                 match stringify!($i) {
-                    "use_small_heuristics" => self.0.set_heuristics(),
+                    "max_width" | "use_small_heuristics" => self.0.set_heuristics(),
                     "license_template_path" => self.0.set_license_template(),
                     &_ => (),
                 }
@@ -292,7 +292,7 @@ macro_rules! create_config {
                 }
 
                 match key {
-                    "use_small_heuristics" => self.set_heuristics(),
+                    "max_width" | "use_small_heuristics" => self.set_heuristics(),
                     "license_template_path" => self.set_license_template(),
                     &_ => (),
                 }
