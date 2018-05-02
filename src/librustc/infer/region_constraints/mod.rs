@@ -851,6 +851,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             ty::ReVar(vid) => self.var_universe(vid),
             ty::ReLateBound(..) =>
                 bug!("universe(): encountered bound region {:?}", region),
+            ty::ReCanonical(..) =>
+                bug!("region_universe(): encountered canonical region {:?}", region),
         }
     }
 
