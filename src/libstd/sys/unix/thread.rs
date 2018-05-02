@@ -326,23 +326,20 @@ pub mod guard {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
             // stack overflow.
-            if cfg!(target_os = "netbsd") {
-                let result = mmap(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE,
-                                   MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-                if result != stackaddr || result == MAP_FAILED {
-                    panic!("failed to allocate a guard page");
-                }
-                let result = mprotect(stackaddr, PAGE_SIZE, 0);
+            // Systems which enforce strict PAX MPROTECT do not allow
+            // to mprotect() a mapping with less restrictive permissions
+            // than the initial mmap() used, so we mmap() here with
+            // read/write permissions and only then mprotect() it to
+            // no permissions at all. See issue #50313.
+            let result = mmap(stackaddr, PAGE_SIZE, PROT_READ | PROT_WRITE,
+                              MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
+            if result != stackaddr || result == MAP_FAILED {
+                panic!("failed to allocate a guard page");
+            }
 
-                if result != 0 {
-                    panic!("unable to protect the guard page");
-                }
-            } else {
-                let result = mmap(stackaddr, PAGE_SIZE, PROT_NONE,
-                                  MAP_PRIVATE | MAP_ANON | MAP_FIXED, -1, 0);
-                if result != stackaddr || result == MAP_FAILED {
-                    panic!("failed to allocate a guard page");
-                }
+            let result = mprotect(stackaddr, PAGE_SIZE, PROT_NONE);
+            if result != 0 {
+                panic!("failed to protect the guard page");
             }
 
             let guardaddr = stackaddr as usize;
