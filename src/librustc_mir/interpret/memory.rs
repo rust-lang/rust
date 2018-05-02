@@ -11,7 +11,7 @@ use rustc::middle::const_val::{ConstVal, ErrKind};
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, Value, Pointer,
-                            EvalResult, PrimVal, EvalErrorKind, GlobalId};
+                            EvalResult, PrimVal, EvalErrorKind, GlobalId, AllocType};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 
 use super::{EvalContext, Machine};
@@ -72,7 +72,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> MemoryPointer {
-        let id = self.tcx.interpret_interner.create_fn_alloc(instance);
+        let id = self.tcx.alloc_map.lock().create_fn_alloc(instance);
         MemoryPointer::new(id, Size::from_bytes(0))
     }
 
@@ -87,7 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         alloc: Allocation,
         kind: Option<MemoryKind<M::MemoryKinds>>,
     ) -> EvalResult<'tcx, AllocId> {
-        let id = self.tcx.interpret_interner.reserve();
+        let id = self.tcx.alloc_map.lock().reserve();
         M::add_lock(self, id);
         match kind {
             Some(kind @ MemoryKind::Stack) |
@@ -177,19 +177,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                     "uninitializedstatic".to_string(),
                     format!("{:?}", kind),
                 ))
-            } else if self.tcx.interpret_interner.get_fn(ptr.alloc_id).is_some() {
-                return err!(DeallocatedWrongMemoryKind(
-                    "function".to_string(),
-                    format!("{:?}", kind),
-                ))
-            } else if self.tcx.interpret_interner.get_alloc(ptr.alloc_id).is_some() {
-                return err!(DeallocatedWrongMemoryKind(
-                    "static".to_string(),
-                    format!("{:?}", kind),
-                ))
             } else {
-                return err!(DoubleFree)
-            },
+                return match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
+                    Some(AllocType::Function(..)) => err!(DeallocatedWrongMemoryKind(
+                        "function".to_string(),
+                        format!("{:?}", kind),
+                    )),
+                    Some(AllocType::Static(..)) |
+                    Some(AllocType::Memory(..)) => err!(DeallocatedWrongMemoryKind(
+                        "static".to_string(),
+                        format!("{:?}", kind),
+                    )),
+                    None => err!(DoubleFree)
+                }
+            }
         };
 
         let alloc_kind = self.alloc_kind.remove(&ptr.alloc_id).expect("alloc_map out of sync with alloc_kind");
@@ -312,19 +313,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Some(alloc) => Ok(alloc),
                 None => {
                     // static alloc?
-                    if let Some(a) = self.tcx.interpret_interner.get_alloc(id) {
-                        return Ok(a);
+                    match self.tcx.alloc_map.lock().get(id) {
+                        Some(AllocType::Memory(mem)) => Ok(mem),
+                        Some(AllocType::Function(..)) => {
+                            Err(EvalErrorKind::DerefFunctionPointer.into())
+                        }
+                        Some(AllocType::Static(did)) => {
+                            self.const_eval_static(did)
+                        }
+                        None => Err(EvalErrorKind::DanglingPointerDeref.into()),
                     }
-                    // static variable?
-                    if let Some(did) = self.tcx.interpret_interner.get_static(id) {
-                        return self.const_eval_static(did);
-                    }
-                    // otherwise return an error
-                    Err(if self.tcx.interpret_interner.get_fn(id).is_some() {
-                        EvalErrorKind::DerefFunctionPointer.into()
-                    } else {
-                        EvalErrorKind::DanglingPointerDeref.into()
-                    })
                 },
             },
         }
@@ -342,12 +340,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Some(alloc) => Ok(alloc),
                 None => {
                     // no alloc or immutable alloc? produce an error
-                    if self.tcx.interpret_interner.get_alloc(id).is_some() {
-                        err!(ModifiedConstantMemory)
-                    } else if self.tcx.interpret_interner.get_fn(id).is_some() {
-                        err!(DerefFunctionPointer)
-                    } else {
-                        err!(DanglingPointerDeref)
+                    match self.tcx.alloc_map.lock().get(id) {
+                        Some(AllocType::Memory(..)) |
+                        Some(AllocType::Static(..)) => err!(ModifiedConstantMemory),
+                        Some(AllocType::Function(..)) => err!(DerefFunctionPointer),
+                        None => err!(DanglingPointerDeref),
                     }
                 },
             },
@@ -359,10 +356,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             return err!(InvalidFunctionPointer);
         }
         debug!("reading fn ptr: {}", ptr.alloc_id);
-        self.tcx
-            .interpret_interner
-            .get_fn(ptr.alloc_id)
-            .ok_or(EvalErrorKind::ExecuteMemory.into())
+        match self.tcx.alloc_map.lock().get(ptr.alloc_id) {
+            Some(AllocType::Function(instance)) => Ok(instance),
+            _ => Err(EvalErrorKind::ExecuteMemory.into()),
+        }
     }
 
     pub fn get_alloc_kind(&self, id: AllocId) -> Option<MemoryKind<M::MemoryKinds>> {
@@ -405,15 +402,20 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         Some(a) => (a, " (static in the process of initialization)".to_owned()),
                         None => {
                             // static alloc?
-                            match self.tcx.interpret_interner.get_alloc(id) {
-                                Some(a) => (a, "(immutable)".to_owned()),
-                                None => if let Some(func) = self.tcx.interpret_interner.get_fn(id) {
+                            match self.tcx.alloc_map.lock().get(id) {
+                                Some(AllocType::Memory(a)) => (a, "(immutable)".to_owned()),
+                                Some(AllocType::Function(func)) => {
                                     trace!("{} {}", msg, func);
                                     continue;
-                                } else {
+                                }
+                                Some(AllocType::Static(did)) => {
+                                    trace!("{} {:?}", msg, did);
+                                    continue;
+                                }
+                                None => {
                                     trace!("{} (deallocated)", msg);
                                     continue;
-                                },
+                                }
                             }
                         },
                     },
@@ -579,7 +581,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             // ensure llvm knows not to put this into immutable memroy
             alloc.runtime_mutability = mutability;
             let alloc = self.tcx.intern_const_alloc(alloc);
-            self.tcx.interpret_interner.intern_at_reserved(alloc_id, alloc);
+            self.tcx.alloc_map.lock().set_id_memory(alloc_id, alloc);
             // recurse into inner allocations
             for &alloc in alloc.relocations.values() {
                 self.mark_inner_allocation_initialized(alloc, mutability)?;

@@ -377,8 +377,9 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     ) -> EvalResult<'tcx, AllocId> {
         Ok(ecx
             .tcx
-            .interpret_interner
-            .cache_static(cid.instance.def_id()))
+            .alloc_map
+            .lock()
+            .intern_static(cid.instance.def_id()))
     }
 
     fn box_alloc<'a>(

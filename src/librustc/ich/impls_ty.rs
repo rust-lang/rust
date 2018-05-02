@@ -420,17 +420,6 @@ impl_stable_hash_for!(struct mir::interpret::MemoryPointer {
     offset
 });
 
-enum AllocDiscriminant {
-    Alloc,
-    Static,
-    Function,
-}
-impl_stable_hash_for!(enum self::AllocDiscriminant {
-    Alloc,
-    Static,
-    Function
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     fn hash_stable<W: StableHasherResult>(
         &self,
@@ -440,27 +429,26 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
         ty::tls::with_opt(|tcx| {
             trace!("hashing {:?}", *self);
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
-            if let Some(def_id) = tcx.interpret_interner.get_static(*self) {
-                AllocDiscriminant::Static.hash_stable(hcx, hasher);
-                trace!("hashing {:?} as static {:?}", *self, def_id);
-                def_id.hash_stable(hcx, hasher);
-            } else if let Some(alloc) = tcx.interpret_interner.get_alloc(*self) {
-                AllocDiscriminant::Alloc.hash_stable(hcx, hasher);
-                if hcx.alloc_id_recursion_tracker.insert(*self) {
-                    trace!("hashing {:?} as alloc {:#?}", *self, alloc);
-                    alloc.hash_stable(hcx, hasher);
-                    assert!(hcx.alloc_id_recursion_tracker.remove(self));
-                } else {
-                    trace!("skipping hashing of {:?} due to recursion", *self);
-                }
-            } else if let Some(inst) = tcx.interpret_interner.get_fn(*self) {
-                trace!("hashing {:?} as fn {:#?}", *self, inst);
-                AllocDiscriminant::Function.hash_stable(hcx, hasher);
-                inst.hash_stable(hcx, hasher);
-            } else {
-                bug!("no allocation for {}", self);
-            }
+            let alloc_kind = tcx.alloc_map.lock().get(*self).expect("no value for AllocId");
+            alloc_kind.hash_stable(hcx, hasher);
         });
+    }
+}
+
+impl<'a, 'gcx, M: HashStable<StableHashingContext<'a>>> HashStable<StableHashingContext<'a>>
+for mir::interpret::AllocType<'gcx, M> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        use mir::interpret::AllocType::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+
+        match *self {
+            Function(instance) => instance.hash_stable(hcx, hasher),
+            Static(def_id) => def_id.hash_stable(hcx, hasher),
+            Memory(ref mem) => mem.hash_stable(hcx, hasher),
+        }
     }
 }
 
