@@ -32,6 +32,7 @@ use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
 use mir::{self, Mir, interpret};
+use mir::interpret::Allocation;
 use ty::subst::{Kind, Substs, Subst};
 use ty::ReprOptions;
 use ty::Instance;
@@ -914,6 +915,9 @@ pub struct GlobalCtxt<'tcx> {
 
     stability_interner: Lock<FxHashSet<&'tcx attr::Stability>>,
 
+    /// Stores the value of constants (and deduplicates the actual memory)
+    allocation_interner: Lock<FxHashSet<&'tcx Allocation>>,
+
     pub interpret_interner: InterpretInterner<'tcx>,
 
     layout_interner: Lock<FxHashSet<&'tcx LayoutDetails>>,
@@ -937,9 +941,6 @@ pub struct InterpretInterner<'tcx> {
 
 #[derive(Debug, Default)]
 struct InterpretInternerInner<'tcx> {
-    /// Stores the value of constants (and deduplicates the actual memory)
-    allocs: FxHashSet<&'tcx interpret::Allocation>,
-
     /// Allows obtaining function instance handles via a unique identifier
     functions: FxHashMap<interpret::AllocId, Instance<'tcx>>,
 
@@ -1104,9 +1105,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn intern_const_alloc(
         self,
-        alloc: interpret::Allocation,
-    ) -> &'gcx interpret::Allocation {
-        let allocs = &mut self.interpret_interner.inner.borrow_mut().allocs;
+        alloc: Allocation,
+    ) -> &'gcx Allocation {
+        let allocs = &mut self.allocation_interner.borrow_mut();
         if let Some(alloc) = allocs.get(&alloc) {
             return alloc;
         }
@@ -1277,6 +1278,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data_layout,
             layout_interner: Lock::new(FxHashSet()),
             stability_interner: Lock::new(FxHashSet()),
+            allocation_interner: Lock::new(FxHashSet()),
             interpret_interner: Default::default(),
             tx_to_llvm_workers: Lock::new(tx),
             output_filenames: Arc::new(output_filenames.clone()),
@@ -2007,7 +2009,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
-        println!("Interpret interner: #{}", self.interpret_interner.inner.borrow().allocs.len());
+        println!("Allocation interner: #{}", self.allocation_interner.borrow().len());
         println!("Layout interner: #{}", self.layout_interner.borrow().len());
     }
 }
