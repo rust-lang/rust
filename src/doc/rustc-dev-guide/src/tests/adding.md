@@ -150,7 +150,7 @@ source.
 
 * `min-{gdb,lldb}-version`
 * `min-llvm-version`
-* `must-compile-successfully` for UI tests, indicates that the test is
+* `compile-pass` for UI tests, indicates that the test is
   supposed to compile, as opposed to the default where the test is
   supposed to error out.
 * `compile-flags` passes extra command-line args to the compiler,
@@ -258,7 +258,7 @@ can also make UI tests where compilation is expected to succeed, and
 you can even run the resulting program. Just add one of the following
 [header commands](#header_commands):
 
-- `// must-compile-successfully` -- compilation should succeed but do
+- `// compile-pass` -- compilation should succeed but do
   not run the resulting binary
 - `// run-pass` -- compilation should succeed and we should run the
   resulting binary
