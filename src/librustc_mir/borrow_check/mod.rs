@@ -835,10 +835,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tys.iter().cloned().enumerate()
                     .for_each(|field| drop_field(self, field));
             }
-            // Closures and generators also have disjoint fields, but they are only
-            // directly accessed in the body of the closure/generator.
+            // Closures also have disjoint fields, but they are only
+            // directly accessed in the body of the closure.
             ty::TyClosure(def, substs)
-            | ty::TyGenerator(def, substs, ..)
+                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+            => {
+                substs.upvar_tys(def, self.tcx).enumerate()
+                    .for_each(|field| drop_field(self, field));
+            }
+            // Generators also have disjoint fields, but they are only
+            // directly accessed in the body of the generator.
+            ty::TyGenerator(def, substs, _)
                 if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
             => {
                 substs.upvar_tys(def, self.tcx).enumerate()

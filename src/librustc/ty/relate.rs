@@ -415,16 +415,15 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_dynamic(relation.relate(a_obj, b_obj)?, region_bound))
         }
 
-        (&ty::TyGenerator(a_id, a_substs, a_interior, movability),
-         &ty::TyGenerator(b_id, b_substs, b_interior, _))
+        (&ty::TyGenerator(a_id, a_substs, movability),
+         &ty::TyGenerator(b_id, b_substs, _))
             if a_id == b_id =>
         {
             // All TyGenerator types with the same id represent
             // the (anonymous) type of the same generator expression. So
             // all of their regions should be equated.
             let substs = relation.relate(&a_substs, &b_substs)?;
-            let interior = relation.relate(&a_interior, &b_interior)?;
-            Ok(tcx.mk_generator(a_id, substs, interior, movability))
+            Ok(tcx.mk_generator(a_id, substs, movability))
         }
 
         (&ty::TyGeneratorWitness(a_types), &ty::TyGeneratorWitness(b_types)) =>
@@ -446,7 +445,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let substs = relation.relate(&a_substs, &b_substs)?;
-            Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
+            Ok(tcx.mk_closure(a_id, substs))
         }
 
         (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
@@ -607,19 +606,19 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         let substs = relate_substs(relation, None, a.substs, b.substs)?;
-        Ok(ty::ClosureSubsts { substs: substs })
+        Ok(ty::ClosureSubsts { substs })
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::GeneratorInterior<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::GeneratorSubsts<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::GeneratorInterior<'tcx>,
-                           b: &ty::GeneratorInterior<'tcx>)
-                           -> RelateResult<'tcx, ty::GeneratorInterior<'tcx>>
+                           a: &ty::GeneratorSubsts<'tcx>,
+                           b: &ty::GeneratorSubsts<'tcx>)
+                           -> RelateResult<'tcx, ty::GeneratorSubsts<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let witness = relation.relate(&a.witness, &b.witness)?;
-        Ok(ty::GeneratorInterior { witness })
+        let substs = relate_substs(relation, None, a.substs, b.substs)?;
+        Ok(ty::GeneratorSubsts { substs })
     }
 }
 

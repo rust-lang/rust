@@ -208,7 +208,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, ty::GeneratorInterior<'tcx>)>>,
+    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
 
     // Anonymized types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -1009,7 +1009,7 @@ struct GeneratorTypes<'tcx> {
     yield_ty: ty::Ty<'tcx>,
 
     /// Types that are captured (see `GeneratorInterior` for more).
-    interior: ty::GeneratorInterior<'tcx>,
+    interior: ty::Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable)
     movability: hir::GeneratorMovability,
@@ -1087,12 +1087,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator.is_some() && body.is_generator {
-        let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        let interior = ty::GeneratorInterior { witness };
+        let interior = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
         Some(GeneratorTypes {
             yield_ty: fcx.yield_ty.unwrap(),
-            interior: interior,
+            interior,
             movability: can_be_generator.unwrap(),
         })
     } else {

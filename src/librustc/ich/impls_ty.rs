@@ -517,8 +517,7 @@ for ::middle::const_val::ErrKind<'gcx> {
 }
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
-
-impl_stable_hash_for!(struct ty::GeneratorInterior<'tcx> { witness });
+impl_stable_hash_for!(struct ty::GeneratorSubsts<'tcx> { substs });
 
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
@@ -908,10 +907,9 @@ for ty::TypeVariants<'gcx>
                 def_id.hash_stable(hcx, hasher);
                 closure_substs.hash_stable(hcx, hasher);
             }
-            TyGenerator(def_id, closure_substs, interior, movability) => {
+            TyGenerator(def_id, generator_substs, movability) => {
                 def_id.hash_stable(hcx, hasher);
-                closure_substs.hash_stable(hcx, hasher);
-                interior.hash_stable(hcx, hasher);
+                generator_substs.hash_stable(hcx, hasher);
                 movability.hash_stable(hcx, hasher);
             }
             TyGeneratorWitness(types) => {
@@ -1316,11 +1314,11 @@ for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContex
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         let traits::VtableGeneratorData {
-            closure_def_id,
+            generator_def_id,
             substs,
             ref nested,
         } = *self;
-        closure_def_id.hash_stable(hcx, hasher);
+        generator_def_id.hash_stable(hcx, hasher);
         substs.hash_stable(hcx, hasher);
         nested.hash_stable(hcx, hasher);
     }

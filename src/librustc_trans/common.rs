@@ -421,9 +421,9 @@ pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 sig.abi
             ))
         }
-        ty::TyGenerator(def_id, substs, _, _) => {
+        ty::TyGenerator(def_id, substs, _) => {
             let tcx = cx.tcx;
-            let sig = substs.generator_poly_sig(def_id, cx.tcx);
+            let sig = substs.poly_sig(def_id, cx.tcx);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);

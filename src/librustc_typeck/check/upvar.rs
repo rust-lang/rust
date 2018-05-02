@@ -46,7 +46,7 @@ use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
 use rustc::infer::UpvarRegion;
 use syntax::ast;
 use syntax_pos::Span;
@@ -74,11 +74,11 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for InferBorrowKindVisitor<'a, 'gcx, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'gcx hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, body_id, _, gen) => {
+            hir::ExprClosure(cc, _, body_id, _, _) => {
                 let body = self.fcx.tcx.hir.body(body_id);
                 self.visit_body(body);
                 self.fcx
-                    .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc, gen);
+                    .analyze_closure(expr.id, expr.hir_id, expr.span, body, cc);
             }
 
             _ => {}
@@ -96,7 +96,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         body: &hir::Body,
         capture_clause: hir::CaptureClause,
-        gen: Option<hir::GeneratorMovability>,
     ) {
         /*!
          * Analysis starting point.
@@ -109,9 +108,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         // Extract the type of the closure.
-        let (closure_def_id, closure_substs) = match self.node_ty(closure_hir_id).sty {
-            ty::TyClosure(def_id, substs) |
-            ty::TyGenerator(def_id, substs, _, _) => (def_id, substs),
+        let (closure_def_id, substs) = match self.node_ty(closure_hir_id).sty {
+            ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
+            ty::TyGenerator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
             ref t => {
                 span_bug!(
                     span,
@@ -122,10 +121,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let infer_kind = if gen.is_some() {
-            false
+        let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs{
+            if self.closure_kind(closure_def_id, closure_substs).is_none() {
+                Some(closure_substs)
+            } else {
+                None
+            }
         } else {
-            self.closure_kind(closure_def_id, closure_substs).is_none()
+            None
         };
 
         self.tcx.with_freevars(closure_node_id, |freevars| {
@@ -173,7 +176,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             &self.tables.borrow(),
         ).consume_body(body);
 
-        if infer_kind {
+        if let Some(closure_substs) = infer_kind {
             // Unify the (as yet unbound) type variable in the closure
             // substs with the kind we inferred.
             let inferred_kind = delegate.current_closure_kind;
@@ -209,14 +212,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Equate the type variables for the upvars with the actual types.
         let final_upvar_tys = self.final_upvar_tys(closure_node_id);
         debug!(
-            "analyze_closure: id={:?} closure_substs={:?} final_upvar_tys={:?}",
+            "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
             closure_node_id,
-            closure_substs,
+            substs,
             final_upvar_tys
         );
-        for (upvar_ty, final_upvar_ty) in closure_substs
-            .upvar_tys(closure_def_id, self.tcx)
-            .zip(final_upvar_tys)
+        for (upvar_ty, final_upvar_ty) in substs.upvar_tys(closure_def_id, self.tcx)
+                                                .zip(final_upvar_tys)
         {
             self.demand_suptype(span, upvar_ty, final_upvar_ty);
         }

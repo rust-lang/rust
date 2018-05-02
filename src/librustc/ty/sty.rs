@@ -139,7 +139,7 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    TyGenerator(DefId, ClosureSubsts<'tcx>, GeneratorInterior<'tcx>, hir::GeneratorMovability),
+    TyGenerator(DefId, GeneratorSubsts<'tcx>, hir::GeneratorMovability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -328,37 +328,6 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self.split(def_id, tcx).closure_sig_ty
     }
 
-    /// Returns the type representing the yield type of the generator.
-    pub fn generator_yield_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
-        self.closure_kind_ty(def_id, tcx)
-    }
-
-    /// Returns the type representing the return type of the generator.
-    pub fn generator_return_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
-        self.closure_sig_ty(def_id, tcx)
-    }
-
-    /// Return the "generator signature", which consists of its yield
-    /// and return types.
-    ///
-    /// NB. Some bits of the code prefers to see this wrapped in a
-    /// binder, but it never contains bound regions. Probably this
-    /// function should be removed.
-    pub fn generator_poly_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> PolyGenSig<'tcx> {
-        ty::Binder::dummy(self.generator_sig(def_id, tcx))
-    }
-
-    /// Return the "generator signature", which consists of its yield
-    /// and return types.
-    pub fn generator_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> GenSig<'tcx> {
-        ty::GenSig {
-            yield_ty: self.generator_yield_ty(def_id, tcx),
-            return_ty: self.generator_return_ty(def_id, tcx),
-        }
-    }
-}
-
-impl<'tcx> ClosureSubsts<'tcx> {
     /// Returns the closure kind for this closure; only usable outside
     /// of an inference context, because in that context we know that
     /// there are no type variables.
@@ -381,7 +350,84 @@ impl<'tcx> ClosureSubsts<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct GeneratorSubsts<'tcx> {
+    pub substs: &'tcx Substs<'tcx>,
+}
+
+struct SplitGeneratorSubsts<'tcx> {
+    yield_ty: Ty<'tcx>,
+    return_ty: Ty<'tcx>,
+    witness: Ty<'tcx>,
+    upvar_kinds: &'tcx [Kind<'tcx>],
+}
+
+impl<'tcx> GeneratorSubsts<'tcx> {
+    fn split(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> SplitGeneratorSubsts<'tcx> {
+        let generics = tcx.generics_of(def_id);
+        let parent_len = generics.parent_count();
+        SplitGeneratorSubsts {
+            yield_ty: self.substs.type_at(parent_len),
+            return_ty: self.substs.type_at(parent_len + 1),
+            witness: self.substs.type_at(parent_len + 2),
+            upvar_kinds: &self.substs[parent_len + 3..],
+        }
+    }
+
+    /// This describes the types that can be contained in a generator.
+    /// It will be a type variable initially and unified in the last stages of typeck of a body.
+    /// It contains a tuple of all the types that could end up on a generator frame.
+    /// The state transformation MIR pass may only produce layouts which mention types
+    /// in this tuple. Upvars are not counted here.
+    pub fn witness(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).witness
+    }
+
+    #[inline]
+    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'tcx
+    {
+        let SplitGeneratorSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
+        upvar_kinds.iter().map(|t| {
+            if let UnpackedKind::Type(ty) = t.unpack() {
+                ty
+            } else {
+                bug!("upvar should be type")
+            }
+        })
+    }
+
+    /// Returns the type representing the yield type of the generator.
+    pub fn yield_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).yield_ty
+    }
+
+    /// Returns the type representing the return type of the generator.
+    pub fn return_ty(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> Ty<'tcx> {
+        self.split(def_id, tcx).return_ty
+    }
+
+    /// Return the "generator signature", which consists of its yield
+    /// and return types.
+    ///
+    /// NB. Some bits of the code prefers to see this wrapped in a
+    /// binder, but it never contains bound regions. Probably this
+    /// function should be removed.
+    pub fn poly_sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> PolyGenSig<'tcx> {
+        ty::Binder::dummy(self.sig(def_id, tcx))
+    }
+
+    /// Return the "generator signature", which consists of its yield
+    /// and return types.
+    pub fn sig(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> GenSig<'tcx> {
+        ty::GenSig {
+            yield_ty: self.yield_ty(def_id, tcx),
+            return_ty: self.return_ty(def_id, tcx),
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// This returns the types of the MIR locals which had to be stored across suspension points.
     /// It is calculated in rustc_mir::transform::generator::StateTransform.
     /// All the types here must be in the tuple in GeneratorInterior.
@@ -412,14 +458,29 @@ impl<'a, 'gcx, 'tcx> ClosureSubsts<'tcx> {
     }
 }
 
-/// This describes the types that can be contained in a generator.
-/// It will be a type variable initially and unified in the last stages of typeck of a body.
-/// It contains a tuple of all the types that could end up on a generator frame.
-/// The state transformation MIR pass may only produce layouts which mention types in this tuple.
-/// Upvars are not counted here.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct GeneratorInterior<'tcx> {
-    pub witness: Ty<'tcx>,
+#[derive(Debug, Copy, Clone)]
+pub enum UpvarSubsts<'tcx> {
+    Closure(ClosureSubsts<'tcx>),
+    Generator(GeneratorSubsts<'tcx>),
+}
+
+impl<'tcx> UpvarSubsts<'tcx> {
+    #[inline]
+    pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) ->
+        impl Iterator<Item=Ty<'tcx>> + 'tcx
+    {
+        let upvar_kinds = match self {
+            UpvarSubsts::Closure(substs) => substs.split(def_id, tcx).upvar_kinds,
+            UpvarSubsts::Generator(substs) => substs.split(def_id, tcx).upvar_kinds,
+        };
+        upvar_kinds.iter().map(|t| {
+            if let UnpackedKind::Type(ty) = t.unpack() {
+                ty
+            } else {
+                bug!("upvar should be type")
+            }
+        })
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1604,8 +1665,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyAdt(_, substs) | TyAnon(_, substs) => {
                 substs.regions().collect()
             }
-            TyClosure(_, ref substs) | TyGenerator(_, ref substs, _, _) => {
-                substs.substs.regions().collect()
+            TyClosure(_, ClosureSubsts { ref substs }) |
+            TyGenerator(_, GeneratorSubsts { ref substs }, _) => {
+                substs.regions().collect()
             }
             TyProjection(ref data) => {
                 data.substs.regions().collect()

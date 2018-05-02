@@ -127,7 +127,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 &AggregateKind::Tuple |
                 &AggregateKind::Adt(..) => {}
                 &AggregateKind::Closure(def_id, _) |
-                &AggregateKind::Generator(def_id, _, _, _) => {
+                &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult {
                         violations, unsafe_blocks
                     } = self.tcx.unsafety_check_result(def_id);

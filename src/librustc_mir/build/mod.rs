@@ -130,7 +130,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let (yield_ty, return_ty) = if body.is_generator {
                 let gen_sig = match ty.sty {
                     ty::TyGenerator(gen_def_id, gen_substs, ..) =>
-                        gen_substs.generator_sig(gen_def_id, tcx),
+                        gen_substs.sig(gen_def_id, tcx),
                     _ =>
                         span_bug!(tcx.hir.span(id), "generator w/o generator type: {:?}", ty),
                 };

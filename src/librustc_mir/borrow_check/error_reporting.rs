@@ -777,7 +777,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     self.describe_field_from_ty(&tnm.ty, field)
                 }
                 ty::TyArray(ty, _) | ty::TySlice(ty) => self.describe_field_from_ty(&ty, field),
-                ty::TyClosure(def_id, _) | ty::TyGenerator(def_id, _, _, _) => {
+                ty::TyClosure(def_id, _) | ty::TyGenerator(def_id, _, _) => {
                     // Convert the def-id into a node-id. node-ids are only valid for
                     // the local code in the current crate, so this returns an `Option` in case
                     // the closure comes from another crate. But in that case we wouldn't

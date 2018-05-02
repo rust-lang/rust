@@ -84,8 +84,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
         .unwrap().def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
-    let self_ty = tcx.mk_closure_from_closure_substs(
-        closure_did, substs);
+    let self_ty = tcx.mk_closure(closure_did, substs);
 
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);

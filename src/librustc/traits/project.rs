@@ -1288,7 +1288,7 @@ fn confirm_generator_candidate<'cx, 'gcx, 'tcx>(
     vtable: VtableGeneratorData<'tcx, PredicateObligation<'tcx>>)
     -> Progress<'tcx>
 {
-    let gen_sig = vtable.substs.generator_poly_sig(vtable.closure_def_id, selcx.tcx());
+    let gen_sig = vtable.substs.poly_sig(vtable.generator_def_id, selcx.tcx());
     let Normalized {
         value: gen_sig,
         obligations

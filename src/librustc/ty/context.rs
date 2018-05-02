@@ -41,7 +41,7 @@ use traits;
 use traits::{Clause, Clauses, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
-use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorInterior, Region, Const};
+use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
@@ -2436,27 +2436,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }))
         }
 
-    pub fn mk_closure(self,
-                      closure_id: DefId,
-                      substs: ClosureSubsts<'tcx>)
-                      -> Ty<'tcx> {
-        self.mk_closure_from_closure_substs(closure_id, substs)
-    }
-
-    pub fn mk_closure_from_closure_substs(self,
-                                          closure_id: DefId,
-                                          closure_substs: ClosureSubsts<'tcx>)
+    pub fn mk_closure(self, closure_id: DefId, closure_substs: ClosureSubsts<'tcx>)
                                           -> Ty<'tcx> {
         self.mk_ty(TyClosure(closure_id, closure_substs))
     }
 
     pub fn mk_generator(self,
                         id: DefId,
-                        closure_substs: ClosureSubsts<'tcx>,
-                        interior: GeneratorInterior<'tcx>,
+                        generator_substs: GeneratorSubsts<'tcx>,
                         movability: hir::GeneratorMovability)
                         -> Ty<'tcx> {
-        self.mk_ty(TyGenerator(id, closure_substs, interior, movability))
+        self.mk_ty(TyGenerator(id, generator_substs, movability))
     }
 
     pub fn mk_generator_witness(self, types: ty::Binder<&'tcx Slice<Ty<'tcx>>>) -> Ty<'tcx> {

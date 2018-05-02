@@ -996,14 +996,6 @@ define_print! {
 }
 
 define_print! {
-    ('tcx) ty::GeneratorInterior<'tcx>, (self, f, cx) {
-        display {
-            self.witness.print(f, cx)
-        }
-    }
-}
-
-define_print! {
     ('tcx) ty::TypeVariants<'tcx>, (self, f, cx) {
         display {
             match *self {
@@ -1110,8 +1102,9 @@ define_print! {
                     })
                 }
                 TyStr => write!(f, "str"),
-                TyGenerator(did, substs, interior, movability) => ty::tls::with(|tcx| {
+                TyGenerator(did, substs, movability) => ty::tls::with(|tcx| {
                     let upvar_tys = substs.upvar_tys(did, tcx);
+                    let witness = substs.witness(did, tcx);
                     if movability == hir::GeneratorMovability::Movable {
                         write!(f, "[generator")?;
                     } else {
@@ -1145,7 +1138,7 @@ define_print! {
                         }
                     }
 
-                    print!(f, cx, write(" "), print(interior), write("]"))
+                    print!(f, cx, write(" "), print(witness), write("]"))
                 }),
                 TyGeneratorWitness(types) => {
                     ty::tls::with(|tcx| cx.in_binder(f, tcx, &types, tcx.lift(&types)))

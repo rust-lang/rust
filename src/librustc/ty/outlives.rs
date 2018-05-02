@@ -79,7 +79,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            ty::TyGenerator(def_id, ref substs, _, _) => {
+            ty::TyGenerator(def_id, ref substs, _) => {
                 // Same as the closure case
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);

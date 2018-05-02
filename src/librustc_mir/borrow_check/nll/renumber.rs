@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorInterior, Ty, TypeFoldable};
+use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts, Ty, TypeFoldable};
 use rustc::mir::{BasicBlock, Local, Location, Mir, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
@@ -90,19 +90,19 @@ impl<'a, 'gcx, 'tcx> MutVisitor<'tcx> for NLLVisitor<'a, 'gcx, 'tcx> {
         *constant = self.renumber_regions(ty_context, &*constant);
     }
 
-    fn visit_generator_interior(&mut self,
-                                interior: &mut GeneratorInterior<'tcx>,
-                                location: Location) {
+    fn visit_generator_substs(&mut self,
+                              substs: &mut GeneratorSubsts<'tcx>,
+                              location: Location) {
         debug!(
-            "visit_generator_interior(interior={:?}, location={:?})",
-            interior,
+            "visit_generator_substs(substs={:?}, location={:?})",
+            substs,
             location,
         );
 
         let ty_context = TyContext::Location(location);
-        *interior = self.renumber_regions(ty_context, interior);
+        *substs = self.renumber_regions(ty_context, substs);
 
-        debug!("visit_generator_interior: interior={:?}", interior);
+        debug!("visit_generator_substs: substs={:?}", substs);
     }
 
     fn visit_closure_substs(&mut self, substs: &mut ClosureSubsts<'tcx>, location: Location) {

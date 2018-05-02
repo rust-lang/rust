@@ -270,10 +270,10 @@ fn resolve_associated_item<'a, 'tcx>(
             let substs = tcx.erase_regions(&substs);
             Some(ty::Instance::new(def_id, substs))
         }
-        traits::VtableGenerator(closure_data) => {
+        traits::VtableGenerator(generator_data) => {
             Some(Instance {
-                def: ty::InstanceDef::Item(closure_data.closure_def_id),
-                substs: closure_data.substs.substs
+                def: ty::InstanceDef::Item(generator_data.generator_def_id),
+                substs: generator_data.substs.substs
             })
         }
         traits::VtableClosure(closure_data) => {
@@ -356,8 +356,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
         .unwrap().def_id;
     let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
-    let self_ty = tcx.mk_closure_from_closure_substs(
-        closure_did, substs);
+    let self_ty = tcx.mk_closure(closure_did, substs);
 
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);

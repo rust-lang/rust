@@ -369,7 +369,7 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
 
         ty::TyFnDef(def_id, _) |
         ty::TyClosure(def_id, _) |
-        ty::TyGenerator(def_id, _, _, _) |
+        ty::TyGenerator(def_id, _, _) |
         ty::TyForeign(def_id) => Some(def_id),
 
         ty::TyBool |

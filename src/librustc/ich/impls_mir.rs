@@ -483,10 +483,9 @@ for mir::AggregateKind<'gcx> {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            mir::AggregateKind::Generator(def_id, ref substs, ref interior, movability) => {
+            mir::AggregateKind::Generator(def_id, ref substs, movability) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
-                interior.hash_stable(hcx, hasher);
                 movability.hash_stable(hcx, hasher);
             }
         }
