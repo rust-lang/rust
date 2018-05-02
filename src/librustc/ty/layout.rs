@@ -940,11 +940,15 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 // We increase the size of the discriminant to avoid LLVM copying
                 // padding when it doesn't need to. This normally causes unaligned
                 // load/stores and excessive memcpy/memset operations. By using a
-                // bigger integer size, LLVM can be sure about it's contents and
+                // bigger integer size, LLVM can be sure about its contents and
                 // won't be so conservative.
 
                 // Use the initial field alignment
-                let mut ity = Integer::for_abi_align(dl, start_align).unwrap_or(min_ity);
+                let mut ity = if def.repr.c() || def.repr.int.is_some() {
+                    min_ity
+                } else {
+                    Integer::for_abi_align(dl, start_align).unwrap_or(min_ity)
+                };
 
                 // If the alignment is not larger than the chosen discriminant size,
                 // don't use the alignment as the final size.
