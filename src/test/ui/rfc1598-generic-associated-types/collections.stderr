@@ -11,10 +11,10 @@ LL | fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
    |                                                                     ^^^ type parameter not allowed
 
 error[E0109]: type parameters are not allowed on this type
-  --> $DIR/collections.rs:26:16
+  --> $DIR/collections.rs:26:71
    |
-LL |         Member<U>;
-   |                ^ type parameter not allowed
+LL |         <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
+   |                                                                       ^ type parameter not allowed
 
 error[E0110]: lifetime parameters are not allowed on this type
   --> $DIR/collections.rs:33:50

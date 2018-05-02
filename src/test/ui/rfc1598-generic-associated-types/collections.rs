@@ -22,8 +22,8 @@ trait Collection<T> {
     type Iter<'iter>: Iterator<Item=&'iter T>;
     type Family: CollectionFamily;
     // Test associated type defaults with parameters
-    type Sibling<U>: Collection<U> = <<Self as Collection<T>>::Family as CollectionFamily>::
-        Member<U>;
+    type Sibling<U>: Collection<U> =
+        <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
     //~^ ERROR type parameters are not allowed on this type [E0109]
 
     fn empty() -> Self;
@@ -63,7 +63,7 @@ impl<T> Collection<T> for Vec<T> {
 }
 
 fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>
-    //~^ ERROR type parameters are not allowed on this type [E0109]
+//~^ ERROR type parameters are not allowed on this type [E0109]
 where
     C: Collection<i32>,
 {
@@ -75,7 +75,7 @@ where
 }
 
 fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
-    //~^ ERROR type parameters are not allowed on this type [E0109]
+//~^ ERROR type parameters are not allowed on this type [E0109]
 where
     C: Collection<i32>,
 {

@@ -23,8 +23,7 @@ trait NoShadow<'a> {
     type Bar<'b>; // OK
 }
 
-impl<'a> NoShadow<'a> for &'a u32
-{
+impl<'a> NoShadow<'a> for &'a u32 {
     type Bar<'a> = i32; // Error: shadowed lifetime
 }
 
@@ -36,8 +35,7 @@ trait NoShadowT<T> {
     type Bar<U>; // OK
 }
 
-impl<T> NoShadowT<T> for Option<T>
-{
+impl<T> NoShadowT<T> for Option<T> {
     type Bar<T> = i32; // Error: shadowed type parameter
 }
 
