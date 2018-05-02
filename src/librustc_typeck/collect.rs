@@ -1321,14 +1321,14 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node = tcx.hir.get(node_id);
 
     let mut is_trait = None;
-    let mut is_trait_item = None;
+    let mut is_trait_item = false;
     let mut is_default_impl_trait = None;
 
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
     let ast_generics = match node {
         NodeTraitItem(item) => {
-            is_trait_item = Some(());
+            is_trait_item = true;
             &item.generics
         }
 
@@ -1408,35 +1408,7 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // associated types.
     if let Some((_trait_ref, _)) = is_trait {
         predicates = tcx.super_predicates_of(def_id).predicates;
-
-        // Add in a predicate that `Self:Trait` (where `Trait` is the
-        // current trait).  This is needed for builtin bounds.
-        //predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
     }
-
-    if let Some(()) = is_trait_item {
-        let id = tcx.hir.as_local_node_id(def_id).unwrap();
-        debug!("explicit_predicates_of: handling def_id={:?}, id={:?}", def_id, id);
-
-        let parent_id = tcx.hir.get_parent(id);
-        let parent_def_id = tcx.hir.local_def_id(parent_id);
-        if let Some(hir::map::NodeItem(parent_item)) = tcx.hir.find(parent_id) {
-            debug!("  explicit_predicates_of: has parent, node: {:?}", parent_item.node);
-            if let hir::ItemTrait(..) = parent_item.node {
-                debug!("    explicit_predicates_of: parent is trait!");
-                let trait_ref = ty::TraitRef {
-                    def_id: parent_def_id,
-                    substs: Substs::identity_for_item(tcx, parent_def_id)
-                };
-                predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
-            } else {
-                debug!("    explicit_predicates_of: parent is not trait :((");
-            }
-        } else {
-            debug!("  explicit_predicates_of: no parent :(");
-        }
-    }
-    debug!("explicit_predicates_of: predicates={:?}", predicates);
 
     // In default impls, we can assume that the self type implements
     // the trait. So in:
@@ -1448,6 +1420,14 @@ pub fn explicit_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // set of defaults that can be incorporated into another impl.
     if let Some(trait_ref) = is_default_impl_trait {
         predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
+    }
+
+    // For trait items, add `Self: Trait` predicate.
+    if is_trait_item {
+        let parent_id = tcx.hir.get_parent(node_id);
+        let parent_def_id = tcx.hir.local_def_id(parent_id);
+        debug_assert!(ty::is_trait_node(tcx, parent_id));
+        predicates.push(ty::TraitRef::identity(tcx, parent_def_id).to_predicate());
     }
 
     // Collect the region predicates that were declared inline as

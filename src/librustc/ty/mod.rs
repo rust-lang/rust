@@ -2732,20 +2732,9 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // are any errors at that point, so after type checking you can be
     // sure that this will succeed without errors anyway.
 
-    if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        debug!("param_env: handling def_id={:?}, id={:?}", def_id, id);
-        if let Some(hir::map::NodeItem(item)) = tcx.hir.find(id) {
-            debug!("  param_env: self node: {:?}", item.node);
-            if let hir::ItemTrait(..) = item.node {
-                debug!("    param_env: self is trait!");
-                let trait_ref = ty::TraitRef {
-                    def_id: def_id,
-                    substs: Substs::identity_for_item(tcx, def_id)
-                };
-                predicates.push(trait_ref.to_poly_trait_ref().to_predicate());
-            }
-        }
-        debug!("  param_env predicates: {:?}", predicates);
+    if is_trait(tcx, def_id) {
+        // Add `Self: Trait` into the ParamEnv.
+        predicates.push(ty::TraitRef::identity(tcx, def_id).to_predicate());
     }
 
     let unnormalized_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
@@ -2756,6 +2745,23 @@ fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), body_id);
     traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
+}
+
+pub fn is_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+    if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+        is_trait_node(tcx, id)
+    } else {
+        false
+    }
+}
+
+pub fn is_trait_node<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> bool {
+    if let Some(hir::map::NodeItem(item)) = tcx.hir.find(id) {
+        if let hir::ItemTrait(..) = item.node {
+            return true;
+        }
+    }
+    false
 }
 
 fn crate_disambiguator<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

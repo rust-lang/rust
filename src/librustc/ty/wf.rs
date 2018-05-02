@@ -13,7 +13,7 @@ use middle::const_val::ConstVal;
 use infer::InferCtxt;
 use ty::subst::Substs;
 use traits;
-use ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
@@ -457,7 +457,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
         // Add in a predicate that `Self:Trait` (where `Trait` is the
         // current trait).
         let self_trait = if !trait_ref.has_escaping_regions() {
-            Some(trait_ref.to_poly_trait_ref().to_predicate())
+            Some(trait_ref.to_predicate())
         } else {
             None
         };

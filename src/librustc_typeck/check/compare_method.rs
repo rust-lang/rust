@@ -183,6 +183,8 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let impl_m_predicates = tcx.predicates_of(impl_m.def_id);
     let mut trait_m_predicates = tcx.predicates_of(trait_m.def_id);
 
+    // A `Self: Trait` predicate on trait items breaks selection, so filter it out.
+    // FIXME: This is a big hack!
     if let Some(trait_def_id) = trait_m_predicates.parent {
         trait_m_predicates.predicates.retain(|pred| {
             match pred {
