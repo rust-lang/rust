@@ -14,7 +14,7 @@ struct Struct;
 
 impl Struct {
     fn foo(&mut self) {
-        (&mut self).bar(); //~ ERROR cannot borrow
+        (&mut self).bar();
     }
 
     // In this case we could keep the suggestion, but to distinguish the

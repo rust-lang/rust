@@ -1597,7 +1597,7 @@ pub enum TyKind {
     Infer,
     /// Inferred type of a `self` or `&self` argument in a method.
     ImplicitSelf,
-    // A macro in the type position.
+    /// A macro in the type position.
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
@@ -1677,7 +1677,9 @@ impl Arg {
             if ident.name == keywords::SelfValue.name() {
                 return match self.ty.node {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
+                    TyKind::Rptr(lt, MutTy { ref ty, mutbl })
+                        if ty.node == TyKind::ImplicitSelf =>
+                    {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
                     _ => Some(respan(self.pat.span.to(self.ty.span),
@@ -1715,7 +1717,7 @@ impl Arg {
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => arg(mutbl, ty),
             SelfKind::Value(mutbl) => arg(mutbl, infer_ty),
-            SelfKind::Region(lt, mutbl) => arg(Mutability::Immutable, P(Ty {
+            SelfKind::Region(lt, mutbl) => arg(mutbl, P(Ty {
                 id: DUMMY_NODE_ID,
                 node: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl: mutbl }),
                 span,
