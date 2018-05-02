@@ -48,7 +48,7 @@ fn main() {
 //         _2 = move _3;
 //         StorageDead(_3);
 //         StorageLive(_4);
-//         UserAssertTy(Canonical { variables: Slice([]), value: std::option::Option<std::boxed::Box<u32>> }, _4);
+//         UserAssertTy(Canonical { variables: [], value: std::option::Option<std::boxed::Box<u32>> }, _4);
 //         _4 = std::option::Option<std::boxed::Box<u32>>::None;
 //         StorageLive(_5);
 //         StorageLive(_6);

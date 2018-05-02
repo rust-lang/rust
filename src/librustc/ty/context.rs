@@ -2056,9 +2056,8 @@ for Interned<'tcx, Slice<Goal<'tcx>>> {
 
 macro_rules! intern_method {
     ($lt_tcx:tt, $name:ident: $method:ident($alloc:ty,
-                                            $alloc_method:ident,
+                                            $alloc_method:expr,
                                             $alloc_to_key:expr,
-                                            $alloc_to_ret:expr,
                                             $keep_in_local_tcx:expr) -> $ty:ty) => {
         impl<'a, 'gcx, $lt_tcx> TyCtxt<'a, 'gcx, $lt_tcx> {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
@@ -2081,7 +2080,7 @@ macro_rules! intern_method {
                              v);
                     }
 
-                    let i = ($alloc_to_ret)(self.interners.arena.$alloc_method(v));
+                    let i = $alloc_method(&self.interners.arena, v);
                     interner.insert(Interned(i));
                     i
                 } else {
@@ -2094,7 +2093,9 @@ macro_rules! intern_method {
                     let v = unsafe {
                         mem::transmute(v)
                     };
-                    let i = ($alloc_to_ret)(self.global_interners.arena.$alloc_method(v));
+                    let i: &$lt_tcx $ty = $alloc_method(&self.global_interners.arena, v);
+                    // Cast to 'gcx
+                    let i = unsafe { mem::transmute(i) };
                     interner.insert(Interned(i));
                     i
                 }
@@ -2121,8 +2122,10 @@ macro_rules! direct_interners {
 
         intern_method!(
             $lt_tcx,
-            $name: $method($ty, alloc, |x| x, |x| x, $keep_in_local_tcx) -> $ty
-        );)+
+            $name: $method($ty,
+                           |a: &$lt_tcx SyncDroplessArena, v| -> &$lt_tcx $ty { a.alloc(v) },
+                           |x| x,
+                           $keep_in_local_tcx) -> $ty);)+
     }
 }
 
@@ -2137,10 +2140,11 @@ direct_interners!('tcx,
 
 macro_rules! slice_interners {
     ($($field:ident: $method:ident($ty:ident)),+) => (
-        $(intern_method!('tcx, $field: $method(&[$ty<'tcx>], alloc_slice, Deref::deref,
-                                               |xs: &[$ty]| -> &Slice<$ty> {
-            unsafe { mem::transmute(xs) }
-        }, |xs: &[$ty]| xs.iter().any(keep_local)) -> Slice<$ty<'tcx>>);)+
+        $(intern_method!( 'tcx, $field: $method(
+            &[$ty<'tcx>],
+            |a, v| Slice::from_arena(a, v),
+            Deref::deref,
+            |xs: &[$ty]| xs.iter().any(keep_local)) -> Slice<$ty<'tcx>>);)+
     )
 }
 
@@ -2162,9 +2166,8 @@ intern_method! {
     'tcx,
     canonical_var_infos: _intern_canonical_var_infos(
         &[CanonicalVarInfo],
-        alloc_slice,
+        |a, v| Slice::from_arena(a, v),
         Deref::deref,
-        |xs: &[CanonicalVarInfo]| -> &Slice<CanonicalVarInfo> { unsafe { mem::transmute(xs) } },
         |_xs: &[CanonicalVarInfo]| -> bool { false }
     ) -> Slice<CanonicalVarInfo>
 }
