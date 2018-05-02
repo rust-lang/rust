@@ -11,7 +11,7 @@
 use common::{Config, TestPaths};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{Incremental, MirOpt, RunMake, Ui};
+use common::{Incremental, MirOpt, RunMake, Ui, Rustfix};
 use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
 use common::CompareMode;
 use diff;
@@ -21,6 +21,7 @@ use json;
 use header::TestProps;
 use util::logv;
 use regex::Regex;
+use rustfix::{apply_suggestions, get_suggestions_from_json};
 
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -241,6 +242,7 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
+            Rustfix => self.run_rustfix_test(),
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
         }
@@ -1687,6 +1689,7 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
+            Rustfix |
             RunPass |
             RunFail |
             RunPassValgrind |
@@ -2603,29 +2606,6 @@ impl<'test> TestCx<'test> {
                 self.check_error_patterns(&proc_res.stderr, &proc_res);
             }
         }
-
-        let fixture_path = expected_output_path(&self.testpaths, None, &None, UI_FIXED);
-
-        // FIXME(killercup): Add `nll.rs.fixed` files matching
-        let nll = self.config.compare_mode
-            .as_ref()
-            .map(|x| *x == CompareMode::Nll)
-            .unwrap_or(false);
-        if fixture_path.exists() && !nll {
-            use std::collections::HashSet;
-            use rustfix::{apply_suggestions, get_suggestions_from_json};
-
-            let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
-                .unwrap();
-            let expected_fixed = self.load_expected_output_from_path(&fixture_path).unwrap();
-            let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
-            let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
-            let errors = self.compare_output("rs.fixed", &fixed_code, &expected_fixed);
-            if errors > 0 {
-                panic!("rustfix produced different fixed file!");
-                // FIXME(killercup): Add info for update-references.sh call
-            }
-        }
     }
 
     fn run_mir_opt_test(&self) {
@@ -2949,6 +2929,62 @@ impl<'test> TestCx<'test> {
         println!("\nThe actual {0} differed from the expected {0}.", kind);
         println!("Actual {} saved to {}", kind, output_file.display());
         1
+    }
+
+    fn run_rustfix_test(&self) {
+        // First up, compile the test with --error-format=json
+        let mut rustc = self.make_compile_args(
+            &self.testpaths.file,
+            TargetLocation::ThisFile(self.make_exe_name()),
+        );
+        rustc.arg("--error-format").arg("json")
+            .arg("-L").arg(&self.aux_output_dir_name());
+        let proc_res = self.compose_and_run_compiler(rustc, None);
+
+        // Now apply suggestions from rustc to the code itself
+        let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
+            .unwrap();
+        let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
+        let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
+
+        // Load up what the expected result of fixing should be
+        let fixture_path = expected_output_path(&self.testpaths, None, &None, UI_FIXED);
+        let expected_fixed = self.load_expected_output_from_path(&fixture_path)
+            .unwrap_or(String::new());
+
+        // Make sure our fixed code is the same as what we're expecting
+        let errors = self.compare_output(UI_FIXED, &fixed_code, &expected_fixed);
+        if errors > 0 {
+            println!("To update references, run this command from build directory:");
+            let relative_path_to_file = self.testpaths
+                .relative_dir
+                .join(self.testpaths.file.file_name().unwrap());
+            println!(
+                "{}/update-references.sh '{}' '{}'",
+                self.config.src_base.display(),
+                self.config.build_base.display(),
+                relative_path_to_file.display()
+            );
+            self.fatal_proc_rec(
+                &format!("{} errors occurred comparing output.", errors),
+                &proc_res,
+            );
+        }
+
+        // And finally, compile the fixed code and make sure it both succeeds
+        // and has no diagnostics.
+        let mut rustc = self.make_compile_args(
+            &self.testpaths.file.with_extension(UI_FIXED),
+            TargetLocation::ThisFile(self.make_exe_name()),
+        );
+        rustc.arg("-L").arg(&self.aux_output_dir_name());
+        let res = self.compose_and_run_compiler(rustc, None);
+        if !res.status.success() {
+            self.fatal_proc_rec("failed to compile fixed code", &res);
+        }
+        if !res.stderr.is_empty() {
+            self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
+        }
     }
 }
 

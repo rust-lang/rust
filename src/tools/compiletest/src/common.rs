@@ -32,6 +32,7 @@ pub enum Mode {
     RunMake,
     Ui,
     MirOpt,
+    Rustfix,
 }
 
 impl Mode {
@@ -67,6 +68,7 @@ impl FromStr for Mode {
             "run-make" => Ok(RunMake),
             "ui" => Ok(Ui),
             "mir-opt" => Ok(MirOpt),
+            "rustfix" => Ok(Rustfix),
             _ => Err(()),
         }
     }
@@ -74,24 +76,25 @@ impl FromStr for Mode {
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-                              CompileFail => "compile-fail",
-                              ParseFail => "parse-fail",
-                              RunFail => "run-fail",
-                              RunPass => "run-pass",
-                              RunPassValgrind => "run-pass-valgrind",
-                              Pretty => "pretty",
-                              DebugInfoGdb => "debuginfo-gdb",
-                              DebugInfoLldb => "debuginfo-lldb",
-                              Codegen => "codegen",
-                              Rustdoc => "rustdoc",
-                              CodegenUnits => "codegen-units",
-                              Incremental => "incremental",
-                              RunMake => "run-make",
-                              Ui => "ui",
-                              MirOpt => "mir-opt",
-                          },
-                          f)
+        let s = match *self {
+            CompileFail => "compile-fail",
+            ParseFail => "parse-fail",
+            RunFail => "run-fail",
+            RunPass => "run-pass",
+            RunPassValgrind => "run-pass-valgrind",
+            Pretty => "pretty",
+            DebugInfoGdb => "debuginfo-gdb",
+            DebugInfoLldb => "debuginfo-lldb",
+            Codegen => "codegen",
+            Rustdoc => "rustdoc",
+            CodegenUnits => "codegen-units",
+            Incremental => "incremental",
+            RunMake => "run-make",
+            Ui => "ui",
+            MirOpt => "mir-opt",
+            Rustfix => "rustfix",
+        };
+        fmt::Display::fmt(s, f)
     }
 }
 
@@ -272,4 +275,4 @@ pub fn expected_output_path(testpaths: &TestPaths,
 pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
-pub const UI_FIXED: &str = "rs.fixed";
+pub const UI_FIXED: &str = "fixed";

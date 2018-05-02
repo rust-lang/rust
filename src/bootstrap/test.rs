@@ -716,6 +716,12 @@ default_test!(RunFail {
     suite: "run-fail"
 });
 
+default_test!(Rustfix {
+    path: "src/test/rustfix",
+    mode: "rustfix",
+    suite: "rustfix"
+});
+
 default_test!(RunPassValgrind {
     path: "src/test/run-pass-valgrind",
     mode: "run-pass-valgrind",
