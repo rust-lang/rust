@@ -247,12 +247,14 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
     debug!("mk_printer {}", linewidth);
     Printer {
         out,
-        buf_len: n,
+        buf_max_len: n,
         margin: linewidth as isize,
         space: linewidth as isize,
         left: 0,
         right: 0,
-        buf: vec![BufEntry { token: Token::Eof, size: 0 }; n],
+        // Initialize a single entry; advance_right() will extend it on demand
+        // up to `buf_max_len` elements.
+        buf: vec![BufEntry::default()],
         left_total: 0,
         right_total: 0,
         scan_stack: VecDeque::new(),
@@ -263,7 +265,7 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
 
 pub struct Printer<'a> {
     out: Box<io::Write+'a>,
-    buf_len: usize,
+    buf_max_len: usize,
     /// Width of lines we're constrained to
     margin: isize,
     /// Number of spaces left on line
@@ -297,6 +299,12 @@ struct BufEntry {
     size: isize,
 }
 
+impl Default for BufEntry {
+    fn default() -> Self {
+        BufEntry { token: Token::Eof, size: 0 }
+    }
+}
+
 impl<'a> Printer<'a> {
     pub fn last_token(&mut self) -> Token {
         self.buf[self.right].token.clone()
@@ -322,7 +330,9 @@ impl<'a> Printer<'a> {
                 self.right_total = 1;
                 self.left = 0;
                 self.right = 0;
-            } else { self.advance_right(); }
+            } else {
+                self.advance_right();
+            }
             debug!("pp Begin({})/buffer Vec<{},{}>",
                    b.offset, self.left, self.right);
             self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
@@ -349,7 +359,9 @@ impl<'a> Printer<'a> {
                 self.right_total = 1;
                 self.left = 0;
                 self.right = 0;
-            } else { self.advance_right(); }
+            } else {
+                self.advance_right();
+            }
             debug!("pp Break({})/buffer Vec<{},{}>",
                    b.offset, self.left, self.right);
             self.check_stack(0);
@@ -408,7 +420,11 @@ impl<'a> Printer<'a> {
     }
     pub fn advance_right(&mut self) {
         self.right += 1;
-        self.right %= self.buf_len;
+        self.right %= self.buf_max_len;
+        // Extend the buf if necessary.
+        if self.right == self.buf.len() {
+            self.buf.push(BufEntry::default());
+        }
         assert_ne!(self.right, self.left);
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
@@ -438,7 +454,7 @@ impl<'a> Printer<'a> {
             }
 
             self.left += 1;
-            self.left %= self.buf_len;
+            self.left %= self.buf_max_len;
 
             left_size = self.buf[self.left].size;
         }
