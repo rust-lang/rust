@@ -23,7 +23,7 @@ use codemap::{CodeMap, FilePathMapping};
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
 use errors::{DiagnosticBuilder, SubDiagnostic, CodeSuggestion, CodeMapper};
-use errors::{DiagnosticId, Applicability};
+use errors::{DiagnosticId, Applicability, Level};
 use errors::emitter::{Emitter, EmitterWriter};
 
 use rustc_data_structures::sync::{self, Lrc};
@@ -109,9 +109,20 @@ struct Diagnostic {
     level: &'static str,
     spans: Vec<DiagnosticSpan>,
     /// Associated diagnostic messages.
-    children: Vec<Diagnostic>,
+    children: Vec<AssociatedDiagnostic>,
+    /// Suggested replacements by the compiler.
+    suggestions: Vec<AssociatedDiagnostic>,
     /// The message as rustc would render it.
     rendered: Option<String>,
+}
+
+#[derive(RustcEncodable)]
+/// Serialized version of `SubDiagnostic`.
+struct AssociatedDiagnostic {
+    pub message: String,
+    /// "error: internal compiler error", "error", "warning", "note", "help".
+    level: &'static str,
+    spans: Vec<DiagnosticSpan>,
 }
 
 #[derive(RustcEncodable)]
@@ -179,17 +190,6 @@ impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder,
                                je: &JsonEmitter)
                                -> Diagnostic {
-        let sugg = db.suggestions.iter().map(|sugg| {
-            Diagnostic {
-                message: sugg.msg.clone(),
-                code: None,
-                level: "help",
-                spans: DiagnosticSpan::from_suggestion(sugg, je),
-                children: vec![],
-                rendered: None,
-            }
-        });
-
         // generate regular command line output and store it in the json
 
         // A threadsafe buffer for writing.
@@ -217,22 +217,32 @@ impl Diagnostic {
             level: db.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&db.span, je),
             children: db.children.iter().map(|c| {
-                Diagnostic::from_sub_diagnostic(c, je)
-            }).chain(sugg).collect(),
+                AssociatedDiagnostic::from_sub_diagnostic(c, je)
+            }).collect(),
+            suggestions: db.suggestions.iter().map(|sugg| {
+                AssociatedDiagnostic::from_suggestion(sugg, je)
+            }).collect(),
             rendered: Some(output),
         }
     }
+}
 
-    fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
-        Diagnostic {
+impl AssociatedDiagnostic {
+    fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Self {
+        AssociatedDiagnostic {
             message: db.message(),
-            code: None,
             level: db.level.to_str(),
             spans: db.render_span.as_ref()
                      .map(|sp| DiagnosticSpan::from_multispan(sp, je))
                      .unwrap_or_else(|| DiagnosticSpan::from_multispan(&db.span, je)),
-            children: vec![],
-            rendered: None,
+        }
+    }
+
+    fn from_suggestion(suggestion: &CodeSuggestion, je: &JsonEmitter) -> Self {
+        AssociatedDiagnostic {
+            message: suggestion.msg.clone(),
+            level: Level::Help.to_str(),
+            spans: DiagnosticSpan::from_suggestion(suggestion, je),
         }
     }
 }
