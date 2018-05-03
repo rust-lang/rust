@@ -1467,48 +1467,6 @@ extern "rust-intrinsic" {
     /// docs my friends, its friday!
     pub fn align_offset(ptr: *const (), align: usize) -> usize;
 
-    /// Computes the offset that needs to be applied to the pointer in order to make it aligned to
-    /// `align`.
-    ///
-    /// If it is not possible to align the pointer, the implementation returns
-    /// `usize::max_value()`.
-    ///
-    /// The offset is expressed in number of `T` elements, and not bytes. The value returned can be
-    /// used with the `offset` or `offset_to` methods.
-    ///
-    /// There are no guarantees whatsover that offsetting the pointer will not overflow or go
-    /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
-    /// the returned offset is correct in all terms other than alignment.
-    ///
-    /// # Unsafety
-    ///
-    /// `align` must be a power-of-two.
-    ///
-    /// # Examples
-    ///
-    /// Accessing adjacent `u8` as `u16`
-    ///
-    /// ```
-    /// # #![feature(core_intrinsics)]
-    /// # fn foo(n: usize) {
-    /// # use std::intrinsics::align_offset;
-    /// # use std::mem::align_of;
-    /// # unsafe {
-    /// let x = [5u8, 6u8, 7u8, 8u8, 9u8];
-    /// let ptr = &x[n] as *const u8;
-    /// let offset = align_offset(ptr, align_of::<u16>());
-    /// if offset < x.len() - n - 1 {
-    ///     let u16_ptr = ptr.offset(offset as isize) as *const u16;
-    ///     assert_ne!(*u16_ptr, 500);
-    /// } else {
-    ///     // while the pointer can be aligned via `offset`, it would point
-    ///     // outside the allocation
-    /// }
-    /// # } }
-    /// ```
-    #[cfg(not(stage0))]
-    pub fn align_offset<T>(ptr: *const T, align: usize) -> usize;
-
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);

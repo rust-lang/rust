@@ -1478,7 +1478,7 @@ impl<T: ?Sized> *const T {
             panic!("align_offset: align is not a power-of-two");
         }
         unsafe {
-            intrinsics::align_offset(self, align)
+            align_offset(self, align)
         }
     }
 
@@ -2543,7 +2543,7 @@ impl<T: ?Sized> *mut T {
             panic!("align_offset: align is not a power-of-two");
         }
         unsafe {
-            intrinsics::align_offset(self, align)
+            align_offset(self, align)
         }
     }
 
@@ -2565,8 +2565,6 @@ impl<T: ?Sized> *mut T {
 /// Calculate offset (in terms of elements of `stride` stride) that has to be applied
 /// to pointer `p` so that pointer `p` would get aligned to `a`.
 ///
-/// This is an implementation of the `align_offset` intrinsic for the case where `stride > 1`.
-///
 /// Note: This implementation has been carefully tailored to not panic. It is UB for this to panic.
 /// The only real change that can be made here is change of `INV_TABLE_MOD_16` and associated
 /// constants.
@@ -2578,7 +2576,7 @@ impl<T: ?Sized> *mut T {
 /// Any questions go to @nagisa.
 #[lang="align_offset"]
 #[cfg(not(stage0))]
-unsafe fn align_offset(p: *const (), a: usize, stride: usize) -> usize {
+pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
     /// This implementation is tailored for align_offset and has following preconditions:
@@ -2587,12 +2585,13 @@ unsafe fn align_offset(p: *const (), a: usize, stride: usize) -> usize {
     /// * `x < m`; (if `x ≥ m`, pass in `x % m` instead)
     ///
     /// Implementation of this function shall not panic. Ever.
+    #[inline]
     fn mod_inv(x: usize, m: usize) -> usize {
         /// Multiplicative modular inverse table modulo 2⁴ = 16.
         ///
         /// Note, that this table does not contain values where inverse does not exist (i.e. for
         /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
-        static INV_TABLE_MOD_16: [usize; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
+        const INV_TABLE_MOD_16: [usize; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
         /// Modulo for which the `INV_TABLE_MOD_16` is intended.
         const INV_TABLE_MOD: usize = 16;
         /// INV_TABLE_MOD²
@@ -2627,17 +2626,29 @@ unsafe fn align_offset(p: *const (), a: usize, stride: usize) -> usize {
         }
     }
 
+    let stride = ::mem::size_of::<T>();
     let a_minus_one = a.wrapping_sub(1);
     let pmoda = p as usize & a_minus_one;
-    let smoda = stride & a_minus_one;
-    // a is power-of-two so cannot be 0. stride = 0 is handled by the intrinsic.
-    let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
-    let gcd = 1usize << gcdpow;
 
     if pmoda == 0 {
         // Already aligned. Yay!
         return 0;
     }
+
+    if stride <= 1 {
+        return if stride == 0 {
+            // If the pointer is not aligned, and the element is zero-sized, then no amount of
+            // elements will ever align the pointer.
+            !0
+        } else {
+            a.wrapping_sub(pmoda)
+        };
+    }
+
+    let smoda = stride & a_minus_one;
+    // a is power-of-two so cannot be 0. stride = 0 is handled above.
+    let gcdpow = intrinsics::cttz_nonzero(stride).min(intrinsics::cttz_nonzero(a));
+    let gcd = 1usize << gcdpow;
 
     if gcd == 1 {
         // This branch solves for the variable $o$ in following linear congruence equation:

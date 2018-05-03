@@ -314,10 +314,6 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
-            "align_offset" => {
-                (1, vec![tcx.mk_imm_ptr(param(0)), tcx.types.usize], tcx.types.usize)
-            },
-
             "nontemporal_store" => {
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil())
             }

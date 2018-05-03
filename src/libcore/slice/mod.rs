@@ -1794,8 +1794,11 @@ impl<T> [T] {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
+
+        // First, find at what point do we split between the first and 2nd slice. Easy with
+        // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = ::intrinsics::align_offset(ptr, ::mem::align_of::<U>());
+        let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
         if offset > self.len() {
             return (self, &[], &[]);
         } else {
@@ -1848,7 +1851,7 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = ::intrinsics::align_offset(ptr, ::mem::align_of::<U>());
+        let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
         if offset > self.len() {
             return (self, &mut [], &mut []);
         } else {
