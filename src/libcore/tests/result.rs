@@ -290,7 +290,11 @@ fn test_result_deref() {
     let expected_result = Result::Err::<&u32, &[i32]>(&[5, 4, 3, 2, 1][..]);
     assert_eq!(ref_err.deref(), expected_result);
 
-    // *Odd corner cases (tested for completeness)*
+    // The following cases test calling deref_* with the wrong variant (i.e.
+    // `deref_ok()` with a `Result::Err()`, or `deref_err()` with a `Result::Ok()`.
+    // While unusual, these cases are supported to ensure that an `inner_deref`
+    // call can still be made even when one of the Result types does not implement
+    // `Deref` (for example, std::io::Error).
 
     // &Result<T, E: Deref>::Ok(T).deref_err() ->
     //      Result<&T, &E::Deref::Target>::Ok(&T)
