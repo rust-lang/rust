@@ -1958,16 +1958,16 @@ impl<'a> Parser<'a> {
         let meta_ident = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
-                    ast::MetaItemKind::Word => Some(meta.ident),
+                    ast::MetaItemKind::Word => Some(meta.ident.clone()),
                     _ => None,
                 },
                 _ => None,
             },
             _ => None,
         };
-        if let Some(ident) = meta_ident {
+        if let Some(path) = meta_ident {
             self.bump();
-            return Ok(ast::Path::from_ident(ident));
+            return Ok(path);
         }
         self.parse_path(style)
     }

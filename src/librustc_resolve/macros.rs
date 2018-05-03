@@ -209,7 +209,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>, allow_derive: bool)
                               -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
-            let name = unwrap_or!(attrs[i].name(), continue);
+            let name = attrs[i].name();
 
             if self.session.plugin_attributes.borrow().iter()
                     .any(|&(ref attr_nm, _)| name == &**attr_nm) {
@@ -231,7 +231,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         // Check for legacy derives
         for i in 0..attrs.len() {
-            let name = unwrap_or!(attrs[i].name(), continue);
+            let name = attrs[i].name();
 
             if name == "derive" {
                 let result = attrs[i].parse_list(&self.session.parse_sess, |parser| {

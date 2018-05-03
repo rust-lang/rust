@@ -714,6 +714,22 @@ pub trait PrintState<'a> {
         Ok(())
     }
 
+    fn print_attribute_path(&mut self, path: &ast::Path) -> io::Result<()> {
+        for (i, segment) in path.segments.iter().enumerate() {
+            if i > 0 {
+                self.writer().word("::")?
+            }
+            if segment.ident.name != keywords::CrateRoot.name() &&
+               segment.ident.name != keywords::DollarCrate.name()
+            {
+                self.writer().word(&segment.ident.name.as_str())?;
+            } else if segment.ident.name == keywords::DollarCrate.name() {
+                self.print_dollar_crate(segment.ident.span.ctxt())?;
+            }
+        }
+        Ok(())
+    }
+
     fn print_attribute(&mut self, attr: &ast::Attribute) -> io::Result<()> {
         self.print_attribute_inline(attr, false)
     }
@@ -735,17 +751,7 @@ pub trait PrintState<'a> {
             if let Some(mi) = attr.meta() {
                 self.print_meta_item(&mi)?
             } else {
-                for (i, segment) in attr.path.segments.iter().enumerate() {
-                    if i > 0 {
-                        self.writer().word("::")?
-                    }
-                    if segment.ident.name != keywords::CrateRoot.name() &&
-                       segment.ident.name != keywords::DollarCrate.name() {
-                        self.writer().word(&segment.ident.name.as_str())?;
-                    } else if segment.ident.name == keywords::DollarCrate.name() {
-                        self.print_dollar_crate(segment.ident.span.ctxt())?;
-                    }
-                }
+                self.print_attribute_path(&attr.path)?;
                 self.writer().space()?;
                 self.print_tts(attr.tokens.clone())?;
             }
@@ -767,16 +773,15 @@ pub trait PrintState<'a> {
     fn print_meta_item(&mut self, item: &ast::MetaItem) -> io::Result<()> {
         self.ibox(INDENT_UNIT)?;
         match item.node {
-            ast::MetaItemKind::Word => {
-                self.writer().word(&item.ident.name.as_str())?;
-            }
+            ast::MetaItemKind::Word => self.print_attribute_path(&item.ident)?,
             ast::MetaItemKind::NameValue(ref value) => {
-                self.word_space(&item.ident.name.as_str())?;
+                self.print_attribute_path(&item.ident)?;
+                self.writer().space()?;
                 self.word_space("=")?;
                 self.print_literal(value)?;
             }
             ast::MetaItemKind::List(ref items) => {
-                self.writer().word(&item.ident.name.as_str())?;
+                self.print_attribute_path(&item.ident)?;
                 self.popen()?;
                 self.commasep(Consistent,
                               &items[..],

@@ -153,10 +153,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // ```
         let hints: Vec<_> = item.attrs
             .iter()
-            .filter(|attr| match attr.name() {
-                Some(name) => name == "repr",
-                None => false,
-            })
+            .filter(|attr| attr.name() == "repr")
             .filter_map(|attr| attr.meta_item_list())
             .flat_map(|hints| hints)
             .collect();
@@ -311,7 +308,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_used(&self, item: &hir::Item, target: Target) {
         for attr in &item.attrs {
-            if attr.name().map(|name| name == "used").unwrap_or(false) && target != Target::Static {
+            if attr.name() == "used" && target != Target::Static {
                 self.tcx.sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }

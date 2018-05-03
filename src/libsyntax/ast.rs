@@ -474,10 +474,10 @@ pub enum NestedMetaItemKind {
 
 /// A spanned compile-time attribute item.
 ///
-/// E.g. `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`
+/// E.g. `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MetaItem {
-    pub ident: Ident,
+    pub ident: Path,
     pub node: MetaItemKind,
     pub span: Span,
 }

@@ -460,6 +460,9 @@ declare_features! (
 
     // Access to crate names passed via `--extern` through prelude
     (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
+
+    // Scoped attributes
+    (active, tool_attributes, "1.25.0", Some(44690), None),
 );
 
 declare_features! (
@@ -1079,7 +1082,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.ident.name.as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -1132,7 +1135,7 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = unwrap_or!(attr.name(), return).as_str();
+        let name = attr.name().as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
@@ -1172,12 +1175,28 @@ impl<'a> Context<'a> {
             // before the plugin attributes are registered
             // so we skip this then
             if !is_macro {
-                gate_feature!(self, custom_attribute, attr.span,
-                              &format!("The attribute `{}` is currently \
-                                        unknown to the compiler and \
-                                        may have meaning \
-                                        added to it in the future",
-                                       attr.path));
+                if attr.is_scoped() {
+                    gate_feature!(self, tool_attributes, attr.span,
+                                  &format!("scoped attribute `{}` is experimental", attr.path));
+                    if attr::is_known_tool(attr) {
+                        attr::mark_used(attr);
+                    } else {
+                        span_err!(
+                            self.parse_sess.span_diagnostic,
+                            attr.span,
+                            E0694,
+                            "an unknown tool name found in scoped attribute: `{}`.",
+                            attr.path
+                        );
+                    }
+                } else {
+                    gate_feature!(self, custom_attribute, attr.span,
+                                  &format!("The attribute `{}` is currently \
+                                            unknown to the compiler and \
+                                            may have meaning \
+                                            added to it in the future",
+                                           attr.path));
+                }
             }
         }
     }
@@ -1843,7 +1862,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 for mi in list {
 
                     let name = if let Some(word) = mi.word() {
-                        word.ident.name
+                        word.name()
                     } else {
                         span_err!(span_handler, mi.span, E0556,
                                   "malformed feature, expected just one word");

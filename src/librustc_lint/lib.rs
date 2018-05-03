@@ -30,7 +30,6 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
-#[macro_use]
 extern crate syntax;
 #[macro_use]
 extern crate rustc;

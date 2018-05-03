@@ -15,10 +15,10 @@ pub use self::ReprAttr::*;
 pub use self::IntType::*;
 
 use ast;
-use ast::{AttrId, Attribute, Name, Ident};
+use ast::{AttrId, Attribute, Name, Ident, Path, PathSegment};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
-use codemap::{Spanned, respan, dummy_spanned};
+use codemap::{BytePos, Spanned, respan, dummy_spanned};
 use syntax_pos::Span;
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
@@ -107,6 +107,14 @@ pub fn is_known(attr: &Attribute) -> bool {
     })
 }
 
+const RUST_KNOWN_TOOL: &[&str] = &["clippy", "rustfmt"];
+
+pub fn is_known_tool(attr: &Attribute) -> bool {
+    let tool_name =
+        attr.path.segments.iter().next().expect("empty path in attribute").ident.name;
+    RUST_KNOWN_TOOL.contains(&tool_name.as_str().as_ref())
+}
+
 impl NestedMetaItem {
     /// Returns the MetaItem if self is a NestedMetaItemKind::MetaItem.
     pub fn meta_item(&self) -> Option<&MetaItem> {
@@ -137,7 +145,7 @@ impl NestedMetaItem {
     /// Returns the name of the meta item, e.g. `foo` in `#[foo]`,
     /// `#[foo="bar"]` and `#[foo(bar)]`, if self is a MetaItem
     pub fn name(&self) -> Option<Name> {
-        self.meta_item().and_then(|meta_item| Some(meta_item.ident.name))
+        self.meta_item().and_then(|meta_item| Some(meta_item.name()))
     }
 
     /// Gets the string value if self is a MetaItem and the MetaItem is a
@@ -154,7 +162,7 @@ impl NestedMetaItem {
                     if meta_item_list.len() == 1 {
                         let nested_item = &meta_item_list[0];
                         if nested_item.is_literal() {
-                            Some((meta_item.ident.name, nested_item.literal().unwrap()))
+                            Some((meta_item.name(), nested_item.literal().unwrap()))
                         } else {
                             None
                         }
@@ -204,6 +212,10 @@ impl NestedMetaItem {
     }
 }
 
+fn name_from_path(path: &Path) -> Name {
+    path.segments.last().expect("empty path in attribute").ident.name
+}
+
 impl Attribute {
     pub fn check_name(&self, name: &str) -> bool {
         let matches = self.path == name;
@@ -213,11 +225,10 @@ impl Attribute {
         matches
     }
 
-    pub fn name(&self) -> Option<Name> {
-        match self.path.segments.len() {
-            1 => Some(self.path.segments[0].ident.name),
-            _ => None,
-        }
+    /// Returns the **last** segment of the name of this attribute.
+    /// E.g. `foo` for `#[foo]`, `skip` for `#[rustfmt::skip]`.
+    pub fn name(&self) -> Name {
+        name_from_path(&self.path)
     }
 
     pub fn value_str(&self) -> Option<Symbol> {
@@ -247,9 +258,17 @@ impl Attribute {
     pub fn is_value_str(&self) -> bool {
         self.value_str().is_some()
     }
+
+    pub fn is_scoped(&self) -> bool {
+        self.path.segments.len() > 1
+    }
 }
 
 impl MetaItem {
+    pub fn name(&self) -> Name {
+        name_from_path(&self.ident)
+    }
+
     pub fn value_str(&self) -> Option<Symbol> {
         match self.node {
             MetaItemKind::NameValue(ref v) => {
@@ -279,7 +298,7 @@ impl MetaItem {
     pub fn span(&self) -> Span { self.span }
 
     pub fn check_name(&self, name: &str) -> bool {
-        self.ident.name == name
+        self.name() == name
     }
 
     pub fn is_value_str(&self) -> bool {
@@ -296,10 +315,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
-            ident: match self.path.segments.len() {
-                1 => self.path.segments[0].ident,
-                _ => return None,
-            },
+            ident: self.path.clone(),
             node: if let Some(node) = MetaItemKind::from_tokens(&mut tokens) {
                 if tokens.peek().is_some() {
                     return None;
@@ -344,12 +360,8 @@ impl Attribute {
     }
 
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
-        if self.path.segments.len() > 1 {
-            sess.span_diagnostic.span_err(self.path.span, "expected ident, found path");
-        }
-
         Ok(MetaItem {
-            ident: self.path.segments.last().unwrap().ident,
+            ident: self.path.clone(),
             node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
             span: self.span,
         })
@@ -387,16 +399,17 @@ pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem 
 }
 
 pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
-    MetaItem { ident, span, node: MetaItemKind::NameValue(value) }
+    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
 }
 
 pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
-    MetaItem { ident, span, node: MetaItemKind::List(items) }
+    MetaItem { ident: Path::from_ident(ident), span, node: MetaItemKind::List(items) }
 }
 
 pub fn mk_word_item(ident: Ident) -> MetaItem {
-    MetaItem { ident, span: ident.span, node: MetaItemKind::Word }
+    MetaItem { ident: Path::from_ident(ident), span: ident.span, node: MetaItemKind::Word }
 }
+
 pub fn mk_nested_word_item(ident: Ident) -> NestedMetaItem {
     respan(ident.span, NestedMetaItemKind::MetaItem(mk_word_item(ident)))
 }
@@ -422,7 +435,7 @@ pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
     Attribute {
         id,
         style: ast::AttrStyle::Inner,
-        path: ast::Path::from_ident(item.ident),
+        path: item.ident,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
         span: sp,
@@ -440,7 +453,7 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
     Attribute {
         id,
         style: ast::AttrStyle::Outer,
-        path: ast::Path::from_ident(item.ident),
+        path: item.ident,
         tokens: item.node.tokens(item.span),
         is_sugared_doc: false,
         span: sp,
@@ -453,7 +466,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     Attribute {
         id,
         style,
-        path: ast::Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
+        path: Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,
@@ -489,7 +502,7 @@ pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
         item.check_name("feature") &&
         item.meta_item_list().map(|list| {
             list.iter().any(|mi| {
-                mi.word().map(|w| w.ident.name == feature_name)
+                mi.word().map(|w| w.name() == feature_name)
                          .unwrap_or(false)
             })
         }).unwrap_or(false)
@@ -562,7 +575,7 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
         if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
             gated_cfg.check_and_emit(sess, feats);
         }
-        sess.config.contains(&(cfg.ident.name, cfg.value_str()))
+        sess.config.contains(&(cfg.name(), cfg.value_str()))
     })
 }
 
@@ -583,7 +596,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match &*cfg.ident.name.as_str() {
+            match &*cfg.name().as_str() {
                 "any" => mis.iter().any(|mi| {
                     eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
@@ -676,7 +689,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
             let meta = meta.as_ref().unwrap();
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.ident.name));
+                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -695,14 +708,14 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     )+
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match &*mi.ident.name.as_str() {
+                            match &*mi.name().as_str() {
                                 $(
                                     stringify!($name)
                                         => if !get(mi, &mut $name) { continue 'outer },
                                 )+
                                 _ => {
                                     handle_errors(diagnostic, mi.span,
-                                                  AttrError::UnknownMetaItem(mi.ident.name));
+                                                  AttrError::UnknownMetaItem(mi.name()));
                                     continue 'outer
                                 }
                             }
@@ -714,7 +727,7 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                 }
             }
 
-            match &*meta.ident.name.as_str() {
+            match &*meta.name().as_str() {
                 "rustc_deprecated" => {
                     if rustc_depr.is_some() {
                         span_err!(diagnostic, item_sp, E0540,
@@ -769,13 +782,13 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut issue = None;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match &*mi.ident.name.as_str() {
+                            match &*mi.name().as_str() {
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "reason" => if !get(mi, &mut reason) { continue 'outer },
                                 "issue" => if !get(mi, &mut issue) { continue 'outer },
                                 _ => {
                                     handle_errors(diagnostic, meta.span,
-                                                  AttrError::UnknownMetaItem(mi.ident.name));
+                                                  AttrError::UnknownMetaItem(mi.name()));
                                     continue 'outer
                                 }
                             }
@@ -825,12 +838,12 @@ fn find_stability_generic<'a, I>(diagnostic: &Handler,
                     let mut since = None;
                     for meta in metas {
                         if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                            match &*mi.ident.name.as_str() {
+                            match &*mi.name().as_str() {
                                 "feature" => if !get(mi, &mut feature) { continue 'outer },
                                 "since" => if !get(mi, &mut since) { continue 'outer },
                                 _ => {
                                     handle_errors(diagnostic, meta.span,
-                                                  AttrError::UnknownMetaItem(mi.ident.name));
+                                                  AttrError::UnknownMetaItem(mi.name()));
                                     continue 'outer
                                 }
                             }
@@ -917,7 +930,7 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
         depr = if let Some(metas) = attr.meta_item_list() {
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
-                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.ident.name));
+                    handle_errors(diagnostic, meta.span, AttrError::MultipleItem(meta.name()));
                     return false
                 }
                 if let Some(v) = meta.value_str() {
@@ -933,12 +946,12 @@ fn find_deprecation_generic<'a, I>(diagnostic: &Handler,
             let mut note = None;
             for meta in metas {
                 if let NestedMetaItemKind::MetaItem(ref mi) = meta.node {
-                    match &*mi.ident.name.as_str() {
+                    match &*mi.name().as_str() {
                         "since" => if !get(mi, &mut since) { continue 'outer },
                         "note" => if !get(mi, &mut note) { continue 'outer },
                         _ => {
                             handle_errors(diagnostic, meta.span,
-                                          AttrError::UnknownMetaItem(mi.ident.name));
+                                          AttrError::UnknownMetaItem(mi.name()));
                             continue 'outer
                         }
                     }
@@ -990,7 +1003,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
 
                 let mut recognised = false;
                 if let Some(mi) = item.word() {
-                    let word = &*mi.ident.name.as_str();
+                    let word = &*mi.name().as_str();
                     let hint = match word {
                         "C" => Some(ReprC),
                         "packed" => Some(ReprPacked(1)),
@@ -1047,7 +1060,7 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                     }
                 } else {
                     if let Some(meta_item) = item.meta_item() {
-                        if meta_item.ident.name == "align" {
+                        if meta_item.name() == "align" {
                             if let MetaItemKind::NameValue(ref value) = meta_item.node {
                                 recognised = true;
                                 let mut err = struct_span_err!(diagnostic, item.span, E0693,
@@ -1127,18 +1140,56 @@ impl IntType {
 
 impl MetaItem {
     fn tokens(&self) -> TokenStream {
-        let ident = TokenTree::Token(self.span, Token::from_ast_ident(self.ident));
-        TokenStream::concat(vec![ident.into(), self.node.tokens(self.span)])
+        let mut idents = vec![];
+        let mut last_pos = BytePos(0 as u32);
+        for (i, segment) in self.ident.segments.iter().enumerate() {
+            let is_first = i == 0;
+            if !is_first {
+                let mod_sep_span = Span::new(last_pos,
+                                             segment.ident.span.lo(),
+                                             segment.ident.span.ctxt());
+                idents.push(TokenTree::Token(mod_sep_span, Token::ModSep).into());
+            }
+            idents.push(TokenTree::Token(segment.ident.span,
+                                         Token::from_ast_ident(segment.ident)).into());
+            last_pos = segment.ident.span.hi();
+        }
+        idents.push(self.node.tokens(self.span));
+        TokenStream::concat(idents)
     }
 
     fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItem>
         where I: Iterator<Item = TokenTree>,
     {
-        let (span, ident) = match tokens.next() {
-            Some(TokenTree::Token(span, Token::Ident(ident, _))) => (span, ident),
+        // FIXME: Share code with `parse_path`.
+        let ident = match tokens.next() {
+            Some(TokenTree::Token(span, Token::Ident(ident, _))) => {
+                if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+                    let mut segments = vec![PathSegment::from_ident(ident.with_span_pos(span))];
+                    tokens.next();
+                    loop {
+                        if let Some(TokenTree::Token(span,
+                                                     Token::Ident(ident, _))) = tokens.next() {
+                            segments.push(PathSegment::from_ident(ident.with_span_pos(span)));
+                        } else {
+                            return None;
+                        }
+                        if let Some(TokenTree::Token(_, Token::ModSep)) = tokens.peek() {
+                            tokens.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    let span = span.with_hi(segments.last().unwrap().ident.span.hi());
+                    Path { span, segments }
+                } else {
+                    Path::from_ident(ident.with_span_pos(span))
+                }
+            }
             Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
-                token::Nonterminal::NtIdent(ident, _) => (ident.span, ident),
+                token::Nonterminal::NtIdent(ident, _) => Path::from_ident(ident),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
+                token::Nonterminal::NtPath(ref path) => path.clone(),
                 _ => return None,
             },
             _ => return None,
@@ -1147,10 +1198,11 @@ impl MetaItem {
         let node = MetaItemKind::from_tokens(tokens)?;
         let hi = match node {
             MetaItemKind::NameValue(ref lit) => lit.span.hi(),
-            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(span.hi()),
-            _ => span.hi(),
+            MetaItemKind::List(..) => list_closing_paren_pos.unwrap_or(ident.span.hi()),
+            _ => ident.span.hi(),
         };
-        Some(MetaItem { ident, node, span: span.with_hi(hi) })
+        let span = ident.span.with_hi(hi);
+        Some(MetaItem { ident, node, span })
     }
 }
 
