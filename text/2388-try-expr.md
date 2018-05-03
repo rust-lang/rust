@@ -1,7 +1,7 @@
 - Feature Name: `try_expr`
 - Start Date: 2018-04-04
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#2388](https://github.com/rust-lang/rfcs/pull/2388)
+- Rust Issue: [rust-lang/rust#50412](https://github.com/rust-lang/rust/issues/50412)
 
 # Summary
 [summary]: #summary
