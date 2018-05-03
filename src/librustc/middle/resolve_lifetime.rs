@@ -230,30 +230,31 @@ struct LifetimeContext<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
-    // Deep breath. Our representation for poly trait refs contains a single
-    // binder and thus we only allow a single level of quantification. However,
-    // the syntax of Rust permits quantification in two places, e.g., `T: for <'a> Foo<'a>`
-    // and `for <'a, 'b> &'b T: Foo<'a>`. In order to get the de Bruijn indices
-    // correct when representing these constraints, we should only introduce one
-    // scope. However, we want to support both locations for the quantifier and
-    // during lifetime resolution we want precise information (so we can't
-    // desugar in an earlier phase).
 
-    // SO, if we encounter a quantifier at the outer scope, we set
-    // trait_ref_hack to true (and introduce a scope), and then if we encounter
-    // a quantifier at the inner scope, we error. If trait_ref_hack is false,
-    // then we introduce the scope at the inner quantifier.
-
-    // I'm sorry.
+    /// Deep breath. Our representation for poly trait refs contains a single
+    /// binder and thus we only allow a single level of quantification. However,
+    /// the syntax of Rust permits quantification in two places, e.g., `T: for <'a> Foo<'a>`
+    /// and `for <'a, 'b> &'b T: Foo<'a>`. In order to get the de Bruijn indices
+    /// correct when representing these constraints, we should only introduce one
+    /// scope. However, we want to support both locations for the quantifier and
+    /// during lifetime resolution we want precise information (so we can't
+    /// desugar in an earlier phase).
+    ///
+    /// SO, if we encounter a quantifier at the outer scope, we set
+    /// trait_ref_hack to true (and introduce a scope), and then if we encounter
+    /// a quantifier at the inner scope, we error. If trait_ref_hack is false,
+    /// then we introduce the scope at the inner quantifier.
+    ///
+    /// I'm sorry.
     trait_ref_hack: bool,
 
-    // Used to disallow the use of in-band lifetimes in `fn` or `Fn` syntax.
+    /// Used to disallow the use of in-band lifetimes in `fn` or `Fn` syntax.
     is_in_fn_syntax: bool,
 
-    // List of labels in the function/method currently under analysis.
+    /// List of labels in the function/method currently under analysis.
     labels_in_fn: Vec<(ast::Name, Span)>,
 
-    // Cache for cross-crate per-definition object lifetime defaults.
+    /// Cache for cross-crate per-definition object lifetime defaults.
     xcrate_object_lifetime_defaults: DefIdMap<Vec<ObjectLifetimeDefault>>,
 
     lifetime_uses: DefIdMap<LifetimeUseSet<'tcx>>,
