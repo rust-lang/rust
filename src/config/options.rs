@@ -242,8 +242,14 @@ impl WidthHeuristics {
 
     // scale the default WidthHeuristics according to max_width
     pub fn scaled(max_width: usize) -> WidthHeuristics {
-        let mut max_width_ratio: f32 = max_width as f32 / 100.0; // 100 is the default width -> default ratio is 1
-        max_width_ratio = (max_width_ratio * 10.0).round() / 10.0; // round to the closest 0.1
+        const DEFAULT_MAX_WIDTH: usize = 100;
+        let max_width_ratio = if max_width > DEFAULT_MAX_WIDTH {
+            let ratio = max_width as f32 / DEFAULT_MAX_WIDTH as f32;
+            // round to the closest 0.1
+            (ratio * 10.0).round() / 10.0
+        } else {
+            1.0
+        };
         WidthHeuristics {
             fn_call_width: (60.0 * max_width_ratio).round() as usize,
             struct_lit_width: (18.0 * max_width_ratio).round() as usize,
