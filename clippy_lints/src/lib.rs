@@ -41,7 +41,6 @@ extern crate regex_syntax;
 
 extern crate quine_mc_cluskey;
 
-extern crate rustc_const_math;
 extern crate rustc_errors;
 extern crate rustc_plugin;
 
