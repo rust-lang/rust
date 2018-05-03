@@ -450,8 +450,8 @@ pub mod builtin {
     #[unstable(feature = "concat_idents_macro", issue = "29599")]
     #[macro_export]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ });
-        ($($e:ident,)*) => ({ /* compiler built-in */ });
+        ($($e:ident),+) => ({ /* compiler built-in */ });
+        ($($e:ident,)+) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.

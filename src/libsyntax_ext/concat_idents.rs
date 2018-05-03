@@ -31,6 +31,11 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt,
         return base::DummyResult::expr(sp);
     }
 
+    if tts.is_empty() {
+        cx.span_err(sp, "concat_idents! takes 1 or more arguments.");
+        return DummyResult::expr(sp);
+    }
+
     let mut res_str = String::new();
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {

@@ -606,8 +606,8 @@ mod builtin {
     #[macro_export]
     #[cfg(dox)]
     macro_rules! concat_idents {
-        ($($e:ident),*) => ({ /* compiler built-in */ });
-        ($($e:ident,)*) => ({ /* compiler built-in */ });
+        ($($e:ident),+) => ({ /* compiler built-in */ });
+        ($($e:ident,)+) => ({ /* compiler built-in */ });
     }
 
     /// Concatenates literals into a static string slice.
