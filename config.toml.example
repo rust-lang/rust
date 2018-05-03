@@ -241,6 +241,9 @@
 #       outweighs the time gains in not doing optimizations, therefore a
 #       full bootstrap takes much more time with optimize set to false.
 #optimize = true
+#optimize-stage0 = `optimize`
+#optimize-stage1 = `optimize`
+#optimize-stage2 = `optimize`
 
 # Number of codegen units to use for each compiler invocation. A value of 0
 # means "the number of cores on this machine", and 1+ is passed through to the
@@ -253,6 +256,9 @@
 
 # Whether or not debuginfo is emitted
 #debuginfo = false
+#debuginfo-stage0 = `debuginfo`
+#debuginfo-stage1 = `debuginfo`
+#debuginfo-stage2 = `debuginfo`
 
 # Whether or not line number debug information is emitted
 #debuginfo-lines = false

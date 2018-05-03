@@ -418,7 +418,8 @@ impl Step for Rustdoc {
                                            "src/tools/rustdoc");
 
         // Most tools don't get debuginfo, but rustdoc should.
-        cargo.env("RUSTC_DEBUGINFO", builder.config.rust_debuginfo.to_string())
+        cargo.env("RUSTC_DEBUGINFO",
+                  builder.config.rust_debuginfo[target_compiler.stage as usize].to_string())
              .env("RUSTC_DEBUGINFO_LINES", builder.config.rust_debuginfo_lines.to_string());
 
         let _folder = builder.fold_output(|| format!("stage{}-rustdoc", target_compiler.stage));

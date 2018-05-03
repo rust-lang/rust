@@ -723,7 +723,9 @@ impl Step for Analysis {
         let image = tmpdir(builder).join(format!("{}-{}-image", name, target));
 
         let src = builder.stage_out(compiler, Mode::Libstd)
-            .join(target).join(builder.cargo_dir()).join("deps");
+            .join(target)
+            .join(builder.cargo_dir(compiler.stage))
+            .join("deps");
 
         let image_src = src.join("save-analysis");
         let dst = image.join("lib/rustlib").join(target).join("analysis");

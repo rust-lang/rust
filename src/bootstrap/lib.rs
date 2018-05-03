@@ -491,8 +491,8 @@ impl Build {
 
     /// Component directory that Cargo will produce output into (e.g.
     /// release/debug)
-    fn cargo_dir(&self) -> &'static str {
-        if self.config.rust_optimize {"release"} else {"debug"}
+    fn cargo_dir(&self, stage: u32) -> &'static str {
+        if self.config.rust_optimize[stage as usize] {"release"} else {"debug"}
     }
 
     fn tools_dir(&self, compiler: Compiler) -> PathBuf {
@@ -523,7 +523,10 @@ impl Build {
                  compiler: Compiler,
                  mode: Mode,
                  target: Interned<String>) -> PathBuf {
-        self.stage_out(compiler, mode).join(&*target).join(self.cargo_dir())
+        let stage = compiler.stage;
+        self.stage_out(compiler, mode)
+          .join(&*target)
+          .join(self.cargo_dir(stage))
     }
 
     /// Root output directory for LLVM compiled for `target`

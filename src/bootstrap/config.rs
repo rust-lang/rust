@@ -88,10 +88,10 @@ pub struct Config {
     pub lld_enabled: bool,
 
     // rust codegen options
-    pub rust_optimize: bool,
+    pub rust_optimize: [bool; 3],
     pub rust_codegen_units: Option<u32>,
     pub rust_debug_assertions: bool,
-    pub rust_debuginfo: bool,
+    pub rust_debuginfo: [bool; 3],
     pub rust_debuginfo_lines: bool,
     pub rust_debuginfo_only_std: bool,
     pub rust_debuginfo_tools: bool,
@@ -278,9 +278,15 @@ impl Default for StringOrBool {
 #[serde(deny_unknown_fields, rename_all = "kebab-case")]
 struct Rust {
     optimize: Option<bool>,
+    optimize_stage_0: Option<bool>,
+    optimize_stage_1: Option<bool>,
+    optimize_stage_2: Option<bool>,
     codegen_units: Option<u32>,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
+    debuginfo_stage_0: Option<bool>,
+    debuginfo_stage_1: Option<bool>,
+    debuginfo_stage_2: Option<bool>,
     debuginfo_lines: Option<bool>,
     debuginfo_only_std: Option<bool>,
     debuginfo_tools: Option<bool>,
@@ -340,7 +346,7 @@ impl Config {
         config.llvm_version_check = true;
         config.use_jemalloc = true;
         config.backtrace = true;
-        config.rust_optimize = true;
+        config.rust_optimize = [true; 3];
         config.rust_optimize_tests = true;
         config.submodules = true;
         config.fast_submodules = true;
@@ -507,11 +513,50 @@ impl Config {
         if let Some(ref rust) = toml.rust {
             debug = rust.debug;
             debug_assertions = rust.debug_assertions;
-            debuginfo = rust.debuginfo;
+
+            debuginfo = rust.debuginfo.map(|v| [v; 3] );
+            if let Some(stage_debuginfo) = rust.debuginfo_stage_0 {
+                debuginfo = debuginfo.map(|mut v| {
+                    v[0] = stage_debuginfo;
+                    v
+                });
+            }
+            if let Some(stage_debuginfo) = rust.debuginfo_stage_1 {
+                debuginfo = debuginfo.map(|mut v| {
+                    v[1] = stage_debuginfo;
+                    v
+                });
+            }
+            if let Some(stage_debuginfo) = rust.debuginfo_stage_2 {
+                debuginfo = debuginfo.map(|mut v| {
+                    v[2] = stage_debuginfo;
+                    v
+                });
+            }
+
             debuginfo_lines = rust.debuginfo_lines;
             debuginfo_only_std = rust.debuginfo_only_std;
             debuginfo_tools = rust.debuginfo_tools;
-            optimize = rust.optimize;
+            optimize = rust.optimize.map(|v| [v; 3] );
+            if let Some(opt) = rust.optimize_stage_0 {
+                optimize = optimize.map(|mut v| {
+                    v[0] = opt;
+                    v
+                });
+            }
+            if let Some(opt) = rust.optimize_stage_1 {
+                optimize = optimize.map(|mut v| {
+                    v[1] = opt;
+                    v
+                });
+            }
+            if let Some(opt) = rust.optimize_stage_2 {
+                optimize = optimize.map(|mut v| {
+                    v[2] = opt;
+                    v
+                });
+            }
+
             ignore_git = rust.ignore_git;
             debug_jemalloc = rust.debug_jemalloc;
             set(&mut config.rust_optimize_tests, rust.optimize_tests);
@@ -598,9 +643,9 @@ impl Config {
 
         let default = debug == Some(true);
         config.debug_jemalloc = debug_jemalloc.unwrap_or(default);
-        config.rust_debuginfo = debuginfo.unwrap_or(default);
+        config.rust_debuginfo = debuginfo.unwrap_or([default; 3]);
         config.rust_debug_assertions = debug_assertions.unwrap_or(default);
-        config.rust_optimize = optimize.unwrap_or(!default);
+        config.rust_optimize = optimize.unwrap_or([!default; 3]);
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
