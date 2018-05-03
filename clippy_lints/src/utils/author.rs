@@ -463,7 +463,7 @@ fn has_attr(attrs: &[Attribute]) -> bool {
     attrs.iter().any(|attr| {
         attr.check_name("clippy") && attr.meta_item_list().map_or(false, |list| {
             list.len() == 1 && match list[0].node {
-                ast::NestedMetaItemKind::MetaItem(ref it) => it.ident.name == "author",
+                ast::NestedMetaItemKind::MetaItem(ref it) => it.name() == "author",
                 ast::NestedMetaItemKind::Literal(_) => false,
             }
         })

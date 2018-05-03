@@ -77,13 +77,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     return;
                 }
                 for a in attrs {
-                    if_chain! {
-                        if a.meta_item_list().is_some();
-                        if let Some(name) = a.name();
-                        if name == "proc_macro_derive";
-                        then {
-                            return;
-                        }
+                    if a.meta_item_list().is_some() && a.name() == "proc_macro_derive" {
+                        return;
                     }
                 }
             },
