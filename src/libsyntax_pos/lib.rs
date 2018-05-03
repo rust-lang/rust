@@ -1047,6 +1047,7 @@ impl FileMap {
         self.multibyte_chars.borrow_mut().push(mbc);
     }
 
+    #[inline]
     pub fn record_width(&self, pos: BytePos, ch: char) {
         let width = match ch {
             '\t' =>
