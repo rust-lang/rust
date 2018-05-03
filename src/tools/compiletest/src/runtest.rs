@@ -11,7 +11,7 @@
 use common::{Config, TestPaths};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{Incremental, MirOpt, RunMake, Ui, Rustfix};
+use common::{Incremental, MirOpt, RunMake, Ui};
 use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
 use common::CompareMode;
 use diff;
@@ -242,7 +242,6 @@ impl<'test> TestCx<'test> {
             CodegenUnits => self.run_codegen_units_test(),
             Incremental => self.run_incremental_test(),
             RunMake => self.run_rmake_test(),
-            Rustfix => self.run_rustfix_test(),
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
         }
@@ -1689,7 +1688,6 @@ impl<'test> TestCx<'test> {
 
                 rustc.arg(dir_opt);
             }
-            Rustfix |
             RunPass |
             RunFail |
             RunPassValgrind |
@@ -2555,6 +2553,7 @@ impl<'test> TestCx<'test> {
 
         let expected_stderr = self.load_expected_output(UI_STDERR);
         let expected_stdout = self.load_expected_output(UI_STDOUT);
+        let expected_fixed = self.load_expected_output(UI_FIXED);
 
         let normalized_stdout =
             self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
@@ -2570,6 +2569,21 @@ impl<'test> TestCx<'test> {
         let mut errors = 0;
         errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
         errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+
+        if self.config.compare_mode.is_some() {
+            // don't test rustfix with nll right now
+        } else if self.props.run_rustfix {
+            // Apply suggestions from rustc to the code itself
+            let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
+                .unwrap();
+            let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
+
+            errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
+        } else if !expected_fixed.is_empty() {
+            panic!("the `// run-rustfix` directive wasn't found but a `*.fixed` \
+                    file was found");
+        }
 
         if errors > 0 {
             println!("To update references, run this command from build directory:");
@@ -2604,6 +2618,23 @@ impl<'test> TestCx<'test> {
             } else if !self.props.error_patterns.is_empty() || !proc_res.status.success() {
                 // "//~ERROR comments"
                 self.check_error_patterns(&proc_res.stderr, &proc_res);
+            }
+        }
+
+        if self.props.run_rustfix && self.config.compare_mode.is_none() {
+            // And finally, compile the fixed code and make sure it both
+            // succeeds and has no diagnostics.
+            let mut rustc = self.make_compile_args(
+                &self.testpaths.file.with_extension(UI_FIXED),
+                TargetLocation::ThisFile(self.make_exe_name()),
+            );
+            rustc.arg("-L").arg(&self.aux_output_dir_name());
+            let res = self.compose_and_run_compiler(rustc, None);
+            if !res.status.success() {
+                self.fatal_proc_rec("failed to compile fixed code", &res);
+            }
+            if !res.stderr.is_empty() {
+                self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
             }
         }
     }
@@ -2929,62 +2960,6 @@ impl<'test> TestCx<'test> {
         println!("\nThe actual {0} differed from the expected {0}.", kind);
         println!("Actual {} saved to {}", kind, output_file.display());
         1
-    }
-
-    fn run_rustfix_test(&self) {
-        // First up, compile the test with --error-format=json
-        let mut rustc = self.make_compile_args(
-            &self.testpaths.file,
-            TargetLocation::ThisFile(self.make_exe_name()),
-        );
-        rustc.arg("--error-format").arg("json")
-            .arg("-L").arg(&self.aux_output_dir_name());
-        let proc_res = self.compose_and_run_compiler(rustc, None);
-
-        // Now apply suggestions from rustc to the code itself
-        let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
-            .unwrap();
-        let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
-        let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
-
-        // Load up what the expected result of fixing should be
-        let fixture_path = expected_output_path(&self.testpaths, None, &None, UI_FIXED);
-        let expected_fixed = self.load_expected_output_from_path(&fixture_path)
-            .unwrap_or(String::new());
-
-        // Make sure our fixed code is the same as what we're expecting
-        let errors = self.compare_output(UI_FIXED, &fixed_code, &expected_fixed);
-        if errors > 0 {
-            println!("To update references, run this command from build directory:");
-            let relative_path_to_file = self.testpaths
-                .relative_dir
-                .join(self.testpaths.file.file_name().unwrap());
-            println!(
-                "{}/update-references.sh '{}' '{}'",
-                self.config.src_base.display(),
-                self.config.build_base.display(),
-                relative_path_to_file.display()
-            );
-            self.fatal_proc_rec(
-                &format!("{} errors occurred comparing output.", errors),
-                &proc_res,
-            );
-        }
-
-        // And finally, compile the fixed code and make sure it both succeeds
-        // and has no diagnostics.
-        let mut rustc = self.make_compile_args(
-            &self.testpaths.file.with_extension(UI_FIXED),
-            TargetLocation::ThisFile(self.make_exe_name()),
-        );
-        rustc.arg("-L").arg(&self.aux_output_dir_name());
-        let res = self.compose_and_run_compiler(rustc, None);
-        if !res.status.success() {
-            self.fatal_proc_rec("failed to compile fixed code", &res);
-        }
-        if !res.stderr.is_empty() {
-            self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
-        }
     }
 }
 

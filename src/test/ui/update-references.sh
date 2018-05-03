@@ -26,7 +26,6 @@ if [[ "$1" == "--help" || "$1" == "-h" || "$1" == "" || "$2" == "" ]]; then
     echo "   $0 ../../../build/x86_64-apple-darwin/test/ui *.rs */*.rs"
 fi
 
-MYDIR=$(dirname $0)
 
 BUILD_DIR="$1"
 shift
@@ -34,7 +33,8 @@ shift
 shopt -s nullglob
 
 while [[ "$1" != "" ]]; do
-    for EXT in "stderr" "stdout"; do
+    MYDIR=$(dirname $1)
+    for EXT in "stderr" "stdout" "fixed"; do
         for OUT_NAME in $BUILD_DIR/${1%.rs}.*$EXT; do
             OUT_BASE=`basename "$OUT_NAME"`
             if ! (diff $OUT_NAME $MYDIR/$OUT_BASE >& /dev/null); then

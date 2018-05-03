@@ -32,7 +32,6 @@ pub enum Mode {
     RunMake,
     Ui,
     MirOpt,
-    Rustfix,
 }
 
 impl Mode {
@@ -68,7 +67,6 @@ impl FromStr for Mode {
             "run-make" => Ok(RunMake),
             "ui" => Ok(Ui),
             "mir-opt" => Ok(MirOpt),
-            "rustfix" => Ok(Rustfix),
             _ => Err(()),
         }
     }
@@ -92,7 +90,6 @@ impl fmt::Display for Mode {
             RunMake => "run-make",
             Ui => "ui",
             MirOpt => "mir-opt",
-            Rustfix => "rustfix",
         };
         fmt::Display::fmt(s, f)
     }

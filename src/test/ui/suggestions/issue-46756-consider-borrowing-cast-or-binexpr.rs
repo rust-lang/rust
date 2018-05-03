@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 #![allow(unused)]
 
 fn light_flows_our_war_of_mocking_words(and_yet: &usize) -> usize {
