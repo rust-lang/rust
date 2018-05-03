@@ -885,30 +885,28 @@ impl Drop for TempFile {
 
 #[test]
 fn verify_check_works() {
-    let file_name = "temp_check.rs";
-    let _temp_file = make_temp_file(file_name);
+    let temp_file = make_temp_file("temp_check.rs");
     assert_cli::Assert::command(&[
         "cargo",
         "run",
         "--bin=rustfmt",
         "--",
         "--write-mode=check",
-        file_name,
+        temp_file.path.to_str().unwrap(),
     ]).succeeds()
         .unwrap();
 }
 
 #[test]
 fn verify_diff_works() {
-    let file_name = "temp_diff.rs";
-    let _temp_file = make_temp_file(file_name);
+    let temp_file = make_temp_file("temp_diff.rs");
     assert_cli::Assert::command(&[
         "cargo",
         "run",
         "--bin=rustfmt",
         "--",
         "--write-mode=diff",
-        file_name,
+        temp_file.path.to_str().unwrap(),
     ]).succeeds()
         .unwrap();
 }
