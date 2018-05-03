@@ -11,9 +11,8 @@ extern crate log;
 // From rustc.
 #[macro_use]
 extern crate rustc;
-extern crate rustc_mir;
-extern crate rustc_target;
 extern crate rustc_data_structures;
+extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax;
 extern crate regex;
