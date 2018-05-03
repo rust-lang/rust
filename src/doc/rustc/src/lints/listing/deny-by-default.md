@@ -266,7 +266,7 @@ impl<X> Trait1<Box<X>> for A {
 This will produce:
 
 ```text
-warning: conflicting implementations of trait `Trait1<std::boxed::Box<_>>` for type `A`: (E0119)
+error: conflicting implementations of trait `Trait1<std::boxed::Box<_>>` for type `A`: (E0119)
   --> src/main.rs:13:1
    |
 9  | impl<X, T> Trait1<X> for T where T: Trait2<X> {
