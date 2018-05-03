@@ -899,8 +899,10 @@ pub unsafe trait Alloc {
             return Err(CannotReallocInPlace);
         }
     }
+}
 
-
+/// Extension methods for allocators.
+pub trait AllocExt: Alloc {
     // == COMMON USAGE PATTERNS ==
     // alloc_one, dealloc_one, alloc_array, realloc_array. dealloc_array
 
@@ -1093,3 +1095,5 @@ pub unsafe trait Alloc {
         }
     }
 }
+
+impl<A: Alloc> AllocExt for A {}

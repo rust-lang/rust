@@ -14,7 +14,7 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use alloc::{Alloc, Layout, Global, oom};
+use alloc::{Alloc, AllocExt, Layout, Global, oom};
 use alloc::CollectionAllocErr;
 use alloc::CollectionAllocErr::*;
 use boxed::Box;
