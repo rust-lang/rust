@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-order
+
 const QUERY = '+';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::ops::AddAssign', 'name': 'AddAssign' },
-        { 'path': 'std::ops::Add', 'name': 'Add' },
+        { 'path': 'std::ops', 'name': 'AddAssign' },
+        { 'path': 'std::ops', 'name': 'Add' },
     ],
 };
