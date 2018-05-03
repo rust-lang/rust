@@ -792,7 +792,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 ConstVal::Value(miri) => const_val_field(
                     self.tcx, self.param_env, instance,
                     variant_opt, field, miri, cv.ty,
-                ).unwrap(),
+                ).expect("field access failed"),
                 _ => bug!("{:#?} is not a valid adt", cv),
             };
             self.const_to_pat(instance, val, id, span)

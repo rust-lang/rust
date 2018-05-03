@@ -1340,9 +1340,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         use syntax::ast::FloatTy;
 
         let layout = self.layout_of(ty)?;
-        // do the strongest layout check of the two
-        let align = layout.align.max(ptr_align);
-        self.memory.check_align(ptr, align)?;
+        self.memory.check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
             return Ok(Some(Value::ByVal(PrimVal::Undef)));
