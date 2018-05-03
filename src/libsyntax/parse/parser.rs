@@ -2042,7 +2042,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn check_lifetime(&mut self) -> bool {
+    pub fn check_lifetime(&mut self) -> bool {
         self.expected_tokens.push(TokenType::Lifetime);
         self.token.is_lifetime()
     }
