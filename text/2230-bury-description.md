@@ -1,6 +1,6 @@
 - Feature Name: optional_error_description
 - Start Date: 2017-11-29
-- RFC PR: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2230
 - Rust Issue: (leave this empty)
 
 # Default implementation of `Error::description()`
