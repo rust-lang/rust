@@ -88,6 +88,7 @@ function loadContent(content) {
     var m = new Module();
     m._compile(content, "tmp.js");
     m.exports.ignore_order = content.indexOf("\n// ignore-order\n") !== -1;
+    m.exports.exact_check = content.indexOf("\n// exact-check\n") !== -1;
     return m.exports;
 }
 
@@ -179,6 +180,7 @@ function main(argv) {
         const expected = loadedFile.EXPECTED;
         const query = loadedFile.QUERY;
         const ignore_order = loadedFile.ignore_order;
+        const exact_check = loadedFile.exact_check;
         var results = loaded.execSearch(loaded.getQuery(query), index);
         process.stdout.write('Checking "' + file + '" ... ');
         var error_text = [];
@@ -191,13 +193,17 @@ function main(argv) {
                 break;
             }
             var entry = expected[key];
-            var prev_pos = 0;
+            var prev_pos = -1;
             for (var i = 0; i < entry.length; ++i) {
                 var entry_pos = lookForEntry(entry[i], results[key]);
                 if (entry_pos === null) {
                     error_text.push("==> Result not found in '" + key + "': '" +
                                     JSON.stringify(entry[i]) + "'");
-                } else if (entry_pos < prev_pos && ignore_order === false) {
+                } else if (exact_check === true && prev_pos + 1 !== entry_pos) {
+                    error_text.push("==> Exact check failed at position " + (prev_pos + 1) + ": " +
+                                    "expected '" + JSON.stringify(entry[i]) + "' but found '" +
+                                    JSON.stringify(results[key][i]) + "'");
+                } else if (ignore_order === false && entry_pos < prev_pos) {
                     error_text.push("==> '" + JSON.stringify(entry[i]) + "' was supposed to be " +
                                     " before '" + JSON.stringify(results[key][entry_pos]) + "'");
                 } else {
