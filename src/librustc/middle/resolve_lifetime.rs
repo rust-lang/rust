@@ -1358,7 +1358,25 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 Some(LifetimeUseSet::Many) => {
                     debug!("Not one use lifetime");
                 }
-                None => {}
+                None => {
+                    let node_id = self.tcx.hir.as_local_node_id(*def_id).unwrap();
+                    if let hir::map::NodeLifetime(hir_lifetime) = self.tcx.hir.get(node_id) {
+                        let span = hir_lifetime.span;
+                        let id = hir_lifetime.id;
+
+                        self.tcx
+                            .struct_span_lint_node(
+                                lint::builtin::UNUSED_LIFETIME,
+                                id,
+                                span,
+                                &format!(
+                                    "lifetime parameter `{}` never used",
+                                    hir_lifetime.name.name()
+                                ),
+                            )
+                            .emit();
+                    }
+                }
             }
         }
     }

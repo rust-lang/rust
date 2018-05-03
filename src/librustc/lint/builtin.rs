@@ -233,7 +233,13 @@ declare_lint! {
 declare_lint! {
     pub SINGLE_USE_LIFETIME,
     Allow,
-   "detects single use lifetimes"
+    "detects lifetime parameters that are only used once"
+}
+
+declare_lint! {
+    pub UNUSED_LIFETIME,
+    Allow,
+    "detects lifetime parameters that are never used"
 }
 
 declare_lint! {
@@ -318,6 +324,7 @@ impl LintPass for HardwiredLints {
             UNUSED_UNSAFE,
             UNUSED_MUT,
             SINGLE_USE_LIFETIME,
+            UNUSED_LIFETIME,
             TYVAR_BEHIND_RAW_POINTER,
             ELIDED_LIFETIME_IN_PATH,
             BARE_TRAIT_OBJECT,
