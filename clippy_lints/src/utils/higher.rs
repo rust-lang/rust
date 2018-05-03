@@ -69,6 +69,19 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                 None
             }
         },
+        hir::ExprCall(ref path, ref args) => if let hir::ExprPath(ref path) = path.node {
+            if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW) {
+                Some(Range {
+                    start: Some(&args[0]),
+                    end: Some(&args[1]),
+                    limits: ast::RangeLimits::Closed,
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        },
         hir::ExprStruct(ref path, ref fields, None) => if match_qpath(path, &paths::RANGE_FROM_STD)
             || match_qpath(path, &paths::RANGE_FROM)
         {
@@ -76,12 +89,6 @@ pub fn range(expr: &hir::Expr) -> Option<Range> {
                 start: Some(get_field("start", fields)?),
                 end: None,
                 limits: ast::RangeLimits::HalfOpen,
-            })
-        } else if match_qpath(path, &paths::RANGE_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_INCLUSIVE) {
-            Some(Range {
-                start: Some(get_field("start", fields)?),
-                end: Some(get_field("end", fields)?),
-                limits: ast::RangeLimits::Closed,
             })
         } else if match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE) {
             Some(Range {
