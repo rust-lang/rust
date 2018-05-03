@@ -15,28 +15,28 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore we break lifetime name resolution into a separate pass.
 
-use hir::map::Map;
 use hir::def::Def;
 use hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
+use hir::map::Map;
 use hir::ItemLocalId;
 use hir::LifetimeName;
 use ty::{self, TyCtxt};
 
+use errors::DiagnosticBuilder;
+use rustc::lint;
+use rustc_data_structures::sync::Lrc;
+use session::Session;
 use std::cell::Cell;
 use std::mem::replace;
-use rustc_data_structures::sync::Lrc;
+use std::slice;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use errors::DiagnosticBuilder;
 use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap, NodeSet};
-use session::Session;
-use std::slice;
-use rustc::lint;
 
-use hir::{self, GenericParamsExt};
 use hir::intravisit::{self, NestedVisitorMap, Visitor};
+use hir::{self, GenericParamsExt};
 
 /// The origin of a named lifetime definition.
 ///
@@ -2087,8 +2087,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         );
                         err.emit();
                     }
-                    hir::LifetimeName::Fresh(_) | hir::LifetimeName::Implicit |
-                    hir::LifetimeName::Name(_) => {}
+                    hir::LifetimeName::Fresh(_)
+                    | hir::LifetimeName::Implicit
+                    | hir::LifetimeName::Name(_) => {}
                 }
             }
 
@@ -2140,8 +2141,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             ))
                             .emit();
                     }
-                    hir::LifetimeName::Fresh(_) | hir::LifetimeName::Implicit |
-                    hir::LifetimeName::Name(_) => {
+                    hir::LifetimeName::Fresh(_)
+                    | hir::LifetimeName::Implicit
+                    | hir::LifetimeName::Name(_) => {
                         self.resolve_lifetime_ref(bound);
                     }
                 }
