@@ -85,6 +85,7 @@ pub fn provide(providers: &mut Providers) {
     shim::provide(providers);
     transform::provide(providers);
     providers.const_eval = interpret::const_eval_provider;
+    providers.const_value_to_allocation = interpret::const_value_to_allocation_provider;
     providers.check_match = hair::pattern::check_match;
 }
 

@@ -137,6 +137,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::const_value_to_allocation<'tcx> {
+    fn describe(_tcx: TyCtxt, (val, ty): (ConstValue<'tcx>, Ty<'tcx>)) -> String {
+        format!("converting value `{:?}` ({}) to an allocation", val, ty)
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::erase_regions_ty<'tcx> {
     fn describe(_tcx: TyCtxt, ty: Ty<'tcx>) -> String {
         format!("erasing regions from `{:?}`", ty)

@@ -23,6 +23,7 @@ pub use self::const_eval::{
     mk_borrowck_eval_cx,
     eval_body,
     CompileTimeEvaluator,
+    const_value_to_allocation_provider,
     const_eval_provider,
     const_val_field,
     const_variant_index,

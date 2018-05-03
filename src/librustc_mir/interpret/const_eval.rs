@@ -8,12 +8,13 @@ use rustc::ty::subst::Subst;
 
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
+use syntax::codemap::DUMMY_SP;
 
 use rustc::mir::interpret::{
     EvalResult, EvalError, EvalErrorKind, GlobalId,
     Value, Pointer, PrimVal, AllocId, Allocation, ConstValue,
 };
-use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory};
+use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory, MemoryKind};
 
 use std::fmt;
 use std::error::Error;
@@ -470,7 +471,6 @@ pub fn const_variant_index<'a, 'tcx>(
     let (ptr, align) = match value {
         Value::ByValPair(..) | Value::ByVal(_) => {
             let layout = ecx.layout_of(ty)?;
-            use super::MemoryKind;
             let ptr = ecx.memory.allocate(layout.size.bytes(), layout.align, Some(MemoryKind::Stack))?;
             let ptr: Pointer = ptr.into();
             ecx.write_value_to_ptr(value, ptr, layout.align, ty)?;
@@ -480,6 +480,30 @@ pub fn const_variant_index<'a, 'tcx>(
     };
     let place = Place::from_primval_ptr(ptr, align);
     ecx.read_discriminant_as_variant_index(place, ty)
+}
+
+pub fn const_value_to_allocation_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    (val, ty): (ConstValue<'tcx>, Ty<'tcx>),
+) -> &'tcx Allocation {
+    match val {
+        ConstValue::ByRef(alloc) => return alloc,
+        _ => ()
+    }
+    let result = || -> EvalResult<'tcx, &'tcx Allocation> {
+        let mut ecx = EvalContext::new(
+            tcx.at(DUMMY_SP),
+            ty::ParamEnv::reveal_all(),
+            CompileTimeEvaluator,
+            ());
+        let value = ecx.const_value_to_value(val, ty)?;
+        let layout = ecx.layout_of(ty)?;
+        let ptr = ecx.memory.allocate(layout.size.bytes(), layout.align, Some(MemoryKind::Stack))?;
+        ecx.write_value_to_ptr(value, ptr.into(), layout.align, ty)?;
+        let alloc = ecx.memory.get(ptr.alloc_id)?;
+        Ok(tcx.intern_const_alloc(alloc.clone()))
+    };
+    result().expect("unable to convert ConstVal to Allocation")
 }
 
 pub fn const_eval_provider<'a, 'tcx>(

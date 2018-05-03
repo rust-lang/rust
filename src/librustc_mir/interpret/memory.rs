@@ -1,14 +1,17 @@
 use std::collections::{btree_map, VecDeque};
 use std::ptr;
 
+use rustc::hir::def_id::DefId;
 use rustc::ty::Instance;
+use rustc::ty::ParamEnv;
 use rustc::ty::maps::TyCtxtAt;
 use rustc::ty::layout::{self, Align, TargetDataLayout};
 use syntax::ast::Mutability;
+use rustc::middle::const_val::{ConstVal, ErrKind};
 
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::{MemoryPointer, AllocId, Allocation, AccessKind, Value, Pointer,
-                            EvalResult, PrimVal, EvalErrorKind};
+                            EvalResult, PrimVal, EvalErrorKind, GlobalId};
 pub use rustc::mir::interpret::{write_target_uint, write_target_int, read_target_uint};
 
 use super::{EvalContext, Machine};
@@ -274,6 +277,31 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
 /// Allocation accessors
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    fn const_eval_static(&self, def_id: DefId) -> EvalResult<'tcx, &'tcx Allocation> {
+        let instance = Instance::mono(self.tcx.tcx, def_id);
+        let gid = GlobalId {
+            instance,
+            promoted: None,
+        };
+        self.tcx.const_eval(ParamEnv::reveal_all().and(gid)).map_err(|err| {
+            match *err.kind {
+                ErrKind::Miri(ref err, _) => match err.kind {
+                    EvalErrorKind::TypeckError |
+                    EvalErrorKind::Layout(_) => EvalErrorKind::TypeckError.into(),
+                    _ => EvalErrorKind::ReferencedConstant.into(),
+                },
+                ErrKind::TypeckError => EvalErrorKind::TypeckError.into(),
+                ref other => bug!("const eval returned {:?}", other),
+            }
+        }).map(|val| {
+            let const_val = match val.val {
+                ConstVal::Value(val) => val,
+                ConstVal::Unevaluated(..) => bug!("should be evaluated"),
+            };
+            self.tcx.const_value_to_allocation((const_val, val.ty))
+        })
+    }
+
     pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation> {
         // normal alloc?
         match self.alloc_map.get(&id) {
@@ -283,13 +311,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Some(alloc) => Ok(alloc),
                 None => {
                     // static alloc?
-                    self.tcx.interpret_interner.get_alloc(id)
-                        // no alloc? produce an error
-                        .ok_or_else(|| if self.tcx.interpret_interner.get_fn(id).is_some() {
-                            EvalErrorKind::DerefFunctionPointer.into()
-                        } else {
-                            EvalErrorKind::DanglingPointerDeref.into()
-                        })
+                    if let Some(a) = self.tcx.interpret_interner.get_alloc(id) {
+                        return Ok(a);
+                    }
+                    // static variable?
+                    if let Some(did) = self.tcx.interpret_interner.get_static(id) {
+                        return self.const_eval_static(did);
+                    }
+                    // otherwise return an error
+                    Err(if self.tcx.interpret_interner.get_fn(id).is_some() {
+                        EvalErrorKind::DerefFunctionPointer.into()
+                    } else {
+                        EvalErrorKind::DanglingPointerDeref.into()
+                    })
                 },
             },
         }
