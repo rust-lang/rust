@@ -8,13 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-order
+fn main() {
+    // -------- Simplified test case --------
 
-const QUERY = '+';
+    let _ = || 0..=1;
 
-const EXPECTED = {
-    'others': [
-        { 'path': 'std::ops', 'name': 'AddAssign' },
-        { 'path': 'std::ops', 'name': 'Add' },
-    ],
-};
+    // -------- Original test case --------
+
+    let full_length = 1024;
+    let range = {
+        // do some stuff, omit here
+        None
+    };
+
+    let range = range.map(|(s, t)| s..=t).unwrap_or(0..=(full_length-1));
+
+    assert_eq!(range, 0..=1023);
+}

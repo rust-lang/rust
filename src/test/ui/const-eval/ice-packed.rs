@@ -8,13 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-order
+// compile-pass
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[repr(packed)]
+pub struct Num(u64);
 
-const QUERY = '+';
+impl Num {
+    pub const ZERO: Self = Num(0);
+}
 
-const EXPECTED = {
-    'others': [
-        { 'path': 'std::ops', 'name': 'AddAssign' },
-        { 'path': 'std::ops', 'name': 'Add' },
-    ],
-};
+pub fn decrement(a: Num) -> Num {
+    match a {
+        Num::ZERO => Num::ZERO,
+        a => Num(a.0 - 1)
+    }
+}
+
+fn main() {
+}

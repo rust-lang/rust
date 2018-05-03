@@ -1427,7 +1427,7 @@ impl<'a> Cache {
         }
         if let Some(ref item_name) = item.name {
             let path = self.paths.get(&item.def_id)
-                                 .map(|p| p.0.join("::").to_string())
+                                 .map(|p| p.0[..p.0.len() - 1].join("::"))
                                  .unwrap_or("std".to_owned());
             for alias in item.attrs.lists("doc")
                                    .filter(|a| a.check_name("alias"))

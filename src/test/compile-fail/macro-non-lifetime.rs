@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-order
+// Test for issue #50381: non-lifetime passed to :lifetime.
 
-const QUERY = '+';
+#![feature(macro_lifetime_matcher)]
 
-const EXPECTED = {
-    'others': [
-        { 'path': 'std::ops', 'name': 'AddAssign' },
-        { 'path': 'std::ops', 'name': 'Add' },
-    ],
-};
+macro_rules! m { ($x:lifetime) => { } }
+
+fn main() {
+    m!(a);
+    //~^ ERROR expected a lifetime, found `a`
+}

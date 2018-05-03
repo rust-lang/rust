@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-order
+#![feature(concat_idents)]
 
-const QUERY = '+';
-
-const EXPECTED = {
-    'others': [
-        { 'path': 'std::ops', 'name': 'AddAssign' },
-        { 'path': 'std::ops', 'name': 'Add' },
-    ],
-};
+fn main() {
+    let x = concat_idents!(); //~ ERROR concat_idents! takes 1 or more arguments
+}

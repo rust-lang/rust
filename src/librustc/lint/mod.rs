@@ -507,7 +507,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
         let explanation = if lint_id == LintId::of(::lint::builtin::UNSTABLE_NAME_COLLISION) {
             "once this method is added to the standard library, \
-             there will be ambiguity here, which will cause a hard error!"
+             the ambiguity may cause an error or change in behavior!"
                 .to_owned()
         } else if let Some(edition) = future_incompatible.edition {
             format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
