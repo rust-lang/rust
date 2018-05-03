@@ -245,7 +245,7 @@ error: invalid `crate_type` value
 This lint detects potentially-conflicting impls that were erroneously allowed. Some
 example code that triggers this lint:
 
-```rust
+```rust,ignore
 pub trait Trait1<X> {
     type Output;
 }
