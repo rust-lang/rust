@@ -1150,13 +1150,17 @@ pub struct CharPos(pub usize);
 // have been unsuccessful
 
 impl Pos for BytePos {
+    #[inline(always)]
     fn from_usize(n: usize) -> BytePos { BytePos(n as u32) }
+
+    #[inline(always)]
     fn to_usize(&self) -> usize { let BytePos(n) = *self; n as usize }
 }
 
 impl Add for BytePos {
     type Output = BytePos;
 
+    #[inline(always)]
     fn add(self, rhs: BytePos) -> BytePos {
         BytePos((self.to_usize() + rhs.to_usize()) as u32)
     }
@@ -1165,6 +1169,7 @@ impl Add for BytePos {
 impl Sub for BytePos {
     type Output = BytePos;
 
+    #[inline(always)]
     fn sub(self, rhs: BytePos) -> BytePos {
         BytePos((self.to_usize() - rhs.to_usize()) as u32)
     }
@@ -1183,13 +1188,17 @@ impl Decodable for BytePos {
 }
 
 impl Pos for CharPos {
+    #[inline(always)]
     fn from_usize(n: usize) -> CharPos { CharPos(n) }
+
+    #[inline(always)]
     fn to_usize(&self) -> usize { let CharPos(n) = *self; n }
 }
 
 impl Add for CharPos {
     type Output = CharPos;
 
+    #[inline(always)]
     fn add(self, rhs: CharPos) -> CharPos {
         CharPos(self.to_usize() + rhs.to_usize())
     }
@@ -1198,6 +1207,7 @@ impl Add for CharPos {
 impl Sub for CharPos {
     type Output = CharPos;
 
+    #[inline(always)]
     fn sub(self, rhs: CharPos) -> CharPos {
         CharPos(self.to_usize() - rhs.to_usize())
     }
