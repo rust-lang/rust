@@ -835,7 +835,13 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "path" => token::NtPath(panictry!(p.parse_path_common(PathStyle::Type, false))),
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         "vis" => token::NtVis(panictry!(p.parse_visibility(true))),
-        "lifetime" => token::NtLifetime(p.expect_lifetime().ident),
+        "lifetime" => if p.check_lifetime() {
+            token::NtLifetime(p.expect_lifetime().ident)
+        } else {
+            let token_str = pprust::token_to_string(&p.token);
+            p.fatal(&format!("expected a lifetime, found `{}`", &token_str)).emit();
+            FatalError.raise();
+        }
         // this is not supposed to happen, since it has been checked
         // when compiling the macro.
         _ => p.span_bug(sp, "invalid fragment specifier"),
