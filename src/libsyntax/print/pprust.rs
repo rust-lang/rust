@@ -656,7 +656,7 @@ pub trait PrintState<'a> {
                     style: ast::StrStyle) -> io::Result<()> {
         let st = match style {
             ast::StrStyle::Cooked => {
-                (format!("\"{}\"", parse::escape_default(st)))
+                (format!("\"{}\"", st.escape_default()))
             }
             ast::StrStyle::Raw(n) => {
                 (format!("r{delim}\"{string}\"{delim}",
