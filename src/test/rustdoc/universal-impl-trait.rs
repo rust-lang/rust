@@ -11,6 +11,8 @@
 #![feature(universal_impl_trait)]
 #![crate_name = "foo"]
 
+use std::io::Read;
+
 // @has foo/fn.foo.html
 // @has - //pre 'foo('
 // @matches - '_x: impl <a class="trait" href="[^"]+/trait\.Clone\.html"'
@@ -38,6 +40,11 @@ impl<T> S<T> {
     // @has - 'baz</a>('
     // @matches - '_baz:.+struct\.S\.html.+impl .+trait\.Clone\.html'
     pub fn baz(_baz: S<impl Clone>) {
+    }
+
+    // @has - 'qux</a>('
+    // @matches - 'trait\.Read\.html'
+    pub fn qux(_qux: impl IntoIterator<Item = S<impl Read>>) {
     }
 }
 
