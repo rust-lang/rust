@@ -442,36 +442,35 @@ impl<'a> StringReader<'a> {
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
-        let new_pos = self.next_pos;
-        let new_byte_offset = self.byte_offset(new_pos).to_usize();
+        let next_byte_offset = self.byte_offset(self.next_pos).to_usize();
         let end = self.terminator.map_or(self.source_text.len(), |t| {
             self.byte_offset(t).to_usize()
         });
-        if new_byte_offset < end {
-            let old_ch_is_newline = self.ch.unwrap() == '\n';
-            let new_ch = char_at(&self.source_text, new_byte_offset);
-            let new_ch_len = new_ch.len_utf8();
+        if next_byte_offset < end {
+            let next_ch = char_at(&self.source_text, next_byte_offset);
+            let next_ch_len = next_ch.len_utf8();
 
-            self.ch = Some(new_ch);
-            self.pos = new_pos;
-            self.next_pos = new_pos + Pos::from_usize(new_ch_len);
-            if old_ch_is_newline {
+            if self.ch.unwrap() == '\n' {
                 if self.save_new_lines_and_multibyte {
-                    self.filemap.next_line(self.pos);
+                    self.filemap.next_line(self.next_pos);
                 }
                 self.col = CharPos(0);
             } else {
                 self.col = self.col + CharPos(1);
             }
-            if new_ch_len > 1 {
+            if next_ch_len > 1 {
                 if self.save_new_lines_and_multibyte {
-                    self.filemap.record_multibyte_char(self.pos, new_ch_len);
+                    self.filemap.record_multibyte_char(self.next_pos, next_ch_len);
                 }
             }
-            self.filemap.record_width(self.pos, new_ch);
+            self.filemap.record_width(self.next_pos, next_ch);
+
+            self.ch = Some(next_ch);
+            self.pos = self.next_pos;
+            self.next_pos = self.next_pos + Pos::from_usize(next_ch_len);
         } else {
             self.ch = None;
-            self.pos = new_pos;
+            self.pos = self.next_pos;
         }
     }
 
