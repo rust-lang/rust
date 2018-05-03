@@ -283,6 +283,7 @@ supported_targets! {
     ("arm-unknown-linux-musleabihf", arm_unknown_linux_musleabihf),
     ("armv4t-unknown-linux-gnueabi", armv4t_unknown_linux_gnueabi),
     ("armv5te-unknown-linux-gnueabi", armv5te_unknown_linux_gnueabi),
+    ("armv5te-unknown-linux-musl", armv5te_unknown_linux_musl),
     ("armv7-unknown-linux-gnueabihf", armv7_unknown_linux_gnueabihf),
     ("armv7-unknown-linux-musleabihf", armv7_unknown_linux_musleabihf),
     ("aarch64-unknown-linux-gnu", aarch64_unknown_linux_gnu),
