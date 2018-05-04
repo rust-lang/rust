@@ -37,22 +37,10 @@ error: redundant field names in struct initialization
    |                                   ^^^^^^^^ help: replace it with: `end`
 
 error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:56:30
-   |
-56 |     let _ = RangeInclusive { start: start, end: end };
-   |                              ^^^^^^^^^^^^ help: replace it with: `start`
-
-error: redundant field names in struct initialization
-  --> $DIR/redundant_field_names.rs:56:44
-   |
-56 |     let _ = RangeInclusive { start: start, end: end };
-   |                                            ^^^^^^^^ help: replace it with: `end`
-
-error: redundant field names in struct initialization
   --> $DIR/redundant_field_names.rs:57:32
    |
 57 |     let _ = RangeToInclusive { end: end };
    |                                ^^^^^^^^ help: replace it with: `end`
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 

@@ -109,12 +109,6 @@ error: statement with no effect
    |     ^^^^^
 
 error: statement with no effect
-  --> $DIR/no_effect.rs:77:5
-   |
-77 |     5..=6;
-   |     ^^^^^^
-
-error: statement with no effect
   --> $DIR/no_effect.rs:78:5
    |
 78 |     [42, 55];
@@ -278,5 +272,5 @@ error: statement can be reduced
 116 |     FooString { s: String::from("blah"), };
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `String::from("blah");`
 
-error: aborting due to 46 previous errors
+error: aborting due to 45 previous errors
 

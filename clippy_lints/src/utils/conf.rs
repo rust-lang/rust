@@ -13,7 +13,7 @@ pub fn file_from_args(
     args: &[codemap::Spanned<ast::NestedMetaItemKind>],
 ) -> Result<Option<path::PathBuf>, (&'static str, codemap::Span)> {
     for arg in args.iter().filter_map(|a| a.meta_item()) {
-        if arg.ident.name == "conf_file" {
+        if arg.name() == "conf_file" {
             return match arg.node {
                 ast::MetaItemKind::Word | ast::MetaItemKind::List(_) => {
                     Err(("`conf_file` must be a named value", arg.span))

@@ -1,6 +1,6 @@
 #![warn(redundant_field_names)]
 #![allow(unused_variables)]
-#![feature(inclusive_range, inclusive_range_fields)]
+#![feature(inclusive_range, inclusive_range_fields, inclusive_range_methods)]
 
 #[macro_use]
 extern crate derive_new;
@@ -53,6 +53,6 @@ fn main() {
     let _ = RangeFrom { start: start };
     let _ = RangeTo { end: end };
     let _ = Range { start: start, end: end };
-    let _ = RangeInclusive { start: start, end: end };
+    let _ = RangeInclusive::new(start, end);
     let _ = RangeToInclusive { end: end };
 }

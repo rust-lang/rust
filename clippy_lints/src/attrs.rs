@@ -125,14 +125,14 @@ impl LintPass for AttrPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let Some(ref items) = attr.meta_item_list() {
-            if items.is_empty() || attr.name().map_or(true, |n| n != "deprecated") {
+            if items.is_empty() || attr.name() != "deprecated" {
                 return;
             }
             for item in items {
                 if_chain! {
                     if let NestedMetaItemKind::MetaItem(ref mi) = item.node;
                     if let MetaItemKind::NameValue(ref lit) = mi.node;
-                    if mi.ident.name == "since";
+                    if mi.name() == "since";
                     then {
                         check_semver(cx, item.span, lit);
                     }
@@ -149,40 +149,38 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             ItemExternCrate(_) | ItemUse(_, _) => {
                 for attr in &item.attrs {
                     if let Some(ref lint_list) = attr.meta_item_list() {
-                        if let Some(name) = attr.name() {
-                            match &*name.as_str() {
-                                "allow" | "warn" | "deny" | "forbid" => {
-                                    // whitelist `unused_imports` and `deprecated`
-                                    for lint in lint_list {
-                                        if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                            if let ItemUse(_, _) = item.node {
-                                                return;
-                                            }
+                        match &*attr.name().as_str() {
+                            "allow" | "warn" | "deny" | "forbid" => {
+                                // whitelist `unused_imports` and `deprecated`
+                                for lint in lint_list {
+                                    if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
+                                        if let ItemUse(_, _) = item.node {
+                                            return;
                                         }
                                     }
-                                    let line_span = last_line_of_span(cx, attr.span);
+                                }
+                                let line_span = last_line_of_span(cx, attr.span);
 
-                                    if let Some(mut sugg) = snippet_opt(cx, line_span) {
-                                        if sugg.contains("#[") {
-                                            span_lint_and_then(
-                                                cx,
-                                                USELESS_ATTRIBUTE,
-                                                line_span,
-                                                "useless lint attribute",
-                                                |db| {
-                                                    sugg = sugg.replacen("#[", "#![", 1);
-                                                    db.span_suggestion(
-                                                        line_span,
-                                                        "if you just forgot a `!`, use",
-                                                        sugg,
-                                                    );
-                                                },
-                                            );
-                                        }
+                                if let Some(mut sugg) = snippet_opt(cx, line_span) {
+                                    if sugg.contains("#[") {
+                                        span_lint_and_then(
+                                            cx,
+                                            USELESS_ATTRIBUTE,
+                                            line_span,
+                                            "useless lint attribute",
+                                            |db| {
+                                                sugg = sugg.replacen("#[", "#![", 1);
+                                                db.span_suggestion(
+                                                    line_span,
+                                                    "if you just forgot a `!`, use",
+                                                    sugg,
+                                                );
+                                            },
+                                        );
                                     }
-                                },
-                                _ => {},
-                            }
+                                }
+                            },
+                            _ => {},
                         }
                     }
                 }
@@ -294,7 +292,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
         }
 
         if let Some(ref values) = attr.meta_item_list() {
-            if values.len() != 1 || attr.name().map_or(true, |n| n != "inline") {
+            if values.len() != 1 || attr.name() != "inline" {
                 continue;
             }
             if is_word(&values[0], "always") {
@@ -328,7 +326,7 @@ fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     if let NestedMetaItemKind::MetaItem(ref mi) = nmi.node {
-        mi.is_word() && mi.ident.name == expected
+        mi.is_word() && mi.name() == expected
     } else {
         false
     }

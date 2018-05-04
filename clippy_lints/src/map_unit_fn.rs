@@ -1,6 +1,7 @@
 use rustc::hir;
 use rustc::lint::*;
 use rustc::ty;
+use rustc_errors::{Applicability};
 use syntax::codemap::Span;
 use utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use utils::paths;
@@ -210,7 +211,10 @@ fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_ar
                                  snippet(cx, fn_arg.span, "_"));
 
         span_lint_and_then(cx, lint, expr.span, &msg, |db| {
-            db.span_approximate_suggestion(stmt.span, "try this", suggestion);
+            db.span_suggestion_with_applicability(stmt.span,
+                                                  "try this",
+                                                  suggestion,
+                                                  Applicability::Unspecified);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
@@ -218,17 +222,20 @@ fn lint_map_unit_fn(cx: &LateContext, stmt: &hir::Stmt, expr: &hir::Expr, map_ar
         span_lint_and_then(cx, lint, expr.span, &msg, |db| {
             if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
                 let suggestion = format!("if let {0}({1}) = {2} {{ {3} }}",
-                                        variant,
-                                        snippet(cx, binding.pat.span, "_"),
-                                        snippet(cx, var_arg.span, "_"),
-                                        snippet(cx, reduced_expr_span, "_"));
+                                         variant,
+                                         snippet(cx, binding.pat.span, "_"),
+                                         snippet(cx, var_arg.span, "_"),
+                                         snippet(cx, reduced_expr_span, "_"));
                 db.span_suggestion(stmt.span, "try this", suggestion);
             } else {
                 let suggestion = format!("if let {0}({1}) = {2} {{ ... }}",
-                                        variant,
-                                        snippet(cx, binding.pat.span, "_"),
-                                        snippet(cx, var_arg.span, "_"));
-                db.span_approximate_suggestion(stmt.span, "try this", suggestion);
+                                         variant,
+                                         snippet(cx, binding.pat.span, "_"),
+                                         snippet(cx, var_arg.span, "_"));
+                db.span_suggestion_with_applicability(stmt.span,
+                                                      "try this",
+                                                      suggestion,
+                                                      Applicability::Unspecified);
             }
         });
     }
