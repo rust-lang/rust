@@ -542,10 +542,10 @@ impl<'a> Display for Arguments<'a> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    on(crate_local, label="`{Self}` cannot be formatted using `:?`; \
-                            add `#[derive(Debug)]` or manually implement `{Debug}`"),
+    on(crate_local, label="`{Self}` cannot be formatted using `{{:?}}`",
+                    note="add `#[derive(Debug)]` or manually implement `{Debug}`"),
     message="`{Self}` doesn't implement `{Debug}`",
-    label="`{Self}` cannot be formatted using `:?` because it doesn't implement `{Debug}`",
+    label="`{Self}` cannot be formatted using `{{:?}}` because it doesn't implement `{Debug}`",
 )]
 #[doc(alias = "{:?}")]
 #[lang = "debug_trait"]
@@ -610,8 +610,9 @@ pub trait Debug {
 /// ```
 #[rustc_on_unimplemented(
     message="`{Self}` doesn't implement `{Display}`",
-    label="`{Self}` cannot be formatted with the default formatter; \
-           try using `:?` instead if you are using a format string",
+    label="`{Self}` cannot be formatted with the default formatter",
+    note="in format strings you may be able to use `{{:?}}` \
+          (or {{:#?}} for pretty-print) instead",
 )]
 #[doc(alias = "{}")]
 #[stable(feature = "rust1", since = "1.0.0")]
