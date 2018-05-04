@@ -295,10 +295,10 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                 continue;
             }
 
-            // Skip over locals that begin with an underscore
+            // Skip over locals that begin with an underscore or have no name
             match local_decl.name {
-                Some(name) if name.as_str().starts_with("_") => continue,
-                _ => {},
+                Some(name) => if name.as_str().starts_with("_") { continue; },
+                None => continue,
             }
 
             let source_info = local_decl.source_info;
