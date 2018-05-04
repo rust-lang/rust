@@ -1848,6 +1848,12 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
 
     let mut feature_checker = FeatureChecker::default();
 
+    for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
+        if f_edition <= crate_edition {
+            set(&mut features, DUMMY_SP);
+        }
+    }
+
     for attr in krate_attrs {
         if !attr.check_name("feature") {
             continue
