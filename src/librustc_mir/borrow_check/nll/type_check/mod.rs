@@ -618,9 +618,45 @@ pub struct OutlivesSet<'tcx> {
     pub data: RegionConstraintData<'tcx>,
 }
 
+/// The `Locations` type summarizes *where* region constraints are
+/// required to hold. Normally, this is at a particular point which
+/// created the obligation, but for constraints that the user gave, we
+/// want the constraint to hold at all points.
 #[derive(Copy, Clone, Debug)]
 pub enum Locations {
+    /// Indicates that a type constraint should always be true. This
+    /// is particularly important in the new borrowck analysis for
+    /// things like the type of the return slot. Consider this
+    /// example:
+    ///
+    /// ```
+    /// fn foo<'a>(x: &'a u32) -> &'a u32 {
+    ///     let y = 22;
+    ///     return &y; // error
+    /// }
+    /// ```
+    ///
+    /// Here, we wind up with the signature from the return type being
+    /// something like `&'1 u32` where `'1` is a universal region. But
+    /// the type of the return slot `_0` is something like `&'2 u32`
+    /// where `'2` is an existential region variable. The type checker
+    /// requires that `&'2 u32 = &'1 u32` -- but at what point? In the
+    /// older NLL analysis, we required this only at the entry point
+    /// to the function. By the nature of the constraints, this wound
+    /// up propagating to all points reachable from start (because
+    /// `'1` -- as a universal region -- is live everywhere).  In the
+    /// newer analysis, though, this doesn't work: `_0` is considered
+    /// dead at the start (it has no usable value) and hence this type
+    /// equality is basically a no-op. Then, later on, when we do `_0
+    /// = &'3 y`, that region `'3` never winds up related to the
+    /// universal region `'1` and hence no error occurs. Therefore, we
+    /// use Locations::All instead, which ensures that the `'1` and
+    /// `'2` are equal everything. We also use this for other
+    /// user-given type annotations; e.g., if the user wrote `let mut
+    /// x: &'static u32 = ...`, we would ensure that all values
+    /// assigned to `x` are of `'static` lifetime.
     All,
+
     Pair {
         /// The location in the MIR that generated these constraints.
         /// This is intended for error reporting and diagnosis; the
