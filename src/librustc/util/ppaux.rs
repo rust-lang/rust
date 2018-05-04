@@ -808,8 +808,8 @@ define_print! {
                     write!(f, "'?{}", c.index())
                 }
 
-                ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
+                ty::ReSkolemized(universe, ref bound_region) => {
+                    write!(f, "ReSkolemized({:?}, {:?})", universe, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),

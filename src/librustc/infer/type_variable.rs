@@ -78,10 +78,12 @@ struct TypeVariableData {
 #[derive(Copy, Clone, Debug)]
 pub enum TypeVariableValue<'tcx> {
     Known { value: Ty<'tcx> },
-    Unknown,
+    Unknown { universe: ty::UniverseIndex },
 }
 
 impl<'tcx> TypeVariableValue<'tcx> {
+    /// If this value is known, returns the type it is known to be.
+    /// Otherwise, `None`.
     pub fn known(&self) -> Option<Ty<'tcx>> {
         match *self {
             TypeVariableValue::Unknown { .. } => None,
@@ -181,10 +183,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
     ///   The code in this module doesn't care, but it can be useful
     ///   for improving error messages.
     pub fn new_var(&mut self,
+                   universe: ty::UniverseIndex,
                    diverging: bool,
                    origin: TypeVariableOrigin)
                    -> ty::TyVid {
-        let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown);
+        let eq_key = self.eq_relations.new_key(TypeVariableValue::Unknown { universe });
 
         let sub_key = self.sub_relations.new_key(());
         assert_eq!(eq_key.vid, sub_key);
@@ -437,7 +440,16 @@ impl<'tcx> ut::UnifyValue for TypeVariableValue<'tcx> {
             (&TypeVariableValue::Unknown { .. }, &TypeVariableValue::Known { .. }) => Ok(*value2),
 
             // If both sides are *unknown*, it hardly matters, does it?
-            (&TypeVariableValue::Unknown, &TypeVariableValue::Unknown) => Ok(*value1),
+            (&TypeVariableValue::Unknown { universe: universe1 },
+             &TypeVariableValue::Unknown { universe: universe2 }) =>  {
+                // If we unify two unbound variables, ?T and ?U, then whatever
+                // value they wind up taking (which must be the same value) must
+                // be nameable by both universes. Therefore, the resulting
+                // universe is the minimum of the two universes, because that is
+                // the one which contains the fewest names in scope.
+                let universe = cmp::min(universe1, universe2);
+                Ok(TypeVariableValue::Unknown { universe })
+            }
         }
     }
 }

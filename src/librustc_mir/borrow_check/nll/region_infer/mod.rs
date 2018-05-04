@@ -16,7 +16,7 @@ use rustc::infer::RegionObligation;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::infer::region_constraints::{GenericKind, VarOrigins};
+use rustc::infer::region_constraints::{GenericKind, VarInfos};
 use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
                  Local, Location, Mir};
 use rustc::traits::ObligationCause;
@@ -256,19 +256,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// of those will be constant regions representing the free
     /// regions defined in `universal_regions`.
     pub(crate) fn new(
-        var_origins: VarOrigins,
+        var_infos: VarInfos,
         universal_regions: UniversalRegions<'tcx>,
         mir: &Mir<'tcx>,
     ) -> Self {
-        let num_region_variables = var_origins.len();
+        let num_region_variables = var_infos.len();
         let num_universal_regions = universal_regions.len();
 
         let elements = &Rc::new(RegionValueElements::new(mir, num_universal_regions));
 
         // Create a RegionDefinition for each inference variable.
-        let definitions = var_origins
+        let definitions = var_infos
             .into_iter()
-            .map(|origin| RegionDefinition::new(origin))
+            .map(|info| RegionDefinition::new(info.origin))
             .collect();
 
         let mut result = Self {
