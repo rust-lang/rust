@@ -300,7 +300,7 @@ declare_features! (
     (active, abi_unadjusted, "1.16.0", None, None),
 
     // Procedural macros 2.0.
-    (active, proc_macro, "1.16.0", Some(38356), None),
+    (active, proc_macro, "1.16.0", Some(38356), Some(Edition::Edition2018)),
 
     // Declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
@@ -324,7 +324,7 @@ declare_features! (
 
 
     // Allows the `catch {...}` expression
-    (active, catch_expr, "1.17.0", Some(31436), None),
+    (active, catch_expr, "1.17.0", Some(31436), Some(Edition::Edition2018)),
 
     // Used to preserve symbols (see llvm.used)
     (active, used, "1.18.0", Some(40289), None),
