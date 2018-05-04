@@ -121,11 +121,11 @@ trait IntoFromEnvGoal {
 }
 
 trait IntoWellFormedGoal {
+    // Transforms an existing goal into a WellFormed goal.
     fn into_wellformed_goal(self) -> Self;
 }
 
-impl<'tcx> IntoGoal for DomainGoal<'tcx> {
-    // Transforms an existing goal into a WellFormed goal.
+impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
     fn into_from_env_goal(self) -> DomainGoal<'tcx> {
         use self::WhereClause::*;
 
@@ -138,7 +138,7 @@ impl<'tcx> IntoGoal for DomainGoal<'tcx> {
     }
 }
 
-impl<'tcx> IntoFromEnvGoal for DomainGoal<'tcx> {
+impl<'tcx> IntoWellFormedGoal for DomainGoal<'tcx> {
     fn into_wellformed_goal(self) -> DomainGoal<'tcx> {
         use self::DomainGoal::*;
         match self {
@@ -302,7 +302,7 @@ fn wellformed_from_bound<'a, 'tcx>(
 
     // WellFormed(Self: Trait<P1..Pn>)
     let wellformed_trait = DomainGoal::WellFormed(WhereClauseAtom::Implemented(trait_pred));
-    // Impemented(Self: Trait<P1..Pn>)
+    // Implemented(Self: Trait<P1..Pn>)
     let impl_trait = ty::Binder::dummy(DomainGoal::Holds(WhereClauseAtom::Implemented(trait_pred)));
     // WellFormed(WC)
     let wellformed_wc = where_clause
