@@ -46,7 +46,7 @@ use syntax::attr;
 use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
-use syntax::errors::DiagnosticBuilder;
+use syntax::errors::{Applicability, DiagnosticBuilder};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -1300,7 +1300,19 @@ impl UnreachablePub {
             } else {
                 "pub(crate)"
             }.to_owned();
-            err.span_suggestion(pub_span, "consider restricting its visibility", replacement);
+            let app = if span.ctxt().outer().expn_info().is_none() {
+                // even if macros aren't involved the suggestion
+                // may be incorrect -- the user may have mistakenly
+                // hidden it behind a private module and this lint is
+                // a helpful way to catch that. However, we're trying
+                // not to change the nature of the code with this lint
+                // so it's marked as machine applicable.
+                Applicability::MachineApplicable
+            } else {
+                Applicability::MaybeIncorrect
+            };
+            err.span_suggestion_with_applicability(pub_span, "consider restricting its visibility",
+                                                   replacement, app);
             if exportable {
                 err.help("or consider exporting it for use by other crates");
             }

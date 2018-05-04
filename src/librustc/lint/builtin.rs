@@ -14,7 +14,7 @@
 //! compiler code, rather than using their own custom pass. Those
 //! lints are all available in `rustc_lint::builtin`.
 
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 use lint::{LintPass, LateLintPass, LintArray};
 use session::Session;
 use syntax::codemap::Span;
@@ -341,15 +341,16 @@ impl BuiltinLintDiagnostics {
         match self {
             BuiltinLintDiagnostics::Normal => (),
             BuiltinLintDiagnostics::BareTraitObject(span, is_global) => {
-                let sugg = match sess.codemap().span_to_snippet(span) {
-                    Ok(ref s) if is_global => format!("dyn ({})", s),
-                    Ok(s) => format!("dyn {}", s),
-                    Err(_) => format!("dyn <type>")
+                let (sugg, app) = match sess.codemap().span_to_snippet(span) {
+                    Ok(ref s) if is_global => (format!("dyn ({})", s),
+                                               Applicability::MachineApplicable),
+                    Ok(s) => (format!("dyn {}", s), Applicability::MachineApplicable),
+                    Err(_) => (format!("dyn <type>"), Applicability::HasPlaceholders)
                 };
-                db.span_suggestion(span, "use `dyn`", sugg);
+                db.span_suggestion_with_applicability(span, "use `dyn`", sugg, app);
             }
             BuiltinLintDiagnostics::AbsPathWithModule(span) => {
-                let sugg = match sess.codemap().span_to_snippet(span) {
+                let (sugg, app) = match sess.codemap().span_to_snippet(span) {
                     Ok(ref s) => {
                         // FIXME(Manishearth) ideally the emitting code
                         // can tell us whether or not this is global
@@ -359,11 +360,11 @@ impl BuiltinLintDiagnostics {
                             "::"
                         };
 
-                        format!("crate{}{}", opt_colon, s)
+                        (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
                     }
-                    Err(_) => format!("crate::<path>")
+                    Err(_) => (format!("crate::<path>"), Applicability::HasPlaceholders)
                 };
-                db.span_suggestion(span, "use `crate`", sugg);
+                db.span_suggestion_with_applicability(span, "use `crate`", sugg, app);
             }
         }
     }
