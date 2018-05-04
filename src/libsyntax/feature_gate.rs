@@ -1849,8 +1849,10 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     let mut feature_checker = FeatureChecker::default();
 
     for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
-        if f_edition <= crate_edition {
-            set(&mut features, DUMMY_SP);
+        if let Some(f_edition) = f_edition {
+            if f_edition <= crate_edition {
+                set(&mut features, DUMMY_SP);
+            }
         }
     }
 

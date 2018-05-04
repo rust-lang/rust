@@ -646,7 +646,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if module_path.len() == 1 && (module_path[0].name == keywords::CrateRoot.name() ||
                                       module_path[0].name == keywords::Extern.name()) {
             let is_extern = module_path[0].name == keywords::Extern.name() ||
-                            self.session.features_untracked().extern_absolute_paths;
+                            (self.session.features_untracked().extern_absolute_paths &&
+                             self.session.rust_2018());
             match directive.subclass {
                 GlobImport { .. } if is_extern => {
                     return Some((directive.span,

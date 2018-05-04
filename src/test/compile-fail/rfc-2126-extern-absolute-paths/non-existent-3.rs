@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition=2018 -Zunstable-options
+
 #![feature(extern_absolute_paths)]
 
 use ycrate; //~ ERROR can't find crate for `ycrate`

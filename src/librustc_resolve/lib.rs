@@ -3277,9 +3277,8 @@ impl<'a> Resolver<'a> {
                     let prev_name = path[0].name;
                     if prev_name == keywords::Extern.name() ||
                        prev_name == keywords::CrateRoot.name() &&
-                       // Note: When this feature stabilizes, this should
-                       // be gated on sess.rust_2018()
-                       self.session.features_untracked().extern_absolute_paths {
+                       self.session.features_untracked().extern_absolute_paths &&
+                       self.session.rust_2018() {
                         // `::extern_crate::a::b`
                         let crate_id = self.crate_loader.process_path_extern(name, ident.span);
                         let crate_root =
