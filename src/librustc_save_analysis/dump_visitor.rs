@@ -268,80 +268,6 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
     }
 
-    fn process_def_kind(
-        &mut self,
-        ref_id: NodeId,
-        span: Span,
-        sub_span: Option<Span>,
-        def_id: DefId,
-    ) {
-        if self.span.filter_generated(sub_span, span) {
-            return;
-        }
-
-        let def = self.save_ctxt.get_path_def(ref_id);
-        match def {
-            HirDef::Mod(_) => {
-                let span = self.span_from_span(sub_span.expect("No span found for mod ref"));
-                self.dumper.dump_ref(Ref {
-                    kind: RefKind::Mod,
-                    span,
-                    ref_id: ::id_from_def_id(def_id),
-                });
-            }
-            HirDef::Struct(..) |
-            HirDef::Variant(..) |
-            HirDef::Union(..) |
-            HirDef::Enum(..) |
-            HirDef::TyAlias(..) |
-            HirDef::TyForeign(..) |
-            HirDef::TraitAlias(..) |
-            HirDef::Trait(_) => {
-                let span = self.span_from_span(sub_span.expect("No span found for type ref"));
-                self.dumper.dump_ref(Ref {
-                    kind: RefKind::Type,
-                    span,
-                    ref_id: ::id_from_def_id(def_id),
-                });
-            }
-            HirDef::Static(..) |
-            HirDef::Const(..) |
-            HirDef::StructCtor(..) |
-            HirDef::VariantCtor(..) => {
-                let span = self.span_from_span(sub_span.expect("No span found for var ref"));
-                self.dumper.dump_ref(Ref {
-                    kind: RefKind::Variable,
-                    span,
-                    ref_id: ::id_from_def_id(def_id),
-                });
-            }
-            HirDef::Fn(..) => {
-                let span = self.span_from_span(sub_span.expect("No span found for fn ref"));
-                self.dumper.dump_ref(Ref {
-                    kind: RefKind::Function,
-                    span,
-                    ref_id: ::id_from_def_id(def_id),
-                });
-            }
-            // With macros 2.0, we can legitimately get a ref to a macro, but
-            // we don't handle it properly for now (FIXME).
-            HirDef::Macro(..) => {}
-            HirDef::Local(..) |
-            HirDef::Upvar(..) |
-            HirDef::SelfTy(..) |
-            HirDef::Label(_) |
-            HirDef::TyParam(..) |
-            HirDef::Method(..) |
-            HirDef::AssociatedTy(..) |
-            HirDef::AssociatedConst(..) |
-            HirDef::PrimTy(_) |
-            HirDef::GlobalAsm(_) |
-            HirDef::Err => {
-                span_bug!(span, "process_def_kind for unexpected item: {:?}", def);
-            }
-        }
-    }
-
     fn process_formals(&mut self, formals: &'l [ast::Arg], qualname: &str) {
         for arg in formals {
             self.visit_pat(&arg.pat);
@@ -1348,29 +1274,17 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                 };
 
                 let sub_span = self.span.span_for_last_ident(path.span);
-                let mod_id = match self.lookup_def_id(id) {
-                    Some(def_id) => {
-                        self.process_def_kind(id, path.span, sub_span, def_id);
-                        Some(def_id)
-                    }
-                    None => None,
-                };
-
-                // 'use' always introduces an alias, if there is not an explicit
-                // one, there is an implicit one.
-                let sub_span = match self.span.sub_span_after_keyword(use_tree.span,
-                                                                      keywords::As) {
-                    Some(sub_span) => Some(sub_span),
-                    None => sub_span,
-                };
+                let alias_span = self.span.sub_span_after_keyword(use_tree.span, keywords::As);
+                let ref_id = self.lookup_def_id(id);
 
                 if !self.span.filter_generated(sub_span, path.span) {
-                    let span =
-                        self.span_from_span(sub_span.expect("No span found for use"));
+                    let span = self.span_from_span(sub_span.expect("No span found for use"));
+                    let alias_span = alias_span.map(|sp| self.span_from_span(sp));
                     self.dumper.import(&access, Import {
                         kind: ImportKind::Use,
-                        ref_id: mod_id.map(|id| ::id_from_def_id(id)),
+                        ref_id: ref_id.map(|id| ::id_from_def_id(id)),
                         span,
+                        alias_span,
                         name: ident.to_string(),
                         value: String::new(),
                         parent,
@@ -1407,6 +1321,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         kind: ImportKind::GlobUse,
                         ref_id: None,
                         span,
+                        alias_span: None,
                         name: "*".to_owned(),
                         value: names.join(", "),
                         parent,
@@ -1500,6 +1415,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                             kind: ImportKind::ExternCrate,
                             ref_id: None,
                             span,
+                            alias_span: None,
                             name: item.ident.to_string(),
                             value: String::new(),
                             parent,

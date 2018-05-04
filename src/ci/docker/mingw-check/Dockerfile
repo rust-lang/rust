@@ -19,4 +19,5 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
+ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 ENV SCRIPT python2.7 ../x.py check --target=i686-pc-windows-gnu --host=i686-pc-windows-gnu
