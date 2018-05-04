@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
+// Point at the captured immutable outer variable
+
+fn foo(mut f: Box<FnMut()>) {
+    f();
+}
 
 fn main() {
-    println!('●●');
-    //~^ ERROR character literal may only contain one codepoint
+    let mut y = true;
+    foo(Box::new(move || y = false) as Box<_>);
 }

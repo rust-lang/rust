@@ -26,6 +26,7 @@ extern crate regex;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate test;
+extern crate rustfix;
 
 use std::env;
 use std::ffi::OsString;

@@ -10,7 +10,13 @@
 
 // run-rustfix
 
+// Point at the captured immutable outer variable
+
+fn foo(mut f: Box<FnMut()>) {
+    f();
+}
+
 fn main() {
-    println!('●●');
-    //~^ ERROR character literal may only contain one codepoint
+    let mut y = true;
+    foo(Box::new(move || y = false) as Box<_>); //~ ERROR cannot assign to captured outer variable
 }

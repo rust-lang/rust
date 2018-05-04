@@ -74,30 +74,30 @@ impl FromStr for Mode {
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-                              CompileFail => "compile-fail",
-                              ParseFail => "parse-fail",
-                              RunFail => "run-fail",
-                              RunPass => "run-pass",
-                              RunPassValgrind => "run-pass-valgrind",
-                              Pretty => "pretty",
-                              DebugInfoGdb => "debuginfo-gdb",
-                              DebugInfoLldb => "debuginfo-lldb",
-                              Codegen => "codegen",
-                              Rustdoc => "rustdoc",
-                              CodegenUnits => "codegen-units",
-                              Incremental => "incremental",
-                              RunMake => "run-make",
-                              Ui => "ui",
-                              MirOpt => "mir-opt",
-                          },
-                          f)
+        let s = match *self {
+            CompileFail => "compile-fail",
+            ParseFail => "parse-fail",
+            RunFail => "run-fail",
+            RunPass => "run-pass",
+            RunPassValgrind => "run-pass-valgrind",
+            Pretty => "pretty",
+            DebugInfoGdb => "debuginfo-gdb",
+            DebugInfoLldb => "debuginfo-lldb",
+            Codegen => "codegen",
+            Rustdoc => "rustdoc",
+            CodegenUnits => "codegen-units",
+            Incremental => "incremental",
+            RunMake => "run-make",
+            Ui => "ui",
+            MirOpt => "mir-opt",
+        };
+        fmt::Display::fmt(s, f)
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum CompareMode {
-    Nll
+    Nll,
 }
 
 impl CompareMode {
@@ -269,6 +269,7 @@ pub fn expected_output_path(testpaths: &TestPaths,
     testpaths.file.with_extension(extension)
 }
 
-pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT];
+pub const UI_EXTENSIONS: &[&str] = &[UI_STDERR, UI_STDOUT, UI_FIXED];
 pub const UI_STDERR: &str = "stderr";
 pub const UI_STDOUT: &str = "stdout";
+pub const UI_FIXED: &str = "fixed";

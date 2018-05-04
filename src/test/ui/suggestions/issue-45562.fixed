@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,7 @@
 
 // run-rustfix
 
-fn main() {
-    println!('●●');
-    //~^ ERROR character literal may only contain one codepoint
-}
+#[no_mangle] pub static RAH: usize = 5;
+//~^ ERROR const items should never be #[no_mangle]
+
+fn main() {}

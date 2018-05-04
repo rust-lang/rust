@@ -236,6 +236,7 @@ pub struct TestProps {
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
     pub failure_status: i32,
+    pub run_rustfix: bool,
 }
 
 impl TestProps {
@@ -267,6 +268,7 @@ impl TestProps {
             normalize_stdout: vec![],
             normalize_stderr: vec![],
             failure_status: 101,
+            run_rustfix: false,
         }
     }
 
@@ -402,6 +404,10 @@ impl TestProps {
 
             if let Some(code) = config.parse_failure_status(ln) {
                 self.failure_status = code;
+            }
+
+            if !self.run_rustfix {
+                self.run_rustfix = config.parse_run_rustfix(ln);
             }
         });
 
@@ -641,6 +647,10 @@ impl Config {
         }
 
         None
+    }
+
+    fn parse_run_rustfix(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "run-rustfix")
     }
 }
 
