@@ -150,11 +150,9 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
                 spans.extend_from_slice(&current_spans);
                 doc.push_str(&current);
             }
-        } else {
+        } else if attr.name() == "doc" {
             // ignore mix of sugared and non-sugared doc
-            if attr.name() == "doc" {
-                return;
-            }
+            return;
         }
     }
 
