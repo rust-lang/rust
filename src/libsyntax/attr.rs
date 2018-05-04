@@ -62,7 +62,7 @@ pub fn mark_used(attr: &Attribute) {
     let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
         let mut slot = globals.used_attrs.lock();
-        let idx = (id / 64) as usize;
+        let idx = (id >> 6) as usize;
         let shift = id % 64;
         if slot.len() <= idx {
             slot.resize(idx + 1, 0);
@@ -75,7 +75,7 @@ pub fn is_used(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
         let slot = globals.used_attrs.lock();
-        let idx = (id / 64) as usize;
+        let idx = (id >> 6) as usize;
         let shift = id % 64;
         slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)
@@ -87,7 +87,7 @@ pub fn mark_known(attr: &Attribute) {
     let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
         let mut slot = globals.known_attrs.lock();
-        let idx = (id / 64) as usize;
+        let idx = (id >> 6) as usize;
         let shift = id % 64;
         if slot.len() <= idx {
             slot.resize(idx + 1, 0);
@@ -100,7 +100,7 @@ pub fn is_known(attr: &Attribute) -> bool {
     let AttrId(id) = attr.id;
     GLOBALS.with(|globals| {
         let slot = globals.known_attrs.lock();
-        let idx = (id / 64) as usize;
+        let idx = (id >> 6) as usize;
         let shift = id % 64;
         slot.get(idx).map(|bits| bits & (1 << shift) != 0)
             .unwrap_or(false)

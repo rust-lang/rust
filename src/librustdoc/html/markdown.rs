@@ -609,7 +609,7 @@ impl<'a> fmt::Display for Markdown<'a> {
 
         let p = Parser::new_with_broken_link_callback(md, opts, Some(&replacer));
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+        let mut s = String::with_capacity((md.len() * 3) >> 1);
 
         html::push_html(&mut s,
                         Footnotes::new(
@@ -632,7 +632,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
 
         let p = Parser::new_ext(md, opts);
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+        let mut s = String::with_capacity((md.len() * 3) >> 1);
 
         let mut toc = TocBuilder::new();
 
@@ -663,7 +663,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
             _ => event
         });
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+        let mut s = String::with_capacity((md.len() * 3) >> 1);
 
         html::push_html(&mut s,
                         Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
@@ -733,7 +733,7 @@ pub fn plain_summary_line(md: &str) -> String {
             }
         }
     }
-    let mut s = String::with_capacity(md.len() * 3 / 2);
+    let mut s = String::with_capacity((md.len() * 3) >> 1);
     let mut p = ParserWrapper {
         inner: Parser::new(md),
         is_in: 0,

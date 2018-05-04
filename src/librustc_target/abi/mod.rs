@@ -229,7 +229,7 @@ pub struct Size {
 impl Size {
     pub fn from_bits(bits: u64) -> Size {
         // Avoid potential overflow from `bits + 7`.
-        Size::from_bytes(bits / 8 + ((bits % 8) + 7) / 8)
+        Size::from_bytes((bits >> 3) + (((bits % 8) + 7) >> 3))
     }
 
     pub fn from_bytes(bytes: u64) -> Size {
@@ -246,7 +246,7 @@ impl Size {
     }
 
     pub fn bits(self) -> u64 {
-        self.bytes() * 8
+        self.bytes() << 3
     }
 
     pub fn abi_align(self, align: Align) -> Size {
@@ -378,11 +378,11 @@ impl Align {
     }
 
     pub fn abi_bits(self) -> u64 {
-        self.abi() * 8
+        self.abi() << 3
     }
 
     pub fn pref_bits(self) -> u64 {
-        self.pref() * 8
+        self.pref() << 3
     }
 
     pub fn min(self, other: Align) -> Align {

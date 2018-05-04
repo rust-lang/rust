@@ -1653,13 +1653,13 @@ impl<T: Iterator<Item=char>> Parser<T> {
         while i < 4 && !self.eof() {
             self.bump();
             n = match self.ch_or_null() {
-                c @ '0' ... '9' => n * 16 + ((c as u16) - ('0' as u16)),
-                'a' | 'A' => n * 16 + 10,
-                'b' | 'B' => n * 16 + 11,
-                'c' | 'C' => n * 16 + 12,
-                'd' | 'D' => n * 16 + 13,
-                'e' | 'E' => n * 16 + 14,
-                'f' | 'F' => n * 16 + 15,
+                c @ '0' ... '9' => (n << 4) + ((c as u16) - ('0' as u16)),
+                'a' | 'A' => (n << 4) + 10,
+                'b' | 'B' => (n << 4) + 11,
+                'c' | 'C' => (n << 4) + 12,
+                'd' | 'D' => (n << 4) + 13,
+                'e' | 'E' => (n << 4) + 14,
+                'f' | 'F' => (n << 4) + 15,
                 _ => return self.error(InvalidEscape)
             };
 

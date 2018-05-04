@@ -621,7 +621,7 @@ impl<'a> Iterator for Chars<'a> {
         // `(len + 3)` can't overflow, because we know that the `slice::Iter`
         // belongs to a slice in memory which has a maximum length of
         // `isize::MAX` (that's well below `usize::MAX`).
-        ((len + 3) / 4, Some(len))
+        ((len + 3) >> 2, Some(len))
     }
 
     #[inline]

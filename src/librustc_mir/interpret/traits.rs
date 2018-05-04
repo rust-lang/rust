@@ -39,7 +39,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
         self.memory.write_ptr_sized_unsigned(size_ptr, ptr_align, PrimVal::Bytes(size as u128))?;
-        let align_ptr = vtable.offset(ptr_size * 2, &self)?;
+        let align_ptr = vtable.offset(ptr_size << 1, &self)?;
         self.memory.write_ptr_sized_unsigned(align_ptr, ptr_align, PrimVal::Bytes(align as u128))?;
 
         for (i, method) in methods.iter().enumerate() {
@@ -81,7 +81,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let pointer_align = self.tcx.data_layout.pointer_align;
         let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?, pointer_align)?.to_bytes()? as u64;
         let align = self.memory.read_ptr_sized(
-            vtable.offset(pointer_size * 2, self)?,
+            vtable.offset(pointer_size << 1, self)?,
             pointer_align
         )?.to_bytes()? as u64;
         Ok((Size::from_bytes(size), Align::from_bytes(align, align).unwrap()))

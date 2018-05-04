@@ -179,7 +179,7 @@ impl char {
         let msb = 31 - (c | 1).leading_zeros();
 
         // the index of the most significant hex digit
-        let ms_hex_digit = msb / 4;
+        let ms_hex_digit = msb >> 2;
         EscapeUnicode {
             c: self,
             state: EscapeUnicodeState::Backslash,

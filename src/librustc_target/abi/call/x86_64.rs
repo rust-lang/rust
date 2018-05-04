@@ -80,8 +80,8 @@ fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
         };
 
         // Fill in `cls` for scalars (Int/Sse) and vectors (Sse).
-        let first = (off.bytes() / 8) as usize;
-        let last = ((off.bytes() + layout.size.bytes() - 1) / 8) as usize;
+        let first = (off.bytes() >> 3) as usize;
+        let last = ((off.bytes() + layout.size.bytes() - 1) >> 3) as usize;
         for cls in &mut cls[first..=last] {
             *cls = Some(cls.map_or(c, |old| old.min(c)));
 
@@ -95,7 +95,7 @@ fn classify_arg<'a, Ty, C>(cx: C, arg: &ArgType<'a, Ty>)
         Ok(())
     }
 
-    let n = ((arg.layout.size.bytes() + 7) / 8) as usize;
+    let n = ((arg.layout.size.bytes() + 7) >> 3) as usize;
     if n > MAX_EIGHTBYTES {
         return Err(Memory);
     }

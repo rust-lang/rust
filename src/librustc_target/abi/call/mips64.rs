@@ -121,7 +121,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
                         if offset.is_abi_aligned(dl.f64_align) {
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_abi_aligned(dl.f64_align));
-                            for _ in 0..((offset - last_offset).bits() / 64)
+                            for _ in 0..((offset - last_offset).bits() >> 6)
                                 .min((prefix.len() - prefix_index) as u64) {
 
                                 prefix[prefix_index] = Some(RegKind::Integer);

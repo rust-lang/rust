@@ -352,7 +352,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
                 let mut b = imported_filemaps.len();
 
                 while b - a > 1 {
-                    let m = (a + b) / 2;
+                    let m = (a + b) >> 1;
                     if imported_filemaps[m].original_start_pos > lo {
                         b = m;
                     } else {

@@ -243,7 +243,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                oper: O,
                id_range: IdRange,
                bits_per_id: usize) -> DataFlowContext<'a, 'tcx, O> {
-        let usize_bits = mem::size_of::<usize>() * 8;
+        let usize_bits = mem::size_of::<usize>() << 3;
         let words_per_id = (bits_per_id + usize_bits - 1) / usize_bits;
         let num_nodes = cfg.graph.all_nodes().len();
 
@@ -423,7 +423,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         //! Returns false on the first call to `f` that returns false;
         //! if all calls to `f` return true, then returns true.
 
-        let usize_bits = mem::size_of::<usize>() * 8;
+        let usize_bits = mem::size_of::<usize>() << 3;
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * usize_bits;
@@ -659,7 +659,7 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [usize],
 fn set_bit(words: &mut [usize], bit: usize) -> bool {
     debug!("set_bit: words={} bit={}",
            mut_bits_to_string(words), bit_str(bit));
-    let usize_bits = mem::size_of::<usize>() * 8;
+    let usize_bits = mem::size_of::<usize>() << 3;
     let word = bit / usize_bits;
     let bit_in_word = bit % usize_bits;
     let bit_mask = 1 << bit_in_word;

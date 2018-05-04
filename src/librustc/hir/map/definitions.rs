@@ -311,7 +311,7 @@ impl DefPath {
     /// the crate-prefix. This method is useful if you don't have
     /// a TyCtxt available.
     pub fn to_string_no_crate(&self) -> String {
-        let mut s = String::with_capacity(self.data.len() * 16);
+        let mut s = String::with_capacity(self.data.len() << 4);
 
         for component in &self.data {
             write!(s,
@@ -328,7 +328,7 @@ impl DefPath {
     /// the crate-prefix. This method is useful if you don't have
     /// a TyCtxt available.
     pub fn to_filename_friendly_no_crate(&self) -> String {
-        let mut s = String::with_capacity(self.data.len() * 16);
+        let mut s = String::with_capacity(self.data.len() << 4);
 
         let mut opt_delimiter = None;
         for component in &self.data {

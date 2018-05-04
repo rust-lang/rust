@@ -130,7 +130,7 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
         let (lower, upper) = self.0.size_hint();
 
         // A code point is at most 4 bytes long.
-        let min_code_points = lower / 4;
+        let min_code_points = lower >> 2;
 
         (min_code_points, upper)
     }
@@ -250,7 +250,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
         let (low, high) = self.iter.size_hint();
         // we could be entirely valid surrogates (2 elements per
         // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
+        (low >> 1, high)
     }
 }
 

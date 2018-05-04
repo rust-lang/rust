@@ -275,7 +275,7 @@ pub mod printf {
 
         fn size_hint(&self) -> (usize, Option<usize>) {
             // Substitutions are at least 2 characters long.
-            (0, Some(self.s.len() / 2))
+            (0, Some(self.s.len() >> 1))
         }
     }
 

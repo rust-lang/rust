@@ -182,7 +182,7 @@ pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
     };
 
     // Build the heap in linear time.
-    for i in (0 .. v.len() / 2).rev() {
+    for i in (0 .. v.len() >> 1).rev() {
         sift_down(v, i);
     }
 
@@ -263,7 +263,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
             } else if start_r < end_r {
                 block_l = rem;
             } else {
-                block_l = rem / 2;
+                block_l = rem >> 1;
                 block_r = rem - block_l;
             }
             debug_assert!(block_l <= BLOCK && block_r <= BLOCK);
@@ -514,7 +514,7 @@ fn break_patterns<T>(v: &mut [T]) {
         let modulus = len.next_power_of_two();
 
         // Some pivot candidates will be in the nearby of this index. Let's randomize them.
-        let pos = len / 4 * 2;
+        let pos = (len >> 2) << 1;
 
         for i in 0..3 {
             // Generate a random number modulo `len`. However, in order to avoid costly operations
@@ -547,9 +547,9 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
     let len = v.len();
 
     // Three indices near which we are going to choose a pivot.
-    let mut a = len / 4 * 1;
-    let mut b = len / 4 * 2;
-    let mut c = len / 4 * 3;
+    let mut a = (len >> 2) * 1;
+    let mut b = (len >> 2) << 1;
+    let mut c = (len >> 2) * 3;
 
     // Counts the total number of swaps we are about to perform while sorting indices.
     let mut swaps = 0;
@@ -665,7 +665,7 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
 
         // Partition the slice.
         let (mid, was_p) = partition(v, pivot, is_less);
-        was_balanced = cmp::min(mid, len - mid) >= len / 8;
+        was_balanced = cmp::min(mid, len - mid) >= len >> 3;
         was_partitioned = was_p;
 
         // Split the slice into `left`, `pivot`, and `right`.
@@ -697,7 +697,7 @@ pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
     }
 
     // Limit the number of imbalanced partitions to `floor(log2(len)) + 1`.
-    let limit = mem::size_of::<usize>() * 8 - v.len().leading_zeros() as usize;
+    let limit = (mem::size_of::<usize>() << 3) - v.len().leading_zeros() as usize;
 
     recurse(v, &mut is_less, None, limit);
 }

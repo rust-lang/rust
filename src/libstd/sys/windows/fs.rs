@@ -390,16 +390,16 @@ impl File {
                     let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
                         &buf.rest as *const _ as *const _;
                     (&(*info).PathBuffer as *const _ as *const u16,
-                     (*info).SubstituteNameOffset / 2,
-                     (*info).SubstituteNameLength / 2,
+                     (*info).SubstituteNameOffset >> 1,
+                     (*info).SubstituteNameLength >> 1,
                      (*info).Flags & c::SYMLINK_FLAG_RELATIVE != 0)
                 },
                 c::IO_REPARSE_TAG_MOUNT_POINT => {
                     let info: *const c::MOUNT_POINT_REPARSE_BUFFER =
                         &buf.rest as *const _ as *const _;
                     (&(*info).PathBuffer as *const _ as *const u16,
-                     (*info).SubstituteNameOffset / 2,
-                     (*info).SubstituteNameLength / 2,
+                     (*info).SubstituteNameOffset >> 1,
+                     (*info).SubstituteNameLength >> 1,
                      false)
                 },
                 _ => return Err(io::Error::new(io::ErrorKind::Other,
@@ -787,8 +787,8 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
         *buf.offset(i) = 0;
         i += 1;
         (*db).ReparseTag = c::IO_REPARSE_TAG_MOUNT_POINT;
-        (*db).ReparseTargetMaximumLength = (i * 2) as c::WORD;
-        (*db).ReparseTargetLength = ((i - 1) * 2) as c::WORD;
+        (*db).ReparseTargetMaximumLength = (i << 1) as c::WORD;
+        (*db).ReparseTargetLength = ((i - 1) << 1) as c::WORD;
         (*db).ReparseDataLength =
                 (*db).ReparseTargetLength as c::DWORD + 12;
 

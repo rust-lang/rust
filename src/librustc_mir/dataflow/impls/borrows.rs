@@ -124,7 +124,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
     type Idx = BorrowIndex;
     fn name() -> &'static str { "borrows" }
     fn bits_per_block(&self) -> usize {
-        self.borrow_set.borrows.len() * 2
+        self.borrow_set.borrows.len() << 1
     }
 
     fn start_block_effect(&self, _entry_set: &mut IdxSet<BorrowIndex>) {

@@ -258,7 +258,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         // We normally have two or three blocks for even
         // very small functions.
         if callee_mir.basic_blocks().len() <= 3 {
-            threshold += threshold / 4;
+            threshold += threshold >> 2;
         }
         debug!("    final inline threshold = {}", threshold);
 

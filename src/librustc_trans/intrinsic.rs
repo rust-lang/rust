@@ -1112,7 +1112,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
                  in_elem, in_ty,
                  ret_ty, ret_ty.simd_type(tcx));
 
-        let total_len = in_len as u128 * 2;
+        let total_len = (in_len as u128) << 1;
 
         let vector = args[2].immediate();
 

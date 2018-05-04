@@ -198,7 +198,7 @@ impl SafeHash {
         // effectively reducing the hashes by one bit.
         //
         // Truncate hash to fit in `HashUint`.
-        let hash_bits = size_of::<HashUint>() * 8;
+        let hash_bits = size_of::<HashUint>() << 3;
         SafeHash { hash: (1 << (hash_bits - 1)) | (hash as HashUint) }
     }
 }
