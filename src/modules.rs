@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use syntax::ast;
 use syntax::codemap::{self, FileName};
-use syntax::parse::parser;
+use syntax::parse::{parser, DirectoryOwnership};
 
 use utils::contains_skip;
 
@@ -31,7 +31,7 @@ pub fn list_files<'a>(
             FileName::Real(ref path) => path.parent().unwrap(),
             _ => Path::new(""),
         };
-        list_submodules(&krate.module, parent, codemap, &mut result)?;
+        list_submodules(&krate.module, parent, None, codemap, &mut result)?;
     }
     result.insert(root_filename, &krate.module);
     Ok(result)
@@ -41,6 +41,7 @@ pub fn list_files<'a>(
 fn list_submodules<'a>(
     module: &'a ast::Mod,
     search_dir: &Path,
+    relative: Option<ast::Ident>,
     codemap: &codemap::CodeMap,
     result: &mut BTreeMap<FileName, &'a ast::Mod>,
 ) -> Result<(), io::Error> {
@@ -50,15 +51,16 @@ fn list_submodules<'a>(
             if !contains_skip(&item.attrs) {
                 let is_internal =
                     codemap.span_to_filename(item.span) == codemap.span_to_filename(sub_mod.inner);
-                let dir_path = if is_internal {
-                    search_dir.join(&item.ident.to_string())
+                let (dir_path, relative) = if is_internal {
+                    (search_dir.join(&item.ident.to_string()), None)
                 } else {
-                    let mod_path = module_file(item.ident, &item.attrs, search_dir, codemap)?;
+                    let (mod_path, relative) =
+                        module_file(item.ident, &item.attrs, search_dir, relative, codemap)?;
                     let dir_path = mod_path.parent().unwrap().to_owned();
                     result.insert(FileName::Real(mod_path), sub_mod);
-                    dir_path
+                    (dir_path, relative)
                 };
-                list_submodules(sub_mod, &dir_path, codemap, result)?;
+                list_submodules(sub_mod, &dir_path, relative, codemap, result)?;
             }
         }
     }
@@ -70,14 +72,27 @@ fn module_file(
     id: ast::Ident,
     attrs: &[ast::Attribute],
     dir_path: &Path,
+    relative: Option<ast::Ident>,
     codemap: &codemap::CodeMap,
-) -> Result<PathBuf, io::Error> {
+) -> Result<(PathBuf, Option<ast::Ident>), io::Error> {
+    eprintln!("module_file {:?} {:?} {:?}", id, attrs, dir_path);
     if let Some(path) = parser::Parser::submod_path_from_attr(attrs, dir_path) {
-        return Ok(path);
+        return Ok((path, None));
     }
 
-    match parser::Parser::default_submod_path(id, None, dir_path, codemap).result {
-        Ok(parser::ModulePathSuccess { path, .. }) => Ok(path),
+    match parser::Parser::default_submod_path(id, relative, dir_path, codemap).result {
+        Ok(parser::ModulePathSuccess {
+            path,
+            directory_ownership,
+            ..
+        }) => {
+            let relative = if let DirectoryOwnership::Owned { relative } = directory_ownership {
+                relative
+            } else {
+                None
+            };
+            Ok((path, relative))
+        }
         Err(_) => Err(io::Error::new(
             io::ErrorKind::Other,
             format!("Couldn't find module {}", id),
