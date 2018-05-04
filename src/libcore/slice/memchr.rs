@@ -39,21 +39,10 @@ fn repeat_byte(b: u8) -> usize {
     (b as usize) << 8 | b as usize
 }
 
-#[cfg(target_pointer_width = "32")]
+#[cfg(not(target_pointer_width = "16"))]
 #[inline]
 fn repeat_byte(b: u8) -> usize {
-    let mut rep = (b as usize) << 8 | b as usize;
-    rep = rep << 16 | rep;
-    rep
-}
-
-#[cfg(target_pointer_width = "64")]
-#[inline]
-fn repeat_byte(b: u8) -> usize {
-    let mut rep = (b as usize) << 8 | b as usize;
-    rep = rep << 16 | rep;
-    rep = rep << 32 | rep;
-    rep
+    (b as usize) * (::usize::MAX / 255)
 }
 
 /// Return the first index matching the byte `x` in `text`.
