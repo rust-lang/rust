@@ -1225,6 +1225,10 @@ pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
     Assign(Place<'tcx>, Rvalue<'tcx>),
 
+    /// This represents all the reading that a pattern match may do
+    /// (e.g. inspecting constants and discriminant values).
+    ReadForMatch(Place<'tcx>),
+
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant { place: Place<'tcx>, variant_index: usize },
 
@@ -1327,6 +1331,7 @@ impl<'tcx> Debug for Statement<'tcx> {
         use self::StatementKind::*;
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
+            ReadForMatch(ref place) => write!(fmt, "ReadForMatch({:?})", place),
             // (reuse lifetime rendering policy from ppaux.)
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
             Validate(ref op, ref places) => write!(fmt, "Validate({:?}, {:?})", op, places),
@@ -2212,6 +2217,7 @@ BraceStructTypeFoldableImpl! {
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
         (StatementKind::Assign)(a, b),
+        (StatementKind::ReadForMatch)(place),
         (StatementKind::SetDiscriminant) { place, variant_index },
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),

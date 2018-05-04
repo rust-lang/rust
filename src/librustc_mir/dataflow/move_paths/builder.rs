@@ -278,6 +278,9 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 }
                 self.gather_rvalue(rval);
             }
+            StatementKind::ReadForMatch(ref place) => {
+                self.create_move_path(place);
+            }
             StatementKind::InlineAsm { ref outputs, ref inputs, ref asm } => {
                 for (output, kind) in outputs.iter().zip(&asm.outputs) {
                     if !kind.is_indirect {

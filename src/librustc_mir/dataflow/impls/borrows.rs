@@ -227,6 +227,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                 }
             }
 
+            mir::StatementKind::ReadForMatch(..) |
             mir::StatementKind::SetDiscriminant { .. } |
             mir::StatementKind::StorageLive(..) |
             mir::StatementKind::Validate(..) |

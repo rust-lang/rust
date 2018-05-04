@@ -93,6 +93,14 @@ impl<'cg, 'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cg, 'cx, 'tc
                     JustWrite
                 );
             }
+            StatementKind::ReadForMatch(ref place) => {
+                self.access_place(
+                    ContextKind::ReadForMatch.new(location),
+                    place,
+                    (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    LocalMutationIsAllowed::No,
+                );
+            }
             StatementKind::SetDiscriminant {
                 ref place,
                 variant_index: _,
