@@ -522,6 +522,15 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     let t_f32 = Type::f32(cx);
     let t_f64 = Type::f64(cx);
 
+    let t_v2f32 = Type::vector(&t_f32, 2);
+    let t_v4f32 = Type::vector(&t_f32, 4);
+    let t_v8f32 = Type::vector(&t_f32, 8);
+    let t_v16f32 = Type::vector(&t_f32, 16);
+
+    let t_v2f64 = Type::vector(&t_f64, 2);
+    let t_v4f64 = Type::vector(&t_f64, 4);
+    let t_v8f64 = Type::vector(&t_f64, 8);
+
     ifn!("llvm.memcpy.p0i8.p0i8.i16", fn(i8p, i8p, t_i16, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i32", fn(i8p, i8p, t_i32, t_i32, i1) -> void);
     ifn!("llvm.memcpy.p0i8.p0i8.i64", fn(i8p, i8p, t_i64, t_i32, i1) -> void);
@@ -537,37 +546,145 @@ fn declare_intrinsic(cx: &CodegenCx, key: &str) -> Option<ValueRef> {
     ifn!("llvm.frameaddress", fn(t_i32) -> i8p);
 
     ifn!("llvm.powi.f32", fn(t_f32, t_i32) -> t_f32);
+    ifn!("llvm.powi.v2f32", fn(t_v2f32, t_i32) -> t_v2f32);
+    ifn!("llvm.powi.v4f32", fn(t_v4f32, t_i32) -> t_v4f32);
+    ifn!("llvm.powi.v8f32", fn(t_v8f32, t_i32) -> t_v8f32);
+    ifn!("llvm.powi.v16f32", fn(t_v16f32, t_i32) -> t_v16f32);
     ifn!("llvm.powi.f64", fn(t_f64, t_i32) -> t_f64);
+    ifn!("llvm.powi.v2f64", fn(t_v2f64, t_i32) -> t_v2f64);
+    ifn!("llvm.powi.v4f64", fn(t_v4f64, t_i32) -> t_v4f64);
+    ifn!("llvm.powi.v8f64", fn(t_v8f64, t_i32) -> t_v8f64);
+
     ifn!("llvm.pow.f32", fn(t_f32, t_f32) -> t_f32);
+    ifn!("llvm.pow.v2f32", fn(t_v2f32, t_v2f32) -> t_v2f32);
+    ifn!("llvm.pow.v4f32", fn(t_v4f32, t_v4f32) -> t_v4f32);
+    ifn!("llvm.pow.v8f32", fn(t_v8f32, t_v8f32) -> t_v8f32);
+    ifn!("llvm.pow.v16f32", fn(t_v16f32, t_v16f32) -> t_v16f32);
     ifn!("llvm.pow.f64", fn(t_f64, t_f64) -> t_f64);
+    ifn!("llvm.pow.v2f64", fn(t_v2f64, t_v2f64) -> t_v2f64);
+    ifn!("llvm.pow.v4f64", fn(t_v4f64, t_v4f64) -> t_v4f64);
+    ifn!("llvm.pow.v8f64", fn(t_v8f64, t_v8f64) -> t_v8f64);
 
     ifn!("llvm.sqrt.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.sqrt.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.sqrt.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.sqrt.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.sqrt.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.sqrt.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.sqrt.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.sqrt.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.sqrt.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.sin.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.sin.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.sin.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.sin.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.sin.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.sin.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.sin.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.sin.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.sin.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.cos.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.cos.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.cos.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.cos.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.cos.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.cos.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.cos.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.cos.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.cos.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.exp.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.exp.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.exp.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.exp.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.exp.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.exp.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.exp.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.exp.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.exp.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.exp2.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.exp2.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.exp2.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.exp2.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.exp2.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.exp2.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.exp2.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.exp2.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.exp2.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.log.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.log.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.log.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.log.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.log.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.log.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.log.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.log.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.log.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.log10.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.log10.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.log10.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.log10.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.log10.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.log10.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.log10.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.log10.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.log10.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.log2.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.log2.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.log2.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.log2.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.log2.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.log2.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.log2.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.log2.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.log2.v8f64", fn(t_v8f64) -> t_v8f64);
 
     ifn!("llvm.fma.f32", fn(t_f32, t_f32, t_f32) -> t_f32);
+    ifn!("llvm.fma.v2f32", fn(t_v2f32, t_v2f32, t_v2f32) -> t_v2f32);
+    ifn!("llvm.fma.v4f32", fn(t_v4f32, t_v4f32, t_v4f32) -> t_v4f32);
+    ifn!("llvm.fma.v8f32", fn(t_v8f32, t_v8f32, t_v8f32) -> t_v8f32);
+    ifn!("llvm.fma.v16f32", fn(t_v16f32, t_v16f32, t_v16f32) -> t_v16f32);
     ifn!("llvm.fma.f64", fn(t_f64, t_f64, t_f64) -> t_f64);
+    ifn!("llvm.fma.v2f64", fn(t_v2f64, t_v2f64, t_v2f64) -> t_v2f64);
+    ifn!("llvm.fma.v4f64", fn(t_v4f64, t_v4f64, t_v4f64) -> t_v4f64);
+    ifn!("llvm.fma.v8f64", fn(t_v8f64, t_v8f64, t_v8f64) -> t_v8f64);
 
     ifn!("llvm.fabs.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.fabs.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.fabs.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.fabs.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.fabs.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.fabs.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.fabs.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.fabs.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.fabs.v8f64", fn(t_v8f64) -> t_v8f64);
 
     ifn!("llvm.floor.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.floor.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.floor.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.floor.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.floor.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.floor.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.floor.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.floor.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.floor.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.ceil.f32", fn(t_f32) -> t_f32);
+    ifn!("llvm.ceil.v2f32", fn(t_v2f32) -> t_v2f32);
+    ifn!("llvm.ceil.v4f32", fn(t_v4f32) -> t_v4f32);
+    ifn!("llvm.ceil.v8f32", fn(t_v8f32) -> t_v8f32);
+    ifn!("llvm.ceil.v16f32", fn(t_v16f32) -> t_v16f32);
     ifn!("llvm.ceil.f64", fn(t_f64) -> t_f64);
+    ifn!("llvm.ceil.v2f64", fn(t_v2f64) -> t_v2f64);
+    ifn!("llvm.ceil.v4f64", fn(t_v4f64) -> t_v4f64);
+    ifn!("llvm.ceil.v8f64", fn(t_v8f64) -> t_v8f64);
+
     ifn!("llvm.trunc.f32", fn(t_f32) -> t_f32);
     ifn!("llvm.trunc.f64", fn(t_f64) -> t_f64);
 
