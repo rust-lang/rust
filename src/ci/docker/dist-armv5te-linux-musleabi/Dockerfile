@@ -29,12 +29,12 @@ RUN env \
     bash musl.sh armv5te && \
     rm -rf /build/*
 
-ENV TARGETS=armv5te-unknown-linux-musl
+ENV TARGETS=armv5te-unknown-linux-musleabi
 
 # FIXME: remove armv5te vars after https://github.com/alexcrichton/cc-rs/issues/271
 #        get fixed and cc update
-ENV CC_armv5te_unknown_linux_musl=arm-linux-gnueabi-gcc \
-    CFLAGS_armv5te_unknown_linux_musl="-march=armv5te -marm -mfloat-abi=soft"
+ENV CC_armv5te_unknown_linux_musleabi=arm-linux-gnueabi-gcc \
+    CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft"
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \

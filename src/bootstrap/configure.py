@@ -120,7 +120,7 @@ v("musl-root-arm", "target.arm-unknown-linux-musleabi.musl-root",
   "arm-unknown-linux-musleabi install directory")
 v("musl-root-armhf", "target.arm-unknown-linux-musleabihf.musl-root",
   "arm-unknown-linux-musleabihf install directory")
-v("musl-root-armv5te", "target.armv5te-unknown-linux-musl.musl-root",
+v("musl-root-armv5te", "target.armv5te-unknown-linux-musleabi.musl-root",
   "armv5te-unknown-linux-musleabi install directory")
 v("musl-root-armv7", "target.armv7-unknown-linux-musleabihf.musl-root",
   "armv7-unknown-linux-musleabihf install directory")
