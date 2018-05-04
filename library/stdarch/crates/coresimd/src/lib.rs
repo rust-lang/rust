@@ -13,7 +13,7 @@
            simd_ffi, asm,
            integer_atomics, stmt_expr_attributes, core_intrinsics,
            crate_in_paths, no_core, attr_literals, rustc_attrs, stdsimd,
-           staged_api, fn_must_use, core_float, core_slice_ext, align_offset,
+           staged_api, core_float, core_slice_ext, align_offset,
            doc_cfg, mmx_target_feature, tbm_target_feature,
            sse4a_target_feature, arm_target_feature, aarch64_target_feature,
            mips_target_feature)]
