@@ -30,6 +30,16 @@ mod simplify;
 mod test;
 mod util;
 
+/// Injects a borrow of `place`. The region is unknown at this point; we rely on NLL
+/// inference to find an appropriate one. Therefore you can only call this when NLL
+/// is turned on.
+fn inject_borrow<'a, 'gcx, 'tcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>,
+                                 place: Place<'tcx>)
+                                 -> Rvalue<'tcx> {
+    assert!(tcx.use_mir_borrowck());
+    Rvalue::Ref(tcx.types.re_empty, BorrowKind::Shared, place)
+}
+
 /// ArmHasGuard is isomorphic to a boolean flag. It indicates whether
 /// a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
@@ -43,6 +53,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                       discriminant: ExprRef<'tcx>,
                       arms: Vec<Arm<'tcx>>)
                       -> BlockAnd<()> {
+        let tcx = self.hir.tcx();
         let discriminant_place = unpack!(block = self.as_place(block, discriminant));
 
         // Matching on a `discriminant_place` with an uninhabited type doesn't
@@ -55,16 +66,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // HACK(eddyb) Work around the above issue by adding a dummy inspection
         // of `discriminant_place`, specifically by applying `Rvalue::Discriminant`
         // (which will work regardless of type) and storing the result in a temp.
+        //
+        // FIXME: would just the borrow into `borrowed_input_temp`
+        // also achieve the desired effect here? TBD.
         let dummy_source_info = self.source_info(span);
         let dummy_access = Rvalue::Discriminant(discriminant_place.clone());
-        let dummy_ty = dummy_access.ty(&self.local_decls, self.hir.tcx());
+        let dummy_ty = dummy_access.ty(&self.local_decls, tcx);
         let dummy_temp = self.temp(dummy_ty, dummy_source_info.span);
         self.cfg.push_assign(block, dummy_source_info, &dummy_temp, dummy_access);
 
+        let source_info = self.source_info(span);
+        let borrowed_input_temp = if tcx.generate_borrow_of_any_match_input() {
+            let borrowed_input = inject_borrow(tcx, discriminant_place.clone());
+            let borrowed_input_ty = borrowed_input.ty(&self.local_decls, tcx);
+            let borrowed_input_temp = self.temp(borrowed_input_ty, span);
+            self.cfg.push_assign(block, source_info, &borrowed_input_temp, borrowed_input);
+            Some(borrowed_input_temp)
+        } else {
+            None
+        };
+
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
-                        .map(|_| self.cfg.start_new_block())
-                        .collect(),
+                .map(|_| {
+                    let arm_block = self.cfg.start_new_block();
+                    arm_block
+                })
+                .collect(),
+
         };
 
         // Get the arm bodies and their scopes, while declaring bindings.
@@ -81,7 +110,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // create binding start block for link them by false edges
         let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
         let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
-            .map(|_| self.cfg.start_new_block()).collect();
+            .map(|_| self.cfg.start_new_block())
+
+            .collect();
 
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
@@ -99,6 +130,61 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 .zip(pre_binding_blocks.iter().zip(pre_binding_blocks.iter().skip(1)))
                 .map(|((arm_index, pattern, guard),
                        (pre_binding_block, next_candidate_pre_binding_block))| {
+
+                    if let (true, Some(borrow_temp)) = (tcx.emit_read_for_match(),
+                                                        borrowed_input_temp.clone()) {
+                        // inject a fake read of the borrowed input at
+                        // the start of each arm's pattern testing
+                        // code.
+                        //
+                        // This should ensure that you cannot change
+                        // the variant for an enum while you are in
+                        // the midst of matching on it.
+                        //
+                        // FIXME: I originally had put this at the
+                        // start of each elem of arm_blocks (see
+                        // ArmBlocks construction above). But this was
+                        // broken; for example, when you had a trivial
+                        // match like `match "foo".to_string() { _s =>
+                        // {} }`, it would inject a ReadForMatch
+                        // *after* the move of the input into `_s`,
+                        // and that then does not pass the borrow
+                        // check.
+                        //
+                        // * So: I need to fine tune exactly *where*
+                        //   the ReadForMatch belongs. Should it come
+                        //   at the beginning of each pattern match,
+                        //   or the end? And, should there be one
+                        //   ReadForMatch per arm, or one per
+                        //   candidate (aka pattern)?
+
+                        self.cfg.push(*pre_binding_block, Statement {
+                            source_info,
+                            kind: StatementKind::ReadForMatch(borrow_temp.clone()),
+                        });
+                    }
+
+                    // One might ask: why not build up the match pair such that it
+                    // matches via `borrowed_input_temp.deref()` instead of
+                    // using the `discriminant_place` directly, as it is doing here?
+                    //
+                    // The basic answer is that if you do that, then you end up with
+                    // accceses to a shared borrow of the input and that conflicts with
+                    // any arms that look like e.g.
+                    //
+                    // match Some(&4) {
+                    //     ref mut foo => {
+                    //         ... /* mutate `foo` in arm body */ ...
+                    //     }
+                    // }
+                    //
+                    // (Perhaps we could further revise the MIR
+                    //  construction here so that it only does a
+                    //  shared borrow at the outset and delays doing
+                    //  the mutable borrow until after the pattern is
+                    //  matched *and* the guard (if any) for the arm
+                    //  has been run.)
+
                     Candidate {
                         span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_place.clone(), pattern)],
