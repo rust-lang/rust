@@ -1030,17 +1030,6 @@ impl Step for Compiletest {
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
-
-                // Add the llvm/bin directory to PATH since it contains lots of
-                // useful, platform-independent tools
-                let llvm_bin_path = llvm_config.parent()
-                    .expect("Expected llvm-config to be contained in directory");
-                assert!(llvm_bin_path.is_dir());
-                let old_path = env::var_os("PATH").unwrap_or_default();
-                let new_path = env::join_paths(iter::once(llvm_bin_path.to_path_buf())
-                                               .chain(env::split_paths(&old_path)))
-                               .expect("");
-                cmd.env("PATH", new_path);
             }
         }
         if mode == "run-make" && !builder.config.llvm_enabled {
