@@ -233,6 +233,23 @@ fn self_tests() {
 }
 
 #[test]
+fn issue_2673_non_modrs_mods() {
+    match idempotent_check(&PathBuf::from("tests/issue-2673-nonmodrs-mods/lib.rs")) {
+        Ok(ref report) if report.has_warnings() => {
+            print!("{}", report);
+            panic!("had warnings");
+        }
+        Ok(_report) => {}
+        Err(err) => {
+            if let IdempotentCheckError::Mismatch(msg) = err {
+                print_mismatches_default_message(msg);
+            }
+            panic!("had errors");
+        }
+    }
+}
+
+#[test]
 fn stdin_formatting_smoke_test() {
     let input = Input::Text("fn main () {}".to_owned());
     let config = Config::default();

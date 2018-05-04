@@ -75,7 +75,6 @@ fn module_file(
     relative: Option<ast::Ident>,
     codemap: &codemap::CodeMap,
 ) -> Result<(PathBuf, Option<ast::Ident>), io::Error> {
-    eprintln!("module_file {:?} {:?} {:?}", id, attrs, dir_path);
     if let Some(path) = parser::Parser::submod_path_from_attr(attrs, dir_path) {
         return Ok((path, None));
     }

@@ -1,0 +1,3 @@
+mod bar;
+
+mod baz {}
