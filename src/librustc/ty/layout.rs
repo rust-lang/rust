@@ -1057,7 +1057,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Tagged {
-                        discr: tag,
+                        tag,
                         variants: layout_variants,
                     },
                     fields: FieldPlacement::Arbitrary {
@@ -1218,7 +1218,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     })
                     .collect();
                 record(adt_kind.into(), adt_packed, match layout.variants {
-                    Variants::Tagged { ref discr, .. } => Some(discr.value.size(self)),
+                    Variants::Tagged { ref tag, .. } => Some(tag.value.size(self)),
                     _ => None
                 }, variant_infos);
             }
@@ -1622,7 +1622,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     }
 
                     // Discriminant field for enums (where applicable).
-                    Variants::Tagged { ref discr, .. } |
+                    Variants::Tagged { tag: ref discr, .. } |
                     Variants::NicheFilling { niche: ref discr, .. } => {
                         assert_eq!(i, 0);
                         let layout = LayoutDetails::scalar(tcx, discr.clone());
@@ -1736,10 +1736,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
                 index.hash_stable(hcx, hasher);
             }
             Tagged {
-                ref discr,
+                ref tag,
                 ref variants,
             } => {
-                discr.hash_stable(hcx, hasher);
+                tag.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
             }
             NicheFilling {
