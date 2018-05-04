@@ -16,7 +16,7 @@
 #![crate_type = "lib"]
 
 #![feature(repr_simd, platform_intrinsics)]
-#[allow(non_camel_case_types)]
+#![allow(non_camel_case_types)]
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
