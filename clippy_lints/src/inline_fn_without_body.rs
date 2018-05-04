@@ -45,7 +45,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 fn check_attrs(cx: &LateContext, name: &Name, attrs: &[Attribute]) {
     for attr in attrs {
-        if attr.name() == "inline" {
+        if attr.name() != "inline" {
             continue;
         }
 
