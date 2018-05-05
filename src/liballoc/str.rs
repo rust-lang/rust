@@ -305,6 +305,7 @@ impl str {
     ///
     /// assert_eq!(new_year, new_year.to_lowercase());
     /// ```
+    #[must_use]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_lowercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
@@ -368,6 +369,7 @@ impl str {
     ///
     /// assert_eq!(new_year, new_year.to_uppercase());
     /// ```
+    #[must_use]
     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
@@ -378,6 +380,7 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_debug`].
     ///
     /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
+    #[must_use]
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -388,6 +391,7 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_default`].
     ///
     /// [`char::escape_default`]: primitive.char.html#method.escape_default
+    #[must_use]
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -398,6 +402,7 @@ impl str {
     /// Escapes each char in `s` with [`char::escape_unicode`].
     ///
     /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
+    #[must_use]
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -420,6 +425,7 @@ impl str {
     ///
     /// assert_eq!(boxed_str.into_string(), string);
     /// ```
+    #[must_use]
     #[stable(feature = "box_str", since = "1.4.0")]
     #[inline]
     pub fn into_string(self: Box<str>) -> String {
@@ -438,6 +444,7 @@ impl str {
     /// ```
     /// assert_eq!("abc".repeat(4), String::from("abcabcabcabc"));
     /// ```
+    #[must_use]
     #[stable(feature = "repeat_str", since = "1.16.0")]
     pub fn repeat(&self, n: usize) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().repeat(n)) }
@@ -464,6 +471,7 @@ impl str {
     ///
     /// [`make_ascii_uppercase`]: #method.make_ascii_uppercase
     /// [`to_uppercase`]: #method.to_uppercase
+    #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> String {
@@ -494,6 +502,7 @@ impl str {
     ///
     /// [`make_ascii_lowercase`]: #method.make_ascii_lowercase
     /// [`to_lowercase`]: #method.to_lowercase
+    #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> String {
