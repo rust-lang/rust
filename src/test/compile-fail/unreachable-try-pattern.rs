@@ -17,7 +17,6 @@ enum Void {}
 
 impl From<Void> for i32 {
     fn from(v: Void) -> i32 {
-        //~^ WARN unreachable expression
         match v {}
         //~^ WARN unreachable expression
     }

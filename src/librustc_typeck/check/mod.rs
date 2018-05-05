@@ -457,6 +457,13 @@ pub enum Diverges {
     /// Same as `Always` but with a reachability
     /// warning already emitted.
     WarnedAlways,
+
+    /// Same as `Always` but without a reachability
+    /// warning emitted. Unlike `Always`, cannot be
+    /// converted to `WarnedAlways`. Used when
+    /// unreachable code is expected (e.g. in
+    /// function parameters as part of trait impls).
+    UnwarnedAlways,
 }
 
 // Convenience impls for combining `Diverges`.
@@ -1062,7 +1069,16 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         // it must always diverge.
         if fcx.tcx.features().exhaustive_patterns {
             if arg_ty.conservative_is_uninhabited() {
-                fcx.diverges.set(fcx.diverges.get() | Diverges::Always);
+                let mut diverges = Diverges::Always;
+                if let hir::Expr_::ExprBlock(ref block) = body.value.node {
+                    // If the function is completely empty, or has a single trailing
+                    // expression, then we do not issue a warning (as it was likely
+                    // mandated by a trait, rather than being an oversight).
+                    if block.stmts.is_empty() {
+                        diverges = Diverges::UnwarnedAlways;
+                    }
+                }
+                fcx.diverges.set(fcx.diverges.get() | diverges);
             }
         }
 

@@ -1,14 +1,15 @@
 error: unreachable expression
-  --> $DIR/better_divergence_checking.rs:16:40
+  --> $DIR/better_divergence_checking.rs:30:59
    |
-LL |   pub fn uninhabited_parameter(_v: Void) {
-   |  ________________________________________^
-LL | |     //~^ ERROR unreachable expression
+LL |   pub fn uninhabited_parameter_iii(_v: Void, x: i32) -> i32 {
+   |  ___________________________________________________________^
+LL | |     println!("Call me if you can!"); //~^ ERROR unreachable expression
+LL | |     x
 LL | | }
    | |_^
    |
 note: lint level defined here
-  --> $DIR/better_divergence_checking.rs:12:9
+  --> $DIR/better_divergence_checking.rs:13:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

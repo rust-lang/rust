@@ -609,6 +609,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             let diverges = match self.diverges.get() {
                 Diverges::Maybe | Diverges::Always => Diverges::Always,
                 Diverges::WarnedAlways => Diverges::WarnedAlways,
+                Diverges::UnwarnedAlways => Diverges::UnwarnedAlways,
             };
             self.diverges.set(diverges);
             return tcx.types.never;
@@ -637,15 +638,17 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             match all_pats_diverge {
                 Diverges::Maybe => Diverges::Maybe,
                 Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
+                Diverges::UnwarnedAlways => Diverges::UnwarnedAlways,
             }
         }).collect();
 
         // Now typecheck the blocks.
         //
         // The result of the match is the common supertype of all the
-        // arms. We start the value as the logical bottom , since it's the,
-        // well, bottom of the type lattice, and we'll be moving up the lattice
-        // as we process each arm. (Note that any match with 0 arms is matching
+        // arms. We start the value as the logical bottom (skipping
+        // `UnwarnedAlways`, which is a special case), since it's the, well,
+        // bottom of the type lattice, and we'll be moving up the lattice as
+        // we process each arm. (Note that any match with 0 arms is matching
         // on any empty type and is therefore unreachable; should the flow
         // of execution reach it, we will panic, so bottom is an appropriate
         // type in that case.)
