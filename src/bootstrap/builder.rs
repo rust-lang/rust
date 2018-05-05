@@ -25,7 +25,7 @@ use compile;
 use install;
 use dist;
 use util::{exe, libdir, add_lib_path};
-use {Build, Mode, DocTestsOption};
+use {Build, Mode, DocTests};
 use cache::{INTERNER, Interned, Cache};
 use check;
 use test;
@@ -591,7 +591,7 @@ impl<'a> Builder<'a> {
                 format!("{} {}", env::var("RUSTFLAGS").unwrap_or_default(), extra_args));
         }
 
-        let want_rustdoc = self.doc_tests != DocTestsOption::No;
+        let want_rustdoc = self.doc_tests != DocTests::No;
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
@@ -1415,7 +1415,7 @@ mod __test {
             test_args: vec![],
             rustc_args: vec![],
             fail_fast: true,
-            doc_tests: DocTestsOption::No,
+            doc_tests: DocTests::No,
         };
 
         let build = Build::new(config);

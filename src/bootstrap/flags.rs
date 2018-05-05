@@ -19,7 +19,7 @@ use std::process;
 
 use getopts::Options;
 
-use {Build, DocTestsOption};
+use {Build, DocTests};
 use config::Config;
 use metadata;
 use builder::Builder;
@@ -62,7 +62,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
-        doc_tests: DocTestsOption,
+        doc_tests: DocTests,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -326,11 +326,11 @@ Arguments:
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
                     doc_tests: if matches.opt_present("doc") {
-                        DocTestsOption::Only
+                        DocTests::Only
                     } else if matches.opt_present("no-doc") {
-                        DocTestsOption::No
+                        DocTests::No
                     } else {
-                        DocTestsOption::Yes
+                        DocTests::Yes
                     }
                 }
             }
@@ -418,10 +418,10 @@ impl Subcommand {
         }
     }
 
-    pub fn doc_tests(&self) -> DocTestsOption {
+    pub fn doc_tests(&self) -> DocTests {
         match *self {
             Subcommand::Test { doc_tests, .. } => doc_tests,
-            _ => DocTestsOption::Yes,
+            _ => DocTests::Yes,
         }
     }
 }

@@ -211,7 +211,7 @@ pub struct Compiler {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub enum DocTestsOption {
+pub enum DocTests {
     // Default, run normal tests and doc tests.
     Yes,
     // Do not run any doc tests.
@@ -243,7 +243,7 @@ pub struct Build {
     rustfmt_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
-    doc_tests: DocTestsOption,
+    doc_tests: DocTests,
     verbosity: usize,
 
     // Targets for which to build.
