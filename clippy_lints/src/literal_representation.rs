@@ -81,7 +81,7 @@ declare_clippy_lint! {
 }
 
 #[derive(Debug, PartialEq)]
-enum Radix {
+pub(super) enum Radix {
     Binary,
     Octal,
     Decimal,
@@ -99,7 +99,7 @@ impl Radix {
 }
 
 #[derive(Debug)]
-struct DigitInfo<'a> {
+pub(super) struct DigitInfo<'a> {
     /// Characters of a literal between the radix prefix and type suffix.
     pub digits: &'a str,
     /// Which radix the literal was represented in.
@@ -160,7 +160,7 @@ impl<'a> DigitInfo<'a> {
     }
 
     /// Returns digits grouped in a sensible way.
-    fn grouping_hint(&self) -> String {
+    pub fn grouping_hint(&self) -> String {
         let group_size = self.radix.suggest_grouping();
         if self.digits.contains('.') {
             let mut parts = self.digits.split('.');
