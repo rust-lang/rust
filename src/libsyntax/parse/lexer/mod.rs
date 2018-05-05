@@ -1770,6 +1770,15 @@ fn ident_continue(c: Option<char>) -> bool {
     (c > '\x7f' && c.is_xid_continue())
 }
 
+// The string is a valid identifier or a lifetime identifier.
+pub fn is_valid_ident(s: &str) -> bool {
+    let mut chars = s.chars();
+    match chars.next() {
+        Some('\'') => ident_start(chars.next()) && chars.all(|ch| ident_continue(Some(ch))),
+        ch => ident_start(ch) && chars.all(|ch| ident_continue(Some(ch)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

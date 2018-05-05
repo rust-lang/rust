@@ -55,9 +55,9 @@ use std::str::FromStr;
 use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
-use syntax::symbol::Symbol;
+use syntax::symbol::{keywords, Symbol};
 use syntax::tokenstream;
-use syntax::parse::lexer::comments;
+use syntax::parse::lexer::{self, comments};
 use syntax_pos::{FileMap, Pos, SyntaxContext, FileName};
 use syntax_pos::hygiene::Mark;
 
@@ -700,16 +700,13 @@ impl fmt::Display for Group {
 /// Multicharacter operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
 ///
-/// REVIEW We should guarantee that `Punct` contains a valid punctuation character permitted by
-/// REVIEW the language and not a random unicode code point. The check is already performed in
-/// REVIEW `TokenTree::to_internal`, but we should do it on construction.
-/// REVIEW `Punct` can also avoid using `char` internally and keep an u8-like enum.
-///
 /// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
 /// REVIEW Do we want to guarantee `Punct` to be `Copy`?
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone, Debug)]
 pub struct Punct {
+    // REVIEW(INTERNAL) `Punct` can avoid using `char` internally and
+    // REVIEW(INTERNAL) can keep u8 or an u8-like enum.
     ch: char,
     spacing: Spacing,
     span: Span,
@@ -733,17 +730,21 @@ pub enum Spacing {
 
 impl Punct {
     /// Creates a new `Punct` from the given character and spacing.
+    /// The `ch` argument must be a valid punctuation character permitted by the language,
+    /// otherwise the function will panic.
     ///
     /// The returned `Punct` will have the default span of `Span::call_site()`
     /// which can be further configured with the `set_span` method below.
     ///
     /// REVIEW Why we even use `char` here? There's no reason to use unicode here.
     /// REVIEW I guess because it's more convenient to write `new('+')` than `new(b'+')`, that's ok.
-    ///
-    /// REVIEW TO_DO Do input validation on construction, the argument should be a valid punctuation
-    /// REVIEW character permitted by the language.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
+        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%',
+                                       '^', '&', '|', '@', '.', ',', ';', ':', '#', '$', '?'];
+        if !LEGAL_CHARS.contains(&ch) {
+            panic!("unsupported character `{:?}`", ch)
+        }
         Punct {
             ch: ch,
             spacing: spacing,
@@ -794,9 +795,6 @@ impl fmt::Display for Punct {
 
 /// An identifier (`ident`) or lifetime identifier (`'ident`).
 ///
-/// REVIEW We should guarantee that `Ident` contains a valid identifier permitted by
-/// REVIEW the language and not a random unicode string, at least for a start.
-///
 /// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
 /// REVIEW Do we want to guarantee `Ident` to be `Copy`?
 #[derive(Copy, Clone, Debug)]
@@ -816,6 +814,8 @@ impl !Sync for Ident {}
 impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
+    /// The `string` argument must be a valid identifier or lifetime identifier permitted by the
+    /// language, otherwise the function will panic.
     ///
     /// Note that `span`, currently in rustc, configures the hygiene information
     /// for this identifier.
@@ -831,11 +831,11 @@ impl Ident {
     ///
     /// Due to the current importance of hygiene this constructor, unlike other
     /// tokens, requires a `Span` to be specified at construction.
-    ///
-    /// REVIEW TO_DO Do input validation, the argument should be a valid identifier or
-    /// REVIEW lifetime identifier.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new(string: &str, span: Span) -> Ident {
+        if !lexer::is_valid_ident(string) {
+            panic!("`{:?}` is not a valid identifier", string)
+        }
         Ident {
             sym: Symbol::intern(string),
             span,
@@ -847,6 +847,11 @@ impl Ident {
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new_raw(string: &str, span: Span) -> Ident {
         let mut ident = Ident::new(string, span);
+        if ident.sym == keywords::Underscore.name() ||
+           token::is_path_segment_keyword(ast::Ident::with_empty_ctxt(ident.sym)) ||
+           ident.sym.as_str().starts_with("\'") {
+            panic!("`{:?}` is not a valid raw identifier", string)
+        }
         ident.is_raw = true;
         ident
     }
@@ -1365,7 +1370,7 @@ impl TokenTree {
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
 pub mod __internal {
-    pub use quote::{LiteralKind, Quoter, unquote};
+    pub use quote::{LiteralKind, SpannedSymbol, Quoter, unquote};
 
     use std::cell::Cell;
 

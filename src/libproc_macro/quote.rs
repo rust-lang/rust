@@ -18,6 +18,7 @@ use {Delimiter, Literal, Spacing, Span, Ident, Punct, Group, TokenStream, TokenT
 
 use syntax::ext::base::{ExtCtxt, ProcMacro};
 use syntax::parse::token;
+use syntax::symbol::Symbol;
 use syntax::tokenstream;
 
 pub struct Quoter;
@@ -195,14 +196,32 @@ impl Quote for Span {
 
 macro_rules! literals {
     ($($i:ident),*; $($raw:ident),*) => {
+        pub struct SpannedSymbol {
+            sym: Symbol,
+            span: Span,
+        }
+
+        impl SpannedSymbol {
+            pub fn new(string: &str, span: Span) -> SpannedSymbol {
+                SpannedSymbol { sym: Symbol::intern(string), span }
+            }
+        }
+
+        impl Quote for SpannedSymbol {
+            fn quote(self) -> TokenStream {
+                quote!(::__internal::SpannedSymbol::new((quote self.sym.as_str()),
+                                                        (quote self.span)))
+            }
+        }
+
         pub enum LiteralKind {
             $($i,)*
             $($raw(u16),)*
         }
 
         impl LiteralKind {
-            pub fn with_contents_and_suffix(self, contents: Ident, suffix: Option<Ident>)
-                                            -> Literal {
+            pub fn with_contents_and_suffix(self, contents: SpannedSymbol,
+                                            suffix: Option<SpannedSymbol>) -> Literal {
                 let sym = contents.sym;
                 let suffix = suffix.map(|t| t.sym);
                 match self {
@@ -225,13 +244,14 @@ macro_rules! literals {
         }
 
         impl Literal {
-            fn kind_contents_and_suffix(self) -> (LiteralKind, Ident, Option<Ident>) {
+            fn kind_contents_and_suffix(self) -> (LiteralKind, SpannedSymbol, Option<SpannedSymbol>)
+            {
                 let (kind, contents) = match self.lit {
                     $(token::Lit::$i(contents) => (LiteralKind::$i, contents),)*
                     $(token::Lit::$raw(contents, n) => (LiteralKind::$raw(n), contents),)*
                 };
-                let suffix = self.suffix.map(|sym| Ident::new(&sym.as_str(), self.span()));
-                (kind, Ident::new(&contents.as_str(), self.span()), suffix)
+                let suffix = self.suffix.map(|sym| SpannedSymbol::new(&sym.as_str(), self.span()));
+                (kind, SpannedSymbol::new(&contents.as_str(), self.span()), suffix)
             }
         }
 
