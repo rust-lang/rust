@@ -78,9 +78,9 @@ fi
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
-if [ "$PARALLEL_CHECK" != "" ]; then
+if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   $SRC/configure --enable-experimental-parallel-queries
-  python2.7 ../x.py check
+  CARGO_INCREMENTAL=0 python2.7 ../x.py check
   rm -f config.toml
   rm -rf build
 fi
