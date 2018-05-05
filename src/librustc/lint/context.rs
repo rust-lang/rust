@@ -28,7 +28,7 @@ use self::TargetLint::*;
 
 use std::slice;
 use lint::{EarlyLintPassObject, LateLintPassObject};
-use lint::{Level, Lint, LintId, LintPass, LintBuffer};
+use lint::{self, Level, Lint, LintId, LintPass, LintBuffer};
 use lint::builtin::BuiltinLintDiagnostics;
 use lint::levels::{LintLevelSets, LintLevelsBuilder};
 use middle::privacy::AccessLevels;
