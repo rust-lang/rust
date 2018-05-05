@@ -26,6 +26,97 @@ thread_local! {
     }
 }
 
+/// Stderr used by the default panic handler, eprint!, and eprintln! macros
+thread_local! {
+    pub(crate) static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {
+        RefCell::new(None)
+    }
+}
+
+/// Get a handle to the `local` output stream if possible,
+/// falling back to using `global` otherwise.
+///
+/// This function is used to print error messages, so it takes extra
+/// care to avoid causing a panic when `local_stream` is unusable.
+/// For instance, if the TLS key for the local stream is
+/// already destroyed, or if the local stream is locked by another
+/// thread, it will just fall back to the global stream.
+#[inline]
+fn with_write<W: Write, R, F: Fn(&mut io::Write) -> R>(
+    local: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
+    global: fn() -> W,
+    f: F,
+) -> R {
+    local.try_with(|s| {
+        if let Ok(mut borrowed) = s.try_borrow_mut() {
+            if let Some(w) = borrowed.as_mut() {
+                return f(w);
+            }
+        }
+        f(&mut global())
+    }).unwrap_or_else(|_| {
+        f(&mut global())
+    })
+}
+
+/// A `Write` handle that is usually the same as using [`io::stdout()`],
+/// but is overridden during test runs thread-locally to capture output.
+/// This is how `println!` family macros work during test runs.
+#[unstable(feature = "set_stdio",
+           reason = "this may disappear completely or be replaced \
+                                         with a more general mechanism",
+           issue = "0")]
+#[derive(Debug)]
+pub struct LocalStdout;
+
+/// A `Write` handle that is usually the same as using [`io::stderr()`],
+/// but is overridden during test runs thread-locally to capture output.
+/// This is how `eprintln!` family macros work during test runs.
+#[unstable(feature = "set_stdio",
+           reason = "this may disappear completely or be replaced \
+                                         with a more general mechanism",
+           issue = "0")]
+#[derive(Debug)]
+pub struct LocalStderr;
+
+#[unstable(feature = "set_stdio",
+           reason = "this may disappear completely or be replaced \
+                                         with a more general mechanism",
+           issue = "0")]
+impl Write for LocalStdout {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        with_write(&LOCAL_STDOUT, stdout, move |w| w.write(buf))
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        with_write(&LOCAL_STDOUT, stdout, move |w| w.flush())
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        with_write(&LOCAL_STDOUT, stdout, move |w| w.write_all(buf))
+    }
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+        with_write(&LOCAL_STDOUT, stdout, move |w| w.write_fmt(fmt))
+    }
+}
+
+#[unstable(feature = "set_stdio",
+           reason = "this may disappear completely or be replaced \
+                                         with a more general mechanism",
+           issue = "0")]
+impl Write for LocalStderr {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        with_write(&LOCAL_STDERR, stderr, move |w| w.write(buf))
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        with_write(&LOCAL_STDERR, stderr, move |w| w.flush())
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        with_write(&LOCAL_STDERR, stderr, move |w| w.write_all(buf))
+    }
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
+        with_write(&LOCAL_STDERR, stderr, move |w| w.write_fmt(fmt))
+    }
+}
+
 /// A handle to a raw instance of the standard input stream of this process.
 ///
 /// This handle is not synchronized or buffered in any fashion. Constructed via
@@ -625,7 +716,6 @@ impl<'a> fmt::Debug for StderrLock<'a> {
            issue = "0")]
 #[doc(hidden)]
 pub fn set_panic(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
-    use panicking::LOCAL_STDERR;
     use mem;
     LOCAL_STDERR.with(move |slot| {
         mem::replace(&mut *slot.borrow_mut(), sink)
@@ -658,47 +748,13 @@ pub fn set_print(sink: Option<Box<Write + Send>>) -> Option<Box<Write + Send>> {
     })
 }
 
-/// Write `args` to output stream `local_s` if possible, `global_s`
-/// otherwise. `label` identifies the stream in a panic message.
-///
-/// This function is used to print error messages, so it takes extra
-/// care to avoid causing a panic when `local_stream` is unusable.
-/// For instance, if the TLS key for the local stream is
-/// already destroyed, or if the local stream is locked by another
-/// thread, it will just fall back to the global stream.
-///
-/// However, if the actual I/O causes an error, this function does panic.
-fn print_to<T>(
-    args: fmt::Arguments,
-    local_s: &'static LocalKey<RefCell<Option<Box<Write+Send>>>>,
-    global_s: fn() -> T,
-    label: &str,
-)
-where
-    T: Write,
-{
-    let result = local_s.try_with(|s| {
-        if let Ok(mut borrowed) = s.try_borrow_mut() {
-            if let Some(w) = borrowed.as_mut() {
-                return w.write_fmt(args);
-            }
-        }
-        global_s().write_fmt(args)
-    }).unwrap_or_else(|_| {
-        global_s().write_fmt(args)
-    });
-
-    if let Err(e) = result {
-        panic!("failed printing to {}: {}", label, e);
-    }
-}
-
 #[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
            issue = "0")]
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    print_to(args, &LOCAL_STDOUT, stdout, "stdout");
+    LocalStdout.write_fmt(args)
+        .unwrap_or_else(|e| panic!("failed printing to stdout: {}", e));
 }
 
 #[unstable(feature = "print_internals",
@@ -706,8 +762,8 @@ pub fn _print(args: fmt::Arguments) {
            issue = "0")]
 #[doc(hidden)]
 pub fn _eprint(args: fmt::Arguments) {
-    use panicking::LOCAL_STDERR;
-    print_to(args, &LOCAL_STDERR, stderr, "stderr");
+    LocalStderr.write_fmt(args)
+        .unwrap_or_else(|e| panic!("failed printing to stderr: {}", e));
 }
 
 #[cfg(test)]

@@ -19,27 +19,19 @@
 
 use core::panic::BoxMeUp;
 
-use io::prelude::*;
-
 use any::Any;
-use cell::RefCell;
 use core::panic::{PanicInfo, Location};
 use fmt;
 use intrinsics;
+use io::LocalStderr;
 use mem;
 use ptr;
 use raw;
-use sys::stdio::{Stderr, stderr_prints_nothing};
+use sys::stdio::stderr_prints_nothing;
 use sys_common::rwlock::RWLock;
 use sys_common::thread_info;
 use sys_common::util;
 use thread;
-
-thread_local! {
-    pub static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {
-        RefCell::new(None)
-    }
-}
 
 // Binary interface to the panic runtime that the standard library depends on.
 //
@@ -193,7 +185,6 @@ fn default_hook(info: &PanicInfo) {
             None => "Box<Any>",
         }
     };
-    let mut err = Stderr::new().ok();
     let thread = thread_info::current_thread();
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
@@ -215,18 +206,7 @@ fn default_hook(info: &PanicInfo) {
         }
     };
 
-    let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
-    match (prev, err.as_mut()) {
-       (Some(mut stderr), _) => {
-           write(&mut *stderr);
-           let mut s = Some(stderr);
-           LOCAL_STDERR.with(|slot| {
-               *slot.borrow_mut() = s.take();
-           });
-       }
-       (None, Some(ref mut err)) => { write(err) }
-       _ => {}
-    }
+    write(&mut LocalStderr);
 }
 
 
