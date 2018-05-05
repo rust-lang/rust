@@ -960,6 +960,9 @@ impl Step for Compiletest {
         }
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
+        if builder.config.rust_polly_self {
+            flags.push("-Zpolly".into());
+        }
 
         if let Some(linker) = builder.linker(target) {
             cmd.arg("--linker").arg(linker);

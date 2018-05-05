@@ -1642,7 +1642,8 @@ extern "C" {
                                        Singlethread: bool)
                                        -> TargetMachineRef;
     pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
-    pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: ModuleRef);
+    pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef, PM: PassManagerRef, M: ModuleRef,
+                                     Polly: bool);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: PassManagerBuilderRef,
                                          M: ModuleRef,
                                          DisableSimplifyLibCalls: bool);

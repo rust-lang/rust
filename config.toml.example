@@ -303,6 +303,10 @@
 #optimize-tests = true
 #debuginfo-tests = true
 
+# Flag indicating whether tests are optimized with Polly. If optimize-tests is false,
+# polly-tests will be false regardless of its value here.
+#polly-tests = false
+
 # Flag indicating whether codegen tests will be run or not. If you get an error
 # saying that the FileCheck executable is missing, you may want to disable this.
 #codegen-tests = true
@@ -345,6 +349,10 @@
 
 # Whether to deny warnings in crates
 #deny-warnings = true
+
+# Use Polly on the rust compiler itself. If optimize is false, this will be
+# false as well.
+#polly-self = false
 
 # =============================================================================
 # Options for specific targets

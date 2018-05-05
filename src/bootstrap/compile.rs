@@ -36,7 +36,7 @@ use native;
 use tool;
 
 use cache::{INTERNER, Interned};
-use builder::{Step, RunConfig, ShouldRun, Builder};
+use builder::{Step, RunConfig, ShouldRun, Builder, Kind};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -552,6 +552,18 @@ pub fn rustc_cargo_env(builder: &Builder, cargo: &mut Command) {
     }
     if builder.config.rustc_parallel_queries {
         cargo.env("RUSTC_PARALLEL_QUERIES", "1");
+    }
+
+    let use_polly = match builder.kind {
+        Kind::Test | Kind::Check => {
+            builder.config.rust_polly_tests
+        },
+        _ => builder.config.rust_polly_self
+    };
+    if use_polly {
+        cargo.env("RUSTC_USE_POLLY", "1");
+    } else {
+        cargo.env("RUSTC_USE_POLLY", "0");
     }
 }
 
