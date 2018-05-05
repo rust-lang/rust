@@ -797,12 +797,6 @@ impl fmt::Display for Punct {
 /// REVIEW We should guarantee that `Ident` contains a valid identifier permitted by
 /// REVIEW the language and not a random unicode string, at least for a start.
 ///
-/// REVIEW We need to support raw identifiers here (`r#ident`) or at least be future compatible
-/// REVIEW with them. Currently they are supported using "string typing" - if string "r#ident" is
-/// REVIEW passed to `Ident::new` it will be interpreted as a raw identifier later on, we should add
-/// REVIEW a field `is_raw` and a separate constructor for it (`Ident::new_raw` or something) and
-/// REVIEW keep it unstable until raw identifiers are stabilized.
-///
 /// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
 /// REVIEW Do we want to guarantee `Ident` to be `Copy`?
 #[derive(Copy, Clone, Debug)]
@@ -811,6 +805,7 @@ pub struct Ident {
     // REVIEW(INTERNAL) Symbol + Span is actually `ast::Ident`! We can use it here.
     sym: Symbol,
     span: Span,
+    is_raw: bool,
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
@@ -844,7 +839,16 @@ impl Ident {
         Ident {
             sym: Symbol::intern(string),
             span,
+            is_raw: false,
         }
+    }
+
+    /// Same as `Ident::new`, but creates a raw identifier (`r#ident`).
+    #[unstable(feature = "proc_macro", issue = "38356")]
+    pub fn new_raw(string: &str, span: Span) -> Ident {
+        let mut ident = Ident::new(string, span);
+        ident.is_raw = true;
+        ident
     }
 
     // FIXME: Remove this, do not stabilize
@@ -1230,7 +1234,7 @@ impl TokenTree {
                 tt!(self::Ident::new(&ident.name.as_str(), Span(span)))
             }
             Ident(ident, true) => {
-                tt!(self::Ident::new(&format!("r#{}", ident), Span(span)))
+                tt!(self::Ident::new_raw(&ident.name.as_str(), Span(span)))
             }
             Literal(lit, suffix) => tt!(self::Literal { lit, suffix, span: Span(span) }),
             DocComment(c) => {
@@ -1275,15 +1279,10 @@ impl TokenTree {
             },
             self::TokenTree::Ident(tt) => {
                 let ident = ast::Ident::new(tt.sym, tt.span.0);
-                let sym_str = tt.sym.to_string();
-                let token = if sym_str.starts_with("'") {
+                let token = if tt.sym.as_str().starts_with("'") {
                     Lifetime(ident)
-                } else if sym_str.starts_with("r#") {
-                    let name = Symbol::intern(&sym_str[2..]);
-                    let ident = ast::Ident::new(name, ident.span);
-                    Ident(ident, true)
                 } else {
-                    Ident(ident, false)
+                    Ident(ident, tt.is_raw)
                 };
                 return TokenTree::Token(tt.span.0, token).into();
             }
