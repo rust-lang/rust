@@ -112,7 +112,7 @@ mod prim_bool { }
 ///
 /// # `!` and generics
 ///
-/// ## Infalliable errors
+/// ## Infallible errors
 ///
 /// The main place you'll see `!` used explicitly is in generic code. Consider the [`FromStr`]
 /// trait:
@@ -144,7 +144,7 @@ mod prim_bool { }
 ///
 /// ## Infinite loops
 ///
-/// While [`Result<T, !>`] is very useful for removing errors, `!` can also be used to removed
+/// While [`Result<T, !>`] is very useful for removing errors, `!` can also be used to remove
 /// successes as well. If we think of [`Result<T, !>`] as "if this function returns, it has not
 /// errored," we get a very intuitive idea of [`Result<!, E>`] as well: if the function returns, it
 /// *has* errored.
@@ -175,21 +175,22 @@ mod prim_bool { }
 /// ```
 ///
 /// Now, when the server disconnects, we exit the loop with an error instead of panicking. While it
-/// might be intuitive to simply return the error, we might want to wrap it in a [`Result<!, E>`] 
+/// might be intuitive to simply return the error, we might want to wrap it in a [`Result<!, E>`]
 /// instead:
 ///
 /// ```ignore (hypothetical-example)
 /// fn server_loop() -> Result<!, ConnectionError> {
-///     Ok(loop {
+///     loop {
 ///         let (client, request) = get_request()?;
 ///         let response = request.process();
 ///         response.send(client);
-///     })
+///     }
 /// }
 /// ```
 ///
 /// Now, we can use `?` instead of `match`, and the return type makes a lot more sense: if the loop
-/// ever stops, it means that an error occurred.
+/// ever stops, it means that an error occurred. We don't even have to wrap the loop in an `Ok`
+/// because `!` coerces to `Result<!, ConnectionError>` automatically.
 ///
 /// [`String::from_str`]: str/trait.FromStr.html#tymethod.from_str
 /// [`Result<String, !>`]: result/enum.Result.html
