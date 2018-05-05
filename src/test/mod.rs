@@ -866,7 +866,8 @@ fn make_temp_file(file_name: &'static str) -> TempFile {
     use std::env::var;
     use std::fs::File;
 
-    let target_dir = var("CARGO_TARGET_DIR").unwrap_or_else(|_| ".".to_owned());
+    // Used in the Rust build system.
+    let target_dir = var("RUSTFMT_TEST_DIR").unwrap_or_else(|_| ".".to_owned());
     let path = Path::new(&target_dir).join(file_name);
 
     let mut file = File::create(&path).expect("Couldn't create temp file");
