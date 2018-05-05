@@ -706,6 +706,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTC_PRINT_STEP_TIMINGS", "1");
         }
 
+        if self.config.backtrace_on_ice {
+            cargo.env("RUSTC_BACKTRACE_ON_ICE", "1");
+        }
+
         cargo.env("RUSTC_VERBOSE", format!("{}", self.verbosity));
 
         // in std, we want to avoid denying warnings for stage 0 as that makes cfg's painful.

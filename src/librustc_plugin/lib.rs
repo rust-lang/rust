@@ -65,7 +65,6 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(rustc_diagnostic_macros)]
-#![feature(staged_api)]
 
 #[macro_use] extern crate syntax;
 

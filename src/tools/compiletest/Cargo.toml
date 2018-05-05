@@ -19,5 +19,6 @@ rustfix = "0.2"
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
+lazy_static = "1.0"
 miow = "0.3"
 winapi = { version = "0.3", features = ["winerror"] }
