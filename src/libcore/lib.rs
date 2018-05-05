@@ -50,6 +50,7 @@
 
 // Since libcore defines many fundamental lang items, all tests live in a
 // separate crate, libcoretest, to avoid bizarre issues.
+#![cfg(not(test))]
 
 #![stable(feature = "core", since = "1.6.0")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
