@@ -1474,6 +1474,7 @@ fn rewrite_paren(
     // Extract comments within parens.
     let mut pre_comment;
     let mut post_comment;
+    let remove_nested_parens = context.config.remove_nested_parens();
     loop {
         // 1 = "(" or ")"
         let pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span.lo());
@@ -1483,7 +1484,7 @@ fn rewrite_paren(
 
         // Remove nested parens if there are no comments.
         if let ast::ExprKind::Paren(ref subsubexpr) = subexpr.node {
-            if pre_comment.is_empty() && post_comment.is_empty() {
+            if remove_nested_parens && pre_comment.is_empty() && post_comment.is_empty() {
                 span = subexpr.span;
                 subexpr = subsubexpr;
                 continue;
