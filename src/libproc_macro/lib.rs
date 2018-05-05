@@ -62,11 +62,12 @@ use syntax_pos::{FileMap, Pos, SyntaxContext, FileName};
 use syntax_pos::hygiene::Mark;
 
 /// The main type provided by this crate, representing an abstract stream of
-/// tokens.
+/// tokens, or, more specifically, a sequence of token trees.
+/// The type provide interfaces for iterating over those token trees and, conversely,
+/// collecting a number of token trees into one stream.
 ///
-/// This is both the input and output of `#[proc_macro_derive]` definitions.
-/// Currently it's required to be a list of valid Rust items, but this
-/// restriction may be lifted in the future.
+/// This is both the input and output of `#[proc_macro]`, `#[proc_macro_attribute]`
+/// and `#[proc_macro_derive]` definitions.
 ///
 /// The API of this type is intentionally bare-bones, but it'll be expanded over
 /// time!
@@ -92,7 +93,7 @@ impl !Send for LexError {}
 impl !Sync for LexError {}
 
 impl TokenStream {
-    /// Returns an empty `TokenStream`.
+    /// Returns an empty `TokenStream` containing no token trees.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn empty() -> TokenStream {
         TokenStream(tokenstream::TokenStream::empty())
@@ -105,6 +106,12 @@ impl TokenStream {
     }
 }
 
+/// Attempts to break the string into tokens and parse those tokens into a token stream.
+/// May fail for a number of reasons, for example, if the string contains unbalanced delimiters
+/// or characters not existing in the language.
+///
+/// REVIEW The function actually panics on any error and never returns `LexError`.
+/// REVIEW Should the panics be documented?
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl FromStr for TokenStream {
     type Err = LexError;
@@ -125,6 +132,9 @@ impl FromStr for TokenStream {
     }
 }
 
+/// Prints the token stream as a string that should be losslessly convertible back
+/// into the same token stream (modulo spans), except for possibly `TokenTree::Group`s
+/// with `Delimiter::None` delimiters.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -132,6 +142,7 @@ impl fmt::Display for TokenStream {
     }
 }
 
+/// Prints token in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Debug for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -140,6 +151,10 @@ impl fmt::Debug for TokenStream {
     }
 }
 
+/// Creates a token stream containing a single token tree.
+///
+/// REVIEW We don't generally have impls `From<T> for Collection<T>`, but I see why this exists
+/// REVIEW from practical point of view.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
@@ -147,6 +162,7 @@ impl From<TokenTree> for TokenStream {
     }
 }
 
+/// Collects a number of token trees into a single stream.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl iter::FromIterator<TokenTree> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
@@ -154,6 +170,8 @@ impl iter::FromIterator<TokenTree> for TokenStream {
     }
 }
 
+/// A "flattening" operation on token streams, collects token trees
+/// from multiple token streams into a single stream.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
@@ -165,7 +183,7 @@ impl iter::FromIterator<TokenStream> for TokenStream {
     }
 }
 
-/// Implementation details for the `TokenTree` type, such as iterators.
+/// Public implementation details for the `TokenStream` type, such as iterators.
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub mod token_stream {
     use syntax::tokenstream;
@@ -173,7 +191,9 @@ pub mod token_stream {
 
     use {TokenTree, TokenStream, Delimiter};
 
-    /// An iterator over `TokenTree`s.
+    /// An iterator over `TokenStream`'s `TokenTree`s.
+    /// The iteration is "shallow", e.g. the iterator doesn't recurse into delimited groups,
+    /// and returns whole groups as token trees.
     #[derive(Clone)]
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub struct IntoIter {
@@ -191,6 +211,15 @@ pub mod token_stream {
                     let next = self.cursor.next_as_stream()?;
                     Some(TokenTree::from_internal(next, &mut self.stack))
                 })?;
+                // HACK: The condition "dummy span + group with empty delimiter" represents an AST
+                // fragment approximately converted into a token stream. This may happen, for
+                // example, with inputs to proc macro attributes, including derives. Such "groups"
+                // need to flattened during iteration over stream's token trees.
+                // Eventually this needs to be removed in favor of keeping original token trees
+                // and not doing the roundtrip through AST.
+                //
+                // REVIEW This may actually be observable if we can create a dummy span via
+                // proc macro API, but it looks like we can't do it with 1.2 yet.
                 if tree.span().0 == DUMMY_SP {
                     if let TokenTree::Group(ref group) = tree {
                         if group.delimiter() == Delimiter::None {
@@ -237,6 +266,9 @@ pub fn quote_span(span: Span) -> TokenStream {
 }
 
 /// A region of source code, along with macro expansion information.
+///
+/// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
+/// REVIEW Do we want to guarantee `Span` to be `Copy`? Yes.
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone)]
 pub struct Span(syntax_pos::Span);
@@ -268,6 +300,9 @@ impl Span {
     }
 
     /// The span of the invocation of the current procedural macro.
+    /// Identifiers created with this span will be resolved as if they were written
+    /// directly at the macro call location (call-site hygiene) and other code
+    /// at the macro call site will be able to refer to them as well.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn call_site() -> Span {
         ::__internal::with_sess(|(_, mark)| Span(mark.expn_info().unwrap().call_site))
@@ -355,6 +390,7 @@ impl Span {
     diagnostic_method!(help, Level::Help);
 }
 
+/// Prints a span in a form convenient for debugging.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -460,11 +496,19 @@ impl PartialEq<FileName> for SourceFile {
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Clone)]
 pub enum TokenTree {
-    /// A delimited tokenstream
+    /// A token stream surrounded by bracket delimiters.
     Group(Group),
-    /// A unicode identifier
+    /// An identifier or lifetime identifier.
+    ///
+    /// REVIEW Maybe let's name it `Ident` instead of inventing a new term, it's named "identifier"
+    /// REVIEW everywhere in the compiler, including `ident` in `macro`/`macro_rules!` DSL.
     Term(Term),
-    /// A punctuation character (`+`, `,`, `$`, etc.).
+    /// A single punctuation character (`+`, `,`, `$`, etc.).
+    ///
+    /// REVIEW This is not an operator, operators are more narrow set, they also can be
+    /// REVIEW multicharacter, this is punctuation, even the comment says so!
+    /// REVIEW @dtolnay suggested `Punct` in the original implementation PR too, and it was
+    /// REVIEW received positively, but the renaming never actually happened.
     Op(Op),
     /// A literal character (`'a'`), string (`"hello"`), number (`2.3`), etc.
     Literal(Literal),
@@ -476,8 +520,8 @@ impl !Send for TokenTree {}
 impl !Sync for TokenTree {}
 
 impl TokenTree {
-    /// Returns the span of this token, accessing the `span` method of each of
-    /// the internal tokens.
+    /// Returns the span of this tree, delegating to the `span` method of
+    /// the contained token or a delimited stream.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn span(&self) -> Span {
         match *self {
@@ -504,6 +548,7 @@ impl TokenTree {
     }
 }
 
+/// Prints token treee in a form convenient for debugging.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Debug for TokenTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -518,6 +563,10 @@ impl fmt::Debug for TokenTree {
     }
 }
 
+/// REVIEW the impls below are kind of `From<T> for Option<T>`, not strictly necessary,
+/// REVIEW but convenient. No harm, I guess. I'd actually like to see impls
+/// REVIEW `From<Group/Term/Op/Literal> for TokenStream` to avoid stuttering like
+/// REVIEW `TokenTree::Literal(Literal::string("lalala")).into()`.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<Group> for TokenTree {
     fn from(g: Group) -> TokenTree {
@@ -546,6 +595,9 @@ impl From<Literal> for TokenTree {
     }
 }
 
+/// Prints the token tree as a string that should be losslessly convertible back
+/// into the same token tree (modulo spans), except for possibly `TokenTree::Group`s
+/// with `Delimiter::None` delimiters.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for TokenTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -558,11 +610,9 @@ impl fmt::Display for TokenTree {
     }
 }
 
-/// A delimited token stream
+/// A delimited token stream.
 ///
-/// A `Group` internally contains a `TokenStream` which is delimited by a
-/// `Delimiter`. Groups represent multiple tokens internally and have a `Span`
-/// for the entire stream.
+/// A `Group` internally contains a `TokenStream` which is surrounded by `Delimiter`s.
 #[derive(Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Group {
@@ -586,12 +636,16 @@ pub enum Delimiter {
     Brace,
     /// `[ ... ]`
     Bracket,
-    /// An implicit delimiter, e.g. `$var`, where $var is  `...`.
+    /// `Ø ... Ø`
+    /// An implicit delimiter, that may, for example, appear around tokens coming from a
+    /// "macro variable" `$var`. It is important to preserve operator priorities in cases like
+    /// `$var * 3` where `$var` is `1 + 2`.
+    /// Implicit delimiters may not survive roundtrip of a token stream through a string.
     None,
 }
 
 impl Group {
-    /// Creates a new `group` with the given delimiter and token stream.
+    /// Creates a new `Group` with the given delimiter and token stream.
     ///
     /// This constructor will set the span for this group to
     /// `Span::call_site()`. To change the span you can use the `set_span`
@@ -639,6 +693,9 @@ impl Group {
     }
 }
 
+/// Prints the group as a string that should be losslessly convertible back
+/// into the same group (modulo spans), except for possibly `TokenTree::Group`s
+/// with `Delimiter::None` delimiters.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for Group {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -646,10 +703,23 @@ impl fmt::Display for Group {
     }
 }
 
-/// An `Op` is an operator like `+` or `-`, and only represents one character.
+/// An `Op` is an single punctuation character like `+`, `-` or `#`.
 ///
-/// Operators like `+=` are represented as two instance of `Op` with different
+/// Multicharacter operators like `+=` are represented as two instances of `Op` with different
 /// forms of `Spacing` returned.
+///
+/// REVIEW This is not an operator, operators are more narrow set, they also can be
+/// REVIEW multicharacter, this is punctuation, even the comment says so!
+/// REVIEW @dtolnay suggested `Punct` in the original implementation PR too, and it was
+/// REVIEW received positively, but the renaming never actually happened.
+///
+/// REVIEW We should guarantee that `Op` contains a valid punctuation character permitted by
+/// REVIEW the language and not a random unicode code point. The check is already performed in
+/// REVIEW `TokenTree::to_internal`, but we should do it on construction.
+/// REVIEW `Op` can also avoid using `char` internally and keep an u8-like enum.
+///
+/// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
+/// REVIEW Do we want to guarantee `Op` to be `Copy`?
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone, Debug)]
 pub struct Op {
@@ -663,13 +733,14 @@ impl !Send for Op {}
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl !Sync for Op {}
 
-/// Whether an `Op` is either followed immediately by another `Op` or followed by whitespace.
+/// Whether an `Op` is followed immediately by another `Op` or
+/// followed by another token or whitespace.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub enum Spacing {
-    /// e.g. `+` is `Alone` in `+ =`.
+    /// e.g. `+` is `Alone` in `+ =`, `+ident` or `+()`.
     Alone,
-    /// e.g. `+` is `Joint` in `+=`.
+    /// e.g. `+` is `Joint` in `+=` or `+#`.
     Joint,
 }
 
@@ -678,6 +749,12 @@ impl Op {
     ///
     /// The returned `Op` will have the default span of `Span::call_site()`
     /// which can be further configured with the `set_span` method below.
+    ///
+    /// REVIEW Why we even use `char` here? There's no reason to use unicode here.
+    /// REVIEW I guess because it's more convenient to write `new('+')` than `new(b'+')`, that's ok.
+    ///
+    /// REVIEW TO_DO Do input validation on construction, the argument should be a valid punctuation
+    /// REVIEW character permitted by the language.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new(op: char, spacing: Spacing) -> Op {
         Op {
@@ -687,33 +764,40 @@ impl Op {
         }
     }
 
-    /// Returns the character this operation represents, for example `'+'`
+    /// Returns the value of this punctuation character as `char`.
+    ///
+    /// REVIEW Again, there's no need for unicode here,
+    /// REVIEW except for maybe future compatibility in case Rust turns into APL,
+    /// REVIEW but if it's more convenient to use `char` then that's okay.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn op(&self) -> char {
         self.op
     }
 
-    /// Returns the spacing of this operator, indicating whether it's a joint
-    /// operator with more operators coming next in the token stream or an
-    /// `Alone` meaning that the operator has ended.
+    /// Returns the spacing of this punctuation character, indicating whether it's immediately
+    /// followed by another `Op` in the token stream, so they can potentially be combined into
+    /// a multicharacter operator (`Joint`), or it's followed by some other token or whitespace
+    /// (`Alone`) so the operator has certainly ended.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn spacing(&self) -> Spacing {
         self.spacing
     }
 
-    /// Returns the span for this operator character
+    /// Returns the span for this punctuation character.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn span(&self) -> Span {
         self.span
     }
 
-    /// Configure the span for this operator's character
+    /// Configure the span for this punctuation character.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn set_span(&mut self, span: Span) {
         self.span = span;
     }
 }
 
+/// Prints the punctuation character as a string that should be losslessly convertible
+/// back into the same character.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for Op {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -721,10 +805,26 @@ impl fmt::Display for Op {
     }
 }
 
-/// An interned string.
+/// An identifier (`ident`) or lifetime identifier (`'ident`).
+///
+/// REVIEW We should guarantee that `Term` contains a valid identifier permitted by
+/// REVIEW the language and not a random unicode string, at least for a start.
+///
+/// REVIEW Maybe let's name it `Ident` instead of inventing a new term, it's named "identifier"
+/// REVIEW everywhere in the compiler, including `ident` in `macro`/`macro_rules!` DSL.
+///
+/// REVIEW We need to support raw identifiers here (`r#ident`) or at least be future compatible
+/// REVIEW with them. Currently they are supported using "string typing" - if string "r#ident" is
+/// REVIEW passed to `Term::new` it will be interpreted as a raw identifier later on, we should add
+/// REVIEW a field `is_raw` and a separate constructor for it (`Term::new_raw` or something) and
+/// REVIEW keep it unstable until raw identifiers are stabilized.
+///
+/// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
+/// REVIEW Do we want to guarantee `Term` to be `Copy`?
 #[derive(Copy, Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Term {
+    // REVIEW(INTERNAL) Symbol + Span is actually `ast::Ident`! We can use it here.
     sym: Symbol,
     span: Span,
 }
@@ -739,14 +839,22 @@ impl Term {
     /// `span`.
     ///
     /// Note that `span`, currently in rustc, configures the hygiene information
-    /// for this identifier. As of this time `Span::call_site()` explicitly
-    /// opts-in to **non-hygienic** information (aka copy/pasted code) while
-    /// spans like `Span::def_site()` will opt-in to hygienic information,
-    /// meaning that code at the call site of the macro can't access this
-    /// identifier.
+    /// for this identifier.
+    ///
+    /// As of this time `Span::call_site()` explicitly opts-in to "call-site" hygiene
+    /// meaning that identifiers created with this span will be resolved as if they were written
+    /// directly at the location of the macro call, and other code at the macro call site will be
+    /// able to refer to them as well.
+    ///
+    /// Later spans like `Span::def_site()` will allow to opt-in to "definition-site" hygiene
+    /// meaning that identifiers created with this span will be resolved at the location of the
+    /// macro definition and other code at the macro call site will not be able to refer to them.
     ///
     /// Due to the current importance of hygiene this constructor, unlike other
     /// tokens, requires a `Span` to be specified at construction.
+    ///
+    /// REVIEW TO_DO Do input validation, the argument should be a valid identifier or
+    /// REVIEW lifetime identifier.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new(string: &str, span: Span) -> Term {
         Term {
@@ -769,14 +877,15 @@ impl Term {
         self.span
     }
 
-    /// Configures the span of this `Term`, possibly changing hygiene
-    /// information.
+    /// Configures the span of this `Term`, possibly changing its hygiene context.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn set_span(&mut self, span: Span) {
         self.span = span;
     }
 }
 
+/// Prints the identifier as a string that should be losslessly convertible
+/// back into the same identifier.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -784,7 +893,10 @@ impl fmt::Display for Term {
     }
 }
 
-/// A literal character (`'a'`), string (`"hello"`), a number (`2.3`), etc.
+/// A literal string (`"hello"`), byte string (`b"hello"`),
+/// character (`'a'`), byte character (`b'a'`), an integer or floating point number
+/// with or without a suffix (`1`, `1u8`, `2.3`, `2.3f32`).
+/// Boolean literals like `true` and `false` do not belong here, they are `Term`s.
 #[derive(Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Literal {
@@ -1016,6 +1128,8 @@ impl Literal {
     }
 }
 
+/// Prints the literal as a string that should be losslessly convertible
+/// back into the same literal (except for possible rounding for floating point literals).
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for Literal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
