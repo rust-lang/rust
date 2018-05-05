@@ -1405,4 +1405,39 @@ mod __test {
             },
         ]);
     }
+
+    #[test]
+    fn test_with_no_doc_stage0() {
+        let mut config = configure(&[], &[]);
+        config.stage = Some(0);
+        config.cmd = Subcommand::Test {
+            paths: vec!["src/libstd".into()],
+            test_args: vec![],
+            rustc_args: vec![],
+            fail_fast: true,
+            doc_tests: DocTestsOption::No,
+        };
+
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+
+        let host = INTERNER.intern_str("A");
+
+        builder.run_step_descriptions(
+            &[StepDescription::from::<test::Crate>()],
+            &["src/libstd".into()],
+        );
+
+        // Ensure we don't build any compiler artifacts.
+        assert!(builder.cache.all::<compile::Rustc>().is_empty());
+        assert_eq!(first(builder.cache.all::<test::Crate>()), &[
+            test::Crate {
+                compiler: Compiler { host, stage: 0 },
+                target: host,
+                mode: Mode::Libstd,
+                test_kind: test::TestKind::Test,
+                krate: INTERNER.intern_str("std"),
+            },
+        ]);
+    }
 }

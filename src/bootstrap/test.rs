@@ -38,7 +38,7 @@ use toolstate::ToolState;
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
 /// The two modes of the test runner; tests or benchmarks.
-#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, PartialOrd, Ord)]
 pub enum TestKind {
     /// Run `cargo test`
     Test,
@@ -1407,13 +1407,13 @@ impl Step for CrateNotDefault {
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Crate {
-    compiler: Compiler,
-    target: Interned<String>,
-    mode: Mode,
-    test_kind: TestKind,
-    krate: Interned<String>,
+    pub compiler: Compiler,
+    pub target: Interned<String>,
+    pub mode: Mode,
+    pub test_kind: TestKind,
+    pub krate: Interned<String>,
 }
 
 impl Step for Crate {

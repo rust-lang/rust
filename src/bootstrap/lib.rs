@@ -304,7 +304,7 @@ impl Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
