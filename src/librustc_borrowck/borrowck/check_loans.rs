@@ -99,7 +99,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn consume(&mut self,
                consume_id: ast::NodeId,
                consume_span: Span,
-               cmt: mc::cmt<'tcx>,
+               cmt: &mc::cmt_<'tcx>,
                mode: euv::ConsumeMode) {
         debug!("consume(consume_id={}, cmt={:?}, mode={:?})",
                consume_id, cmt, mode);
@@ -110,12 +110,12 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
 
     fn matched_pat(&mut self,
                    _matched_pat: &hir::Pat,
-                   _cmt: mc::cmt,
+                   _cmt: &mc::cmt_,
                    _mode: euv::MatchMode) { }
 
     fn consume_pat(&mut self,
                    consume_pat: &hir::Pat,
-                   cmt: mc::cmt<'tcx>,
+                   cmt: &mc::cmt_<'tcx>,
                    mode: euv::ConsumeMode) {
         debug!("consume_pat(consume_pat={:?}, cmt={:?}, mode={:?})",
                consume_pat,
@@ -128,7 +128,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn borrow(&mut self,
               borrow_id: ast::NodeId,
               borrow_span: Span,
-              cmt: mc::cmt<'tcx>,
+              cmt: &mc::cmt_<'tcx>,
               loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
@@ -139,7 +139,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
                bk, loan_cause);
 
         let hir_id = self.tcx().hir.node_to_hir_id(borrow_id);
-        if let Some(lp) = opt_loan_path(&cmt) {
+        if let Some(lp) = opt_loan_path(cmt) {
             let moved_value_use_kind = match loan_cause {
                 euv::ClosureCapture(_) => MovedInCapture,
                 _ => MovedInUse,
@@ -155,13 +155,13 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
     fn mutate(&mut self,
               assignment_id: ast::NodeId,
               assignment_span: Span,
-              assignee_cmt: mc::cmt<'tcx>,
+              assignee_cmt: &mc::cmt_<'tcx>,
               mode: euv::MutateMode)
     {
         debug!("mutate(assignment_id={}, assignee_cmt={:?})",
                assignment_id, assignee_cmt);
 
-        if let Some(lp) = opt_loan_path(&assignee_cmt) {
+        if let Some(lp) = opt_loan_path(assignee_cmt) {
             match mode {
                 MutateMode::Init | MutateMode::JustWrite => {
                     // In a case like `path = 1`, then path does not
@@ -363,10 +363,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     pub fn check_for_loans_across_yields(&self,
-                                         cmt: mc::cmt<'tcx>,
+                                         cmt: &mc::cmt_<'tcx>,
                                          loan_region: ty::Region<'tcx>,
                                          borrow_span: Span) {
-        pub fn borrow_of_local_data<'tcx>(cmt: &mc::cmt<'tcx>) -> bool {
+        pub fn borrow_of_local_data<'tcx>(cmt: &mc::cmt_<'tcx>) -> bool {
             match cmt.cat {
                 // Borrows of static items is allowed
                 Categorization::StaticItem => false,
@@ -401,7 +401,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             return;
         }
 
-        if !borrow_of_local_data(&cmt) {
+        if !borrow_of_local_data(cmt) {
             return;
         }
 
@@ -649,9 +649,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn consume_common(&self,
                       id: hir::ItemLocalId,
                       span: Span,
-                      cmt: mc::cmt<'tcx>,
+                      cmt: &mc::cmt_<'tcx>,
                       mode: euv::ConsumeMode) {
-        if let Some(lp) = opt_loan_path(&cmt) {
+        if let Some(lp) = opt_loan_path(cmt) {
             let moved_value_use_kind = match mode {
                 euv::Copy => {
                     self.check_for_copy_of_frozen_path(id, span, &lp);
@@ -876,11 +876,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     fn check_assignment(&self,
                         assignment_id: hir::ItemLocalId,
                         assignment_span: Span,
-                        assignee_cmt: mc::cmt<'tcx>) {
+                        assignee_cmt: &mc::cmt_<'tcx>) {
         debug!("check_assignment(assignee_cmt={:?})", assignee_cmt);
 
         // Check that we don't invalidate any outstanding loans
-        if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
+        if let Some(loan_path) = opt_loan_path(assignee_cmt) {
             let scope = region::Scope::Node(assignment_id);
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
@@ -892,7 +892,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         // needs to be done here instead of in check_loans because we
         // depend on move data.
         if let Categorization::Local(local_id) = assignee_cmt.cat {
-            let lp = opt_loan_path(&assignee_cmt).unwrap();
+            let lp = opt_loan_path(assignee_cmt).unwrap();
             self.move_data.each_assignment_of(assignment_id, &lp, |assign| {
                 if assignee_cmt.mutbl.is_mutable() {
                     let hir_id = self.bccx.tcx.hir.node_to_hir_id(local_id);

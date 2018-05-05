@@ -96,6 +96,7 @@ use rustc::ty::adjustment;
 
 use std::mem;
 use std::ops::Deref;
+use std::rc::Rc;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax_pos::Span;
@@ -513,7 +514,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         // the adjusted form if there is an adjustment.
         match cmt_result {
             Ok(head_cmt) => {
-                self.check_safety_of_rvalue_destructor_if_necessary(head_cmt, expr.span);
+                self.check_safety_of_rvalue_destructor_if_necessary(&head_cmt, expr.span);
             }
             Err(..) => {
                 self.tcx.sess.delay_span_bug(expr.span, "cat_expr Errd");
@@ -799,7 +800,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
-    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt<'tcx>> {
+    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt_<'tcx>> {
         debug!("constrain_adjustments(expr={:?})", expr);
 
         let mut cmt = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
@@ -814,7 +815,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         // If necessary, constrain destructors in the unadjusted form of this
         // expression.
-        self.check_safety_of_rvalue_destructor_if_necessary(cmt.clone(), expr.span);
+        self.check_safety_of_rvalue_destructor_if_necessary(&cmt, expr.span);
 
         let expr_region = self.tcx.mk_region(ty::ReScope(
             region::Scope::Node(expr.hir_id.local_id)));
@@ -837,7 +838,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 });
 
                 self.link_region(expr.span, deref.region,
-                                 ty::BorrowKind::from_mutbl(deref.mutbl), cmt.clone());
+                                 ty::BorrowKind::from_mutbl(deref.mutbl), &cmt);
 
                 // Specialized version of constrain_call.
                 self.type_must_outlive(infer::CallRcvr(expr.span),
@@ -847,7 +848,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             if let adjustment::Adjust::Borrow(ref autoref) = adjustment.kind {
-                self.link_autoref(expr, cmt.clone(), autoref);
+                self.link_autoref(expr, &cmt, autoref);
 
                 // Require that the resulting region encompasses
                 // the current node.
@@ -878,7 +879,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_safety_of_rvalue_destructor_if_necessary(&mut self,
-                                                     cmt: mc::cmt<'tcx>,
+                                                     cmt: &mc::cmt_<'tcx>,
                                                      span: Span) {
         match cmt.cat {
             Categorization::Rvalue(region) => {
@@ -980,7 +981,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         debug!("link_addr_of: cmt={:?}", cmt);
 
-        self.link_region_from_node_type(expr.span, expr.hir_id, mutability, cmt);
+        self.link_region_from_node_type(expr.span, expr.hir_id, mutability, &cmt);
     }
 
     /// Computes the guarantors for any ref bindings in a `let` and
@@ -992,7 +993,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             None => { return; }
             Some(ref expr) => &**expr,
         };
-        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr)));
+        let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr))));
         self.link_pattern(discr_cmt, &local.pat);
     }
 
@@ -1001,7 +1002,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
         debug!("regionck::for_match()");
-        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(discr)));
+        let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(discr))));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
             for root_pat in &arm.pats {
@@ -1019,7 +1020,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             let arg_ty = self.node_ty(arg.hir_id);
             let re_scope = self.tcx.mk_region(ty::ReScope(body_scope));
             let arg_cmt = self.with_mc(|mc| {
-                mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty)
+                Rc::new(mc.cat_rvalue(arg.id, arg.pat.span, re_scope, arg_ty))
             });
             debug!("arg_ty={:?} arg_cmt={:?} arg={:?}",
                    arg_ty,
@@ -1044,7 +1045,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                                                .expect("missing binding mode");
                         if let ty::BindByReference(mutbl) = bm {
                             self.link_region_from_node_type(sub_pat.span, sub_pat.hir_id,
-                                                            mutbl, sub_cmt);
+                                                            mutbl, &sub_cmt);
                         }
                     }
                     _ => {}
@@ -1057,15 +1058,14 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// autoref'd.
     fn link_autoref(&self,
                     expr: &hir::Expr,
-                    expr_cmt: mc::cmt<'tcx>,
+                    expr_cmt: &mc::cmt_<'tcx>,
                     autoref: &adjustment::AutoBorrow<'tcx>)
     {
         debug!("link_autoref(autoref={:?}, expr_cmt={:?})", autoref, expr_cmt);
 
         match *autoref {
             adjustment::AutoBorrow::Ref(r, m) => {
-                self.link_region(expr.span, r,
-                                 ty::BorrowKind::from_mutbl(m.into()), expr_cmt);
+                self.link_region(expr.span, r, ty::BorrowKind::from_mutbl(m.into()), expr_cmt);
             }
 
             adjustment::AutoBorrow::RawPtr(m) => {
@@ -1081,15 +1081,14 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                   span: Span,
                                   id: hir::HirId,
                                   mutbl: hir::Mutability,
-                                  cmt_borrowed: mc::cmt<'tcx>) {
+                                  cmt_borrowed: &mc::cmt_<'tcx>) {
         debug!("link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={:?})",
                id, mutbl, cmt_borrowed);
 
         let rptr_ty = self.resolve_node_type(id);
         if let ty::TyRef(r, _) = rptr_ty.sty {
             debug!("rptr_ty={}",  rptr_ty);
-            self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl),
-                             cmt_borrowed);
+            self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
     }
 
@@ -1101,19 +1100,19 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                    span: Span,
                    borrow_region: ty::Region<'tcx>,
                    borrow_kind: ty::BorrowKind,
-                   borrow_cmt: mc::cmt<'tcx>) {
-        let mut borrow_cmt = borrow_cmt;
-        let mut borrow_kind = borrow_kind;
-
+                   borrow_cmt: &mc::cmt_<'tcx>) {
         let origin = infer::DataBorrowed(borrow_cmt.ty, span);
         self.type_must_outlive(origin, borrow_cmt.ty, borrow_region);
+
+        let mut borrow_kind = borrow_kind;
+        let mut borrow_cmt_cat = borrow_cmt.cat.clone();
 
         loop {
             debug!("link_region(borrow_region={:?}, borrow_kind={:?}, borrow_cmt={:?})",
                    borrow_region,
                    borrow_kind,
                    borrow_cmt);
-            match borrow_cmt.cat.clone() {
+            match borrow_cmt_cat {
                 Categorization::Deref(ref_cmt, mc::Implicit(ref_kind, ref_region)) |
                 Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => {
                     match self.link_reborrowed_region(span,
@@ -1121,7 +1120,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                                                       ref_cmt, ref_region, ref_kind,
                                                       borrow_cmt.note) {
                         Some((c, k)) => {
-                            borrow_cmt = c;
+                            borrow_cmt_cat = c.cat.clone();
                             borrow_kind = k;
                         }
                         None => {
@@ -1135,7 +1134,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 Categorization::Interior(cmt_base, _) => {
                     // Borrowing interior or owned data requires the base
                     // to be valid and borrowable in the same fashion.
-                    borrow_cmt = cmt_base;
+                    borrow_cmt_cat = cmt_base.cat.clone();
                     borrow_kind = borrow_kind;
                 }
 

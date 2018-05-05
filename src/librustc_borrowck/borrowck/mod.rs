@@ -500,7 +500,7 @@ impl<'a, 'tcx> LoanPath<'tcx> {
 
 // Avoid "cannot borrow immutable field `self.x` as mutable" as that implies that a field *can* be
 // mutable independently of the struct it belongs to. (#35937)
-pub fn opt_loan_path_is_field<'tcx>(cmt: &mc::cmt<'tcx>) -> (Option<Rc<LoanPath<'tcx>>>, bool) {
+pub fn opt_loan_path_is_field<'tcx>(cmt: &mc::cmt_<'tcx>) -> (Option<Rc<LoanPath<'tcx>>>, bool) {
     let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
     match cmt.cat {
@@ -548,7 +548,7 @@ pub fn opt_loan_path_is_field<'tcx>(cmt: &mc::cmt<'tcx>) -> (Option<Rc<LoanPath<
 /// the method `compute()` found in `gather_loans::restrictions`,
 /// which allows it to share common loan path pieces as it
 /// traverses the CMT.
-pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
+pub fn opt_loan_path<'tcx>(cmt: &mc::cmt_<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
     opt_loan_path_is_field(cmt).0
 }
 
@@ -567,10 +567,10 @@ pub enum bckerr_code<'tcx> {
 // Combination of an error code and the categorization of the expression
 // that caused it
 #[derive(Debug, PartialEq)]
-pub struct BckError<'tcx> {
+pub struct BckError<'c, 'tcx: 'c> {
     span: Span,
     cause: AliasableViolationKind,
-    cmt: mc::cmt<'tcx>,
+    cmt: &'c mc::cmt_<'tcx>,
     code: bckerr_code<'tcx>
 }
 
@@ -602,7 +602,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         region_rels.is_subregion_of(r_sub, r_sup)
     }
 
-    pub fn report(&self, err: BckError<'tcx>) {
+    pub fn report(&self, err: BckError<'a, 'tcx>) {
         // Catch and handle some particular cases.
         match (&err.code, &err.cause) {
             (&err_out_of_scope(&ty::ReScope(_), &ty::ReStatic, _),
@@ -803,7 +803,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
-    fn report_bckerr(&self, err: &BckError<'tcx>) {
+    fn report_bckerr(&self, err: &BckError<'a, 'tcx>) {
         let error_span = err.span.clone();
 
         match err.code {
@@ -1014,7 +1014,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 db.emit();
             }
             err_borrowed_pointer_too_short(loan_scope, ptr_scope) => {
-                let descr = self.cmt_to_path_or_string(&err.cmt);
+                let descr = self.cmt_to_path_or_string(err.cmt);
                 let mut db = self.lifetime_too_short_for_reborrow(error_span, &descr, Origin::Ast);
                 let descr = match opt_loan_path(&err.cmt) {
                     Some(lp) => {
@@ -1045,7 +1045,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                          span: Span,
                                          kind: AliasableViolationKind,
                                          cause: mc::AliasableReason,
-                                         cmt: mc::cmt<'tcx>) {
+                                         cmt: &mc::cmt_<'tcx>) {
         let mut is_closure = false;
         let prefix = match kind {
             MutabilityViolation => {
@@ -1243,7 +1243,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     fn report_out_of_scope_escaping_closure_capture(&self,
-                                                    err: &BckError<'tcx>,
+                                                    err: &BckError<'a, 'tcx>,
                                                     capture_span: Span)
     {
         let cmt_path_or_string = self.cmt_to_path_or_string(&err.cmt);
@@ -1277,18 +1277,18 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn note_and_explain_mutbl_error(&self, db: &mut DiagnosticBuilder, err: &BckError<'tcx>,
+    fn note_and_explain_mutbl_error(&self, db: &mut DiagnosticBuilder, err: &BckError<'a, 'tcx>,
                                     error_span: &Span) {
         match err.cmt.note {
             mc::NoteClosureEnv(upvar_id) | mc::NoteUpvarRef(upvar_id) => {
                 // If this is an `Fn` closure, it simply can't mutate upvars.
                 // If it's an `FnMut` closure, the original variable was declared immutable.
                 // We need to determine which is the case here.
-                let kind = match err.cmt.upvar().unwrap().cat {
+                let kind = match err.cmt.upvar_cat().unwrap() {
                     Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
                     _ => bug!()
                 };
-                if kind == ty::ClosureKind::Fn {
+                if *kind == ty::ClosureKind::Fn {
                     let closure_node_id =
                         self.tcx.hir.local_def_id_to_node_id(upvar_id.closure_expr_id);
                     db.span_help(self.tcx.hir.span(closure_node_id),
@@ -1392,7 +1392,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         cmt.descriptive_string(self.tcx)
     }
 
-    pub fn cmt_to_path_or_string(&self, cmt: &mc::cmt<'tcx>) -> String {
+    pub fn cmt_to_path_or_string(&self, cmt: &mc::cmt_<'tcx>) -> String {
         match opt_loan_path(cmt) {
             Some(lp) => format!("`{}`", self.loan_path_to_string(&lp)),
             None => self.cmt_to_string(cmt),
