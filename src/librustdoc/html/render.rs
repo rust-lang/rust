@@ -413,9 +413,9 @@ impl ToJson for Type {
         match self.name {
             Some(ref name) => {
                 let mut data = BTreeMap::new();
-                data.insert("name".to_owned(), name.to_json());
+                data.insert("n".to_owned(), name.to_json());
                 if let Some(ref generics) = self.generics {
-                    data.insert("generics".to_owned(), generics.to_json());
+                    data.insert("g".to_owned(), generics.to_json());
                 }
                 Json::Object(data)
             },
@@ -438,8 +438,12 @@ impl ToJson for IndexItemFunctionType {
             Json::Null
         } else {
             let mut data = BTreeMap::new();
-            data.insert("inputs".to_owned(), self.inputs.to_json());
-            data.insert("output".to_owned(), self.output.to_json());
+            if !self.inputs.is_empty() {
+                data.insert("i".to_owned(), self.inputs.to_json());
+            }
+            if let Some(ref output) = self.output {
+                data.insert("o".to_owned(), output.to_json());
+            }
             Json::Object(data)
         }
     }
@@ -897,8 +901,8 @@ themePicker.onblur = handleThemeButtonsBlur;
     }
 
     fn show_item(item: &IndexItem, krate: &str) -> String {
-        format!("{{'crate':'{}','ty':{},'name':'{}','desc':'{}','path':'{}'{}}}",
-                krate, item.ty as usize, item.name, item.desc, item.path,
+        format!("{{'crate':'{}','ty':{},'name':'{}','desc':'{}','p':'{}'{}}}",
+                krate, item.ty as usize, item.name, item.desc.replace("'", "\\'"), item.path,
                 if let Some(p) = item.parent_idx {
                     format!(",'parent':{}", p)
                 } else {
