@@ -618,17 +618,72 @@ pub struct OutlivesSet<'tcx> {
     pub data: RegionConstraintData<'tcx>,
 }
 
+/// The `Locations` type summarizes *where* region constraints are
+/// required to hold. Normally, this is at a particular point which
+/// created the obligation, but for constraints that the user gave, we
+/// want the constraint to hold at all points.
 #[derive(Copy, Clone, Debug)]
-pub struct Locations {
-    /// The location in the MIR that generated these constraints.
-    /// This is intended for error reporting and diagnosis; the
-    /// constraints may *take effect* at a distinct spot.
-    pub from_location: Location,
+pub enum Locations {
+    /// Indicates that a type constraint should always be true. This
+    /// is particularly important in the new borrowck analysis for
+    /// things like the type of the return slot. Consider this
+    /// example:
+    ///
+    /// ```
+    /// fn foo<'a>(x: &'a u32) -> &'a u32 {
+    ///     let y = 22;
+    ///     return &y; // error
+    /// }
+    /// ```
+    ///
+    /// Here, we wind up with the signature from the return type being
+    /// something like `&'1 u32` where `'1` is a universal region. But
+    /// the type of the return slot `_0` is something like `&'2 u32`
+    /// where `'2` is an existential region variable. The type checker
+    /// requires that `&'2 u32 = &'1 u32` -- but at what point? In the
+    /// older NLL analysis, we required this only at the entry point
+    /// to the function. By the nature of the constraints, this wound
+    /// up propagating to all points reachable from start (because
+    /// `'1` -- as a universal region -- is live everywhere).  In the
+    /// newer analysis, though, this doesn't work: `_0` is considered
+    /// dead at the start (it has no usable value) and hence this type
+    /// equality is basically a no-op. Then, later on, when we do `_0
+    /// = &'3 y`, that region `'3` never winds up related to the
+    /// universal region `'1` and hence no error occurs. Therefore, we
+    /// use Locations::All instead, which ensures that the `'1` and
+    /// `'2` are equal everything. We also use this for other
+    /// user-given type annotations; e.g., if the user wrote `let mut
+    /// x: &'static u32 = ...`, we would ensure that all values
+    /// assigned to `x` are of `'static` lifetime.
+    All,
 
-    /// The constraints must be met at this location. In terms of the
-    /// NLL RFC, when you have a constraint `R1: R2 @ P`, this field
-    /// is the `P` value.
-    pub at_location: Location,
+    Pair {
+        /// The location in the MIR that generated these constraints.
+        /// This is intended for error reporting and diagnosis; the
+        /// constraints may *take effect* at a distinct spot.
+        from_location: Location,
+
+        /// The constraints must be met at this location. In terms of the
+        /// NLL RFC, when you have a constraint `R1: R2 @ P`, this field
+        /// is the `P` value.
+        at_location: Location,
+    }
+}
+
+impl Locations {
+    pub fn from_location(&self) -> Option<Location> {
+        match self {
+            Locations::All => None,
+            Locations::Pair { from_location, .. } => Some(*from_location),
+        }
+    }
+
+    pub fn at_location(&self) -> Option<Location> {
+        match self {
+            Locations::All => None,
+            Locations::Pair { at_location, .. } => Some(*at_location),
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
@@ -770,7 +825,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     "check_stmt: user_assert_ty ty={:?} local_ty={:?}",
                     ty, local_ty
                 );
-                if let Err(terr) = self.eq_types(ty, local_ty, location.at_self()) {
+                if let Err(terr) = self.eq_types(ty, local_ty, Locations::All) {
                     span_mirbug!(
                         self,
                         stmt,
@@ -820,7 +875,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let place_ty = location.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = value.ty(mir, tcx);
 
-                let locations = Locations {
+                let locations = Locations::Pair {
                     from_location: term_location,
                     at_location: target.start_location(),
                 };
@@ -839,7 +894,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // *both* blocks, so we need to ensure that it holds
                 // at both locations.
                 if let Some(unwind) = unwind {
-                    let locations = Locations {
+                    let locations = Locations::Pair {
                         from_location: term_location,
                         at_location: unwind.start_location(),
                     };
@@ -971,7 +1026,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match *destination {
             Some((ref dest, target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
-                let locations = Locations {
+                let locations = Locations::Pair {
                     from_location: term_location,
                     at_location: target_block.start_location(),
                 };
@@ -1375,7 +1430,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             };
             let operand_ty = operand.ty(mir, tcx);
             if let Err(terr) =
-                self.sub_types(operand_ty, field_ty, location.at_successor_within_block())
+                self.sub_types(operand_ty, field_ty, location.at_self())
             {
                 span_mirbug!(
                     self,
@@ -1514,12 +1569,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn normalize<T>(&mut self, value: &T, location: Location) -> T
+    fn normalize<T>(&mut self, value: &T, location: impl ToLocations) -> T
     where
         T: fmt::Debug + TypeFoldable<'tcx>,
     {
         debug!("normalize(value={:?}, location={:?})", value, location);
-        self.fully_perform_op(location.at_self(), |this| {
+        self.fully_perform_op(location.to_locations(), |this| {
             let Normalized { value, obligations } = this.infcx
                 .at(&this.misc(this.last_span), this.param_env)
                 .normalize(value)
@@ -1585,16 +1640,32 @@ trait AtLocation {
 
 impl AtLocation for Location {
     fn at_self(self) -> Locations {
-        Locations {
+        Locations::Pair {
             from_location: self,
             at_location: self,
         }
     }
 
     fn at_successor_within_block(self) -> Locations {
-        Locations {
+        Locations::Pair {
             from_location: self,
             at_location: self.successor_within_block(),
         }
+    }
+}
+
+trait ToLocations: fmt::Debug + Copy {
+    fn to_locations(self) -> Locations;
+}
+
+impl ToLocations for Locations {
+    fn to_locations(self) -> Locations {
+        self
+    }
+}
+
+impl ToLocations for Location {
+    fn to_locations(self) -> Locations {
+        self.at_self()
     }
 }

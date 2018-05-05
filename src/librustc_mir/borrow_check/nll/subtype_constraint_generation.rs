@@ -8,14 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::Mir;
+use borrow_check::location::LocationTable;
+use borrow_check::nll::facts::AllFacts;
 use rustc::infer::region_constraints::Constraint;
 use rustc::infer::region_constraints::RegionConstraintData;
 use rustc::infer::region_constraints::{Verify, VerifyBound};
+use rustc::mir::{Location, Mir};
 use rustc::ty;
+use std::iter;
 use syntax::codemap::Span;
 
-use super::region_infer::{TypeTest, RegionInferenceContext, RegionTest};
+use super::region_infer::{RegionInferenceContext, RegionTest, TypeTest};
 use super::type_check::Locations;
 use super::type_check::MirTypeckRegionConstraints;
 use super::type_check::OutlivesSet;
@@ -27,19 +30,30 @@ use super::type_check::OutlivesSet;
 /// them into the NLL `RegionInferenceContext`.
 pub(super) fn generate<'tcx>(
     regioncx: &mut RegionInferenceContext<'tcx>,
+    all_facts: &mut Option<AllFacts>,
+    location_table: &LocationTable,
     mir: &Mir<'tcx>,
     constraints: &MirTypeckRegionConstraints<'tcx>,
 ) {
-    SubtypeConstraintGenerator { regioncx, mir }.generate(constraints);
+    SubtypeConstraintGenerator {
+        regioncx,
+        location_table,
+        mir,
+    }.generate(constraints, all_facts);
 }
 
 struct SubtypeConstraintGenerator<'cx, 'tcx: 'cx> {
     regioncx: &'cx mut RegionInferenceContext<'tcx>,
+    location_table: &'cx LocationTable,
     mir: &'cx Mir<'tcx>,
 }
 
 impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
-    fn generate(&mut self, constraints: &MirTypeckRegionConstraints<'tcx>) {
+    fn generate(
+        &mut self,
+        constraints: &MirTypeckRegionConstraints<'tcx>,
+        all_facts: &mut Option<AllFacts>,
+    ) {
         let MirTypeckRegionConstraints {
             liveness_set,
             outlives_sets,
@@ -57,6 +71,17 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
             self.regioncx.add_live_point(region_vid, *location, &cause);
         }
 
+        if let Some(all_facts) = all_facts {
+            all_facts
+                .region_live_at
+                .extend(liveness_set.into_iter().flat_map(|(region, location, _)| {
+                    let r = self.to_region_vid(region);
+                    let p1 = self.location_table.start_index(*location);
+                    let p2 = self.location_table.mid_index(*location);
+                    iter::once((r, p1)).chain(iter::once((r, p2)))
+                }));
+        }
+
         for OutlivesSet { locations, data } in outlives_sets {
             debug!("generate: constraints at: {:#?}", locations);
             let RegionConstraintData {
@@ -65,7 +90,11 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 givens,
             } = data;
 
-            let span = self.mir.source_info(locations.from_location).span;
+            let span = self.mir
+                .source_info(locations.from_location().unwrap_or(Location::START))
+                .span;
+
+            let at_location = locations.at_location().unwrap_or(Location::START);
 
             for constraint in constraints.keys() {
                 debug!("generate: constraint: {:?}", constraint);
@@ -83,8 +112,24 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
                 // reverse direction, because `regioncx` talks about
                 // "outlives" (`>=`) whereas the region constraints
                 // talk about `<=`.
-                self.regioncx
-                    .add_outlives(span, b_vid, a_vid, locations.at_location);
+                self.regioncx.add_outlives(span, b_vid, a_vid, at_location);
+
+                // In the new analysis, all outlives relations etc
+                // "take effect" at the mid point of the statement
+                // that requires them, so ignore the `at_location`.
+                if let Some(all_facts) = all_facts {
+                    if let Some(from_location) = locations.from_location() {
+                        all_facts.outlives.push((
+                            b_vid,
+                            a_vid,
+                            self.location_table.mid_index(from_location),
+                        ));
+                    } else {
+                        for location in self.location_table.all_points() {
+                            all_facts.outlives.push((b_vid, a_vid, location));
+                        }
+                    }
+                }
             }
 
             for verify in verifys {
@@ -109,7 +154,7 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
 
         let lower_bound = self.to_region_vid(verify.region);
 
-        let point = locations.at_location;
+        let point = locations.at_location().unwrap_or(Location::START);
 
         let test = self.verify_bound_to_region_test(&verify.bound);
 
@@ -149,14 +194,6 @@ impl<'cx, 'tcx> SubtypeConstraintGenerator<'cx, 'tcx> {
     }
 
     fn to_region_vid(&self, r: ty::Region<'tcx>) -> ty::RegionVid {
-        // Every region that we see in the constraints came from the
-        // MIR or from the parameter environment. If the former, it
-        // will be a region variable.  If the latter, it will be in
-        // the set of universal regions *somewhere*.
-        if let ty::ReVar(vid) = r {
-            *vid
-        } else {
-            self.regioncx.to_region_vid(r)
-        }
+        self.regioncx.to_region_vid(r)
     }
 }
