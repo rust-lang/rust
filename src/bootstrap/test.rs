@@ -32,7 +32,7 @@ use dist;
 use native;
 use tool::{self, Tool};
 use util::{self, dylib_path, dylib_path_var};
-use Mode;
+use {Mode, DocTestsOption};
 use toolstate::ToolState;
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
@@ -1519,8 +1519,14 @@ impl Step for Crate {
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
         }
-        if builder.doc_tests {
-            cargo.arg("--doc");
+        match builder.doc_tests {
+            DocTestsOption::Only => {
+                cargo.arg("--doc");
+            }
+            DocTestsOption::No => {
+                cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
+            }
+            DocTestsOption::Yes => {}
         }
 
         cargo.arg("-p").arg(krate);
