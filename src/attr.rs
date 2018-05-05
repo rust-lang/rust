@@ -200,9 +200,9 @@ fn allow_mixed_tactic_for_nested_metaitem_list(list: &[ast::NestedMetaItem]) -> 
 impl Rewrite for ast::MetaItem {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         Some(match self.node {
-            ast::MetaItemKind::Word => String::from(&*self.ident.name.as_str()),
+            ast::MetaItemKind::Word => String::from(&*self.name().as_str()),
             ast::MetaItemKind::List(ref list) => {
-                let name = self.ident.name.as_str();
+                let name = self.name().as_str();
                 let item_shape = match context.config.indent_style() {
                     IndentStyle::Block => shape
                         .block_indent(context.config.tab_spaces())
@@ -260,7 +260,7 @@ impl Rewrite for ast::MetaItem {
                 }
             }
             ast::MetaItemKind::NameValue(ref literal) => {
-                let name = self.ident.name.as_str();
+                let name = self.name().as_str();
                 // 3 = ` = `
                 let lit_shape = shape.shrink_left(name.len() + 3)?;
                 // `rewrite_literal` returns `None` when `literal` exceeds max
