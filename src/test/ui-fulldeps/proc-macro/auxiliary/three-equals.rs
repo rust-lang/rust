@@ -27,8 +27,8 @@ fn parse(input: TokenStream) -> Result<(), Diagnostic> {
                            .help("input must be: `===`"))
         }
 
-        if let TokenTree::Op(tt) = tree {
-            if tt.op() == '=' {
+        if let TokenTree::Punct(tt) = tree {
+            if tt.as_char() == '=' {
                 count += 1;
                 last_span = span;
                 continue

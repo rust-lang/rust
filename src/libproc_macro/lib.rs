@@ -246,7 +246,7 @@ pub mod token_stream {
 
 /// `quote!(..)` accepts arbitrary tokens and expands into a `TokenStream` describing the input.
 /// For example, `quote!(a + b)` will produce a expression, that, when evaluated, constructs
-/// the `TokenStream` `[Word("a"), Op('+', Alone), Word("b")]`.
+/// the `TokenStream` `[Word("a"), Punct('+', Alone), Word("b")]`.
 ///
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
@@ -499,17 +499,9 @@ pub enum TokenTree {
     /// A token stream surrounded by bracket delimiters.
     Group(Group),
     /// An identifier or lifetime identifier.
-    ///
-    /// REVIEW Maybe let's name it `Ident` instead of inventing a new term, it's named "identifier"
-    /// REVIEW everywhere in the compiler, including `ident` in `macro`/`macro_rules!` DSL.
-    Term(Term),
+    Ident(Ident),
     /// A single punctuation character (`+`, `,`, `$`, etc.).
-    ///
-    /// REVIEW This is not an operator, operators are more narrow set, they also can be
-    /// REVIEW multicharacter, this is punctuation, even the comment says so!
-    /// REVIEW @dtolnay suggested `Punct` in the original implementation PR too, and it was
-    /// REVIEW received positively, but the renaming never actually happened.
-    Op(Op),
+    Punct(Punct),
     /// A literal character (`'a'`), string (`"hello"`), number (`2.3`), etc.
     Literal(Literal),
 }
@@ -526,8 +518,8 @@ impl TokenTree {
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Group(ref t) => t.span(),
-            TokenTree::Term(ref t) => t.span(),
-            TokenTree::Op(ref t) => t.span(),
+            TokenTree::Ident(ref t) => t.span(),
+            TokenTree::Punct(ref t) => t.span(),
             TokenTree::Literal(ref t) => t.span(),
         }
     }
@@ -541,8 +533,8 @@ impl TokenTree {
     pub fn set_span(&mut self, span: Span) {
         match *self {
             TokenTree::Group(ref mut t) => t.set_span(span),
-            TokenTree::Term(ref mut t) => t.set_span(span),
-            TokenTree::Op(ref mut t) => t.set_span(span),
+            TokenTree::Ident(ref mut t) => t.set_span(span),
+            TokenTree::Punct(ref mut t) => t.set_span(span),
             TokenTree::Literal(ref mut t) => t.set_span(span),
         }
     }
@@ -556,8 +548,8 @@ impl fmt::Debug for TokenTree {
         // so don't bother with an extra layer of indirection
         match *self {
             TokenTree::Group(ref tt) => tt.fmt(f),
-            TokenTree::Term(ref tt) => tt.fmt(f),
-            TokenTree::Op(ref tt) => tt.fmt(f),
+            TokenTree::Ident(ref tt) => tt.fmt(f),
+            TokenTree::Punct(ref tt) => tt.fmt(f),
             TokenTree::Literal(ref tt) => tt.fmt(f),
         }
     }
@@ -565,7 +557,7 @@ impl fmt::Debug for TokenTree {
 
 /// REVIEW the impls below are kind of `From<T> for Option<T>`, not strictly necessary,
 /// REVIEW but convenient. No harm, I guess. I'd actually like to see impls
-/// REVIEW `From<Group/Term/Op/Literal> for TokenStream` to avoid stuttering like
+/// REVIEW `From<Group/Ident/Punct/Literal> for TokenStream` to avoid stuttering like
 /// REVIEW `TokenTree::Literal(Literal::string("lalala")).into()`.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<Group> for TokenTree {
@@ -575,16 +567,16 @@ impl From<Group> for TokenTree {
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl From<Term> for TokenTree {
-    fn from(g: Term) -> TokenTree {
-        TokenTree::Term(g)
+impl From<Ident> for TokenTree {
+    fn from(g: Ident) -> TokenTree {
+        TokenTree::Ident(g)
     }
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl From<Op> for TokenTree {
-    fn from(g: Op) -> TokenTree {
-        TokenTree::Op(g)
+impl From<Punct> for TokenTree {
+    fn from(g: Punct) -> TokenTree {
+        TokenTree::Punct(g)
     }
 }
 
@@ -603,8 +595,8 @@ impl fmt::Display for TokenTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TokenTree::Group(ref t) => t.fmt(f),
-            TokenTree::Term(ref t) => t.fmt(f),
-            TokenTree::Op(ref t) => t.fmt(f),
+            TokenTree::Ident(ref t) => t.fmt(f),
+            TokenTree::Punct(ref t) => t.fmt(f),
             TokenTree::Literal(ref t) => t.fmt(f),
         }
     }
@@ -703,37 +695,32 @@ impl fmt::Display for Group {
     }
 }
 
-/// An `Op` is an single punctuation character like `+`, `-` or `#`.
+/// An `Punct` is an single punctuation character like `+`, `-` or `#`.
 ///
-/// Multicharacter operators like `+=` are represented as two instances of `Op` with different
+/// Multicharacter operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
 ///
-/// REVIEW This is not an operator, operators are more narrow set, they also can be
-/// REVIEW multicharacter, this is punctuation, even the comment says so!
-/// REVIEW @dtolnay suggested `Punct` in the original implementation PR too, and it was
-/// REVIEW received positively, but the renaming never actually happened.
-///
-/// REVIEW We should guarantee that `Op` contains a valid punctuation character permitted by
+/// REVIEW We should guarantee that `Punct` contains a valid punctuation character permitted by
 /// REVIEW the language and not a random unicode code point. The check is already performed in
 /// REVIEW `TokenTree::to_internal`, but we should do it on construction.
-/// REVIEW `Op` can also avoid using `char` internally and keep an u8-like enum.
+/// REVIEW `Punct` can also avoid using `char` internally and keep an u8-like enum.
 ///
 /// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
-/// REVIEW Do we want to guarantee `Op` to be `Copy`?
+/// REVIEW Do we want to guarantee `Punct` to be `Copy`?
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone, Debug)]
-pub struct Op {
-    op: char,
+pub struct Punct {
+    ch: char,
     spacing: Spacing,
     span: Span,
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl !Send for Op {}
+impl !Send for Punct {}
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl !Sync for Op {}
+impl !Sync for Punct {}
 
-/// Whether an `Op` is followed immediately by another `Op` or
+/// Whether an `Punct` is followed immediately by another `Punct` or
 /// followed by another token or whitespace.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
@@ -744,10 +731,10 @@ pub enum Spacing {
     Joint,
 }
 
-impl Op {
-    /// Creates a new `Op` from the given character and spacing.
+impl Punct {
+    /// Creates a new `Punct` from the given character and spacing.
     ///
-    /// The returned `Op` will have the default span of `Span::call_site()`
+    /// The returned `Punct` will have the default span of `Span::call_site()`
     /// which can be further configured with the `set_span` method below.
     ///
     /// REVIEW Why we even use `char` here? There's no reason to use unicode here.
@@ -756,9 +743,9 @@ impl Op {
     /// REVIEW TO_DO Do input validation on construction, the argument should be a valid punctuation
     /// REVIEW character permitted by the language.
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn new(op: char, spacing: Spacing) -> Op {
-        Op {
-            op: op,
+    pub fn new(ch: char, spacing: Spacing) -> Punct {
+        Punct {
+            ch: ch,
             spacing: spacing,
             span: Span::call_site(),
         }
@@ -770,12 +757,12 @@ impl Op {
     /// REVIEW except for maybe future compatibility in case Rust turns into APL,
     /// REVIEW but if it's more convenient to use `char` then that's okay.
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn op(&self) -> char {
-        self.op
+    pub fn as_char(&self) -> char {
+        self.ch
     }
 
     /// Returns the spacing of this punctuation character, indicating whether it's immediately
-    /// followed by another `Op` in the token stream, so they can potentially be combined into
+    /// followed by another `Punct` in the token stream, so they can potentially be combined into
     /// a multicharacter operator (`Joint`), or it's followed by some other token or whitespace
     /// (`Alone`) so the operator has certainly ended.
     #[unstable(feature = "proc_macro", issue = "38356")]
@@ -799,7 +786,7 @@ impl Op {
 /// Prints the punctuation character as a string that should be losslessly convertible
 /// back into the same character.
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl fmt::Display for Op {
+impl fmt::Display for Punct {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         TokenStream::from(TokenTree::from(self.clone())).fmt(f)
     }
@@ -807,35 +794,32 @@ impl fmt::Display for Op {
 
 /// An identifier (`ident`) or lifetime identifier (`'ident`).
 ///
-/// REVIEW We should guarantee that `Term` contains a valid identifier permitted by
+/// REVIEW We should guarantee that `Ident` contains a valid identifier permitted by
 /// REVIEW the language and not a random unicode string, at least for a start.
-///
-/// REVIEW Maybe let's name it `Ident` instead of inventing a new term, it's named "identifier"
-/// REVIEW everywhere in the compiler, including `ident` in `macro`/`macro_rules!` DSL.
 ///
 /// REVIEW We need to support raw identifiers here (`r#ident`) or at least be future compatible
 /// REVIEW with them. Currently they are supported using "string typing" - if string "r#ident" is
-/// REVIEW passed to `Term::new` it will be interpreted as a raw identifier later on, we should add
-/// REVIEW a field `is_raw` and a separate constructor for it (`Term::new_raw` or something) and
+/// REVIEW passed to `Ident::new` it will be interpreted as a raw identifier later on, we should add
+/// REVIEW a field `is_raw` and a separate constructor for it (`Ident::new_raw` or something) and
 /// REVIEW keep it unstable until raw identifiers are stabilized.
 ///
 /// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
-/// REVIEW Do we want to guarantee `Term` to be `Copy`?
+/// REVIEW Do we want to guarantee `Ident` to be `Copy`?
 #[derive(Copy, Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
-pub struct Term {
+pub struct Ident {
     // REVIEW(INTERNAL) Symbol + Span is actually `ast::Ident`! We can use it here.
     sym: Symbol,
     span: Span,
 }
 
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl !Send for Term {}
+impl !Send for Ident {}
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl !Sync for Term {}
+impl !Sync for Ident {}
 
-impl Term {
-    /// Creates a new `Term` with the given `string` as well as the specified
+impl Ident {
+    /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
     ///
     /// Note that `span`, currently in rustc, configures the hygiene information
@@ -856,8 +840,8 @@ impl Term {
     /// REVIEW TO_DO Do input validation, the argument should be a valid identifier or
     /// REVIEW lifetime identifier.
     #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn new(string: &str, span: Span) -> Term {
-        Term {
+    pub fn new(string: &str, span: Span) -> Ident {
+        Ident {
             sym: Symbol::intern(string),
             span,
         }
@@ -870,14 +854,14 @@ impl Term {
         unsafe { &*(&*self.sym.as_str() as *const str) }
     }
 
-    /// Returns the span of this `Term`, encompassing the entire string returned
+    /// Returns the span of this `Ident`, encompassing the entire string returned
     /// by `as_str`.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn span(&self) -> Span {
         self.span
     }
 
-    /// Configures the span of this `Term`, possibly changing its hygiene context.
+    /// Configures the span of this `Ident`, possibly changing its hygiene context.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn set_span(&mut self, span: Span) {
         self.span = span;
@@ -887,7 +871,7 @@ impl Term {
 /// Prints the identifier as a string that should be losslessly convertible
 /// back into the same identifier.
 #[unstable(feature = "proc_macro", issue = "38356")]
-impl fmt::Display for Term {
+impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.sym.as_str().fmt(f)
     }
@@ -896,7 +880,7 @@ impl fmt::Display for Term {
 /// A literal string (`"hello"`), byte string (`b"hello"`),
 /// character (`'a'`), byte character (`b'a'`), an integer or floating point number
 /// with or without a suffix (`1`, `1u8`, `2.3`, `2.3f32`).
-/// Boolean literals like `true` and `false` do not belong here, they are `Term`s.
+/// Boolean literals like `true` and `false` do not belong here, they are `Ident`s.
 #[derive(Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Literal {
@@ -1182,15 +1166,15 @@ impl TokenTree {
             })
         }
         macro_rules! op {
-            ($a:expr) => (tt!(Op::new($a, op_kind)));
+            ($a:expr) => (tt!(Punct::new($a, op_kind)));
             ($a:expr, $b:expr) => ({
-                stack.push(tt!(Op::new($b, op_kind)));
-                tt!(Op::new($a, Spacing::Joint))
+                stack.push(tt!(Punct::new($b, op_kind)));
+                tt!(Punct::new($a, Spacing::Joint))
             });
             ($a:expr, $b:expr, $c:expr) => ({
-                stack.push(tt!(Op::new($c, op_kind)));
-                stack.push(tt!(Op::new($b, Spacing::Joint)));
-                tt!(Op::new($a, Spacing::Joint))
+                stack.push(tt!(Punct::new($c, op_kind)));
+                stack.push(tt!(Punct::new($b, Spacing::Joint)));
+                tt!(Punct::new($a, Spacing::Joint))
             })
         }
 
@@ -1243,25 +1227,25 @@ impl TokenTree {
             Question => op!('?'),
 
             Ident(ident, false) | Lifetime(ident) => {
-                tt!(Term::new(&ident.name.as_str(), Span(span)))
+                tt!(self::Ident::new(&ident.name.as_str(), Span(span)))
             }
             Ident(ident, true) => {
-                tt!(Term::new(&format!("r#{}", ident), Span(span)))
+                tt!(self::Ident::new(&format!("r#{}", ident), Span(span)))
             }
             Literal(lit, suffix) => tt!(self::Literal { lit, suffix, span: Span(span) }),
             DocComment(c) => {
                 let style = comments::doc_comment_style(&c.as_str());
                 let stripped = comments::strip_doc_comment_decoration(&c.as_str());
                 let stream = vec![
-                    tt!(Term::new("doc", Span(span))),
-                    tt!(Op::new('=', Spacing::Alone)),
+                    tt!(self::Ident::new("doc", Span(span))),
+                    tt!(Punct::new('=', Spacing::Alone)),
                     tt!(self::Literal::string(&stripped)),
                 ].into_iter().collect();
                 stack.push(tt!(Group::new(Delimiter::Bracket, stream)));
                 if style == ast::AttrStyle::Inner {
-                    stack.push(tt!(Op::new('!', Spacing::Alone)));
+                    stack.push(tt!(Punct::new('!', Spacing::Alone)));
                 }
-                tt!(Op::new('#', Spacing::Alone))
+                tt!(Punct::new('#', Spacing::Alone))
             }
 
             Interpolated(_) => {
@@ -1281,15 +1265,15 @@ impl TokenTree {
         use syntax::parse::token::*;
         use syntax::tokenstream::{TokenTree, Delimited};
 
-        let (op, kind, span) = match self {
-            self::TokenTree::Op(tt) => (tt.op(), tt.spacing(), tt.span()),
+        let (ch, kind, span) = match self {
+            self::TokenTree::Punct(tt) => (tt.as_char(), tt.spacing(), tt.span()),
             self::TokenTree::Group(tt) => {
                 return TokenTree::Delimited(tt.span.0, Delimited {
                     delim: tt.delimiter.to_internal(),
                     tts: tt.stream.0.into(),
                 }).into();
             },
-            self::TokenTree::Term(tt) => {
+            self::TokenTree::Ident(tt) => {
                 let ident = ast::Ident::new(tt.sym, tt.span.0);
                 let sym_str = tt.sym.to_string();
                 let token = if sym_str.starts_with("'") {
@@ -1337,7 +1321,7 @@ impl TokenTree {
             }
         };
 
-        let token = match op {
+        let token = match ch {
             '=' => Eq,
             '<' => Lt,
             '>' => Gt,
@@ -1359,7 +1343,7 @@ impl TokenTree {
             '#' => Pound,
             '$' => Dollar,
             '?' => Question,
-            _ => panic!("unsupported character {}", op),
+            _ => panic!("unsupported character {}", ch),
         };
 
         let tree = TokenTree::Token(span.0, token);

@@ -28,7 +28,7 @@ fn count_compound_ops_helper(input: TokenStream) -> u32 {
     let mut count = 0;
     for token in input {
         match &token {
-            TokenTree::Op(tt) if tt.spacing() == Spacing::Alone => {
+            TokenTree::Punct(tt) if tt.spacing() == Spacing::Alone => {
                 count += 1;
             }
             TokenTree::Group(tt) => {

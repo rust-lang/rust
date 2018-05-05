@@ -38,14 +38,14 @@ fn assert_eq(a: TokenStream, b: TokenStream) {
                 assert_eq!(a.delimiter(), b.delimiter());
                 assert_eq(a.stream(), b.stream());
             }
-            (TokenTree::Op(a), TokenTree::Op(b)) => {
-                assert_eq!(a.op(), b.op());
+            (TokenTree::Punct(a), TokenTree::Punct(b)) => {
+                assert_eq!(a.as_char(), b.as_char());
                 assert_eq!(a.spacing(), b.spacing());
             }
             (TokenTree::Literal(a), TokenTree::Literal(b)) => {
                 assert_eq!(a.to_string(), b.to_string());
             }
-            (TokenTree::Term(a), TokenTree::Term(b)) => {
+            (TokenTree::Ident(a), TokenTree::Ident(b)) => {
                 assert_eq!(a.to_string(), b.to_string());
             }
             (a, b) => panic!("{:?} != {:?}", a, b),
