@@ -57,6 +57,12 @@
             return this.indexOf(searchString, position) === position;
         };
     }
+    if (!String.prototype.endsWith) {
+        String.prototype.endsWith = function(suffix, length) {
+            var l = length || this.length;
+            return this.indexOf(suffix, l - suffix.length) !== -1;
+        };
+    }
 
     function getPageId() {
         var id = document.location.href.split('#')[1];
@@ -1234,7 +1240,11 @@
         }
 
         function pathSplitter(path) {
-            return '<span>' + path.replace(/::/g, '::</span><span>');
+            var tmp = '<span>' + path.replace(/::/g, '::</span><span>');
+            if (tmp.endsWith("<span>")) {
+                return tmp.slice(0, tmp.length - 6);
+            }
+            return tmp;
         }
 
         function addTab(array, query, display) {
