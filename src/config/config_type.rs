@@ -322,8 +322,9 @@ macro_rules! create_config {
             ///
             /// Returns the `Config` to use, and the path of the project file if there was
             /// one.
-            pub(super) fn from_resolved_toml_path(dir: &Path) -> Result<(Config, Option<PathBuf>), Error> {
-
+            pub(super) fn from_resolved_toml_path(
+                dir: &Path,
+            ) -> Result<(Config, Option<PathBuf>), Error> {
                 /// Try to find a project file in the given directory and its parents.
                 /// Returns the path of a the nearest project file if one exists,
                 /// or `None` if no project file was found.
