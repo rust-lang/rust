@@ -498,7 +498,8 @@ fn rewrite_guard(
 fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String> {
     debug!("nop_block_collapse {:?} {}", block_str, budget);
     block_str.map(|block_str| {
-        if block_str.starts_with('{') && budget >= 2
+        if block_str.starts_with('{')
+            && budget >= 2
             && (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2)
         {
             "{}".to_owned()

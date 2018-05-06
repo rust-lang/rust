@@ -109,8 +109,10 @@ fn get_inner_expr<'a>(
 
 // Figure out if a block is necessary.
 fn needs_block(block: &ast::Block, prefix: &str, context: &RewriteContext) -> bool {
-    is_unsafe_block(block) || block.stmts.len() > 1
-        || block_contains_comment(block, context.codemap) || prefix.contains('\n')
+    is_unsafe_block(block)
+        || block.stmts.len() > 1
+        || block_contains_comment(block, context.codemap)
+        || prefix.contains('\n')
 }
 
 // Rewrite closure with a single expression wrapping its body with block.

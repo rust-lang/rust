@@ -474,8 +474,10 @@ where
                 .map(|first_line| first_line.ends_with('{'))
                 .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
-            let one_line_width = last_line_width(&lhs_result) + pp.infix.len()
-                + first_line_width(rhs_result) + pp.suffix.len();
+            let one_line_width = last_line_width(&lhs_result)
+                + pp.infix.len()
+                + first_line_width(rhs_result)
+                + pp.suffix.len();
             if one_line_width <= shape.width {
                 return Some(format!(
                     "{}{}{}{}",
@@ -558,7 +560,9 @@ fn rewrite_empty_block(
     let user_str = user_str.trim();
     if user_str.starts_with('{') && user_str.ends_with('}') {
         let comment_str = user_str[1..user_str.len() - 1].trim();
-        if block.stmts.is_empty() && !comment_str.contains('\n') && !comment_str.starts_with("//")
+        if block.stmts.is_empty()
+            && !comment_str.contains('\n')
+            && !comment_str.starts_with("//")
             && comment_str.len() + 4 <= shape.width
         {
             return Some(format!("{}{{ {} }}", prefix, comment_str));
@@ -1241,8 +1245,10 @@ pub fn is_simple_block(
     attrs: Option<&[ast::Attribute]>,
     codemap: &CodeMap,
 ) -> bool {
-    (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0])
-        && !block_contains_comment(block, codemap) && attrs.map_or(true, |a| a.is_empty()))
+    (block.stmts.len() == 1
+        && stmt_is_expr(&block.stmts[0])
+        && !block_contains_comment(block, codemap)
+        && attrs.map_or(true, |a| a.is_empty()))
 }
 
 /// Checks whether a block contains at most one statement or expression, and no
@@ -1252,7 +1258,8 @@ pub fn is_simple_block_stmt(
     attrs: Option<&[ast::Attribute]>,
     codemap: &CodeMap,
 ) -> bool {
-    block.stmts.len() <= 1 && !block_contains_comment(block, codemap)
+    block.stmts.len() <= 1
+        && !block_contains_comment(block, codemap)
         && attrs.map_or(true, |a| a.is_empty())
 }
 
@@ -1263,7 +1270,8 @@ pub fn is_empty_block(
     attrs: Option<&[ast::Attribute]>,
     codemap: &CodeMap,
 ) -> bool {
-    block.stmts.is_empty() && !block_contains_comment(block, codemap)
+    block.stmts.is_empty()
+        && !block_contains_comment(block, codemap)
         && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
 
@@ -1778,7 +1786,8 @@ pub fn wrap_struct_field(
     one_line_width: usize,
 ) -> String {
     if context.config.indent_style() == IndentStyle::Block
-        && (fields_str.contains('\n') || !context.config.struct_lit_single_line()
+        && (fields_str.contains('\n')
+            || !context.config.struct_lit_single_line()
             || fields_str.len() > one_line_width)
     {
         format!(
@@ -2104,7 +2113,8 @@ fn choose_rhs<R: Rewrite>(
 }
 
 pub fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str, rhs_tactics: RhsTactics) -> bool {
-    rhs_tactics == RhsTactics::ForceNextLine || !next_line_rhs.contains('\n')
+    rhs_tactics == RhsTactics::ForceNextLine
+        || !next_line_rhs.contains('\n')
         || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
 }
 

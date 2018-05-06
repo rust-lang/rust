@@ -265,7 +265,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         nested_shape.indent.to_string_with_newline(context.config)
     };
 
-    let first_connector = if is_small_parent || fits_single_line
+    let first_connector = if is_small_parent
+        || fits_single_line
         || last_line_extendable(&parent_rewrite)
         || context.config.indent_style() == IndentStyle::Visual
     {
@@ -275,7 +276,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     };
 
     let result = if is_small_parent && rewrites.len() > 1 {
-        let second_connector = if fits_single_line || rewrites[1] == "?"
+        let second_connector = if fits_single_line
+            || rewrites[1] == "?"
             || last_line_extendable(&rewrites[0])
             || context.config.indent_style() == IndentStyle::Visual
         {
