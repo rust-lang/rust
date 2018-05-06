@@ -157,7 +157,7 @@
 
 use core::ops::{Deref, DerefMut};
 use core::iter::{FromIterator, FusedIterator};
-use core::mem::{swap, size_of};
+use core::mem::{swap, size_of, ManuallyDrop};
 use core::ptr;
 use core::fmt;
 
@@ -864,8 +864,7 @@ impl<T: Ord> BinaryHeap<T> {
 /// position with the value that was originally removed.
 struct Hole<'a, T: 'a> {
     data: &'a mut [T],
-    /// `elt` is always `Some` from new until drop.
-    elt: Option<T>,
+    elt: ManuallyDrop<T>,
     pos: usize,
 }
 
@@ -879,7 +878,7 @@ impl<'a, T> Hole<'a, T> {
         let elt = ptr::read(&data[pos]);
         Hole {
             data,
-            elt: Some(elt),
+            elt: ManuallyDrop::new(elt),
             pos,
         }
     }
@@ -892,7 +891,7 @@ impl<'a, T> Hole<'a, T> {
     /// Returns a reference to the element removed.
     #[inline]
     fn element(&self) -> &T {
-        self.elt.as_ref().unwrap()
+        &self.elt
     }
 
     /// Returns a reference to the element at `index`.
@@ -925,7 +924,7 @@ impl<'a, T> Drop for Hole<'a, T> {
         // fill the hole again
         unsafe {
             let pos = self.pos;
-            ptr::write(self.data.get_unchecked_mut(pos), self.elt.take().unwrap());
+            ptr::copy_nonoverlapping(&*self.elt, self.data.get_unchecked_mut(pos), 1);
         }
     }
 }
