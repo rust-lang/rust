@@ -308,7 +308,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt<'tcx>) {
+    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: &mc::cmt_<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
@@ -316,7 +316,7 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>) {
+    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: &mc::cmt_<'tcx>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
@@ -367,13 +367,13 @@ impl<'a, 'tcx> MovedVariablesCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
-    fn consume(&mut self, consume_id: NodeId, consume_span: Span, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, consume_id: NodeId, consume_span: Span, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move(_) = mode {
             self.move_common(consume_id, consume_span, cmt);
         }
     }
 
-    fn matched_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>, mode: euv::MatchMode) {
+    fn matched_pat(&mut self, matched_pat: &Pat, cmt: &mc::cmt_<'tcx>, mode: euv::MatchMode) {
         if let euv::MatchMode::MovingMatch = mode {
             self.move_common(matched_pat.id, matched_pat.span, cmt);
         } else {
@@ -381,27 +381,27 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn consume_pat(&mut self, consume_pat: &Pat, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
+    fn consume_pat(&mut self, consume_pat: &Pat, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move(_) = mode {
             self.move_common(consume_pat.id, consume_pat.span, cmt);
         }
     }
 
-    fn borrow(&mut self, _: NodeId, _: Span, _: mc::cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, _: euv::LoanCause) {}
+    fn borrow(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: ty::Region, _: ty::BorrowKind, _: euv::LoanCause) {}
 
-    fn mutate(&mut self, _: NodeId, _: Span, _: mc::cmt<'tcx>, _: euv::MutateMode) {}
+    fn mutate(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
 
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }
 
 
-fn unwrap_downcast_or_interior(mut cmt: mc::cmt) -> mc::cmt {
+fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt_<'tcx> {
     loop {
-        match cmt.cat.clone() {
-            mc::Categorization::Downcast(c, _) | mc::Categorization::Interior(c, _) => {
+        match cmt.cat {
+            mc::Categorization::Downcast(ref c, _) | mc::Categorization::Interior(ref c, _) => {
                 cmt = c;
             },
-            _ => return cmt,
+            _ => return (*cmt).clone(),
         }
-    }
+    };
 }
