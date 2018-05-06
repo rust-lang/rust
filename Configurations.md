@@ -64,7 +64,12 @@ fn main() {
 
 ```rust
 fn main() {
-    if lorem_ipsum && dolor_sit && amet_consectetur && lorem_sit && dolor_consectetur && amet_ipsum
+    if lorem_ipsum
+        && dolor_sit
+        && amet_consectetur
+        && lorem_sit
+        && dolor_consectetur
+        && amet_ipsum
         && lorem_consectetur
     {
         // ...
@@ -76,7 +81,12 @@ fn main() {
 
 ```rust
 fn main() {
-    if lorem_ipsum && dolor_sit && amet_consectetur && lorem_sit && dolor_consectetur && amet_ipsum
+    if lorem_ipsum
+       && dolor_sit
+       && amet_consectetur
+       && lorem_sit
+       && dolor_consectetur
+       && amet_ipsum
        && lorem_consectetur
     {
         // ...
@@ -342,7 +352,8 @@ fn main() {
     let or = foofoofoofoofoofoofoofoofoofoofoofoofoofoofoofoo
         || barbarbarbarbarbarbarbarbarbarbarbarbarbarbarbar;
 
-    let sum = 123456789012345678901234567890 + 123456789012345678901234567890
+    let sum = 123456789012345678901234567890
+        + 123456789012345678901234567890
         + 123456789012345678901234567890;
 
     let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -357,7 +368,8 @@ fn main() {
     let or = foofoofoofoofoofoofoofoofoofoofoofoofoofoofoofoo ||
         barbarbarbarbarbarbarbarbarbarbarbarbarbarbarbar;
 
-    let sum = 123456789012345678901234567890 + 123456789012345678901234567890 +
+    let sum = 123456789012345678901234567890 +
+        123456789012345678901234567890 +
         123456789012345678901234567890;
 
     let range = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..
