@@ -86,16 +86,18 @@ pub fn format_expr(
             rewrite_call(context, &callee_str, args, inner_span, shape)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
-        ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
+        ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
-            rewrite_pair(
-                &**lhs,
-                &**rhs,
-                PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
-                context,
-                shape,
-                context.config.binop_separator(),
-            )
+            rewrite_simple_binaries(context, expr, shape, op).or_else(|| {
+                rewrite_pair(
+                    &**lhs,
+                    &**rhs,
+                    PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
+                    context,
+                    shape,
+                    context.config.binop_separator(),
+                )
+            })
         }
         ast::ExprKind::Unary(ref op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref path, ref fields, ref base) => rewrite_struct_lit(
@@ -350,6 +352,80 @@ pub fn format_expr(
             );
             combine_strs_with_missing_comments(context, &attrs_str, &expr_str, span, shape, false)
         })
+}
+
+/// Collect operands that appears in the given binary operator in the opposite order.
+/// e.g. `collect_binary_items(e, ||)` for `a && b || c || d` returns `[d, c, a && b]`.
+fn collect_binary_items<'a>(mut expr: &'a ast::Expr, binop: ast::BinOp) -> Vec<&'a ast::Expr> {
+    let mut result = vec![];
+    let mut prev_lhs = None;
+    loop {
+        match expr.node {
+            ast::ExprKind::Binary(inner_binop, ref lhs, ref rhs)
+                if inner_binop.node == binop.node =>
+            {
+                result.push(&**rhs);
+                expr = lhs;
+                prev_lhs = Some(lhs);
+            }
+            _ => {
+                if let Some(lhs) = prev_lhs {
+                    result.push(lhs);
+                }
+                break;
+            }
+        }
+    }
+    result
+}
+
+/// Rewrites a binary expression whose operands fits within a single line.
+fn rewrite_simple_binaries(
+    context: &RewriteContext,
+    expr: &ast::Expr,
+    shape: Shape,
+    op: ast::BinOp,
+) -> Option<String> {
+    let op_str = context.snippet(op.span);
+
+    // 2 = spaces around a binary operator.
+    let sep_overhead = op_str.len() + 2;
+    let nested_overhead = sep_overhead - 1;
+
+    let nested_shape = (match context.config.indent_style() {
+        IndentStyle::Visual => shape.visual_indent(0),
+        IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
+    }).with_max_width(context.config);
+    let nested_shape = match context.config.binop_separator() {
+        SeparatorPlace::Back => nested_shape.sub_width(nested_overhead)?,
+        SeparatorPlace::Front => nested_shape.offset_left(nested_overhead)?,
+    };
+
+    let opt_rewrites: Option<Vec<_>> = collect_binary_items(expr, op)
+        .iter()
+        .rev()
+        .map(|e| e.rewrite(context, nested_shape))
+        .collect();
+    if let Some(rewrites) = opt_rewrites {
+        if rewrites.iter().all(|e| ::utils::is_single_line(e)) {
+            let total_width = rewrites.iter().map(|s| s.len()).sum::<usize>()
+                + sep_overhead * (rewrites.len() - 1);
+
+            let sep_str = if total_width <= shape.width {
+                format!(" {} ", op_str)
+            } else {
+                let indent_str = nested_shape.indent.to_string_with_newline(context.config);
+                match context.config.binop_separator() {
+                    SeparatorPlace::Back => format!(" {}{}", op_str.trim_right(), indent_str),
+                    SeparatorPlace::Front => format!("{}{} ", indent_str, op_str.trim_left()),
+                }
+            };
+
+            return wrap_str(rewrites.join(&sep_str), context.config.max_width(), shape);
+        }
+    }
+
+    None
 }
 
 #[derive(new, Clone, Copy)]
