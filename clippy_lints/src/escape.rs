@@ -3,7 +3,7 @@ use rustc::hir::intravisit as visit;
 use rustc::hir::map::Node::{NodeExpr, NodeStmt};
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::{cmt, Categorization};
+use rustc::middle::mem_categorization::{cmt_, Categorization};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::LayoutOf;
 use rustc::util::nodemap::NodeSet;
@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, mode: ConsumeMode) {
+    fn consume(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if let Move(DirectRefMove) = mode {
                 // moved out or in. clearly can't be localized
@@ -94,8 +94,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             }
         }
     }
-    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
-    fn consume_pat(&mut self, consume_pat: &Pat, cmt: cmt<'tcx>, _: ConsumeMode) {
+    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
+    fn consume_pat(&mut self, consume_pat: &Pat, cmt: &cmt_<'tcx>, _: ConsumeMode) {
         let map = &self.cx.tcx.hir;
         if map.is_argument(consume_pat.id) {
             // Skip closure arguments
@@ -135,7 +135,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             }
         }
     }
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, _: ty::BorrowKind, loan_cause: LoanCause) {
+    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region, _: ty::BorrowKind, loan_cause: LoanCause) {
         if let Categorization::Local(lid) = cmt.cat {
             match loan_cause {
                 // x.foo()
@@ -157,7 +157,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
-    fn mutate(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: MutateMode) {}
+    fn mutate(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: MutateMode) {}
 }
 
 impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {

@@ -10,7 +10,7 @@ use rustc::middle::region;
 // use rustc::middle::region::CodeExtent;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::middle::mem_categorization::cmt;
+use rustc::middle::mem_categorization::cmt_;
 use rustc::ty::{self, Ty};
 use rustc::ty::subst::Subst;
 use std::collections::{HashMap, HashSet};
@@ -1412,13 +1412,13 @@ struct MutatePairDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
+    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
 
-    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {}
+    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
                 if Some(id) == self.node_id_low {
@@ -1431,7 +1431,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
         }
     }
 
-    fn mutate(&mut self, _: NodeId, sp: Span, cmt: cmt<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, _: NodeId, sp: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
         if let Categorization::Local(id) = cmt.cat {
             if Some(id) == self.node_id_low {
                 self.span_low = Some(sp)
@@ -2255,19 +2255,19 @@ impl<'tcx> MutVarsDelegate {
 
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: NodeId, _: Span, _: cmt<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: NodeId, _: Span, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn matched_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: MatchMode) {}
+    fn matched_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: MatchMode) {}
 
-    fn consume_pat(&mut self, _: &Pat, _: cmt<'tcx>, _: ConsumeMode) {}
+    fn consume_pat(&mut self, _: &Pat, _: &cmt_<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
+    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region, bk: ty::BorrowKind, _: LoanCause) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt.cat)
         }
     }
 
-    fn mutate(&mut self, _: NodeId, _: Span, cmt: cmt<'tcx>, _: MutateMode) {
+    fn mutate(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: MutateMode) {
         self.update(&cmt.cat)
     }
 
