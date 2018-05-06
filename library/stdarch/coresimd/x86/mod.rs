@@ -595,6 +595,8 @@ mod avx;
 pub use self::avx::*;
 mod avx2;
 pub use self::avx2::*;
+mod fma;
+pub use self::fma::*;
 
 mod abm;
 pub use self::abm::*;
