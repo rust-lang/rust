@@ -1285,7 +1285,7 @@ fn main() {
 }
 ```
 
-### `true`:
+#### `true`:
 ```rust
 fn main() {
     (foo());
