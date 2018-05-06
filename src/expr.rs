@@ -86,16 +86,18 @@ pub fn format_expr(
             rewrite_call(context, &callee_str, args, inner_span, shape)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
-        ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
+        ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
             // FIXME: format comments between operands and operator
-            rewrite_pair(
-                &**lhs,
-                &**rhs,
-                PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
-                context,
-                shape,
-                context.config.binop_separator(),
-            )
+            rewrite_simple_binaries(context, expr, shape, op).or_else(|| {
+                rewrite_pair(
+                    &**lhs,
+                    &**rhs,
+                    PairParts::new("", &format!(" {} ", context.snippet(op.span)), ""),
+                    context,
+                    shape,
+                    context.config.binop_separator(),
+                )
+            })
         }
         ast::ExprKind::Unary(ref op, ref subexpr) => rewrite_unary_op(context, op, subexpr, shape),
         ast::ExprKind::Struct(ref path, ref fields, ref base) => rewrite_struct_lit(
@@ -352,6 +354,80 @@ pub fn format_expr(
         })
 }
 
+/// Collect operands that appears in the given binary operator in the opposite order.
+/// e.g. `collect_binary_items(e, ||)` for `a && b || c || d` returns `[d, c, a && b]`.
+fn collect_binary_items<'a>(mut expr: &'a ast::Expr, binop: ast::BinOp) -> Vec<&'a ast::Expr> {
+    let mut result = vec![];
+    let mut prev_lhs = None;
+    loop {
+        match expr.node {
+            ast::ExprKind::Binary(inner_binop, ref lhs, ref rhs)
+                if inner_binop.node == binop.node =>
+            {
+                result.push(&**rhs);
+                expr = lhs;
+                prev_lhs = Some(lhs);
+            }
+            _ => {
+                if let Some(lhs) = prev_lhs {
+                    result.push(lhs);
+                }
+                break;
+            }
+        }
+    }
+    result
+}
+
+/// Rewrites a binary expression whose operands fits within a single line.
+fn rewrite_simple_binaries(
+    context: &RewriteContext,
+    expr: &ast::Expr,
+    shape: Shape,
+    op: ast::BinOp,
+) -> Option<String> {
+    let op_str = context.snippet(op.span);
+
+    // 2 = spaces around a binary operator.
+    let sep_overhead = op_str.len() + 2;
+    let nested_overhead = sep_overhead - 1;
+
+    let nested_shape = (match context.config.indent_style() {
+        IndentStyle::Visual => shape.visual_indent(0),
+        IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
+    }).with_max_width(context.config);
+    let nested_shape = match context.config.binop_separator() {
+        SeparatorPlace::Back => nested_shape.sub_width(nested_overhead)?,
+        SeparatorPlace::Front => nested_shape.offset_left(nested_overhead)?,
+    };
+
+    let opt_rewrites: Option<Vec<_>> = collect_binary_items(expr, op)
+        .iter()
+        .rev()
+        .map(|e| e.rewrite(context, nested_shape))
+        .collect();
+    if let Some(rewrites) = opt_rewrites {
+        if rewrites.iter().all(|e| ::utils::is_single_line(e)) {
+            let total_width = rewrites.iter().map(|s| s.len()).sum::<usize>()
+                + sep_overhead * (rewrites.len() - 1);
+
+            let sep_str = if total_width <= shape.width {
+                format!(" {} ", op_str)
+            } else {
+                let indent_str = nested_shape.indent.to_string_with_newline(context.config);
+                match context.config.binop_separator() {
+                    SeparatorPlace::Back => format!(" {}{}", op_str.trim_right(), indent_str),
+                    SeparatorPlace::Front => format!("{}{} ", indent_str, op_str.trim_left()),
+                }
+            };
+
+            return wrap_str(rewrites.join(&sep_str), context.config.max_width(), shape);
+        }
+    }
+
+    None
+}
+
 #[derive(new, Clone, Copy)]
 pub struct PairParts<'a> {
     prefix: &'a str,
@@ -398,8 +474,10 @@ where
                 .map(|first_line| first_line.ends_with('{'))
                 .unwrap_or(false);
         if !rhs_result.contains('\n') || allow_same_line {
-            let one_line_width = last_line_width(&lhs_result) + pp.infix.len()
-                + first_line_width(rhs_result) + pp.suffix.len();
+            let one_line_width = last_line_width(&lhs_result)
+                + pp.infix.len()
+                + first_line_width(rhs_result)
+                + pp.suffix.len();
             if one_line_width <= shape.width {
                 return Some(format!(
                     "{}{}{}{}",
@@ -482,7 +560,9 @@ fn rewrite_empty_block(
     let user_str = user_str.trim();
     if user_str.starts_with('{') && user_str.ends_with('}') {
         let comment_str = user_str[1..user_str.len() - 1].trim();
-        if block.stmts.is_empty() && !comment_str.contains('\n') && !comment_str.starts_with("//")
+        if block.stmts.is_empty()
+            && !comment_str.contains('\n')
+            && !comment_str.starts_with("//")
             && comment_str.len() + 4 <= shape.width
         {
             return Some(format!("{}{{ {} }}", prefix, comment_str));
@@ -1165,8 +1245,10 @@ pub fn is_simple_block(
     attrs: Option<&[ast::Attribute]>,
     codemap: &CodeMap,
 ) -> bool {
-    (block.stmts.len() == 1 && stmt_is_expr(&block.stmts[0])
-        && !block_contains_comment(block, codemap) && attrs.map_or(true, |a| a.is_empty()))
+    (block.stmts.len() == 1
+        && stmt_is_expr(&block.stmts[0])
+        && !block_contains_comment(block, codemap)
+        && attrs.map_or(true, |a| a.is_empty()))
 }
 
 /// Checks whether a block contains at most one statement or expression, and no
@@ -1176,7 +1258,8 @@ pub fn is_simple_block_stmt(
     attrs: Option<&[ast::Attribute]>,
     codemap: &CodeMap,
 ) -> bool {
-    block.stmts.len() <= 1 && !block_contains_comment(block, codemap)
+    block.stmts.len() <= 1
+        && !block_contains_comment(block, codemap)
         && attrs.map_or(true, |a| a.is_empty())
 }
 
@@ -1187,7 +1270,8 @@ pub fn is_empty_block(
     attrs: Option<&[ast::Attribute]>,
     codemap: &CodeMap,
 ) -> bool {
-    block.stmts.is_empty() && !block_contains_comment(block, codemap)
+    block.stmts.is_empty()
+        && !block_contains_comment(block, codemap)
         && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
 
@@ -1702,7 +1786,8 @@ pub fn wrap_struct_field(
     one_line_width: usize,
 ) -> String {
     if context.config.indent_style() == IndentStyle::Block
-        && (fields_str.contains('\n') || !context.config.struct_lit_single_line()
+        && (fields_str.contains('\n')
+            || !context.config.struct_lit_single_line()
             || fields_str.len() > one_line_width)
     {
         format!(
@@ -2028,7 +2113,8 @@ fn choose_rhs<R: Rewrite>(
 }
 
 pub fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str, rhs_tactics: RhsTactics) -> bool {
-    rhs_tactics == RhsTactics::ForceNextLine || !next_line_rhs.contains('\n')
+    rhs_tactics == RhsTactics::ForceNextLine
+        || !next_line_rhs.contains('\n')
         || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
 }
 

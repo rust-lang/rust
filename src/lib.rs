@@ -490,7 +490,8 @@ fn format_lines(
 
                 // Check for any line width errors we couldn't correct.
                 let error_kind = ErrorKind::LineOverflow(line_len, config.max_width());
-                if line_len > config.max_width() && !is_skipped_line(cur_line, skipped_range)
+                if line_len > config.max_width()
+                    && !is_skipped_line(cur_line, skipped_range)
                     && should_report_error(config, kind, is_string, error_kind)
                 {
                     errors.push(FormattingError {
@@ -905,7 +906,8 @@ pub fn format_and_emit_report(input: Input, config: &Config) -> FmtResult<Summar
             if report.has_warnings() {
                 match term::stderr() {
                     Some(ref t)
-                        if use_colored_tty(config.color()) && t.supports_color()
+                        if use_colored_tty(config.color())
+                            && t.supports_color()
                             && t.supports_attr(term::Attr::Bold) =>
                     {
                         match report.print_warnings_fancy(term::stderr().unwrap()) {

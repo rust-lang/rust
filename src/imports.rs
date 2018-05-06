@@ -489,7 +489,9 @@ impl UseTree {
     }
 
     fn share_prefix(&self, other: &UseTree) -> bool {
-        if self.path.is_empty() || other.path.is_empty() || self.attrs.is_some()
+        if self.path.is_empty()
+            || other.path.is_empty()
+            || self.attrs.is_some()
             || !self.same_visibility(other)
         {
             false

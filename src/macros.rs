@@ -269,7 +269,8 @@ pub fn rewrite_macro_inner(
                 let nested_shape = mac_shape.block_indent(context.config.tab_spaces());
                 let lhs = arg_vec[0].rewrite(context, nested_shape)?;
                 let rhs = arg_vec[1].rewrite(context, nested_shape)?;
-                if !lhs.contains('\n') && !rhs.contains('\n')
+                if !lhs.contains('\n')
+                    && !rhs.contains('\n')
                     && lhs.len() + rhs.len() + total_overhead <= shape.width
                 {
                     Some(format!("{}{}{}; {}{}", macro_name, lbr, lhs, rhs, rbr))

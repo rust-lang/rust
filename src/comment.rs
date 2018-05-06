@@ -579,7 +579,9 @@ fn light_rewrite_comment(
 /// Does not trim all whitespace. If a single space is trimmed from the left of the string,
 /// this function returns true.
 fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> (&'a str, bool) {
-    if line.starts_with("//! ") || line.starts_with("/// ") || line.starts_with("/*! ")
+    if line.starts_with("//! ")
+        || line.starts_with("/// ")
+        || line.starts_with("/*! ")
         || line.starts_with("/** ")
     {
         (&line[4..], true)
@@ -589,13 +591,18 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle) -> (&'a str, 
         } else {
             (&line[opener.trim_right().len()..], false)
         }
-    } else if line.starts_with("/* ") || line.starts_with("// ") || line.starts_with("//!")
-        || line.starts_with("///") || line.starts_with("** ")
+    } else if line.starts_with("/* ")
+        || line.starts_with("// ")
+        || line.starts_with("//!")
+        || line.starts_with("///")
+        || line.starts_with("** ")
         || line.starts_with("/*!")
         || (line.starts_with("/**") && !line.starts_with("/**/"))
     {
         (&line[3..], line.chars().nth(2).unwrap() == ' ')
-    } else if line.starts_with("/*") || line.starts_with("* ") || line.starts_with("//")
+    } else if line.starts_with("/*")
+        || line.starts_with("* ")
+        || line.starts_with("//")
         || line.starts_with("**")
     {
         (&line[2..], line.chars().nth(1).unwrap() == ' ')

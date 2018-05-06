@@ -313,7 +313,8 @@ impl<'a> FmtVisitor<'a> {
             rewrite_fn_base(&context, indent, ident, fn_sig, span, newline_brace, true)?;
 
         // 2 = ` {`
-        if self.config.brace_style() == BraceStyle::AlwaysNextLine || force_newline_brace
+        if self.config.brace_style() == BraceStyle::AlwaysNextLine
+            || force_newline_brace
             || last_line_width(&result) + 2 > self.shape().width
         {
             newline_brace = true;
@@ -376,7 +377,8 @@ impl<'a> FmtVisitor<'a> {
 
         let codemap = self.get_context().codemap;
 
-        if self.config.empty_item_single_line() && is_empty_block(block, None, codemap)
+        if self.config.empty_item_single_line()
+            && is_empty_block(block, None, codemap)
             && self.block_indent.width() + fn_str.len() + 2 <= self.config.max_width()
         {
             return Some(format!("{}{{}}", fn_str));
@@ -755,7 +757,9 @@ fn is_impl_single_line(
     let open_pos = snippet.find_uncommented("{")? + 1;
 
     Some(
-        context.config.empty_item_single_line() && items.is_empty() && !result.contains('\n')
+        context.config.empty_item_single_line()
+            && items.is_empty()
+            && !result.contains('\n')
             && result.len() + where_clause_str.len() <= context.config.max_width()
             && !contains_comment(&snippet[open_pos..]),
     )
@@ -1194,7 +1198,8 @@ pub fn format_struct_struct(
     // 1 = `}`
     let overhead = if fields.is_empty() { 1 } else { 0 };
     let total_width = result.len() + generics_str.len() + overhead;
-    if !generics_str.is_empty() && !generics_str.contains('\n')
+    if !generics_str.is_empty()
+        && !generics_str.contains('\n')
         && total_width > context.config.max_width()
     {
         result.push('\n');
@@ -1223,7 +1228,9 @@ pub fn format_struct_struct(
         one_line_budget,
     )?;
 
-    if !items_str.contains('\n') && !result.contains('\n') && items_str.len() <= one_line_budget
+    if !items_str.contains('\n')
+        && !result.contains('\n')
+        && items_str.len() <= one_line_budget
         && !last_line_contains_single_line_comment(&items_str)
     {
         Some(format!("{} {} }}", result, items_str))
@@ -1904,7 +1911,8 @@ fn rewrite_fn_base(
     } else {
         result.push('(');
     }
-    if context.config.spaces_within_parens_and_brackets() && !fd.inputs.is_empty()
+    if context.config.spaces_within_parens_and_brackets()
+        && !fd.inputs.is_empty()
         && result.ends_with('(')
     {
         result.push(' ')
@@ -2478,8 +2486,10 @@ fn rewrite_where_clause_rfc_style(
     let newline_after_where = comment_separator(&comment_after, clause_shape);
 
     // 6 = `where `
-    let clause_sep = if where_clause_option.compress_where && comment_before.is_empty()
-        && comment_after.is_empty() && !preds_str.contains('\n')
+    let clause_sep = if where_clause_option.compress_where
+        && comment_before.is_empty()
+        && comment_after.is_empty()
+        && !preds_str.contains('\n')
         && 6 + preds_str.len() <= shape.width || where_single_line
     {
         Cow::from(" ")
@@ -2590,7 +2600,8 @@ fn rewrite_where_clause(
     } else {
         terminator.len()
     };
-    if density == Density::Tall || preds_str.contains('\n')
+    if density == Density::Tall
+        || preds_str.contains('\n')
         || shape.indent.width() + " where ".len() + preds_str.len() + end_length > shape.width
     {
         Some(format!(
@@ -2682,7 +2693,8 @@ fn format_generics(
             || (generics.where_clause.predicates.is_empty()
                 && trimmed_last_line_width(&result) == 1)
     } else {
-        brace_pos == BracePos::ForceSameLine || trimmed_last_line_width(&result) == 1
+        brace_pos == BracePos::ForceSameLine
+            || trimmed_last_line_width(&result) == 1
             || brace_style != BraceStyle::AlwaysNextLine
     };
     if brace_pos == BracePos::None {

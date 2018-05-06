@@ -235,7 +235,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
 
     fn try_overflow_last_item(&self, list_items: &mut Vec<ListItem>) -> DefinitiveListTactic {
         // 1 = "("
-        let combine_arg_with_callee = self.items.len() == 1 && self.items[0].to_expr().is_some()
+        let combine_arg_with_callee = self.items.len() == 1
+            && self.items[0].to_expr().is_some()
             && self.ident.len() + 1 <= self.context.config.tab_spaces();
         let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, self.items);
 
@@ -311,7 +312,9 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 // Use horizontal layout for a function with a single argument as long as
                 // everything fits in a single line.
                 // `self.one_line_width == 0` means vertical layout is forced.
-                if self.items.len() == 1 && self.one_line_width != 0 && !list_items[0].has_comment()
+                if self.items.len() == 1
+                    && self.one_line_width != 0
+                    && !list_items[0].has_comment()
                     && !list_items[0].inner_as_ref().contains('\n')
                     && ::lists::total_item_width(&list_items[0]) <= self.one_line_width
                 {
@@ -462,7 +465,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let (extendable, items_str) = self.rewrite_items()?;
 
         // If we are using visual indent style and failed to format, retry with block indent.
-        if !self.context.use_block_indent() && need_block_indent(&items_str, self.nested_shape)
+        if !self.context.use_block_indent()
+            && need_block_indent(&items_str, self.nested_shape)
             && !extendable
         {
             self.context.use_block.replace(true);
