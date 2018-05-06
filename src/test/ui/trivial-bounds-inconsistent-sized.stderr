@@ -1,0 +1,24 @@
+warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-sized.rs:24:1
+   |
+LL | struct S(str, str) where str: Sized;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(trivial_bounds)] on by default
+
+warning: Trait bound for<'a> T<A + 'a>: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-sized.rs:26:1
+   |
+LL | / fn unsized_local() where for<'a> T<A + 'a>: Sized {
+LL | |     let x: T<A> = *(Box::new(T { x: 1 }) as Box<T<A>>);
+LL | | }
+   | |_^
+
+warning: Trait bound str: std::marker::Sized does not depend on any type or lifetime parameters
+  --> $DIR/trivial-bounds-inconsistent-sized.rs:30:1
+   |
+LL | / fn return_str() -> str where str: Sized {
+LL | |     *"Sized".to_string().into_boxed_str()
+LL | | }
+   | |_^
+
