@@ -40,7 +40,7 @@ mod sig;
 
 use rustc::hir;
 use rustc::hir::def::Def as HirDef;
-use rustc::hir::map::{Node, NodeItem};
+use rustc::hir::map::{Node, NodeTraitItem, NodeImplItem};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::CrateType::CrateTypeExecutable;
@@ -418,34 +418,30 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
                     Some(Node::NodeItem(item)) => match item.node {
                         hir::ItemImpl(.., ref ty, _) => {
-                            let mut result = String::from("<");
-                            result.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
+                            let mut qualname = String::from("<");
+                            qualname.push_str(&self.tcx.hir.node_to_pretty_string(ty.id));
 
                             let mut trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut decl_id = None;
+                            let mut docs = String::new();
+                            let mut attrs = vec![];
+                            if let Some(NodeImplItem(item)) = self.tcx.hir.find(id) {
+                                docs = self.docs_for_attrs(&item.attrs);
+                                attrs = item.attrs.to_vec();
+                            }
+
                             if let Some(def_id) = trait_id {
-                                result.push_str(" as ");
-                                result.push_str(&self.tcx.item_path_str(def_id));
+                                // A method in a trait impl.
+                                qualname.push_str(" as ");
+                                qualname.push_str(&self.tcx.item_path_str(def_id));
                                 self.tcx
                                     .associated_items(def_id)
                                     .find(|item| item.name == name)
                                     .map(|item| decl_id = Some(item.def_id));
-                            } else {
-                                if let Some(NodeItem(item)) = self.tcx.hir.find(id) {
-                                    if let hir::ItemImpl(_, _, _, _, _, ref ty, _) = item.node {
-                                        trait_id = self.lookup_ref_id(ty.id);
-                                    }
-                                }
                             }
-                            result.push_str(">");
+                            qualname.push_str(">");
 
-                            (
-                                result,
-                                trait_id,
-                                decl_id,
-                                self.docs_for_attrs(&item.attrs),
-                                item.attrs.to_vec(),
-                            )
+                            (qualname, trait_id, decl_id, docs, attrs)
                         }
                         _ => {
                             span_bug!(
@@ -467,25 +463,23 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 },
                 None => match self.tcx.trait_of_item(self.tcx.hir.local_def_id(id)) {
-                    Some(def_id) => match self.tcx.hir.get_if_local(def_id) {
-                        Some(Node::NodeItem(item)) => (
+                    Some(def_id) => {
+                        let mut docs = String::new();
+                        let mut attrs = vec![];
+
+                        if let Some(NodeTraitItem(item)) = self.tcx.hir.find(id) {
+                            docs = self.docs_for_attrs(&item.attrs);
+                            attrs = item.attrs.to_vec();
+                        }
+
+                        (
                             format!("::{}", self.tcx.item_path_str(def_id)),
                             Some(def_id),
                             None,
-                            self.docs_for_attrs(&item.attrs),
-                            item.attrs.to_vec(),
-                        ),
-                        r => {
-                            span_bug!(
-                                span,
-                                "Could not find container {:?} for \
-                                 method {}, got {:?}",
-                                def_id,
-                                id,
-                                r
-                            );
-                        }
-                    },
+                            docs,
+                            attrs,
+                        )
+                    }
                     None => {
                         debug!("Could not find container for method {} at {:?}", id, span);
                         // This is not necessarily a bug, if there was a compilation error,
