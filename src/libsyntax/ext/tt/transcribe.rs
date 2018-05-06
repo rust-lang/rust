@@ -13,9 +13,9 @@ use ext::base::ExtCtxt;
 use ext::expand::Marker;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
-use fold::noop_fold_tt;
+use fold::{Folder, noop_fold_tt};
 use parse::token::{self, Token, NtTT};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, SyntaxContext, DUMMY_SP};
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::small_vector::SmallVector;
 
@@ -177,31 +177,15 @@ pub fn transcribe(cx: &ExtCtxt,
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
-            quoted::TokenTree::Token(sp, tok, escape_hygiene) => {
-                let sp_ctxt = if escape_hygiene { cx.call_site() } else { sp }.ctxt();
-                let sp = sp.with_ctxt(sp_ctxt.apply_mark(cx.current_expansion.mark));
-
-                let update_ident_ctxt = |ident: Ident| {
-                    let new_span = if escape_hygiene {
-                        cx.call_site()
-                    } else {
-                        ident.span.apply_mark(cx.current_expansion.mark)
-                    };
-                    Ident::new(ident.name, new_span)
+            quoted::TokenTree::Token(sp, tok, hygiene) => {
+                let mut new_tok = match hygiene {
+                    quoted::TokenHygiene::DefSite => noop_fold_tt(TokenTree::Token(sp, tok),
+                        &mut Marker(cx.current_expansion.mark)),
+                    quoted::TokenHygiene::CallSite => noop_fold_tt(TokenTree::Token(sp, tok),
+                        &mut Escaper(cx.call_site().ctxt())),
                 };
 
-                let result_tok = match tok {
-                    token::Ident(ident, is_raw) =>
-                        TokenTree::Token(sp, token::Ident(update_ident_ctxt(ident), is_raw)),
-                    token::Lifetime(ident) =>
-                        TokenTree::Token(sp, token::Lifetime()),
-                    _ => {
-                        let mut marker = Marker(cx.current_expansion.mark);
-                        noop_fold_tt(TokenTree::Token(sp, tok), &mut marker)
-                    }
-                };
-
-                result.push(result_tok.into());
+                result.push(new_tok.into());
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
@@ -280,5 +264,20 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 _ => LockstepIterSize::Unconstrained
             },
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
+    }
+}
+
+// An Escaper escapes the syntax context with the given syntax context.
+#[derive(Debug)]
+pub struct Escaper(pub SyntaxContext);
+
+impl Folder for Escaper {
+    fn fold_ident(&mut self, mut ident: Ident) -> Ident {
+        ident.span = ident.span.with_ctxt(self.0);
+        ident
+    }
+
+    fn new_span(&mut self, span: Span) -> Span {
+        span.with_ctxt(self.0)
     }
 }

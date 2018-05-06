@@ -46,7 +46,7 @@ impl Delimited {
         } else {
             span.with_lo(span.lo() + BytePos(self.delim.len() as u32))
         };
-        TokenTree::Token(open_span, self.open_token(), false)
+        TokenTree::Token(open_span, self.open_token(), TokenHygiene::DefSite)
     }
 
     /// Return a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
@@ -56,7 +56,7 @@ impl Delimited {
         } else {
             span.with_lo(span.hi() - BytePos(self.delim.len() as u32))
         };
-        TokenTree::Token(close_span, self.close_token(), false)
+        TokenTree::Token(close_span, self.close_token(), TokenHygiene::DefSite)
     }
 }
 
@@ -88,20 +88,12 @@ pub enum KleeneOp {
 /// are "first-class" token trees. Useful for parsing macros.
 #[derive(Debug, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum TokenTree {
-    Token(
-        Span,
-        token::Token,
-        bool, /* escape hygiene */
-    ),
+    Token(Span, token::Token, TokenHygiene),
     Delimited(Span, Lrc<Delimited>),
     /// A Kleene-style repetition sequence
     Sequence(Span, Lrc<SequenceRepetition>),
     /// E.g. `$var`
-    MetaVar(
-        Span,
-        ast::Ident,
-        bool, /* escape hygiene */
-    ),
+    MetaVar(Span, ast::Ident, TokenHygiene),
     /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
     MetaVarDecl(
         Span,
@@ -166,6 +158,13 @@ impl TokenTree {
             TokenTree::Sequence(sp, _) => sp,
         }
     }
+}
+
+/// Syntaxt context to apply to a token when invoking a macro.
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum TokenHygiene {
+    DefSite,
+    CallSite,
 }
 
 /// Takes a `tokenstream::TokenStream` and returns a `Vec<self::TokenTree>`. Specifically, this
@@ -279,8 +278,8 @@ where
         tokenstream::TokenTree::Token(span, token::Pound) if hygiene_optout => match trees.peek() {
             Some(tokenstream::TokenTree::Token(_, token::Dollar)) => {
                 if let tokenstream::TokenTree::Token(span, token::Dollar) = trees.next().unwrap() {
-                    parse_meta_var(true,
-                                   span,
+                    parse_meta_var(span,
+                                   TokenHygiene::CallSite,
                                    trees,
                                    hygiene_optout,
                                    expect_matchers,
@@ -295,7 +294,7 @@ where
             Some(tokenstream::TokenTree::Token(_, token::Ident(..))) => {
                 if let tokenstream::TokenTree::Token(span, tok @ token::Ident(..)) =
                     trees.next().unwrap() {
-                    TokenTree::Token(span, tok, true)
+                    TokenTree::Token(span, tok, TokenHygiene::CallSite)
                 } else {
                     unreachable!();
                 }
@@ -304,19 +303,19 @@ where
             Some(tokenstream::TokenTree::Token(_, token::Lifetime(..))) => {
                 if let tokenstream::TokenTree::Token(span, tok @ token::Lifetime(..)) =
                     trees.next().unwrap() {
-                    TokenTree::Token(span, tok, true)
+                    TokenTree::Token(span, tok, TokenHygiene::CallSite)
                 } else {
                     unreachable!();
                 }
             }
 
-            _ => TokenTree::Token(span, token::Pound, false),
+            _ => TokenTree::Token(span, token::Pound, TokenHygiene::DefSite),
         }
 
         // `tree` is a `$` token. Look at the next token in `trees`.
         tokenstream::TokenTree::Token(span, token::Dollar) =>
-            parse_meta_var(false,
-                           span,
+            parse_meta_var(span,
+                           TokenHygiene::DefSite,
                            trees,
                            hygiene_optout,
                            expect_matchers,
@@ -325,7 +324,8 @@ where
                            attrs),
 
         // `tree` is an arbitrary token. Keep it.
-        tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok, false),
+        tokenstream::TokenTree::Token(span, tok) =>
+            TokenTree::Token(span, tok, TokenHygiene::DefSite),
 
         // `tree` is the beginning of a delimited set of tokens (e.g. `(` or `{`). We need to
         // descend into the delimited set and further parse it.
@@ -346,8 +346,8 @@ where
 
 /// Attempt to parse a single meta variable or meta variable sequence.
 fn parse_meta_var<I>(
-    escape_hygiene: bool,
     span: Span,
+    token_hygiene: TokenHygiene,
     trees: &mut Peekable<I>,
     hygiene_optout: bool,
     expect_matchers: bool,
@@ -399,9 +399,9 @@ where
             let span = ident_span.with_lo(span.lo());
             if ident.name == keywords::Crate.name() && !is_raw {
                 let ident = ast::Ident::new(keywords::DollarCrate.name(), ident.span);
-                TokenTree::Token(span, token::Ident(ident, is_raw), escape_hygiene)
+                TokenTree::Token(span, token::Ident(ident, is_raw), token_hygiene)
             } else {
-                TokenTree::MetaVar(span, ident, escape_hygiene)
+                TokenTree::MetaVar(span, ident, token_hygiene)
             }
         }
 
@@ -412,11 +412,11 @@ where
                 pprust::token_to_string(&tok)
             );
             sess.span_diagnostic.span_err(span, &msg);
-            TokenTree::MetaVar(span, keywords::Invalid.ident(), escape_hygiene)
+            TokenTree::MetaVar(span, keywords::Invalid.ident(), token_hygiene)
         }
 
         // There are no more tokens. Just return the `$` we already have.
-        None => TokenTree::Token(span, token::Dollar, false),
+        None => TokenTree::Token(span, token::Dollar, TokenHygiene::DefSite),
     }
 }
 
