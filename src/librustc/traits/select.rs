@@ -305,9 +305,6 @@ enum BuiltinImplConditions<'tcx> {
     /// There is no built-in impl. There may be some other
     /// candidate (a where-clause or user-defined impl).
     None,
-    /// There is *no* impl for this, builtin or not. Ignore
-    /// all where-clauses.
-    Never,
     /// It is unknown whether there is an impl.
     Ambiguous
 }
@@ -781,13 +778,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                 mut obligation: TraitObligation<'tcx>)
                                                 -> Result<EvaluationResult, OverflowError>
     {
-        debug!("evaluate_trait_predicate_recursively({:?})",
-               obligation);
+        debug!("evaluate_trait_predicate_recursively({:?})", obligation);
 
-        if !self.intercrate.is_some() && obligation.is_global() {
-            // If a param env is consistent, global obligations do not depend on its particular
-            // value in order to work, so we can clear out the param env and get better
-            // caching. (If the current param env is inconsistent, we don't care what happens).
+        if self.intercrate.is_none() && obligation.is_global()
+            && obligation.param_env.caller_bounds.iter().all(|bound| bound.needs_subst()) {
+            // If a param env has no global bounds, global obligations do not
+            // depend on its particular value in order to work, so we can clear
+            // out the param env and get better caching.
             debug!("evaluate_trait_predicate_recursively({:?}) - in global", obligation);
             obligation.param_env = obligation.param_env.without_caller_bounds();
         }
@@ -1451,22 +1448,22 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             let sized_conditions = self.sized_conditions(obligation);
             self.assemble_builtin_bound_candidates(sized_conditions,
                                                    &mut candidates)?;
-         } else if lang_items.unsize_trait() == Some(def_id) {
-             self.assemble_candidates_for_unsizing(obligation, &mut candidates);
-         } else {
-             if lang_items.clone_trait() == Some(def_id) {
-                 // Same builtin conditions as `Copy`, i.e. every type which has builtin support
-                 // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
-                 // types have builtin support for `Clone`.
-                 let clone_conditions = self.copy_clone_conditions(obligation);
-                 self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
-             }
+        } else if lang_items.unsize_trait() == Some(def_id) {
+            self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+        } else {
+            if lang_items.clone_trait() == Some(def_id) {
+                // Same builtin conditions as `Copy`, i.e. every type which has builtin support
+                // for `Copy` also has builtin support for `Clone`, + tuples and arrays of `Clone`
+                // types have builtin support for `Clone`.
+                let clone_conditions = self.copy_clone_conditions(obligation);
+                self.assemble_builtin_bound_candidates(clone_conditions, &mut candidates)?;
+            }
 
-             self.assemble_generator_candidates(obligation, &mut candidates)?;
-             self.assemble_closure_candidates(obligation, &mut candidates)?;
-             self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
-             self.assemble_candidates_from_impls(obligation, &mut candidates)?;
-             self.assemble_candidates_from_object_ty(obligation, &mut candidates);
+            self.assemble_generator_candidates(obligation, &mut candidates)?;
+            self.assemble_closure_candidates(obligation, &mut candidates)?;
+            self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
+            self.assemble_candidates_from_impls(obligation, &mut candidates)?;
+            self.assemble_candidates_from_object_ty(obligation, &mut candidates);
         }
 
         self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
@@ -2081,13 +2078,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     // BUILTIN BOUNDS
     //
     // These cover the traits that are built-in to the language
-    // itself.  This includes `Copy` and `Sized` for sure. For the
-    // moment, it also includes `Send` / `Sync` and a few others, but
-    // those will hopefully change to library-defined traits in the
-    // future.
+    // itself: `Copy`, `Clone` and `Sized`.
 
-    // HACK: if this returns an error, selection exits without considering
-    // other impls.
     fn assemble_builtin_bound_candidates<'o>(&mut self,
                                              conditions: BuiltinImplConditions<'tcx>,
                                              candidates: &mut SelectionCandidateSet<'tcx>)
@@ -2106,14 +2098,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 debug!("assemble_builtin_bound_candidates: ambiguous builtin");
                 Ok(candidates.ambiguous = true)
             }
-            BuiltinImplConditions::Never => { Err(Unimplemented) }
         }
     }
 
     fn sized_conditions(&mut self, obligation: &TraitObligation<'tcx>)
                      -> BuiltinImplConditions<'tcx>
     {
-        use self::BuiltinImplConditions::{Ambiguous, None, Never, Where};
+        use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
         // NOTE: binder moved to (*)
         let self_ty = self.infcx.shallow_resolve(
@@ -2130,7 +2121,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
-            ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) | ty::TyForeign(..) => Never,
+            ty::TyStr | ty::TySlice(_) | ty::TyDynamic(..) | ty::TyForeign(..) => None,
 
             ty::TyTuple(tys) => {
                 Where(ty::Binder::bind(tys.last().into_iter().cloned().collect()))
@@ -2164,7 +2155,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(
             obligation.predicate.skip_binder().self_ty());
 
-        use self::BuiltinImplConditions::{Ambiguous, None, Never, Where};
+        use self::BuiltinImplConditions::{Ambiguous, None, Where};
 
         match self_ty.sty {
             ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
@@ -2182,7 +2173,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
             ty::TyGenerator(..) | ty::TyGeneratorWitness(..) | ty::TyForeign(..) |
             ty::TyRef(_, _, hir::MutMutable) => {
-                Never
+                None
             }
 
             ty::TyArray(element_ty, _) => {
@@ -2202,7 +2193,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 if is_copy_trait || is_clone_trait {
                     Where(ty::Binder::bind(substs.upvar_tys(def_id, self.tcx()).collect()))
                 } else {
-                    Never
+                    None
                 }
             }
 
