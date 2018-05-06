@@ -113,7 +113,6 @@ You'll probably want to specify the write mode. Currently, there are modes for
 * `display` Will print the formatted files to stdout.
 * `plain` Also writes to stdout, but with no metadata.
 * `diff` Will print a diff between the original files and formatted files to stdout.
-         Will also exit with an error code if there are any differences.
 * `check` Checks if the program's formatting matches what rustfmt would do. Silently exits
           with code 0 if so, emits a diff and exits with code 1 if not. This option is
           designed to be run in CI-like where a non-zero exit signifies incorrect formatting.
@@ -166,7 +165,7 @@ You can run `rustfmt --help` for more information.
 ## Checking style on a CI server
 
 To keep your code base consistently formatted, it can be helpful to fail the CI build
-when a pull request contains unformatted code. Using `--write-mode=diff` instructs
+when a pull request contains unformatted code. Using `--write-mode=check` instructs
 rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences.
 
@@ -177,7 +176,7 @@ language: rust
 before_script:
 - rustup component add rustfmt-preview
 script:
-- cargo fmt --all -- --write-mode=diff
+- cargo fmt --all -- --write-mode=check
 - cargo build
 - cargo test
 ```
