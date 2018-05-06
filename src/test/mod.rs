@@ -618,8 +618,9 @@ impl ConfigurationSection {
         lazy_static! {
             static ref CONFIG_NAME_REGEX: regex::Regex =
                 regex::Regex::new(r"^## `([^`]+)`").expect("Failed creating configuration pattern");
-            static ref CONFIG_VALUE_REGEX: regex::Regex = regex::Regex::new(r#"^#### `"?([^`"]+)"?`"#)
-                .expect("Failed creating configuration value pattern");
+            static ref CONFIG_VALUE_REGEX: regex::Regex =
+                regex::Regex::new(r#"^#### `"?([^`"]+)"?`"#)
+                    .expect("Failed creating configuration value pattern");
         }
 
         loop {

@@ -1296,7 +1296,9 @@ impl MacroBranch {
 fn format_lazy_static(context: &RewriteContext, shape: Shape, ts: &TokenStream) -> Option<String> {
     let mut result = String::with_capacity(1024);
     let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
-    let nested_shape = shape.block_indent(context.config.tab_spaces());
+    let nested_shape = shape
+        .block_indent(context.config.tab_spaces())
+        .with_max_width(context.config);
 
     result.push_str("lazy_static! {");
     result.push_str(&nested_shape.indent.to_string_with_newline(context.config));

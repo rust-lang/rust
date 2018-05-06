@@ -191,7 +191,8 @@ configuration_option_enum! { WriteMode:
     // Output the changed lines (for internal value only)
     Modified,
     // Checks if a diff can be generated. If so, rustfmt outputs a diff and quits with exit code 1.
-    // This option is designed to be run in CI where a non-zero exit signifies non-standard code formatting.
+    // This option is designed to be run in CI where a non-zero exit signifies non-standard code
+    // formatting.
     Check,
     // Rustfmt shouldn't output anything formatting-like (e.g., emit a help message).
     None,
