@@ -1236,20 +1236,10 @@
             var output = '';
             if (array.length > 0) {
                 output = '<table class="search-results"' + extraStyle + '>';
-                var shown = [];
 
                 array.forEach(function(item) {
-                    var name, type, href, displayPath;
-
-                    var id_ty = item.ty + item.path + item.name;
-                    if (shown.indexOf(id_ty) !== -1) {
-                        return;
-                    }
-
-                    shown.push(id_ty);
-                    name = item.name;
-                    type = itemTypes[item.ty];
-
+                    var name = item.name;
+                    var type = itemTypes[item.ty];
                     var res = buildHrefAndPath(item);
                     var href = res[1];
                     var displayPath = res[0];
