@@ -243,6 +243,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Block implicit return
     BlockTailExpression(ast::NodeId),
+
+    /// #[feature(trivial_bounds)] is not enabled
+    TrivialBound,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

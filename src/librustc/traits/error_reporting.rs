@@ -1475,6 +1475,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
             ObligationCauseCode::ReturnType(_) |
             ObligationCauseCode::BlockTailExpression(_) => (),
+            ObligationCauseCode::TrivialBound => {
+                err.help("see issue #48214");
+                if tcx.sess.opts.unstable_features.is_nightly_build() {
+                    err.help("add #![feature(trivial_bounds)] to the \
+                              crate attributes to enable",
+                    );
+                }
+            }
         }
     }
 
