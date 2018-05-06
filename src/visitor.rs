@@ -303,6 +303,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let filtered_attrs;
         let mut attrs = &item.attrs;
         match item.node {
+            // For use items, skip rewriting attributes. Just check for a skip attribute.
+            ast::ItemKind::Use(..) => {
+                if contains_skip(attrs) {
+                    self.push_skipped_with_span(item.span());
+                    return;
+                }
+            }
             // Module is inline, in this case we treat it like any other item.
             _ if !is_mod_decl(item) => {
                 if self.visit_attrs(&item.attrs, ast::AttrStyle::Outer) {

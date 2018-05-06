@@ -35,7 +35,7 @@ pub fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
 
 impl<'a> FmtVisitor<'a> {
     pub fn format_import(&mut self, item: &ast::Item, tree: &ast::UseTree) {
-        let span = item.span;
+        let span = item.span();
         let shape = self.shape();
         let rw = UseTree::from_ast(
             &self.get_context(),

@@ -105,3 +105,7 @@ use a::b::c::{xxx, yyy, zzz};
 /// This line is not affected.
 // This line is deleted.
 use c;
+
+// #2670
+#[macro_use]
+use imports_with_attr;
