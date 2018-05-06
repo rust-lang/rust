@@ -313,6 +313,9 @@ impl Step for Rustfmt {
 
         // Don't build tests dynamically, just a pain to work with
         cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+        let dir = testdir(builder, compiler.host);
+        t!(fs::create_dir_all(&dir));
+        cargo.env("RUSTFMT_TEST_DIR", dir);
 
         builder.add_rustc_lib_path(compiler, &mut cargo);
 
