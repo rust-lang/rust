@@ -106,6 +106,8 @@ create_config! {
         "Maximum number of blank lines which can be put between items.";
     blank_lines_lower_bound: usize, 0, false,
         "Minimum number of blank lines which must be put between items.";
+    remove_nested_parens: bool, false, false,
+        "Remove nested parens.";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";

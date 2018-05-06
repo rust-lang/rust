@@ -1270,6 +1270,28 @@ fn dolor() -> usize {}
 fn adipiscing() -> usize {}
 ```
 
+## `remove_nested_parens`
+
+Remove nested parens.
+
+- **Defalut value**: `false`,
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+```rust
+fn main() {
+    ((((foo()))));
+}
+```
+
+#### `true`:
+```rust
+fn main() {
+    (foo());
+}
+```
+
 
 ## `reorder_imports`
 

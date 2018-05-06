@@ -1,4 +1,4 @@
-// Remove nested parens.
+// rustfmt-remove_nested_parens: true
 
 fn main() {
     let x = (1);
