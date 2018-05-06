@@ -144,7 +144,6 @@ pub fn new_handler(error_format: ErrorOutputType, codemap: Option<Lrc<codemap::C
                     None,
                     codemap,
                     pretty,
-                    sessopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sessopts.debugging_opts.ui_testing)
             )
         },

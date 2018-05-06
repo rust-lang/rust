@@ -1018,7 +1018,6 @@ pub fn build_session_with_codemap(
                     Some(registry),
                     codemap.clone(),
                     pretty,
-                    sopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
@@ -1027,7 +1026,6 @@ pub fn build_session_with_codemap(
                     Some(registry),
                     codemap.clone(),
                     pretty,
-                    sopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Short(color_config), None) => Box::new(
