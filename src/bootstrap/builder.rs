@@ -25,7 +25,7 @@ use compile;
 use install;
 use dist;
 use util::{exe, libdir, add_lib_path};
-use {Build, Mode};
+use {Build, Mode, DocTests};
 use cache::{INTERNER, Interned, Cache};
 use check;
 use test;
@@ -591,6 +591,8 @@ impl<'a> Builder<'a> {
                 format!("{} {}", env::var("RUSTFLAGS").unwrap_or_default(), extra_args));
         }
 
+        let want_rustdoc = self.doc_tests != DocTests::No;
+
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
@@ -607,7 +609,7 @@ impl<'a> Builder<'a> {
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
-             .env("RUSTDOC_REAL", if cmd == "doc" || cmd == "test" {
+             .env("RUSTDOC_REAL", if cmd == "doc" || (cmd == "test" && want_rustdoc) {
                  self.rustdoc(compiler.host)
              } else {
                  PathBuf::from("/path/to/nowhere/rustdoc/not/required")
@@ -624,7 +626,7 @@ impl<'a> Builder<'a> {
         if let Some(ref error_format) = self.config.rustc_error_format {
             cargo.env("RUSTC_ERROR_FORMAT", error_format);
         }
-        if cmd != "build" && cmd != "check" {
+        if cmd != "build" && cmd != "check" && want_rustdoc {
             cargo.env("RUSTDOC_LIBDIR", self.rustc_libdir(self.compiler(2, self.config.build)));
         }
 
@@ -1404,6 +1406,41 @@ mod __test {
             compile::Test {
                 compiler: Compiler { host: b, stage: 2 },
                 target: c,
+            },
+        ]);
+    }
+
+    #[test]
+    fn test_with_no_doc_stage0() {
+        let mut config = configure(&[], &[]);
+        config.stage = Some(0);
+        config.cmd = Subcommand::Test {
+            paths: vec!["src/libstd".into()],
+            test_args: vec![],
+            rustc_args: vec![],
+            fail_fast: true,
+            doc_tests: DocTests::No,
+        };
+
+        let build = Build::new(config);
+        let mut builder = Builder::new(&build);
+
+        let host = INTERNER.intern_str("A");
+
+        builder.run_step_descriptions(
+            &[StepDescription::from::<test::Crate>()],
+            &["src/libstd".into()],
+        );
+
+        // Ensure we don't build any compiler artifacts.
+        assert!(builder.cache.all::<compile::Rustc>().is_empty());
+        assert_eq!(first(builder.cache.all::<test::Crate>()), &[
+            test::Crate {
+                compiler: Compiler { host, stage: 0 },
+                target: host,
+                mode: Mode::Libstd,
+                test_kind: test::TestKind::Test,
+                krate: INTERNER.intern_str("std"),
             },
         ]);
     }

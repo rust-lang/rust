@@ -330,10 +330,10 @@
 // with a rustc without jemalloc.
 // FIXME(#44236) shouldn't need MSVC logic
 #![cfg_attr(all(not(target_env = "msvc"),
-                any(stage0, feature = "force_alloc_system")),
+                any(all(stage0, not(test)), feature = "force_alloc_system")),
             feature(global_allocator))]
 #[cfg(all(not(target_env = "msvc"),
-          any(stage0, feature = "force_alloc_system")))]
+          any(all(stage0, not(test)), feature = "force_alloc_system")))]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
 

@@ -210,6 +210,16 @@ pub struct Compiler {
     host: Interned<String>,
 }
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub enum DocTests {
+    // Default, run normal tests and doc tests.
+    Yes,
+    // Do not run any doc tests.
+    No,
+    // Only run doc tests.
+    Only,
+}
+
 /// Global configuration for the build system.
 ///
 /// This structure transitively contains all configuration for the build system.
@@ -233,7 +243,7 @@ pub struct Build {
     rustfmt_info: channel::GitInfo,
     local_rebuild: bool,
     fail_fast: bool,
-    doc_tests: bool,
+    doc_tests: DocTests,
     verbosity: usize,
 
     // Targets for which to build.
@@ -294,7 +304,7 @@ impl Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Libstd,
