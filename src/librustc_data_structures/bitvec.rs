@@ -348,7 +348,7 @@ pub struct SparseChunk<I> {
 impl<I: Idx> SparseChunk<I> {
     pub fn one(index: I) -> Self {
         let index = index.index();
-        let key_usize = index / 128;
+        let key_usize = index >> 7;
         let key = key_usize as u32;
         assert_eq!(key as usize, key_usize);
         SparseChunk {
@@ -363,7 +363,7 @@ impl<I: Idx> SparseChunk<I> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = I> {
-        let base = self.key as usize * 128;
+        let base = (self.key as usize) << 7;
         let mut bits = self.bits;
         (0..128)
             .map(move |i| {
@@ -391,7 +391,7 @@ impl<I: Idx> SparseBitSet<I> {
     }
 
     pub fn capacity(&self) -> usize {
-        self.chunk_bits.len() * 128
+        self.chunk_bits.len() << 7
     }
 
     pub fn contains_chunk(&self, chunk: SparseChunk<I>) -> SparseChunk<I> {

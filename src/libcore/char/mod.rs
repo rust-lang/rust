@@ -173,7 +173,7 @@ impl Iterator for EscapeUnicode {
                 Some('{')
             }
             EscapeUnicodeState::Value => {
-                let hex_digit = ((self.c as u32) >> (self.hex_digit_idx * 4)) & 0xf;
+                let hex_digit = ((self.c as u32) >> (self.hex_digit_idx << 2)) & 0xf;
                 let c = from_digit(hex_digit, 16).unwrap();
                 if self.hex_digit_idx == 0 {
                     self.state = EscapeUnicodeState::RightBrace;

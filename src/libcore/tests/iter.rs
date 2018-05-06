@@ -239,7 +239,7 @@ fn test_iterator_step_by_nth_overflow() {
     }
 
     let mut it = Test(0);
-    let root = usize::MAX >> (::std::mem::size_of::<usize>() * 8 / 2);
+    let root = usize::MAX >> ((::std::mem::size_of::<usize>() << 3) >> 1);
     let n = root + 20;
     (&mut it).step_by(n).nth(n);
     assert_eq!(it.0, n as Bigger * n as Bigger);
@@ -252,7 +252,7 @@ fn test_iterator_step_by_nth_overflow() {
     // n + 1 overflows
     let mut it = Test(0);
     (&mut it).step_by(2).nth(usize::MAX);
-    assert_eq!(it.0, (usize::MAX as Bigger) * 2);
+    assert_eq!(it.0, (usize::MAX as Bigger) << 1);
 
     // n + 1 overflows
     let mut it = Test(0);
@@ -1165,8 +1165,8 @@ fn test_find_map() {
     assert_eq!(iter.next(), Some(&7));
 
     fn half_if_even(x: &isize) -> Option<isize> {
-        if x % 2 == 0 {
-            Some(x / 2)
+        if x & 1 == 0 {
+            Some(x >> 1)
         } else {
             None
         }

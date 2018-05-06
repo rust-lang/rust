@@ -858,7 +858,7 @@ impl CodeMap {
         let mut a = 0;
         let mut b = count;
         while b - a > 1 {
-            let m = (a + b) / 2;
+            let m = (a + b) >> 1;
             if files[m].start_pos > pos {
                 b = m;
             } else {

@@ -84,11 +84,11 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
         i += 4;
     }
     if i + 1 < len {
-        out |= (load_int_le!(buf, start + i, u16) as u64) << (i * 8);
+        out |= (load_int_le!(buf, start + i, u16) as u64) << (i << 3);
         i += 2
     }
     if i < len {
-        out |= (*buf.get_unchecked(start + i) as u64) << (i * 8);
+        out |= (*buf.get_unchecked(start + i) as u64) << (i << 3);
         i += 1;
     }
     debug_assert_eq!(i, len);

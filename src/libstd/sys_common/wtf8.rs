@@ -804,7 +804,7 @@ impl<'a> Iterator for Wtf8CodePoints<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.bytes.len();
-        (len.saturating_add(3) / 4, Some(len))
+        (len.saturating_add(3) >> 2, Some(len))
     }
 }
 

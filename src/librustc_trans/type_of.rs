@@ -121,7 +121,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let mut packed = false;
     let mut offset = Size::from_bytes(0);
     let mut prev_align = layout.align;
-    let mut result: Vec<Type> = Vec::with_capacity(1 + field_count * 2);
+    let mut result: Vec<Type> = Vec::with_capacity(1 + (field_count << 1));
     for i in layout.fields.index_by_increasing_offset() {
         let field = layout.field(cx, i);
         packed |= layout.align.abi() < field.align.abi();
@@ -151,7 +151,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         debug!("struct_llfields: pad_bytes: {:?} offset: {:?} stride: {:?}",
                padding, offset, layout.size);
         result.push(Type::padding_filler(cx, padding, padding_align));
-        assert!(result.len() == 1 + field_count * 2);
+        assert!(result.len() == 1 + (field_count << 1));
     } else {
         debug!("struct_llfields: offset: {:?} stride: {:?}",
                offset, layout.size);
@@ -396,7 +396,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             }
 
             layout::FieldPlacement::Arbitrary { .. } => {
-                1 + (self.fields.memory_index(index) as u64) * 2
+                1 + ((self.fields.memory_index(index) as u64) << 1)
             }
         }
     }

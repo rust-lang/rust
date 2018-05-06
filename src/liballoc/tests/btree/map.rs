@@ -31,7 +31,7 @@ fn test_basic_large() {
         assert_eq!(map.get(&i).unwrap(), &(i * 10));
     }
 
-    for i in size..size * 2 {
+    for i in size..size << 1 {
         assert_eq!(map.get(&i), None);
     }
 
@@ -44,20 +44,20 @@ fn test_basic_large() {
         assert_eq!(map.get(&i).unwrap(), &(i * 100));
     }
 
-    for i in 0..size / 2 {
-        assert_eq!(map.remove(&(i * 2)), Some(i * 200));
+    for i in 0..size >> 1 {
+        assert_eq!(map.remove(&(i << 1)), Some(i * 200));
         assert_eq!(map.len(), size - i - 1);
     }
 
-    for i in 0..size / 2 {
-        assert_eq!(map.get(&(2 * i)), None);
-        assert_eq!(map.get(&(2 * i + 1)).unwrap(), &(i * 200 + 100));
+    for i in 0..size >> 1 {
+        assert_eq!(map.get(&(i << 1)), None);
+        assert_eq!(map.get(&((i << 1) + 1)).unwrap(), &(i * 200 + 100));
     }
 
-    for i in 0..size / 2 {
-        assert_eq!(map.remove(&(2 * i)), None);
-        assert_eq!(map.remove(&(2 * i + 1)), Some(i * 200 + 100));
-        assert_eq!(map.len(), size / 2 - i - 1);
+    for i in 0..size >> 1 {
+        assert_eq!(map.remove(&(i << 1)), None);
+        assert_eq!(map.remove(&((i << 1) + 1)), Some(i * 200 + 100));
+        assert_eq!(map.len(), (size >> 1) - i - 1);
     }
 }
 

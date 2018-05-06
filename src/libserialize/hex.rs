@@ -41,7 +41,7 @@ impl ToHex for [u8] {
     /// }
     /// ```
     fn to_hex(&self) -> String {
-        let mut v = Vec::with_capacity(self.len() * 2);
+        let mut v = Vec::with_capacity(self.len() << 1);
         for &byte in self {
             v.push(CHARS[(byte >> 4) as usize]);
             v.push(CHARS[(byte & 0xf) as usize]);
@@ -117,7 +117,7 @@ impl FromHex for str {
     /// ```
     fn from_hex(&self) -> Result<Vec<u8>, FromHexError> {
         // This may be an overestimate if there is any whitespace
-        let mut b = Vec::with_capacity(self.len() / 2);
+        let mut b = Vec::with_capacity(self.len() >> 1);
         let mut modulus = 0;
         let mut buf = 0;
 

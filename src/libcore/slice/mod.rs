@@ -423,7 +423,7 @@ impl<T> SliceExt for [T] {
         }
         let mut base = 0usize;
         while size > 1 {
-            let half = size / 2;
+            let half = size >> 1;
             let mid = base + half;
             // mid is always in [0, size), that means mid is >= 0 and < size.
             // mid >= 0: by definition
@@ -598,7 +598,7 @@ impl<T> SliceExt for [T] {
         if fast_unaligned && mem::size_of::<T>() == 1 {
             // Use the llvm.bswap intrinsic to reverse u8s in a usize
             let chunk = mem::size_of::<usize>();
-            while i + chunk - 1 < ln / 2 {
+            while i + chunk - 1 < ln >> 1 {
                 unsafe {
                     let pa: *mut T = self.get_unchecked_mut(i);
                     let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
@@ -613,8 +613,8 @@ impl<T> SliceExt for [T] {
 
         if fast_unaligned && mem::size_of::<T>() == 2 {
             // Use rotate-by-16 to reverse u16s in a u32
-            let chunk = mem::size_of::<u32>() / 2;
-            while i + chunk - 1 < ln / 2 {
+            let chunk = mem::size_of::<u32>() >> 1;
+            while i + chunk - 1 < ln >> 1 {
                 unsafe {
                     let pa: *mut T = self.get_unchecked_mut(i);
                     let pb: *mut T = self.get_unchecked_mut(ln - i - chunk);
@@ -627,7 +627,7 @@ impl<T> SliceExt for [T] {
             }
         }
 
-        while i < ln / 2 {
+        while i < ln >> 1 {
             // Unsafe swap to avoid the bounds check in safe swap.
             unsafe {
                 let pa: *mut T = self.get_unchecked_mut(i);

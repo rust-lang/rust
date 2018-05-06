@@ -818,7 +818,7 @@ impl<K, V, S> HashMap<K, V, S>
         } else if self.table.tag() && remaining <= self.len() {
             // Probe sequence is too long and table is half full,
             // resize early to reduce probing length.
-            let new_capacity = self.table.capacity() * 2;
+            let new_capacity = self.table.capacity() << 1;
             self.try_resize(new_capacity)?;
         }
         Ok(())
@@ -2490,7 +2490,7 @@ impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
         let reserve = if self.is_empty() {
             iter.size_hint().0
         } else {
-            (iter.size_hint().0 + 1) / 2
+            (iter.size_hint().0 + 1) >> 1
         };
         self.reserve(reserve);
         for (k, v) in iter {
@@ -3256,7 +3256,7 @@ mod test_map {
         assert_eq!(raw_cap, initial_raw_cap * 2);
 
         let mut i = 0;
-        for _ in 0..raw_cap * 3 / 4 {
+        for _ in 0..(raw_cap * 3) / 4 {
             m.insert(i, i);
             i += 1;
         }

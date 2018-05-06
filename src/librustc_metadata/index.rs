@@ -118,9 +118,9 @@ impl<T> Unaligned<T> {
 }
 
 fn bytes_to_words(b: &[u8]) -> &[Unaligned<u32>] {
-    unsafe { slice::from_raw_parts(b.as_ptr() as *const Unaligned<u32>, b.len() / 4) }
+    unsafe { slice::from_raw_parts(b.as_ptr() as *const Unaligned<u32>, b.len() >> 2) }
 }
 
 fn words_to_bytes(w: &[u32]) -> &[u8] {
-    unsafe { slice::from_raw_parts(w.as_ptr() as *const u8, w.len() * 4) }
+    unsafe { slice::from_raw_parts(w.as_ptr() as *const u8, w.len() << 2) }
 }

@@ -71,7 +71,7 @@ struct BitLookup {
 
 #[inline]
 fn bit_lookup(bit: usize) -> BitLookup {
-    let word_bits = mem::size_of::<Word>() * 8;
+    let word_bits = mem::size_of::<Word>() << 3;
     let word = bit / word_bits;
     let bit_in_word = bit % word_bits;
     let bit_mask = 1 << bit_in_word;

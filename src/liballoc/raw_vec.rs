@@ -458,7 +458,7 @@ impl<T, A: Alloc> RawVec<T, A> {
         // Nothing we can really do about these checks :(
         let required_cap = used_cap.checked_add(needed_extra_cap).ok_or(CapacityOverflow)?;
         // Cannot overflow, because `cap <= isize::MAX`, and type of `cap` is `usize`.
-        let double_cap = self.cap * 2;
+        let double_cap = self.cap << 1;
         // `double_cap` guarantees exponential growth.
         Ok(cmp::max(double_cap, required_cap))
     }

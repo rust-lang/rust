@@ -235,7 +235,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                         // infinite loop.
                         return DefIdForest::empty();
                     }
-                    if substs_set.len() >= tcx.sess.recursion_limit.get() / 4 {
+                    if substs_set.len() >= tcx.sess.recursion_limit.get() >> 2 {
                         // We have gone very deep, reinstantiating this ADT inside
                         // itself with different type arguments. We are probably
                         // hitting an infinite loop. For example, it's possible to write:

@@ -439,7 +439,7 @@ impl<T> [T] {
                     );
                     // `buf` has capacity of `self.len() * n`.
                     let buf_len = buf.len();
-                    buf.set_len(buf_len * 2);
+                    buf.set_len(buf_len << 1);
                 }
 
                 m >>= 1;
@@ -864,7 +864,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     // shallow copies of the contents of `v` without risking the dtors running on copies if
     // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
     // which will always have length at most `len / 2`.
-    let mut buf = Vec::with_capacity(len / 2);
+    let mut buf = Vec::with_capacity(len >> 1);
 
     // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
     // strange decision, but consider the fact that merges more often go in the opposite direction

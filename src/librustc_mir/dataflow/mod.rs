@@ -734,7 +734,7 @@ impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
                dead_unwinds: &'a IdxSet<mir::BasicBlock>,
                denotation: D) -> Self where D: InitialFlow {
         let bits_per_block = denotation.bits_per_block();
-        let usize_bits = mem::size_of::<usize>() * 8;
+        let usize_bits = mem::size_of::<usize>() << 3;
         let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;
         let num_overall = Self::num_bits_overall(mir, bits_per_block);
 
@@ -776,7 +776,7 @@ impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     }
 
     fn num_bits_overall(mir: &Mir, bits_per_block: usize) -> usize {
-        let usize_bits = mem::size_of::<usize>() * 8;
+        let usize_bits = mem::size_of::<usize>() << 3;
         let words_per_block = (bits_per_block + usize_bits - 1) / usize_bits;
 
         // (now rounded up to multiple of word size)

@@ -68,14 +68,14 @@ macro_rules! impl_full_ops {
 
                 fn full_mul(self, other: $ty, carry: $ty) -> ($ty, $ty) {
                     // this cannot overflow, the output is between 0 and 2^nbits * (2^nbits - 1)
-                    let nbits = mem::size_of::<$ty>() * 8;
+                    let nbits = mem::size_of::<$ty>() << 3;
                     let v = (self as $bigty) * (other as $bigty) + (carry as $bigty);
                     ((v >> nbits) as $ty, v as $ty)
                 }
 
                 fn full_mul_add(self, other: $ty, other2: $ty, carry: $ty) -> ($ty, $ty) {
                     // this cannot overflow, the output is between 0 and 2^(2*nbits) - 1
-                    let nbits = mem::size_of::<$ty>() * 8;
+                    let nbits = mem::size_of::<$ty>() << 3;
                     let v = (self as $bigty) * (other as $bigty) + (other2 as $bigty) +
                             (carry as $bigty);
                     ((v >> nbits) as $ty, v as $ty)
@@ -84,7 +84,7 @@ macro_rules! impl_full_ops {
                 fn full_div_rem(self, other: $ty, borrow: $ty) -> ($ty, $ty) {
                     debug_assert!(borrow < other);
                     // this cannot overflow, the dividend is between 0 and other * 2^nbits - 1
-                    let nbits = mem::size_of::<$ty>() * 8;
+                    let nbits = mem::size_of::<$ty>() << 3;
                     let lhs = ((borrow as $bigty) << nbits) | (self as $bigty);
                     let rhs = other as $bigty;
                     ((lhs / rhs) as $ty, (lhs % rhs) as $ty)
@@ -142,7 +142,7 @@ macro_rules! define_bignum {
                 let mut sz = 0;
                 while v > 0 {
                     base[sz] = v as $ty;
-                    v >>= mem::size_of::<$ty>() * 8;
+                    v >>= mem::size_of::<$ty>() << 3;
                     sz += 1;
                 }
                 $name { size: sz, base: base }
@@ -160,7 +160,7 @@ macro_rules! define_bignum {
             pub fn get_bit(&self, i: usize) -> u8 {
                 use mem;
 
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = mem::size_of::<$ty>() << 3;
                 let d = i / digitbits;
                 let b = i % digitbits;
                 ((self.base[d] >> b) & 1) as u8
@@ -188,7 +188,7 @@ macro_rules! define_bignum {
                 }
                 // This could be optimized with leading_zeros() and bit shifts, but that's
                 // probably not worth the hassle.
-                let digitbits = mem::size_of::<$ty>()* 8;
+                let digitbits = mem::size_of::<$ty>() << 3;
                 let mut i = nonzero.len() * digitbits - 1;
                 while self.get_bit(i) == 0 {
                     i -= 1;
@@ -275,7 +275,7 @@ macro_rules! define_bignum {
             pub fn mul_pow2(&mut self, bits: usize) -> &mut $name {
                 use mem;
 
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = mem::size_of::<$ty>() << 3;
                 let digits = bits / digitbits;
                 let bits = bits % digitbits;
 
@@ -406,7 +406,7 @@ macro_rules! define_bignum {
                 // https://en.wikipedia.org/wiki/Division_algorithm
                 // FIXME use a greater base ($ty) for the long division.
                 assert!(!d.is_zero());
-                let digitbits = mem::size_of::<$ty>() * 8;
+                let digitbits = mem::size_of::<$ty>() << 3;
                 for digit in &mut q.base[..] {
                     *digit = 0;
                 }
@@ -471,7 +471,7 @@ macro_rules! define_bignum {
                 use mem;
 
                 let sz = if self.size < 1 {1} else {self.size};
-                let digitlen = mem::size_of::<$ty>() * 2;
+                let digitlen = mem::size_of::<$ty>() << 1;
 
                 write!(f, "{:#x}", self.base[sz-1])?;
                 for &v in self.base[..sz-1].iter().rev() {

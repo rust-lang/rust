@@ -111,7 +111,7 @@ impl<T: Idx> fmt::Debug for IdxSet<T> {
 
 impl<T: Idx> IdxSetBuf<T> {
     fn new(init: Word, universe_size: usize) -> Self {
-        let bits_per_word = mem::size_of::<Word>() * 8;
+        let bits_per_word = mem::size_of::<Word>() << 3;
         let num_words = (universe_size + (bits_per_word - 1)) / bits_per_word;
         IdxSetBuf {
             _pd: Default::default(),
@@ -180,7 +180,7 @@ impl<T: Idx> IdxSet<T> {
 
     /// Clear all elements above `universe_size`.
     fn trim_to(&mut self, universe_size: usize) {
-        let word_bits = mem::size_of::<Word>() * 8;
+        let word_bits = mem::size_of::<Word>() << 3;
 
         // `trim_block` is the first block where some bits have
         // to be cleared.
@@ -268,7 +268,7 @@ impl<'a, T: Idx> Iterator for Iter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
-        let word_bits = mem::size_of::<Word>() * 8;
+        let word_bits = mem::size_of::<Word>() << 3;
         loop {
             if let Some((ref mut word, offset)) = self.cur {
                 let bit_pos = word.trailing_zeros() as usize;

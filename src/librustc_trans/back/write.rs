@@ -1923,7 +1923,7 @@ fn start_executing_work(tcx: TyCtxt,
                          max_workers: usize) -> bool {
         // Tune me, plz.
         items_in_queue > 0 &&
-        items_in_queue >= max_workers.saturating_sub(workers_running / 2)
+        items_in_queue >= max_workers.saturating_sub(workers_running >> 1)
     }
 
     fn maybe_start_llvm_timer(config: &ModuleConfig,

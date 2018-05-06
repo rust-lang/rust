@@ -420,9 +420,9 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
                 if p5.is_empty() {
                     p5.push(5);
                 } else {
-                    p5_scratch.resize(p5.len() * 2, 0);
+                    p5_scratch.resize(p5.len() << 1, 0);
                     let _: Loss =
-                        sig::mul(&mut p5_scratch, &mut 0, &p5, &p5, p5.len() * 2 * LIMB_BITS);
+                        sig::mul(&mut p5_scratch, &mut 0, &p5, &p5, (p5.len() << 1) * LIMB_BITS);
                     while p5_scratch.last() == Some(&0) {
                         p5_scratch.pop();
                     }
@@ -2616,7 +2616,7 @@ mod sig {
             return wide;
         }
 
-        const HALF_BITS: usize = LIMB_BITS / 2;
+        const HALF_BITS: usize = LIMB_BITS >> 1;
 
         let select = |limb, i| (limb >> (i * HALF_BITS)) & ((1 << HALF_BITS) - 1);
         for i in 0..2 {

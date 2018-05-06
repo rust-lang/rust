@@ -153,7 +153,7 @@ impl LlvmType for CastTarget {
         if rem_bytes != 0 {
             // Only integers can be really split further.
             assert_eq!(self.rest.unit.kind, RegKind::Integer);
-            args.push(Type::ix(cx, rem_bytes * 8));
+            args.push(Type::ix(cx, rem_bytes << 3));
         }
 
         Type::struct_(cx, &args, false)

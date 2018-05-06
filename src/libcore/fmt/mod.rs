@@ -1262,7 +1262,7 @@ impl<'a> Formatter<'a> {
             rt::v1::Alignment::Left => (0, padding),
             rt::v1::Alignment::Right |
             rt::v1::Alignment::Unknown => (padding, 0),
-            rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
+            rt::v1::Alignment::Center => (padding >> 1, (padding + 1) >> 1),
         };
 
         let mut fill = [0; 4];
@@ -1876,7 +1876,7 @@ impl<T: ?Sized> Pointer for *const T {
             f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
 
             if let None = f.width {
-                f.width = Some(((mem::size_of::<usize>() * 8) / 4) + 2);
+                f.width = Some(((mem::size_of::<usize>() << 3) >> 2) + 2);
             }
         }
         f.flags |= 1 << (FlagV1::Alternate as u32);

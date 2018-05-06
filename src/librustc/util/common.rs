@@ -276,7 +276,7 @@ fn get_resident() -> Option<usize> {
     let contents = String::from_utf8(contents).ok()?;
     let s = contents.split_whitespace().nth(field)?;
     let npages = s.parse::<usize>().ok()?;
-    Some(npages * 4096)
+    Some(npages << 12)
 }
 
 #[cfg(windows)]

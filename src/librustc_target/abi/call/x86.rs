@@ -119,7 +119,7 @@ pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>, flavor: Flav
                 continue;
             }
 
-            let size_in_regs = (arg.layout.size.bits() + 31) / 32;
+            let size_in_regs = (arg.layout.size.bits() + 31) >> 5;
 
             if size_in_regs == 0 {
                 continue;

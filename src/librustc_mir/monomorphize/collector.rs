@@ -449,7 +449,7 @@ fn check_recursion_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let recursion_depth = if Some(def_id) == tcx.lang_items().drop_in_place_fn() {
         // HACK: drop_in_place creates tight monomorphization loops. Give
         // it more margin.
-        recursion_depth / 4
+        recursion_depth >> 2
     } else {
         recursion_depth
     };

@@ -1636,7 +1636,7 @@ where
         // next iteration of the loop will also multiply by 5 (to calculate
         // the summ5 result)
         n = match n.checked_mul(10) {
-            Some(_) => n * 2,
+            Some(_) => n << 1,
             None => {
                 return summ5;
             }

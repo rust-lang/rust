@@ -455,7 +455,7 @@ mod tests {
 
         let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
         let bit = (signum - 1) as usize;
-        raw[bit / 8] |= 1 << (bit % 8);
+        raw[bit >> 3] |= 1 << (bit % 8);
         return 0;
     }
 

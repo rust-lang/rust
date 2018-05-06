@@ -647,7 +647,7 @@ impl<T: Ord> BinaryHeap<T> {
             let mut hole = Hole::new(&mut self.data, pos);
 
             while hole.pos() > start {
-                let parent = (hole.pos() - 1) / 2;
+                let parent = (hole.pos() - 1) >> 1;
                 if hole.element() <= hole.get(parent) {
                     break;
                 }
@@ -797,7 +797,7 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     fn rebuild(&mut self) {
-        let mut n = self.len() / 2;
+        let mut n = self.len() >> 1;
         while n > 0 {
             n -= 1;
             self.sift_down(n);

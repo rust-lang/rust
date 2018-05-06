@@ -58,7 +58,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
 
         if self.steps.len() >= *tcx.sess.recursion_limit.get() {
             // We've reached the recursion limit, error gracefully.
-            let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
+            let suggested_limit = *tcx.sess.recursion_limit.get() << 1;
             let msg = format!("reached the recursion limit while auto-dereferencing {:?}",
                               self.cur_ty);
             let error_id = (DiagnosticMessageId::ErrorId(55), Some(self.span), msg.clone());

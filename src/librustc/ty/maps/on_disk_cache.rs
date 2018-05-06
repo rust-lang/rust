@@ -1092,7 +1092,7 @@ impl<'enc> SpecializedEncoder<IntEncodedWithFixedSize> for opaque::Encoder<'enc>
     fn specialized_encode(&mut self, x: &IntEncodedWithFixedSize) -> Result<(), Self::Error> {
         let start_pos = self.position();
         for i in 0 .. IntEncodedWithFixedSize::ENCODED_SIZE {
-            ((x.0 >> i * 8) as u8).encode(self)?;
+            ((x.0 >> (i << 3)) as u8).encode(self)?;
         }
         let end_pos = self.position();
         assert_eq!((end_pos - start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
@@ -1107,7 +1107,7 @@ impl<'enc> SpecializedDecoder<IntEncodedWithFixedSize> for opaque::Decoder<'enc>
 
         for i in 0 .. IntEncodedWithFixedSize::ENCODED_SIZE {
             let byte: u8 = Decodable::decode(self)?;
-            value |= (byte as u64) << (i * 8);
+            value |= (byte as u64) << (i << 3);
         }
 
         let end_pos = self.position();

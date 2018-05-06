@@ -165,7 +165,7 @@ pub fn bellerophon<T: RawFloat>(f: &Big, e: i16) -> T {
     let lowbits: i64 = (z.f % exp_p_n) as i64;
     // Is the slop large enough to make a difference when
     // rounding to n bits?
-    if (lowbits - exp_p_n as i64 / 2).abs() <= slop {
+    if (lowbits - (exp_p_n as i64 >> 1)).abs() <= slop {
         algorithm_r(f, e, fp_to_float(z))
     } else {
         fp_to_float(z)
