@@ -422,7 +422,7 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         let extend_width = if items_str.is_empty() {
             paren_overhead
         } else {
-            paren_overhead / 2
+            first_line_width(items_str) + (paren_overhead / 2)
         };
         let nested_indent_str = self.nested_shape
             .indent
