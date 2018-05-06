@@ -25,7 +25,6 @@ use std::time::{Duration, Instant};
 
 use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
-use ty::maps::{QueryMsg};
 use ty::TyCtxt;
 use dep_graph::{DepNode};
 use proc_macro;
@@ -59,6 +58,17 @@ fn panic_hook(info: &panic::PanicInfo) {
         if backtrace {
             TyCtxt::try_print_query_stack();
         }
+
+        #[cfg(windows)]
+        unsafe {
+            if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+                extern "system" {
+                    fn DebugBreak();
+                }
+                // Trigger a debugger if we crashed during bootstrap
+                DebugBreak();
+            }
+        }
     }
 }
 
@@ -75,6 +85,13 @@ pub struct ProfQDumpParams {
     pub ack:Sender<()>,
     /// toggle dumping a log file with every `ProfileQueriesMsg`
     pub dump_profq_msg_log:bool,
+}
+
+#[allow(bad_style)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct QueryMsg {
+    pub query: &'static str,
+    pub msg: Option<String>,
 }
 
 /// A sequence of these messages induce a trace of query-based incremental compilation.

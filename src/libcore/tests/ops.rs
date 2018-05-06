@@ -50,21 +50,21 @@ fn test_full_range() {
 
 #[test]
 fn test_range_inclusive() {
-    let mut r = RangeInclusive { start: 1i8, end: 2 };
+    let mut r = RangeInclusive::new(1i8, 2);
     assert_eq!(r.next(), Some(1));
     assert_eq!(r.next(), Some(2));
     assert_eq!(r.next(), None);
 
-    r = RangeInclusive { start: 127i8, end: 127 };
+    r = RangeInclusive::new(127i8, 127);
     assert_eq!(r.next(), Some(127));
     assert_eq!(r.next(), None);
 
-    r = RangeInclusive { start: -128i8, end: -128 };
+    r = RangeInclusive::new(-128i8, -128);
     assert_eq!(r.next_back(), Some(-128));
     assert_eq!(r.next_back(), None);
 
     // degenerate
-    r = RangeInclusive { start: 1, end: -1 };
+    r = RangeInclusive::new(1, -1);
     assert_eq!(r.size_hint(), (0, Some(0)));
     assert_eq!(r.next(), None);
 }

@@ -18,6 +18,7 @@ use {Span, DUMMY_SP, GLOBALS};
 use rustc_data_structures::fx::FxHashMap;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
+use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, Eq)]
@@ -34,6 +35,11 @@ impl Ident {
     #[inline]
     pub const fn with_empty_ctxt(name: Symbol) -> Ident {
         Ident::new(name, DUMMY_SP)
+    }
+
+    /// Maps an interned string to an identifier with an empty syntax context.
+    pub fn from_interned_str(string: InternedString) -> Ident {
+        Ident::with_empty_ctxt(string.as_symbol())
     }
 
     /// Maps a string to an identifier with an empty syntax context.
@@ -138,11 +144,17 @@ impl Symbol {
         with_interner(|interner| interner.gensymed(self))
     }
 
-    pub fn as_str(self) -> InternedString {
+    pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
-            InternedString {
+            LocalInternedString {
                 string: ::std::mem::transmute::<&str, &str>(interner.get(self))
             }
+        })
+    }
+
+    pub fn as_interned_str(self) -> InternedString {
+        with_interner(|interner| InternedString {
+            symbol: interner.interned(self)
         })
     }
 
@@ -365,84 +377,208 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
-/// Represents a string stored in the thread-local interner. Because the
-/// interner lives for the life of the thread, this can be safely treated as an
-/// immortal string, as long as it never crosses between threads.
-///
-/// FIXME(pcwalton): You must be careful about what you do in the destructors
-/// of objects stored in TLS, because they may run after the interner is
-/// destroyed. In particular, they must not access string contents. This can
-/// be fixed in the future by just leaking all strings until thread death
-/// somehow.
+/// Represents a string stored in the interner. Because the interner outlives any thread
+/// which uses this type, we can safely treat `string` which points to interner data,
+/// as an immortal string, as long as this type never crosses between threads.
+// FIXME: Ensure that the interner outlives any thread which uses LocalInternedString,
+//        by creating a new thread right after constructing the interner
 #[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
-pub struct InternedString {
+pub struct LocalInternedString {
     string: &'static str,
 }
 
-impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::convert::AsRef<U> {
+impl LocalInternedString {
+    pub fn as_interned_str(self) -> InternedString {
+        InternedString {
+            symbol: Symbol::intern(self.string)
+        }
+    }
+}
+
+impl<U: ?Sized> ::std::convert::AsRef<U> for LocalInternedString
+where
+    str: ::std::convert::AsRef<U>
+{
     fn as_ref(&self) -> &U {
         self.string.as_ref()
     }
 }
 
-impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for InternedString {
+impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for LocalInternedString {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
     }
 }
 
-impl ::std::cmp::PartialEq<InternedString> for str {
-    fn eq(&self, other: &InternedString) -> bool {
+impl ::std::cmp::PartialEq<LocalInternedString> for str {
+    fn eq(&self, other: &LocalInternedString) -> bool {
         self == other.string
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a str {
-    fn eq(&self, other: &InternedString) -> bool {
+impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a str {
+    fn eq(&self, other: &LocalInternedString) -> bool {
         *self == other.string
     }
 }
 
-impl ::std::cmp::PartialEq<InternedString> for String {
-    fn eq(&self, other: &InternedString) -> bool {
+impl ::std::cmp::PartialEq<LocalInternedString> for String {
+    fn eq(&self, other: &LocalInternedString) -> bool {
         self == other.string
     }
 }
 
-impl<'a> ::std::cmp::PartialEq<InternedString> for &'a String {
-    fn eq(&self, other: &InternedString) -> bool {
+impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a String {
+    fn eq(&self, other: &LocalInternedString) -> bool {
         *self == other.string
     }
 }
 
-impl !Send for InternedString { }
+impl !Send for LocalInternedString {}
+impl !Sync for LocalInternedString {}
 
-impl ::std::ops::Deref for InternedString {
+impl ::std::ops::Deref for LocalInternedString {
     type Target = str;
     fn deref(&self) -> &str { self.string }
 }
 
-impl fmt::Debug for InternedString {
+impl fmt::Debug for LocalInternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self.string, f)
     }
 }
 
-impl fmt::Display for InternedString {
+impl fmt::Display for LocalInternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
     }
 }
 
+impl Decodable for LocalInternedString {
+    fn decode<D: Decoder>(d: &mut D) -> Result<LocalInternedString, D::Error> {
+        Ok(Symbol::intern(&d.read_str()?).as_str())
+    }
+}
+
+impl Encodable for LocalInternedString {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_str(self.string)
+    }
+}
+
+/// Represents a string stored in the string interner
+#[derive(Clone, Copy, Eq)]
+pub struct InternedString {
+    symbol: Symbol,
+}
+
+impl InternedString {
+    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
+        let str = with_interner(|interner| {
+            interner.get(self.symbol) as *const str
+        });
+        // This is safe because the interner keeps string alive until it is dropped.
+        // We can access it because we know the interner is still alive since we use a
+        // scoped thread local to access it, and it was alive at the begining of this scope
+        unsafe { f(&*str) }
+    }
+
+    pub fn as_symbol(self) -> Symbol {
+        self.symbol
+    }
+
+    pub fn as_str(self) -> LocalInternedString {
+        self.symbol.as_str()
+    }
+}
+
+impl Hash for InternedString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.with(|str| str.hash(state))
+    }
+}
+
+impl PartialOrd<InternedString> for InternedString {
+    fn partial_cmp(&self, other: &InternedString) -> Option<Ordering> {
+        if self.symbol == other.symbol {
+            return Some(Ordering::Equal);
+        }
+        self.with(|self_str| other.with(|other_str| self_str.partial_cmp(&other_str)))
+    }
+}
+
+impl Ord for InternedString {
+    fn cmp(&self, other: &InternedString) -> Ordering {
+        if self.symbol == other.symbol {
+            return Ordering::Equal;
+        }
+        self.with(|self_str| other.with(|other_str| self_str.cmp(&other_str)))
+    }
+}
+
+impl<T: ::std::ops::Deref<Target = str>> PartialEq<T> for InternedString {
+    fn eq(&self, other: &T) -> bool {
+        self.with(|string| string == other.deref())
+    }
+}
+
+impl PartialEq<InternedString> for InternedString {
+    fn eq(&self, other: &InternedString) -> bool {
+        self.symbol == other.symbol
+    }
+}
+
+impl PartialEq<InternedString> for str {
+    fn eq(&self, other: &InternedString) -> bool {
+        other.with(|string| self == string)
+    }
+}
+
+impl<'a> PartialEq<InternedString> for &'a str {
+    fn eq(&self, other: &InternedString) -> bool {
+        other.with(|string| *self == string)
+    }
+}
+
+impl PartialEq<InternedString> for String {
+    fn eq(&self, other: &InternedString) -> bool {
+        other.with(|string| self == string)
+    }
+}
+
+impl<'a> PartialEq<InternedString> for &'a String {
+    fn eq(&self, other: &InternedString) -> bool {
+        other.with(|string| *self == string)
+    }
+}
+
+impl ::std::convert::From<InternedString> for String {
+    fn from(val: InternedString) -> String {
+        val.as_symbol().to_string()
+    }
+}
+
+impl fmt::Debug for InternedString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.with(|str| fmt::Debug::fmt(&str, f))
+    }
+}
+
+impl fmt::Display for InternedString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.with(|str| fmt::Display::fmt(&str, f))
+    }
+}
+
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(Symbol::intern(&d.read_str()?).as_str())
+        Ok(Symbol::intern(&d.read_str()?).as_interned_str())
     }
 }
 
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(self.string)
+        self.with(|string| s.emit_str(string))
     }
 }
 

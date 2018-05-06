@@ -1,0 +1,24 @@
+error[E0557]: feature has been removed
+  --> $DIR/macro-reexport-removed.rs:13:12
+   |
+LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
+   |            ^^^^^^^^^^^^^^
+   |
+note: subsumed by `#![feature(use_extern_macros)]` and `pub use`
+  --> $DIR/macro-reexport-removed.rs:13:12
+   |
+LL | #![feature(macro_reexport)] //~ ERROR feature has been removed
+   |            ^^^^^^^^^^^^^^
+
+error[E0658]: The attribute `macro_reexport` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+  --> $DIR/macro-reexport-removed.rs:15:1
+   |
+LL | #[macro_reexport(macro_one)] //~ ERROR attribute `macro_reexport` is currently unknown
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(custom_attribute)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0557, E0658.
+For more information about an error, try `rustc --explain E0557`.

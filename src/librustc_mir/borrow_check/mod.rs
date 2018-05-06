@@ -17,15 +17,17 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, ParamEnv, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::mir::{AssertMessage, BasicBlock, BorrowKind, Location, Place};
-use rustc::mir::{Mir, Mutability, Operand, Projection, ProjectionElem, Rvalue};
-use rustc::mir::{Field, Statement, StatementKind, Terminator, TerminatorKind};
-use rustc::mir::ClosureRegionRequirements;
+use rustc::lint::builtin::UNUSED_MUT;
+use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
+use rustc::mir::{ClearCrossCrate, Local, Location, Place, Mir, Mutability, Operand};
+use rustc::mir::{Projection, ProjectionElem, Rvalue, Field, Statement, StatementKind};
+use rustc::mir::{Terminator, TerminatorKind};
 
 use rustc_data_structures::control_flow_graph::dominators::Dominators;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_set::IdxSetBuf;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::small_vec::SmallVec;
 
 use std::rc::Rc;
 
@@ -48,12 +50,14 @@ use std::iter;
 
 use self::borrow_set::{BorrowSet, BorrowData};
 use self::flows::Flows;
+use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
 
 crate mod borrow_set;
 mod error_reporting;
 mod flows;
+mod location;
 crate mod place_ext;
 mod prefixes;
 
@@ -69,12 +73,15 @@ pub fn provide(providers: &mut Providers) {
 fn mir_borrowck<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements<'tcx>> {
+) -> BorrowCheckResult<'tcx> {
     let input_mir = tcx.mir_validated(def_id);
     debug!("run query mir_borrowck: {}", tcx.item_path_str(def_id));
 
     if !tcx.has_attr(def_id, "rustc_mir_borrowck") && !tcx.use_mir_borrowck() {
-        return None;
+        return BorrowCheckResult {
+            closure_requirements: None,
+            used_mut_upvars: SmallVec::new(),
+        };
     }
 
     let opt_closure_req = tcx.infer_ctxt().enter(|infcx| {
@@ -90,7 +97,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     input_mir: &Mir<'gcx>,
     def_id: DefId,
-) -> Option<ClosureRegionRequirements<'gcx>> {
+) -> BorrowCheckResult<'gcx> {
     let tcx = infcx.tcx;
     let attributes = tcx.get_attrs(def_id);
     let param_env = tcx.param_env(def_id);
@@ -105,6 +112,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     let mut mir: Mir<'tcx> = input_mir.clone();
     let free_regions = nll::replace_regions_in_mir(infcx, def_id, param_env, &mut mir);
     let mir = &mir; // no further changes
+    let location_table = &LocationTable::new(mir);
 
     let move_data: MoveData<'tcx> = match MoveData::gather_moves(mir, tcx) {
         Ok(move_data) => move_data,
@@ -194,6 +202,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         def_id,
         free_regions,
         mir,
+        location_table,
         param_env,
         &mut flow_inits,
         &mdpe.move_data,
@@ -237,6 +246,8 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         reservation_error_reported: FxHashSet(),
         moved_error_reported: FxHashSet(),
         nonlexical_regioncx: regioncx,
+        used_mut: FxHashSet(),
+        used_mut_upvars: SmallVec::new(),
         nonlexical_cause_info: None,
         borrow_set,
         dominators,
@@ -252,7 +263,66 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
 
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
 
-    opt_closure_req
+    // For each non-user used mutable variable, check if it's been assigned from
+    // a user-declared local. If so, then put that local into the used_mut set.
+    // Note that this set is expected to be small - only upvars from closures
+    // would have a chance of erroneously adding non-user-defined mutable vars
+    // to the set.
+    let temporary_used_locals: FxHashSet<Local> =
+        mbcx.used_mut.iter()
+            .filter(|&local| !mbcx.mir.local_decls[*local].is_user_variable)
+            .cloned()
+            .collect();
+
+    for local in temporary_used_locals {
+        for location in mbcx.mir.find_assignments(local) {
+            for moi in &mbcx.move_data.loc_map[location] {
+                let mpi = &mbcx.move_data.moves[*moi].path;
+                let path = &mbcx.move_data.move_paths[*mpi];
+                debug!("assignment of {:?} to {:?}, adding {:?} to used mutable set",
+                       path.place, local, path.place);
+                if let Place::Local(user_local) = path.place {
+                    mbcx.used_mut.insert(user_local);
+                }
+            }
+        }
+    }
+
+    debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
+
+    for local in mbcx.mir.mut_vars_and_args_iter().filter(|local| !mbcx.used_mut.contains(local)) {
+        if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.visibility_scope_info {
+            let local_decl = &mbcx.mir.local_decls[local];
+
+            // Skip implicit `self` argument for closures
+            if local.index() == 1 && tcx.is_closure(mbcx.mir_def_id) {
+                continue;
+            }
+
+            // Skip over locals that begin with an underscore or have no name
+            match local_decl.name {
+                Some(name) => if name.as_str().starts_with("_") { continue; },
+                None => continue,
+            }
+
+            let source_info = local_decl.source_info;
+            let mut_span = tcx.sess.codemap().span_until_non_whitespace(source_info.span);
+
+            tcx.struct_span_lint_node(
+                UNUSED_MUT,
+                vsi[local_decl.syntactic_scope].lint_root,
+                source_info.span,
+                "variable does not need to be mutable"
+            )
+            .span_suggestion_short(mut_span, "remove this `mut`", "".to_owned())
+            .emit();
+        }
+    }
+
+    BorrowCheckResult {
+        closure_requirements: opt_closure_req,
+        used_mut_upvars: mbcx.used_mut_upvars,
+    }
 }
 
 #[allow(dead_code)]
@@ -287,6 +357,12 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     /// This field keeps track of errors reported in the checking of moved variables,
     /// so that we don't report report seemingly duplicate errors.
     moved_error_reported: FxHashSet<Place<'tcx>>,
+    /// This field keeps track of all the local variables that are declared mut and are mutated.
+    /// Used for the warning issued by an unused mutable local variable.
+    used_mut: FxHashSet<Local>,
+    /// If the function we're checking is a closure, then we'll need to report back the list of
+    /// mutable upvars that have been used. This field keeps track of them.
+    used_mut_upvars: SmallVec<[Field; 8]>,
     /// Non-lexical region inference context, if NLL is enabled.  This
     /// contains the results from region inference and lets us e.g.
     /// find out which CFG points are contained in each borrow region.
@@ -514,18 +590,14 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 cleanup: _,
             } => {
                 self.consume_operand(ContextKind::Assert.new(loc), (cond, span), flow_state);
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        self.consume_operand(ContextKind::Assert.new(loc), (len, span), flow_state);
-                        self.consume_operand(
-                            ContextKind::Assert.new(loc),
-                            (index, span),
-                            flow_state,
-                        );
-                    }
-                    AssertMessage::Math(_ /*const_math_err*/) => {}
-                    AssertMessage::GeneratorResumedAfterReturn => {}
-                    AssertMessage::GeneratorResumedAfterPanic => {}
+                use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+                if let BoundsCheck { ref len, ref index } = *msg {
+                    self.consume_operand(ContextKind::Assert.new(loc), (len, span), flow_state);
+                    self.consume_operand(
+                        ContextKind::Assert.new(loc),
+                        (index, span),
+                        flow_state,
+                    );
                 }
             }
 
@@ -684,6 +756,11 @@ enum InitializationRequiringAction {
     Assignment,
 }
 
+struct RootPlace<'d, 'tcx: 'd> {
+    place: &'d Place<'tcx>,
+    is_local_mutation_allowed: LocalMutationIsAllowed,
+}
+
 impl InitializationRequiringAction {
     fn as_noun(self) -> &'static str {
         match self {
@@ -729,6 +806,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         erased_drop_place_ty: ty::Ty<'gcx>,
         span: Span,
     ) {
+        let gcx = self.tcx.global_tcx();
+        let drop_field = |
+            mir: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
+            (index, field): (usize, ty::Ty<'gcx>),
+        | {
+            let field_ty = gcx.normalize_erasing_regions(mir.param_env, field);
+            let place = drop_place.clone().field(Field::new(index), field_ty);
+
+            mir.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span);
+        };
+
         match erased_drop_place_ty.sty {
             // When a struct is being dropped, we need to check
             // whether it has a destructor, if it does, then we can
@@ -737,14 +825,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             // destructor but `bar` does not, we will only check for
             // borrows of `x.foo` and not `x.bar`. See #47703.
             ty::TyAdt(def, substs) if def.is_struct() && !def.has_dtor(self.tcx) => {
-                for (index, field) in def.all_fields().enumerate() {
-                    let gcx = self.tcx.global_tcx();
-                    let field_ty = field.ty(gcx, substs);
-                    let field_ty = gcx.normalize_erasing_regions(self.param_env, field_ty);
-                    let place = drop_place.clone().field(Field::new(index), field_ty);
-
-                    self.visit_terminator_drop(loc, term, flow_state, &place, field_ty, span);
-                }
+                def.all_fields()
+                    .map(|field| field.ty(gcx, substs))
+                    .enumerate()
+                    .for_each(|field| drop_field(self, field));
+            }
+            // Same as above, but for tuples.
+            ty::TyTuple(tys) => {
+                tys.iter().cloned().enumerate()
+                    .for_each(|field| drop_field(self, field));
+            }
+            // Closures and generators also have disjoint fields, but they are only
+            // directly accessed in the body of the closure/generator.
+            ty::TyClosure(def, substs)
+            | ty::TyGenerator(def, substs, ..)
+                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+            => {
+                substs.upvar_tys(def, self.tcx).enumerate()
+                    .for_each(|field| drop_field(self, field));
             }
             _ => {
                 // We have now refined the type of the value being
@@ -752,7 +850,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // subfield; so check whether that field's type still
                 // "needs drop". If so, we assume that the destructor
                 // may access any data it likes (i.e., a Deep Write).
-                let gcx = self.tcx.global_tcx();
                 if erased_drop_place_ty.needs_drop(gcx, self.param_env) {
                     self.access_place(
                         ContextKind::Drop.new(loc),
@@ -810,7 +907,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         let mutability_error =
-            self.check_access_permissions(place_span, rw, is_local_mutation_allowed);
+            self.check_access_permissions(place_span, rw, is_local_mutation_allowed, flow_state);
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
 
@@ -1077,9 +1174,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // `NullOp::Box`?
             }
 
-            Rvalue::Aggregate(ref _aggregate_kind, ref operands) => for operand in operands {
-                self.consume_operand(context, (operand, span), flow_state);
-            },
+            Rvalue::Aggregate(ref aggregate_kind, ref operands) => {
+                // We need to report back the list of mutable upvars that were
+                // moved into the closure and subsequently used by the closure,
+                // in order to populate our used_mut set.
+                if let AggregateKind::Closure(def_id, _) = &**aggregate_kind {
+                    let BorrowCheckResult { used_mut_upvars, .. } = self.tcx.mir_borrowck(*def_id);
+                    debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
+                    for field in used_mut_upvars {
+                        match operands[field.index()] {
+                            Operand::Move(Place::Local(local)) => {
+                                self.used_mut.insert(local);
+                            }
+                            Operand::Move(ref place @ Place::Projection(_)) => {
+                                if let Some(field) = self.is_upvar_field_projection(place) {
+                                    self.used_mut_upvars.push(field);
+                                }
+                            }
+                            Operand::Move(Place::Static(..)) |
+                            Operand::Copy(..) |
+                            Operand::Constant(..) => {}
+                        }
+                    }
+                }
+
+                for operand in operands {
+                    self.consume_operand(context, (operand, span), flow_state);
+                }
+            }
         }
     }
 
@@ -1280,7 +1402,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) {
         debug!("check_if_reassignment_to_immutable_state({:?})", place);
         // determine if this path has a non-mut owner (and thus needs checking).
-        if let Ok(()) = self.is_mutable(place, LocalMutationIsAllowed::No) {
+        if let Ok(..) = self.is_mutable(place, LocalMutationIsAllowed::No) {
             return;
         }
         debug!(
@@ -1574,10 +1696,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ///
     /// Returns true if an error is reported, false otherwise.
     fn check_access_permissions(
-        &self,
+        &mut self,
         (place, span): (&Place<'tcx>, Span),
         kind: ReadOrWrite,
         is_local_mutation_allowed: LocalMutationIsAllowed,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>,
     ) -> bool {
         debug!(
             "check_access_permissions({:?}, {:?}, {:?})",
@@ -1592,87 +1715,90 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
             Reservation(WriteKind::MutableBorrow(BorrowKind::Mut { .. }))
-            | Write(WriteKind::MutableBorrow(BorrowKind::Mut { .. })) => if let Err(place_err) =
-                self.is_mutable(place, is_local_mutation_allowed)
-            {
-                error_reported = true;
-                let item_msg = self.get_default_err_msg(place);
-                let mut err = self.tcx
-                    .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
-                err.span_label(span, "cannot borrow as mutable");
+            | Write(WriteKind::MutableBorrow(BorrowKind::Mut { .. })) => {
+                match self.is_mutable(place, is_local_mutation_allowed) {
+                    Ok(root_place) => self.add_used_mut(root_place, flow_state),
+                    Err(place_err) => {
+                        error_reported = true;
+                        let item_msg = self.get_default_err_msg(place);
+                        let mut err = self.tcx
+                            .cannot_borrow_path_as_mutable(span, &item_msg, Origin::Mir);
+                        err.span_label(span, "cannot borrow as mutable");
 
-                if place != place_err {
-                    if let Some(name) = self.describe_place(place_err) {
-                        err.note(&format!("the value which is causing this path not to be mutable \
-                                           is...: `{}`", name));
-                    }
-                }
-
-                err.emit();
-            },
-            Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
-
-                if let Err(place_err) = self.is_mutable(place, is_local_mutation_allowed) {
-                    error_reported = true;
-                    let mut err_info = None;
-                    match *place_err {
-
-                        Place::Projection(box Projection {
-                        ref base, elem:ProjectionElem::Deref}) => {
-                            match *base {
-                                Place::Local(local) => {
-                                    let locations = self.mir.find_assignments(local);
-                                        if locations.len() > 0 {
-                                            let item_msg = if error_reported {
-                                                self.get_secondary_err_msg(base)
-                                            } else {
-                                                self.get_default_err_msg(place)
-                                            };
-                                            let sp = self.mir.source_info(locations[0]).span;
-                                            let mut to_suggest_span = String::new();
-                                            if let Ok(src) =
-                                                self.tcx.sess.codemap().span_to_snippet(sp) {
-                                                    to_suggest_span = src[1..].to_string();
-                                            };
-                                            err_info = Some((
-                                                    sp,
-                                                    "consider changing this to be a \
-                                                    mutable reference",
-                                                    to_suggest_span,
-                                                    item_msg,
-                                                    self.get_primary_err_msg(base)));
-                                        }
-                                },
-                            _ => {},
-                            }
-                        },
-                        _ => {},
-                    }
-
-                    if let Some((err_help_span,
-                                 err_help_stmt,
-                                 to_suggest_span,
-                                 item_msg,
-                                 sec_span)) = err_info {
-                        let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
-                        err.span_suggestion(err_help_span,
-                                            err_help_stmt,
-                                            format!("&mut {}", to_suggest_span));
-                        if place != place_err {
-                            err.span_label(span, sec_span);
-                        }
-                        err.emit()
-                    } else {
-                        let item_msg_ = self.get_default_err_msg(place);
-                        let mut err = self.tcx.cannot_assign(span, &item_msg_, Origin::Mir);
-                        err.span_label(span, "cannot mutate");
                         if place != place_err {
                             if let Some(name) = self.describe_place(place_err) {
                                 err.note(&format!("the value which is causing this path not to be \
-                                                   mutable is...: `{}`", name));
+                                    mutable is...: `{}`", name));
                             }
                         }
+
                         err.emit();
+                    }
+                }
+            }
+            Reservation(WriteKind::Mutate) | Write(WriteKind::Mutate) => {
+                match self.is_mutable(place, is_local_mutation_allowed) {
+                    Ok(root_place) => self.add_used_mut(root_place, flow_state),
+                    Err(place_err) => {
+                        error_reported = true;
+
+                        let err_info = if let Place::Projection(
+                            box Projection {
+                                base: Place::Local(local),
+                                elem: ProjectionElem::Deref
+                            }
+                        ) = *place_err {
+                            let locations = self.mir.find_assignments(local);
+                            if locations.len() > 0 {
+                                let item_msg = if error_reported {
+                                    self.get_secondary_err_msg(&Place::Local(local))
+                                } else {
+                                    self.get_default_err_msg(place)
+                                };
+                                let sp = self.mir.source_info(locations[0]).span;
+                                let mut to_suggest_span = String::new();
+                                if let Ok(src) =
+                                    self.tcx.sess.codemap().span_to_snippet(sp) {
+                                        to_suggest_span = src[1..].to_string();
+                                };
+                                Some((sp,
+                                      "consider changing this to be a \
+                                      mutable reference",
+                                      to_suggest_span,
+                                      item_msg,
+                                      self.get_primary_err_msg(&Place::Local(local))))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
+                        if let Some((err_help_span,
+                                     err_help_stmt,
+                                     to_suggest_span,
+                                     item_msg,
+                                     sec_span)) = err_info {
+                            let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
+                            err.span_suggestion(err_help_span,
+                                                err_help_stmt,
+                                                format!("&mut {}", to_suggest_span));
+                            if place != place_err {
+                                err.span_label(span, sec_span);
+                            }
+                            err.emit()
+                        } else {
+                            let item_msg = self.get_default_err_msg(place);
+                            let mut err = self.tcx.cannot_assign(span, &item_msg, Origin::Mir);
+                            err.span_label(span, "cannot mutate");
+                            if place != place_err {
+                                if let Some(name) = self.describe_place(place_err) {
+                                    err.note(&format!("the value which is causing this path not \
+                                                       to be mutable is...: `{}`", name));
+                                }
+                            }
+                            err.emit();
+                        }
                     }
                 }
             }
@@ -1702,30 +1828,76 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         error_reported
     }
 
-    /// Can this value be written or borrowed mutably
+    /// Adds the place into the used mutable variables set
+    fn add_used_mut<'d>(
+        &mut self,
+        root_place: RootPlace<'d, 'tcx>,
+        flow_state: &Flows<'cx, 'gcx, 'tcx>
+    ) {
+        match root_place {
+            RootPlace {
+                place: Place::Local(local),
+                is_local_mutation_allowed,
+            } => {
+                if is_local_mutation_allowed != LocalMutationIsAllowed::Yes {
+                    // If the local may be initialized, and it is now currently being
+                    // mutated, then it is justified to be annotated with the `mut`
+                    // keyword, since the mutation may be a possible reassignment.
+                    let mpi = self.move_data.rev_lookup.find_local(*local);
+                    if flow_state.inits.contains(&mpi) {
+                        self.used_mut.insert(*local);
+                    }
+                }
+            }
+            RootPlace {
+                place: place @ Place::Projection(_),
+                is_local_mutation_allowed: _,
+            } => {
+                if let Some(field) = self.is_upvar_field_projection(&place) {
+                    self.used_mut_upvars.push(field);
+                }
+            }
+            RootPlace {
+                place: Place::Static(..),
+                is_local_mutation_allowed: _,
+            } => {}
+        }
+    }
+
+    /// Whether this value be written or borrowed mutably.
+    /// Returns the root place if the place passed in is a projection.
     fn is_mutable<'d>(
         &self,
         place: &'d Place<'tcx>,
         is_local_mutation_allowed: LocalMutationIsAllowed,
-    ) -> Result<(), &'d Place<'tcx>> {
+    ) -> Result<RootPlace<'d, 'tcx>, &'d Place<'tcx>> {
         match *place {
             Place::Local(local) => {
                 let local = &self.mir.local_decls[local];
                 match local.mutability {
                     Mutability::Not => match is_local_mutation_allowed {
-                        LocalMutationIsAllowed::Yes | LocalMutationIsAllowed::ExceptUpvars => {
-                            Ok(())
+                        LocalMutationIsAllowed::Yes => {
+                            Ok(RootPlace {
+                                place,
+                                is_local_mutation_allowed: LocalMutationIsAllowed::Yes
+                            })
+                        }
+                        LocalMutationIsAllowed::ExceptUpvars => {
+                            Ok(RootPlace {
+                                place,
+                                is_local_mutation_allowed: LocalMutationIsAllowed::ExceptUpvars
+                            })
                         }
                         LocalMutationIsAllowed::No => Err(place),
                     },
-                    Mutability::Mut => Ok(()),
+                    Mutability::Mut => Ok(RootPlace { place, is_local_mutation_allowed }),
                 }
             }
             Place::Static(ref static_) =>
                 if self.tcx.is_static(static_.def_id) != Some(hir::Mutability::MutMutable) {
                     Err(place)
                 } else {
-                    Ok(())
+                    Ok(RootPlace { place, is_local_mutation_allowed })
                 },
             Place::Projection(ref proj) => {
                 match proj.elem {
@@ -1761,9 +1933,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 match tnm.mutbl {
                                     // `*const` raw pointers are not mutable
                                     hir::MutImmutable => return Err(place),
-                                    // `*mut` raw pointers are always mutable, regardless of context
-                                    // The users have to check by themselve.
-                                    hir::MutMutable => return Ok(()),
+                                    // `*mut` raw pointers are always mutable, regardless of
+                                    // context. The users have to check by themselves.
+                                    hir::MutMutable => {
+                                        return Ok(RootPlace { place, is_local_mutation_allowed });
+                                    }
                                 }
                             }
                             // `Box<T>` owns its content, so mutable if its location is mutable
@@ -1794,7 +1968,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                 }
                                 (Mutability::Not, LocalMutationIsAllowed::Yes)
                                 | (Mutability::Mut, _) => {
-                                    self.is_mutable(&proj.base, is_local_mutation_allowed)
+                                    // Subtle: this is an upvar
+                                    // reference, so it looks like
+                                    // `self.foo` -- we want to double
+                                    // check that the context `*self`
+                                    // is mutable (i.e., this is not a
+                                    // `Fn` closure).  But if that
+                                    // check succeeds, we want to
+                                    // *blame* the mutability on
+                                    // `place` (that is,
+                                    // `self.foo`). This is used to
+                                    // propagate the info about
+                                    // whether mutability declarations
+                                    // are used outwards, so that we register
+                                    // the outer variable as mutable. Otherwise a
+                                    // test like this fails to record the `mut`
+                                    // as needed:
+                                    //
+                                    // ```
+                                    // fn foo<F: FnOnce()>(_f: F) { }
+                                    // fn main() {
+                                    //     let var = Vec::new();
+                                    //     foo(move || {
+                                    //         var.push(1);
+                                    //     });
+                                    // }
+                                    // ```
+                                    let _ = self.is_mutable(&proj.base, is_local_mutation_allowed)?;
+                                    Ok(RootPlace { place, is_local_mutation_allowed })
                                 }
                             }
                         } else {

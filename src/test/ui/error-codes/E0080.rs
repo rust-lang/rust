@@ -15,7 +15,6 @@ enum Enum {
     //~| const_err
     //~| const_err
     //~| const_err
-    //~| divide by zero
 }
 
 fn main() {

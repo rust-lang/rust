@@ -690,21 +690,22 @@ impl<'tcx> ScopeTree {
         // the start. So this algorithm is faster.
         let mut ma = Some(scope_a);
         let mut mb = Some(scope_b);
-        let mut seen: SmallVec<[Scope; 32]> = SmallVec::new();
+        let mut seen_a: SmallVec<[Scope; 32]> = SmallVec::new();
+        let mut seen_b: SmallVec<[Scope; 32]> = SmallVec::new();
         loop {
             if let Some(a) = ma {
-                if seen.iter().position(|s| *s == a).is_some() {
+                if seen_b.iter().position(|s| *s == a).is_some() {
                     return a;
                 }
-                seen.push(a);
+                seen_a.push(a);
                 ma = self.parent_map.get(&a).map(|s| *s);
             }
 
             if let Some(b) = mb {
-                if seen.iter().position(|s| *s == b).is_some() {
+                if seen_a.iter().position(|s| *s == b).is_some() {
                     return b;
                 }
-                seen.push(b);
+                seen_b.push(b);
                 mb = self.parent_map.get(&b).map(|s| *s);
             }
 

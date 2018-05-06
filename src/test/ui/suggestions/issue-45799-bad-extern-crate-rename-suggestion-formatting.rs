@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 extern crate std;
 fn main() {}
 //~^^ ERROR the name `std` is defined multiple times [E0259]

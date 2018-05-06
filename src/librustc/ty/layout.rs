@@ -19,7 +19,6 @@ use std::cmp;
 use std::fmt;
 use std::i128;
 use std::mem;
-use std::ops::RangeInclusive;
 
 use ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -149,7 +148,7 @@ pub const FAT_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const FAT_PTR_EXTRA: usize = 1;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>)
@@ -492,7 +491,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::TyFloat(FloatTy::F64) => scalar(F64),
             ty::TyFnPtr(_) => {
                 let mut ptr = scalar_unit(Pointer);
-                ptr.valid_range.start = 1;
+                ptr.valid_range = 1..=*ptr.valid_range.end();
                 tcx.intern_layout(LayoutDetails::scalar(self, ptr))
             }
 
@@ -506,7 +505,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let mut data_ptr = scalar_unit(Pointer);
                 if !ty.is_unsafe_ptr() {
-                    data_ptr.valid_range.start = 1;
+                    data_ptr.valid_range = 1..=*data_ptr.valid_range.end();
                 }
 
                 let pointee = tcx.normalize_erasing_regions(param_env, pointee);
@@ -524,7 +523,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
                     ty::TyDynamic(..) => {
                         let mut vtable = scalar_unit(Pointer);
-                        vtable.valid_range.start = 1;
+                        vtable.valid_range = 1..=*vtable.valid_range.end();
                         vtable
                     }
                     _ => return Err(LayoutError::Unknown(unsized_part))
@@ -751,8 +750,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         match st.abi {
                             Abi::Scalar(ref mut scalar) |
                             Abi::ScalarPair(ref mut scalar, _) => {
-                                if scalar.valid_range.start == 0 {
-                                    scalar.valid_range.start = 1;
+                                if *scalar.valid_range.start() == 0 {
+                                    scalar.valid_range = 1..=*scalar.valid_range.end();
                                 }
                             }
                             _ => {}
@@ -788,18 +787,15 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 }
                             }
                         }
-                        if niche_variants.start > v {
-                            niche_variants.start = v;
-                        }
-                        niche_variants.end = v;
+                        niche_variants = *niche_variants.start().min(&v)..=v;
                     }
 
-                    if niche_variants.start > niche_variants.end {
+                    if niche_variants.start() > niche_variants.end() {
                         dataful_variant = None;
                     }
 
                     if let Some(i) = dataful_variant {
-                        let count = (niche_variants.end - niche_variants.start + 1) as u128;
+                        let count = (niche_variants.end() - niche_variants.start() + 1) as u128;
                         for (field_index, &field) in variants[i].iter().enumerate() {
                             let (offset, niche, niche_start) =
                                 match self.find_niche(field, count)? {
@@ -897,7 +893,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 // Create the set of structs that represent each variant.
-                let mut variants = variants.into_iter().enumerate().map(|(i, field_layouts)| {
+                let mut layout_variants = variants.iter().enumerate().map(|(i, field_layouts)| {
                     let mut st = univariant_uninterned(&field_layouts,
                         &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
                     st.variants = Variants::Single { index: i };
@@ -944,11 +940,15 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 // We increase the size of the discriminant to avoid LLVM copying
                 // padding when it doesn't need to. This normally causes unaligned
                 // load/stores and excessive memcpy/memset operations. By using a
-                // bigger integer size, LLVM can be sure about it's contents and
+                // bigger integer size, LLVM can be sure about its contents and
                 // won't be so conservative.
 
                 // Use the initial field alignment
-                let mut ity = Integer::for_abi_align(dl, start_align).unwrap_or(min_ity);
+                let mut ity = if def.repr.c() || def.repr.int.is_some() {
+                    min_ity
+                } else {
+                    Integer::for_abi_align(dl, start_align).unwrap_or(min_ity)
+                };
 
                 // If the alignment is not larger than the chosen discriminant size,
                 // don't use the alignment as the final size.
@@ -958,7 +958,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     // Patch up the variants' first few fields.
                     let old_ity_size = min_ity.size();
                     let new_ity_size = ity.size();
-                    for variant in &mut variants {
+                    for variant in &mut layout_variants {
                         if variant.abi == Abi::Uninhabited {
                             continue;
                         }
@@ -985,15 +985,80 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     value: Int(ity, signed),
                     valid_range: (min as u128 & tag_mask)..=(max as u128 & tag_mask),
                 };
-                let abi = if tag.value.size(dl) == size {
-                    Abi::Scalar(tag.clone())
-                } else {
-                    Abi::Aggregate { sized: true }
-                };
+                let mut abi = Abi::Aggregate { sized: true };
+                if tag.value.size(dl) == size {
+                    abi = Abi::Scalar(tag.clone());
+                } else if !tag.is_bool() {
+                    // HACK(nox): Blindly using ScalarPair for all tagged enums
+                    // where applicable leads to Option<u8> being handled as {i1, i8},
+                    // which later confuses SROA and some loop optimisations,
+                    // ultimately leading to the repeat-trusted-len test
+                    // failing. We make the trade-off of using ScalarPair only
+                    // for types where the tag isn't a boolean.
+                    let mut common_prim = None;
+                    for (field_layouts, layout_variant) in variants.iter().zip(&layout_variants) {
+                        let offsets = match layout_variant.fields {
+                            FieldPlacement::Arbitrary { ref offsets, .. } => offsets,
+                            _ => bug!(),
+                        };
+                        let mut fields = field_layouts
+                            .iter()
+                            .zip(offsets)
+                            .filter(|p| !p.0.is_zst());
+                        let (field, offset) = match (fields.next(), fields.next()) {
+                            (None, None) => continue,
+                            (Some(pair), None) => pair,
+                            _ => {
+                                common_prim = None;
+                                break;
+                            }
+                        };
+                        let prim = match field.details.abi {
+                            Abi::Scalar(ref scalar) => scalar.value,
+                            _ => {
+                                common_prim = None;
+                                break;
+                            }
+                        };
+                        if let Some(pair) = common_prim {
+                            // This is pretty conservative. We could go fancier
+                            // by conflating things like i32 and u32, or even
+                            // realising that (u8, u8) could just cohabit with
+                            // u16 or even u32.
+                            if pair != (prim, offset) {
+                                common_prim = None;
+                                break;
+                            }
+                        } else {
+                            common_prim = Some((prim, offset));
+                        }
+                    }
+                    if let Some((prim, offset)) = common_prim {
+                        let pair = scalar_pair(tag.clone(), scalar_unit(prim));
+                        let pair_offsets = match pair.fields {
+                            FieldPlacement::Arbitrary {
+                                ref offsets,
+                                ref memory_index
+                            } => {
+                                assert_eq!(memory_index, &[0, 1]);
+                                offsets
+                            }
+                            _ => bug!()
+                        };
+                        if pair_offsets[0] == Size::from_bytes(0) &&
+                            pair_offsets[1] == *offset &&
+                            align == pair.align &&
+                            size == pair.size {
+                            // We can use `ScalarPair` only when it matches our
+                            // already computed layout (including `#[repr(C)]`).
+                            abi = pair.abi;
+                        }
+                    }
+                }
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Tagged {
                         discr: tag,
-                        variants
+                        variants: layout_variants,
                     },
                     fields: FieldPlacement::Arbitrary {
                         offsets: vec![Size::from_bytes(0)],
@@ -1594,10 +1659,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let max_value = !0u128 >> (128 - bits);
 
             // Find out how many values are outside the valid range.
-            let niches = if v.start <= v.end {
-                v.start + (max_value - v.end)
+            let niches = if v.start() <= v.end() {
+                v.start() + (max_value - v.end())
             } else {
-                v.start - v.end - 1
+                v.start() - v.end() - 1
             };
 
             // Give up if we can't fit `count` consecutive niches.
@@ -1605,11 +1670,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 return None;
             }
 
-            let niche_start = v.end.wrapping_add(1) & max_value;
-            let niche_end = v.end.wrapping_add(count) & max_value;
+            let niche_start = v.end().wrapping_add(1) & max_value;
+            let niche_end = v.end().wrapping_add(count) & max_value;
             Some((offset, Scalar {
                 value,
-                valid_range: v.start..=niche_end
+                valid_range: *v.start()..=niche_end
             }, niche_start))
         };
 
@@ -1679,14 +1744,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
             }
             NicheFilling {
                 dataful_variant,
-                niche_variants: RangeInclusive { start, end },
+                ref niche_variants,
                 ref niche,
                 niche_start,
                 ref variants,
             } => {
                 dataful_variant.hash_stable(hcx, hasher);
-                start.hash_stable(hcx, hasher);
-                end.hash_stable(hcx, hasher);
+                niche_variants.start().hash_stable(hcx, hasher);
+                niche_variants.end().hash_stable(hcx, hasher);
                 niche.hash_stable(hcx, hasher);
                 niche_start.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
@@ -1749,10 +1814,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for Scalar {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
-        let Scalar { value, valid_range: RangeInclusive { start, end } } = *self;
+        let Scalar { value, ref valid_range } = *self;
         value.hash_stable(hcx, hasher);
-        start.hash_stable(hcx, hasher);
-        end.hash_stable(hcx, hasher);
+        valid_range.start().hash_stable(hcx, hasher);
+        valid_range.end().hash_stable(hcx, hasher);
     }
 }
 

@@ -17,12 +17,9 @@ use ty::context::TyCtxt;
 use errors::Diagnostic;
 
 /// Indicates the state of a query for a given key in a query map
-pub(super) enum QueryResult<'tcx, T> {
+pub(super) enum QueryResult<'tcx> {
     /// An already executing query. The query job can be used to await for its completion
     Started(Lrc<QueryJob<'tcx>>),
-
-    /// The query is complete and produced `T`
-    Complete(T),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error / silently panic
     Poisoned,

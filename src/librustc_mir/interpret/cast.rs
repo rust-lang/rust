@@ -2,10 +2,9 @@ use rustc::ty::Ty;
 use rustc::ty::layout::LayoutOf;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
-use rustc_const_math::ConstFloat;
+use rustc_apfloat::ieee::{Single, Double};
 use super::{EvalContext, Machine};
 use rustc::mir::interpret::{PrimVal, EvalResult, MemoryPointer, PointerArithmetic};
-use rustc_apfloat::ieee::{Single, Double};
 use rustc_apfloat::Float;
 
 impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -50,8 +49,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 Ok(PrimVal::Bytes(v))
             }
 
-            TyFloat(fty) if signed => Ok(PrimVal::Bytes(ConstFloat::from_i128(v as i128, fty).bits)),
-            TyFloat(fty) => Ok(PrimVal::Bytes(ConstFloat::from_u128(v, fty).bits)),
+            TyFloat(FloatTy::F32) if signed => Ok(PrimVal::Bytes(Single::from_i128(v as i128).value.to_bits())),
+            TyFloat(FloatTy::F64) if signed => Ok(PrimVal::Bytes(Double::from_i128(v as i128).value.to_bits())),
+            TyFloat(FloatTy::F32) => Ok(PrimVal::Bytes(Single::from_u128(v).value.to_bits())),
+            TyFloat(FloatTy::F64) => Ok(PrimVal::Bytes(Double::from_u128(v).value.to_bits())),
 
             TyChar if v as u8 as u128 == v => Ok(PrimVal::Bytes(v)),
             TyChar => err!(InvalidChar(v)),

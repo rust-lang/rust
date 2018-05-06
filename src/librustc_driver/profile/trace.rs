@@ -10,7 +10,7 @@
 
 use super::*;
 use syntax_pos::SpanData;
-use rustc::ty::maps::QueryMsg;
+use rustc::util::common::QueryMsg;
 use std::fs::File;
 use std::time::{Duration, Instant};
 use std::collections::hash_map::HashMap;

@@ -13,7 +13,7 @@
 #[inline]
 fn f() {}
 
-#[inline] //~ ERROR: attribute should be applied to function
+#[inline] //~ ERROR: attribute should be applied to function or closure
 struct S;
 
 fn main() {}

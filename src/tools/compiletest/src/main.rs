@@ -23,9 +23,13 @@ extern crate libc;
 extern crate log;
 extern crate regex;
 #[macro_use]
+#[cfg(windows)]
+extern crate lazy_static;
+#[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 extern crate test;
+extern crate rustfix;
 
 use std::env;
 use std::ffi::OsString;

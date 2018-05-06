@@ -18,7 +18,6 @@
 // error-pattern:type `fn(u8) -> ext::PubTupleStruct {ext::PubTupleStruct::{{constructor}}}` is priv
 // error-pattern:type `for<'r> fn(&'r ext::Pub<u8>) {<ext::Pub<u8>>::priv_method}` is private
 
-#![feature(proc_macro_path_invoc)]
 #![feature(decl_macro)]
 
 extern crate private_inferred_type as ext;

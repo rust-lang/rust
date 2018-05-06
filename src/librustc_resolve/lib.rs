@@ -700,7 +700,7 @@ pub enum Namespace {
 pub struct PerNS<T> {
     value_ns: T,
     type_ns: T,
-    macro_ns: Option<T>,
+    macro_ns: T,
 }
 
 impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
@@ -709,7 +709,7 @@ impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
         match ns {
             ValueNS => &self.value_ns,
             TypeNS => &self.type_ns,
-            MacroNS => self.macro_ns.as_ref().unwrap(),
+            MacroNS => &self.macro_ns,
         }
     }
 }
@@ -719,7 +719,7 @@ impl<T> ::std::ops::IndexMut<Namespace> for PerNS<T> {
         match ns {
             ValueNS => &mut self.value_ns,
             TypeNS => &mut self.type_ns,
-            MacroNS => self.macro_ns.as_mut().unwrap(),
+            MacroNS => &mut self.macro_ns,
         }
     }
 }
@@ -1407,6 +1407,7 @@ pub struct Resolver<'a> {
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
+    extern_prelude: FxHashSet<Name>,
 
     /// n.b. This is used only for better diagnostics, not name resolution itself.
     has_self: FxHashSet<DefId>,
@@ -1715,6 +1716,7 @@ impl<'a> Resolver<'a> {
             // AST.
             graph_root,
             prelude: None,
+            extern_prelude: session.opts.externs.iter().map(|kv| Symbol::intern(kv.0)).collect(),
 
             has_self: FxHashSet(),
             field_names: FxHashMap(),
@@ -1726,7 +1728,7 @@ impl<'a> Resolver<'a> {
             ribs: PerNS {
                 value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
                 type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                macro_ns: Some(vec![Rib::new(ModuleRibKind(graph_root))]),
+                macro_ns: vec![Rib::new(ModuleRibKind(graph_root))],
             },
             label_ribs: Vec::new(),
 
@@ -1806,14 +1808,11 @@ impl<'a> Resolver<'a> {
     }
 
     /// Runs the function on each namespace.
-    fn per_ns<T, F: FnMut(&mut Self, Namespace) -> T>(&mut self, mut f: F) -> PerNS<T> {
-        PerNS {
-            type_ns: f(self, TypeNS),
-            value_ns: f(self, ValueNS),
-            macro_ns: match self.use_extern_macros {
-                true => Some(f(self, MacroNS)),
-                false => None,
-            },
+    fn per_ns<F: FnMut(&mut Self, Namespace)>(&mut self, mut f: F) {
+        f(self, TypeNS);
+        f(self, ValueNS);
+        if self.use_extern_macros {
+            f(self, MacroNS);
         }
     }
 
@@ -1970,13 +1969,32 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        match self.prelude {
-            Some(prelude) if !module.no_implicit_prelude => {
-                self.resolve_ident_in_module_unadjusted(prelude, ident, ns, false, false, path_span)
-                    .ok().map(LexicalScopeBinding::Item)
+        if !module.no_implicit_prelude {
+            // `record_used` means that we don't try to load crates during speculative resolution
+            if record_used && ns == TypeNS && self.extern_prelude.contains(&ident.name) {
+                if !self.session.features_untracked().extern_prelude {
+                    feature_err(&self.session.parse_sess, "extern_prelude",
+                                ident.span, GateIssue::Language,
+                                "access to extern crates through prelude is experimental").emit();
+                }
+
+                let crate_id = self.crate_loader.process_path_extern(ident.name, ident.span);
+                let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                self.populate_module_if_necessary(crate_root);
+
+                let binding = (crate_root, ty::Visibility::Public,
+                               ident.span, Mark::root()).to_name_binding(self.arenas);
+                return Some(LexicalScopeBinding::Item(binding));
             }
-            _ => None,
+            if let Some(prelude) = self.prelude {
+                if let Ok(binding) = self.resolve_ident_in_module_unadjusted(prelude, ident, ns,
+                                                                        false, false, path_span) {
+                    return Some(LexicalScopeBinding::Item(binding));
+                }
+            }
         }
+
+        None
     }
 
     fn hygienic_lexical_parent(&mut self, mut module: Module<'a>, span: &mut Span)
@@ -3587,8 +3605,9 @@ impl<'a> Resolver<'a> {
                         // We can see through blocks
                     } else {
                         // Items from the prelude
-                        if let Some(prelude) = self.prelude {
-                            if !module.no_implicit_prelude {
+                        if !module.no_implicit_prelude {
+                            names.extend(self.extern_prelude.iter().cloned());
+                            if let Some(prelude) = self.prelude {
                                 add_module_candidates(prelude, &mut names);
                             }
                         }

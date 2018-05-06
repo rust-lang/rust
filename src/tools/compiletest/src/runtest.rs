@@ -12,7 +12,7 @@ use common::{Config, TestPaths};
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, CodegenUnits, DebugInfoGdb, DebugInfoLldb, Rustdoc};
 use common::{Incremental, MirOpt, RunMake, Ui};
-use common::{expected_output_path, UI_STDERR, UI_STDOUT};
+use common::{expected_output_path, UI_STDERR, UI_STDOUT, UI_FIXED};
 use common::CompareMode;
 use diff;
 use errors::{self, Error, ErrorKind};
@@ -21,6 +21,7 @@ use json;
 use header::TestProps;
 use util::logv;
 use regex::Regex;
+use rustfix::{apply_suggestions, get_suggestions_from_json};
 
 use std::collections::VecDeque;
 use std::collections::HashMap;
@@ -36,6 +37,39 @@ use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
 use extract_gdb_version;
+
+#[cfg(windows)]
+fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
+    use std::sync::Mutex;
+    const SEM_NOGPFAULTERRORBOX: u32 = 0x0002;
+    extern "system" {
+        fn SetErrorMode(mode: u32) -> u32;
+    }
+
+    lazy_static! {
+        static ref LOCK: Mutex<()> = {
+            Mutex::new(())
+        };
+    }
+    // Error mode is a global variable, so lock it so only one thread will change it
+    let _lock = LOCK.lock().unwrap();
+
+    // Tell Windows to not show any UI on errors (such as terminating abnormally).
+    // This is important for running tests, since some of them use abnormal
+    // termination by design. This mode is inherited by all child processes.
+    unsafe {
+        let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX); // read inherited flags
+        SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX);
+        let r = f();
+        SetErrorMode(old_mode);
+        r
+    }
+}
+
+#[cfg(not(windows))]
+fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
+    f()
+}
 
 /// The name of the environment variable that holds dynamic library locations.
 pub fn dylib_env_var() -> &'static str {
@@ -1168,6 +1202,8 @@ impl<'test> TestCx<'test> {
         for line in proc_res.stderr.lines() {
             if line.contains("error: internal compiler error") {
                 self.fatal_proc_rec("compiler encountered internal error", proc_res);
+            } else if line.contains(" panicked at ") {
+                self.fatal_proc_rec("compiler panicked", proc_res);
             }
         }
     }
@@ -1575,8 +1611,7 @@ impl<'test> TestCx<'test> {
         let newpath = env::join_paths(&path).unwrap();
         command.env(dylib_env_var(), newpath);
 
-        let mut child = command
-            .spawn()
+        let mut child = disable_error_reporting(|| command.spawn())
             .expect(&format!("failed to exec `{:?}`", &command));
         if let Some(input) = input {
             child
@@ -2550,6 +2585,7 @@ impl<'test> TestCx<'test> {
 
         let expected_stderr = self.load_expected_output(UI_STDERR);
         let expected_stdout = self.load_expected_output(UI_STDOUT);
+        let expected_fixed = self.load_expected_output(UI_FIXED);
 
         let normalized_stdout =
             self.normalize_output(&proc_res.stdout, &self.props.normalize_stdout);
@@ -2565,6 +2601,21 @@ impl<'test> TestCx<'test> {
         let mut errors = 0;
         errors += self.compare_output("stdout", &normalized_stdout, &expected_stdout);
         errors += self.compare_output("stderr", &normalized_stderr, &expected_stderr);
+
+        if self.config.compare_mode.is_some() {
+            // don't test rustfix with nll right now
+        } else if self.props.run_rustfix {
+            // Apply suggestions from rustc to the code itself
+            let unfixed_code = self.load_expected_output_from_path(&self.testpaths.file)
+                .unwrap();
+            let suggestions = get_suggestions_from_json(&proc_res.stderr, &HashSet::new()).unwrap();
+            let fixed_code = apply_suggestions(&unfixed_code, &suggestions);
+
+            errors += self.compare_output("fixed", &fixed_code, &expected_fixed);
+        } else if !expected_fixed.is_empty() {
+            panic!("the `// run-rustfix` directive wasn't found but a `*.fixed` \
+                    file was found");
+        }
 
         if errors > 0 {
             println!("To update references, run this command from build directory:");
@@ -2599,6 +2650,23 @@ impl<'test> TestCx<'test> {
             } else if !self.props.error_patterns.is_empty() || !proc_res.status.success() {
                 // "//~ERROR comments"
                 self.check_error_patterns(&proc_res.stderr, &proc_res);
+            }
+        }
+
+        if self.props.run_rustfix && self.config.compare_mode.is_none() {
+            // And finally, compile the fixed code and make sure it both
+            // succeeds and has no diagnostics.
+            let mut rustc = self.make_compile_args(
+                &self.testpaths.file.with_extension(UI_FIXED),
+                TargetLocation::ThisFile(self.make_exe_name()),
+            );
+            rustc.arg("-L").arg(&self.aux_output_dir_name());
+            let res = self.compose_and_run_compiler(rustc, None);
+            if !res.status.success() {
+                self.fatal_proc_rec("failed to compile fixed code", &res);
+            }
+            if !res.stderr.is_empty() {
+                self.fatal_proc_rec("fixed code is still producing diagnostics", &res);
             }
         }
     }
@@ -2733,10 +2801,12 @@ impl<'test> TestCx<'test> {
             panic!(
                 "Did not find expected line, error: {}\n\
                  Expected Line: {:?}\n\
+                 Test Name: {}\n\
                  Expected:\n{}\n\
                  Actual:\n{}",
                 extra_msg,
                 expected_line,
+                test_name,
                 expected_content,
                 normalize_all
             );

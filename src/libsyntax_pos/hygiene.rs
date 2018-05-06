@@ -21,6 +21,7 @@ use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::collections::HashMap;
+use rustc_data_structures::fx::FxHashSet;
 use std::fmt;
 
 /// A SyntaxContext represents a chain of macro expansions (represented by marks).
@@ -115,6 +116,32 @@ impl Mark {
                 self = data.marks[self.0 as usize].parent;
             }
             true
+        })
+    }
+
+    /// Computes a mark such that both input marks are descendants of (or equal to) the returned
+    /// mark. That is, the following holds:
+    ///
+    /// ```rust
+    /// let la = least_ancestor(a, b);
+    /// assert!(a.is_descendant_of(la))
+    /// assert!(b.is_descendant_of(la))
+    /// ```
+    pub fn least_ancestor(mut a: Mark, mut b: Mark) -> Mark {
+        HygieneData::with(|data| {
+            // Compute the path from a to the root
+            let mut a_path = FxHashSet::<Mark>();
+            while a != Mark::root() {
+                a_path.insert(a);
+                a = data.marks[a.0 as usize].parent;
+            }
+
+            // While the path from b to the root hasn't intersected, move up the tree
+            while !a_path.contains(&b) {
+                b = data.marks[b.0 as usize].parent;
+            }
+
+            b
         })
     }
 }
@@ -238,6 +265,22 @@ impl SyntaxContext {
         })
     }
 
+    /// Pulls a single mark off of the syntax context. This effectively moves the
+    /// context up one macro definition level. That is, if we have a nested macro
+    /// definition as follows:
+    ///
+    /// ```rust
+    /// macro_rules! f {
+    ///    macro_rules! g {
+    ///        ...
+    ///    }
+    /// }
+    /// ```
+    ///
+    /// and we have a SyntaxContext that is referring to something declared by an invocation
+    /// of g (call it g1), calling remove_mark will result in the SyntaxContext for the
+    /// invocation of f that created g1.
+    /// Returns the mark that was removed.
     pub fn remove_mark(&mut self) -> Mark {
         HygieneData::with(|data| {
             let outer_mark = data.syntax_contexts[self.0 as usize].outer_mark;

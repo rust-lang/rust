@@ -15,7 +15,6 @@
 #![feature(nll)]
 
 #![allow(warnings)]
-#![feature(dyn_trait)]
 
 use std::cell::Cell;
 

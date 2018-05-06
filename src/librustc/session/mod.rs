@@ -20,7 +20,7 @@ use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
 use session::search_paths::PathKind;
-use session::config::{DebugInfoLevel, OutputType};
+use session::config::{OutputType};
 use ty::tls;
 use util::nodemap::{FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
@@ -658,8 +658,11 @@ impl Session {
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
-        self.opts.debuginfo != DebugInfoLevel::NoDebugInfo
-            || !self.target.target.options.eliminate_frame_pointer
+        if let Some(x) = self.opts.cg.force_frame_pointers {
+            x
+        } else {
+            !self.target.target.options.eliminate_frame_pointer
+        }
     }
 
     /// Returns the symbol name for the registrar function,
@@ -1002,7 +1005,7 @@ pub fn build_session_with_codemap(
                     Some(registry),
                     codemap.clone(),
                     pretty,
-                    sopts.debugging_opts.approximate_suggestions,
+                    sopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Json(pretty), Some(dst)) => Box::new(
@@ -1011,7 +1014,7 @@ pub fn build_session_with_codemap(
                     Some(registry),
                     codemap.clone(),
                     pretty,
-                    sopts.debugging_opts.approximate_suggestions,
+                    sopts.debugging_opts.suggestion_applicability,
                 ).ui_testing(sopts.debugging_opts.ui_testing),
             ),
             (config::ErrorOutputType::Short(color_config), None) => Box::new(

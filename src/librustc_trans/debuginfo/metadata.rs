@@ -1236,7 +1236,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                    self.layout,
                                    self.layout.fields.offset(0),
                                    self.layout.field(cx, 0).size);
-                name.push_str(&adt.variants[niche_variants.start].name.as_str());
+                name.push_str(&adt.variants[*niche_variants.start()].name.as_str());
 
                 // Create the (singleton) list of descriptions of union members.
                 vec![
@@ -1399,7 +1399,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     (discr.size(cx), discr.align(cx));
                 let discriminant_base_type_metadata =
                     type_metadata(cx, discr.to_ty(cx.tcx), syntax_pos::DUMMY_SP);
-                let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
+                let discriminant_name = get_enum_discriminant_name(cx, enum_def_id).as_str();
 
                 let name = CString::new(discriminant_name.as_bytes()).unwrap();
                 let discriminant_type_metadata = unsafe {

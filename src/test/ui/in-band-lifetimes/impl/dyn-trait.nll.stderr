@@ -1,11 +1,11 @@
 warning: not reporting region error due to nll
-  --> $DIR/dyn-trait.rs:33:16
+  --> $DIR/dyn-trait.rs:32:16
    |
 LL |     static_val(x); //~ ERROR cannot infer
    |                ^
 
 error: free region `'a` does not outlive free region `'static`
-  --> $DIR/dyn-trait.rs:33:5
+  --> $DIR/dyn-trait.rs:32:5
    |
 LL |     static_val(x); //~ ERROR cannot infer
    |     ^^^^^^^^^^^^^

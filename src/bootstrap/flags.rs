@@ -19,7 +19,7 @@ use std::process;
 
 use getopts::Options;
 
-use Build;
+use {Build, DocTests};
 use config::Config;
 use metadata;
 use builder::Builder;
@@ -62,7 +62,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
         rustc_args: Vec<String>,
         fail_fast: bool,
-        doc_tests: bool,
+        doc_tests: DocTests,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -171,7 +171,8 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
                     "extra options to pass the compiler when running tests",
                     "ARGS",
                 );
-                opts.optflag("", "doc", "run doc tests");
+                opts.optflag("", "no-doc", "do not run doc tests");
+                opts.optflag("", "doc", "only run doc tests");
             },
             "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
             "clean" => { opts.optflag("", "all", "clean all build artifacts"); },
@@ -324,7 +325,13 @@ Arguments:
                     test_args: matches.opt_strs("test-args"),
                     rustc_args: matches.opt_strs("rustc-args"),
                     fail_fast: !matches.opt_present("no-fail-fast"),
-                    doc_tests: matches.opt_present("doc"),
+                    doc_tests: if matches.opt_present("doc") {
+                        DocTests::Only
+                    } else if matches.opt_present("no-doc") {
+                        DocTests::No
+                    } else {
+                        DocTests::Yes
+                    }
                 }
             }
             "bench" => {
@@ -411,10 +418,10 @@ impl Subcommand {
         }
     }
 
-    pub fn doc_tests(&self) -> bool {
+    pub fn doc_tests(&self) -> DocTests {
         match *self {
             Subcommand::Test { doc_tests, .. } => doc_tests,
-            _ => false,
+            _ => DocTests::Yes,
         }
     }
 }

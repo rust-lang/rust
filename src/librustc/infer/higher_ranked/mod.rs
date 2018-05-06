@@ -19,7 +19,7 @@ use super::{CombinedSnapshot,
 use super::combine::CombineFields;
 use super::region_constraints::{TaintDirections};
 
-use std::collections::BTreeMap;
+use rustc_data_structures::lazy_btree_map::LazyBTreeMap;
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
             let (b_prime, skol_map) =
-                self.infcx.skolemize_late_bound_regions(b, snapshot);
+                self.infcx.skolemize_late_bound_regions(b);
 
             debug!("a_prime={:?}", a_prime);
             debug!("b_prime={:?}", b_prime);
@@ -114,7 +114,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // First, we instantiate each bound region in the matcher
             // with a skolemized region.
             let ((a_match, a_value), skol_map) =
-                self.infcx.skolemize_late_bound_regions(a_pair, snapshot);
+                self.infcx.skolemize_late_bound_regions(a_pair);
 
             debug!("higher_ranked_match: a_match={:?}", a_match);
             debug!("higher_ranked_match: skol_map={:?}", skol_map);
@@ -247,7 +247,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                             a_map: &LazyBTreeMap<ty::BoundRegion,
+                                                                  ty::Region<'tcx>>,
                                              r0: ty::Region<'tcx>)
                                              -> ty::Region<'tcx> {
             // Regions that pre-dated the LUB computation stay as they are.
@@ -343,7 +344,8 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
                                              snapshot: &CombinedSnapshot<'a, 'tcx>,
                                              debruijn: ty::DebruijnIndex,
                                              new_vars: &[ty::RegionVid],
-                                             a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                             a_map: &LazyBTreeMap<ty::BoundRegion,
+                                                                  ty::Region<'tcx>>,
                                              a_vars: &[ty::RegionVid],
                                              b_vars: &[ty::RegionVid],
                                              r0: ty::Region<'tcx>)
@@ -412,7 +414,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 
         fn rev_lookup<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                       span: Span,
-                                      a_map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
+                                      a_map: &LazyBTreeMap<ty::BoundRegion, ty::Region<'tcx>>,
                                       r: ty::Region<'tcx>) -> ty::Region<'tcx>
         {
             for (a_br, a_r) in a_map {
@@ -435,7 +437,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
 }
 
 fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
-                           map: &BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+                           map: &LazyBTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
                            -> Vec<ty::RegionVid> {
     map.iter()
        .map(|(_, &r)| match *r {
@@ -585,14 +587,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/trait-hrtb.html
     pub fn skolemize_late_bound_regions<T>(&self,
-                                           binder: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot<'a, 'tcx>)
+                                           binder: &ty::Binder<T>)
                                            -> (T, SkolemizationMap<'tcx>)
         where T : TypeFoldable<'tcx>
     {
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.borrow_region_constraints()
-                .push_skolemized(self.tcx, br, &snapshot.region_constraints_snapshot)
+            self.universe.set(self.universe().subuniverse());
+            self.tcx.mk_region(ty::ReSkolemized(self.universe(), br))
         });
 
         debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -777,7 +778,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("pop_skolemized({:?})", skol_map);
         let skol_regions: FxHashSet<_> = skol_map.values().cloned().collect();
         self.borrow_region_constraints()
-            .pop_skolemized(self.tcx, &skol_regions, &snapshot.region_constraints_snapshot);
+            .pop_skolemized(self.universe(), &skol_regions, &snapshot.region_constraints_snapshot);
+        self.universe.set(snapshot.universe);
         if !skol_map.is_empty() {
             self.projection_cache.borrow_mut().rollback_skolemized(
                 &snapshot.projection_cache_snapshot);

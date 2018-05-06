@@ -864,7 +864,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfType.name().as_str())
+        ParamTy::new(0, keywords::SelfType.name().as_interned_str())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {
@@ -876,8 +876,10 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn is_self(&self) -> bool {
-        if self.name == keywords::SelfType.name().as_str() {
-            assert_eq!(self.idx, 0);
+        // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
+        // but this should only be possible when using `-Z continue-parse-after-error` like
+        // `compile-fail/issue-36638.rs`.
+        if self.name == keywords::SelfType.name().as_str() && self.idx == 0 {
             true
         } else {
             false
@@ -1019,7 +1021,7 @@ pub enum RegionKind {
 
     /// A skolemized region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    ReSkolemized(SkolemizedRegionVid, BoundRegion),
+    ReSkolemized(ty::UniverseIndex, BoundRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat
@@ -1072,11 +1074,6 @@ newtype_index!(RegionVid
         pub idx
         DEBUG_FORMAT = custom,
     });
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
-pub struct SkolemizedRegionVid {
-    pub index: u32,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum InferTy {
@@ -1169,13 +1166,6 @@ impl RegionKind {
         }
     }
 
-    pub fn needs_infer(&self) -> bool {
-        match *self {
-            ty::ReVar(..) | ty::ReSkolemized(..) => true,
-            _ => false
-        }
-    }
-
     pub fn escapes_depth(&self, depth: u32) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn.depth > depth,
@@ -1193,20 +1183,29 @@ impl RegionKind {
         }
     }
 
+    pub fn keep_in_local_tcx(&self) -> bool {
+        if let ty::ReVar(..) = self {
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn type_flags(&self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
+
+        if self.keep_in_local_tcx() {
+            flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
+        }
 
         match *self {
             ty::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_INFER;
-                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReSkolemized(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_INFER;
                 flags = flags | TypeFlags::HAS_RE_SKOL;
-                flags = flags | TypeFlags::KEEP_IN_LOCAL_TCX;
             }
             ty::ReLateBound(..) => { }
             ty::ReEarlyBound(..) => {

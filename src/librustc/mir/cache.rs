@@ -68,7 +68,7 @@ fn calculate_predecessors(mir: &Mir) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
         if let Some(ref term) = data.terminator {
-            for &tgt in term.successors().iter() {
+            for &tgt in term.successors() {
                 result[tgt].push(bb);
             }
         }

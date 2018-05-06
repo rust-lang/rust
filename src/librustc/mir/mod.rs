@@ -15,17 +15,17 @@
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use middle::region;
-use rustc_const_math::ConstMathErr;
 use rustc_data_structures::sync::{Lrc};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::control_flow_graph::dominators::{Dominators, dominators};
 use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_serialize as serialize;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use mir::visit::MirVisitable;
-use mir::interpret::{Value, PrimVal};
+use mir::interpret::{Value, PrimVal, EvalErrorKind};
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, Region, Ty, TyCtxt, GeneratorInterior};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -36,12 +36,16 @@ use hir::{self, InlineAsm};
 use std::borrow::{Cow};
 use rustc_data_structures::sync::ReadGuard;
 use std::fmt::{self, Debug, Formatter, Write};
-use std::{iter, mem, u32};
+use std::{iter, mem, option, u32};
 use std::ops::{Index, IndexMut};
 use std::vec::IntoIter;
 use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
+use rustc_apfloat::ieee::{Single, Double};
+use rustc_apfloat::Float;
+
+pub use mir::interpret::AssertMessage;
 
 mod cache;
 pub mod tcx;
@@ -240,6 +244,22 @@ impl<'tcx> Mir<'tcx> {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             if self.local_decls[local].is_user_variable {
+                Some(local)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns an iterator over all user-declared mutable arguments and locals.
+    #[inline]
+    pub fn mut_vars_and_args_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
+        (1..self.local_decls.len()).filter_map(move |index| {
+            let local = Local::new(index);
+            let decl = &self.local_decls[local];
+            if (decl.is_user_variable || index < self.arg_count + 1)
+               && decl.mutability == Mutability::Mut
+            {
                 Some(local)
             } else {
                 None
@@ -842,12 +862,17 @@ pub enum TerminatorKind<'tcx> {
     },
 }
 
+pub type Successors<'a> =
+    iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
+pub type SuccessorsMut<'a> =
+    iter::Chain<option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
+
 impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> Cow<[BasicBlock]> {
+    pub fn successors(&self) -> Successors {
         self.kind.successors()
     }
 
-    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+    pub fn successors_mut(&mut self) -> SuccessorsMut {
         self.kind.successors_mut()
     }
 
@@ -868,72 +893,71 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    pub fn successors(&self) -> Cow<[BasicBlock]> {
+    pub fn successors(&self) -> Successors {
         use self::TerminatorKind::*;
         match *self {
-            Goto { target: ref b } => slice::from_ref(b).into_cow(),
-            SwitchInt { targets: ref b, .. } => b[..].into_cow(),
-            Resume | Abort | GeneratorDrop => (&[]).into_cow(),
-            Return => (&[]).into_cow(),
-            Unreachable => (&[]).into_cow(),
-            Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
-            Call { destination: Some((_, ref t)), cleanup: None, .. } =>
-                slice::from_ref(t).into_cow(),
-            Call { destination: None, cleanup: Some(ref c), .. } => slice::from_ref(c).into_cow(),
-            Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
-            Yield { resume: t, drop: Some(c), .. } => vec![t, c].into_cow(),
-            Yield { resume: ref t, drop: None, .. } => slice::from_ref(t).into_cow(),
-            DropAndReplace { target, unwind: Some(unwind), .. } |
-            Drop { target, unwind: Some(unwind), .. } => {
-                vec![target, unwind].into_cow()
+            Resume | Abort | GeneratorDrop | Return | Unreachable |
+            Call { destination: None, cleanup: None, .. } => {
+                None.into_iter().chain(&[])
             }
-            DropAndReplace { ref target, unwind: None, .. } |
-            Drop { ref target, unwind: None, .. } => {
-                slice::from_ref(target).into_cow()
+            Goto { target: ref t } |
+            Call { destination: None, cleanup: Some(ref t), .. } |
+            Call { destination: Some((_, ref t)), cleanup: None, .. } |
+            Yield { resume: ref t, drop: None, .. } |
+            DropAndReplace { target: ref t, unwind: None, .. } |
+            Drop { target: ref t, unwind: None, .. } |
+            Assert { target: ref t, cleanup: None, .. } |
+            FalseUnwind { real_target: ref t, unwind: None } => {
+                Some(t).into_iter().chain(&[])
             }
-            Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
-            Assert { ref target, .. } => slice::from_ref(target).into_cow(),
+            Call { destination: Some((_, ref t)), cleanup: Some(ref u), .. } |
+            Yield { resume: ref t, drop: Some(ref u), .. } |
+            DropAndReplace { target: ref t, unwind: Some(ref u), .. } |
+            Drop { target: ref t, unwind: Some(ref u), .. } |
+            Assert { target: ref t, cleanup: Some(ref u), .. } |
+            FalseUnwind { real_target: ref t, unwind: Some(ref u) } => {
+                Some(t).into_iter().chain(slice::from_ref(u))
+            }
+            SwitchInt { ref targets, .. } => {
+                None.into_iter().chain(&targets[..])
+            }
             FalseEdges { ref real_target, ref imaginary_targets } => {
-                let mut s = vec![*real_target];
-                s.extend_from_slice(imaginary_targets);
-                s.into_cow()
+                Some(real_target).into_iter().chain(&imaginary_targets[..])
             }
-            FalseUnwind { real_target: t, unwind: Some(u) } => vec![t, u].into_cow(),
-            FalseUnwind { real_target: ref t, unwind: None } => slice::from_ref(t).into_cow(),
         }
     }
 
-    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
-    // `Vec<&mut BasicBlock>` would look like in the first place.
-    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+    pub fn successors_mut(&mut self) -> SuccessorsMut {
         use self::TerminatorKind::*;
         match *self {
-            Goto { target: ref mut b } => vec![b],
-            SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
-            Resume | Abort | GeneratorDrop => Vec::new(),
-            Return => Vec::new(),
-            Unreachable => Vec::new(),
-            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut c), .. } => vec![t, c],
-            Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
-            Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
-            Call { destination: None, cleanup: None, .. } => vec![],
-            Yield { resume: ref mut t, drop: Some(ref mut c), .. } => vec![t, c],
-            Yield { resume: ref mut t, drop: None, .. } => vec![t],
-            DropAndReplace { ref mut target, unwind: Some(ref mut unwind), .. } |
-            Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
-            DropAndReplace { ref mut target, unwind: None, .. } |
-            Drop { ref mut target, unwind: None, .. } => {
-                vec![target]
+            Resume | Abort | GeneratorDrop | Return | Unreachable |
+            Call { destination: None, cleanup: None, .. } => {
+                None.into_iter().chain(&mut [])
             }
-            Assert { ref mut target, cleanup: Some(ref mut unwind), .. } => vec![target, unwind],
-            Assert { ref mut target, .. } => vec![target],
+            Goto { target: ref mut t } |
+            Call { destination: None, cleanup: Some(ref mut t), .. } |
+            Call { destination: Some((_, ref mut t)), cleanup: None, .. } |
+            Yield { resume: ref mut t, drop: None, .. } |
+            DropAndReplace { target: ref mut t, unwind: None, .. } |
+            Drop { target: ref mut t, unwind: None, .. } |
+            Assert { target: ref mut t, cleanup: None, .. } |
+            FalseUnwind { real_target: ref mut t, unwind: None } => {
+                Some(t).into_iter().chain(&mut [])
+            }
+            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut u), .. } |
+            Yield { resume: ref mut t, drop: Some(ref mut u), .. } |
+            DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. } |
+            Drop { target: ref mut t, unwind: Some(ref mut u), .. } |
+            Assert { target: ref mut t, cleanup: Some(ref mut u), .. } |
+            FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => {
+                Some(t).into_iter().chain(slice::from_ref_mut(u))
+            }
+            SwitchInt { ref mut targets, .. } => {
+                None.into_iter().chain(&mut targets[..])
+            }
             FalseEdges { ref mut real_target, ref mut imaginary_targets } => {
-                let mut s = vec![real_target];
-                s.extend(imaginary_targets.iter_mut());
-                s
+                Some(real_target).into_iter().chain(&mut imaginary_targets[..])
             }
-            FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => vec![t, u],
-            FalseUnwind { ref mut real_target, unwind: None } => vec![real_target],
         }
     }
 
@@ -1053,18 +1077,18 @@ impl<'tcx> BasicBlockData<'tcx> {
 impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         self.fmt_head(fmt)?;
-        let successors = self.successors();
+        let successor_count = self.successors().count();
         let labels = self.fmt_successor_labels();
-        assert_eq!(successors.len(), labels.len());
+        assert_eq!(successor_count, labels.len());
 
-        match successors.len() {
+        match successor_count {
             0 => Ok(()),
 
-            1 => write!(fmt, " -> {:?}", successors[0]),
+            1 => write!(fmt, " -> {:?}", self.successors().nth(0).unwrap()),
 
             _ => {
                 write!(fmt, " -> [")?;
-                for (i, target) in successors.iter().enumerate() {
+                for (i, target) in self.successors().enumerate() {
                     if i > 0 {
                         write!(fmt, ", ")?;
                     }
@@ -1113,26 +1137,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 if !expected {
                     write!(fmt, "!")?;
                 }
-                write!(fmt, "{:?}, ", cond)?;
-
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        write!(fmt, "{:?}, {:?}, {:?}",
-                               "index out of bounds: the len is {} but the index is {}",
-                               len, index)?;
-                    }
-                    AssertMessage::Math(ref err) => {
-                        write!(fmt, "{:?}", err.description())?;
-                    }
-                    AssertMessage::GeneratorResumedAfterReturn => {
-                        write!(fmt, "{:?}", "generator resumed after completion")?;
-                    }
-                    AssertMessage::GeneratorResumedAfterPanic => {
-                        write!(fmt, "{:?}", "generator resumed after panicking")?;
-                    }
-                }
-
-                write!(fmt, ")")
+                write!(fmt, "{:?}, \"{:?}\")", cond, msg)
             },
             FalseEdges { .. } => write!(fmt, "falseEdges"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
@@ -1185,17 +1190,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
         }
     }
-}
-
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum AssertMessage<'tcx> {
-    BoundsCheck {
-        len: Operand<'tcx>,
-        index: Operand<'tcx>
-    },
-    Math(ConstMathErr),
-    GeneratorResumedAfterReturn,
-    GeneratorResumedAfterPanic,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1898,12 +1892,13 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ty::Const) -> fmt::Result {
 
 pub fn print_miri_value<W: Write>(value: Value, ty: Ty, f: &mut W) -> fmt::Result {
     use ty::TypeVariants::*;
-    use rustc_const_math::ConstFloat;
     match (value, &ty.sty) {
         (Value::ByVal(PrimVal::Bytes(0)), &TyBool) => write!(f, "false"),
         (Value::ByVal(PrimVal::Bytes(1)), &TyBool) => write!(f, "true"),
-        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(fty)) =>
-            write!(f, "{}", ConstFloat { bits, ty: fty }),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F32)) =>
+            write!(f, "{}f32", Single::from_bits(bits)),
+        (Value::ByVal(PrimVal::Bytes(bits)), &TyFloat(ast::FloatTy::F64)) =>
+            write!(f, "{}f64", Double::from_bits(bits)),
         (Value::ByVal(PrimVal::Bytes(n)), &TyUint(ui)) => write!(f, "{:?}{}", n, ui),
         (Value::ByVal(PrimVal::Bytes(n)), &TyInt(i)) => write!(f, "{:?}{}", n as i128, i),
         (Value::ByVal(PrimVal::Bytes(n)), &TyChar) =>
@@ -1952,7 +1947,7 @@ impl<'tcx> ControlFlowGraph for Mir<'tcx> {
     fn successors<'graph>(&'graph self, node: Self::Node)
                           -> <Self as GraphSuccessors<'graph>>::Iter
     {
-        self.basic_blocks[node].terminator().successors().into_owned().into_iter()
+        self.basic_blocks[node].terminator().successors().cloned()
     }
 }
 
@@ -1963,7 +1958,7 @@ impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
 
 impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
     type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
+    type Iter = iter::Cloned<Successors<'b>>;
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
@@ -1983,6 +1978,11 @@ impl fmt::Debug for Location {
 }
 
 impl Location {
+    pub const START: Location = Location {
+        block: START_BLOCK,
+        statement_index: 0,
+    };
+
     /// Returns the location immediately after this one within the enclosing block.
     ///
     /// Note that if this location represents a terminator, then the
@@ -2027,6 +2027,12 @@ pub struct UnsafetyCheckResult {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct GeneratorLayout<'tcx> {
     pub fields: Vec<LocalDecl<'tcx>>,
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct BorrowCheckResult<'gcx> {
+    pub closure_requirements: Option<ClosureRegionRequirements<'gcx>>,
+    pub used_mut_upvars: SmallVec<[Field; 8]>,
 }
 
 /// After we borrow check a closure, we are left with various
@@ -2256,8 +2262,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 }
             },
             Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    AssertMessage::BoundsCheck {
+                let msg = if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
+                    EvalErrorKind::BoundsCheck {
                         len: len.fold_with(folder),
                         index: index.fold_with(folder),
                     }
@@ -2306,7 +2312,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             },
             Assert { ref cond, ref msg, .. } => {
                 if cond.visit_with(visitor) {
-                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
                         len.visit_with(visitor) || index.visit_with(visitor)
                     } else {
                         false

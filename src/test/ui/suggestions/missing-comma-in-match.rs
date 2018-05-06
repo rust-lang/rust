@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 fn main() {
     match &Some(3) {
         &None => 1

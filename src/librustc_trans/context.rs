@@ -39,7 +39,7 @@ use std::ptr;
 use std::iter;
 use std::str;
 use std::sync::Arc;
-use syntax::symbol::InternedString;
+use syntax::symbol::LocalInternedString;
 use abi::Abi;
 
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
@@ -62,7 +62,7 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>,
                                 Option<ty::PolyExistentialTraitRef<'tcx>>), ValueRef>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<InternedString, ValueRef>>,
+    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, ValueRef>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is a ValueRef holding a *T,
@@ -273,7 +273,7 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
             let dbg_cx = if tcx.sess.opts.debuginfo != NoDebugInfo {
                 let dctx = debuginfo::CrateDebugContext::new(llmod);
                 debuginfo::metadata::compile_unit_metadata(tcx,
-                                                           codegen_unit.name(),
+                                                           &codegen_unit.name().as_str(),
                                                            &dctx);
                 Some(dctx)
             } else {

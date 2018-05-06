@@ -95,7 +95,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     block_data
                         .terminator()
                         .successors()
-                        .iter()
                         .map(|&basic_block| Location {
                             statement_index: 0,
                             block: basic_block,

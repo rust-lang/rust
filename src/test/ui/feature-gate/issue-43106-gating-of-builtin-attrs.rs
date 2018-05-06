@@ -50,7 +50,6 @@
 #![allow                       (x5300)] //~ WARN unknown lint: `x5300`
 #![forbid                      (x5200)] //~ WARN unknown lint: `x5200`
 #![deny                        (x5100)] //~ WARN unknown lint: `x5100`
-#![macro_reexport             = "5000"] //~ WARN unused attribute
 #![macro_use] // (allowed if no argument; see issue-43160-gating-of-macro_use.rs)
 #![macro_export               = "4800"] //~ WARN unused attribute
 #![plugin_registrar           = "4700"] //~ WARN unused attribute
@@ -184,25 +183,6 @@ mod deny {
 
     #[deny(x5100)] impl S { }
     //~^ WARN unknown lint: `x5100`
-}
-
-#[macro_reexport = "5000"]
-//~^ WARN unused attribute
-mod macro_reexport {
-    mod inner { #![macro_reexport="5000"] }
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] fn f() { }
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] struct S;
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] type T = S;
-    //~^ WARN unused attribute
-
-    #[macro_reexport = "5000"] impl S { }
-    //~^ WARN unused attribute
 }
 
 #[macro_use]
@@ -661,7 +641,6 @@ mod must_use {
     mod inner { #![must_use="1400"] }
 
     #[must_use = "1400"] fn f() { }
-    //~^ WARN `#[must_use]` on functions is experimental
 
     #[must_use = "1400"] struct S;
 

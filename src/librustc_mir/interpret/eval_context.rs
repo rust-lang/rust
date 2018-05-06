@@ -513,7 +513,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     // it emits in debug mode) is performance, but it doesn't cost us any performance in miri.
                     // If, however, the compiler ever starts transforming unchecked intrinsics into unchecked binops,
                     // we have to go back to just ignoring the overflow here.
-                    return err!(OverflowingMath);
+                    return err!(Overflow(bin_op));
                 }
             }
 
@@ -768,9 +768,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
         }
 
-        if log_enabled!(::log::Level::Trace) {
-            self.dump_local(dest);
-        }
+        self.dump_local(dest);
 
         Ok(())
     }
@@ -919,8 +917,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 niche_start,
                 ..
             } => {
-                let variants_start = niche_variants.start as u128;
-                let variants_end = niche_variants.end as u128;
+                let variants_start = *niche_variants.start() as u128;
+                let variants_end = *niche_variants.end() as u128;
                 match raw_discr {
                     PrimVal::Ptr(_) => {
                         assert!(niche_start == 0);
@@ -986,7 +984,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 if variant_index != dataful_variant {
                     let (niche_dest, niche) =
                         self.place_field(dest, mir::Field::new(0), layout)?;
-                    let niche_value = ((variant_index - niche_variants.start) as u128)
+                    let niche_value = ((variant_index - niche_variants.start()) as u128)
                         .wrapping_add(niche_start);
                     self.write_primval(niche_dest, PrimVal::Bytes(niche_value), niche.ty)?;
                 }
@@ -1342,9 +1340,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         use syntax::ast::FloatTy;
 
         let layout = self.layout_of(ty)?;
-        // do the strongest layout check of the two
-        let align = layout.align.max(ptr_align);
-        self.memory.check_align(ptr, align)?;
+        self.memory.check_align(ptr, ptr_align)?;
 
         if layout.size.bytes() == 0 {
             return Ok(Some(Value::ByVal(PrimVal::Undef)));
@@ -1572,6 +1568,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub fn dump_local(&self, place: Place) {
         // Debug output
+        if !log_enabled!(::log::Level::Trace) {
+            return;
+        }
         match place {
             Place::Local { frame, local } => {
                 let mut allocs = Vec::new();

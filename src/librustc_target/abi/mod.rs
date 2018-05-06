@@ -14,7 +14,7 @@ pub use self::Primitive::*;
 use spec::Target;
 
 use std::cmp;
-use std::ops::{Add, Deref, Sub, Mul, AddAssign, RangeInclusive};
+use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 pub mod call;
 
@@ -326,9 +326,9 @@ impl AddAssign for Size {
 }
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
-/// Each field is a power of two, giving the alignment a maximum value of
-/// 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a i32,
-/// with a maximum capacity of 2<sup>31</sup> - 1 or 2147483647.
+/// Each field is a power of two, giving the alignment a maximum value
+/// of 2<sup>(2<sup>8</sup> - 1)</sup>, which is limited by LLVM to a
+/// maximum capacity of 2<sup>29</sup> or 536870912.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Align {
     abi_pow2: u8,
@@ -356,7 +356,7 @@ impl Align {
             }
             if bytes != 1 {
                 Err(format!("`{}` is not a power of 2", align))
-            } else if pow > 30 {
+            } else if pow > 29 {
                 Err(format!("`{}` is too large", align))
             } else {
                 Ok(pow)
@@ -543,6 +543,23 @@ impl Scalar {
         } else {
             false
         }
+    }
+
+    /// Returns the valid range as a `x..y` range.
+    ///
+    /// If `x` and `y` are equal, the range is full, not empty.
+    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: C) -> Range<u128> {
+        // For a (max) value of -1, max will be `-1 as usize`, which overflows.
+        // However, that is fine here (it would still represent the full range),
+        // i.e., if the range is everything.
+        let bits = self.value.size(cx).bits();
+        assert!(bits <= 128);
+        let mask = !0u128 >> (128 - bits);
+        let start = *self.valid_range.start();
+        let end = *self.valid_range.end();
+        assert_eq!(start, start & mask);
+        assert_eq!(end, end & mask);
+        start..(end.wrapping_add(1) & mask)
     }
 }
 

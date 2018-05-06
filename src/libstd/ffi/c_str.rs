@@ -988,6 +988,7 @@ impl CStr {
     /// behavior when `ptr` is used inside the `unsafe` block:
     ///
     /// ```no_run
+    /// # #![allow(unused_must_use)]
     /// use std::ffi::{CString};
     ///
     /// let ptr = CString::new("Hello").unwrap().as_ptr();
@@ -1003,6 +1004,7 @@ impl CStr {
     /// To fix the problem, bind the `CString` to a local variable:
     ///
     /// ```no_run
+    /// # #![allow(unused_must_use)]
     /// use std::ffi::{CString};
     ///
     /// let hello = CString::new("Hello").unwrap();
@@ -1118,6 +1120,7 @@ impl CStr {
     ///
     /// [`Cow`]: ../borrow/enum.Cow.html
     /// [`Borrowed`]: ../borrow/enum.Cow.html#variant.Borrowed
+    /// [`Owned`]: ../borrow/enum.Cow.html#variant.Owned
     /// [`str`]: ../primitive.str.html
     /// [`String`]: ../string/struct.String.html
     ///

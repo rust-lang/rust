@@ -1,19 +1,19 @@
-error[E0518]: attribute should be applied to function
+error[E0518]: attribute should be applied to function or closure
   --> $DIR/E0518.rs:11:1
    |
 LL | #[inline(always)] //~ ERROR: E0518
    | ^^^^^^^^^^^^^^^^^
 LL | struct Foo;
-   | ----------- not a function
+   | ----------- not a function or closure
 
-error[E0518]: attribute should be applied to function
+error[E0518]: attribute should be applied to function or closure
   --> $DIR/E0518.rs:14:1
    |
 LL |   #[inline(never)] //~ ERROR: E0518
    |   ^^^^^^^^^^^^^^^^
 LL | / impl Foo {
 LL | | }
-   | |_- not a function
+   | |_- not a function or closure
 
 error: aborting due to 2 previous errors
 

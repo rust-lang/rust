@@ -738,12 +738,17 @@ fn create_generator_resume_function<'a, 'tcx>(
 
     let mut cases = create_cases(mir, &transform, |point| Some(point.resume));
 
+    use rustc::mir::interpret::EvalErrorKind::{
+        GeneratorResumedAfterPanic,
+        GeneratorResumedAfterReturn,
+    };
+
     // Jump to the entry point on the 0 state
     cases.insert(0, (0, BasicBlock::new(0)));
     // Panic when resumed on the returned (1) state
-    cases.insert(1, (1, insert_panic_block(tcx, mir, AssertMessage::GeneratorResumedAfterReturn)));
+    cases.insert(1, (1, insert_panic_block(tcx, mir, GeneratorResumedAfterReturn)));
     // Panic when resumed on the poisoned (2) state
-    cases.insert(2, (2, insert_panic_block(tcx, mir, AssertMessage::GeneratorResumedAfterPanic)));
+    cases.insert(2, (2, insert_panic_block(tcx, mir, GeneratorResumedAfterPanic)));
 
     insert_switch(tcx, mir, cases, &transform, TerminatorKind::Unreachable);
 

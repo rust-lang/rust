@@ -14,6 +14,7 @@ use std::ffi::{CStr, CString};
 use rustc::hir::{self, TransFnAttrFlags};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::session::Session;
 use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
@@ -68,8 +69,6 @@ pub fn naked(val: ValueRef, is_naked: bool) {
 }
 
 pub fn set_frame_pointer_elimination(cx: &CodegenCx, llfn: ValueRef) {
-    // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a
-    // parameter.
     if cx.sess().must_not_eliminate_frame_pointers() {
         llvm::AddFunctionAttrStringValue(
             llfn, llvm::AttributePlace::Function,
@@ -104,6 +103,18 @@ pub fn set_probestack(cx: &CodegenCx, llfn: ValueRef) {
         cstr("probe-stack\0"), cstr("__rust_probestack\0"));
 }
 
+pub fn llvm_target_features(sess: &Session) -> impl Iterator<Item = &str> {
+    const RUSTC_SPECIFIC_FEATURES: &[&str] = &[
+        "crt-static",
+    ];
+
+    let cmdline = sess.opts.cg.target_feature.split(',')
+        .filter(|f| !RUSTC_SPECIFIC_FEATURES.iter().any(|s| f.contains(s)));
+    sess.target.target.options.features.split(',')
+        .chain(cmdline)
+        .filter(|l| !l.is_empty())
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
@@ -131,13 +142,16 @@ pub fn from_fn_attrs(cx: &CodegenCx, llfn: ValueRef, id: DefId) {
         unwind(llfn, false);
     }
 
-    let features =
-        trans_fn_attrs.target_features
-        .iter()
-        .map(|f| {
-            let feature = &*f.as_str();
-            format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
-        })
+    let features = llvm_target_features(cx.tcx.sess)
+        .map(|s| s.to_string())
+        .chain(
+            trans_fn_attrs.target_features
+                .iter()
+                .map(|f| {
+                    let feature = &*f.as_str();
+                    format!("+{}", llvm_util::to_llvm_feature(cx.tcx.sess, feature))
+                })
+        )
         .collect::<Vec<String>>()
         .join(",");
 

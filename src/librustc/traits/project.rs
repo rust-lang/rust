@@ -188,7 +188,7 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
     let infcx = selcx.infcx();
     infcx.commit_if_ok(|snapshot| {
         let (skol_predicate, skol_map) =
-            infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
+            infcx.skolemize_late_bound_regions(&obligation.predicate);
 
         let skol_obligation = obligation.with(skol_predicate);
         let r = match project_and_unify_type(selcx, &skol_obligation) {
@@ -196,7 +196,10 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
                 let span = obligation.cause.span;
                 match infcx.leak_check(false, span, &skol_map, snapshot) {
                     Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, result)),
-                    Err(e) => Err(MismatchedProjectionTypes { err: e }),
+                    Err(e) => {
+                        debug!("poly_project_and_unify_type: leak check encountered error {:?}", e);
+                        Err(MismatchedProjectionTypes { err: e })
+                    }
                 }
             }
             Err(e) => {
@@ -243,7 +246,10 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
             obligations.extend(inferred_obligations);
             Ok(Some(obligations))
         },
-        Err(err) => Err(MismatchedProjectionTypes { err: err }),
+        Err(err) => {
+            debug!("project_and_unify_type: equating types encountered error {:?}", err);
+            Err(MismatchedProjectionTypes { err: err })
+        }
     }
 }
 
@@ -403,7 +409,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         if let ConstVal::Unevaluated(def_id, substs) = constant.val {
             let tcx = self.selcx.tcx().global_tcx();
             if let Some(param_env) = self.tcx().lift_to_global(&self.param_env) {
-                if substs.needs_infer() {
+                if substs.needs_infer() || substs.has_skol() {
                     let identity_substs = Substs::identity_for_item(tcx, def_id);
                     let instance = ty::Instance::resolve(tcx, param_env, def_id, identity_substs);
                     if let Some(instance) = instance {

@@ -56,14 +56,16 @@ pub struct RawVec<T, A: Alloc = Global> {
 impl<T, A: Alloc> RawVec<T, A> {
     /// Like `new` but parameterized over the choice of allocator for
     /// the returned RawVec.
-    pub fn new_in(a: A) -> Self {
+    pub const fn new_in(a: A) -> Self {
         // !0 is usize::MAX. This branch should be stripped at compile time.
-        let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+        // FIXME(mark-i-m): use this line when `if`s are allowed in `const`
+        //let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
         // Unique::empty() doubles as "unallocated" and "zero-sized allocation"
         RawVec {
             ptr: Unique::empty(),
-            cap,
+            // FIXME(mark-i-m): use `cap` when ifs are allowed in const
+            cap: [0, !0][(mem::size_of::<T>() == 0) as usize],
             a,
         }
     }
@@ -120,7 +122,7 @@ impl<T> RawVec<T, Global> {
     /// RawVec with capacity 0. If T has 0 size, then it makes a
     /// RawVec with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self::new_in(Global)
     }
 

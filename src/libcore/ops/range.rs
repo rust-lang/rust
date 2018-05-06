@@ -45,6 +45,7 @@ use fmt;
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
+#[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
@@ -74,6 +75,7 @@ impl fmt::Debug for RangeFull {
 /// assert_eq!(arr[1.. ], [     'b', 'c', 'd']);
 /// assert_eq!(arr[1..3], [     'b', 'c'     ]);  // Range
 /// ```
+#[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
@@ -175,6 +177,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// ```
 ///
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
+#[doc(alias = "..")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
@@ -256,6 +259,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
+#[doc(alias = "..")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
@@ -314,24 +318,99 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// # Examples
 ///
 /// ```
-/// #![feature(inclusive_range_fields)]
+/// #![feature(inclusive_range_methods)]
 ///
-/// assert_eq!((3..=5), std::ops::RangeInclusive { start: 3, end: 5 });
+/// assert_eq!((3..=5), std::ops::RangeInclusive::new(3, 5));
 /// assert_eq!(3 + 4 + 5, (3..=5).sum());
 ///
 /// let arr = [0, 1, 2, 3];
 /// assert_eq!(arr[ ..=2], [0,1,2  ]);
 /// assert_eq!(arr[1..=2], [  1,2  ]);  // RangeInclusive
 /// ```
+#[doc(alias = "..=")]
 #[derive(Clone, PartialEq, Eq, Hash)]  // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
+    // FIXME: The current representation follows RFC 1980,
+    // but it is known that LLVM is not able to optimize loops following that RFC.
+    // Consider adding an extra `bool` field to indicate emptiness of the range.
+    // See #45222 for performance test cases.
+    #[cfg(not(stage0))]
+    pub(crate) start: Idx,
+    #[cfg(not(stage0))]
+    pub(crate) end: Idx,
     /// The lower bound of the range (inclusive).
+    #[cfg(stage0)]
     #[unstable(feature = "inclusive_range_fields", issue = "49022")]
     pub start: Idx,
     /// The upper bound of the range (inclusive).
+    #[cfg(stage0)]
     #[unstable(feature = "inclusive_range_fields", issue = "49022")]
     pub end: Idx,
+}
+
+impl<Idx> RangeInclusive<Idx> {
+    /// Creates a new inclusive range. Equivalent to writing `start..=end`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inclusive_range_methods)]
+    /// use std::ops::RangeInclusive;
+    ///
+    /// assert_eq!(3..=5, RangeInclusive::new(3, 5));
+    /// ```
+    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[inline]
+    pub const fn new(start: Idx, end: Idx) -> Self {
+        Self { start, end }
+    }
+
+    /// Returns the lower bound of the range (inclusive).
+    ///
+    /// When using an inclusive range for iteration, the values of `start()` and
+    /// [`end()`] are unspecified after the iteration ended. To determine
+    /// whether the inclusive range is empty, use the [`is_empty()`] method
+    /// instead of comparing `start() > end()`.
+    ///
+    /// [`end()`]: #method.end
+    /// [`is_empty()`]: #method.is_empty
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inclusive_range_methods)]
+    ///
+    /// assert_eq!((3..=5).start(), &3);
+    /// ```
+    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[inline]
+    pub fn start(&self) -> &Idx {
+        &self.start
+    }
+
+    /// Returns the upper bound of the range (inclusive).
+    ///
+    /// When using an inclusive range for iteration, the values of [`start()`]
+    /// and `end()` are unspecified after the iteration ended. To determine
+    /// whether the inclusive range is empty, use the [`is_empty()`] method
+    /// instead of comparing `start() > end()`.
+    ///
+    /// [`start()`]: #method.start
+    /// [`is_empty()`]: #method.is_empty
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(inclusive_range_methods)]
+    ///
+    /// assert_eq!((3..=5).end(), &5);
+    /// ```
+    #[unstable(feature = "inclusive_range_methods", issue = "49022")]
+    #[inline]
+    pub fn end(&self) -> &Idx {
+        &self.end
+    }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
@@ -449,6 +528,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// [`IntoIterator`]: ../iter/trait.Iterator.html
 /// [`Iterator`]: ../iter/trait.IntoIterator.html
 /// [slicing index]: ../slice/trait.SliceIndex.html
+#[doc(alias = "..=")]
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeToInclusive<Idx> {

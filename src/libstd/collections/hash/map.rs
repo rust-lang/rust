@@ -33,6 +33,7 @@ const MIN_NONZERO_RAW_CAPACITY: usize = 32;     // must be a power of two
 struct DefaultResizePolicy;
 
 impl DefaultResizePolicy {
+    #[inline]
     fn new() -> DefaultResizePolicy {
         DefaultResizePolicy
     }

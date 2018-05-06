@@ -1427,7 +1427,7 @@ impl<'a> Cache {
         }
         if let Some(ref item_name) = item.name {
             let path = self.paths.get(&item.def_id)
-                                 .map(|p| p.0.join("::").to_string())
+                                 .map(|p| p.0[..p.0.len() - 1].join("::"))
                                  .unwrap_or("std".to_owned());
             for alias in item.attrs.lists("doc")
                                    .filter(|a| a.check_name("alias"))
@@ -1595,6 +1595,8 @@ impl<'a> Settings<'a> {
             settings: vec![
                 ("item-declarations", "Auto-hide item declarations.", true),
                 ("item-attributes", "Auto-hide item attributes.", true),
+                ("go-to-only-result", "Directly go to item in search if there is only one result",
+                 false),
             ],
             root_path,
             suffix,
@@ -3282,7 +3284,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
-    let name = attr.ident.name;
+    let name = attr.name();
 
     if attr.is_word() {
         Some(format!("{}", name))
@@ -3317,7 +3319,7 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        let name = attr.name().unwrap();
+        let name = attr.name();
         if !ATTRIBUTE_WHITELIST.contains(&&*name.as_str()) {
             continue;
         }

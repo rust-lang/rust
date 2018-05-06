@@ -43,6 +43,10 @@ ENV STAGING_DIR=/tmp
 
 COPY scripts/musl.sh /build
 RUN env \
+    CC=arm-linux-gnueabi-gcc CFLAGS="-march=armv5te -marm -mfloat-abi=soft" \
+    CXX=arm-linux-gnueabi-g++ CXXFLAGS="-march=armv5te -marm -mfloat-abi=soft" \
+    bash musl.sh armv5te && \
+    env \
     CC=arm-linux-gnueabi-gcc CFLAGS="-march=armv6 -marm" \
     CXX=arm-linux-gnueabi-g++ CXXFLAGS="-march=armv6 -marm" \
     bash musl.sh arm && \
@@ -84,6 +88,7 @@ ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
+ENV TARGETS=$TARGETS,armv5te-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,aarch64-unknown-linux-musl
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
@@ -100,9 +105,12 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
     CC_armv5te_unknown_linux_gnueabi=arm-linux-gnueabi-gcc \
-    CFLAGS_armv5te_unknown_linux_gnueabi="-march=armv5te -marm -mfloat-abi=soft"
+    CFLAGS_armv5te_unknown_linux_gnueabi="-march=armv5te -marm -mfloat-abi=soft" \
+    CC_armv5te_unknown_linux_musleabi=arm-linux-gnueabi-gcc \
+    CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft"
 
 ENV RUST_CONFIGURE_ARGS \
+      --musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
       --musl-root-armv7=/musl-armv7 \

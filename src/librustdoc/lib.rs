@@ -13,6 +13,8 @@
        html_root_url = "https://doc.rust-lang.org/nightly/",
        html_playground_url = "https://play.rust-lang.org/")]
 
+#![cfg_attr(stage0, feature(dyn_trait))]
+
 #![feature(ascii_ctype)]
 #![feature(rustc_private)]
 #![feature(box_patterns)]
@@ -23,14 +25,12 @@
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(entry_and_modify)]
-#![feature(dyn_trait)]
 
 extern crate arena;
 extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_const_math;
 extern crate rustc_trans_utils;
 extern crate rustc_driver;
 extern crate rustc_resolve;

@@ -101,7 +101,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     {
         let tcx = self.tcx();
         let lifetime_name = |def_id| {
-            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap()).as_str()
+            tcx.hir.name(tcx.hir.as_local_node_id(def_id).unwrap()).as_interned_str()
         };
 
         let hir_id = tcx.hir.node_to_hir_id(lifetime.id);
@@ -981,7 +981,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let item_def_id = tcx.hir.local_def_id(item_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id)];
-                tcx.mk_param(index, tcx.hir.name(node_id).as_str())
+                tcx.mk_param(index, tcx.hir.name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
                 // Self in impl (we know the concrete type).

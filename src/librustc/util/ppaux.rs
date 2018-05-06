@@ -462,7 +462,7 @@ impl PrintContext {
                 0 => Symbol::intern("'r"),
                 1 => Symbol::intern("'s"),
                 i => Symbol::intern(&format!("'t{}", i-2)),
-            }.as_str()
+            }.as_interned_str()
         }
 
         // Replace any anonymous late-bound regions with named
@@ -808,8 +808,8 @@ define_print! {
                     write!(f, "'?{}", c.index())
                 }
 
-                ty::ReSkolemized(id, ref bound_region) => {
-                    write!(f, "ReSkolemized({}, {:?})", id.index, bound_region)
+                ty::ReSkolemized(universe, ref bound_region) => {
+                    write!(f, "ReSkolemized({:?}, {:?})", universe, bound_region)
                 }
 
                 ty::ReEmpty => write!(f, "ReEmpty"),

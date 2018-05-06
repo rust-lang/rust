@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use attributes;
 use back::bytecode::{self, RLIB_BYTECODE_EXTENSION};
 use back::lto::{self, ModuleBuffer, ThinBuffer};
 use back::link::{self, get_linker, remove};
@@ -111,31 +112,6 @@ pub fn write_output_file(
     }
 }
 
-// On android, we by default compile for armv7 processors. This enables
-// things like double word CAS instructions (rather than emulating them)
-// which are *far* more efficient. This is obviously undesirable in some
-// cases, so if any sort of target feature is specified we don't append v7
-// to the feature list.
-//
-// On iOS only armv7 and newer are supported. So it is useful to
-// get all hardware potential via VFP3 (hardware floating point)
-// and NEON (SIMD) instructions supported by LLVM.
-// Note that without those flags various linking errors might
-// arise as some of intrinsics are converted into function calls
-// and nobody provides implementations those functions
-fn target_feature(sess: &Session) -> String {
-    let rustc_features = [
-        "crt-static",
-    ];
-    let requested_features = sess.opts.cg.target_feature.split(',');
-    let llvm_features = requested_features.filter(|f| {
-        !rustc_features.iter().any(|s| f.contains(s))
-    });
-    format!("{},{}",
-            sess.target.target.options.features,
-            llvm_features.collect::<Vec<_>>().join(","))
-}
-
 fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
     match optimize {
       config::OptLevel::No => llvm::CodeGenOptLevel::None,
@@ -203,7 +179,10 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
         None => &*sess.target.target.options.cpu
     };
     let cpu = CString::new(cpu.as_bytes()).unwrap();
-    let features = CString::new(target_feature(sess).as_bytes()).unwrap();
+    let features = attributes::llvm_target_features(sess)
+        .collect::<Vec<_>>()
+        .join(",");
+    let features = CString::new(features).unwrap();
     let is_pie_binary = !find_features && is_pie_binary(sess);
     let trap_unreachable = sess.target.target.options.trap_unreachable;
 

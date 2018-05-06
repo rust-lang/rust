@@ -98,6 +98,7 @@ pub fn opts(arch: Arch) -> Result<TargetOptions, String> {
         executables: true,
         pre_link_args,
         has_elf_tls: false,
+        eliminate_frame_pointer: false,
         // The following line is a workaround for jemalloc 4.5 being broken on
         // ios. jemalloc 5.0 is supposed to fix this.
         // see https://github.com/rust-lang/rust/issues/45262

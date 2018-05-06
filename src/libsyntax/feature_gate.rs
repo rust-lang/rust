@@ -90,24 +90,24 @@ macro_rules! declare_features {
         }
     };
 
-    ($((removed, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
+    ($((removed, $feature: ident, $ver: expr, $issue: expr, None, $reason: expr),)+) => {
         /// Represents unstable features which have since been removed (it was once Active)
-        const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
-            $((stringify!($feature), $ver, $issue)),+
+        const REMOVED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
+            $((stringify!($feature), $ver, $issue, $reason)),+
         ];
     };
 
     ($((stable_removed, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Represents stable features which have since been removed (it was once Accepted)
-        const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
-            $((stringify!($feature), $ver, $issue)),+
+        const STABLE_REMOVED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
+            $((stringify!($feature), $ver, $issue, None)),+
         ];
     };
 
     ($((accepted, $feature: ident, $ver: expr, $issue: expr, None),)+) => {
         /// Those language feature has since been Accepted (it was once Active)
-        const ACCEPTED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
-            $((stringify!($feature), $ver, $issue)),+
+        const ACCEPTED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
+            $((stringify!($feature), $ver, $issue, None)),+
         ];
     }
 }
@@ -161,9 +161,6 @@ declare_features! (
 
     // OIBIT specific features
     (active, optin_builtin_traits, "1.0.0", Some(13231), None),
-
-    // macro re-export needs more discussion and stabilization
-    (active, macro_reexport, "1.0.0", Some(29638), None),
 
     // Allows use of #[staged_api]
     // rustc internal
@@ -369,14 +366,8 @@ declare_features! (
     // #[doc(include="some-file")]
     (active, external_doc, "1.22.0", Some(44732), None),
 
-    // allow `#[must_use]` on functions and comparison operators (RFC 1940)
-    (active, fn_must_use, "1.21.0", Some(43302), None),
-
     // Future-proofing enums/structs with #[non_exhaustive] attribute (RFC 2008)
     (active, non_exhaustive, "1.22.0", Some(44109), None),
-
-    // Trait object syntax with `dyn` prefix
-    (active, dyn_trait, "1.22.0", Some(44662), Some(Edition::Edition2018)),
 
     // `crate` as visibility modifier, synonymous to `pub(crate)`
     (active, crate_visibility_modifier, "1.23.0", Some(45388), Some(Edition::Edition2018)),
@@ -397,7 +388,7 @@ declare_features! (
     (active, generic_associated_types, "1.23.0", Some(44265), None),
 
     // Resolve absolute paths as paths from other crates
-    (active, extern_absolute_paths, "1.24.0", Some(44660), None),
+    (active, extern_absolute_paths, "1.24.0", Some(44660), Some(Edition::Edition2018)),
 
     // `foo.rs` as an alternative to `foo/mod.rs`
     (active, non_modrs_mods, "1.24.0", Some(44660), Some(Edition::Edition2018)),
@@ -466,30 +457,38 @@ declare_features! (
 
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
+
+    // Access to crate names passed via `--extern` through prelude
+    (active, extern_prelude, "1.27.0", Some(44660), Some(Edition::Edition2018)),
+
+    // Scoped attributes
+    (active, tool_attributes, "1.25.0", Some(44690), None),
 );
 
 declare_features! (
-    (removed, import_shadowing, "1.0.0", None, None),
-    (removed, managed_boxes, "1.0.0", None, None),
+    (removed, import_shadowing, "1.0.0", None, None, None),
+    (removed, managed_boxes, "1.0.0", None, None, None),
     // Allows use of unary negate on unsigned integers, e.g. -e for e: u8
-    (removed, negate_unsigned, "1.0.0", Some(29645), None),
-    (removed, reflect, "1.0.0", Some(27749), None),
+    (removed, negate_unsigned, "1.0.0", Some(29645), None, None),
+    (removed, reflect, "1.0.0", Some(27749), None, None),
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
-    (removed, opt_out_copy, "1.0.0", None, None),
-    (removed, quad_precision_float, "1.0.0", None, None),
-    (removed, struct_inherit, "1.0.0", None, None),
-    (removed, test_removed_feature, "1.0.0", None, None),
-    (removed, visible_private_types, "1.0.0", None, None),
-    (removed, unsafe_no_drop_flag, "1.0.0", None, None),
+    (removed, opt_out_copy, "1.0.0", None, None, None),
+    (removed, quad_precision_float, "1.0.0", None, None, None),
+    (removed, struct_inherit, "1.0.0", None, None, None),
+    (removed, test_removed_feature, "1.0.0", None, None, None),
+    (removed, visible_private_types, "1.0.0", None, None, None),
+    (removed, unsafe_no_drop_flag, "1.0.0", None, None, None),
     // Allows using items which are missing stability attributes
     // rustc internal
-    (removed, unmarked_api, "1.0.0", None, None),
-    (removed, pushpop_unsafe, "1.2.0", None, None),
-    (removed, allocator, "1.0.0", None, None),
-    // Allows the `#[simd]` attribute -- removed in favor of `#[repr(simd)]`
-    (removed, simd, "1.0.0", Some(27731), None),
-    // Merged into `slice_patterns`
-    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None),
+    (removed, unmarked_api, "1.0.0", None, None, None),
+    (removed, pushpop_unsafe, "1.2.0", None, None, None),
+    (removed, allocator, "1.0.0", None, None, None),
+    (removed, simd, "1.0.0", Some(27731), None,
+     Some("removed in favor of `#[repr(simd)]`")),
+    (removed, advanced_slice_patterns, "1.0.0", Some(23121), None,
+     Some("merged into `#![feature(slice_patterns)]`")),
+    (removed, macro_reexport, "1.0.0", Some(29638), None,
+     Some("subsumed by `#![feature(use_extern_macros)]` and `pub use`")),
 );
 
 declare_features! (
@@ -592,6 +591,10 @@ declare_features! (
     (accepted, cfg_target_feature, "1.27.0", Some(29717), None),
     // Allows #[target_feature(...)]
     (accepted, target_feature, "1.27.0", None, None),
+    // Trait object syntax with `dyn` prefix
+    (accepted, dyn_trait, "1.27.0", Some(44662), None),
+    // allow `#[must_use]` on functions; and, must-use operators (RFC 1940)
+    (accepted, fn_must_use, "1.27.0", Some(43302), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -675,7 +678,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     ("forbid", Normal, Ungated),
     ("deny", Normal, Ungated),
 
-    ("macro_reexport", Normal, Ungated),
     ("macro_use", Normal, Ungated),
     ("macro_export", Normal, Ungated),
     ("plugin_registrar", Normal, Ungated),
@@ -1080,7 +1082,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = cfg.ident.name.as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -1133,7 +1135,7 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = unwrap_or!(attr.name(), return).as_str();
+        let name = attr.name().as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let Gated(_, name, desc, ref has_feature) = *gateage {
@@ -1173,12 +1175,28 @@ impl<'a> Context<'a> {
             // before the plugin attributes are registered
             // so we skip this then
             if !is_macro {
-                gate_feature!(self, custom_attribute, attr.span,
-                              &format!("The attribute `{}` is currently \
-                                        unknown to the compiler and \
-                                        may have meaning \
-                                        added to it in the future",
-                                       attr.path));
+                if attr.is_scoped() {
+                    gate_feature!(self, tool_attributes, attr.span,
+                                  &format!("scoped attribute `{}` is experimental", attr.path));
+                    if attr::is_known_tool(attr) {
+                        attr::mark_used(attr);
+                    } else {
+                        span_err!(
+                            self.parse_sess.span_diagnostic,
+                            attr.span,
+                            E0694,
+                            "an unknown tool name found in scoped attribute: `{}`.",
+                            attr.path
+                        );
+                    }
+                } else {
+                    gate_feature!(self, custom_attribute, attr.span,
+                                  &format!("The attribute `{}` is currently \
+                                            unknown to the compiler and \
+                                            may have meaning \
+                                            added to it in the future",
+                                           attr.path));
+                }
             }
         }
     }
@@ -1204,7 +1222,7 @@ fn find_lang_feature_issue(feature: &str) -> Option<u32> {
         let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
             .find(|t| t.0 == feature);
         match found {
-            Some(&(_, _, issue)) => issue,
+            Some(&(_, _, issue, _)) => issue,
             None => panic!("Feature `{}` is not declared anywhere", feature),
         }
     }
@@ -1518,11 +1536,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, underscore_imports, i.span,
                                        "renaming extern crates with `_` is unstable");
                 }
-                if let Some(attr) = attr::find_by_name(&i.attrs[..], "macro_reexport") {
-                    gate_feature_post!(&self, macro_reexport, attr.span,
-                                       "macros re-exports are experimental \
-                                        and possibly buggy");
-                }
             }
 
             ast::ItemKind::ForeignMod(ref foreign_module) => {
@@ -1545,11 +1558,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "declaration of a nonstandard #[main] \
                                         function may change over time, for now \
                                         a top-level `fn main()` is required");
-                }
-                if let Some(attr) = attr::find_by_name(&i.attrs[..], "must_use") {
-                    gate_feature_post!(&self, fn_must_use, attr.span,
-                                       "`#[must_use]` on functions is experimental",
-                                       GateStrength::Soft);
                 }
             }
 
@@ -1582,7 +1590,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                    "trait aliases are not yet fully implemented");
             }
 
-            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, ref impl_items) => {
+            ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
                 if polarity == ast::ImplPolarity::Negative {
                     gate_feature_post!(&self, optin_builtin_traits,
                                        i.span,
@@ -1594,16 +1602,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, specialization,
                                        i.span,
                                        "specialization is unstable");
-                }
-
-                for impl_item in impl_items {
-                    if let ast::ImplItemKind::Method(..) = impl_item.node {
-                        if let Some(attr) = attr::find_by_name(&impl_item.attrs[..], "must_use") {
-                            gate_feature_post!(&self, fn_must_use, attr.span,
-                                               "`#[must_use]` on methods is experimental",
-                                               GateStrength::Soft);
-                        }
-                    }
                 }
             }
 
@@ -1656,10 +1654,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span,
                                    "The `!` type is experimental");
-            }
-            ast::TyKind::TraitObject(_, ast::TraitObjectSyntax::Dyn) => {
-                gate_feature_post!(&self, dyn_trait, ty.span,
-                                   "`dyn Trait` syntax is unstable");
             }
             _ => {}
         }
@@ -1842,8 +1836,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
 pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                     crate_edition: Edition) -> Features {
-    fn feature_removed(span_handler: &Handler, span: Span) {
-        span_err!(span_handler, span, E0557, "feature has been removed");
+    fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
+        let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
+        if let Some(reason) = reason {
+            err.span_note(span, reason);
+        }
+        err.emit();
     }
 
     let mut features = Features::new();
@@ -1864,7 +1862,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 for mi in list {
 
                     let name = if let Some(word) = mi.word() {
-                        word.ident.name
+                        word.name()
                     } else {
                         span_err!(span_handler, mi.span, E0556,
                                   "malformed feature, expected just one word");
@@ -1876,19 +1874,19 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                         set(&mut features, mi.span);
                         feature_checker.collect(&features, mi.span);
                     }
-                    else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
-                            .find(|& &(n, _, _)| name == n)
+                    else if let Some(&(.., reason)) = REMOVED_FEATURES.iter()
+                            .find(|& &(n, ..)| name == n)
                         .or_else(|| STABLE_REMOVED_FEATURES.iter()
-                            .find(|& &(n, _, _)| name == n)) {
-                        feature_removed(span_handler, mi.span);
+                            .find(|& &(n, ..)| name == n)) {
+                        feature_removed(span_handler, mi.span, reason);
                     }
-                    else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
-                        .find(|& &(n, _, _)| name == n) {
+                    else if let Some(&(..)) = ACCEPTED_FEATURES.iter()
+                        .find(|& &(n, ..)| name == n) {
                         features.declared_stable_lang_features.push((name, mi.span));
                     } else if let Some(&edition) = ALL_EDITIONS.iter()
                                                               .find(|e| name == e.feature_name()) {
                         if edition <= crate_edition {
-                            feature_removed(span_handler, mi.span);
+                            feature_removed(span_handler, mi.span, None);
                         } else {
                             for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
                                 if let Some(f_edition) = f_edition {

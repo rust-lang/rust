@@ -1053,6 +1053,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          2 = full debug info with variable and type information"),
     opt_level: Option<String> = (None, parse_opt_string, [TRACKED],
         "optimize with possible levels 0-3, s, or z"),
+    force_frame_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "force use of the frame pointers"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint, [TRACKED],
@@ -1248,6 +1250,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "choose which RELRO level to use"),
     nll_subminimal_causes: bool = (false, parse_bool, [UNTRACKED],
         "when tracking region error causes, accept subminimal results for faster execution."),
+    nll_facts: bool = (false, parse_bool, [UNTRACKED],
+                       "dump facts from NLL analysis into side files"),
     disable_nll_user_type_assert: bool = (false, parse_bool, [UNTRACKED],
         "disable user provided type assertion in NLL"),
     trans_time_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -1270,7 +1274,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
          themselves"),
-    approximate_suggestions: bool = (false, parse_bool, [UNTRACKED],
+    suggestion_applicability: bool = (false, parse_bool, [UNTRACKED],
         "include machine-applicability of suggestions in JSON output"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
         "Present the input source, unstable (and less-pretty) variants;
@@ -1681,7 +1685,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> ast::CrateConfig {
                 early_error(ErrorOutputType::default(), &msg)
             }
 
-            (meta_item.ident.name, meta_item.value_str())
+            (meta_item.name(), meta_item.value_str())
         })
         .collect::<ast::CrateConfig>()
 }
@@ -2963,6 +2967,10 @@ mod tests {
 
         opts = reference.clone();
         opts.cg.debuginfo = Some(0xba5eba11);
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.force_frame_pointers = Some(false);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();

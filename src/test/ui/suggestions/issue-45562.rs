@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 #[no_mangle] pub const RAH: usize = 5;
 //~^ ERROR const items should never be #[no_mangle]
 

@@ -154,7 +154,10 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
                                            recursion_depth: 0,
                                            predicate: p })
                      .chain(obligations)
-                     .find(|o| !selcx.evaluate_obligation(o));
+                     .find(|o| !selcx.predicate_may_hold_fatal(o));
+    // FIXME: the call to `selcx.predicate_may_hold_fatal` above should be ported
+    // to the canonical trait query form, `infcx.predicate_may_hold`, once
+    // the new system supports intercrate mode (which coherence needs).
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);

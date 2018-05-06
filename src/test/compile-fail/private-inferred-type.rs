@@ -11,7 +11,6 @@
 #![feature(associated_consts)]
 #![feature(decl_macro)]
 #![allow(private_in_public)]
-#![feature(proc_macro_path_invoc)]
 
 mod m {
     fn priv_fn() {}

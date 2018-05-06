@@ -13,7 +13,6 @@
 
 #![allow(warnings)]
 
-#![feature(dyn_trait)]
 #![feature(in_band_lifetimes)]
 
 use std::fmt::Debug;

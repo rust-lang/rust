@@ -1367,7 +1367,7 @@ impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         let empty = cx.tcx.intern_substs(&[]);
-        let path = external_path(cx, &cx.tcx.item_name(did),
+        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
             Some(did), false, vec![], empty);
         inline::record_extern_fqn(cx, did, TypeKind::Trait);
         TraitBound(PolyTrait {
@@ -1474,7 +1474,7 @@ impl<'a, 'tcx> Clean<TyParamBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
     fn clean(&self, cx: &DocContext) -> TyParamBound {
         let (trait_ref, ref bounds) = *self;
         inline::record_extern_fqn(cx, trait_ref.def_id, TypeKind::Trait);
-        let path = external_path(cx, &cx.tcx.item_name(trait_ref.def_id),
+        let path = external_path(cx, &cx.tcx.item_name(trait_ref.def_id).as_str(),
                                  Some(trait_ref.def_id), true, bounds.clone(), trait_ref.substs);
 
         debug!("ty::TraitRef\n  subst: {:?}\n", trait_ref.substs);
@@ -1755,8 +1755,18 @@ pub struct Generics {
 
 impl Clean<Generics> for hir::Generics {
     fn clean(&self, cx: &DocContext) -> Generics {
+        let mut params = Vec::with_capacity(self.params.len());
+        for p in &self.params {
+            let p = p.clean(cx);
+            if let GenericParam::Type(ref tp) = p {
+                if tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
+                    cx.impl_trait_bounds.borrow_mut().insert(tp.did, tp.bounds.clone());
+                }
+            }
+            params.push(p);
+        }
         let mut g = Generics {
-            params: self.params.clean(cx),
+            params,
             where_predicates: self.where_clause.predicates.clean(cx)
         };
 
@@ -1869,9 +1879,11 @@ pub struct Method {
 
 impl<'a> Clean<Method> for (&'a hir::MethodSig, &'a hir::Generics, hir::BodyId) {
     fn clean(&self, cx: &DocContext) -> Method {
-        let generics = self.1.clean(cx);
+        let (generics, decl) = enter_impl_trait(cx, || {
+            (self.1.clean(cx), (&*self.0.decl, self.2).clean(cx))
+        });
         Method {
-            decl: enter_impl_trait(cx, &generics.params, || (&*self.0.decl, self.2).clean(cx)),
+            decl,
             generics,
             unsafety: self.0.unsafety,
             constness: self.0.constness,
@@ -1899,8 +1911,9 @@ pub struct Function {
 
 impl Clean<Item> for doctree::Function {
     fn clean(&self, cx: &DocContext) -> Item {
-        let generics = self.generics.clean(cx);
-        let decl = enter_impl_trait(cx, &generics.params, || (&self.decl, self.body).clean(cx));
+        let (generics, decl) = enter_impl_trait(cx, || {
+            (self.generics.clean(cx), (&self.decl, self.body).clean(cx))
+        });
         Item {
             name: Some(self.name.clean(cx)),
             attrs: self.attrs.clean(cx),
@@ -2139,12 +2152,12 @@ impl Clean<Item> for hir::TraitItem {
                 MethodItem((sig, &self.generics, body).clean(cx))
             }
             hir::TraitItemKind::Method(ref sig, hir::TraitMethod::Required(ref names)) => {
-                let generics = self.generics.clean(cx);
+                let (generics, decl) = enter_impl_trait(cx, || {
+                    (self.generics.clean(cx), (&*sig.decl, &names[..]).clean(cx))
+                });
                 TyMethodItem(TyMethod {
                     unsafety: sig.unsafety.clone(),
-                    decl: enter_impl_trait(cx, &generics.params, || {
-                        (&*sig.decl, &names[..]).clean(cx)
-                    }),
+                    decl,
                     generics,
                     abi: sig.abi
                 })
@@ -2801,7 +2814,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     AdtKind::Enum => TypeKind::Enum,
                 };
                 inline::record_extern_fqn(cx, did, kind);
-                let path = external_path(cx, &cx.tcx.item_name(did),
+                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                                          None, false, vec![], substs);
                 ResolvedPath {
                     path,
@@ -2812,7 +2825,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             }
             ty::TyForeign(did) => {
                 inline::record_extern_fqn(cx, did, TypeKind::Foreign);
-                let path = external_path(cx, &cx.tcx.item_name(did),
+                let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                                          None, false, vec![], Substs::empty());
                 ResolvedPath {
                     path: path,
@@ -2830,7 +2843,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     reg.clean(cx).map(|b| typarams.push(RegionBound(b)));
                     for did in obj.auto_traits() {
                         let empty = cx.tcx.intern_substs(&[]);
-                        let path = external_path(cx, &cx.tcx.item_name(did),
+                        let path = external_path(cx, &cx.tcx.item_name(did).as_str(),
                             Some(did), false, vec![], empty);
                         inline::record_extern_fqn(cx, did, TypeKind::Trait);
                         let bound = TraitBound(PolyTrait {
@@ -2853,7 +2866,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                         });
                     }
 
-                    let path = external_path(cx, &cx.tcx.item_name(did), Some(did),
+                    let path = external_path(cx, &cx.tcx.item_name(did).as_str(), Some(did),
                         false, bindings, principal.skip_binder().substs);
                     ResolvedPath {
                         path,
@@ -3415,12 +3428,12 @@ pub struct BareFunctionDecl {
 
 impl Clean<BareFunctionDecl> for hir::BareFnTy {
     fn clean(&self, cx: &DocContext) -> BareFunctionDecl {
-        let generic_params = self.generic_params.clean(cx);
+        let (generic_params, decl) = enter_impl_trait(cx, || {
+            (self.generic_params.clean(cx), (&*self.decl, &self.arg_names[..]).clean(cx))
+        });
         BareFunctionDecl {
             unsafety: self.unsafety,
-            decl: enter_impl_trait(cx, &generic_params, || {
-                (&*self.decl, &self.arg_names[..]).clean(cx)
-            }),
+            decl,
             generic_params,
             abi: self.abi,
         }
@@ -3661,7 +3674,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
-            a.name().unwrap() == "doc" && match a.meta_item_list() {
+            a.name() == "doc" && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, "no_inline") ||
                            attr::list_contains_name(&l, "hidden"),
                 None => false,
@@ -3722,11 +3735,11 @@ impl Clean<Item> for hir::ForeignItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
             hir::ForeignItemFn(ref decl, ref names, ref generics) => {
-                let generics = generics.clean(cx);
+                let (generics, decl) = enter_impl_trait(cx, || {
+                    (generics.clean(cx), (&**decl, &names[..]).clean(cx))
+                });
                 ForeignFunctionItem(Function {
-                    decl: enter_impl_trait(cx, &generics.params, || {
-                        (&**decl, &names[..]).clean(cx)
-                    }),
+                    decl,
                     generics,
                     unsafety: hir::Unsafety::Unsafe,
                     abi: Abi::Rust,
@@ -3881,6 +3894,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
         Def::Union(i) => (i, TypeKind::Union),
         Def::Mod(i) => (i, TypeKind::Module),
         Def::TyForeign(i) => (i, TypeKind::Foreign),
+        Def::Const(i) => (i, TypeKind::Const),
         Def::Static(i, _) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent_def_id(i).unwrap(), TypeKind::Enum),
         Def::Macro(i, _) => (i, TypeKind::Macro),
@@ -4029,23 +4043,11 @@ pub fn def_id_to_path(cx: &DocContext, did: DefId, name: Option<String>) -> Vec<
     once(crate_name).chain(relative).collect()
 }
 
-pub fn enter_impl_trait<F, R>(cx: &DocContext, gps: &[GenericParam], f: F) -> R
+pub fn enter_impl_trait<F, R>(cx: &DocContext, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let bounds = gps.iter()
-        .filter_map(|p| {
-            if let GenericParam::Type(ref tp) = *p {
-                if tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
-                    return Some((tp.did, tp.bounds.clone()));
-                }
-            }
-
-            None
-        })
-        .collect::<FxHashMap<DefId, Vec<TyParamBound>>>();
-
-    let old_bounds = mem::replace(&mut *cx.impl_trait_bounds.borrow_mut(), bounds);
+    let old_bounds = mem::replace(&mut *cx.impl_trait_bounds.borrow_mut(), Default::default());
     let r = f();
     assert!(cx.impl_trait_bounds.borrow().is_empty());
     *cx.impl_trait_bounds.borrow_mut() = old_bounds;

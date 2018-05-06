@@ -880,7 +880,6 @@ macro_rules! slice_core_methods { () => {
     #[inline]
     pub fn split_last(&self) -> Option<(&T, &[T])> {
         SliceExt::split_last(self)
-
     }
 
     /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.

@@ -277,8 +277,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                      poly_trait_ref.to_predicate());
 
         // Now we want to know if this can be matched
-        let mut selcx = traits::SelectionContext::new(self);
-        if !selcx.evaluate_obligation(&obligation) {
+        if !self.predicate_may_hold(&obligation) {
             debug!("--> Cannot match obligation");
             return None; // Cannot be matched, no such method resolution is possible.
         }

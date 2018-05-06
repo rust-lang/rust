@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
                 selcx,
                 register_region_obligations: self.register_region_obligations
             });
-            debug!("select: outcome={:?}", outcome);
+            debug!("select: outcome={:#?}", outcome);
 
             // FIXME: if we kept the original cache key, we could mark projection
             // obligations as complete for the projection cache here.
@@ -333,7 +333,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             if data.is_global() {
                 // no type variables present, can use evaluation for better caching.
                 // FIXME: consider caching errors too.
-                if selcx.evaluate_obligation_conservatively(&obligation) {
+                if selcx.infcx().predicate_must_hold(&obligation) {
                     debug!("selecting trait `{:?}` at depth {} evaluated to holds",
                            data, obligation.recursion_depth);
                     return Ok(Some(vec![]))

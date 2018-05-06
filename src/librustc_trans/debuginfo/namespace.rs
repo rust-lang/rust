@@ -47,7 +47,7 @@ pub fn item_namespace(cx: &CodegenCx, def_id: DefId) -> DIScope {
 
     let namespace_name = match def_key.disambiguated_data.data {
         DefPathData::CrateRoot => cx.tcx.crate_name(def_id.krate).as_str(),
-        data => data.as_interned_str()
+        data => data.as_interned_str().as_str()
     };
 
     let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();

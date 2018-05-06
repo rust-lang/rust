@@ -25,10 +25,11 @@
 #![allow(unused_attributes)]
 #![feature(libc)]
 #![feature(quote)]
+#![feature(range_contains)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(optin_builtin_traits)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 
 use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
@@ -42,7 +43,6 @@ extern crate rustc_mir;
 extern crate rustc_allocator;
 extern crate rustc_apfloat;
 extern crate rustc_target;
-extern crate rustc_const_math;
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_demangle;
 extern crate rustc_incremental;

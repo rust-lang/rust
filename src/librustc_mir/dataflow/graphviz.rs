@@ -73,8 +73,8 @@ pub type Node = BasicBlock;
 pub struct Edge { source: BasicBlock, index: usize }
 
 fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
-    let succ_len = mir[bb].terminator().successors().len();
-    (0..succ_len).map(|index| Edge { source: bb, index: index}).collect()
+    mir[bb].terminator().successors().enumerate()
+        .map(|(index, _)| Edge { source: bb, index: index}).collect()
 }
 
 impl<'a, 'tcx, MWF, P> dot::Labeller<'a> for Graph<'a, 'tcx, MWF, P>
@@ -285,6 +285,6 @@ impl<'a, 'tcx, MWF, P> dot::GraphWalk<'a> for Graph<'a, 'tcx, MWF, P>
 
     fn target(&self, edge: &Edge) -> Node {
         let mir = self.mbcx.mir();
-        mir[edge.source].terminator().successors()[edge.index]
+        *mir[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }

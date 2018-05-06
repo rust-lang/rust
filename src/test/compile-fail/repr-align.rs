@@ -15,7 +15,10 @@ struct A(i32);
 #[repr(align(15))] //~ ERROR: invalid `repr(align)` attribute: not a power of two
 struct B(i32);
 
-#[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2147483647
+#[repr(align(4294967296))] //~ ERROR: invalid `repr(align)` attribute: larger than 2^29
 struct C(i32);
+
+#[repr(align(536870912))] // ok: this is the largest accepted alignment
+struct D(i32);
 
 fn main() {}

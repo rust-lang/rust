@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc_data_structures::indexed_vec::Idx;
@@ -19,26 +18,8 @@ pub struct Deaggregator;
 impl MirPass for Deaggregator {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          source: MirSource,
+                          _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        // Don't run on constant MIR, because trans might not be able to
-        // evaluate the modified MIR.
-        // FIXME(eddyb) Remove check after miri is merged.
-        let id = tcx.hir.as_local_node_id(source.def_id).unwrap();
-        match (tcx.hir.body_owner_kind(id), source.promoted) {
-            (_, Some(_)) |
-            (hir::BodyOwnerKind::Const, _) |
-            (hir::BodyOwnerKind::Static(_), _) => return,
-
-            (hir::BodyOwnerKind::Fn, _) => {
-                if tcx.is_const_fn(source.def_id) {
-                    // Don't run on const functions, as, again, trans might not be able to evaluate
-                    // the optimized IR.
-                    return
-                }
-            }
-        }
-
         let (basic_blocks, local_decls) = mir.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;
         for bb in basic_blocks {

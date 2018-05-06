@@ -45,8 +45,8 @@
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
-#![feature(dyn_trait)]
 #![feature(entry_or_default)]
+#![cfg_attr(stage0, feature(dyn_trait))]
 #![feature(from_ref)]
 #![feature(fs_read_write)]
 #![cfg_attr(windows, feature(libc))]
@@ -58,6 +58,7 @@
 #![feature(nonzero)]
 #![feature(proc_macro_internals)]
 #![feature(quote)]
+#![feature(optin_builtin_traits)]
 #![feature(refcell_replace_swap)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_patterns)]
@@ -68,7 +69,7 @@
 #![feature(trusted_len)]
 #![feature(catch_expr)]
 #![feature(test)]
-#![feature(inclusive_range_fields)]
+#![feature(inclusive_range_methods)]
 
 #![recursion_limit="512"]
 
@@ -84,7 +85,6 @@ extern crate libc;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
-extern crate rustc_const_math;
 extern crate rustc_errors as errors;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

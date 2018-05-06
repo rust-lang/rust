@@ -11,6 +11,7 @@
 use CodeSuggestion;
 use SubstitutionPart;
 use Substitution;
+use Applicability;
 use Level;
 use std::fmt;
 use syntax_pos::{MultiSpan, Span};
@@ -222,7 +223,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: false,
-            approximate: false,
+            applicability: Applicability::Unspecified,
         });
         self
     }
@@ -253,7 +254,7 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: true,
-            approximate: false,
+            applicability: Applicability::Unspecified,
         });
         self
     }
@@ -269,15 +270,16 @@ impl Diagnostic {
             }).collect(),
             msg: msg.to_owned(),
             show_code_when_inline: true,
-            approximate: false,
+            applicability: Applicability::Unspecified,
         });
         self
     }
 
     /// This is a suggestion that may contain mistakes or fillers and should
     /// be read and understood by a human.
-    pub fn span_approximate_suggestion(&mut self, sp: Span, msg: &str,
-                                       suggestion: String) -> &mut Self {
+    pub fn span_suggestion_with_applicability(&mut self, sp: Span, msg: &str,
+                                       suggestion: String,
+                                       applicability: Applicability) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart {
@@ -287,13 +289,14 @@ impl Diagnostic {
             }],
             msg: msg.to_owned(),
             show_code_when_inline: true,
-            approximate: true,
+            applicability,
         });
         self
     }
 
-    pub fn span_approximate_suggestions(&mut self, sp: Span, msg: &str,
-                                        suggestions: Vec<String>) -> &mut Self {
+    pub fn span_suggestions_with_applicability(&mut self, sp: Span, msg: &str,
+                                        suggestions: Vec<String>,
+                                        applicability: Applicability) -> &mut Self {
         self.suggestions.push(CodeSuggestion {
             substitutions: suggestions.into_iter().map(|snippet| Substitution {
                 parts: vec![SubstitutionPart {
@@ -303,7 +306,7 @@ impl Diagnostic {
             }).collect(),
             msg: msg.to_owned(),
             show_code_when_inline: true,
-            approximate: true,
+            applicability,
         });
         self
     }

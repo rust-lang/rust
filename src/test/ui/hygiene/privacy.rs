@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(decl_macro, proc_macro_path_invoc)]
+#![feature(decl_macro)]
 
 mod foo {
     fn f() {}

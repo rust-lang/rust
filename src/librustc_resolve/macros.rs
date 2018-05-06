@@ -206,10 +206,10 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
-    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>)
+    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>, allow_derive: bool)
                               -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
-            let name = unwrap_or!(attrs[i].name(), continue);
+            let name = attrs[i].name();
 
             if self.session.plugin_attributes.borrow().iter()
                     .any(|&(ref attr_nm, _)| name == &**attr_nm) {
@@ -227,9 +227,11 @@ impl<'a> base::Resolver for Resolver<'a> {
             }
         }
 
+        if !allow_derive { return None }
+
         // Check for legacy derives
         for i in 0..attrs.len() {
-            let name = unwrap_or!(attrs[i].name(), continue);
+            let name = attrs[i].name();
 
             if name == "derive" {
                 let result = attrs[i].parse_list(&self.session.parse_sess, |parser| {
@@ -397,7 +399,7 @@ impl<'a> Resolver<'a> {
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
                             -> Result<Def, Determinacy> {
-        if path.segments.len() > 1 {
+        if kind != MacroKind::Bang && path.segments.len() > 1 {
             if !self.session.features_untracked().proc_macro_path_invoc {
                 emit_feature_err(
                     &self.session.parse_sess,
@@ -409,6 +411,7 @@ impl<'a> Resolver<'a> {
                 );
             }
         }
+
         let def = self.resolve_macro_to_def_inner(scope, path, kind, force);
         if def != Err(Determinacy::Undetermined) {
             // Do not report duplicated errors on every undetermined resolution.

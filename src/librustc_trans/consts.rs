@@ -118,7 +118,7 @@ pub fn get_static(cx: &CodegenCx, def_id: DefId) -> ValueRef {
              def_id);
 
     let ty = instance.ty(cx.tcx);
-    let sym = cx.tcx.symbol_name(instance);
+    let sym = cx.tcx.symbol_name(instance).as_str();
 
     let g = if let Some(id) = cx.tcx.hir.as_local_node_id(def_id) {
 

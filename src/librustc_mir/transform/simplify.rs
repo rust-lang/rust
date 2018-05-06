@@ -91,7 +91,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
 
         for (_, data) in traversal::preorder(mir) {
             if let Some(ref term) = data.terminator {
-                for &tgt in term.successors().iter() {
+                for &tgt in term.successors() {
                     pred_count[tgt] += 1;
                 }
             }
@@ -219,10 +219,10 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         };
 
         let first_succ = {
-            let successors = terminator.successors();
-            if let Some(&first_succ) = terminator.successors().get(0) {
-                if successors.iter().all(|s| *s == first_succ) {
-                    self.pred_count[first_succ] -= (successors.len()-1) as u32;
+            if let Some(&first_succ) = terminator.successors().nth(0) {
+                if terminator.successors().all(|s| *s == first_succ) {
+                    let count = terminator.successors().count();
+                    self.pred_count[first_succ] -= (count - 1) as u32;
                     first_succ
                 } else {
                     return false

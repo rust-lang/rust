@@ -72,6 +72,7 @@ pub struct Config {
     pub dry_run: bool,
 
     pub deny_warnings: bool,
+    pub backtrace_on_ice: bool,
 
     // llvm codegen options
     pub llvm_enabled: bool,
@@ -306,6 +307,7 @@ struct Rust {
     wasm_syscall: Option<bool>,
     lld: Option<bool>,
     deny_warnings: Option<bool>,
+    backtrace_on_ice: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -325,6 +327,14 @@ struct TomlTarget {
 }
 
 impl Config {
+    fn path_from_python(var_key: &str) -> PathBuf {
+        match env::var_os(var_key) {
+            // Do not trust paths from Python and normalize them slightly (#49785).
+            Some(var_val) => Path::new(&var_val).components().collect(),
+            _ => panic!("expected '{}' to be set", var_key),
+        }
+    }
+
     pub fn default_opts() -> Config {
         let mut config = Config::default();
         config.llvm_enabled = true;
@@ -348,9 +358,9 @@ impl Config {
         config.deny_warnings = true;
 
         // set by bootstrap.py
-        config.src = env::var_os("SRC").map(PathBuf::from).expect("'SRC' to be set");
         config.build = INTERNER.intern_str(&env::var("BUILD").expect("'BUILD' to be set"));
-        config.out = env::var_os("BUILD_DIR").map(PathBuf::from).expect("'BUILD_DIR' set");
+        config.src = Config::path_from_python("SRC");
+        config.out = Config::path_from_python("BUILD_DIR");
 
         let stage0_root = config.out.join(&config.build).join("stage0/bin");
         config.initial_rustc = stage0_root.join(exe("rustc", &config.build));
@@ -523,6 +533,7 @@ impl Config {
             config.musl_root = rust.musl_root.clone().map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.clone().map(PathBuf::from);
             set(&mut config.deny_warnings, rust.deny_warnings.or(flags.warnings));
+            set(&mut config.backtrace_on_ice, rust.backtrace_on_ice);
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends = backends.iter()

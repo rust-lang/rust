@@ -322,7 +322,7 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
             debug!("cleanup_kinds: {:?}/{:?}/{:?} propagating funclet {:?}",
                    bb, data, result[bb], funclet);
 
-            for &succ in data.terminator().successors().iter() {
+            for &succ in data.terminator().successors() {
                 let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}",
                        funclet, succ, kind);

@@ -51,7 +51,7 @@ macro_rules! provide {
         pub fn provide_extern<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt, T>($tcx: TyCtxt<'a, $lt, $lt>, def_id_arg: T)
                                     -> <ty::queries::$name<$lt> as
-                                        QueryConfig>::Value
+                                        QueryConfig<$lt>>::Value
                 where T: IntoArgs,
             {
                 #[allow(unused_variables)]
@@ -535,7 +535,7 @@ impl CrateStore for cstore::CStore {
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
         LoadedMacro::MacroDef(ast::Item {
-            ident: ast::Ident::from_str(&name),
+            ident: ast::Ident::from_str(&name.as_str()),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs.iter().cloned().collect(),

@@ -51,7 +51,7 @@ use std::mem;
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::{Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
@@ -69,7 +69,7 @@ pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
-pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
+pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
@@ -1370,15 +1370,13 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 /// type name in a non-zero universe is a skolemized type -- an
 /// idealized representative of "types in general" that we use for
 /// checking generic functions.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct UniverseIndex(u32);
 
 impl UniverseIndex {
     /// The root universe, where things that the user defined are
     /// visible.
-    pub fn root() -> UniverseIndex {
-        UniverseIndex(0)
-    }
+    pub const ROOT: Self = UniverseIndex(0);
 
     /// A "subuniverse" corresponds to being inside a `forall` quantifier.
     /// So, for example, suppose we have this type in universe `U`:
@@ -1392,7 +1390,21 @@ impl UniverseIndex {
     /// region `'a`, but that region was not nameable from `U` because
     /// it was not in scope there.
     pub fn subuniverse(self) -> UniverseIndex {
-        UniverseIndex(self.0 + 1)
+        UniverseIndex(self.0.checked_add(1).unwrap())
+    }
+
+    pub fn as_u32(&self) -> u32 {
+        self.0
+    }
+
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+impl From<u32> for UniverseIndex {
+    fn from(index: u32) -> Self {
+        UniverseIndex(index)
     }
 }
 
@@ -1476,7 +1488,11 @@ impl<'tcx> ParamEnv<'tcx> {
             }
 
             Reveal::All => {
-                if value.needs_infer() || value.has_param_types() || value.has_self_ty() {
+                if value.has_skol()
+                    || value.needs_infer()
+                    || value.has_param_types()
+                    || value.has_self_ty()
+                {
                     ParamEnvAnd {
                         param_env: self,
                         value,
@@ -2031,7 +2047,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
-        match queries::adt_sized_constraint::try_get(tcx, DUMMY_SP, self.did) {
+        match tcx.try_get_query::<queries::adt_sized_constraint>(DUMMY_SP, self.did) {
             Ok(tys) => tys,
             Err(mut bug) => {
                 debug!("adt_sized_constraint: {:?} is recursive", self);
@@ -2463,7 +2479,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn item_name(self, id: DefId) -> InternedString {
         if id.index == CRATE_DEF_INDEX {
-            self.original_crate_name(id.krate).as_str()
+            self.original_crate_name(id.krate).as_interned_str()
         } else {
             let def_key = self.def_key(id);
             // The name of a StructCtor is that of its struct parent.
@@ -2820,15 +2836,13 @@ impl_stable_hash_for!(struct self::SymbolName {
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {
         SymbolName {
-            name: Symbol::intern(name).as_str()
+            name: Symbol::intern(name).as_interned_str()
         }
     }
-}
 
-impl Deref for SymbolName {
-    type Target = str;
-
-    fn deref(&self) -> &str { &self.name }
+    pub fn as_str(&self) -> LocalInternedString {
+        self.name.as_str()
+    }
 }
 
 impl fmt::Display for SymbolName {
