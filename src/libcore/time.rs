@@ -21,6 +21,7 @@
 //! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
 //! ```
 
+use fmt;
 use iter::Sum;
 use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
@@ -59,7 +60,7 @@ const MICROS_PER_SEC: u64 = 1_000_000;
 /// let ten_millis = Duration::from_millis(10);
 /// ```
 #[stable(feature = "duration", since = "1.3.0")]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct Duration {
     secs: u64,
     nanos: u32, // Always 0 <= nanos < NANOS_PER_SEC
@@ -479,5 +480,80 @@ impl Sum for Duration {
 impl<'a> Sum<&'a Duration> for Duration {
     fn sum<I: Iterator<Item=&'a Duration>>(iter: I) -> Duration {
         iter.fold(Duration::new(0, 0), |a, b| a + *b)
+    }
+}
+
+#[stable(feature = "duration_debug_impl", since = "1.27.0")]
+impl fmt::Debug for Duration {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        /// Formats a floating point number in decimal notation.
+        ///
+        /// The number is given as the `integer_part` and a fractional part.
+        /// The value of the fractional part is `fractional_part / divisor`. So
+        /// `integer_part` = 3, `fractional_part` = 12 and `divisor` = 100
+        /// represents the number `3.012`. Trailing zeros are omitted.
+        ///
+        /// `divisor` must not be above 100_000_000. It also should be a power
+        /// of 10, everything else doesn't make sense. `fractional_part` has
+        /// to be less than `10 * divisor`!
+        fn fmt_decimal(
+            f: &mut fmt::Formatter,
+            integer_part: u64,
+            mut fractional_part: u32,
+            mut divisor: u32,
+        ) -> fmt::Result {
+            // Encode the fractional part into a temporary buffer. The buffer
+            // only need to hold 9 elements, because `fractional_part` has to
+            // be smaller than 10^9. The buffer is prefilled with '0' digits
+            // to simplify the code below.
+            let mut buf = [b'0'; 9];
+
+            // The next digit is written at this position
+            let mut pos = 0;
+
+            // We can stop when there are no non-zero digits left or (when a
+            // precision was set and we already emitted that many digits).
+            while fractional_part > 0 && f.precision().map(|p| p > pos).unwrap_or(true) {
+                // Write new digit into the buffer
+                buf[pos] = b'0' + (fractional_part / divisor) as u8;
+
+                fractional_part %= divisor;
+                divisor /= 10;
+                pos += 1;
+            }
+
+            // If we haven't emitted a single fractional digit and the precision
+            // wasn't set to a non-zero value, we don't print the decimal point.
+            let end = f.precision().unwrap_or(pos);
+            if end == 0 {
+                write!(f, "{}", integer_part)
+            } else {
+                // We are only writing ASCII digits into the buffer and it was
+                // initialized with '0's, so it contains valid UTF8.
+                let s = unsafe {
+                    ::str::from_utf8_unchecked(&buf[..end])
+                };
+
+                write!(f, "{}.{}", integer_part, s)
+            }
+        }
+
+        // Print leading '+' sign if requested
+        if f.sign_plus() {
+            write!(f, "+")?;
+        }
+
+        if self.secs > 0 {
+            fmt_decimal(f, self.secs, self.nanos, 100_000_000)?;
+            f.write_str("s")
+        } else if self.nanos >= 1_000_000 {
+            fmt_decimal(f, self.nanos as u64 / 1_000_000, self.nanos % 1_000_000, 100_000)?;
+            f.write_str("ms")
+        } else if self.nanos >= 1_000 {
+            fmt_decimal(f, self.nanos as u64 / 1_000, self.nanos % 1_000, 100)?;
+            f.write_str("µs")
+        } else {
+            write!(f, "{}ns", self.nanos)
+        }
     }
 }
