@@ -17,7 +17,7 @@ impl<T, Smoke> Mirror<Smoke> for T {
 }
 
 pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy {
-    loop { drop(victim); } //~ ERROR use of moved value
+    loop { drop(victim); }
 }
 
 fn main() {
