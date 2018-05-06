@@ -111,7 +111,7 @@ fn write_message(msg: &str) {
 fn system_tests() {
     // Get all files in the tests/source directory.
     let files = get_test_files(Path::new("tests/source"), true);
-    let (_reports, count, fails) = check_files(files);
+    let (_reports, count, fails) = check_files(files, None);
 
     // Display results.
     println!("Ran {} system tests.", count);
@@ -123,7 +123,7 @@ fn system_tests() {
 #[test]
 fn coverage_tests() {
     let files = get_test_files(Path::new("tests/coverage/source"), true);
-    let (_reports, count, fails) = check_files(files);
+    let (_reports, count, fails) = check_files(files, None);
 
     println!("Ran {} tests in coverage mode.", count);
     assert_eq!(fails, 0, "{} tests failed", fails);
@@ -192,7 +192,7 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 fn idempotence_tests() {
     // Get all files in the tests/target directory.
     let files = get_test_files(Path::new("tests/target"), true);
-    let (_reports, count, fails) = check_files(files);
+    let (_reports, count, fails) = check_files(files, None);
 
     // Display results.
     println!("Ran {} idempotent tests.", count);
@@ -213,7 +213,7 @@ fn self_tests() {
     }
     files.push(PathBuf::from("src/lib.rs"));
 
-    let (reports, count, fails) = check_files(files);
+    let (reports, count, fails) = check_files(files, Some(PathBuf::from("rustfmt.toml")));
     let mut warnings = 0;
 
     // Display results.
@@ -298,7 +298,7 @@ fn format_lines_errors_are_reported_with_tabs() {
 
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
-fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
+fn check_files(files: Vec<PathBuf>, opt_config: Option<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
     let mut count = 0;
     let mut fails = 0;
     let mut reports = vec![];
@@ -306,7 +306,7 @@ fn check_files(files: Vec<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
     for file_name in files {
         debug!("Testing '{}'...", file_name.display());
 
-        match idempotent_check(&file_name) {
+        match idempotent_check(&file_name, &opt_config) {
             Ok(ref report) if report.has_warnings() => {
                 print!("{}", report);
                 fails += 1;
@@ -385,9 +385,16 @@ pub enum IdempotentCheckError {
     Parse,
 }
 
-pub fn idempotent_check(filename: &PathBuf) -> Result<FormatReport, IdempotentCheckError> {
+pub fn idempotent_check(
+    filename: &PathBuf,
+    opt_config: &Option<PathBuf>,
+) -> Result<FormatReport, IdempotentCheckError> {
     let sig_comments = read_significant_comments(filename);
-    let config = read_config(filename);
+    let config = if let Some(ref config_file_path) = opt_config {
+        Config::from_toml_path(config_file_path).expect("rustfmt.toml not found")
+    } else {
+        read_config(filename)
+    };
     let (error_summary, file_map, format_report) = format_file(filename, &config);
     if error_summary.has_parsing_errors() {
         return Err(IdempotentCheckError::Parse);
@@ -611,8 +618,9 @@ impl ConfigurationSection {
         lazy_static! {
             static ref CONFIG_NAME_REGEX: regex::Regex =
                 regex::Regex::new(r"^## `([^`]+)`").expect("Failed creating configuration pattern");
-            static ref CONFIG_VALUE_REGEX: regex::Regex = regex::Regex::new(r#"^#### `"?([^`"]+)"?`"#)
-                .expect("Failed creating configuration value pattern");
+            static ref CONFIG_VALUE_REGEX: regex::Regex =
+                regex::Regex::new(r#"^#### `"?([^`"]+)"?`"#)
+                    .expect("Failed creating configuration value pattern");
         }
 
         loop {

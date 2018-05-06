@@ -50,7 +50,8 @@ create_config! {
     comment_width: usize, 80, false,
         "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, true, "Convert /* */ comments to // comments where possible";
-    license_template_path: String, String::default(), false, "Beginning of file must match license template";
+    license_template_path: String, String::default(), false,
+        "Beginning of file must match license template";
     format_strings: bool, false, false, "Format string literals where necessary";
 
     // Single line expressions and items
@@ -239,16 +240,21 @@ mod test {
         create_config! {
             // Options that are used by the generated functions
             max_width: usize, 100, true, "Maximum width of each line";
-            use_small_heuristics: bool, true, false, "Whether to use different formatting for items and \
-                expressions if they satisfy a heuristic notion of 'small'.";
-            license_template_path: String, String::default(), false, "Beginning of file must match license template";
-            required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false, "Require a specific version of rustfmt.";
-            ignore: IgnoreList, IgnoreList::default(), false, "Skip formatting the specified files and directories.";
+            use_small_heuristics: bool, true, false,
+                "Whether to use different formatting for items and \
+                 expressions if they satisfy a heuristic notion of 'small'.";
+            license_template_path: String, String::default(), false,
+                "Beginning of file must match license template";
+            required_version: String, env!("CARGO_PKG_VERSION").to_owned(), false,
+                "Require a specific version of rustfmt.";
+            ignore: IgnoreList, IgnoreList::default(), false,
+                "Skip formatting the specified files and directories.";
             verbose: bool, false, false, "Use verbose output";
             file_lines: FileLines, FileLines::all(), false,
                 "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
                     via the --file-lines option";
-            width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false, "'small' heuristic values";
+            width_heuristics: WidthHeuristics, WidthHeuristics::scaled(100), false,
+                "'small' heuristic values";
 
             // Options that are used by the tests
             stable_option: bool, false, true, "A stable option";

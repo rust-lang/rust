@@ -116,7 +116,8 @@ pub(crate) type FileRecord = (FileName, String);
 pub enum ErrorKind {
     // Line has exceeded character limit (found, maximum)
     #[fail(
-        display = "line formatted, but exceeded maximum width (maximum: {} (see `max_width` option), found: {})",
+        display = "line formatted, but exceeded maximum width \
+                   (maximum: {} (see `max_width` option), found: {})",
         _0,
         _1
     )]
