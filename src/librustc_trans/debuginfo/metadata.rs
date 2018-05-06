@@ -1429,8 +1429,8 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     let discriminant_type_metadata = match layout.variants {
         layout::Variants::Single { .. } |
         layout::Variants::NicheFilling { .. } => None,
-        layout::Variants::Tagged { ref discr, .. } => {
-            Some(discriminant_type_metadata(discr.value))
+        layout::Variants::Tagged { ref tag, .. } => {
+            Some(discriminant_type_metadata(tag.value))
         }
     };
 

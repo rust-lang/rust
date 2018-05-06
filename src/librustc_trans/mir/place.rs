@@ -273,8 +273,8 @@ impl<'a, 'tcx> PlaceRef<'tcx> {
         let lldiscr = discr.load(bx).immediate();
         match self.layout.variants {
             layout::Variants::Single { .. } => bug!(),
-            layout::Variants::Tagged { ref discr, .. } => {
-                let signed = match discr.value {
+            layout::Variants::Tagged { ref tag, .. } => {
+                let signed = match tag.value {
                     layout::Int(_, signed) => signed,
                     _ => false
                 };

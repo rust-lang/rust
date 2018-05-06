@@ -960,7 +960,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                layout::Abi::Uninhabited);
                 }
             }
-            layout::Variants::Tagged { ref discr, .. } => {
+            layout::Variants::Tagged { ref tag, .. } => {
                 let discr_val = dest_ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(*self.tcx, variant_index)
                     .val;
@@ -968,12 +968,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = discr.value.size(self.tcx.tcx).bits();
+                let size = tag.value.size(self.tcx.tcx).bits();
                 let amt = 128 - size;
                 let discr_val = (discr_val << amt) >> amt;
 
-                let (discr_dest, discr) = self.place_field(dest, mir::Field::new(0), layout)?;
-                self.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr.ty)?;
+                let (discr_dest, tag) = self.place_field(dest, mir::Field::new(0), layout)?;
+                self.write_primval(discr_dest, PrimVal::Bytes(discr_val), tag.ty)?;
             }
             layout::Variants::NicheFilling {
                 dataful_variant,
