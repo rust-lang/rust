@@ -151,7 +151,8 @@ fn try_shorthand() {
     let zzzz = expr?.another?.another?.another?.another?;
     let aaa = x??????????????????????????????????????????????????????????????????????????;
 
-    let y = a.very
+    let y = a
+        .very
         .loooooooooooooooooooooooooooooooooooooong()
         .chain()
         .inside()
@@ -206,9 +207,8 @@ fn issue2126() {
             {
                 {
                     {
-                        let x = self.span_from(
-                            sub_span.expect("No span found for struct arant variant"),
-                        );
+                        let x = self
+                            .span_from(sub_span.expect("No span found for struct arant variant"));
                         self.sspanpan_from_span(
                             sub_span.expect("No span found for struct variant"),
                         );

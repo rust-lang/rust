@@ -3,7 +3,8 @@
 fn main() {
     let x = some_expr()?;
 
-    let y = a.very
+    let y = a
+        .very
         .loooooooooooooooooooooooooooooooooooooong()
         .chain()
         .inside()
