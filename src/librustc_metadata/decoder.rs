@@ -13,7 +13,7 @@
 use cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use schema::*;
 
-use rustc_data_structures::sync::{Lrc, ReadGuard};
+use rustc_data_structures::sync::{Lrc, ReadGuard, Lock};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash,
                       DisambiguatedDefPathData};
 use rustc::hir;
@@ -56,10 +56,7 @@ pub struct DecodeContext<'a, 'tcx: 'a> {
     lazy_state: LazyState,
 
     // interpreter allocation cache
-    interpret_alloc_cache: FxHashMap<usize, interpret::AllocId>,
-
-    // Read from the LazySeq CrateRoot::inpterpret_alloc_index on demand
-    interpret_alloc_index: Option<Vec<u32>>,
+    interpret_alloc_cache: Lock<FxHashMap<usize, interpret::AllocId>>,
 }
 
 /// Abstract over the various ways one can create metadata decoders.
@@ -78,8 +75,7 @@ pub trait Metadata<'a, 'tcx>: Copy {
             tcx,
             last_filemap_index: 0,
             lazy_state: LazyState::NoNode,
-            interpret_alloc_cache: FxHashMap::default(),
-            interpret_alloc_index: None,
+            interpret_alloc_cache: Lock::new(FxHashMap::default()),
         }
     }
 }
@@ -177,17 +173,6 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         };
         self.lazy_state = LazyState::Previous(position + min_size);
         Ok(position)
-    }
-
-    fn interpret_alloc(&mut self, idx: usize) -> usize {
-        if let Some(index) = self.interpret_alloc_index.as_mut() {
-            return index[idx] as usize;
-        }
-        let cdata = self.cdata();
-        let index: Vec<u32> = cdata.root.interpret_alloc_index.decode(cdata).collect();
-        let pos = index[idx];
-        self.interpret_alloc_index = Some(index);
-        pos as usize
     }
 }
 
@@ -300,21 +285,11 @@ impl<'a, 'tcx> SpecializedDecoder<LocalDefId> for DecodeContext<'a, 'tcx> {
 impl<'a, 'tcx> SpecializedDecoder<interpret::AllocId> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<interpret::AllocId, Self::Error> {
         let tcx = self.tcx.unwrap();
-        let idx = usize::decode(self)?;
-
-        if let Some(cached) = self.interpret_alloc_cache.get(&idx).cloned() {
-            return Ok(cached);
-        }
-        let pos = self.interpret_alloc(idx);
-        self.with_position(pos, |this| {
-            interpret::specialized_decode_alloc_id(
-                this,
-                tcx,
-                |this, alloc_id| {
-                    assert!(this.interpret_alloc_cache.insert(idx, alloc_id).is_none());
-                },
-            )
-        })
+        interpret::specialized_decode_alloc_id(
+            self,
+            tcx,
+            |this| this.interpret_alloc_cache.lock()
+        )
     }
 }
 
