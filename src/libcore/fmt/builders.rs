@@ -84,7 +84,7 @@ impl<'a> fmt::Write for PadAdapter<'a> {
 /// // prints "Foo { bar: 10, baz: "Hello World" }"
 /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
 /// ```
-#[must_use]
+#[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugStruct<'a, 'b: 'a> {
@@ -181,7 +181,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 /// // prints "Foo(10, "Hello World")"
 /// println!("{:?}", Foo(10, "Hello World".to_string()));
 /// ```
-#[must_use]
+#[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugTuple<'a, 'b: 'a> {
@@ -319,7 +319,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
 /// // prints "{10, 11}"
 /// println!("{:?}", Foo(vec![10, 11]));
 /// ```
-#[must_use]
+#[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugSet<'a, 'b: 'a> {
@@ -390,7 +390,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 /// // prints "[10, 11]"
 /// println!("{:?}", Foo(vec![10, 11]));
 /// ```
-#[must_use]
+#[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugList<'a, 'b: 'a> {
@@ -461,7 +461,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 /// // prints "{"A": 10, "B": 11}"
 /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
 /// ```
-#[must_use]
+#[must_use = "must eventually call `finish()` on Debug builders"]
 #[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugMap<'a, 'b: 'a> {
