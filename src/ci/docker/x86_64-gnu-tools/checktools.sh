@@ -30,9 +30,7 @@ python2.7 "$X_PY" test --no-fail-fast \
     src/doc/reference \
     src/doc/rust-by-example \
     src/tools/rls \
-    src/tools/rustfmt \
-    src/tools/miri \
-    src/tools/clippy
+    src/tools/rustfmt
 set -e
 
 cat "$TOOLSTATE_FILE"
@@ -66,8 +64,6 @@ verify_status reference src/doc/reference
 verify_status rust-by-example src/doc/rust-by-example
 verify_status rls src/tool/rls
 verify_status rustfmt src/tool/rustfmt
-verify_status clippy-driver src/tool/clippy
-verify_status miri src/tool/miri
 
 if [ "$RUST_RELEASE_CHANNEL" = nightly -a -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
     . "$(dirname $0)/repo.sh"
