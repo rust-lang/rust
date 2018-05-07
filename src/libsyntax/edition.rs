@@ -50,8 +50,8 @@ impl fmt::Display for Edition {
 impl Edition {
     pub fn lint_name(&self) -> &'static str {
         match *self {
-            Edition::Edition2015 => "edition_2015",
-            Edition::Edition2018 => "edition_2018",
+            Edition::Edition2015 => "rust_2015_breakage",
+            Edition::Edition2018 => "rust_2018_breakage",
         }
     }
 

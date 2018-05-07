@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:xcrate.rs
+// compile-flags: --edition=2018 -Zunstable-options
 
 #![feature(extern_absolute_paths)]
 
