@@ -108,7 +108,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         .rewrite(context, parent_shape)
         .map(|parent_rw| parent_rw + &"?".repeat(prefix_try_num))?;
     let parent_rewrite_contains_newline = parent_rewrite.contains('\n');
-    let is_small_parent = parent_rewrite.len() <= context.config.tab_spaces();
+    let is_small_parent = shape.offset + parent_rewrite.len() <= context.config.tab_spaces();
 
     // Decide how to layout the rest of the chain. `extend` is true if we can
     // put the first non-parent item on the same line as the parent.
