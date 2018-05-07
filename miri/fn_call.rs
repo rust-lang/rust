@@ -3,6 +3,7 @@ use rustc::ty::layout::{self, Align, LayoutOf};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::codemap::Span;
 

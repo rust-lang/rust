@@ -444,9 +444,9 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn validation_op<'a>(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        op: ::rustc::mir::ValidationOp,
-        operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _op: ::rustc::mir::ValidationOp,
+        _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
     ) -> EvalResult<'tcx> {
         // FIXME: prevent this from ICEing
         //ecx.validation_op(op, operand)
