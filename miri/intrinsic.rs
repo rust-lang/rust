@@ -315,6 +315,20 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 self.write_primval(dest, result.0, dest_layout.ty)?;
             }
 
+            "exact_div" => {
+                // Performs an exact division, resulting in undefined behavior where
+                // `x % y != 0` or `y == 0` or `x == T::min_value() && y == -1`
+                let ty = substs.type_at(0);
+                let a = self.value_to_primval(args[0])?;
+                let b = self.value_to_primval(args[1])?;
+                // check x % y != 0
+                if self.binary_op(mir::BinOp::Rem, a, ty, b, ty)?.0 != PrimVal::Bytes(0) {
+                    return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
+                }
+                let result = self.binary_op(mir::BinOp::Div, a, ty, b, ty)?;
+                self.write_primval(dest, result.0, dest_layout.ty)?;
+            },
+
             "likely" | "unlikely" | "forget" => {}
 
             "init" => {
