@@ -1141,7 +1141,7 @@ impl<'a, T: ?Sized> PinMut<'a, T> {
     /// the data out of the mutable reference you receive when you call this
     /// function.
     #[unstable(feature = "pin", issue = "49150")]
-    pub unsafe fn get_mut<'b>(this: &'b mut PinMut<'a, T>) -> &'b mut T {
+    pub unsafe fn get_mut(this: PinMut<'a, T>) -> &'a mut T {
         this.inner
     }
 
