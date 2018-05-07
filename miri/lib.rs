@@ -145,7 +145,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 main_instance,
                 main_mir.span,
                 main_mir,
-                Place::undef(),
+                Place::from_primval_ptr(PrimVal::Bytes(1).into(), ty::layout::Align::from_bytes(1, 1).unwrap()),
                 StackPopCleanup::None,
             )?;
 
@@ -177,6 +177,16 @@ pub fn eval_main<'a, 'tcx: 'a>(
         Err(mut e) => {
             ecx.tcx.sess.err(&e.to_string());
             ecx.report(&mut e, true, None);
+            for (i, frame) in ecx.stack().iter().enumerate() {
+                trace!("-------------------");
+                trace!("Frame {}", i);
+                trace!("    return: {:#?}", frame.return_place);
+                for (i, local) in frame.locals.iter().enumerate() {
+                    if let Some(local) = local {
+                        trace!("    local {}: {:?}", i, local);
+                    }
+                }
+            }
         }
     }
 }
