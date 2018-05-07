@@ -11,7 +11,7 @@
 LLVMBC_SECTION_NAME=\\.llvmbc
 
 ifeq ($(UNAME),Darwin)
-	LLVMBC_SECTION_NAME=__LLVM,__bitcode
+	LLVMBC_SECTION_NAME=__bitcode
 endif
 
 
