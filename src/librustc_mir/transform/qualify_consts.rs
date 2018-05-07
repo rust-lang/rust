@@ -366,42 +366,41 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
 
                 TerminatorKind::Return => {
                     if self.tcx.sess.features_untracked().const_let {
-                        break;
-                    }
-                    // Check for unused values. This usually means
-                    // there are extra statements in the AST.
-                    for temp in mir.temps_iter() {
-                        if self.local_qualif[temp].is_none() {
-                            continue;
+                        // Check for unused values. This usually means
+                        // there are extra statements in the AST.
+                        for temp in mir.temps_iter() {
+                            if self.local_qualif[temp].is_none() {
+                                continue;
+                            }
+
+                            let state = self.temp_promotion_state[temp];
+                            if let TempState::Defined { location, uses: 0 } = state {
+                                let data = &mir[location.block];
+                                let stmt_idx = location.statement_index;
+
+                                // Get the span for the initialization.
+                                let source_info = if stmt_idx < data.statements.len() {
+                                    data.statements[stmt_idx].source_info
+                                } else {
+                                    data.terminator().source_info
+                                };
+                                self.span = source_info.span;
+
+                                // Treat this as a statement in the AST.
+                                self.statement_like();
+                            }
                         }
 
-                        let state = self.temp_promotion_state[temp];
-                        if let TempState::Defined { location, uses: 0 } = state {
-                            let data = &mir[location.block];
-                            let stmt_idx = location.statement_index;
-
-                            // Get the span for the initialization.
-                            let source_info = if stmt_idx < data.statements.len() {
-                                data.statements[stmt_idx].source_info
-                            } else {
-                                data.terminator().source_info
-                            };
-                            self.span = source_info.span;
-
-                            // Treat this as a statement in the AST.
-                            self.statement_like();
-                        }
-                    }
-
-                    // Make sure there are no extra unassigned variables.
-                    self.qualif = Qualif::NOT_CONST;
-                    for index in mir.vars_iter() {
-                        if !self.const_fn_arg_vars.contains(index.index()) {
-                            debug!("unassigned variable {:?}", index);
-                            self.assign(&Place::Local(index), Location {
-                                block: bb,
-                                statement_index: usize::MAX,
-                            });
+                        // Make sure there are no extra unassigned variables.
+                        self.qualif = Qualif::NOT_CONST;
+                        for index in mir.vars_iter() {
+                            if !self.const_fn_arg_vars.contains(index.index()) {
+                                debug!("unassigned variable {:?}", index);
+                                self.assign(&Place::Local(index), Location {
+                                    block: bb,
+                                    statement_index: usize::MAX,
+                                });
+                            }
                         }
                     }
 
