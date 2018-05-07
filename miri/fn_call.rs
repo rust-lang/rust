@@ -627,7 +627,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
 
         match &path[..] {
             // Allocators are magic.  They have no MIR, even when the rest of libstd does.
-            "alloc::heap::::__rust_alloc" => {
+            "alloc::alloc::::__rust_alloc" => {
                 let size = self.value_to_primval(args[0])?.to_u64()?;
                 let align = self.value_to_primval(args[1])?.to_u64()?;
                 if size == 0 {
@@ -641,7 +641,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                                                Some(MemoryKind::Rust.into()))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
-            "alloc::heap::::__rust_alloc_zeroed" => {
+            "alloc::alloc::::__rust_alloc_zeroed" => {
                 let size = self.value_to_primval(args[0])?.to_u64()?;
                 let align = self.value_to_primval(args[1])?.to_u64()?;
                 if size == 0 {
@@ -656,7 +656,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
-            "alloc::heap::::__rust_dealloc" => {
+            "alloc::alloc::::__rust_dealloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1])?.to_u64()?;
                 let align = self.value_to_primval(args[2])?.to_u64()?;
@@ -672,27 +672,23 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     MemoryKind::Rust.into(),
                 )?;
             }
-            "alloc::heap::::__rust_realloc" => {
+            "alloc::alloc::::__rust_realloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1])?.to_u64()?;
-                let old_align = self.value_to_primval(args[2])?.to_u64()?;
+                let align = self.value_to_primval(args[2])?.to_u64()?;
                 let new_size = self.value_to_primval(args[3])?.to_u64()?;
-                let new_align = self.value_to_primval(args[4])?.to_u64()?;
                 if old_size == 0 || new_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
-                if !old_align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(old_align));
-                }
-                if !new_align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(new_align));
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let new_ptr = self.memory.reallocate(
                     ptr,
                     old_size,
-                    Align::from_bytes(old_align, old_align).unwrap(),
+                    Align::from_bytes(align, align).unwrap(),
                     new_size,
-                    Align::from_bytes(new_align, new_align).unwrap(),
+                    Align::from_bytes(align, align).unwrap(),
                     MemoryKind::Rust.into(),
                 )?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;
