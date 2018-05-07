@@ -654,6 +654,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                         if self.type_is_fat_ptr(src.ty) {
                             match (src.value, self.type_is_fat_ptr(dest_ty)) {
                                 (Value::ByRef { .. }, _) |
+                                // pointers to extern types
+                                (Value::ByVal(_),_) |
+                                // slices and trait objects to other slices/trait objects
                                 (Value::ByValPair(..), true) => {
                                     let valty = ValTy {
                                         value: src.value,
@@ -661,6 +664,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     };
                                     self.write_value(valty, dest)?;
                                 }
+                                // slices and trait objects to thin pointers (dropping the metadata)
                                 (Value::ByValPair(data, _), false) => {
                                     let valty = ValTy {
                                         value: Value::ByVal(data),
@@ -668,7 +672,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                                     };
                                     self.write_value(valty, dest)?;
                                 }
-                                (Value::ByVal(_), _) => bug!("expected fat ptr"),
                             }
                         } else {
                             let src_layout = self.layout_of(src.ty)?;
