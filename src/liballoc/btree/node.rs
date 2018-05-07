@@ -195,6 +195,10 @@ impl<K, V> Root<K, V> {
     }
 
     pub fn shared_empty_root() -> Self {
+        // Ensuring that the shared node hasn't been corrupted by any mutations
+        debug_assert!(EMPTY_ROOT_NODE.parent == ptr::null());
+        debug_assert!(EMPTY_ROOT_NODE.parent_idx == 0);
+        debug_assert!(EMPTY_ROOT_NODE.len == 0);
         Root {
             node: unsafe {
                 BoxedNode::from_ptr(NonNull::new_unchecked(
@@ -246,6 +250,7 @@ impl<K, V> Root<K, V> {
     /// new node the root. This increases the height by 1 and is the opposite of `pop_level`.
     pub fn push_level(&mut self)
             -> NodeRef<marker::Mut, K, V, marker::Internal> {
+        debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
         new_node.edges[0] = unsafe { BoxedNode::from_ptr(self.node.as_ptr()) };
 
@@ -474,6 +479,7 @@ impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
             marker::Edge
         >
     > {
+        debug_assert!(!self.is_shared_root());
         let node = self.node;
         let ret = self.ascend().ok();
         Global.dealloc(node.as_opaque(), Layout::new::<LeafNode<K, V>>());
@@ -631,6 +637,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     pub fn push(&mut self, key: K, val: V) {
         // Necessary for correctness, but this is an internal module
         debug_assert!(self.len() < CAPACITY);
+        debug_assert!(!self.is_shared_root());
 
         let idx = self.len();
 
@@ -646,6 +653,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
     pub fn push_front(&mut self, key: K, val: V) {
         // Necessary for correctness, but this is an internal module
         debug_assert!(self.len() < CAPACITY);
+        debug_assert!(!self.is_shared_root());
 
         unsafe {
             slice_insert(self.keys_mut(), 0, key);
@@ -959,6 +967,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge
     fn insert_fit(&mut self, key: K, val: V) -> *mut V {
         // Necessary for correctness, but in a private module
         debug_assert!(self.node.len() < CAPACITY);
+        debug_assert!(!self.node.is_shared_root());
 
         unsafe {
             slice_insert(self.node.keys_mut(), self.idx, key);
@@ -1136,6 +1145,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     ///   allocated node.
     pub fn split(mut self)
             -> (NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, K, V, Root<K, V>) {
+        debug_assert!(!self.node.is_shared_root());
         unsafe {
             let mut new_node = Box::new(LeafNode::new());
 
@@ -1173,6 +1183,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
     /// now adjacent key/value pairs to the left and right of this handle.
     pub fn remove(mut self)
             -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>, K, V) {
+        debug_assert!(!self.node.is_shared_root());
         unsafe {
             let k = slice_remove(self.node.keys_mut(), self.idx);
             let v = slice_remove(self.node.vals_mut(), self.idx);

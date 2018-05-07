@@ -246,6 +246,9 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
     }
 
     fn replace(&mut self, key: K) -> Option<K> {
+        if self.root.is_shared_root() {
+            self.root = node::Root::new_leaf();
+        }
         match search::search_tree::<marker::Mut, K, (), K>(self.root.as_mut(), &key) {
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
@@ -889,6 +892,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
+        // FIXME(@porglezomp) Avoid allocating if we don't insert
         if self.root.is_shared_root() {
             self.root = node::Root::new_leaf();
         }
@@ -1026,6 +1030,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let total_num = self.len();
 
         let mut right = Self::new();
+        right.root = node::Root::new_leaf();
         for _ in 0..(self.root.as_ref().height()) {
             right.root.push_level();
         }
