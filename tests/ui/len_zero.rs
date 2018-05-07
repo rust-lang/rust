@@ -1,6 +1,3 @@
-
-
-
 #![warn(len_without_is_empty, len_zero)]
 #![allow(dead_code, unused)]
 
@@ -12,7 +9,8 @@ impl PubOne {
     }
 }
 
-impl PubOne { // A second impl for this struct - the error span shouldn't mention this
+impl PubOne {
+    // A second impl for this struct - the error span shouldn't mention this
     pub fn irrelevant(self: &Self) -> bool {
         false
     }
@@ -39,7 +37,8 @@ impl PubAllowed {
 struct NotPubOne;
 
 impl NotPubOne {
-    pub fn len(self: &Self) -> isize { // no error, len is pub but `NotPubOne` is not exported anyway
+    pub fn len(self: &Self) -> isize {
+        // no error, len is pub but `NotPubOne` is not exported anyway
         1
     }
 }
@@ -47,7 +46,8 @@ impl NotPubOne {
 struct One;
 
 impl One {
-    fn len(self: &Self) -> isize { // no error, len is private, see #1085
+    fn len(self: &Self) -> isize {
+        // no error, len is private, see #1085
         1
     }
 }
@@ -120,7 +120,7 @@ impl HasWrongIsEmpty {
         1
     }
 
-    pub fn is_empty(self: &Self, x : u32) -> bool {
+    pub fn is_empty(self: &Self, x: u32) -> bool {
         false
     }
 }
@@ -129,11 +129,10 @@ pub trait Empty {
     fn is_empty(&self) -> bool;
 }
 
-pub trait InheritingEmpty: Empty { //must not trigger LEN_WITHOUT_IS_EMPTY
+pub trait InheritingEmpty: Empty {
+    //must not trigger LEN_WITHOUT_IS_EMPTY
     fn len(&self) -> isize;
 }
-
-
 
 fn main() {
     let x = [1, 2];
@@ -141,16 +140,17 @@ fn main() {
         println!("This should not happen!");
     }
 
-    if "".len() == 0 {
-    }
+    if "".len() == 0 {}
 
     let y = One;
-    if y.len()  == 0 { //no error because One does not have .is_empty()
+    if y.len() == 0 {
+        //no error because One does not have .is_empty()
         println!("This should not happen either!");
     }
 
-    let z : &TraitsToo = &y;
-    if z.len() > 0 { //no error, because TraitsToo has no .is_empty() method
+    let z: &TraitsToo = &y;
+    if z.len() > 0 {
+        //no error, because TraitsToo has no .is_empty() method
         println!("Nor should this!");
     }
 
@@ -164,6 +164,43 @@ fn main() {
     if has_is_empty.len() > 0 {
         println!("Or this!");
     }
+    if has_is_empty.len() < 1 {
+        println!("Or this!");
+    }
+    if has_is_empty.len() >= 1 {
+        println!("Or this!");
+    }
+    if has_is_empty.len() > 1 {
+        // no error
+        println!("This can happen.");
+    }
+    if has_is_empty.len() <= 1 {
+        // no error
+        println!("This can happen.");
+    }
+    if 0 == has_is_empty.len() {
+        println!("Or this!");
+    }
+    if 0 != has_is_empty.len() {
+        println!("Or this!");
+    }
+    if 0 < has_is_empty.len() {
+        println!("Or this!");
+    }
+    if 1 <= has_is_empty.len() {
+        println!("Or this!");
+    }
+    if 1 > has_is_empty.len() {
+        println!("Or this!");
+    }
+    if 1 < has_is_empty.len() {
+        // no error
+        println!("This can happen.");
+    }
+    if 1 >= has_is_empty.len() {
+        // no error
+        println!("This can happen.");
+    }
     assert!(!has_is_empty.is_empty());
 
     let with_is_empty: &WithIsEmpty = &Wither;
@@ -173,14 +210,14 @@ fn main() {
     assert!(!with_is_empty.is_empty());
 
     let has_wrong_is_empty = HasWrongIsEmpty;
-    if has_wrong_is_empty.len() == 0 { //no error as HasWrongIsEmpty does not have .is_empty()
+    if has_wrong_is_empty.len() == 0 {
+        //no error as HasWrongIsEmpty does not have .is_empty()
         println!("Or this!");
     }
 }
 
 fn test_slice(b: &[u8]) {
-    if b.len() != 0 {
-    }
+    if b.len() != 0 {}
 }
 
 // this used to ICE

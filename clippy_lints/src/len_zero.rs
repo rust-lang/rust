@@ -1,7 +1,7 @@
-use rustc::lint::*;
 use rustc::hir::def_id::DefId;
-use rustc::ty;
 use rustc::hir::*;
+use rustc::lint::*;
+use rustc::ty;
 use std::collections::HashSet;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
@@ -81,8 +81,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
         if let ExprBinary(Spanned { node: cmp, .. }, ref left, ref right) = expr.node {
             match cmp {
-                BiEq => check_cmp(cx, expr.span, left, right, ""),
-                BiGt | BiNe => check_cmp(cx, expr.span, left, right, "!"),
+                BiEq => {
+                    check_cmp(cx, expr.span, left, right, "", 0); // len == 0
+                    check_cmp(cx, expr.span, right, left, "", 0); // 0 == len
+                },
+                BiNe => {
+                    check_cmp(cx, expr.span, left, right, "!", 0); // len != 0
+                    check_cmp(cx, expr.span, right, left, "!", 0); // 0 != len
+                },
+                BiGt => {
+                    check_cmp(cx, expr.span, left, right, "!", 0); // len > 0
+                    check_cmp(cx, expr.span, right, left, "", 1); // 1 > len
+                },
+                BiLt => {
+                    check_cmp(cx, expr.span, left, right, "", 1); // len < 1
+                    check_cmp(cx, expr.span, right, left, "!", 0); // 0 < len
+                },
+                BiGe => check_cmp(cx, expr.span, left, right, "!", 1), // len <= 1
+                BiLe => check_cmp(cx, expr.span, right, left, "!", 1), // 1 >= len
                 _ => (),
             }
         }
@@ -168,40 +184,45 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
                 cx,
                 LEN_WITHOUT_IS_EMPTY,
                 item.span,
-                &format!("item `{}` has a public `len` method but {} `is_empty` method", ty, is_empty),
+                &format!(
+                    "item `{}` has a public `len` method but {} `is_empty` method",
+                    ty, is_empty
+                ),
             );
         }
     }
 }
 
-fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) {
-    // check if we are in an is_empty() method
-    if let Some(name) = get_item_name(cx, left) {
-        if name == "is_empty" {
-            return;
+fn check_cmp(cx: &LateContext, span: Span, method: &Expr, lit: &Expr, op: &str, compare_to: u32) {
+    if let (&ExprMethodCall(ref method_path, _, ref args), &ExprLit(ref lit)) = (&method.node, &lit.node) {
+        // check if we are in an is_empty() method
+        if let Some(name) = get_item_name(cx, method) {
+            if name == "is_empty" {
+                return;
+            }
         }
-    }
-    match (&left.node, &right.node) {
-        (&ExprLit(ref lit), &ExprMethodCall(ref method_path, _, ref args)) |
-        (&ExprMethodCall(ref method_path, _, ref args), &ExprLit(ref lit)) => {
-            check_len_zero(cx, span, method_path.name, args, lit, op)
-        },
-        _ => (),
+
+        check_len(cx, span, method_path.name, args, lit, op, compare_to)
     }
 }
 
-fn check_len_zero(cx: &LateContext, span: Span, name: Name, args: &[Expr], lit: &Lit, op: &str) {
+fn check_len(cx: &LateContext, span: Span, method_name: Name, args: &[Expr], lit: &Lit, op: &str, compare_to: u32) {
     if let Spanned {
-        node: LitKind::Int(0, _),
+        node: LitKind::Int(lit, _),
         ..
     } = *lit
     {
-        if name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
+        // check if length is compared to the specified number
+        if lit != u128::from(compare_to) {
+            return;
+        }
+
+        if method_name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_sugg(
                 cx,
                 LEN_ZERO,
                 span,
-                "length comparison to zero",
+                &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
                 "using `is_empty` is more concise",
                 format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")),
             );
