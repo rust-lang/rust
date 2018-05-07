@@ -115,8 +115,15 @@ pub fn check(path: &Path, bad: &mut bool) {
         let filename = file.file_name().unwrap().to_string_lossy();
         let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||
-           filename.starts_with(".#") {
+            filename.starts_with(".#") {
             return
+        }
+        let exceptions = [
+            "rust-installer",
+        ];
+
+        if exceptions.iter().any(|f| file.to_string_lossy().contains(f)) {
+            return;
         }
 
         contents.truncate(0);
