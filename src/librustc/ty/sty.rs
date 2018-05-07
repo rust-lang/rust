@@ -1148,7 +1148,6 @@ impl<'a, 'tcx, 'gcx> PolyExistentialProjection<'tcx> {
 
 impl DebruijnIndex {
     pub fn new(depth: u32) -> DebruijnIndex {
-        assert!(depth > 0);
         DebruijnIndex { depth: depth }
     }
 
@@ -1173,11 +1172,11 @@ impl RegionKind {
         }
     }
 
-    /// Returns the depth of `self` from the (1-based) binding level `depth`
+    /// Returns the depth of `self` from the (0-based) binding level `depth`
     pub fn from_depth(&self, depth: u32) -> RegionKind {
         match *self {
             ty::ReLateBound(debruijn, r) => ty::ReLateBound(DebruijnIndex {
-                depth: debruijn.depth - (depth - 1)
+                depth: debruijn.depth - depth
             }, r),
             r => r
         }

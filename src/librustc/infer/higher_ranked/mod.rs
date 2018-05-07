@@ -419,7 +419,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
         {
             for (a_br, a_r) in a_map {
                 if *a_r == r {
-                    return infcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), *a_br));
+                    return infcx.tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(0), *a_br));
                 }
             }
             span_bug!(
