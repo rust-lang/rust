@@ -24,6 +24,10 @@ use std::path::PathBuf;
 
 struct MiriCompilerCalls {
     default: RustcDefaultCalls,
+    /// Whether to begin interpretation at the start_fn lang item or not
+    /// 
+    /// If false, the interpretation begins at the `main` function
+    start_fn: bool,
 }
 
 impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
@@ -80,7 +84,8 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     ) -> CompileController<'a> {
         let mut control = self.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        control.after_analysis.callback = Box::new(after_analysis);
+        let start_fn = self.start_fn;
+        control.after_analysis.callback = Box::new(move |state| after_analysis(state, start_fn));
         if sess.target.target != sess.host {
             // only fully compile targets on the host. linking will fail for cross-compilation.
             control.after_analysis.stop = Compilation::Stop;
@@ -97,7 +102,7 @@ fn after_hir_lowering(state: &mut CompileState) {
     state.session.plugin_attributes.borrow_mut().push(attr);
 }
 
-fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
+fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>, use_start_fn: bool) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
@@ -133,7 +138,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
         let start_wrapper = tcx.lang_items().start_fn().and_then(|start_fn| {
-            if tcx.is_mir_available(start_fn) {
+            if use_start_fn {
                 Some(start_fn)
             } else {
                 None
@@ -216,10 +221,21 @@ fn main() {
         args.push(find_sysroot());
     }
 
+    let mut start_fn = false;
+    args.retain(|arg| {
+        if arg == "-Zmiri-start-fn" {
+            start_fn = true;
+            false
+        } else {
+            true
+        }
+    });
+
     // Make sure we always have all the MIR (e.g. for auxilary builds in unit tests).
     args.push("-Zalways-encode-mir".to_owned());
 
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls {
         default: RustcDefaultCalls,
+        start_fn,
     }, None, None);
 }

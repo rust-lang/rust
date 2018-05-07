@@ -114,6 +114,7 @@ fn miri_pass(path: &str, target: &str, host: &str, fullmir: bool, opt: bool) {
             .join(".xargo")
             .join("HOST");
 
+        flags.push("-Zmiri-start-fn".to_owned());
         flags.push(format!("--sysroot {}", sysroot.to_str().unwrap()));
     }
     if opt {
