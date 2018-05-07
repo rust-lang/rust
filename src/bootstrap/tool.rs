@@ -10,6 +10,7 @@
 
 use std::fs;
 use std::env;
+use std::iter;
 use std::path::PathBuf;
 use std::process::{Command, exit};
 
@@ -593,7 +594,7 @@ impl<'a> Builder<'a> {
     /// right location to run `compiler`.
     fn prepare_tool_cmd(&self, compiler: Compiler, cmd: &mut Command) {
         let host = &compiler.host;
-        let mut paths: Vec<PathBuf> = vec![
+        let mut lib_paths: Vec<PathBuf> = vec![
             PathBuf::from(&self.sysroot_libdir(compiler, compiler.host)),
             self.cargo_out(compiler, Mode::Tool, *host).join("deps"),
         ];
@@ -610,11 +611,46 @@ impl<'a> Builder<'a> {
                 }
                 for path in env::split_paths(v) {
                     if !curpaths.contains(&path) {
-                        paths.push(path);
+                        lib_paths.push(path);
                     }
                 }
             }
         }
-        add_lib_path(paths, cmd);
+
+        // Add the llvm/bin directory to PATH since it contains lots of
+        // useful, platform-independent tools
+        if let Some(llvm_bin_path) = self.llvm_bin_path() {
+            if host.contains("windows") {
+                // On Windows, PATH and the dynamic library path are the same,
+                // so we just add the LLVM bin path to lib_path
+                lib_paths.push(llvm_bin_path);
+            } else {
+                let old_path = env::var_os("PATH").unwrap_or_default();
+                let new_path = env::join_paths(iter::once(llvm_bin_path)
+                        .chain(env::split_paths(&old_path)))
+                    .expect("Could not add LLVM bin path to PATH");
+                cmd.env("PATH", new_path);
+            }
+        }
+
+        add_lib_path(lib_paths, cmd);
+    }
+
+    fn llvm_bin_path(&self) -> Option<PathBuf> {
+        if self.config.llvm_enabled && !self.config.dry_run {
+            let llvm_config = self.ensure(native::Llvm {
+                target: self.config.build,
+                emscripten: false,
+            });
+
+            // Add the llvm/bin directory to PATH since it contains lots of
+            // useful, platform-independent tools
+            let llvm_bin_path = llvm_config.parent()
+                .expect("Expected llvm-config to be contained in directory");
+            assert!(llvm_bin_path.is_dir());
+            Some(llvm_bin_path.to_path_buf())
+        } else {
+            None
+        }
     }
 }

@@ -835,7 +835,7 @@ test!(RunFailFullDepsPretty {
     host: true
 });
 
-default_test!(RunMake {
+host_test!(RunMake {
     path: "src/test/run-make",
     mode: "run-make",
     suite: "run-make"
@@ -1022,7 +1022,7 @@ impl Step for Compiletest {
 
             // Only pass correct values for these flags for the `run-make` suite as it
             // requires that a C++ compiler was configured which isn't always the case.
-            if !builder.config.dry_run && suite == "run-make-fulldeps" {
+            if !builder.config.dry_run && mode == "run-make" {
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
                 let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
                 cmd.arg("--cc").arg(builder.cc(target))
@@ -1035,13 +1035,13 @@ impl Step for Compiletest {
                 }
             }
         }
-        if suite == "run-make-fulldeps" && !builder.config.llvm_enabled {
+        if mode == "run-make" && !builder.config.llvm_enabled {
             builder.info(
                 &format!("Ignoring run-make test suite as they generally don't work without LLVM"));
             return;
         }
 
-        if suite != "run-make-fulldeps" {
+        if mode != "run-make" {
             cmd.arg("--cc").arg("")
                .arg("--cxx").arg("")
                .arg("--cflags").arg("")
