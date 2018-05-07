@@ -14,6 +14,9 @@ Language
 - [Pattern matching will now automatically apply dereferences.][49394]
 - [128-bit integers in the form of `u128` and `i128` are now stable.][49101]
 - [`main` can now return `Result<(), E: Debug>`][49162] in addition to `()`.
+- [A lot of operations are now available in a const context.][46882] E.g. You
+  can now index into constant arrays, reference and deference into constants,
+  and use Tuple struct constructors.
 - [Fixed entry slice patterns are now stable.][48516] e.g.
   ```rust
   let points = [1, 2, 3, 4];
@@ -41,7 +44,6 @@ Libraries
 - [Implemented `Default, Hash` for `cmp::Reverse`.][48628]
 - [Optimized `str::repeat` being 8x faster in large cases.][48657]
 - [`ascii::escape_default` is now available in libcore.][48735]
-- [Implemented `FromStr` for `PathBuf`][48292]
 - [Trailing commas are now supported in std and core macros.][48056]
 - [Implemented `Copy, Clone` for `cmp::Reverse`][47379]
 - [Implemented `Clone` for `char::{ToLowercase, ToUppercase}`.][48629]
@@ -77,8 +79,6 @@ Stabilized APIs
 - [`LocalKey::try_with`]
 - [`Option::cloned`]
 - [`btree_map::Entry::and_modify`]
-- [`convert::TryFrom`]
-- [`convert::TryInto`]
 - [`fs::read_to_string`]
 - [`fs::read`]
 - [`fs::write`]
@@ -121,12 +121,12 @@ Compatibility Notes
       let _reversed_pair: &'static _ = &(PAIR.1, PAIR.0); // Doesn't work
   }
   ```
-- [Removed the deprecated unstable `SipHasher{13,24}` from documentation.][49108]
 - [Deprecate `AsciiExt` trait in favor of inherent methods.][49109]
 - [`".e0"` will now no longer parse as `0.0` and will instead cause
   an error.][48235]
 - [Removed hoedown from rustdoc.][48274]
 
+[46882]: https://github.com/rust-lang/rust/pull/46882
 [47379]: https://github.com/rust-lang/rust/pull/47379
 [47408]: https://github.com/rust-lang/rust/pull/47408
 [47813]: https://github.com/rust-lang/rust/pull/47813
@@ -136,7 +136,6 @@ Compatibility Notes
 [48235]: https://github.com/rust-lang/rust/pull/48235
 [48274]: https://github.com/rust-lang/rust/pull/48274
 [48281]: https://github.com/rust-lang/rust/pull/48281
-[48292]: https://github.com/rust-lang/rust/pull/48292
 [48296]: https://github.com/rust-lang/rust/pull/48296
 [48359]: https://github.com/rust-lang/rust/pull/48359
 [48404]: https://github.com/rust-lang/rust/pull/48404
@@ -148,7 +147,6 @@ Compatibility Notes
 [48735]: https://github.com/rust-lang/rust/pull/48735
 [48978]: https://github.com/rust-lang/rust/pull/48978
 [49101]: https://github.com/rust-lang/rust/pull/49101
-[49108]: https://github.com/rust-lang/rust/pull/49108
 [49109]: https://github.com/rust-lang/rust/pull/49109
 [49121]: https://github.com/rust-lang/rust/pull/49121
 [49162]: https://github.com/rust-lang/rust/pull/49162
@@ -188,8 +186,6 @@ Compatibility Notes
 [`LocalKey::try_with`]: https://doc.rust-lang.org/std/thread/struct.LocalKey.html#method.try_with
 [`Option::cloned`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.cloned
 [`btree_map::Entry::and_modify`]: https://doc.rust-lang.org/std/collections/btree_map/enum.Entry.html#method.and_modify
-[`convert::TryFrom`]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html
-[`convert::TryInto`]: https://doc.rust-lang.org/std/convert/trait.TryInto.html
 [`fs::read_to_string`]: https://doc.rust-lang.org/std/fs/fn.read_to_string.html
 [`fs::read`]: https://doc.rust-lang.org/std/fs/fn.read.html
 [`fs::write`]: https://doc.rust-lang.org/std/fs/fn.write.html
