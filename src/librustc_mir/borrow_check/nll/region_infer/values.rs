@@ -239,7 +239,7 @@ impl RegionValues {
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    pub(super) fn add<E: ToElementIndex>(&mut self, r: RegionVid, elem: E, cause: &Cause) -> bool {
+    pub(super) fn add_element<E: ToElementIndex>(&mut self, r: RegionVid, elem: E, cause: &Cause) -> bool {
         let i = self.elements.index(elem);
         self.add_internal(r, i, |_| cause.clone())
     }

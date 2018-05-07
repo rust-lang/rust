@@ -309,7 +309,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Add all nodes in the CFG to liveness constraints
             for point_index in self.elements.all_point_indices() {
-                self.liveness_constraints.add(
+                self.liveness_constraints.add_element(
                     variable,
                     point_index,
                     &Cause::UniversalRegion(variable),
@@ -318,7 +318,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // Add `end(X)` into the set for X.
             self.liveness_constraints
-                .add(variable, variable, &Cause::UniversalRegion(variable));
+                .add_element(variable, variable, &Cause::UniversalRegion(variable));
         }
     }
 
@@ -367,7 +367,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         debug!("add_live_point: @{:?} Adding cause {:?}", point, cause);
 
         let element = self.elements.index(point);
-        if self.liveness_constraints.add(v, element, &cause) {
+        if self.liveness_constraints.add_element(v, element, &cause) {
             true
         } else {
             false
