@@ -1952,14 +1952,12 @@ impl UnixSeqpacket {
 
     /// Sets the read timeout for the socket.
     ///
-    /// If the provided value is [`None`], then [`recv`] and [`recv_from`] calls will
-    /// block indefinitely. An [`Err`] is returned if the zero [`Duration`]
-    /// is passed to this method.
+    /// If the provided value is [`None`], then [`recv`] will block indefinitely.
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
     /// [`Err`]: ../../../../std/result/enum.Result.html#variant.Err
     /// [`recv`]: #method.recv
-    /// [`recv_from`]: #method.recv_from
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples
@@ -1995,13 +1993,11 @@ impl UnixSeqpacket {
 
     /// Sets the write timeout for the socket.
     ///
-    /// If the provided value is [`None`], then [`send`] and [`send_to`] calls will
-    /// block indefinitely. An [`Err`] is returned if the zero [`Duration`] is passed to this
-    /// method.
+    /// If the provided value is [`None`], then [`send`] will block indefinitely.
+    /// An [`Err`] is returned if the zero [`Duration`] is passed to this method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
     /// [`send`]: #method.send
-    /// [`send_to`]: #method.send_to
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples
