@@ -1155,7 +1155,7 @@ impl<'a, T: ?Sized> PinMut<'a, T> {
     /// because it is one of the fields of that value), and also that you do
     /// not move out of the argument you receive to the interior function.
     #[unstable(feature = "pin", issue = "49150")]
-    pub unsafe fn map<'b, U, F>(this: &'b mut PinMut<'a, T>, f: F) -> PinMut<'b, U> where
+    pub unsafe fn map<U, F>(this: PinMut<'a, T>, f: F) -> PinMut<'a, U> where
         F: FnOnce(&mut T) -> &mut U
     {
         PinMut { inner: f(this.inner) }
