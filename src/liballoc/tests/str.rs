@@ -162,6 +162,19 @@ fn test_join_for_different_lengths() {
     test_join!("-a-bc", ["", "a", "bc"], "-");
 }
 
+// join has fast paths for small separators up to 4 bytes
+// this tests the slow paths.
+#[test]
+fn test_join_for_different_lengths_with_long_separator() {
+    assert_eq!("～～～～～".len(), 15);
+
+    let empty: &[&str] = &[];
+    test_join!("", empty, "～～～～～");
+    test_join!("a", ["a"], "～～～～～");
+    test_join!("a～～～～～b", ["a", "b"], "～～～～～");
+    test_join!("～～～～～a～～～～～bc", ["", "a", "bc"], "～～～～～");
+}
+
 #[test]
 fn test_unsafe_slice() {
     assert_eq!("ab", unsafe {"abc".slice_unchecked(0, 2)});
