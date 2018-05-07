@@ -1344,6 +1344,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.on_disk_query_result_cache.serialize(self.global_tcx(), encoder)
     }
 
+    /// If true, we should use a naive AST walk to determine if match
+    /// guard could perform bad mutations (or mutable-borrows).
+    pub fn check_for_mutation_in_guard_via_ast_walk(self) -> bool {
+        !self.sess.opts.debugging_opts.disable_ast_check_for_mutation_in_guard
+    }
+
     /// If true, we should use the MIR-based borrowck (we may *also* use
     /// the AST-based borrowck).
     pub fn use_mir_borrowck(self) -> bool {

@@ -181,7 +181,9 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
             if let Some(ref guard) = arm.guard {
-                check_for_mutation_in_guard(self, &guard);
+                if self.tcx.check_for_mutation_in_guard_via_ast_walk() {
+                    check_for_mutation_in_guard(self, &guard);
+                }
             }
 
             // Third, perform some lints.
