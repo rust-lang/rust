@@ -231,10 +231,12 @@ impl fmt::Display for UseTree {
 impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
     pub fn rewrite_top_level(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
-        let vis = self.visibility
+        let vis = self
+            .visibility
             .as_ref()
             .map_or(Cow::from(""), |vis| ::utils::format_visibility(&vis));
-        let use_str = self.rewrite(context, shape.offset_left(vis.len())?)
+        let use_str = self
+            .rewrite(context, shape.offset_left(vis.len())?)
             .map(|s| {
                 if s.is_empty() {
                     s.to_owned()
@@ -448,7 +450,8 @@ impl UseTree {
 
         // Recursively normalize elements of a list use (including sorting the list).
         if let UseSegment::List(list) = last {
-            let mut list = list.into_iter()
+            let mut list = list
+                .into_iter()
                 .map(|ut| ut.normalize())
                 .collect::<Vec<_>>();
             list.sort();
@@ -530,7 +533,8 @@ impl UseTree {
 
     fn merge(&mut self, other: UseTree) {
         let mut new_path = vec![];
-        for (mut a, b) in self.path
+        for (mut a, b) in self
+            .path
             .clone()
             .iter_mut()
             .zip(other.path.clone().into_iter())

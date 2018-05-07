@@ -234,7 +234,8 @@ fn rewrite_segment(
                     || !data.types.is_empty()
                     || !data.bindings.is_empty() =>
             {
-                let param_list = data.lifetimes
+                let param_list = data
+                    .lifetimes
                     .iter()
                     .map(SegmentParam::LifeTime)
                     .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
@@ -574,7 +575,8 @@ impl Rewrite for ast::PolyTraitRef {
         {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
-            let path_str = self.trait_ref
+            let path_str = self
+                .trait_ref
                 .rewrite(context, shape.offset_left(extra_offset)?)?;
 
             Some(
@@ -717,7 +719,8 @@ impl Rewrite for ast::Ty {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Some(String::from("")),
-            ast::TyKind::ImplTrait(ref it) => it.rewrite(context, shape)
+            ast::TyKind::ImplTrait(ref it) => it
+                .rewrite(context, shape)
                 .map(|it_str| format!("impl {}", it_str)),
             ast::TyKind::Err | ast::TyKind::Typeof(..) => unreachable!(),
         }

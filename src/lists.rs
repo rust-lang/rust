@@ -96,17 +96,20 @@ impl ListItem {
 
     pub fn is_different_group(&self) -> bool {
         self.inner_as_ref().contains('\n') || self.pre_comment.is_some()
-            || self.post_comment
+            || self
+                .post_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
     }
 
     pub fn is_multiline(&self) -> bool {
         self.inner_as_ref().contains('\n')
-            || self.pre_comment
+            || self
+                .pre_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
-            || self.post_comment
+            || self
+                .post_comment
                 .as_ref()
                 .map_or(false, |s| s.contains('\n'))
     }
@@ -115,7 +118,8 @@ impl ListItem {
         self.pre_comment
             .as_ref()
             .map_or(false, |comment| comment.trim_left().starts_with("//"))
-            || self.post_comment
+            || self
+                .post_comment
                 .as_ref()
                 .map_or(false, |comment| comment.trim_left().starts_with("//"))
     }
@@ -517,7 +521,8 @@ where
         self.inner.next().map(|item| {
             let mut new_lines = false;
             // Pre-comment
-            let pre_snippet = self.snippet_provider
+            let pre_snippet = self
+                .snippet_provider
                 .span_to_snippet(mk_sp(self.prev_span_end, (self.get_lo)(&item)))
                 .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
@@ -555,7 +560,8 @@ where
                 Some(next_item) => (self.get_lo)(next_item),
                 None => self.next_span_start,
             };
-            let post_snippet = self.snippet_provider
+            let post_snippet = self
+                .snippet_provider
                 .span_to_snippet(mk_sp((self.get_hi)(&item), next_start))
                 .unwrap();
 

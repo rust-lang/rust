@@ -628,7 +628,8 @@ impl ConfigurationSection {
                 Some((i, line)) => {
                     if line.starts_with("```rust") {
                         // Get the lines of the code block.
-                        let lines: Vec<String> = file.map(|(_i, l)| l)
+                        let lines: Vec<String> = file
+                            .map(|(_i, l)| l)
                             .take_while(|l| !l.starts_with("```"))
                             .collect();
                         let block = format!("{}\n", lines.join("\n"));
@@ -699,7 +700,8 @@ impl ConfigCodeBlock {
         assert!(self.code_block.is_some() && self.code_block_start.is_some());
 
         // See if code block begins with #![rustfmt_skip].
-        let fmt_skip = self.code_block
+        let fmt_skip = self
+            .code_block
             .as_ref()
             .unwrap()
             .split('\n')

@@ -455,7 +455,8 @@ where
         width: context.budget(lhs_overhead),
         ..shape
     };
-    let lhs_result = lhs.rewrite(context, lhs_shape)
+    let lhs_result = lhs
+        .rewrite(context, lhs_shape)
         .map(|lhs_str| format!("{}{}", pp.prefix, lhs_str))?;
 
     // Try to put both lhs and rhs on the same line.
@@ -1036,7 +1037,8 @@ impl<'a> ControlFlow<'a> {
 
         // `for event in event`
         // Do not include label in the span.
-        let lo = self.label
+        let lo = self
+            .label
             .map_or(self.span.lo(), |label| label.ident.span.hi());
         let between_kwd_cond = mk_sp(
             context
@@ -1295,11 +1297,13 @@ pub fn rewrite_multiple_patterns(
     pats: &[&ast::Pat],
     shape: Shape,
 ) -> Option<String> {
-    let pat_strs = pats.iter()
+    let pat_strs = pats
+        .iter()
         .map(|p| p.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?;
 
-    let use_mixed_layout = pats.iter()
+    let use_mixed_layout = pats
+        .iter()
         .zip(pat_strs.iter())
         .all(|(pat, pat_str)| is_short_pattern(pat, pat_str));
     let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();

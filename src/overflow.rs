@@ -184,7 +184,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
     }
 
     fn items_span(&self) -> Span {
-        let span_lo = self.context
+        let span_lo = self
+            .context
             .snippet_provider
             .span_after(self.span, self.prefix);
         mk_sp(span_lo, self.span.hi())
@@ -288,7 +289,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 // formatted code, where a prefix or a suffix being left on its own
                 // line. Here we explicitlly check those cases.
                 if count_newlines(overflowed) == 1 {
-                    let rw = self.items
+                    let rw = self
+                        .items
                         .last()
                         .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
                     let no_newline = rw.as_ref().map_or(false, |s| !s.contains('\n'));
@@ -305,7 +307,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
                 list_items[self.items.len() - 1].item = placeholder;
             }
             _ if self.items.len() >= 1 => {
-                list_items[self.items.len() - 1].item = self.items
+                list_items[self.items.len() - 1].item = self
+                    .items
                     .last()
                     .and_then(|last_item| last_item.rewrite(self.context, self.nested_shape));
 
@@ -427,7 +430,8 @@ impl<'a, T: 'a + Rewrite + ToExpr + Spanned> Context<'a, T> {
         } else {
             first_line_width(items_str) + (paren_overhead / 2)
         };
-        let nested_indent_str = self.nested_shape
+        let nested_indent_str = self
+            .nested_shape
             .indent
             .to_string_with_newline(self.context.config);
         let indent_str = shape

@@ -142,7 +142,8 @@ impl<'a> Item<'a> {
             keyword: "",
             abi: format_abi(fm.abi, config.force_explicit_abi(), true),
             vis: None,
-            body: fm.items
+            body: fm
+                .items
                 .iter()
                 .map(|i| BodyElement::ForeignItem(i))
                 .collect(),
@@ -1725,7 +1726,8 @@ fn is_empty_infer(context: &RewriteContext, ty: &ast::Ty) -> bool {
 impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
-            let mut result = self.pat
+            let mut result = self
+                .pat
                 .rewrite(context, Shape::legacy(shape.width, shape.indent))?;
 
             if !is_empty_infer(context, &*self.ty) {
@@ -1738,7 +1740,8 @@ impl Rewrite for ast::Arg {
                 }
                 let overhead = last_line_width(&result);
                 let max_width = shape.width.checked_sub(overhead)?;
-                let ty_str = self.ty
+                let ty_str = self
+                    .ty
                     .rewrite(context, Shape::legacy(max_width, shape.indent))?;
                 result.push_str(&ty_str);
             }
@@ -1876,7 +1879,8 @@ fn rewrite_fn_base(
 
     // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.
-    let ret_str = fd.output
+    let ret_str = fd
+        .output
         .rewrite(context, Shape::indented(indent, context.config))?;
 
     let multi_line_ret_str = ret_str.contains('\n');
@@ -2034,7 +2038,8 @@ fn rewrite_fn_base(
         if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-            let ret_str = fd.output
+            let ret_str = fd
+                .output
                 .rewrite(context, Shape::indented(ret_indent, context.config))?;
             result.push_str(&ret_str);
         } else {
@@ -2151,7 +2156,8 @@ fn rewrite_args(
     variadic: bool,
     generics_str_contains_newline: bool,
 ) -> Option<String> {
-    let mut arg_item_strs = args.iter()
+    let mut arg_item_strs = args
+        .iter()
         .map(|arg| arg.rewrite(context, Shape::legacy(multi_line_budget, arg_indent)))
         .collect::<Option<Vec<_>>>()?;
 
