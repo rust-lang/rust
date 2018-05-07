@@ -31,3 +31,6 @@ helper.txt
 *.iml
 .vscode
 .idea
+
+# Used by the Clippy build script
+min_version.txt
