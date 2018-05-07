@@ -448,6 +448,8 @@ impl<'mir, 'tcx: 'mir> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         op: ::rustc::mir::ValidationOp,
         operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
     ) -> EvalResult<'tcx> {
-        ecx.validation_op(op, operand)
+        // FIXME: prevent this from ICEing
+        //ecx.validation_op(op, operand)
+        Ok(())
     }
 }
