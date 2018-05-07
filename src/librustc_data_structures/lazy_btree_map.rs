@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow::Borrow;
 use std::collections::btree_map;
 use std::collections::BTreeMap;
 
@@ -37,6 +38,10 @@ impl<K, V> LazyBTreeMap<K, V> {
     pub fn is_empty(&self) -> bool {
         self.0.as_ref().map_or(true, |btm| btm.is_empty())
     }
+
+    pub fn len(&self) -> usize {
+        self.0.as_ref().map_or(0, |btm| btm.len())
+    }
 }
 
 impl<K: Ord, V> LazyBTreeMap<K, V> {
@@ -50,16 +55,40 @@ impl<K: Ord, V> LazyBTreeMap<K, V> {
         }
     }
 
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V>
+        where K: Borrow<Q>,
+              Q: Ord
+    {
+        self.0.as_ref().and_then(|btm| btm.get(key))
+    }
+
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
         self.instantiate().insert(key, value)
+    }
+
+    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V>
+        where K: Borrow<Q>,
+              Q: Ord
+    {
+        self.0.as_mut().and_then(|btm| btm.remove(key))
     }
 
     pub fn entry(&mut self, key: K) -> btree_map::Entry<K, V> {
         self.instantiate().entry(key)
     }
 
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+        Keys(self.0.as_ref().map(|btm| btm.keys()))
+    }
+
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         Values(self.0.as_ref().map(|btm| btm.values()))
+    }
+}
+
+impl<K: Clone, V: Clone> Clone for LazyBTreeMap<K, V> {
+    fn clone(&self) -> Self {
+        LazyBTreeMap(self.0.as_ref().map(|map| map.clone()))
     }
 }
 
@@ -89,6 +118,20 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.as_ref().map_or_else(|| (0, Some(0)), |iter| iter.size_hint())
+    }
+}
+
+pub struct Keys<'a, K: 'a, V: 'a>(Option<btree_map::Keys<'a, K, V>>);
+
+impl<'a, K, V> Iterator for Keys<'a, K, V> {
+    type Item = &'a K;
+
+    fn next(&mut self) -> Option<&'a K> {
+        self.0.as_mut().and_then(|keys| keys.next())
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.as_ref().map_or_else(|| (0, Some(0)), |keys| keys.size_hint())
     }
 }
 
