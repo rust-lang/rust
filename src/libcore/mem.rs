@@ -1129,10 +1129,13 @@ impl<'a, T: ?Sized> PinMut<'a, T> {
         PinMut { inner: reference }
     }
 
-    /// Borrow a PinMut for a shorter lifetime than it already has.
+    /// Reborrow a `PinMut` for a shorter lifetime.
+    ///
+    /// For example, `PinMut::get_mut(x.reborrow())` (unsafely) returns a
+    /// short-lived mutable reference reborrowing from `x`.
     #[unstable(feature = "pin", issue = "49150")]
-    pub fn borrow<'b>(this: &'b mut PinMut<'a, T>) -> PinMut<'b, T> {
-        PinMut { inner: this.inner }
+    pub fn reborrow<'b>(&'b mut self) -> PinMut<'b, T> {
+        PinMut { inner: self.inner }
     }
 
     /// Get a mutable reference to the data inside of this `PinMut`.
