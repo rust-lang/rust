@@ -135,12 +135,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 if attr.check_name("must_use") {
                     let mut msg = format!("unused {}`{}` which must be used",
                                           describe_path, cx.tcx.item_path_str(def_id));
-                    // check for #[must_use="..."]
-                    if let Some(s) = attr.value_str() {
-                        msg.push_str(": ");
-                        msg.push_str(&s.as_str());
+                    let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
+                    // check for #[must_use = "..."]
+                    if let Some(note) = attr.value_str() {
+                        err.note(&note.as_str());
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, &msg);
+                    err.emit();
                     return true;
                 }
             }
