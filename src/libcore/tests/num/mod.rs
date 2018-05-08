@@ -527,6 +527,37 @@ assume_usize_width! {
     test_impl_try_from_signed_to_unsigned_err! { test_try_i128usize, i128, usize }
 }
 
+/// Conversions to bool is lossy.
+/// This checks that we only accept 1 for true and 0 for false.
+macro_rules! test_impl_try_bool_from_integers {
+    ($fn_name:ident, $source: ty) => {
+        #[test]
+        fn $fn_name() {
+            let max = <$source>::max_value();
+            let min = <$source>::min_value();
+            let one: $source = 1;
+            let zero: $source = 0;
+            assert!(<bool as TryFrom<$source>>::try_from(max).is_err());
+            if min != zero {
+                assert!(<bool as TryFrom<$source>>::try_from(min).is_err());
+            }
+            assert_eq!(true, <bool as TryFrom<$source>>::try_from(one).unwrap());
+            assert_eq!(false, <bool as TryFrom<$source>>::try_from(zero).unwrap());
+        }
+    }
+}
+
+test_impl_try_bool_from_integers! { test_try_bool_from_u8, u8 }
+test_impl_try_bool_from_integers! { test_try_bool_from_u16, u16 }
+test_impl_try_bool_from_integers! { test_try_bool_from_u32, u32 }
+test_impl_try_bool_from_integers! { test_try_bool_from_u64, u64 }
+test_impl_try_bool_from_integers! { test_try_bool_from_u128, u128 }
+test_impl_try_bool_from_integers! { test_try_bool_from_i8, i8 }
+test_impl_try_bool_from_integers! { test_try_bool_from_i16, i16 }
+test_impl_try_bool_from_integers! { test_try_bool_from_i32, i32 }
+test_impl_try_bool_from_integers! { test_try_bool_from_i64, i64 }
+test_impl_try_bool_from_integers! { test_try_bool_from_i128, i128 }
+
 macro_rules! test_float {
     ($modname: ident, $fty: ty, $inf: expr, $neginf: expr, $nan: expr) => { mod $modname {
         // FIXME(nagisa): these tests should test for sign of -0.0
