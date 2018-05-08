@@ -26,9 +26,7 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
-use rustc::ty::fold::TypeVisitor;
-use rustc::ty::util::TypeIdHasher;
-use rustc::ich::Fingerprint;
+use rustc::ich::{Fingerprint, NodeIdHashingMode};
 use rustc::ty::Instance;
 use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
@@ -144,9 +142,15 @@ impl<'tcx> TypeMap<'tcx> {
 
         // The hasher we are using to generate the UniqueTypeId. We want
         // something that provides more than the 64 bits of the DefaultHasher.
-        let mut type_id_hasher = TypeIdHasher::<Fingerprint>::new(cx.tcx);
-        type_id_hasher.visit_ty(type_);
-        let unique_type_id = type_id_hasher.finish().to_hex();
+        let mut hasher = StableHasher::<Fingerprint>::new();
+        let mut hcx = cx.tcx.create_stable_hashing_context();
+        let type_ = cx.tcx.erase_regions(&type_);
+        hcx.while_hashing_spans(false, |hcx| {
+            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+                type_.hash_stable(hcx, &mut hasher);
+            });
+        });
+        let unique_type_id = hasher.finish().to_hex();
 
         let key = self.unique_id_interner.intern(&unique_type_id);
         self.type_to_unique_id.insert(type_, UniqueTypeId(key));
