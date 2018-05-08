@@ -888,7 +888,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
         start: Some(start),
         ref end,
         limits,
-    }) = higher::range(arg)
+    }) = higher::range(cx, arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, _, _) = pat.node {
@@ -982,7 +982,7 @@ fn check_for_loop_range<'a, 'tcx>(
         start: Some(start),
         ref end,
         limits,
-    }) = higher::range(arg)
+    }) = higher::range(cx, arg)
     {
         // the var must be a single name
         if let PatKind::Binding(_, canonical_id, ref ident, _) = pat.node {
@@ -1118,7 +1118,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
         start: Some(start),
         end: Some(end),
         limits,
-    }) = higher::range(arg)
+    }) = higher::range(cx, arg)
     {
         // ...and both sides are compile-time constant integers...
         if let Some((start_idx, _)) = constant(cx, start) {
@@ -1456,7 +1456,7 @@ fn check_for_mut_range_bound(cx: &LateContext, arg: &Expr, body: &Expr) {
         start: Some(start),
         end: Some(end),
         ..
-    }) = higher::range(arg)
+    }) = higher::range(cx, arg)
     {
         let mut_ids = vec![
             check_for_mutability(cx, start),

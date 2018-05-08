@@ -73,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                 }
 
                 // Index is a constant range
-                if let Some(range) = higher::range(index) {
+                if let Some(range) = higher::range(cx, index) {
                     if let Some((start, end)) = to_const_range(cx, range, size) {
                         if start > size || end > size {
                             utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "range is out of bounds");
@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                 }
             }
 
-            if let Some(range) = higher::range(index) {
+            if let Some(range) = higher::range(cx, index) {
                 // Full ranges are always valid
                 if range.start.is_none() && range.end.is_none() {
                     return;
