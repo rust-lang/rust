@@ -97,19 +97,19 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use rustc::middle::weak_lang_items;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_mir::monomorphize::Instance;
-use rustc_mir::monomorphize::item::{MonoItem, MonoItemExt, InstantiationMode};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map as hir_map;
+use rustc::hir::map::definitions::DefPathData;
 use rustc::ich::NodeIdHashingMode;
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::middle::weak_lang_items;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
-use rustc::hir::map::definitions::DefPathData;
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common::record_time;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
+use rustc_mir::monomorphize::Instance;
 
 use syntax::attr;
 use syntax_pos::symbol::Symbol;
@@ -125,25 +125,29 @@ pub fn provide(providers: &mut Providers) {
     };
 }
 
-fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn get_symbol_hash<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
-                             // the DefId of the item this name is for
-                             def_id: DefId,
+    // the DefId of the item this name is for
+    def_id: DefId,
 
-                             // instance this name will be for
-                             instance: Instance<'tcx>,
+    // instance this name will be for
+    instance: Instance<'tcx>,
 
-                             // type of the item, without any generic
-                             // parameters substituted; this is
-                             // included in the hash as a kind of
-                             // safeguard.
-                             item_type: Ty<'tcx>,
+    // type of the item, without any generic
+    // parameters substituted; this is
+    // included in the hash as a kind of
+    // safeguard.
+    item_type: Ty<'tcx>,
 
-                             // values for generic type parameters,
-                             // if any.
-                             substs: &'tcx Substs<'tcx>)
-                             -> u64 {
-    debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
+    // values for generic type parameters,
+    // if any.
+    substs: &'tcx Substs<'tcx>,
+) -> u64 {
+    debug!(
+        "get_symbol_hash(def_id={:?}, parameters={:?})",
+        def_id, substs
+    );
 
     let mut hasher = StableHasher::<u64>::new();
     let mut hcx = tcx.create_stable_hashing_context();
@@ -193,12 +197,11 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if !def_id.is_local() && tcx.share_generics() {
                     // If we are re-using a monomorphization from another crate,
                     // we have to compute the symbol hash accordingly.
-                    let upstream_monomorphizations =
-                        tcx.upstream_monomorphizations_for(def_id);
+                    let upstream_monomorphizations = tcx.upstream_monomorphizations_for(def_id);
 
-                    upstream_monomorphizations.and_then(|monos| monos.get(&substs)
-                                                                     .cloned())
-                                              .unwrap_or(LOCAL_CRATE)
+                    upstream_monomorphizations
+                        .and_then(|monos| monos.get(&substs).cloned())
+                        .unwrap_or(LOCAL_CRATE)
                 } else {
                     LOCAL_CRATE
                 }
@@ -206,7 +209,8 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 LOCAL_CRATE
             };
 
-            (&tcx.original_crate_name(instantiating_crate).as_str()[..]).hash_stable(&mut hcx, &mut hasher);
+            (&tcx.original_crate_name(instantiating_crate).as_str()[..])
+                .hash_stable(&mut hcx, &mut hasher);
             (&tcx.crate_disambiguator(instantiating_crate)).hash_stable(&mut hcx, &mut hasher);
         }
     });
@@ -215,9 +219,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hasher.finish()
 }
 
-fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                             -> ty::SymbolName
-{
+fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::SymbolName {
     let mut buffer = SymbolPathBuffer::new();
     item_path::with_forced_absolute_paths(|| {
         tcx.push_item_path(&mut buffer, def_id);
@@ -225,20 +227,17 @@ fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     buffer.into_interned()
 }
 
-fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>)
-                         -> ty::SymbolName
-{
-    ty::SymbolName { name: Symbol::intern(&compute_symbol_name(tcx, instance)).as_interned_str() }
+fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
+    ty::SymbolName {
+        name: Symbol::intern(&compute_symbol_name(tcx, instance)).as_interned_str(),
+    }
 }
 
-fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>)
-    -> String
-{
+fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>) -> String {
     let def_id = instance.def_id();
     let substs = instance.substs;
 
-    debug!("symbol_name(def_id={:?}, substs={:?})",
-           def_id, substs);
+    debug!("symbol_name(def_id={:?}, substs={:?})", def_id, substs);
 
     let node_id = tcx.hir.as_local_node_id(def_id);
 
@@ -258,7 +257,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     let is_foreign = if let Some(id) = node_id {
         match tcx.hir.get(id) {
             hir_map::NodeForeignItem(_) => true,
-            _ => false
+            _ => false,
         }
     } else {
         tcx.is_foreign_item(def_id)
@@ -295,8 +294,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
     loop {
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
-            DefPathData::TypeNs(_) |
-            DefPathData::ValueNs(_) => {
+            DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
                 instance_ty = tcx.type_of(ty_def_id);
                 break;
             }
@@ -305,8 +303,12 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
                 // to be a value or type-def or something in there
                 // *somewhere*
                 ty_def_id.index = key.parent.unwrap_or_else(|| {
-                    bug!("finding type for {:?}, encountered def-id {:?} with no \
-                          parent", def_id, ty_def_id);
+                    bug!(
+                        "finding type for {:?}, encountered def-id {:?} with no \
+                         parent",
+                        def_id,
+                        ty_def_id
+                    );
                 });
             }
         }
@@ -336,14 +338,14 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 // use C++ name-mangling.
 struct SymbolPathBuffer {
     result: String,
-    temp_buf: String
+    temp_buf: String,
 }
 
 impl SymbolPathBuffer {
     fn new() -> Self {
         let mut result = SymbolPathBuffer {
             result: String::with_capacity(64),
-            temp_buf: String::with_capacity(16)
+            temp_buf: String::with_capacity(16),
         };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
@@ -352,14 +354,16 @@ impl SymbolPathBuffer {
     fn from_interned(symbol: ty::SymbolName) -> Self {
         let mut result = SymbolPathBuffer {
             result: String::with_capacity(64),
-            temp_buf: String::with_capacity(16)
+            temp_buf: String::with_capacity(16),
         };
         result.result.push_str(&symbol.name.as_str());
         result
     }
 
     fn into_interned(self) -> ty::SymbolName {
-        ty::SymbolName { name: Symbol::intern(&self.result).as_interned_str() }
+        ty::SymbolName {
+            name: Symbol::intern(&self.result).as_interned_str(),
+        }
     }
 
     fn finish(mut self, hash: u64) -> String {
@@ -378,7 +382,11 @@ impl ItemPathBuffer for SymbolPathBuffer {
     fn push(&mut self, text: &str) {
         self.temp_buf.clear();
         let need_underscore = sanitize(&mut self.temp_buf, text);
-        let _ = write!(self.result, "{}", self.temp_buf.len() + (need_underscore as usize));
+        let _ = write!(
+            self.result,
+            "{}",
+            self.temp_buf.len() + (need_underscore as usize)
+        );
         if need_underscore {
             self.result.push('_');
         }
@@ -409,16 +417,13 @@ pub fn sanitize(result: &mut String, s: &str) -> bool {
             '-' | ':' => result.push('.'),
 
             // These are legal symbols
-            'a' ... 'z'
-            | 'A' ... 'Z'
-            | '0' ... '9'
-            | '_' | '.' | '$' => result.push(c),
+            'a'...'z' | 'A'...'Z' | '0'...'9' | '_' | '.' | '$' => result.push(c),
 
             _ => {
                 result.push('$');
                 for c in c.escape_unicode().skip(1) {
                     match c {
-                        '{' => {},
+                        '{' => {}
                         '}' => result.push('$'),
                         c => result.push(c),
                     }
@@ -428,7 +433,6 @@ pub fn sanitize(result: &mut String, s: &str) -> bool {
     }
 
     // Underscore-qualify anything that didn't start as an ident.
-    !result.is_empty() &&
-        result.as_bytes()[0] != '_' as u8 &&
-        ! (result.as_bytes()[0] as char).is_xid_start()
+    !result.is_empty() && result.as_bytes()[0] != '_' as u8
+        && !(result.as_bytes()[0] as char).is_xid_start()
 }
