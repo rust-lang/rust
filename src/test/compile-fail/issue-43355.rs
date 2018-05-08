@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(incoherent_fundamental_impls)]
-
 pub trait Trait1<X> {
     type Output;
 }
