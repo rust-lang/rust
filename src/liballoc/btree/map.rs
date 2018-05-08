@@ -246,9 +246,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
     }
 
     fn replace(&mut self, key: K) -> Option<K> {
-        if self.root.is_shared_root() {
-            self.root = node::Root::new_leaf();
-        }
+        self.ensure_root_is_owned();
         match search::search_tree::<marker::Mut, K, (), K>(self.root.as_mut(), &key) {
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
@@ -893,10 +891,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
         // FIXME(@porglezomp) Avoid allocating if we don't insert
-        if self.root.is_shared_root() {
-            self.root = node::Root::new_leaf();
-        }
-
+        self.ensure_root_is_owned();
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => {
                 Occupied(OccupiedEntry {
@@ -917,10 +912,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
-        if self.root.is_shared_root() {
-            self.root = node::Root::new_leaf();
-        }
-
+        self.ensure_root_is_owned();
         let mut cur_node = last_leaf_edge(self.root.as_mut()).into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
@@ -1164,6 +1156,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
 
         self.fix_top();
+    }
+
+    /// If the root node is the shared root node, allocate our own node.
+    fn ensure_root_is_owned(&mut self) {
+        if self.root.is_shared_root() {
+            self.root = node::Root::new_leaf();
+        }
     }
 }
 

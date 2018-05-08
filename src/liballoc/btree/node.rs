@@ -195,10 +195,6 @@ impl<K, V> Root<K, V> {
     }
 
     pub fn shared_empty_root() -> Self {
-        // Ensuring that the shared node hasn't been corrupted by any mutations
-        debug_assert!(EMPTY_ROOT_NODE.parent == ptr::null());
-        debug_assert!(EMPTY_ROOT_NODE.parent_idx == 0);
-        debug_assert!(EMPTY_ROOT_NODE.len == 0);
         Root {
             node: unsafe {
                 BoxedNode::from_ptr(NonNull::new_unchecked(
