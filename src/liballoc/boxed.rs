@@ -62,7 +62,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
-use core::mem::{self, Pin};
+use core::mem::{self, PinMut};
 use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
 use core::convert::From;
@@ -771,8 +771,8 @@ impl<T> PinBox<T> {
 #[unstable(feature = "pin", issue = "49150")]
 impl<T: ?Sized> PinBox<T> {
     /// Get a pinned reference to the data in this PinBox.
-    pub fn as_pin<'a>(&'a mut self) -> Pin<'a, T> {
-        unsafe { Pin::new_unchecked(&mut *self.inner) }
+    pub fn as_pin_mut<'a>(&'a mut self) -> PinMut<'a, T> {
+        unsafe { PinMut::new_unchecked(&mut *self.inner) }
     }
 
     /// Get a mutable reference to the data inside this PinBox.
