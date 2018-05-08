@@ -1520,3 +1520,66 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
         }
     }
 }
+
+declare_lint! {
+    pub UNNECESSARY_EXTERN_CRATE,
+    Allow,
+    "suggest removing `extern crate` for the 2018 edition"
+}
+
+pub struct ExternCrate(/* depth */ u32);
+
+impl ExternCrate {
+    pub fn new() -> Self {
+        ExternCrate(0)
+    }
+}
+
+impl LintPass for ExternCrate {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNNECESSARY_EXTERN_CRATE)
+    }
+}
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExternCrate {
+    fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        if let hir::ItemExternCrate(ref orig) =  it.node {
+            if it.attrs.iter().any(|a| a.check_name("macro_use")) {
+                return
+            }
+            let mut err = cx.struct_span_lint(UNNECESSARY_EXTERN_CRATE,
+                it.span, "`extern crate` is unnecessary in the new edition");
+            if it.vis == hir::Visibility::Public || self.0 > 1 || orig.is_some() {
+                let pub_ = if it.vis == hir::Visibility::Public {
+                    "pub "
+                } else {
+                    ""
+                };
+
+                let help = format!("use `{}use`", pub_);
+
+                if let Some(orig) = orig {
+                    err.span_suggestion(it.span, &help,
+                        format!("{}use {} as {}", pub_, orig, it.name));
+                } else {
+                    err.span_suggestion(it.span, &help,
+                        format!("{}use {}", pub_, it.name));
+                }
+            } else {
+                err.span_suggestion(it.span, "remove it", "".into());
+            }
+
+            err.emit();
+        }
+    }
+
+    fn check_mod(&mut self, _: &LateContext, _: &hir::Mod,
+                 _: Span, _: ast::NodeId) {
+        self.0 += 1;
+    }
+
+    fn check_mod_post(&mut self, _: &LateContext, _: &hir::Mod,
+                      _: Span, _: ast::NodeId) {
+        self.0 += 1;
+    }
+}
