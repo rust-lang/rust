@@ -16,7 +16,7 @@
 // ignore-tidy-linelength
 // We specify -Z incremental here because we want to test the partitioning for
 // incremental compilation
-// compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp/partitioning-tests/methods-are-with-self-type
+// compile-flags:-Zprint-mono-items=lazy -Zincremental=tmp/partitioning-tests/methods-are-with-self-type
 
 #![allow(dead_code)]
 #![feature(start)]
@@ -31,10 +31,10 @@ mod mod1 {
     // Even though the impl is in `mod1`, the methods should end up in the
     // parent module, since that is where their self-type is.
     impl SomeType {
-        //~ TRANS_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[0]::method[0] @@ methods_are_with_self_type[External]
+        //~ MONO_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[0]::method[0] @@ methods_are_with_self_type[External]
         fn method(&self) {}
 
-        //~ TRANS_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[0]::associated_fn[0] @@ methods_are_with_self_type[External]
+        //~ MONO_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[0]::associated_fn[0] @@ methods_are_with_self_type[External]
         fn associated_fn() {}
     }
 
@@ -64,25 +64,25 @@ mod type2 {
     pub struct Struct;
 }
 
-//~ TRANS_ITEM fn methods_are_with_self_type::start[0]
+//~ MONO_ITEM fn methods_are_with_self_type::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ TRANS_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[1]::method[0]<u32, u64> @@ methods_are_with_self_type.volatile[WeakODR]
+    //~ MONO_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[1]::method[0]<u32, u64> @@ methods_are_with_self_type.volatile[WeakODR]
     SomeGenericType(0u32, 0u64).method();
-    //~ TRANS_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[1]::associated_fn[0]<char, &str> @@ methods_are_with_self_type.volatile[WeakODR]
+    //~ MONO_ITEM fn methods_are_with_self_type::mod1[0]::{{impl}}[1]::associated_fn[0]<char, &str> @@ methods_are_with_self_type.volatile[WeakODR]
     SomeGenericType::associated_fn('c', "&str");
 
-    //~ TRANS_ITEM fn methods_are_with_self_type::{{impl}}[0]::foo[0]<methods_are_with_self_type::type1[0]::Struct[0]> @@ methods_are_with_self_type-type1.volatile[WeakODR]
+    //~ MONO_ITEM fn methods_are_with_self_type::{{impl}}[0]::foo[0]<methods_are_with_self_type::type1[0]::Struct[0]> @@ methods_are_with_self_type-type1.volatile[WeakODR]
     type1::Struct.foo();
-    //~ TRANS_ITEM fn methods_are_with_self_type::{{impl}}[0]::foo[0]<methods_are_with_self_type::type2[0]::Struct[0]> @@ methods_are_with_self_type-type2.volatile[WeakODR]
+    //~ MONO_ITEM fn methods_are_with_self_type::{{impl}}[0]::foo[0]<methods_are_with_self_type::type2[0]::Struct[0]> @@ methods_are_with_self_type-type2.volatile[WeakODR]
     type2::Struct.foo();
 
-    //~ TRANS_ITEM fn methods_are_with_self_type::Trait[0]::default[0]<methods_are_with_self_type::type1[0]::Struct[0]> @@ methods_are_with_self_type-type1.volatile[WeakODR]
+    //~ MONO_ITEM fn methods_are_with_self_type::Trait[0]::default[0]<methods_are_with_self_type::type1[0]::Struct[0]> @@ methods_are_with_self_type-type1.volatile[WeakODR]
     type1::Struct.default();
-    //~ TRANS_ITEM fn methods_are_with_self_type::Trait[0]::default[0]<methods_are_with_self_type::type2[0]::Struct[0]> @@ methods_are_with_self_type-type2.volatile[WeakODR]
+    //~ MONO_ITEM fn methods_are_with_self_type::Trait[0]::default[0]<methods_are_with_self_type::type2[0]::Struct[0]> @@ methods_are_with_self_type-type2.volatile[WeakODR]
     type2::Struct.default();
 
     0
 }
 
-//~ TRANS_ITEM drop-glue i8
+//~ MONO_ITEM drop-glue i8

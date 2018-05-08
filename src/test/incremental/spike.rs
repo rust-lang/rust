@@ -18,7 +18,7 @@
 #![feature(rustc_attrs)]
 
 #![rustc_partition_reused(module="spike", cfg="rpass2")]
-#![rustc_partition_translated(module="spike-x", cfg="rpass2")]
+#![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
 #![rustc_partition_reused(module="spike-y", cfg="rpass2")]
 
 mod x {

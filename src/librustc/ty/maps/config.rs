@@ -349,7 +349,7 @@ impl<'tcx> QueryDescription<'tcx> for queries::is_mir_available<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::trans_fulfill_obligation<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::codegen_fulfill_obligation<'tcx> {
     fn describe(tcx: TyCtxt, key: (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>)) -> String {
         format!("checking if `{}` fulfills its obligations", tcx.item_path_str(key.1.def_id()))
     }
@@ -637,9 +637,9 @@ impl<'tcx> QueryDescription<'tcx> for queries::exported_symbols<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription<'tcx> for queries::collect_and_partition_translation_items<'tcx> {
+impl<'tcx> QueryDescription<'tcx> for queries::collect_and_partition_mono_items<'tcx> {
     fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
-        format!("collect_and_partition_translation_items")
+        format!("collect_and_partition_mono_items")
     }
 }
 
@@ -795,5 +795,5 @@ impl_disk_cacheable_query!(def_symbol_name, |_| true);
 impl_disk_cacheable_query!(type_of, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(predicates_of, |def_id| def_id.is_local());
 impl_disk_cacheable_query!(used_trait_imports, |def_id| def_id.is_local());
-impl_disk_cacheable_query!(trans_fn_attrs, |_| true);
+impl_disk_cacheable_query!(codegen_fn_attrs, |_| true);
 impl_disk_cacheable_query!(specialization_graph_of, |_| true);

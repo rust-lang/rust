@@ -603,7 +603,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.all_krates("rustc_trans")
+        run.all_krates("rustc_codegen_llvm")
     }
 
     fn make_run(run: RunConfig) {
@@ -637,7 +637,7 @@ impl Step for CodegenBackend {
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "build");
         let mut features = builder.rustc_features().to_string();
         cargo.arg("--manifest-path")
-            .arg(builder.src.join("src/librustc_trans/Cargo.toml"));
+            .arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
         features += &build_codegen_backend(&builder, &mut cargo, &compiler, target, backend);
@@ -645,7 +645,7 @@ impl Step for CodegenBackend {
         let tmp_stamp = builder.cargo_out(compiler, Mode::Librustc, target)
             .join(".tmp.stamp");
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+        let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         let files = run_cargo(builder,
                               cargo.arg("--features").arg(features),
                               &tmp_stamp,
@@ -656,7 +656,7 @@ impl Step for CodegenBackend {
         let mut files = files.into_iter()
             .filter(|f| {
                 let filename = f.file_name().unwrap().to_str().unwrap();
-                is_dylib(filename) && filename.contains("rustc_trans-")
+                is_dylib(filename) && filename.contains("rustc_codegen_llvm-")
             });
         let codegen_backend = match files.next() {
             Some(f) => f,
@@ -697,7 +697,7 @@ pub fn build_codegen_backend(builder: &Builder,
                      compiler.stage, &compiler.host, target, backend));
 
             // Pass down configuration from the LLVM build into the build of
-            // librustc_llvm and librustc_trans.
+            // librustc_llvm and librustc_codegen_llvm.
             if builder.is_rust_llvm(target) {
                 cargo.env("LLVM_RUSTLLVM", "1");
             }
@@ -762,7 +762,7 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
         t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
-        // change `librustc_trans-xxxxxx.so` to `librustc_trans-llvm.so`
+        // change `librustc_codegen_llvm-xxxxxx.so` to `librustc_codegen_llvm-llvm.so`
         let target_filename = {
             let dash = filename.find("-").unwrap();
             let dot = filename.find(".").unwrap();
@@ -808,14 +808,14 @@ pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<St
     builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc.stamp")
 }
 
-/// Cargo's output path for librustc_trans in a given stage, compiled by a particular
+/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
 /// compiler for the specified target and backend.
 fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
                          backend: Interned<String>) -> PathBuf {
     builder.cargo_out(compiler, Mode::Librustc, target)
-        .join(format!(".librustc_trans-{}.stamp", backend))
+        .join(format!(".librustc_codegen_llvm-{}.stamp", backend))
 }
 
 pub fn compiler_file(builder: &Builder,

@@ -46,9 +46,9 @@
 //!
 //! ## By-reference upvars
 //!
-//! One part of the translation which may be non-obvious is that we translate
+//! One part of the codegen which may be non-obvious is that we translate
 //! closure upvars into the dereference of a borrowed pointer; this more closely
-//! resembles the runtime translation. So, for example, if we had:
+//! resembles the runtime codegen. So, for example, if we had:
 //!
 //!     let mut x = 3;
 //!     let y = 5;

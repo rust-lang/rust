@@ -697,7 +697,7 @@ pub mod printf {
 
         /// Check that the translations are what we expect.
         #[test]
-        fn test_trans() {
+        fn test_translation() {
             assert_eq_pnsat!("%c", Some("{}"));
             assert_eq_pnsat!("%d", Some("{}"));
             assert_eq_pnsat!("%u", Some("{}"));
@@ -900,7 +900,7 @@ pub mod shell {
         }
 
         #[test]
-        fn test_trans() {
+        fn test_translation() {
             assert_eq_pnsat!("$0", Some("{0}"));
             assert_eq_pnsat!("$9", Some("{9}"));
             assert_eq_pnsat!("$1", Some("{1}"));

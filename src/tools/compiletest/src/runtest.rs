@@ -357,7 +357,7 @@ impl<'test> TestCx<'test> {
             "run-pass tests with expected warnings should be moved to ui/"
         );
 
-        if !self.props.skip_trans {
+        if !self.props.skip_codegen {
             let proc_res = self.exec_compiled_test();
             if !proc_res.status.success() {
                 self.fatal_proc_rec("test run failed!", &proc_res);
@@ -555,7 +555,7 @@ impl<'test> TestCx<'test> {
 
         rustc
             .arg("-")
-            .arg("-Zno-trans")
+            .arg("-Zno-codegen")
             .arg("--out-dir")
             .arg(&out_dir)
             .arg(&format!("--target={}", target))
@@ -1703,7 +1703,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        if self.props.skip_trans {
+        if self.props.skip_codegen {
             assert!(!self.props.compile_flags.iter().any(|s| s.starts_with("--emit")));
             rustc.args(&["--emit", "metadata"]);
         }
@@ -2181,19 +2181,19 @@ impl<'test> TestCx<'test> {
 
         self.check_no_compiler_crash(&proc_res);
 
-        const PREFIX: &'static str = "TRANS_ITEM ";
+        const PREFIX: &'static str = "MONO_ITEM ";
         const CGU_MARKER: &'static str = "@@";
 
-        let actual: Vec<TransItem> = proc_res
+        let actual: Vec<MonoItem> = proc_res
             .stdout
             .lines()
             .filter(|line| line.starts_with(PREFIX))
-            .map(str_to_trans_item)
+            .map(str_to_mono_item)
             .collect();
 
-        let expected: Vec<TransItem> = errors::load_errors(&self.testpaths.file, None)
+        let expected: Vec<MonoItem> = errors::load_errors(&self.testpaths.file, None)
             .iter()
-            .map(|e| str_to_trans_item(&e.msg[..]))
+            .map(|e| str_to_mono_item(&e.msg[..]))
             .collect();
 
         let mut missing = Vec::new();
@@ -2271,14 +2271,14 @@ impl<'test> TestCx<'test> {
         }
 
         #[derive(Clone, Eq, PartialEq)]
-        struct TransItem {
+        struct MonoItem {
             name: String,
             codegen_units: HashSet<String>,
             string: String,
         }
 
-        // [TRANS_ITEM] name [@@ (cgu)+]
-        fn str_to_trans_item(s: &str) -> TransItem {
+        // [MONO_ITEM] name [@@ (cgu)+]
+        fn str_to_mono_item(s: &str) -> MonoItem {
             let s = if s.starts_with(PREFIX) {
                 (&s[PREFIX.len()..]).trim()
             } else {
@@ -2307,7 +2307,7 @@ impl<'test> TestCx<'test> {
                 HashSet::new()
             };
 
-            TransItem {
+            MonoItem {
                 name: name.to_owned(),
                 codegen_units: cgus,
                 string: full_string,

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Helpers for handling cast expressions, used in both
-// typeck and trans.
+// typeck and codegen.
 
 use ty::{self, Ty};
 

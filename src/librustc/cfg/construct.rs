@@ -452,13 +452,13 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         // The CFG for match expression is quite complex, so no ASCII
         // art for it (yet).
         //
-        // The CFG generated below matches roughly what trans puts
-        // out. Each pattern and guard is visited in parallel, with
+        // The CFG generated below matches roughly what MIR contains.
+        // Each pattern and guard is visited in parallel, with
         // arms containing multiple patterns generating multiple nodes
         // for the same guard expression. The guard expressions chain
         // into each other from top to bottom, with a specific
         // exception to allow some additional valid programs
-        // (explained below). Trans differs slightly in that the
+        // (explained below). MIR differs slightly in that the
         // pattern matching may continue after a guard but the visible
         // behaviour should be the same.
         //

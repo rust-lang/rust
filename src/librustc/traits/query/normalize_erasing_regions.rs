@@ -57,7 +57,7 @@ impl<'cx, 'tcx> TyCtxt<'cx, 'tcx, 'tcx> {
     ///
     /// NB. Currently, higher-ranked type bounds inhibit
     /// normalization. Therefore, each time we erase them in
-    /// translation, we need to normalize the contents.
+    /// codegen, we need to normalize the contents.
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
         param_env: ty::ParamEnv<'tcx>,

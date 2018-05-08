@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Check that merely having lifetime parameters is not
-// enough for trans to consider this as non-monomorphic,
+// enough for codegen to consider this as non-monomorphic,
 // which led to various assertions and failures in turn.
 
 // pretty-expanded FIXME #23616

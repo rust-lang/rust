@@ -2244,8 +2244,8 @@ pub fn provide(providers: &mut Providers) {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Hash)]
-pub struct TransFnAttrs {
-    pub flags: TransFnAttrFlags,
+pub struct CodegenFnAttrs {
+    pub flags: CodegenFnAttrFlags,
     pub inline: InlineAttr,
     pub export_name: Option<Symbol>,
     pub target_features: Vec<Symbol>,
@@ -2254,7 +2254,7 @@ pub struct TransFnAttrs {
 
 bitflags! {
     #[derive(RustcEncodable, RustcDecodable)]
-    pub struct TransFnAttrFlags: u8 {
+    pub struct CodegenFnAttrFlags: u8 {
         const COLD                      = 0b0000_0001;
         const ALLOCATOR                 = 0b0000_0010;
         const UNWIND                    = 0b0000_0100;
@@ -2266,10 +2266,10 @@ bitflags! {
     }
 }
 
-impl TransFnAttrs {
-    pub fn new() -> TransFnAttrs {
-        TransFnAttrs {
-            flags: TransFnAttrFlags::empty(),
+impl CodegenFnAttrs {
+    pub fn new() -> CodegenFnAttrs {
+        CodegenFnAttrs {
+            flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
             export_name: None,
             target_features: vec![],
@@ -2287,7 +2287,6 @@ impl TransFnAttrs {
 
     /// True if `#[no_mangle]` or `#[export_name(...)]` is present.
     pub fn contains_extern_indicator(&self) -> bool {
-        self.flags.contains(TransFnAttrFlags::NO_MANGLE) || self.export_name.is_some()
+        self.flags.contains(CodegenFnAttrFlags::NO_MANGLE) || self.export_name.is_some()
     }
 }
-

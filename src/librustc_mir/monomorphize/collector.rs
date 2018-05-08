@@ -188,7 +188,7 @@
 //! this is not implemented however: a mono item will be produced
 //! regardless of whether it is actually needed or not.
 
-use rustc::hir::{self, TransFnAttrFlags};
+use rustc::hir::{self, CodegenFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
 use rustc::hir::map as hir_map;
@@ -343,9 +343,9 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         visitor.push_extra_entry_roots();
     }
 
-    // We can only translate items that are instantiable - items all of
+    // We can only codegen items that are instantiable - items all of
     // whose predicates hold. Luckily, items that aren't instantiable
-    // can't actually be used, so we can just skip translating them.
+    // can't actually be used, so we can just skip codegenning them.
     roots.retain(|root| root.is_instantiable(tcx));
 
     roots
@@ -717,7 +717,7 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
-// Returns true if we should translate an instance in the local crate.
+// Returns true if we should codegen an instance in the local crate.
 // Returns false if we can just link to the upstream crate and therefore don't
 // need a mono item.
 fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
@@ -734,7 +734,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
 
     return match tcx.hir.get_if_local(def_id) {
         Some(hir_map::NodeForeignItem(..)) => {
-            false // foreign items are linked against, not translated.
+            false // foreign items are linked against, not codegened.
         }
         Some(_) => true,
         None => {
@@ -1015,8 +1015,8 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
             MonoItemCollectionMode::Lazy => {
                 self.entry_fn == Some(def_id) ||
                 self.tcx.is_reachable_non_generic(def_id) ||
-                self.tcx.trans_fn_attrs(def_id).flags.contains(
-                    TransFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+                self.tcx.codegen_fn_attrs(def_id).flags.contains(
+                    CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             }
         }
     }

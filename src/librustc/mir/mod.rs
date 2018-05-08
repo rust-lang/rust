@@ -696,7 +696,7 @@ pub struct BasicBlockData<'tcx> {
     pub terminator: Option<Terminator<'tcx>>,
 
     /// If true, this block lies on an unwind path. This is used
-    /// during trans where distinct kinds of basic blocks may be
+    /// during codegen where distinct kinds of basic blocks may be
     /// generated (particularly for MSVC cleanup). Unwind blocks must
     /// only branch to other unwind blocks.
     pub is_cleanup: bool,
@@ -1614,7 +1614,7 @@ pub enum CastKind {
     UnsafeFnPointer,
 
     /// "Unsize" -- convert a thin-or-fat pointer to a fat pointer.
-    /// trans must figure out the details once full monomorphization
+    /// codegen must figure out the details once full monomorphization
     /// is known. For example, this could be used to cast from a
     /// `&[i32;N]` to a `&[i32]`, or a `Box<T>` to a `Box<Trait>`
     /// (presuming `T: Trait`).

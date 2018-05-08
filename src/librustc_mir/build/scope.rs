@@ -10,7 +10,7 @@
 
 /*!
 Managing the scope stack. The scopes are tied to lexical scopes, so as
-we descend the HAIR, we push a scope on the stack, translate ite
+we descend the HAIR, we push a scope on the stack, build its
 contents, and then pop it off. Every scope is named by a
 `region::Scope`.
 
@@ -30,7 +30,7 @@ them. Eventually, when we shift to non-lexical lifetimes, there should
 be no need to remember this mapping.
 
 There is one additional wrinkle, actually, that I wanted to hide from
-you but duty compels me to mention. In the course of translating
+you but duty compels me to mention. In the course of building
 matches, it sometimes happen that certain code (namely guards) gets
 executed multiple times. This means that the scope lexical scope may
 in fact correspond to multiple, disjoint SEME regions. So in fact our
@@ -38,7 +38,7 @@ mapping is from one scope to a vector of SEME regions.
 
 ### Drops
 
-The primary purpose for scopes is to insert drops: while translating
+The primary purpose for scopes is to insert drops: while building
 the contents, we also accumulate places that need to be dropped upon
 exit from each scope. This is done by calling `schedule_drop`. Once a
 drop is scheduled, whenever we branch out we will insert drops of all

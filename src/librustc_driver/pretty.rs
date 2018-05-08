@@ -228,8 +228,8 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 let control = &driver::CompileController::basic();
-                let trans = ::get_trans(sess);
-                abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
+                let codegen_backend = ::get_codegen_backend(sess);
+                abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                                  control,
                                                                  sess,
                                                                  cstore,
@@ -1089,8 +1089,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     let mut out = Vec::new();
 
     let control = &driver::CompileController::basic();
-    let trans = ::get_trans(sess);
-    abort_on_err(driver::phase_3_run_analysis_passes(&*trans,
+    let codegen_backend = ::get_codegen_backend(sess);
+    abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                      control,
                                                      sess,
                                                      cstore,

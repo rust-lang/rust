@@ -95,12 +95,12 @@ pub fn run(input_path: &Path,
         let mut sess = session::build_session_(
             sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
         );
-        let trans = rustc_driver::get_trans(&sess);
-        let cstore = CStore::new(trans.metadata_loader());
+        let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+        let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-        target_features::add_configuration(&mut cfg, &sess, &*trans);
+        target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
         let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
@@ -120,7 +120,7 @@ pub fn run(input_path: &Path,
         };
 
         let crate_name = crate_name.unwrap_or_else(|| {
-            ::rustc_trans_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
+            ::rustc_codegen_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
         });
         let mut opts = scrape_test_config(hir_forest.krate());
         opts.display_warnings |= display_warnings;
@@ -273,8 +273,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let mut sess = session::build_session_(
             sessopts, None, diagnostic_handler, codemap,
         );
-        let trans = rustc_driver::get_trans(&sess);
-        let cstore = CStore::new(trans.metadata_loader());
+        let codegen_backend = rustc_driver::get_codegen_backend(&sess);
+        let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
         let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
@@ -282,7 +282,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let mut control = driver::CompileController::basic();
 
         let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-        target_features::add_configuration(&mut cfg, &sess, &*trans);
+        target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
         let out = Some(outdir.lock().unwrap().path().to_path_buf());
@@ -293,7 +293,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
 
         let res = panic::catch_unwind(AssertUnwindSafe(|| {
             driver::compile_input(
-                trans,
+                codegen_backend,
                 &sess,
                 &cstore,
                 &None,

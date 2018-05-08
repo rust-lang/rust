@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Translates expressions into MIR. As a caller into this module, you
+//! Builds MIR from expressions. As a caller into this module, you
 //! have many options, but the first thing you have to decide is
 //! whether you are evaluating this expression for its *value*, its
 //! *location*, or as a *constant*.
@@ -41,7 +41,7 @@
 //! ### Implementation notes
 //!
 //! For any given kind of expression, there is generally one way that
-//! can be translated most naturally. This is specified by the
+//! can be lowered most naturally. This is specified by the
 //! `Category::of` function in the `category` module. For example, a
 //! struct expression (or other expression that creates a new value)
 //! is typically easiest to write in terms of `as_rvalue` or `into`,

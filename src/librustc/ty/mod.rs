@@ -118,7 +118,7 @@ mod sty;
 // Data types
 
 /// The complete set of all analyses described in this module. This is
-/// produced by the driver and fed to trans and later passes.
+/// produced by the driver and fed to codegen and later passes.
 ///
 /// NB: These contents are being migrated into queries using the
 /// *on-demand* infrastructure.
@@ -1426,7 +1426,7 @@ pub struct ParamEnv<'tcx> {
     /// into Obligations, and elaborated and normalized.
     pub caller_bounds: &'tcx Slice<ty::Predicate<'tcx>>,
 
-    /// Typically, this is `Reveal::UserFacing`, but during trans we
+    /// Typically, this is `Reveal::UserFacing`, but during codegen we
     /// want `Reveal::All` -- note that this is always paired with an
     /// empty environment. To get that, use `ParamEnv::reveal()`.
     pub reveal: traits::Reveal,
@@ -1444,7 +1444,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Construct a trait environment with no where clauses in scope
     /// where the values of all `impl Trait` and other hidden types
     /// are revealed. This is suitable for monomorphized, post-typeck
-    /// environments like trans or doing optimizations.
+    /// environments like codegen or doing optimizations.
     ///
     /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
@@ -1462,7 +1462,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// Returns a new parameter environment with the same clauses, but
     /// which "reveals" the true results of projections in all cases
     /// (even for associated types that are specializable).  This is
-    /// the desired behavior during trans and certain other special
+    /// the desired behavior during codegen and certain other special
     /// contexts; normally though we want to use `Reveal::UserFacing`,
     /// which is the default.
     pub fn with_reveal_all(self) -> Self {

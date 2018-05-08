@@ -224,7 +224,7 @@ pub struct TestProps {
     // The test must be compiled and run successfully. Only used in UI tests for now.
     pub run_pass: bool,
     // Skip any codegen step and running the executable. Only for run-pass.
-    pub skip_trans: bool,
+    pub skip_codegen: bool,
     // Do not pass `-Z ui-testing` to UI tests
     pub disable_ui_testing_normalization: bool,
     // customized normalization rules
@@ -258,7 +258,7 @@ impl TestProps {
             compile_pass: false,
             check_test_line_numbers_match: false,
             run_pass: false,
-            skip_trans: false,
+            skip_codegen: false,
             disable_ui_testing_normalization: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
@@ -371,8 +371,8 @@ impl TestProps {
                 self.compile_pass = config.parse_compile_pass(ln) || self.run_pass;
             }
 
-                        if !self.skip_trans {
-                            self.skip_trans = config.parse_skip_trans(ln);
+                        if !self.skip_codegen {
+                            self.skip_codegen = config.parse_skip_codegen(ln);
                         }
 
             if !self.disable_ui_testing_normalization {
@@ -532,8 +532,8 @@ impl Config {
         self.parse_name_directive(line, "run-pass")
     }
 
-    fn parse_skip_trans(&self, line: &str) -> bool {
-        self.parse_name_directive(line, "skip-trans")
+    fn parse_skip_codegen(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "skip-codegen")
     }
 
     fn parse_env(&self, line: &str, name: &str) -> Option<(String, String)> {

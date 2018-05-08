@@ -58,7 +58,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     /// Check any attribute.
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn {
-            self.tcx.trans_fn_attrs(self.tcx.hir.local_def_id(item.id));
+            self.tcx.codegen_fn_attrs(self.tcx.hir.local_def_id(item.id));
         } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")

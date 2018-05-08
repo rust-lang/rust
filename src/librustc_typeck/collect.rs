@@ -48,7 +48,7 @@ use syntax::symbol::{Symbol, keywords};
 use syntax::feature_gate;
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir::{self, map as hir_map, TransFnAttrs, TransFnAttrFlags, Unsafety};
+use rustc::hir::{self, map as hir_map, CodegenFnAttrs, CodegenFnAttrFlags, Unsafety};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
@@ -75,7 +75,7 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
-        trans_fn_attrs,
+        codegen_fn_attrs,
         ..*providers
     };
 }
@@ -1800,33 +1800,33 @@ fn linkage_by_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, name: &
     }
 }
 
-fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAttrs {
+fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> CodegenFnAttrs {
     let attrs = tcx.get_attrs(id);
 
-    let mut trans_fn_attrs = TransFnAttrs::new();
+    let mut codegen_fn_attrs = CodegenFnAttrs::new();
 
     let whitelist = tcx.target_features_whitelist(LOCAL_CRATE);
 
     let mut inline_span = None;
     for attr in attrs.iter() {
         if attr.check_name("cold") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::COLD;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
         } else if attr.check_name("allocator") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::ALLOCATOR;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
         } else if attr.check_name("unwind") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::UNWIND;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
         } else if attr.check_name("rustc_allocator_nounwind") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
         } else if attr.check_name("naked") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::NAKED;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
         } else if attr.check_name("no_mangle") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::NO_MANGLE;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
         } else if attr.check_name("rustc_std_internal_symbol") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
         } else if attr.check_name("no_debug") {
-            trans_fn_attrs.flags |= TransFnAttrFlags::NO_DEBUG;
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_DEBUG;
         } else if attr.check_name("inline") {
-            trans_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
+            codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
                 if attr.path != "inline" {
                     return ia;
                 }
@@ -1862,7 +1862,7 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
             });
         } else if attr.check_name("export_name") {
             if let s @ Some(_) = attr.value_str() {
-                trans_fn_attrs.export_name = s;
+                codegen_fn_attrs.export_name = s;
             } else {
                 struct_span_err!(tcx.sess, attr.span, E0558,
                                     "export_name attribute has invalid format")
@@ -1875,10 +1875,10 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
                            `unsafe` function";
                 tcx.sess.span_err(attr.span, msg);
             }
-            from_target_feature(tcx, id, attr, &whitelist, &mut trans_fn_attrs.target_features);
+            from_target_feature(tcx, id, attr, &whitelist, &mut codegen_fn_attrs.target_features);
         } else if attr.check_name("linkage") {
             if let Some(val) = attr.value_str() {
-                trans_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
+                codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
             }
         }
     }
@@ -1887,8 +1887,8 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
     // purpose functions as they wouldn't have the right target features
     // enabled. For that reason we also forbid #[inline(always)] as it can't be
     // respected.
-    if trans_fn_attrs.target_features.len() > 0 {
-        if trans_fn_attrs.inline == InlineAttr::Always {
+    if codegen_fn_attrs.target_features.len() > 0 {
+        if codegen_fn_attrs.inline == InlineAttr::Always {
             if let Some(span) = inline_span {
                 tcx.sess.span_err(span, "cannot use #[inline(always)] with \
                                          #[target_feature]");
@@ -1896,5 +1896,5 @@ fn trans_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> TransFnAt
         }
     }
 
-    trans_fn_attrs
+    codegen_fn_attrs
 }

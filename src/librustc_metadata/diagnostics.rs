@@ -14,7 +14,7 @@ register_long_diagnostics! {
 E0454: r##"
 A link name was given with an empty name. Erroneous code example:
 
-```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-trans)
+```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(name = "")] extern {} // error: #[link(name = "")] given with empty name
 ```
 
@@ -51,7 +51,7 @@ https://doc.rust-lang.org/book/first-edition/conditional-compilation.html
 E0458: r##"
 An unknown "kind" was specified for a link attribute. Erroneous code example:
 
-```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-trans)
+```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(kind = "wonderful_unicorn")] extern {}
 // error: unknown kind: `wonderful_unicorn`
 ```
@@ -67,7 +67,7 @@ Please specify a valid "kind" value, from one of the following:
 E0459: r##"
 A link was used without a name parameter. Erroneous code example:
 
-```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-trans)
+```ignore (cannot-test-this-because-rustdoc-stops-compile-fail-before-codegen)
 #[link(kind = "dylib")] extern {}
 // error: #[link(...)] specified without `name = "foo"`
 ```

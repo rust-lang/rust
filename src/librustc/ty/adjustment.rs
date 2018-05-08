@@ -91,8 +91,8 @@ pub enum Adjust<'tcx> {
     /// pointers.  We don't store the details of how the transform is
     /// done (in fact, we don't know that, because it might depend on
     /// the precise type parameters). We just store the target
-    /// type. Trans figures out what has to be done at monomorphization
-    /// time based on the precise source/target type at hand.
+    /// type. Codegen backends and miri figure out what has to be done
+    /// based on the precise source/target type at hand.
     Unsize,
 }
 

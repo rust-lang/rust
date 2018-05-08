@@ -1179,7 +1179,7 @@ extern "rust-intrinsic" {
 ```
 
 Please check you didn't make a mistake in the function's name. All intrinsic
-functions are defined in librustc_trans/trans/intrinsic.rs and in
+functions are defined in librustc_codegen_llvm/intrinsic.rs and in
 libcore/intrinsics.rs in the Rust source code. Example:
 
 ```
@@ -1209,7 +1209,7 @@ fn main() {
 ```
 
 Please check you didn't make a mistake in the function's name. All intrinsic
-functions are defined in librustc_trans/trans/intrinsic.rs and in
+functions are defined in librustc_codegen_llvm/intrinsic.rs and in
 libcore/intrinsics.rs in the Rust source code. Example:
 
 ```

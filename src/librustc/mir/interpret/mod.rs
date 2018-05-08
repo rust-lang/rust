@@ -249,7 +249,7 @@ pub struct Allocation {
     pub undef_mask: UndefMask,
     /// The alignment of the allocation to detect unaligned reads.
     pub align: Align,
-    /// Whether the allocation (of a static) should be put into mutable memory when translating
+    /// Whether the allocation (of a static) should be put into mutable memory when codegenning
     ///
     /// Only happens for `static mut` or `static` with interior mutability
     pub runtime_mutability: Mutability,

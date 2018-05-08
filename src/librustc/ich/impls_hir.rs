@@ -1155,12 +1155,12 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
     }
 }
 
-impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrs
+impl<'hir> HashStable<StableHashingContext<'hir>> for hir::CodegenFnAttrs
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'hir>,
                                           hasher: &mut StableHasher<W>) {
-        let hir::TransFnAttrs {
+        let hir::CodegenFnAttrs {
             flags,
             inline,
             export_name,
@@ -1176,7 +1176,7 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrs
     }
 }
 
-impl<'hir> HashStable<StableHashingContext<'hir>> for hir::TransFnAttrFlags
+impl<'hir> HashStable<StableHashingContext<'hir>> for hir::CodegenFnAttrFlags
 {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'hir>,

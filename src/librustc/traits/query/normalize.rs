@@ -104,7 +104,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
         match ty.sty {
             ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => {
                 // (*)
-                // Only normalize `impl Trait` after type-checking, usually in trans.
+                // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
                     Reveal::UserFacing => ty,
 

@@ -1126,7 +1126,7 @@ fn foo(a: [D; 10], b: [D; 10], i: i32, t: bool) -> D {
 }
 ```
 
-There are a number of ways that the trans backend could choose to
+There are a number of ways that the codegen backend could choose to
 compile this (e.g. a `[bool; 10]` array for each such moved array;
 or an `Option<usize>` for each moved array).  From the viewpoint of the
 borrow-checker, the important thing is to record what kind of fragment

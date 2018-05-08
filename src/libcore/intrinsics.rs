@@ -10,7 +10,7 @@
 
 //! rustc compiler intrinsics.
 //!
-//! The corresponding definitions are in librustc_trans/intrinsic.rs.
+//! The corresponding definitions are in librustc_codegen_llvm/intrinsic.rs.
 //!
 //! # Volatiles
 //!

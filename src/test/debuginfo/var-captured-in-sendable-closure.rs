@@ -72,7 +72,7 @@ fn main() {
     let constant2 = 6_usize;
 
     // The `self` argument of the following closure should be passed by value
-    // to FnOnce::call_once(self, args), which gets translated a bit differently
+    // to FnOnce::call_once(self, args), which gets codegened a bit differently
     // than the regular case. Let's make sure this is supported too.
     let immedate_env = move || {
         zzz(); // #break

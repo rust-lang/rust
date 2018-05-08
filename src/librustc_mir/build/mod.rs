@@ -775,7 +775,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 // Builder methods are broken up into modules, depending on what kind
-// of thing is being translated. Note that they use the `unpack` macro
+// of thing is being lowered. Note that they use the `unpack` macro
 // above extensively.
 
 mod block;

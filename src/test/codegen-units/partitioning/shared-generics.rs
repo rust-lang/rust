@@ -9,17 +9,17 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe
+// compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Zincremental=tmp/partitioning-tests/shared-generics-exe
 
 #![crate_type="rlib"]
 
 // aux-build:shared_generics_aux.rs
 extern crate shared_generics_aux;
 
-//~ TRANS_ITEM fn shared_generics::foo[0]
+//~ MONO_ITEM fn shared_generics::foo[0]
 pub fn foo() {
 
-    //~ TRANS_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux.volatile[External]
+    //~ MONO_ITEM fn shared_generics_aux::generic_fn[0]<u16> @@ shared_generics_aux.volatile[External]
     let _ = shared_generics_aux::generic_fn(0u16, 1u16);
 
     // This should not generate a monomorphization because it's already
@@ -27,4 +27,4 @@ pub fn foo() {
     let _ = shared_generics_aux::generic_fn(0.0f32, 3.0f32);
 }
 
-// TRANS_ITEM drop-glue i8
+// MONO_ITEM drop-glue i8

@@ -839,7 +839,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                                    is just used for rustc unit tests \
                                                    and will never be stable",
                                                   cfg_fn!(rustc_attrs))),
-    ("rustc_partition_translated", Whitelisted, Gated(Stability::Unstable,
+    ("rustc_partition_codegened", Whitelisted, Gated(Stability::Unstable,
                                                       "rustc_attrs",
                                                       "this attribute \
                                                        is just used for rustc unit tests \
@@ -938,7 +938,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted, Ungated),
 
-    // FIXME: #14406 these are processed in trans, which happens after the
+    // FIXME: #14406 these are processed in codegen, which happens after the
     // lint pass
     ("cold", Whitelisted, Ungated),
     ("naked", Whitelisted, Gated(Stability::Unstable,

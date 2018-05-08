@@ -275,7 +275,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
     }
 }
 
-// For trans only.
+// For codegen only.
 impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
     type Lifted = traits::Vtable<'tcx, ()>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {

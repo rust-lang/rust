@@ -949,14 +949,14 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     // because this discriminant will be loaded, and then stored into variable of
                     // type calculated by typeck. Consider such case (a bug): typeck decided on
                     // byte-sized discriminant, but layout thinks we need a 16-bit to store all
-                    // discriminant values. That would be a bug, because then, in trans, in order
+                    // discriminant values. That would be a bug, because then, in codegen, in order
                     // to store this 16-bit discriminant into 8-bit sized temporary some of the
                     // space necessary to represent would have to be discarded (or layout is wrong
                     // on thinking it needs 16 bits)
                     bug!("layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
                          min_ity, typeck_ity);
                     // However, it is fine to make discr type however large (as an optimisation)
-                    // after this point – we’ll just truncate the value we load in trans.
+                    // after this point – we’ll just truncate the value we load in codegen.
                 }
 
                 // Check to see if we should use a different type for the
@@ -1121,7 +1121,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         // If we are running with `-Zprint-type-sizes`, record layouts for
         // dumping later. Ignore layouts that are done with non-empty
         // environments or non-monomorphic layouts, as the user only wants
-        // to see the stuff resulting from the final trans session.
+        // to see the stuff resulting from the final codegen session.
         if
             !self.tcx.sess.opts.debugging_opts.print_type_sizes ||
             layout.ty.has_param_types() ||

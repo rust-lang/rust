@@ -134,7 +134,7 @@ unsafe impl Alloc for Global {
 }
 
 /// The allocator for unique pointers.
-// This function must not unwind. If it does, MIR trans will fail.
+// This function must not unwind. If it does, MIR codegen will fail.
 #[cfg(not(test))]
 #[lang = "exchange_malloc"]
 #[inline]

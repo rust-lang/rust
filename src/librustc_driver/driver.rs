@@ -32,7 +32,7 @@ use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
 use rustc_traits;
-use rustc_trans_utils::trans_crate::TransCrate;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
@@ -110,7 +110,7 @@ pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::
 }
 
 pub fn compile_input(
-    trans: Box<TransCrate>,
+    codegen_backend: Box<CodegenBackend>,
     sess: &Session,
     cstore: &CStore,
     input_path: &Option<PathBuf>,
@@ -143,7 +143,7 @@ pub fn compile_input(
     // We need nested scopes here, because the intermediate results can keep
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
-    let (outputs, ongoing_trans, dep_graph) = {
+    let (outputs, ongoing_codegen, dep_graph) = {
         let krate = match phase_1_parse_input(control, sess, input) {
             Ok(krate) => krate,
             Err(mut parse_error) => {
@@ -162,7 +162,7 @@ pub fn compile_input(
 
         let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
         let crate_name =
-            ::rustc_trans_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
+            ::rustc_codegen_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         install_panic_hook();
 
         let ExpansionResult {
@@ -274,7 +274,7 @@ pub fn compile_input(
         };
 
         phase_3_run_analysis_passes(
-            &*trans,
+            &*codegen_backend,
             control,
             sess,
             cstore,
@@ -310,14 +310,14 @@ pub fn compile_input(
                 result?;
 
                 if log_enabled!(::log::Level::Info) {
-                    println!("Pre-trans");
+                    println!("Pre-codegen");
                     tcx.print_debug_stats();
                 }
 
-                let ongoing_trans = phase_4_translate_to_llvm(&*trans, tcx, rx);
+                let ongoing_codegen = phase_4_codegen(&*codegen_backend, tcx, rx);
 
                 if log_enabled!(::log::Level::Info) {
-                    println!("Post-trans");
+                    println!("Post-codegen");
                     tcx.print_debug_stats();
                 }
 
@@ -328,7 +328,7 @@ pub fn compile_input(
                     }
                 }
 
-                Ok((outputs.clone(), ongoing_trans, tcx.dep_graph.clone()))
+                Ok((outputs.clone(), ongoing_codegen, tcx.dep_graph.clone()))
             },
         )??
     };
@@ -337,7 +337,7 @@ pub fn compile_input(
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    trans.join_trans_and_link(ongoing_trans, sess, &dep_graph, &outputs)?;
+    codegen_backend.join_codegen_and_link(ongoing_codegen, sess, &dep_graph, &outputs)?;
 
     if sess.opts.debugging_opts.perf_stats {
         sess.print_perf_stats();
@@ -1089,7 +1089,7 @@ pub fn default_provide_extern(providers: &mut ty::maps::Providers) {
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(
-    trans: &TransCrate,
+    codegen_backend: &CodegenBackend,
     control: &CompileController,
     sess: &'tcx Session,
     cstore: &'tcx CrateStoreDyn,
@@ -1128,12 +1128,12 @@ where
 
     let mut local_providers = ty::maps::Providers::default();
     default_provide(&mut local_providers);
-    trans.provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
     (control.provide)(&mut local_providers);
 
     let mut extern_providers = local_providers;
     default_provide_extern(&mut extern_providers);
-    trans.provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
     (control.provide_extern)(&mut extern_providers);
 
     let (tx, rx) = mpsc::channel();
@@ -1233,10 +1233,10 @@ where
     )
 }
 
-/// Run the translation phase to LLVM, after which the AST and analysis can
+/// Run the codegen backend, after which the AST and analysis can
 /// be discarded.
-pub fn phase_4_translate_to_llvm<'a, 'tcx>(
-    trans: &TransCrate,
+pub fn phase_4_codegen<'a, 'tcx>(
+    codegen_backend: &CodegenBackend,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<Any + Send>>,
 ) -> Box<Any> {
@@ -1244,12 +1244,12 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(
         ::rustc::middle::dependency_format::calculate(tcx)
     });
 
-    let translation = time(tcx.sess, "translation", move || trans.trans_crate(tcx, rx));
+    let codegen = time(tcx.sess, "codegen", move || codegen_backend.codegen_crate(tcx, rx));
     if tcx.sess.profile_queries() {
         profile::dump(&tcx.sess, "profile_queries".to_string())
     }
 
-    translation
+    codegen
 }
 
 fn escape_dep_filename(filename: &FileName) -> String {
@@ -1272,7 +1272,7 @@ fn generated_output_paths(
             // If the filename has been overridden using `-o`, it will not be modified
             // by appending `.rlib`, `.exe`, etc., so we can skip this transformation.
             OutputType::Exe if !exact_name => for crate_type in sess.crate_types.borrow().iter() {
-                let p = ::rustc_trans_utils::link::filename_for_input(
+                let p = ::rustc_codegen_utils::link::filename_for_input(
                     sess,
                     *crate_type,
                     crate_name,
@@ -1424,7 +1424,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     if base.is_empty() {
         base.extend(attr_types);
         if base.is_empty() {
-            base.push(::rustc_trans_utils::link::default_output_for_target(
+            base.push(::rustc_codegen_utils::link::default_output_for_target(
                 session,
             ));
         }
@@ -1434,7 +1434,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
 
     base.into_iter()
         .filter(|crate_type| {
-            let res = !::rustc_trans_utils::link::invalid_output_for_target(session, *crate_type);
+            let res = !::rustc_codegen_utils::link::invalid_output_for_target(session, *crate_type);
 
             if !res {
                 session.warn(&format!(

@@ -15,7 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use hir::TransFnAttrs;
+use hir::CodegenFnAttrs;
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
@@ -44,7 +44,7 @@ fn generics_require_inlining(generics: &hir::Generics) -> bool {
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(item: &hir::Item, attrs: TransFnAttrs) -> bool {
+fn item_might_be_inlined(item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
@@ -61,15 +61,15 @@ fn item_might_be_inlined(item: &hir::Item, attrs: TransFnAttrs) -> bool {
 fn method_might_be_inlined<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_item: &hir::ImplItem,
                                      impl_src: DefId) -> bool {
-    let trans_fn_attrs = tcx.trans_fn_attrs(impl_item.hir_id.owner_def_id());
-    if trans_fn_attrs.requests_inline() ||
+    let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id.owner_def_id());
+    if codegen_fn_attrs.requests_inline() ||
         generics_require_inlining(&impl_item.generics) {
         return true
     }
     if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_src) {
         match tcx.hir.find(impl_node_id) {
             Some(hir_map::NodeItem(item)) =>
-                item_might_be_inlined(&item, trans_fn_attrs),
+                item_might_be_inlined(&item, codegen_fn_attrs),
             Some(..) | None =>
                 span_bug!(impl_item.span, "impl did is not an item")
         }
@@ -163,7 +163,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Some(hir_map::NodeItem(item)) => {
                 match item.node {
                     hir::ItemFn(..) =>
-                        item_might_be_inlined(&item, self.tcx.trans_fn_attrs(def_id)),
+                        item_might_be_inlined(&item, self.tcx.codegen_fn_attrs(def_id)),
                     _ => false,
                 }
             }
@@ -179,7 +179,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match impl_item.node {
                     hir::ImplItemKind::Const(..) => true,
                     hir::ImplItemKind::Method(..) => {
-                        let attrs = self.tcx.trans_fn_attrs(def_id);
+                        let attrs = self.tcx.codegen_fn_attrs(def_id);
                         if generics_require_inlining(&impl_item.generics) ||
                                 attrs.requests_inline() {
                             true
@@ -233,7 +233,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     false
                 };
                 let def_id = self.tcx.hir.local_def_id(item.id);
-                let is_extern = self.tcx.trans_fn_attrs(def_id).contains_extern_indicator();
+                let is_extern = self.tcx.codegen_fn_attrs(def_id).contains_extern_indicator();
                 if reachable || is_extern {
                     self.reachable_symbols.insert(search_item);
                 }
@@ -251,7 +251,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match item.node {
                     hir::ItemFn(.., body) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
-                        if item_might_be_inlined(&item, self.tcx.trans_fn_attrs(def_id)) {
+                        if item_might_be_inlined(&item, self.tcx.codegen_fn_attrs(def_id)) {
                             self.visit_nested_body(body);
                         }
                     }

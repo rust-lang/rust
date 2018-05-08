@@ -65,7 +65,7 @@ pub enum Reveal {
     /// }
     UserFacing,
 
-    /// At trans time, all monomorphic projections will succeed.
+    /// At codegen time, all monomorphic projections will succeed.
     /// Also, `impl Trait` is normalized to the concrete type,
     /// which has to be already collected by type-checking.
     ///
@@ -346,7 +346,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
         let ty = ty.super_fold_with(self);
         match ty.sty {
             ty::TyAnon(def_id, substs) if !substs.has_escaping_regions() => { // (*)
-                // Only normalize `impl Trait` after type-checking, usually in trans.
+                // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
                     Reveal::UserFacing => ty,
 
@@ -1054,7 +1054,7 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
             super::VtableImpl(impl_data) => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
-                // trans (i.e., projection mode is not "any"), and the
+                // codegen (i.e., projection mode is not "any"), and the
                 // impl's type is declared as default, then we disable
                 // projection (even if the trait ref is fully
                 // monomorphic). In the case where trait ref is not

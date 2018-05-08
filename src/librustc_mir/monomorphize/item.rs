@@ -29,7 +29,7 @@ use syntax_pos::symbol::Symbol;
 use syntax::codemap::Span;
 pub use rustc::mir::mono::MonoItem;
 
-/// Describes how a translation item will be instantiated in object files.
+/// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum InstantiationMode {
     /// There will be exactly one instance of the given MonoItem. It will have
@@ -37,7 +37,7 @@ pub enum InstantiationMode {
     GloballyShared {
         /// In some compilation scenarios we may decide to take functions that
         /// are typically `LocalCopy` and instead move them to `GloballyShared`
-        /// to avoid translating them a bunch of times. In this situation,
+        /// to avoid codegenning them a bunch of times. In this situation,
         /// however, our local copy may conflict with other crates also
         /// inlining the same function.
         ///
@@ -114,7 +114,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
                 // creating one copy of this `#[inline]` function which may
                 // conflict with upstream crates as it could be an exported
                 // symbol.
-                match tcx.trans_fn_attrs(instance.def_id()).inline {
+                match tcx.codegen_fn_attrs(instance.def_id()).inline {
                     InlineAttr::Always => InstantiationMode::LocalCopy,
                     _ => {
                         InstantiationMode::GloballyShared  { may_conflict: true }
@@ -137,19 +137,19 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             MonoItem::GlobalAsm(..) => return None,
         };
 
-        let trans_fn_attrs = tcx.trans_fn_attrs(def_id);
-        trans_fn_attrs.linkage
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(def_id);
+        codegen_fn_attrs.linkage
     }
 
     /// Returns whether this instance is instantiable - whether it has no unsatisfied
     /// predicates.
     ///
-    /// In order to translate an item, all of its predicates must hold, because
+    /// In order to codegen an item, all of its predicates must hold, because
     /// otherwise the item does not make sense. Type-checking ensures that
     /// the predicates of every item that is *used by* a valid item *do*
     /// hold, so we can rely on that.
     ///
-    /// However, we translate collector roots (reachable items) and functions
+    /// However, we codegen collector roots (reachable items) and functions
     /// in vtables when they are seen, even if they are not used, and so they
     /// might not be instantiable. For example, a programmer can define this
     /// public function:
@@ -158,7 +158,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
     ///         <&mut () as Clone>::clone(&s);
     ///     }
     ///
-    /// That function can't be translated, because the method `<&mut () as Clone>::clone`
+    /// That function can't be codegened, because the method `<&mut () as Clone>::clone`
     /// does not exist. Luckily for us, that function can't ever be used,
     /// because that would require for `&'a mut (): Clone` to hold, so we
     /// can just not emit any code, or even a linker reference for it.
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 // MonoItem String Keys
 //=-----------------------------------------------------------------------------
 
-// The code below allows for producing a unique string key for a trans item.
+// The code below allows for producing a unique string key for a mono item.
 // These keys are used by the handwritten auto-tests, so they need to be
 // predictable and human-readable.
 //

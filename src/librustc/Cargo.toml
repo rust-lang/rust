@@ -35,13 +35,13 @@ byteorder = { version = "1.1", features = ["i128"]}
 # rlib/dylib pair but all crates.io crates tend to just be rlibs. This means
 # we've got a problem for dependency graphs that look like:
 #
-#           foo - rustc_trans
+#           foo - rustc_codegen_llvm
 #         /                  \
 #   rustc                     ---- rustc_driver
 #         \                     /
 #           foo - rustc_metadata
 #
-# Here the crate `foo` is linked into the `rustc_trans` and the
+# Here the crate `foo` is linked into the `rustc_codegen_llvm` and the
 # `rustc_metadata` dylibs, meaning we've got duplicate copies! When we then
 # go to link `rustc_driver` the compiler notices this and gives us a compiler
 # error.
@@ -49,7 +49,7 @@ byteorder = { version = "1.1", features = ["i128"]}
 # To work around this problem we just add these crates.io dependencies to the
 # `rustc` crate which is a shared dependency above. That way the crate `foo`
 # shows up in the dylib for the `rustc` crate, deduplicating it and allowing
-# crates like `rustc_trans` to use `foo` *through* the `rustc` crate.
+# crates like `rustc_codegen_llvm` to use `foo` *through* the `rustc` crate.
 #
 # tl;dr; this is not needed to get `rustc` to compile, but if you remove it then
 #        later crate stop compiling. If you can remove this and everything

@@ -98,7 +98,7 @@ pub struct Session {
     /// arguments passed to the compiler. Its value together with the crate-name
     /// forms a unique global identifier for the crate. It is used to allow
     /// multiple crates with the same name to coexist. See the
-    /// trans::back::symbol_names module for more information.
+    /// rustc_codegen_llvm::back::symbol_names module for more information.
     pub crate_disambiguator: Once<CrateDisambiguator>,
 
     features: Once<feature_gate::Features>,
@@ -504,8 +504,8 @@ impl Session {
     pub fn time_llvm_passes(&self) -> bool {
         self.opts.debugging_opts.time_llvm_passes
     }
-    pub fn trans_stats(&self) -> bool {
-        self.opts.debugging_opts.trans_stats
+    pub fn codegen_stats(&self) -> bool {
+        self.opts.debugging_opts.codegen_stats
     }
     pub fn meta_stats(&self) -> bool {
         self.opts.debugging_opts.meta_stats
@@ -894,11 +894,11 @@ impl Session {
         // Why is 16 codegen units the default all the time?
         //
         // The main reason for enabling multiple codegen units by default is to
-        // leverage the ability for the trans backend to do translation and
-        // codegen in parallel. This allows us, especially for large crates, to
+        // leverage the ability for the codegen backend to do codegen and
+        // optimization in parallel. This allows us, especially for large crates, to
         // make good use of all available resources on the machine once we've
         // hit that stage of compilation. Large crates especially then often
-        // take a long time in trans/codegen and this helps us amortize that
+        // take a long time in codegen/optimization and this helps us amortize that
         // cost.
         //
         // Note that a high number here doesn't mean that we'll be spawning a

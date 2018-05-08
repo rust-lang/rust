@@ -10,7 +10,7 @@
 
 // compile-flags: -Zforce-overflow-checks=on
 
-// these errors are not actually "const_err", they occur in trans/consts
+// these errors are not actually "const_err", they occur in codegen/consts
 // and are unconditional warnings that can't be denied or allowed
 
 #![allow(exceeding_bitshifts)]

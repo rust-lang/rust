@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=lazy
+// compile-flags:-Zprint-mono-items=lazy
 
-// NB: We do not expect *any* translation item to be generated here.
+// NB: We do not expect *any* monomorphization to be generated here.
 
 #![feature(const_fn)]
 #![deny(dead_code)]

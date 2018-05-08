@@ -118,7 +118,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun) -> ShouldRun {
-        run.all_krates("rustc_trans")
+        run.all_krates("rustc_codegen_llvm")
     }
 
     fn make_run(run: RunConfig) {
@@ -139,12 +139,12 @@ impl Step for CodegenBackend {
 
         let mut cargo = builder.cargo(compiler, Mode::Librustc, target, "check");
         let features = builder.rustc_features().to_string();
-        cargo.arg("--manifest-path").arg(builder.src.join("src/librustc_trans/Cargo.toml"));
+        cargo.arg("--manifest-path").arg(builder.src.join("src/librustc_codegen_llvm/Cargo.toml"));
         rustc_cargo_env(builder, &mut cargo);
 
         // We won't build LLVM if it's not available, as it shouldn't affect `check`.
 
-        let _folder = builder.fold_output(|| format!("stage{}-rustc_trans", compiler.stage));
+        let _folder = builder.fold_output(|| format!("stage{}-rustc_codegen_llvm", compiler.stage));
         run_cargo(builder,
                   cargo.arg("--features").arg(features),
                   &codegen_backend_stamp(builder, compiler, target, backend),
@@ -259,14 +259,14 @@ pub fn librustc_stamp(builder: &Builder, compiler: Compiler, target: Interned<St
     builder.cargo_out(compiler, Mode::Librustc, target).join(".librustc-check.stamp")
 }
 
-/// Cargo's output path for librustc_trans in a given stage, compiled by a particular
+/// Cargo's output path for librustc_codegen_llvm in a given stage, compiled by a particular
 /// compiler for the specified target and backend.
 fn codegen_backend_stamp(builder: &Builder,
                          compiler: Compiler,
                          target: Interned<String>,
                          backend: Interned<String>) -> PathBuf {
     builder.cargo_out(compiler, Mode::Librustc, target)
-         .join(format!(".librustc_trans-{}-check.stamp", backend))
+         .join(format!(".librustc_codegen_llvm-{}-check.stamp", backend))
 }
 
 /// Cargo's output path for rustdoc in a given stage, compiled by a particular

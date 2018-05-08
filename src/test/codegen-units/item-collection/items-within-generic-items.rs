@@ -9,19 +9,19 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=eager
+// compile-flags:-Zprint-mono-items=eager
 
 #![deny(dead_code)]
 #![feature(start)]
 
 fn generic_fn<T>(a: T) -> (T, i32) {
-    //~ TRANS_ITEM fn items_within_generic_items::generic_fn[0]::nested_fn[0]
+    //~ MONO_ITEM fn items_within_generic_items::generic_fn[0]::nested_fn[0]
     fn nested_fn(a: i32) -> i32 {
         a + 1
     }
 
     let x = {
-        //~ TRANS_ITEM fn items_within_generic_items::generic_fn[0]::nested_fn[1]
+        //~ MONO_ITEM fn items_within_generic_items::generic_fn[0]::nested_fn[1]
         fn nested_fn(a: i32) -> i32 {
             a + 2
         }
@@ -32,14 +32,14 @@ fn generic_fn<T>(a: T) -> (T, i32) {
     return (a, x + nested_fn(0));
 }
 
-//~ TRANS_ITEM fn items_within_generic_items::start[0]
+//~ MONO_ITEM fn items_within_generic_items::start[0]
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
-    //~ TRANS_ITEM fn items_within_generic_items::generic_fn[0]<i64>
+    //~ MONO_ITEM fn items_within_generic_items::generic_fn[0]<i64>
     let _ = generic_fn(0i64);
-    //~ TRANS_ITEM fn items_within_generic_items::generic_fn[0]<u16>
+    //~ MONO_ITEM fn items_within_generic_items::generic_fn[0]<u16>
     let _ = generic_fn(0u16);
-    //~ TRANS_ITEM fn items_within_generic_items::generic_fn[0]<i8>
+    //~ MONO_ITEM fn items_within_generic_items::generic_fn[0]<i8>
     let _ = generic_fn(0i8);
 
     0
