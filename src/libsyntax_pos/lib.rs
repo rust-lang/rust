@@ -971,6 +971,15 @@ impl FileMap {
         lines.push(pos);
     }
 
+    /// Return the BytePos of the beginning of the current line.
+    pub fn line_begin_pos(&self) -> BytePos {
+        let lines = self.lines.borrow();
+        match lines.last() {
+            Some(&line_pos) => line_pos,
+            None => self.start_pos,
+        }
+    }
+
     /// Add externally loaded source.
     /// If the hash of the input doesn't match or no input is supplied via None,
     /// it is interpreted as an error and the corresponding enum variant is set.

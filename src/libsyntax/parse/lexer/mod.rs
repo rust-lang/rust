@@ -44,8 +44,6 @@ pub struct StringReader<'a> {
     pub next_pos: BytePos,
     /// The absolute offset within the codemap of the current character
     pub pos: BytePos,
-    /// The column of the next character to read
-    pub col: CharPos,
     /// The current character (which has been read from self.pos)
     pub ch: Option<char>,
     pub filemap: Lrc<syntax_pos::FileMap>,
@@ -175,7 +173,6 @@ impl<'a> StringReader<'a> {
             sess,
             next_pos: filemap.start_pos,
             pos: filemap.start_pos,
-            col: CharPos(0),
             ch: Some('\n'),
             filemap,
             end_src_index: src.len(),
@@ -442,9 +439,6 @@ impl<'a> StringReader<'a> {
                 if self.save_new_lines_and_multibyte {
                     self.filemap.next_line(self.next_pos);
                 }
-                self.col = CharPos(0);
-            } else {
-                self.col = self.col + CharPos(1);
             }
             if next_ch_len > 1 {
                 if self.save_new_lines_and_multibyte {
