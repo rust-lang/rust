@@ -32,13 +32,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let regioncx = &&self.nonlexical_regioncx;
         let mir = self.mir;
 
-        if self.nonlexical_cause_info.is_none() {
-            self.nonlexical_cause_info = Some(regioncx.compute_causal_info(mir));
-        }
-
-        let cause_info = self.nonlexical_cause_info.as_ref().unwrap();
-        if let Some(cause) = cause_info.why_region_contains_point(borrow.region, context.loc) {
-            match *cause.root_cause() {
+        let borrow_region_vid = regioncx.to_region_vid(borrow.region);
+        if let Some(cause) = regioncx.why_region_contains_point(borrow_region_vid, context.loc) {
+            match cause {
                 Cause::LiveVar(local, location) => {
                     match find_regular_use(mir, regioncx, borrow, location, local) {
                         Some(p) => {

@@ -8,17 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use borrow_check::nll::region_infer::TrackCauses;
 use rustc_data_structures::bitvec::SparseBitMatrix;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::ty::{self, RegionVid};
+use rustc::ty::RegionVid;
 use std::fmt::Debug;
 use std::rc::Rc;
 use syntax::codemap::Span;
 
-use super::{Cause, CauseExt, TrackCauses};
+use super::Cause;
 
 /// Maps between the various kinds of elements of a region value to
 /// the internal indices that w use.
@@ -196,7 +197,7 @@ pub(super) struct RegionValues {
     causes: Option<CauseMap>,
 }
 
-type CauseMap = FxHashMap<(RegionVid, RegionElementIndex), Rc<Cause>>;
+type CauseMap = FxHashMap<(RegionVid, RegionElementIndex), Cause>;
 
 impl RegionValues {
     /// Creates a new set of "region values" that tracks causal information.
@@ -255,7 +256,7 @@ impl RegionValues {
             debug!("add(r={:?}, i={:?})", r, self.elements.to_element(i));
 
             if let Some(causes) = &mut self.causes {
-                let cause = Rc::new(make_cause(causes));
+                let cause = make_cause(causes);
                 causes.insert((r, i), cause);
             }
 
@@ -267,15 +268,8 @@ impl RegionValues {
                 // #49998: compare using root cause alone to avoid
                 // useless traffic from similar outlives chains.
 
-                let overwrite = if ty::tls::with(|tcx| {
-                    tcx.sess.opts.debugging_opts.nll_subminimal_causes
-                }) {
-                    cause.root_cause() < old_cause.root_cause()
-                } else {
-                    cause < **old_cause
-                };
-                if overwrite {
-                    *old_cause = Rc::new(cause);
+                if cause < *old_cause {
+                    *old_cause = cause;
                     return true;
                 }
             }
@@ -294,13 +288,11 @@ impl RegionValues {
         from_region: RegionVid,
         to_region: RegionVid,
         elem: T,
-        constraint_location: Location,
-        constraint_span: Span,
+        _constraint_location: Location,
+        _constraint_span: Span,
     ) -> bool {
         let elem = self.elements.index(elem);
-        self.add_internal(to_region, elem, |causes| {
-            causes[&(from_region, elem)].outlives(constraint_location, constraint_span)
-        })
+        self.add_internal(to_region, elem, |causes| causes[&(from_region, elem)])
     }
 
     /// Adds all the universal regions outlived by `from_region` to
@@ -445,7 +437,7 @@ impl RegionValues {
     ///
     /// Returns None if cause tracking is disabled or `elem` is not
     /// actually found in `r`.
-    pub(super) fn cause<T: ToElementIndex>(&self, r: RegionVid, elem: T) -> Option<Rc<Cause>> {
+    pub(super) fn cause<T: ToElementIndex>(&self, r: RegionVid, elem: T) -> Option<Cause> {
         let index = self.elements.index(elem);
         if let Some(causes) = &self.causes {
             causes.get(&(r, index)).cloned()

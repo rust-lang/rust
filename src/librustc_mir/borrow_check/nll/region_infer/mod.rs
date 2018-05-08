@@ -101,7 +101,7 @@ struct RegionDefinition<'tcx> {
 /// NB: The variants in `Cause` are intentionally ordered. Lower
 /// values are preferred when it comes to error messages. Do not
 /// reorder willy nilly.
-#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 pub(crate) enum Cause {
     /// point inserted because Local was live at the given Location
     LiveVar(Local, Location),
@@ -115,23 +115,6 @@ pub(crate) enum Cause {
 
     /// part of the initial set of values for a universally quantified region
     UniversalRegion(RegionVid),
-
-    /// Element E was added to R because there was some
-    /// outlives obligation `R: R1 @ P` and `R1` contained `E`.
-    Outlives {
-        /// the reason that R1 had E
-        original_cause: Rc<Cause>,
-
-        /// the point P from the relation
-        constraint_location: Location,
-
-        /// The span indicating why we added the outlives constraint.
-        constraint_span: Span,
-    },
-}
-
-pub(crate) struct RegionCausalInfo {
-    inferred_values: RegionValues,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -477,21 +460,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
     }
 
-    /// Re-execute the region inference, this time tracking causal information.
-    /// This is significantly slower, so it is done only when an error is being reported.
-    pub(super) fn compute_causal_info(&self, mir: &Mir<'tcx>) -> RegionCausalInfo {
-        let dfs_storage = &mut self.new_dfs_storage();
-        let inferred_values = self.compute_region_values(mir, dfs_storage, TrackCauses(true));
-        RegionCausalInfo { inferred_values }
-    }
-
     /// Propagate the region constraints: this will grow the values
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
     fn propagate_constraints(&mut self, mir: &Mir<'tcx>, dfs_storage: &mut dfs::DfsStorage) {
         self.dependency_map = Some(self.build_dependency_map());
-        let inferred_values = self.compute_region_values(mir, dfs_storage, TrackCauses(false));
+        let inferred_values = self.compute_region_values(mir, dfs_storage);
         self.inferred_values = Some(inferred_values);
     }
 
@@ -500,7 +475,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         mir: &Mir<'tcx>,
         dfs_storage: &mut dfs::DfsStorage,
-        track_causes: TrackCauses,
     ) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
@@ -511,7 +485,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         // The initial values for each region are derived from the liveness
         // constraints we have accumulated.
-        let mut inferred_values = self.liveness_constraints.duplicate(track_causes);
+        let mut inferred_values = self.liveness_constraints.duplicate(TrackCauses(false));
 
         let dependency_map = self.dependency_map.as_ref().unwrap();
 
@@ -1095,6 +1069,17 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         diag.emit();
     }
 
+    crate fn why_region_contains_point(&self, fr1: RegionVid, elem: Location) -> Option<Cause> {
+        // Find some constraint `X: Y` where:
+        // - `fr1: X` transitively
+        // - and `Y` is live at `elem`
+        let index = self.blame_constraint(fr1, elem);
+        let region_sub = self.constraints[index].sub;
+
+        // then return why `Y` was live at `elem`
+        self.liveness_constraints.cause(region_sub, elem)
+    }
+
     /// Tries to finds a good span to blame for the fact that `fr1`
     /// contains `fr2`.
     fn blame_constraint(&self, fr1: RegionVid, elem: impl ToElementIndex) -> ConstraintIndex {
@@ -1112,7 +1097,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let relevant_constraint = self.constraints
             .iter_enumerated()
             .filter_map(|(i, constraint)| {
-                if self.liveness_constraints.contains(constraint.sub, elem) {
+                if !self.liveness_constraints.contains(constraint.sub, elem) {
                     None
                 } else {
                     influenced_fr1[constraint.sup]
@@ -1160,16 +1145,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         result_set
-    }
-}
-
-impl RegionCausalInfo {
-    /// Returns the *reason* that the region `r` contains the given point.
-    pub(super) fn why_region_contains_point<R>(&self, r: R, p: Location) -> Option<Rc<Cause>>
-    where
-        R: ToRegionVid,
-    {
-        self.inferred_values.cause(r.to_region_vid(), p)
     }
 }
 
@@ -1314,33 +1289,5 @@ impl<'gcx, 'tcx> ClosureRegionRequirementsExt<'gcx, 'tcx> for ClosureRegionRequi
                 )
             }
         })
-    }
-}
-
-trait CauseExt {
-    fn outlives(&self, constraint_location: Location, constraint_span: Span) -> Cause;
-}
-
-impl CauseExt for Rc<Cause> {
-    /// Creates a derived cause due to an outlives constraint.
-    fn outlives(&self, constraint_location: Location, constraint_span: Span) -> Cause {
-        Cause::Outlives {
-            original_cause: self.clone(),
-            constraint_location,
-            constraint_span,
-        }
-    }
-}
-
-impl Cause {
-    pub(crate) fn root_cause(&self) -> &Cause {
-        match self {
-            Cause::LiveVar(..)
-            | Cause::DropVar(..)
-            | Cause::LiveOther(..)
-            | Cause::UniversalRegion(..) => self,
-
-            Cause::Outlives { original_cause, .. } => original_cause.root_cause(),
-        }
     }
 }
