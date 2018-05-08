@@ -130,7 +130,7 @@ pub fn load_dep_graph(sess: &Session) ->
     let mut prev_work_products = FxHashMap();
 
     // If we are only building with -Zquery-dep-graph but without an actual
-    // incr. comp. session directory, we exit here. Otherwise we'd fail
+    // incr. comp. session directory, we skip this. Otherwise we'd fail
     // when trying to load work products.
     if sess.incr_comp_session_dir_opt().is_some() {
         let work_products_path = work_products_path(sess);
