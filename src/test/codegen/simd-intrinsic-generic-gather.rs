@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-emscripten
+// ignore-tidy-linelength
 
 // compile-flags: -C no-prepopulate-passes
 

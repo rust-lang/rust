@@ -1140,8 +1140,12 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
 
-    fn simd_simple_float_intrinsic<'a, 'tcx>(name: &str, in_elem: &::rustc::ty::TyS, in_ty: &::rustc::ty::TyS,
-                                             in_len: usize, bx: &Builder<'a, 'tcx>, span: Span,
+    fn simd_simple_float_intrinsic<'a, 'tcx>(name: &str,
+                                             in_elem: &::rustc::ty::TyS,
+                                             in_ty: &::rustc::ty::TyS,
+                                             in_len: usize,
+                                             bx: &Builder<'a, 'tcx>,
+                                             span: Span,
                                              args: &[OperandRef<'tcx>])
                                              -> Result<ValueRef, ()> {
         macro_rules! emit_error {
@@ -1167,14 +1171,17 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         let ety = match in_elem.sty {
             ty::TyFloat(f) if f.bit_width() == 32 => {
                 if in_len < 2 || in_len > 16 {
-                    return_error!("unsupported floating-point vector `{}` with length `{}` out-of-range [2, 16]",
-                                  in_ty, in_len);
+                    return_error!(
+                        "unsupported floating-point vector `{}` with length `{}` \
+                         out-of-range [2, 16]",
+                        in_ty, in_len);
                 }
                 "f32"
             },
             ty::TyFloat(f) if f.bit_width() == 64 => {
                 if in_len < 2 || in_len > 8 {
-                    return_error!("unsupported floating-point vector `{}` with length `{}` out-of-range [2, 8]",
+                    return_error!("unsupported floating-point vector `{}` with length `{}` \
+                                   out-of-range [2, 8]",
                                   in_ty, in_len);
                 }
                 "f64"
@@ -1504,7 +1511,10 @@ fn generic_simd_intrinsic<'a, 'tcx>(
         let llvm_intrinsic = format!("llvm.masked.scatter.{}.{}",
                                      llvm_elem_vec_str, llvm_pointer_vec_str);
         let f = declare::declare_cfn(bx.cx, &llvm_intrinsic,
-                                     Type::func(&[llvm_elem_vec_ty, llvm_pointer_vec_ty, alignment_ty, mask_ty], &ret_t));
+                                     Type::func(&[llvm_elem_vec_ty,
+                                                  llvm_pointer_vec_ty,
+                                                  alignment_ty,
+                                                  mask_ty], &ret_t));
         llvm::SetUnnamedAddr(f, false);
         let v = bx.call(f, &[args[0].immediate(), args[1].immediate(), alignment, mask],
                         None);
