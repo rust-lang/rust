@@ -104,15 +104,15 @@ impl CStore {
 
     /// You cannot use this function to allocate a CrateNum in a thread-safe manner.
     /// It is currently only used in CrateLoader which is single-threaded code.
-    pub fn next_crate_num(&self) -> CrateNum {
+    pub(super) fn next_crate_num(&self) -> CrateNum {
         CrateNum::new(self.metas.borrow().len() + 1)
     }
 
-    pub fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
+    pub(super) fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
         self.metas.borrow()[cnum].clone().unwrap()
     }
 
-    pub fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
+    pub(super) fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
         use rustc_data_structures::indexed_vec::Idx;
         let mut met = self.metas.borrow_mut();
         while met.len() <= cnum.index() {
@@ -121,7 +121,7 @@ impl CStore {
         met[cnum] = Some(data);
     }
 
-    pub fn iter_crate_data<I>(&self, mut i: I)
+    pub(super) fn iter_crate_data<I>(&self, mut i: I)
         where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
     {
         for (k, v) in self.metas.borrow().iter_enumerated() {
@@ -131,14 +131,16 @@ impl CStore {
         }
     }
 
-    pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
+    pub(super) fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         self.push_dependencies_in_postorder(&mut ordering, krate);
         ordering.reverse();
         ordering
     }
 
-    pub fn push_dependencies_in_postorder(&self, ordering: &mut Vec<CrateNum>, krate: CrateNum) {
+    pub(super) fn push_dependencies_in_postorder(&self,
+                                                 ordering: &mut Vec<CrateNum>,
+                                                 krate: CrateNum) {
         if ordering.contains(&krate) {
             return;
         }
@@ -153,7 +155,7 @@ impl CStore {
         ordering.push(krate);
     }
 
-    pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
+    pub(super) fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         for (num, v) in self.metas.borrow().iter_enumerated() {
             if let &Some(_) = v {
@@ -163,11 +165,11 @@ impl CStore {
         return ordering
     }
 
-    pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
+    pub(super) fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
-    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
+    pub(super) fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
