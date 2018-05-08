@@ -168,6 +168,13 @@ fn get_symbol_hash<'a, 'tcx>(
             });
         });
 
+        // If this is a function, we hash the signature as well.
+        // This is not *strictly* needed, but it may help in some
+        // situations, see the `run-make/a-b-a-linker-guard` test.
+        if let ty::TyFnDef(..) = item_type.sty {
+            item_type.fn_sig(tcx).hash_stable(&mut hcx, &mut hasher);
+        }
+
         // also include any type parameters (for generic items)
         assert!(!substs.has_erasable_regions());
         assert!(!substs.needs_subst());
