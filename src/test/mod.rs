@@ -11,6 +11,7 @@
 extern crate assert_cli;
 
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::io::{self, BufRead, BufReader, Read};
 use std::iter::{Enumerate, Peekable};
@@ -892,14 +893,19 @@ impl Drop for TempFile {
     }
 }
 
+fn rustfmt() -> PathBuf {
+    let mut me = env::current_exe().expect("failed to get current executable");
+    me.pop(); // chop of the test name
+    me.pop(); // chop off `deps`
+    me.push("rustfmt");
+    return me;
+}
+
 #[test]
 fn verify_check_works() {
     let temp_file = make_temp_file("temp_check.rs");
     assert_cli::Assert::command(&[
-        "cargo",
-        "run",
-        "--bin=rustfmt",
-        "--",
+        rustfmt().to_str().unwrap(),
         "--write-mode=check",
         temp_file.path.to_str().unwrap(),
     ]).succeeds()
@@ -910,10 +916,7 @@ fn verify_check_works() {
 fn verify_diff_works() {
     let temp_file = make_temp_file("temp_diff.rs");
     assert_cli::Assert::command(&[
-        "cargo",
-        "run",
-        "--bin=rustfmt",
-        "--",
+        rustfmt().to_str().unwrap(),
         "--write-mode=diff",
         temp_file.path.to_str().unwrap(),
     ]).succeeds()
