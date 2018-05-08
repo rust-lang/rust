@@ -96,16 +96,17 @@ pub struct CStore {
 impl CStore {
     pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
-            metas: RwLock::new(IndexVec::new()),
+            metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
             extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
         }
     }
 
-    /// You cannot use this function to allocate a CrateNum in a thread-safe manner.
-    /// It is currently only used in CrateLoader which is single-threaded code.
-    pub(super) fn next_crate_num(&self) -> CrateNum {
-        CrateNum::new(self.metas.borrow().len() + 1)
+    pub(super) fn alloc_new_crate_num(&self) -> CrateNum {
+        let mut metas = self.metas.borrow_mut();
+        let cnum = CrateNum::new(metas.len());
+        metas.push(None);
+        cnum
     }
 
     pub(super) fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
@@ -113,12 +114,9 @@ impl CStore {
     }
 
     pub(super) fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
-        use rustc_data_structures::indexed_vec::Idx;
-        let mut met = self.metas.borrow_mut();
-        while met.len() <= cnum.index() {
-            met.push(None);
-        }
-        met[cnum] = Some(data);
+        let mut metas = self.metas.borrow_mut();
+        assert!(metas[cnum].is_none(), "Overwriting crate metadata entry");
+        metas[cnum] = Some(data);
     }
 
     pub(super) fn iter_crate_data<I>(&self, mut i: I)
