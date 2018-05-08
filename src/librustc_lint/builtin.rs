@@ -541,7 +541,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
         if !ty.moves_by_default(cx.tcx, param_env, item.span) {
             return;
         }
-        if param_env.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
+        if param_env.can_type_implement_copy(cx.tcx, ty).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \
