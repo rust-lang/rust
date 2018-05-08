@@ -219,6 +219,8 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
+        let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
+
         let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
             crate_root.def_path_table.decode((&metadata, self.sess))
         });
@@ -239,8 +241,9 @@ impl<'a> CrateLoader<'a> {
             }),
             root: crate_root,
             blob: metadata,
-            cnum_map: Lock::new(cnum_map),
+            cnum_map,
             cnum,
+            dependencies: Lock::new(dependencies),
             codemap_import_info: RwLock::new(vec![]),
             attribute_cache: Lock::new([Vec::new(), Vec::new()]),
             dep_kind: Lock::new(dep_kind),
@@ -392,7 +395,7 @@ impl<'a> CrateLoader<'a> {
 
         // Propagate the extern crate info to dependencies.
         extern_crate.direct = false;
-        for &dep_cnum in cmeta.cnum_map.borrow().iter() {
+        for &dep_cnum in cmeta.dependencies.borrow().iter() {
             self.update_extern_crate(dep_cnum, extern_crate, visited);
         }
     }
@@ -1040,7 +1043,7 @@ impl<'a> CrateLoader<'a> {
             }
 
             info!("injecting a dep from {} to {}", cnum, krate);
-            data.cnum_map.borrow_mut().push(krate);
+            data.dependencies.borrow_mut().push(krate);
         });
     }
 }
