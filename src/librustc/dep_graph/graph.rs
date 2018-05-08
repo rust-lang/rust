@@ -77,7 +77,7 @@ struct DepGraphData {
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: RwLock<FxHashMap<WorkProductId, WorkProduct>>,
+    previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
 
     /// Work-products that we generate in this run.
     work_products: RwLock<FxHashMap<WorkProductId, WorkProduct>>,
@@ -90,7 +90,8 @@ struct DepGraphData {
 
 impl DepGraph {
 
-    pub fn new(prev_graph: PreviousDepGraph) -> DepGraph {
+    pub fn new(prev_graph: PreviousDepGraph,
+               prev_work_products: FxHashMap<WorkProductId, WorkProduct>) -> DepGraph {
         // Pre-allocate the fingerprints array. We over-allocate a little so
         // that we hopefully don't have to re-allocate during this compilation
         // session.
@@ -100,7 +101,7 @@ impl DepGraph {
                                                  (prev_graph_node_count * 115) / 100);
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
-                previous_work_products: RwLock::new(FxHashMap()),
+                previous_work_products: prev_work_products,
                 work_products: RwLock::new(FxHashMap()),
                 dep_node_debug: Lock::new(FxHashMap()),
                 current: Lock::new(CurrentDepGraph::new()),
@@ -460,19 +461,6 @@ impl DepGraph {
         self.data.as_ref().unwrap().previous.node_to_index(dep_node)
     }
 
-    /// Indicates that a previous work product exists for `v`. This is
-    /// invoked during initial start-up based on what nodes are clean
-    /// (and what files exist in the incr. directory).
-    pub fn insert_previous_work_product(&self, v: &WorkProductId, data: WorkProduct) {
-        debug!("insert_previous_work_product({:?}, {:?})", v, data);
-        self.data
-            .as_ref()
-            .unwrap()
-            .previous_work_products
-            .borrow_mut()
-            .insert(v.clone(), data);
-    }
-
     /// Indicates that we created the given work-product in this run
     /// for `v`. This record will be preserved and loaded in the next
     /// run.
@@ -492,7 +480,7 @@ impl DepGraph {
         self.data
             .as_ref()
             .and_then(|data| {
-                data.previous_work_products.borrow().get(v).cloned()
+                data.previous_work_products.get(v).cloned()
             })
     }
 
@@ -504,8 +492,8 @@ impl DepGraph {
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> ReadGuard<FxHashMap<WorkProductId, WorkProduct>> {
-        self.data.as_ref().unwrap().previous_work_products.borrow()
+    pub fn previous_work_products(&self) -> &FxHashMap<WorkProductId, WorkProduct> {
+        &self.data.as_ref().unwrap().previous_work_products
     }
 
     #[inline(always)]
