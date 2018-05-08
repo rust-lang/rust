@@ -716,7 +716,8 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
 
     for flag in deprecated_flags.into_iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
+            let mut err = diag.struct_warn(&format!("the '{}' flag is considered deprecated",
+                                                    flag));
             err.warn("please see https://github.com/rust-lang/rust/issues/44136");
 
             if *flag == "no-defaults" {
