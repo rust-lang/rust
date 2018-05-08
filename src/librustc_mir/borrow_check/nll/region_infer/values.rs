@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
 use rustc_data_structures::bitvec::SparseBitMatrix;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::{self, RegionVid};
+use std::fmt::Debug;
+use std::rc::Rc;
 use syntax::codemap::Span;
 
 use super::{Cause, CauseExt, TrackCauses};
@@ -152,7 +153,7 @@ pub(super) enum RegionElement {
     UniversalRegion(RegionVid),
 }
 
-pub(super) trait ToElementIndex {
+pub(super) trait ToElementIndex: Debug + Copy {
     fn to_element_index(self, elements: &RegionValueElements) -> RegionElementIndex;
 }
 

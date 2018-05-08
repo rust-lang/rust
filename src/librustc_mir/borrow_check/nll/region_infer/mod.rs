@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use super::universal_regions::UniversalRegions;
+use borrow_check::nll::region_infer::values::ToElementIndex;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
@@ -1007,7 +1008,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 longer_fr, shorter_fr,
             );
 
-            let blame_span = self.blame_span(longer_fr, shorter_fr);
+            let blame_index = self.blame_constraint(longer_fr, shorter_fr);
+            let blame_span = self.constraints[blame_index].span;
 
             if let Some(propagated_outlives_requirements) = propagated_outlives_requirements {
                 // Shrink `fr` until we find a non-local region (if we do).
@@ -1095,7 +1097,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
     /// Tries to finds a good span to blame for the fact that `fr1`
     /// contains `fr2`.
-    fn blame_span(&self, fr1: RegionVid, fr2: RegionVid) -> Span {
+    fn blame_constraint(&self, fr1: RegionVid, elem: impl ToElementIndex) -> ConstraintIndex {
         // Find everything that influenced final value of `fr`.
         let influenced_fr1 = self.dependencies(fr1);
 
@@ -1108,23 +1110,23 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // of dependencies, which doesn't account for the locations of
         // contraints at all. But it will do for now.
         let relevant_constraint = self.constraints
-                .iter()
-                .filter_map(|constraint| {
-                    if constraint.sub != fr2 {
-                        None
-                    } else {
-                        influenced_fr1[constraint.sup]
-                            .map(|distance| (distance, constraint.span))
-                    }
-                })
-                .min() // constraining fr1 with fewer hops *ought* to be more obvious
-                .map(|(_dist, span)| span);
+            .iter_enumerated()
+            .filter_map(|(i, constraint)| {
+                if self.liveness_constraints.contains(constraint.sub, elem) {
+                    None
+                } else {
+                    influenced_fr1[constraint.sup]
+                        .map(|distance| (distance, i))
+                }
+            })
+            .min() // constraining fr1 with fewer hops *ought* to be more obvious
+            .map(|(_dist, i)| i);
 
         relevant_constraint.unwrap_or_else(|| {
             bug!(
                 "could not find any constraint to blame for {:?}: {:?}",
                 fr1,
-                fr2
+                elem,
             );
         })
     }
