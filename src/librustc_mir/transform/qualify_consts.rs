@@ -32,7 +32,7 @@ use rustc::middle::lang_items;
 use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::ast::LitKind;
-use syntax::feature_gate::{UnstableFeatures, emit_feature_err, GateIssue};
+use syntax::feature_gate::{UnstableFeatures, feature_err, emit_feature_err, GateIssue};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -189,17 +189,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn statement_like(&mut self) {
         self.add(Qualif::NOT_CONST);
         if self.mode != Mode::Fn {
-            if self.span.allows_unstable() {
-                emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
-                                self.span, GateIssue::Language,
-                                "statements in const fn are unstable");
-            }
-            let mut err = struct_span_err!(
-                self.tcx.sess,
+            let mut err = feature_err(
+                &self.tcx.sess.parse_sess,
+                "const_let",
                 self.span,
-                E0016,
-                "blocks in {}s are limited to items and tail expressions",
-                self.mode
+                GateIssue::Language,
+                &format!("statements in {}s are unstable", self.mode),
             );
             if self.tcx.sess.teach(&err.get_code().unwrap()) {
                 err.note("Blocks in constants may only contain items (such as constant, function \
@@ -365,7 +360,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
-                    if self.tcx.sess.features_untracked().const_let {
+                    if !self.tcx.sess.features_untracked().const_let {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
@@ -466,10 +461,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 self.not_const();
             }
             LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {
-                if self.mode != Mode::Fn && self.span.allows_unstable() {
+                if self.mode != Mode::Fn {
                     emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
                                     self.span, GateIssue::Language,
-                                    "let bindings in const fn are unstable");
+                                    &format!("let bindings in {}s are unstable",self.mode));
                 }
                 self.add(Qualif::NOT_CONST);
             }
@@ -1105,15 +1100,11 @@ This does not pose a problem by itself because they can't be accessed directly."
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.intersects(Qualif::FN_ARGUMENT) {
                     let decl = &self.mir.local_decls[index];
-                    if decl.source_info.span.allows_unstable() {
-                        emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
-                                        decl.source_info.span, GateIssue::Language,
-                                        "locals and patterns in const fn are unstable");
-                    }
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
+                    let mut err = feature_err(
+                        &self.tcx.sess.parse_sess,
+                        "const_let",
                         decl.source_info.span,
-                        E0022,
+                        GateIssue::Language,
                         "arguments of constant functions can only be immutable by-value bindings"
                     );
                     if self.tcx.sess.teach(&err.get_code().unwrap()) {

@@ -1,9 +1,19 @@
-error[E0016]: blocks in constant functions are limited to items and tail expressions
+error[E0658]: let bindings in constant functions are unstable (see issue #48821)
   --> $DIR/feature-gate-const_let.rs:16:13
    |
-LL |     let x = 42; //~ ERROR blocks in constant functions are limited to items and tail expressions
+LL |     let x = 42;
    |             ^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: statements in constant functions are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:16:13
+   |
+LL |     let x = 42;
+   |             ^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
 
-For more information about this error, try `rustc --explain E0016`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

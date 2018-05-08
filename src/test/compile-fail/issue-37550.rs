@@ -11,8 +11,12 @@
 #![feature(const_fn)]
 
 const fn x() {
-    let t = true; //~ ERROR blocks in constant functions are limited to items and tail expressions
-    let x = || t; //~ ERROR blocks in constant functions are limited to items and tail expressions
+    let t = true;
+    //~^ ERROR let bindings in constant functions are unstable
+    //~| ERROR statements in constant functions are unstable
+    let x = || t;
+    //~^ ERROR let bindings in constant functions are unstable
+    //~| ERROR statements in constant functions are unstable
 }
 
 fn main() {}
