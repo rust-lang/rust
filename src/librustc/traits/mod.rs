@@ -17,17 +17,21 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
+use chalk_engine;
 use hir;
 use hir::def_id::DefId;
 use infer::outlives::env::OutlivesEnvironment;
 use middle::region;
 use middle::const_val::ConstEvalErr;
 use ty::subst::Substs;
-use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
+use ty::{self, AdtKind, Slice, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use ty::error::{ExpectedFound, TypeError};
+use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
+use infer::canonical::{Canonical, Canonicalize};
 use infer::{InferCtxt};
 
 use rustc_data_structures::sync::Lrc;
+use std::fmt::Debug;
 use std::rc::Rc;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -1002,4 +1006,60 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         substitute_normalize_and_test_predicates,
         ..*providers
     };
+}
+
+impl<'gcx: 'tcx, 'tcx> Canonicalize<'gcx, 'tcx> for ty::ParamEnvAnd<'tcx, Goal<'tcx>> {
+    // we ought to intern this, but I'm too lazy just now
+    type Canonicalized = Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>>;
+
+    fn intern(
+        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
+        value: Canonical<'gcx, Self::Lifted>,
+    ) -> Self::Canonicalized {
+        value
+    }
+}
+
+pub trait ExClauseFold<'tcx>
+where
+    Self: chalk_engine::context::Context + Clone,
+{
+    fn fold_ex_clause_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(
+        ex_clause: &chalk_engine::ExClause<Self>,
+        folder: &mut F,
+    ) -> chalk_engine::ExClause<Self>;
+
+    fn visit_ex_clause_with<'gcx: 'tcx, V: TypeVisitor<'tcx>>(
+        ex_clause: &chalk_engine::ExClause<Self>,
+        visitor: &mut V,
+    ) -> bool;
+}
+
+pub trait ExClauseLift<'tcx>
+where
+    Self: chalk_engine::context::Context + Clone,
+{
+    type LiftedExClause: Debug + 'tcx;
+
+    fn lift_ex_clause_to_tcx<'a, 'gcx>(
+        ex_clause: &chalk_engine::ExClause<Self>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> Option<Self::LiftedExClause>;
+}
+
+impl<'gcx: 'tcx, 'tcx, C> Canonicalize<'gcx, 'tcx> for chalk_engine::ExClause<C>
+where
+    C: chalk_engine::context::Context + Clone,
+    C: ExClauseLift<'gcx> + ExClauseFold<'tcx>,
+    C::Substitution: Clone,
+    C::RegionConstraint: Clone,
+{
+    type Canonicalized = Canonical<'gcx, C::LiftedExClause>;
+
+    fn intern(
+        _gcx: TyCtxt<'_, 'gcx, 'gcx>,
+        value: Canonical<'gcx, Self::Lifted>,
+    ) -> Self::Canonicalized {
+        value
+    }
 }

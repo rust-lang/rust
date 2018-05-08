@@ -11,9 +11,13 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
+#![feature(crate_in_paths)]
 #![feature(crate_visibility_modifier)]
+#![feature(extern_prelude)]
 #![feature(iterator_find_map)]
+#![feature(in_band_lifetimes)]
 
+extern crate chalk_engine;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -22,6 +26,7 @@ extern crate rustc_data_structures;
 extern crate syntax;
 extern crate syntax_pos;
 
+mod chalk_context;
 mod dropck_outlives;
 mod evaluate_obligation;
 mod normalize_projection_ty;
