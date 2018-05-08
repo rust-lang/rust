@@ -1008,12 +1008,8 @@ impl Step for Compiletest {
         };
 
         // Get test-args by striping suite path
-        let assert_file = |p: &PathBuf| {
-            assert!(p.is_file(), "Expected {:?} to be a path to a test file", p);
-            return true
-        };
         let mut test_args: Vec<&str> = paths.iter().filter(|p| p.starts_with(suite_path) &&
-           assert_file(p)).map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap()).collect();
+           p.is_file()).map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap()).collect();
 
         test_args.append(&mut builder.config.cmd.test_args());
 
