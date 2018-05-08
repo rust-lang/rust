@@ -56,15 +56,13 @@ use errors::ColorConfig;
 use std::collections::{BTreeMap, BTreeSet};
 use std::default::Default;
 use std::env;
-use std::fmt::Display;
-use std::io;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::sync::mpsc::channel;
 
 use syntax::edition::Edition;
 use externalfiles::ExternalHtml;
+use rustc::session::{early_warn, early_error};
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, Externs, CodegenOptions};
 use rustc::session::config::{nightly_options, build_codegen_options};
@@ -118,7 +116,8 @@ pub fn main() {
 fn get_args() -> Option<Vec<String>> {
     env::args_os().enumerate()
         .map(|(i, arg)| arg.into_string().map_err(|arg| {
-             print_error(format!("Argument {} is not valid Unicode: {:?}", i, arg));
+             early_warn(ErrorOutputType::default(),
+                        &format!("Argument {} is not valid Unicode: {:?}", i, arg));
         }).ok())
         .collect()
 }
@@ -318,15 +317,11 @@ pub fn main_args(args: &[String]) -> isize {
     let matches = match options.parse(&args[1..]) {
         Ok(m) => m,
         Err(err) => {
-            print_error(err);
-            return 1;
+            early_error(ErrorOutputType::default(), &err.to_string());
         }
     };
     // Check for unstable options.
     nightly_options::check_nightly_options(&matches, &opts());
-
-    // check for deprecated options
-    check_deprecated_options(&matches);
 
     if matches.opt_present("h") || matches.opt_present("help") {
         usage("rustdoc");
@@ -348,6 +343,35 @@ pub fn main_args(args: &[String]) -> isize {
         return 0;
     }
 
+    let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
+        Some("auto") => ColorConfig::Auto,
+        Some("always") => ColorConfig::Always,
+        Some("never") => ColorConfig::Never,
+        None => ColorConfig::Auto,
+        Some(arg) => {
+            early_error(ErrorOutputType::default(),
+                        &format!("argument for --color must be `auto`, `always` or `never` \
+                                  (instead was `{}`)", arg));
+        }
+    };
+    let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
+        Some("human") => ErrorOutputType::HumanReadable(color),
+        Some("json") => ErrorOutputType::Json(false),
+        Some("pretty-json") => ErrorOutputType::Json(true),
+        Some("short") => ErrorOutputType::Short(color),
+        None => ErrorOutputType::HumanReadable(color),
+        Some(arg) => {
+            early_error(ErrorOutputType::default(),
+                        &format!("argument for --error-format must be `human`, `json` or \
+                                  `short` (instead was `{}`)", arg));
+        }
+    };
+
+    let diag = core::new_handler(error_format, None);
+
+    // check for deprecated options
+    check_deprecated_options(&matches, &diag);
+
     let to_check = matches.opt_strs("theme-checker");
     if !to_check.is_empty() {
         let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
@@ -356,7 +380,7 @@ pub fn main_args(args: &[String]) -> isize {
         println!("rustdoc: [theme-checker] Starting tests!");
         for theme_file in to_check.iter() {
             print!(" - Checking \"{}\"...", theme_file);
-            let (success, differences) = theme::test_theme_against(theme_file, &paths);
+            let (success, differences) = theme::test_theme_against(theme_file, &paths, &diag);
             if !differences.is_empty() || !success {
                 println!(" FAILED");
                 errors += 1;
@@ -374,38 +398,14 @@ pub fn main_args(args: &[String]) -> isize {
     }
 
     if matches.free.is_empty() {
-        print_error("missing file operand");
+        diag.struct_err("missing file operand").emit();
         return 1;
     }
     if matches.free.len() > 1 {
-        print_error("too many file operands");
+        diag.struct_err("too many file operands").emit();
         return 1;
     }
     let input = &matches.free[0];
-
-    let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-        Some("auto") => ColorConfig::Auto,
-        Some("always") => ColorConfig::Always,
-        Some("never") => ColorConfig::Never,
-        None => ColorConfig::Auto,
-        Some(arg) => {
-            print_error(&format!("argument for --color must be `auto`, `always` or `never` \
-                                  (instead was `{}`)", arg));
-            return 1;
-        }
-    };
-    let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-        Some("human") => ErrorOutputType::HumanReadable(color),
-        Some("json") => ErrorOutputType::Json(false),
-        Some("pretty-json") => ErrorOutputType::Json(true),
-        Some("short") => ErrorOutputType::Short(color),
-        None => ErrorOutputType::HumanReadable(color),
-        Some(arg) => {
-            print_error(&format!("argument for --error-format must be `human`, `json` or \
-                                  `short` (instead was `{}`)", arg));
-            return 1;
-        }
-    };
 
     let mut libs = SearchPaths::new();
     for s in &matches.opt_strs("L") {
@@ -414,7 +414,7 @@ pub fn main_args(args: &[String]) -> isize {
     let externs = match parse_externs(&matches) {
         Ok(ex) => ex,
         Err(err) => {
-            print_error(err);
+            diag.struct_err(&err.to_string()).emit();
             return 1;
         }
     };
@@ -435,10 +435,7 @@ pub fn main_args(args: &[String]) -> isize {
 
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
-            writeln!(
-                &mut io::stderr(),
-                "rustdoc: option --extend-css argument must be a file."
-            ).unwrap();
+            diag.struct_err("option --extend-css argument must be a file").emit();
             return 1;
         }
     }
@@ -451,13 +448,14 @@ pub fn main_args(args: &[String]) -> isize {
                                             .iter()
                                             .map(|s| (PathBuf::from(&s), s.to_owned())) {
             if !theme_file.is_file() {
-                println!("rustdoc: option --themes arguments must all be files");
+                diag.struct_err("option --themes arguments must all be files").emit();
                 return 1;
             }
-            let (success, ret) = theme::test_theme_against(&theme_file, &paths);
+            let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
             if !success || !ret.is_empty() {
-                println!("rustdoc: invalid theme: \"{}\"", theme_s);
-                println!("         Check what's wrong with the \"theme-checker\" option");
+                diag.struct_err(&format!("invalid theme: \"{}\"", theme_s))
+                    .help("check what's wrong with the --theme-checker option")
+                    .emit();
                 return 1;
             }
             themes.push(theme_file);
@@ -469,7 +467,7 @@ pub fn main_args(args: &[String]) -> isize {
             &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content"),
             &matches.opt_strs("markdown-before-content"),
-            &matches.opt_strs("markdown-after-content")) {
+            &matches.opt_strs("markdown-after-content"), &diag) {
         Some(eh) => eh,
         None => return 3,
     };
@@ -485,7 +483,7 @@ pub fn main_args(args: &[String]) -> isize {
     let edition = match edition.parse() {
         Ok(e) => e,
         Err(_) => {
-            print_error("could not parse edition");
+            diag.struct_err("could not parse edition").emit();
             return 1;
         }
     };
@@ -495,7 +493,7 @@ pub fn main_args(args: &[String]) -> isize {
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
-                                  display_warnings, linker, edition, cg)
+                                  display_warnings, linker, edition, cg, &diag)
         }
         (true, false) => {
             return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
@@ -504,7 +502,7 @@ pub fn main_args(args: &[String]) -> isize {
         (false, true) => return markdown::render(Path::new(input),
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
-                                                 !matches.opt_present("markdown-no-toc")),
+                                                 !matches.opt_present("markdown-no-toc"), &diag),
         (false, false) => {}
     }
 
@@ -513,6 +511,7 @@ pub fn main_args(args: &[String]) -> isize {
     let res = acquire_input(PathBuf::from(input), externs, edition, cg, &matches, error_format,
                             move |out| {
         let Output { krate, passes, renderinfo } = out;
+        let diag = core::new_handler(error_format, None);
         info!("going to format");
         match output_format.as_ref().map(|s| &**s) {
             Some("html") | None => {
@@ -528,24 +527,15 @@ pub fn main_args(args: &[String]) -> isize {
                 0
             }
             Some(s) => {
-                print_error(format!("unknown output format: {}", s));
+                diag.struct_err(&format!("unknown output format: {}", s)).emit();
                 1
             }
         }
     });
     res.unwrap_or_else(|s| {
-        print_error(format!("input error: {}", s));
+        diag.struct_err(&format!("input error: {}", s)).emit();
         1
     })
-}
-
-/// Prints an uniformized error message on the standard error output
-fn print_error<T>(error_message: T) where T: Display {
-    writeln!(
-        &mut io::stderr(),
-        "rustdoc: {}\nTry 'rustdoc --help' for more information.",
-        error_message
-    ).unwrap();
 }
 
 /// Looks inside the command line arguments to extract the relevant input format
@@ -714,7 +704,7 @@ where R: 'static + Send,
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches) {
+fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) {
     let deprecated_flags = [
        "input-format",
        "output-format",
@@ -726,12 +716,14 @@ fn check_deprecated_options(matches: &getopts::Matches) {
 
     for flag in deprecated_flags.into_iter() {
         if matches.opt_present(flag) {
-            eprintln!("WARNING: the '{}' flag is considered deprecated", flag);
-            eprintln!("WARNING: please see https://github.com/rust-lang/rust/issues/44136");
-        }
-    }
+            let mut err = diag.struct_warn(&format!("the '{}' flag is considered deprecated", flag));
+            err.warn("please see https://github.com/rust-lang/rust/issues/44136");
 
-    if matches.opt_present("no-defaults") {
-        eprintln!("WARNING: (you may want to use --document-private-items)");
+            if *flag == "no-defaults" {
+                err.help("you may want to use --document-private-items");
+            }
+
+            err.emit();
+        }
     }
 }
