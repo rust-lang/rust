@@ -30,8 +30,6 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 use rustc_data_structures::fx::FxHashMap;
 use std::{cmp, fmt};
-use std::hash::Hash;
-use std::intrinsics;
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
