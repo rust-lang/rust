@@ -56,7 +56,7 @@ extern crate syntax_pos;
 extern crate rustc_errors as errors;
 extern crate serialize;
 extern crate cc; // Used to locate MSVC
-extern crate tempdir;
+extern crate tempfile;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
 

@@ -28,7 +28,7 @@ use {CodegenResults, CrateInfo};
 use rustc::util::common::time;
 use rustc::util::fs::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
-use tempdir::TempDir;
+use tempfile::{Builder as TempFileBuilder, TempDir};
 use rustc_target::spec::{PanicStrategy, RelroLevel, LinkerFlavor, TargetTriple};
 use rustc_data_structures::fx::FxHashSet;
 use context::get_reloc_model;
@@ -321,7 +321,7 @@ fn link_binary_output(sess: &Session,
         // final destination, with a `fs::rename` call. In order for the rename to
         // always succeed, the temporary file needs to be on the same filesystem,
         // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = match TempDir::new_in(out_filename.parent().unwrap(), "rmeta") {
+        let metadata_tmpdir = match TempFileBuilder::new().prefix("rmeta").tempdir_in(out_filename.parent().unwrap()) {
             Ok(tmpdir) => tmpdir,
             Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
         };
@@ -332,7 +332,7 @@ fn link_binary_output(sess: &Session,
         out_filenames.push(out_filename);
     }
 
-    let tmpdir = match TempDir::new("rustc") {
+    let tmpdir = match TempFileBuilder::new().prefix("rustc").tempdir() {
         Ok(tmpdir) => tmpdir,
         Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
     };
