@@ -98,12 +98,13 @@
 //! DefPaths which are much more robust in the face of changes to the code base.
 
 use rustc::middle::weak_lang_items;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::Instance;
 use rustc_mir::monomorphize::item::{MonoItem, MonoItemExt, InstantiationMode};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map as hir_map;
+use rustc::ich::NodeIdHashingMode;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::fold::TypeVisitor;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
@@ -144,31 +145,29 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> u64 {
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
-    let mut hasher = ty::util::TypeIdHasher::<u64>::new(tcx);
+    let mut hasher = StableHasher::<u64>::new();
+    let mut hcx = tcx.create_stable_hashing_context();
 
     record_time(&tcx.sess.perf_stats.symbol_hash_time, || {
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
-        hasher.hash(tcx.def_path_hash(def_id));
+        tcx.def_path_hash(def_id).hash_stable(&mut hcx, &mut hasher);
 
         // Include the main item-type. Note that, in this case, the
         // assertions about `needs_subst` may not hold, but this item-type
         // ought to be the same for every reference anyway.
         assert!(!item_type.has_erasable_regions());
-        hasher.visit_ty(item_type);
-
-        // If this is a function, we hash the signature as well.
-        // This is not *strictly* needed, but it may help in some
-        // situations, see the `run-make/a-b-a-linker-guard` test.
-        if let ty::TyFnDef(..) = item_type.sty {
-            item_type.fn_sig(tcx).visit_with(&mut hasher);
-        }
+        hcx.while_hashing_spans(false, |hcx| {
+            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+                item_type.hash_stable(hcx, &mut hasher);
+            });
+        });
 
         // also include any type parameters (for generic items)
         assert!(!substs.has_erasable_regions());
         assert!(!substs.needs_subst());
-        substs.visit_with(&mut hasher);
+        substs.hash_stable(&mut hcx, &mut hasher);
 
         let is_generic = substs.types().next().is_some();
         let avoid_cross_crate_conflicts =
@@ -207,8 +206,8 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 LOCAL_CRATE
             };
 
-            hasher.hash(&tcx.original_crate_name(instantiating_crate).as_str()[..]);
-            hasher.hash(&tcx.crate_disambiguator(instantiating_crate));
+            (&tcx.original_crate_name(instantiating_crate).as_str()[..]).hash_stable(&mut hcx, &mut hasher);
+            (&tcx.crate_disambiguator(instantiating_crate)).hash_stable(&mut hcx, &mut hasher);
         }
     });
 
