@@ -38,6 +38,7 @@
 #![feature(panic_unwind)]
 #![feature(staged_api)]
 #![feature(termination_trait_lib)]
+#![feature(rt)]
 
 extern crate getopts;
 #[cfg(any(unix, target_os = "cloudabi"))]
@@ -72,6 +73,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 use std::borrow::Cow;
 use std::process;
+use std::rt::begin_short_backtrace;
 
 const TEST_WARN_TIMEOUT_S: u64 = 60;
 const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in quiet mode
@@ -1351,10 +1353,10 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         .map(|x| {
             let testfn = match x.testfn {
                 DynBenchFn(bench) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| bench.run(b)))
+                    bench::run_once(|b| begin_short_backtrace(|| bench.run(b)))
                 })),
                 StaticBenchFn(benchfn) => DynTestFn(Box::new(move || {
-                    bench::run_once(|b| __rust_begin_short_backtrace(|| benchfn(b)))
+                    bench::run_once(|b| begin_short_backtrace(|| benchfn(b)))
                 })),
                 f => f,
             };
@@ -1441,22 +1443,16 @@ pub fn run_test(
             });
         }
         DynTestFn(f) => {
-            let cb = move || __rust_begin_short_backtrace(f);
+            let cb = move || begin_short_backtrace(f);
             run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
         }
         StaticTestFn(f) => run_test_inner(
             desc,
             monitor_ch,
             opts.nocapture,
-            Box::new(move || __rust_begin_short_backtrace(f)),
+            Box::new(move || begin_short_backtrace(f)),
         ),
     }
-}
-
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[inline(never)]
-fn __rust_begin_short_backtrace<F: FnOnce()>(f: F) {
-    f()
 }
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {

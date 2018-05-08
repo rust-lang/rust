@@ -27,7 +27,7 @@ type SymGetLineFromInlineContextFn =
 pub fn resolve_symname<F>(frame: Frame,
                           callback: F,
                           context: &BacktraceContext) -> io::Result<()>
-    where F: FnOnce(Option<&str>) -> io::Result<()>
+    where F: FnOnce(Option<(&str, usize)>) -> io::Result<()>
 {
     let SymFromInlineContext = sym!(&context.dbghelp,
                                     "SymFromInlineContext",
@@ -57,13 +57,15 @@ pub fn resolve_symname<F>(frame: Frame,
         } else {
             false
         };
-        let symname = if valid_range {
+        let syminfo = if valid_range {
             let ptr = info.Name.as_ptr() as *const c_char;
-            CStr::from_ptr(ptr).to_str().ok()
+            CStr::from_ptr(ptr).to_str().ok().map(|s| {
+                (s, (frame.symbol_addr as usize).wrapping_sub(displacement as usize))
+            })
         } else {
             None
         };
-        callback(symname)
+        callback(syminfo)
     }
 }
 

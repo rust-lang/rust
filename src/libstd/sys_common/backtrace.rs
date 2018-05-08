@@ -79,8 +79,8 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
 
     let filtered_frames = &frames[..nb_frames - skipped_after];
     for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
-        resolve_symname(*frame, |symname| {
-            output(w, index, *frame, symname, format)
+        resolve_symname(*frame, |syminfo| {
+            output(w, index, *frame, syminfo.map(|i| i.0), format)
         }, &context)?;
         let has_more_filenames = foreach_symbol_fileline(*frame, |file, line| {
             output_fileline(w, file, line, format)
@@ -105,14 +105,14 @@ fn filter_frames(frames: &[Frame],
 
     let skipped_before = 0;
 
+    // Look for the first occurence of `mark_start`
+    // There can be multiple in one backtrace
+    // Skip all frames after that
     let skipped_after = frames.len() - frames.iter().position(|frame| {
         let mut is_marker = false;
-        let _ = resolve_symname(*frame, |symname| {
-            if let Some(mangled_symbol_name) = symname {
-                // Use grep to find the concerned functions
-                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
-                    is_marker = true;
-                }
+        let _ = resolve_symname(*frame, |syminfo| {
+            if syminfo.map(|i| i.1) == Some(MARK_START as usize) {
+                is_marker = true;
             }
             Ok(())
         }, context);
@@ -127,13 +127,28 @@ fn filter_frames(frames: &[Frame],
     (skipped_before, skipped_after)
 }
 
+static MARK_START: fn(&mut FnMut()) = mark_start;
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`
 #[inline(never)]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-    where F: FnOnce() -> T, F: Send, T: Send
-{
-    f()
+fn mark_start(f: &mut FnMut()) {
+    f();
+    #[cfg(not(target_arch = "asmjs"))]
+    unsafe {
+        asm!("" ::: "memory" : "volatile"); // A dummy statement to prevent tail call optimization
+    }
+}
+
+/// Convenience wrapper for `mark_start`
+#[unstable(feature = "rt", reason = "this is only exported for use in libtest", issue = "0")]
+pub fn begin_short_backtrace<F: FnOnce() -> R, R>(f: F) -> R {
+    let mut f = Some(f);
+    let mut r = None;
+    mark_start(&mut || {
+        let f = f.take().unwrap();
+        r = Some(f());
+    });
+    r.unwrap()
 }
 
 /// Controls how the backtrace should be formatted.

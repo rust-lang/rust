@@ -406,7 +406,7 @@ impl Builder {
                 thread_info::set(imp::guard::current(), their_thread);
                 #[cfg(feature = "backtrace")]
                 let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    ::sys_common::backtrace::__rust_begin_short_backtrace(f)
+                    ::sys_common::backtrace::begin_short_backtrace(f)
                 }));
                 #[cfg(not(feature = "backtrace"))]
                 let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
