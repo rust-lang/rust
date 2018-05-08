@@ -11,15 +11,17 @@
 use super::universal_regions::UniversalRegions;
 use borrow_check::nll::region_infer::values::ToElementIndex;
 use rustc::hir::def_id::DefId;
+use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
+use rustc::infer::region_constraints::{GenericKind, VarInfos};
 use rustc::infer::InferCtxt;
 use rustc::infer::NLLRegionVariableOrigin;
 use rustc::infer::RegionObligation;
 use rustc::infer::RegionVariableOrigin;
 use rustc::infer::SubregionOrigin;
-use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc::infer::region_constraints::{GenericKind, VarInfos};
-use rustc::mir::{ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements,
-                 Local, Location, Mir};
+use rustc::mir::{
+    ClosureOutlivesRequirement, ClosureOutlivesSubject, ClosureRegionRequirements, Local, Location,
+    Mir,
+};
 use rustc::traits::ObligationCause;
 use rustc::ty::{self, RegionVid, Ty, TypeFoldable};
 use rustc::util::common::{self, ErrorReported};
@@ -31,8 +33,6 @@ use syntax::ast;
 use syntax_pos::Span;
 
 mod annotation;
-mod dfs;
-use self::dfs::{CopyFromSourceToTarget, TestTargetOutlivesSource};
 mod dump_mir;
 mod graphviz;
 mod values;
@@ -422,9 +422,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<ClosureRegionRequirements<'gcx>> {
         assert!(self.inferred_values.is_none(), "values already inferred");
 
-        let dfs_storage = &mut self.new_dfs_storage();
-
-        self.propagate_constraints(mir, dfs_storage);
+        self.propagate_constraints(mir);
 
         // If this is a closure, we can propagate unsatisfied
         // `outlives_requirements` to our creator, so create a vector
@@ -437,13 +435,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             None
         };
 
-        self.check_type_tests(
-            infcx,
-            mir,
-            dfs_storage,
-            mir_def_id,
-            outlives_requirements.as_mut(),
-        );
+        self.check_type_tests(infcx, mir, mir_def_id, outlives_requirements.as_mut());
 
         self.check_universal_regions(infcx, mir_def_id, outlives_requirements.as_mut());
 
@@ -464,18 +456,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// for each region variable until all the constraints are
     /// satisfied. Note that some values may grow **too** large to be
     /// feasible, but we check this later.
-    fn propagate_constraints(&mut self, mir: &Mir<'tcx>, dfs_storage: &mut dfs::DfsStorage) {
+    fn propagate_constraints(&mut self, mir: &Mir<'tcx>) {
         self.dependency_map = Some(self.build_dependency_map());
-        let inferred_values = self.compute_region_values(mir, dfs_storage);
+        let inferred_values = self.compute_region_values(mir);
         self.inferred_values = Some(inferred_values);
     }
 
     #[inline(never)] // ensure dfs is identifiable in profiles
-    fn compute_region_values(
-        &self,
-        mir: &Mir<'tcx>,
-        dfs_storage: &mut dfs::DfsStorage,
-    ) -> RegionValues {
+    fn compute_region_values(&self, _mir: &Mir<'tcx>) -> RegionValues {
         debug!("compute_region_values()");
         debug!("compute_region_values: constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.iter().collect();
@@ -502,21 +490,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let constraint = &self.constraints[constraint_idx];
             debug!("propagate_constraints: constraint={:?}", constraint);
 
-            // Grow the value as needed to accommodate the
-            // outlives constraint.
-            let Ok(made_changes) = self.dfs(
-                mir,
-                dfs_storage,
-                CopyFromSourceToTarget {
-                    source_region: constraint.sub,
-                    target_region: constraint.sup,
-                    inferred_values: &mut inferred_values,
-                    constraint_point: constraint.point,
-                    constraint_span: constraint.span,
-                },
-            );
-
-            if made_changes {
+            if inferred_values.add_region(constraint.sup, constraint.sub) {
                 debug!("propagate_constraints:   sub={:?}", constraint.sub);
                 debug!("propagate_constraints:   sup={:?}", constraint.sup);
 
@@ -561,7 +535,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
-        dfs_storage: &mut dfs::DfsStorage,
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
     ) {
@@ -570,13 +543,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
-            if self.eval_region_test(
-                mir,
-                dfs_storage,
-                type_test.point,
-                type_test.lower_bound,
-                &type_test.test,
-            ) {
+            if self.eval_region_test(mir, type_test.point, type_test.lower_bound, &type_test.test) {
                 continue;
             }
 
@@ -833,7 +800,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_region_test(
         &self,
         mir: &Mir<'tcx>,
-        dfs_storage: &mut dfs::DfsStorage,
         point: Location,
         lower_bound: RegionVid,
         test: &RegionTest,
@@ -846,27 +812,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match test {
             RegionTest::IsOutlivedByAllRegionsIn(regions) => regions
                 .iter()
-                .all(|&r| self.eval_outlives(mir, dfs_storage, r, lower_bound, point)),
+                .all(|&r| self.eval_outlives(mir, r, lower_bound, point)),
 
             RegionTest::IsOutlivedByAnyRegionIn(regions) => regions
                 .iter()
-                .any(|&r| self.eval_outlives(mir, dfs_storage, r, lower_bound, point)),
+                .any(|&r| self.eval_outlives(mir, r, lower_bound, point)),
 
             RegionTest::Any(tests) => tests
                 .iter()
-                .any(|test| self.eval_region_test(mir, dfs_storage, point, lower_bound, test)),
+                .any(|test| self.eval_region_test(mir, point, lower_bound, test)),
 
             RegionTest::All(tests) => tests
                 .iter()
-                .all(|test| self.eval_region_test(mir, dfs_storage, point, lower_bound, test)),
+                .all(|test| self.eval_region_test(mir, point, lower_bound, test)),
         }
     }
 
     // Evaluate whether `sup_region: sub_region @ point`.
     fn eval_outlives(
         &self,
-        mir: &Mir<'tcx>,
-        dfs_storage: &mut dfs::DfsStorage,
+        _mir: &Mir<'tcx>,
         sup_region: RegionVid,
         sub_region: RegionVid,
         point: Location,
@@ -876,36 +841,43 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sup_region, sub_region, point
         );
 
-        // Roughly speaking, do a DFS of all region elements reachable
-        // from `point` contained in `sub_region`. If any of those are
-        // *not* present in `sup_region`, the DFS will abort early and
-        // yield an `Err` result.
-        match self.dfs(
-            mir,
-            dfs_storage,
-            TestTargetOutlivesSource {
-                source_region: sub_region,
-                target_region: sup_region,
-                constraint_point: point,
-                elements: &self.elements,
-                universal_regions: &self.universal_regions,
-                inferred_values: self.inferred_values.as_ref().unwrap(),
-            },
-        ) {
-            Ok(_) => {
-                debug!("eval_outlives: true");
-                true
-            }
+        let inferred_values = self.inferred_values.as_ref().expect("values for regions not yet inferred");
 
-            Err(elem) => {
-                debug!(
-                    "eval_outlives: false because `{:?}` is not present in `{:?}`",
-                    self.elements.to_element(elem),
-                    sup_region
-                );
-                false
-            }
+        debug!(
+            "eval_outlives: sup_region's value = {:?}",
+            inferred_values.region_value_str(sup_region),
+        );
+        debug!(
+            "eval_outlives: sub_region's value = {:?}",
+            inferred_values.region_value_str(sub_region),
+        );
+
+        // Both the `sub_region` and `sup_region` consist of the union
+        // of some number of universal regions (along with the union
+        // of various points in the CFG; ignore those points for
+        // now). Therefore, the sup-region outlives the sub-region if,
+        // for each universal region R1 in the sub-region, there
+        // exists some region R2 in the sup-region that outlives R1.
+        let universal_outlives =
+            inferred_values.universal_regions_outlived_by(sub_region)
+            .all(|r1| {
+                inferred_values.universal_regions_outlived_by(sup_region)
+                    .any(|r2| self.universal_regions.outlives(r2, r1))
+            });
+
+        if !universal_outlives {
+            return false;
         }
+
+        // Now we have to compare all the points in the sub region and make
+        // sure they exist in the sup region.
+
+        if self.universal_regions.is_universal_region(sup_region) {
+            // Micro-opt: universal regions contain all points.
+            return true;
+        }
+
+        inferred_values.contains_points(sup_region, sub_region)
     }
 
     /// Once regions have been propagated, this method is used to see

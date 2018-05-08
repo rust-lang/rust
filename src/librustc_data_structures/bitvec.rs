@@ -326,7 +326,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
     }
 
     /// True if `sub` is a subset of `sup`
-    pub fn subset(&self, sub: R, sup: R) -> bool {
+    pub fn is_subset(&self, sub: R, sup: R) -> bool {
         sub == sup || {
             let bit_set_sub = &self.vector[sub];
             let bit_set_sup = &self.vector[sup];

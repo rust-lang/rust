@@ -17,7 +17,6 @@ use rustc::mir::{BasicBlock, Location, Mir};
 use rustc::ty::RegionVid;
 use std::fmt::Debug;
 use std::rc::Rc;
-use syntax::codemap::Span;
 
 use super::Cause;
 
@@ -72,11 +71,6 @@ impl RegionValueElements {
     /// Iterates over the `RegionElementIndex` for all points in the CFG.
     pub(super) fn all_point_indices<'a>(&'a self) -> impl Iterator<Item = RegionElementIndex> + 'a {
         (0..self.num_points).map(move |i| RegionElementIndex::new(i + self.num_universal_regions))
-    }
-
-    /// Iterates over the `RegionElementIndex` for all points in the CFG.
-    pub(super) fn all_universal_region_indices(&self) -> impl Iterator<Item = RegionElementIndex> {
-        (0..self.num_universal_regions).map(move |i| RegionElementIndex::new(i))
     }
 
     /// Converts a particular `RegionElementIndex` to the `RegionElement` it represents.
@@ -244,6 +238,12 @@ impl RegionValues {
         self.add_internal(r, i, |_| cause.clone())
     }
 
+    /// Add all elements in `r_from` to `r_to` (because e.g. `r_to:
+    /// r_from`).
+    pub(super) fn add_region(&mut self, r_to: RegionVid, r_from: RegionVid) -> bool {
+        self.matrix.merge(r_from, r_to)
+    }
+
     /// Internal method to add an element to a region.
     ///
     /// Takes a "lazy" cause -- this function will return the cause, but it will only
@@ -278,58 +278,20 @@ impl RegionValues {
         }
     }
 
-    /// Adds `elem` to `to_region` because of a relation:
-    ///
-    ///     to_region: from_region @ constraint_location
-    ///
-    /// that was added by the cod at `constraint_span`.
-    pub(super) fn add_due_to_outlives<T: ToElementIndex>(
-        &mut self,
-        from_region: RegionVid,
-        to_region: RegionVid,
-        elem: T,
-        _constraint_location: Location,
-        _constraint_span: Span,
-    ) -> bool {
-        let elem = self.elements.index(elem);
-        self.add_internal(to_region, elem, |causes| causes[&(from_region, elem)])
-    }
-
-    /// Adds all the universal regions outlived by `from_region` to
-    /// `to_region`.
-    pub(super) fn add_universal_regions_outlived_by(
-        &mut self,
-        from_region: RegionVid,
-        to_region: RegionVid,
-        constraint_location: Location,
-        constraint_span: Span,
-    ) -> bool {
-        // We could optimize this by improving `SparseBitMatrix::merge` so
-        // it does not always merge an entire row. That would
-        // complicate causal tracking though.
-        debug!(
-            "add_universal_regions_outlived_by(from_region={:?}, to_region={:?})",
-            from_region, to_region
-        );
-        let mut changed = false;
-        for elem in self.elements.all_universal_region_indices() {
-            if self.contains(from_region, elem) {
-                changed |= self.add_due_to_outlives(
-                    from_region,
-                    to_region,
-                    elem,
-                    constraint_location,
-                    constraint_span,
-                );
-            }
-        }
-        changed
-    }
-
     /// True if the region `r` contains the given element.
     pub(super) fn contains<E: ToElementIndex>(&self, r: RegionVid, elem: E) -> bool {
         let i = self.elements.index(elem);
         self.matrix.contains(r, i)
+    }
+
+    /// True if `sup_region` contains all the CFG points that
+    /// `sub_region` contains. Ignores universal regions.
+    pub(super) fn contains_points(&self, sup_region: RegionVid, sub_region: RegionVid) -> bool {
+        // This could be done faster by comparing the bitsets. But I
+        // am lazy.
+        self.element_indices_contained_in(sub_region)
+            .skip_while(|&i| self.elements.to_universal_region(i).is_some())
+            .all(|e| self.contains(sup_region, e))
     }
 
     /// Iterate over the value of the region `r`, yielding up element
