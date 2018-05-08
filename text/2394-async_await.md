@@ -1,7 +1,7 @@
 - Feature Name: async_await
 - Start Date: 2018-03-30
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/2394
+- Rust Issue: https://github.com/rust-lang/rust/issues/50547
 
 # Summary
 [summary]: #summary
