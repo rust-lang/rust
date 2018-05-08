@@ -880,34 +880,22 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_item_attrs(&self, node_id: DefIndex, sess: &Session) -> Lrc<[ast::Attribute]> {
-        let (node_as, node_index) =
-            (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
             return Lrc::new([]);
-        }
-
-        if let Some(&Some(ref val)) =
-            self.attribute_cache.borrow()[node_as].get(node_index) {
-            return val.clone();
         }
 
         // The attributes for a tuple struct are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
-        let mut item = self.entry(node_id);
         let def_key = self.def_key(node_id);
-        if def_key.disambiguated_data.data == DefPathData::StructCtor {
-            item = self.entry(def_key.parent.unwrap());
-        }
-        let result: Lrc<[ast::Attribute]> = Lrc::from(self.get_attributes(&item, sess));
-        let vec_ = &mut self.attribute_cache.borrow_mut()[node_as];
-        if vec_.len() < node_index + 1 {
-            vec_.resize(node_index + 1, None);
-        }
-        // This can overwrite the result produced by another thread, but the value
-        // written should be the same
-        vec_[node_index] = Some(result.clone());
-        result
+        let item_id = if def_key.disambiguated_data.data == DefPathData::StructCtor {
+            def_key.parent.unwrap()
+        } else {
+            node_id
+        };
+
+        let item = self.entry(item_id);
+        Lrc::from(self.get_attributes(&item, sess))
     }
 
     pub fn get_struct_field_names(&self, id: DefIndex) -> Vec<ast::Name> {
