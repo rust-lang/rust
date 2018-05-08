@@ -112,6 +112,7 @@
 #![feature(unwind_attributes)]
 #![feature(doc_alias)]
 #![feature(inclusive_range_methods)]
+#![feature(repr_transparent)]
 #![feature(mmx_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(sse4a_target_feature)]
