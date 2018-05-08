@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// test that certain things are disallowed in constant functionssignatures
+// test that certain things are disallowed in constant functions
 
 #![feature(const_fn, const_let)]
 
