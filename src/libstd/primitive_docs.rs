@@ -594,15 +594,13 @@ mod prim_slice { }
 //
 /// String slices.
 ///
+/// *[See also the `std::str` module](str/index.html).*
+///
 /// The `str` type, also called a 'string slice', is the most primitive string
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
 /// of string literals, `&'static str`.
 ///
-/// Strings slices are always valid UTF-8.
-///
-/// This documentation describes a number of methods and trait implementations
-/// on the `str` type. For technical reasons, there is additional, separate
-/// documentation in the [`std::str`](str/index.html) module as well.
+/// String slices are always valid UTF-8.
 ///
 /// # Examples
 ///
