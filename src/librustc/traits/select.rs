@@ -44,9 +44,9 @@ use ty::relate::TypeRelation;
 use middle::lang_items;
 use mir::interpret::{GlobalId};
 
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bitvec::BitVector;
 use std::iter;
-use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
 use std::mem;
@@ -148,7 +148,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
 #[derive(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<FxHashMap<ty::TraitRef<'tcx>,
+    hashmap: Lock<FxHashMap<ty::TraitRef<'tcx>,
                                WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>>>,
 }
 
@@ -435,7 +435,7 @@ impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
 
 #[derive(Clone)]
 pub struct EvaluationCache<'tcx> {
-    hashmap: RefCell<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>
+    hashmap: Lock<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>
 }
 
 impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
@@ -1015,14 +1015,19 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            let mut cache = self.tcx().evaluation_cache.hashmap.borrow_mut();
             if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
                 debug!(
                     "insert_evaluation_cache(trait_ref={:?}, candidate={:?}) global",
                     trait_ref,
                     result,
                 );
-                cache.insert(trait_ref, WithDepNode::new(dep_node, result));
+                // This may overwrite the cache with the same value
+                // FIXME: Due to #50507 this overwrites the different values
+                // This should be changed to use HashMapExt::insert_same
+                // when that is fixed
+                self.tcx().evaluation_cache
+                          .hashmap.borrow_mut()
+                          .insert(trait_ref, WithDepNode::new(dep_node, result));
                 return;
             }
         }
@@ -1368,7 +1373,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let tcx = self.tcx();
         let trait_ref = cache_fresh_trait_pred.skip_binder().trait_ref;
         if self.can_use_global_caches(param_env) {
-            let mut cache = tcx.selection_cache.hashmap.borrow_mut();
             if let Some(trait_ref) = tcx.lift_to_global(&trait_ref) {
                 if let Some(candidate) = tcx.lift_to_global(&candidate) {
                     debug!(
@@ -1376,7 +1380,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         trait_ref,
                         candidate,
                     );
-                    cache.insert(trait_ref, WithDepNode::new(dep_node, candidate));
+                    // This may overwrite the cache with the same value
+                    tcx.selection_cache
+                       .hashmap.borrow_mut()
+                       .insert(trait_ref, WithDepNode::new(dep_node, candidate));
                     return;
                 }
             }
@@ -3404,7 +3411,7 @@ impl<'tcx> TraitObligation<'tcx> {
 impl<'tcx> SelectionCache<'tcx> {
     pub fn new() -> SelectionCache<'tcx> {
         SelectionCache {
-            hashmap: RefCell::new(FxHashMap())
+            hashmap: Lock::new(FxHashMap())
         }
     }
 
@@ -3416,7 +3423,7 @@ impl<'tcx> SelectionCache<'tcx> {
 impl<'tcx> EvaluationCache<'tcx> {
     pub fn new() -> EvaluationCache<'tcx> {
         EvaluationCache {
-            hashmap: RefCell::new(FxHashMap())
+            hashmap: Lock::new(FxHashMap())
         }
     }
 
@@ -3470,7 +3477,7 @@ impl<'o,'tcx> fmt::Debug for TraitObligationStack<'o,'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct WithDepNode<T> {
     dep_node: DepNodeIndex,
     cached_value: T
