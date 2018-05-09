@@ -24,7 +24,7 @@ script:
   # Test cargo miri
   cd cargo-miri-test &&
   cargo miri &&
-  cargo miri test &&
+  #cargo miri test &&
   cd ..
 - |
   # and run all tests with full mir
