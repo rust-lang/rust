@@ -9,17 +9,14 @@
 // except according to those terms.
 
 #![feature(decl_macro)]
-#![feature(macro_hygiene_optout)]
 
-macro m($mod_name:ident) {
-    pub mod $#mod_name {
+macro m() {
+    pub mod #foo {
     //~^ ERROR expected identifier, found `#`
-    //~| ERROR unknown macro variable ``
-    //~| ERROR expected identifier, found reserved identifier ``
-    //~| ERROR expected one of `;` or `{`, found `mod_name`
+        pub const #BAR: u32 = 123;
     }
 }
 
 fn main() {
-    m!(foo);
+    m!();
 }

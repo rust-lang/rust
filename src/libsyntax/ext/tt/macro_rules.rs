@@ -261,7 +261,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
                         return quoted::parse(tt.clone().into(),
-                                             !body.legacy,
+                                             !body.legacy && features.macro_hygiene_optout,
                                              false,
                                              sess,
                                              features,

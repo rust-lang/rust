@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(decl_macro)]
+#![feature(macro_hygiene_optout)]
 
 macro m() {
     struct #S;

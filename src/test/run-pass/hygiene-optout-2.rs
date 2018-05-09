@@ -9,14 +9,15 @@
 // except according to those terms.
 
 #![feature(decl_macro)]
+#![feature(macro_hygiene_optout)]
 
-macro m() {
-    pub mod #foo {
+macro m($mod_name:ident) {
+    pub mod #$mod_name {
         pub const #BAR: u32 = 123;
     }
 }
 
 fn main() {
-    m!();
+    m!(foo);
     assert_eq!(123, foo::BAR);
 }
