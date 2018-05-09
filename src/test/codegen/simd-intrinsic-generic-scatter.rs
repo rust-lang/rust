@@ -10,6 +10,7 @@
 
 // ignore-emscripten
 // ignore-tidy-linelength
+// min-llvm-version 6.0
 
 // compile-flags: -C no-prepopulate-passes
 
@@ -37,6 +38,7 @@ pub unsafe fn scatter_f32x2(pointers: Vec2<*mut f32>, mask: Vec2<i32>,
     // CHECK: call void @llvm.masked.scatter.v2f32.v2p0f32(<2 x float> {{.*}}, <2 x float*> {{.*}}, i32 {{.*}}, <2 x i1> {{.*}})
     simd_scatter(values, pointers, mask)
 }
+
 
 // CHECK-LABEL: @scatter_pf32x2
 #[no_mangle]
