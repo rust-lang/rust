@@ -2,14 +2,14 @@
 
 extern crate alloc;
 
-use alloc::heap::Heap;
-use alloc::allocator::*;
+use alloc::alloc::Global;
+use std::alloc::*;
 
 // error-pattern: incorrect alloc info: expected size 2 and align 1, got size 1 and align 1
 
 fn main() {
     unsafe {
-        let x = Heap.alloc(Layout::from_size_align_unchecked(1, 1)).unwrap();
-        let _y = Heap.realloc(x, Layout::from_size_align_unchecked(2, 1), Layout::from_size_align_unchecked(1, 1)).unwrap();
+        let x = Global.alloc(Layout::from_size_align_unchecked(1, 1));
+        let _y = Global.realloc(x, Layout::from_size_align_unchecked(2, 1), 1);
     }
 }

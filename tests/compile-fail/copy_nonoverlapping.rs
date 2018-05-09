@@ -10,8 +10,6 @@
 
 #![feature(core_intrinsics)]
 
-use std::intrinsics::*;
-
 //error-pattern: copy_nonoverlapping called on overlapping ranges
 
 fn main() {

@@ -1,3 +1,5 @@
+// ignore-test
+
 fn main() {
     let data: [u8; 1024*1024*1024] = [42; 1024*1024*1024];
     //~^ ERROR: tried to allocate

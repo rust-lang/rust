@@ -1,3 +1,5 @@
+// ignore-test validation_op is disabled
+
 #![allow(unused_variables)]
 
 static mut PTR: *mut u8 = 0 as *mut _;
