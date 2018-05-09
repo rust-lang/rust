@@ -55,17 +55,17 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     })
 }
 
-pub fn save_work_products(sess: &Session,
-                          dep_graph: &DepGraph,
-                          new_work_products: FxHashMap<WorkProductId, WorkProduct>) {
+pub fn save_work_product_index(sess: &Session,
+                               dep_graph: &DepGraph,
+                               new_work_products: FxHashMap<WorkProductId, WorkProduct>) {
     if sess.opts.incremental.is_none() {
         return;
     }
 
-    debug!("save_work_products()");
+    debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, |e| encode_work_products(&new_work_products, e));
+    save_in(sess, path, |e| encode_work_product_index(&new_work_products, e));
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
@@ -234,8 +234,8 @@ fn encode_dep_graph(tcx: TyCtxt,
     Ok(())
 }
 
-fn encode_work_products(work_products: &FxHashMap<WorkProductId, WorkProduct>,
-                        encoder: &mut Encoder) -> io::Result<()> {
+fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduct>,
+                             encoder: &mut Encoder) -> io::Result<()> {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| {

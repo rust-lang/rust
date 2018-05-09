@@ -17,7 +17,7 @@ use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use base;
 use consts;
-use rustc_incremental::{create_trans_partition, in_incr_comp_dir};
+use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir, in_incr_comp_dir};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePasses,
@@ -1021,7 +1021,7 @@ pub fn start_async_translation(tcx: TyCtxt,
     }
 }
 
-fn generate_module_artifacts(
+fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules
 ) -> FxHashMap<WorkProductId, WorkProduct> {
@@ -1044,7 +1044,8 @@ fn generate_module_artifacts(
             files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
         }
 
-        if let Some((id, product)) = create_trans_partition(sess, &module.name, &files) {
+        if let Some((id, product)) =
+                copy_cgu_workproducts_to_incr_comp_cache_dir(sess, &module.name, &files) {
             work_products.insert(id, product);
         }
     }
@@ -2265,7 +2266,8 @@ impl OngoingCrateTranslation {
             time_graph.dump(&format!("{}-timings", self.crate_name));
         }
 
-        let work_products = generate_module_artifacts(sess, &compiled_modules);
+        let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess,
+                                                                             &compiled_modules);
 
         produce_final_output_artifacts(sess,
                                        &compiled_modules,

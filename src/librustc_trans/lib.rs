@@ -221,7 +221,7 @@ impl TransCrate for LlvmTransCrate {
 
         time(sess,
              "serialize work products",
-             move || rustc_incremental::save_work_products(sess, &dep_graph, work_products));
+             move || rustc_incremental::save_work_product_index(sess, &dep_graph, work_products));
 
         sess.compile_status()?;
 
