@@ -4,7 +4,7 @@ error[E0072]: recursive type `Expr` has infinite size
 LL | enum Expr { //~ ERROR E0072
    | ^^^^^^^^^ recursive type has infinite size
 LL |     Plus(Expr, Expr),
-   |          ----- ----- recursive without indirection
+   |          ----  ---- recursive without indirection
    |          |
    |          recursive without indirection
    |
