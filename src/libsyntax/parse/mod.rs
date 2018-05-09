@@ -419,13 +419,24 @@ pub fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Hand
         token::Integer(s) => (false, integer_lit(&s.as_str(), suf, diag)),
         token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
 
-        token::Str_(s) => {
-            let s = Symbol::intern(&str_lit(&s.as_str(), diag));
-            (true, Some(LitKind::Str(s, ast::StrStyle::Cooked)))
+        token::Str_(mut sym) => {
+            // If there are no characters requiring special treatment we can
+            // reuse the symbol from the Token. Otherwise, we must generate a
+            // new symbol because the string in the LitKind is different to the
+            // string in the Token.
+            let s = &sym.as_str();
+            if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
+                sym = Symbol::intern(&str_lit(s, diag));
+            }
+            (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
         }
-        token::StrRaw(s, n) => {
-            let s = Symbol::intern(&raw_str_lit(&s.as_str()));
-            (true, Some(LitKind::Str(s, ast::StrStyle::Raw(n))))
+        token::StrRaw(mut sym, n) => {
+            // Ditto.
+            let s = &sym.as_str();
+            if s.contains('\r') {
+                sym = Symbol::intern(&raw_str_lit(s));
+            }
+            (true, Some(LitKind::Str(sym, ast::StrStyle::Raw(n))))
         }
         token::ByteStr(i) => {
             (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
