@@ -256,7 +256,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     fn call_intrinsic<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        _args: &[ValTy<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Place,
         dest_layout: layout::TyLayout<'tcx>,
         target: mir::BasicBlock,
@@ -272,10 +272,29 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 ecx.write_primval(dest, align_val, dest_layout.ty)?;
             }
 
+            "min_align_of_val" => {
+                let ty = substs.type_at(0);
+                let (_, align) = ecx.size_and_align_of_dst(ty, args[0].value)?;
+                ecx.write_primval(
+                    dest,
+                    PrimVal::from_u128(align.abi() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
             "size_of" => {
                 let ty = substs.type_at(0);
                 let size = ecx.layout_of(ty)?.size.bytes() as u128;
                 ecx.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
+            }
+
+            "size_of_val" => {
+                let ty = substs.type_at(0);
+                let (size, _) = ecx.size_and_align_of_dst(ty, args[0].value)?;
+                ecx.write_primval(
+                    dest,
+                    PrimVal::from_u128(size.bytes() as u128),
+                    dest_layout.ty)?;
             }
 
             "type_id" => {
