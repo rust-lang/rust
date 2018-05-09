@@ -477,15 +477,14 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let next_src_index = self.src_index(self.next_pos);
-        if next_src_index >= self.end_src_index {
-            return None;
+        if next_src_index < self.end_src_index {
+            let next_next_src_index =
+                next_src_index + char_at(&self.src, next_src_index).len_utf8();
+            if next_next_src_index < self.end_src_index {
+                return Some(char_at(&self.src, next_next_src_index));
+            }
         }
-        let next_next_src_index = next_src_index + char_at(&self.src, next_src_index).len_utf8();
-        if next_next_src_index < self.end_src_index {
-            Some(char_at(&self.src, next_next_src_index))
-        } else {
-            None
-        }
+        None
     }
 
     pub fn nextnextch_is(&self, c: char) -> bool {
