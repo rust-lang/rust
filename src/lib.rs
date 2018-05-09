@@ -646,7 +646,7 @@ pub fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> 
     // then unindent the whole code block.
     let formatted = format_snippet(&snippet, config)?;
     // 2 = "}\n"
-    let block_len = formatted.len().checked_sub(2).unwrap_or(0);
+    let block_len = formatted.rfind('}').unwrap_or(formatted.len());
     let mut is_indented = true;
     for (kind, ref line) in LineClasses::new(&formatted[FN_MAIN_PREFIX.len()..block_len]) {
         if !is_first {
