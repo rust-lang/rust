@@ -4,7 +4,7 @@ error[E0369]: binary operation `%` cannot be applied to type `&&{integer}`
 LL |         x % 2 == 0
    |         ^^^^^
    |
-   = help: `%` can be used on '&{integer}', you can dereference `x`: `*x`
+   = help: `%` can be used on '{integer}', you can dereference `x`: `*x`
 
 error: aborting due to previous error
 
