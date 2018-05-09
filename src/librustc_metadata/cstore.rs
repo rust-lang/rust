@@ -96,6 +96,10 @@ pub struct CStore {
 impl CStore {
     pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
+            // We add an empty entry for LOCAL_CRATE (which maps to zero) in
+            // order to make array indices in `metas` match with the
+            // corresponding `CrateNum`. This first entry will always remain
+            // `None`.
             metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
             extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
