@@ -14,6 +14,7 @@
 // gate-test-proc_macro_mod line
 // gate-test-proc_macro_expr
 // gate-test-proc_macro_mod
+// gate-test-proc_macro_gen
 
 #![feature(proc_macro, stmt_expr_attributes)]
 
@@ -29,10 +30,12 @@ fn _test_inner() {
 }
 
 #[a] //~ ERROR: custom attributes cannot be applied to modules
+//~| ERROR: procedural macros cannot expand to modules
 mod _test2 {}
 
 mod _test2_inner {
     #![a] //~ ERROR: custom attributes cannot be applied to modules
+    //~| ERROR: procedural macros cannot expand to modules
 }
 
 #[a = y] //~ ERROR: must only be followed by a delimiter token
