@@ -1,5 +1,5 @@
 // This should fail even without validation
-// compile-fail causes rustc ICE: rust-lang/rust#50570
+// ignore-test causes rustc ICE: rust-lang/rust#50570
 // compile-flags: -Zmir-emit-validate=0
 
 #![feature(never_type)]

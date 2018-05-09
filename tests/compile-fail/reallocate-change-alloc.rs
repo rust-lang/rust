@@ -9,6 +9,7 @@ fn main() {
     unsafe {
         let x = Global.alloc(Layout::from_size_align_unchecked(1, 1));
         let _y = Global.realloc(x, Layout::from_size_align_unchecked(1, 1), 1);
-        let _z = *(x as *mut u8); //~ ERROR: dangling pointer was dereferenced
+        let _z = *(x as *mut u8); //~ ERROR constant evaluation error [E0080]
+        //~^ NOTE dangling pointer was dereferenced
     }
 }

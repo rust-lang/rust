@@ -5,7 +5,8 @@ fn main() {
     let x_ptr: *mut u8 = &mut x[0];
     let y_ptr = x_ptr as *mut u64;
     unsafe {
-        *y_ptr = 42; //~ ERROR tried to access memory with alignment 1, but alignment
+        *y_ptr = 42; //~ ERROR constant evaluation error [E0080]
+        //~^ NOTE tried to access memory with alignment 1, but alignment
     }
     panic!("unreachable in miri");
 }
