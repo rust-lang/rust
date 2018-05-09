@@ -49,8 +49,8 @@ pub struct StringReader<'a> {
     /// The current character (which has been read from self.pos)
     pub ch: Option<char>,
     pub filemap: Lrc<syntax_pos::FileMap>,
-    /// If Some, stop reading the source at this position (inclusive).
-    pub terminator: Option<BytePos>,
+    /// Stop reading src at this index.
+    pub end_src_index: usize,
     /// Whether to record new-lines and multibyte chars in filemap.
     /// This is only necessary the first time a filemap is lexed.
     /// If part of a filemap is being re-lexed, this should be set to false.
@@ -113,14 +113,7 @@ impl<'a> StringReader<'a> {
         self.unwrap_or_abort(res)
     }
     fn is_eof(&self) -> bool {
-        if self.ch.is_none() {
-            return true;
-        }
-
-        match self.terminator {
-            Some(t) => self.next_pos > t,
-            None => false,
-        }
+        self.ch.is_none()
     }
     /// Return the next token. EFFECT: advances the string_reader.
     pub fn try_next_token(&mut self) -> Result<TokenAndSpan, ()> {
@@ -185,7 +178,7 @@ impl<'a> StringReader<'a> {
             col: CharPos(0),
             ch: Some('\n'),
             filemap,
-            terminator: None,
+            end_src_index: src.len(),
             save_new_lines_and_multibyte: true,
             // dummy values; not read
             peek_tok: token::Eof,
@@ -222,7 +215,7 @@ impl<'a> StringReader<'a> {
         // Seek the lexer to the right byte range.
         sr.save_new_lines_and_multibyte = false;
         sr.next_pos = span.lo();
-        sr.terminator = Some(span.hi());
+        sr.end_src_index = sr.src_index(span.hi());
 
         sr.bump();
 
@@ -441,8 +434,7 @@ impl<'a> StringReader<'a> {
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
         let next_src_index = self.src_index(self.next_pos);
-        let end_src_index = self.terminator.map_or(self.src.len(), |t| self.src_index(t));
-        if next_src_index < end_src_index {
+        if next_src_index < self.end_src_index {
             let next_ch = char_at(&self.src, next_src_index);
             let next_ch_len = next_ch.len_utf8();
 
@@ -472,7 +464,7 @@ impl<'a> StringReader<'a> {
 
     pub fn nextch(&self) -> Option<char> {
         let next_src_index = self.src_index(self.next_pos);
-        if next_src_index < self.src.len() {
+        if next_src_index < self.end_src_index {
             Some(char_at(&self.src, next_src_index))
         } else {
             None
@@ -485,13 +477,12 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let next_src_index = self.src_index(self.next_pos);
-        let s = &self.src[..];
-        if next_src_index >= s.len() {
+        if next_src_index >= self.end_src_index {
             return None;
         }
-        let next_next_src_index = next_src_index + char_at(s, next_src_index).len_utf8();
-        if next_next_src_index < s.len() {
-            Some(char_at(s, next_next_src_index))
+        let next_next_src_index = next_src_index + char_at(&self.src, next_src_index).len_utf8();
+        if next_next_src_index < self.end_src_index {
+            Some(char_at(&self.src, next_next_src_index))
         } else {
             None
         }
