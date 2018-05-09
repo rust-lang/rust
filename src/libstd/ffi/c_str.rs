@@ -682,7 +682,7 @@ impl Borrow<CStr> for CString {
     fn borrow(&self) -> &CStr { self }
 }
 
-#[stable(feature = "cstring_from_cow_cstr", since = "1.2780")]
+#[stable(feature = "cstring_from_cow_cstr", since = "1.28.0")]
 impl<'a> From<Cow<'a, CStr>> for CString {
     #[inline]
     fn from(s: Cow<'a, CStr>) -> Self {
