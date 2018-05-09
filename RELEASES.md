@@ -8,14 +8,14 @@ Language
 - [The inclusive range syntax e.g. `for x in 0..=10` is now stable.][47813]
 - [Stablise `'_`. The underscore lifetime can be used anywhere where a
   lifetime can be elided.][49458]
-- [`impl Trait` is now stable allowing you to have abstract
-  return types.][49255] e.g. `fn foo() -> impl Iterator<Item=u8>` or
+- [`impl Trait` is now stable allowing you to have abstract types in returns
+   or in function parameters.][49255] e.g. `fn foo() -> impl Iterator<Item=u8>` or
   `fn open(path: impl AsRef<Path>)`.
 - [Pattern matching will now automatically apply dereferences.][49394]
 - [128-bit integers in the form of `u128` and `i128` are now stable.][49101]
 - [`main` can now return `Result<(), E: Debug>`][49162] in addition to `()`.
 - [A lot of operations are now available in a const context.][46882] E.g. You
-  can now index into constant arrays, reference and deference into constants,
+  can now index into constant arrays, reference and dereference into constants,
   and use Tuple struct constructors.
 - [Fixed entry slice patterns are now stable.][48516] e.g.
   ```rust
@@ -125,6 +125,7 @@ Compatibility Notes
 - [`".e0"` will now no longer parse as `0.0` and will instead cause
   an error.][48235]
 - [Removed hoedown from rustdoc.][48274]
+- [Bounds on higher-kinded lifetimes a hard error.][48326]
 
 [46882]: https://github.com/rust-lang/rust/pull/46882
 [47379]: https://github.com/rust-lang/rust/pull/47379
@@ -137,6 +138,7 @@ Compatibility Notes
 [48274]: https://github.com/rust-lang/rust/pull/48274
 [48281]: https://github.com/rust-lang/rust/pull/48281
 [48296]: https://github.com/rust-lang/rust/pull/48296
+[48326]: https://github.com/rust-lang/rust/pull/48326
 [48359]: https://github.com/rust-lang/rust/pull/48359
 [48404]: https://github.com/rust-lang/rust/pull/48404
 [48481]: https://github.com/rust-lang/rust/pull/48481
