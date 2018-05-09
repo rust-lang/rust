@@ -121,16 +121,14 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span
             };
 
-            for field in fields {
-                struct_span_err!(tcx.sess,
-                                span,
-                                E0204,
-                                "the trait `Copy` may not be implemented for this type")
-                    .span_label(
-                        tcx.def_span(field.did),
-                        "this field does not implement `Copy`")
-                    .emit()
+            let mut err = struct_span_err!(tcx.sess,
+                                          span,
+                                          E0204,
+                                          "the trait `Copy` may not be implemented for this type");
+            for span in fields.iter().map(|f| tcx.def_span(f.did)) {
+                    err.span_label(span, "this field does not implement `Copy`");
             }
+            err.emit()
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir.expect_item(impl_node_id);
