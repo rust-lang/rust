@@ -622,6 +622,11 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
+/// Memory read with `read_volatile` should almost always be written to using
+/// [`write_volatile`].
+///
+/// [`write_volatile`]: ./fn.write_volatile.html
+///
 /// # Notes
 ///
 /// Rust does not currently have a rigorously and formally defined memory model,
@@ -644,16 +649,13 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// * `src` must be properly aligned.
 ///
-/// Additionally, if `T` is not [`Copy`], only the returned value *or* the
-/// pointed-to value can be used or dropped after calling `read_volatile`.
-/// `read_volatile` creates a bitwise copy of `T`, regardless of whether `T:
-/// Copy`, which can result in undefined behavior if both copies are used.
-/// Note that `*src = foo` counts as a use because it will attempt to drop the
-/// value previously at `*src`. [`write_volatile`] can be used to overwrite
-/// data without causing it to be dropped.
+/// Like [`read`], `read_volatile` creates a bitwise copy of the pointed-to
+/// object, regardless of whether `T` is [`Copy`]. Using both values can cause
+/// undefined behavior. However, storing non-[`Copy`] data in I/O memory is
+/// almost certainly incorrect.
 ///
 /// [`Copy`]: ../marker/trait.Copy.html
-/// [`write_volatile`]: ./fn.write_volatile.html
+/// [`read`]: ./fn.read.html
 ///
 /// # Examples
 ///
@@ -680,12 +682,17 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// to not be elided or reordered by the compiler across other volatile
 /// operations.
 ///
+/// Memory written with `write_volatile` should almost always be read from using
+/// [`read_volatile`].
+///
 /// `write_volatile` does not drop the contents of `dst`. This is safe, but it
 /// could leak allocations or resources, so care must be taken not to overwrite
 /// an object that should be dropped.
 ///
 /// Additionally, it does not drop `src`. Semantically, `src` is moved into the
 /// location pointed to by `dst`.
+///
+/// [`read_volatile`]: ./fn.read_volatile.html
 ///
 /// # Notes
 ///
