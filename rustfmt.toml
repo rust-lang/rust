@@ -1,6 +1,4 @@
 max_width = 120
 comment_width = 100
-fn_call_width = 80
 match_block_trailing_comma = true
-closure_block_indent_threshold = 0
 wrap_comments = true
