@@ -971,12 +971,6 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// `copy_nonoverlapping` is unsafe because it dereferences a raw pointer.
-    /// The caller must ensure that `src` points to a valid sequence of type
-    /// `T`.
-    ///
-    /// # Undefined Behavior
-    ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
     /// * The region of memory which begins at `src` and has a length of
@@ -986,17 +980,19 @@ extern "rust-intrinsic" {
     ///   `count * size_of::<T>()` bytes must be valid (but may or may not be
     ///   initialized).
     ///
+    /// * The two regions of memory must *not* overlap.
+    ///
     /// * `src` must be properly aligned.
     ///
     /// * `dst` must be properly aligned.
     ///
-    /// * The two regions of memory must *not* overlap.
+    /// Additionally, if `T` is not [`Copy`], only the region at `src` *or* the
+    /// region at `dst` can be used or dropped after calling
+    /// `copy_nonoverlapping`.  `copy_nonoverlapping` creates bitwise copies of
+    /// `T`, regardless of whether `T: Copy`, which can result in undefined
+    /// behavior if both copies are used.
     ///
-    /// Additionally, if `T` is not [`Copy`](../marker/trait.Copy.html), only
-    /// the region at `src` *or* the region at `dst` can be used or dropped
-    /// after calling `copy_nonoverlapping`.  `copy_nonoverlapping` creates
-    /// bitwise copies of `T`, regardless of whether `T: Copy`, which can result
-    /// in undefined behavior if both copies are used.
+    /// [`Copy`]: ../marker/trait.Copy.html
     ///
     /// # Examples
     ///
@@ -1060,11 +1056,6 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// `copy` is unsafe because it dereferences a raw pointer. The caller must
-    /// ensure that `src` points to a valid sequence of type `T`.
-    ///
-    /// # Undefined Behavior
-    ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
     /// * The region of memory which begins at `src` and has a length of
@@ -1111,11 +1102,6 @@ extern "rust-intrinsic" {
     /// [`memset`]: https://www.gnu.org/software/libc/manual/html_node/Copying-Strings-and-Arrays.html#index-memset
     ///
     /// # Safety
-    ///
-    /// `write_bytes` is unsafe because it dereferences a raw pointer. The
-    /// caller must ensure that the poiinter points to a valid value of type `T`.
-    ///
-    /// # Undefined Behavior
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
