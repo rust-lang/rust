@@ -3,7 +3,7 @@
 
 #![deny(missing_docs_in_private_items)]
 
-use rustc::hir;
+use rustc::{hir, ty};
 use rustc::lint::LateContext;
 use syntax::ast;
 use utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
@@ -44,7 +44,36 @@ pub struct Range<'a> {
 }
 
 /// Higher a `hir` range to something similar to `ast::ExprKind::Range`.
-pub fn range(expr: &hir::Expr) -> Option<Range> {
+pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
+
+    let def_path = match cx.tables.expr_ty(expr).sty {
+        ty::TyAdt(def, _) => cx.tcx.def_path(def.did),
+        _ => return None,
+    };
+
+    // sanity checks for std::ops::RangeXXXX
+    if def_path.data.len() != 3 {
+        return None;
+    }
+    if def_path.data.get(0)?.data.as_interned_str() != "ops" {
+        return None;
+    }
+    if def_path.data.get(1)?.data.as_interned_str() != "range" {
+        return None;
+    }
+    let type_name = def_path.data.get(2)?.data.as_interned_str();
+    let range_types = [
+        "RangeFrom",
+        "RangeFull",
+        "RangeInclusive",
+        "Range",
+        "RangeTo",
+        "RangeToInclusive",
+    ];
+    if !range_types.contains(&&*type_name.as_str()) {
+        return None;
+    }
+
     /// Find the field named `name` in the field. Always return `Some` for
     /// convenience.
     fn get_field<'a>(name: &str, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {

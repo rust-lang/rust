@@ -110,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if let ExprMethodCall(ref iter_path, _, ref iter_args ) = *iter;
                     if iter_path.name == "iter";
                     // range expression in .zip() call: 0..x.len()
-                    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg);
+                    if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
                     if is_integer_literal(start, 0);
                     // .len() call
                     if let ExprMethodCall(ref len_path, _, ref len_args) = end.node;
@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         // exclusive range plus one: x..(y+1)
         if_chain! {
-            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::HalfOpen }) = higher::range(expr);
+            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::HalfOpen }) = higher::range(cx, expr);
             if let Some(y) = y_plus_one(end);
             then {
                 span_lint_and_then(
@@ -153,7 +153,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         // inclusive range minus one: x..=(y-1)
         if_chain! {
-            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(expr);
+            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::range(cx, expr);
             if let Some(y) = y_minus_one(end);
             then {
                 span_lint_and_then(
