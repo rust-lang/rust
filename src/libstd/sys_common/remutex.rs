@@ -41,7 +41,7 @@ unsafe impl<T: Send> Sync for ReentrantMutex<T> {}
 /// because implementation of the trait would violate Rust’s reference aliasing
 /// rules. Use interior mutability (usually `RefCell`) in order to mutate the
 /// guarded data.
-#[must_use]
+#[must_use = "if unused the ReentrantMutex will immediately unlock"]
 pub struct ReentrantMutexGuard<'a, T: 'a> {
     // funny underscores due to how Deref currently works (it disregards field
     // privacy).
