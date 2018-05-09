@@ -18,6 +18,8 @@
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError};
+#[unstable(feature = "try_from_float", issue = "0")]
+pub use core::num::TryFromFloatError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
 

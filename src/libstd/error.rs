@@ -278,6 +278,13 @@ impl Error for num::TryFromIntError {
     }
 }
 
+#[unstable(feature = "try_from_float", issue = "0")]
+impl Error for num::TryFromFloatError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 #[unstable(feature = "try_from", issue = "33417")]
 impl Error for array::TryFromSliceError {
     fn description(&self) -> &str {
