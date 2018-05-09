@@ -23,6 +23,8 @@ SIX_WEEK_CYCLE="$(( ($(date +%s) / 604800 - 3) % 6 ))"
 
 touch "$TOOLSTATE_FILE"
 
+# Try to test all the tools and store the build/test success in the TOOLSTATE_FILE
+
 set +e
 python2.7 "$X_PY" test --no-fail-fast \
     src/doc/book \
@@ -38,6 +40,7 @@ set -e
 cat "$TOOLSTATE_FILE"
 echo
 
+# This function checks that if a tool's submodule changed, the tool's state must improve
 verify_status() {
     echo "Verifying status of $1..."
     if echo "$CHANGED_FILES" | grep -q "^M[[:blank:]]$2$"; then
@@ -57,6 +60,7 @@ verify_status() {
     fi
 }
 
+# deduplicates the submodule check and the assertion that on beta some tools MUST be passing
 check_dispatch() {
     if [ "$1" = submodule_changed ]; then
         # ignore $2 (branch id)
@@ -69,6 +73,7 @@ check_dispatch() {
     fi
 }
 
+# list all tools here
 status_check() {
     check_dispatch $1 beta book src/doc/book
     check_dispatch $1 beta nomicon src/doc/nomicon
@@ -103,4 +108,6 @@ $COMMIT\t$(cat "$TOOLSTATE_FILE")
     exit 0
 fi
 
+# abort compilation if an important tool doesn't build
+# (this code is reachable if not on the nightly channel)
 status_check "beta_required"
