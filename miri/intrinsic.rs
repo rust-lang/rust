@@ -70,7 +70,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "arith_offset" => {
-                let offset = self.value_to_primval(args[1])?.to_i128()? as i64;
+                let offset = self.value_to_isize(args[1])?;
                 let ptr = self.into_ptr(args[0].value)?;
                 let result_ptr = self.wrapping_pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_ptr(dest, result_ptr, dest_layout.ty)?;
@@ -213,7 +213,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let elem_ty = substs.type_at(0);
                 let elem_layout = self.layout_of(elem_ty)?;
                 let elem_size = elem_layout.size.bytes();
-                let count = self.value_to_primval(args[2])?.to_u64()?;
+                let count = self.value_to_usize(args[2])?;
                 if count * elem_size != 0 {
                     // TODO: We do not even validate alignment for the 0-bytes case.  libstd relies on this in vec::IntoIter::next.
                     // Also see the write_bytes intrinsic.
@@ -407,7 +407,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             "offset" => {
-                let offset = self.value_to_primval(args[1])?.to_i128()? as i64;
+                let offset = self.value_to_isize(args[1])?;
                 let ptr = self.into_ptr(args[0].value)?;
                 let result_ptr = self.pointer_offset(ptr, substs.type_at(0), offset)?;
                 self.write_ptr(dest, result_ptr, dest_layout.ty)?;
@@ -498,10 +498,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "powif32" => {
                 let f = self.value_to_primval(args[0])?.to_bytes()?;
                 let f = f32::from_bits(f as u32);
-                let i = self.value_to_primval(args[1])?.to_i128()?;
+                let i = self.value_to_i32(args[1])?;
                 self.write_primval(
                     dest,
-                    PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
+                    PrimVal::Bytes(f.powi(i).to_bits() as u128),
                     dest_layout.ty,
                 )?;
             }
@@ -509,10 +509,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "powif64" => {
                 let f = self.value_to_primval(args[0])?.to_bytes()?;
                 let f = f64::from_bits(f as u64);
-                let i = self.value_to_primval(args[1])?.to_i128()?;
+                let i = self.value_to_i32(args[1])?;
                 self.write_primval(
                     dest,
-                    PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
+                    PrimVal::Bytes(f.powi(i).to_bits() as u128),
                     dest_layout.ty,
                 )?;
             }
@@ -655,9 +655,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             "write_bytes" => {
                 let ty = substs.type_at(0);
                 let ty_layout = self.layout_of(ty)?;
-                let val_byte = self.value_to_primval(args[1])?.to_u128()? as u8;
+                let val_byte = self.value_to_u8(args[1])?;
                 let ptr = self.into_ptr(args[0].value)?;
-                let count = self.value_to_primval(args[2])?.to_u64()?;
+                let count = self.value_to_usize(args[2])?;
                 if count > 0 {
                     // HashMap relies on write_bytes on a NULL ptr with count == 0 to work
                     // TODO: Should we, at least, validate the alignment? (Also see the copy intrinsic)
