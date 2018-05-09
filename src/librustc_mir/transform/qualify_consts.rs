@@ -869,8 +869,63 @@ This does not pose a problem by itself because they can't be accessed directly."
                     Abi::PlatformIntrinsic => {
                         assert!(!self.tcx.is_const_fn(def_id));
                         match &self.tcx.item_name(def_id).as_str()[..] {
-                            "size_of" | "min_align_of" | "type_id" => is_const_fn = Some(def_id),
-
+                            "add_with_overflow" |
+                            "sub_with_overflow" |
+                            "mul_with_overflow" |
+                            "overflowing_sub" |
+                            "overflowing_mul" |
+                            "overflowing_add" |
+                            "powf32" |
+                            "powf64" |
+                            "fmaf32" |
+                            "fmaf64" |
+                            "powif32" |
+                            "powif64" |
+                            "unchecked_shl" |
+                            "unchecked_shr" |
+                            "unchecked_div" |
+                            "unchecked_rem" |
+                            "ctpop" |
+                            "cttz" |
+                            "cttz_nonzero" |
+                            "ctlz" |
+                            "ctlz_nonzero" |
+                            "bswap" |
+                            "sinf32" |
+                            "fabsf32" |
+                            "cosf32" |
+                            "sqrtf32" |
+                            "expf32" |
+                            "exp2f32" |
+                            "logf32" |
+                            "log10f32" |
+                            "log2f32" |
+                            "floorf32" |
+                            "ceilf32" |
+                            "truncf32" |
+                            "sinf64" |
+                            "fabsf64" |
+                            "cosf64" |
+                            "sqrtf64" |
+                            "expf64" |
+                            "exp2f64" |
+                            "logf64" |
+                            "log10f64" |
+                            "log2f64" |
+                            "floorf64" |
+                            "ceilf64" |
+                            "truncf64" |
+                            "assume" |
+                            "likely" |
+                            "unlikely" |
+                            "forget" |
+                            "align_offset" |
+                            "min_align_of" |
+                            "size_of" |
+                            "transmute" |
+                            "type_id" => {
+                                is_const_fn = Some(def_id);
+                            }
                             name if name.starts_with("simd_shuffle") => {
                                 is_shuffle = true;
                             }
