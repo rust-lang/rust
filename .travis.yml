@@ -1,20 +1,10 @@
 sudo: false
 language: rust
-rust:
-# - stable
-# - beta
- - nightly
-os:
- - linux
- - osx
+rust: nightly
+os: linux
 cache:
  directories:
   - $HOME/.cargo
-
-matrix:
-  include:
-    # Make sure tests will pass on beta
-    - env: CFG_RELEASE_CHANNEL=beta
 
 addons:
   apt:
@@ -23,25 +13,66 @@ addons:
     - libelf-dev
     - libdw-dev
 
+matrix:
+  include:
+    - env: DEPLOY=LINUX
+    - env: CFG_RELEASE_CHANNEL=beta
+    - os: osx
+    - env: INTEGRATION=cargo
+    - env: INTEGRATION=rust-clippy
+    - env: INTEGRATION=mdbook
+    - env: INTEGRATION=stdsimd
+    - env: INTEGRATION=rust-semverver
+    - env: INTEGRATION=chalk
+    - env: INTEGRATION=crater
+    - env: INTEGRATION=futures-rs
+    - env: INTEGRATION=rand
+    - env: INTEGRATION=failure
+    - env: INTEGRATION=glob
+    - env: INTEGRATION=error-chain
+    - env: INTEGRATION=tempdir
+    - env: INTEGRATION=bitflags
+    - env: INTEGRATION=log
+  allow_failures:
+    - env: INTEGRATION=cargo
+    - env: INTEGRATION=stdsimd
+    - env: INTEGRATION=mdbook
+    - env: INTEGRATION=crater
+    - env: INTEGRATION=rust-semverver
+    - env: INTEGRATION=rust-clippy
+    - env: INTEGRATION=chalk
+    - env: INTEGRATION=bitflags
+    - env: INTEGRATION=error-chain
+    - env: INTEGRATION=failure
+    - env: INTEGRATION=futures-rs
+    - env: INTEGRATION=log
+    - env: INTEGRATION=rand
+
 before_script:
 - |
-  if [ $TRAVIS_OS_NAME = 'osx' ]; then
-    virtualenv env &&
-    source env/bin/activate &&
-    python --version &&
-    pip install 'travis-cargo<0.2'
-  else
-    pip install 'travis-cargo<0.2' --user &&
-    export PATH="$(python -m site --user-base)/bin:$PATH"
+  if [ -z ${INTEGRATION} ]; then
+    if [ $TRAVIS_OS_NAME = 'osx' ]; then
+      virtualenv env &&
+      source env/bin/activate &&
+      python --version &&
+      pip install 'travis-cargo<0.2'
+    else
+      pip install 'travis-cargo<0.2' --user &&
+      export PATH="$(python -m site --user-base)/bin:$PATH"
+    fi
   fi
 
 script:
-- |
-  cargo build &&
-  cargo test
+  - |
+    if [ -z ${INTEGRATION} ]; then
+      cargo build
+      cargo test
+    else
+      ./ci/integration.sh
+    fi
 
 after_success:
-- travis-cargo coveralls --no-sudo
+- if [ -z ${INTEGRATION} ]; then travis-cargo coveralls --no-sudo; fi
 
 before_deploy:
   # TODO: cross build
@@ -57,5 +88,5 @@ deploy:
   on:
     repo: nrc/rustfmt
     tags: true
-    condition: "$TRAVIS_OS_NAME = linux"
+    condition: "$DEPLOY = LINUX"
   skip_cleanup: true
