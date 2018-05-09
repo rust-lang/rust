@@ -18,7 +18,7 @@ pub trait EvalContextExt<'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn create_tls_key(&mut self, dtor: Option<ty::Instance<'tcx>>) -> TlsKey {
         let new_key = self.data.next_thread_local;
         self.data.next_thread_local += 1;
@@ -106,7 +106,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
     }
 }
 
-impl<'a, 'tcx: 'a> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
         let mut dtor = self.memory.fetch_tls_dtor(None)?;
         // FIXME: replace loop by some structure that works with stepping

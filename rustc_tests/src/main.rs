@@ -1,9 +1,10 @@
-#![feature(rustc_private, i128_type)]
+#![feature(rustc_private)]
 extern crate miri;
 extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_errors;
+extern crate rustc_trans_utils;
 extern crate syntax;
 
 use std::path::{PathBuf, Path};
@@ -18,6 +19,7 @@ use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
 use rustc::hir::{self, itemlikevisit};
+use rustc_trans_utils::trans_crate::TransCrate;
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
@@ -51,14 +53,15 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     }
     fn late_callback(
         &mut self,
+        trans: &TransCrate,
         matches: &getopts::Matches,
         sess: &Session,
         cstore: &CrateStore,
         input: &Input,
         odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>
+        ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(matches, sess, cstore, input, odir, ofile)
+        self.default.late_callback(trans, matches, sess, cstore, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
         let mut control = self.default.build_controller(sess, matches);
@@ -81,30 +84,29 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
-    let limits = Default::default();
 
     if std::env::args().any(|arg| arg == "--test") {
-        struct Visitor<'a, 'tcx: 'a>(miri::ResourceLimits, TyCtxt<'a, 'tcx, 'tcx>, &'a CompileState<'a, 'tcx>);
+        struct Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>, &'a CompileState<'a, 'tcx>);
         impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
             fn visit_item(&mut self, i: &'hir hir::Item) {
                 if let hir::Item_::ItemFn(_, _, _, _, _, body_id) = i.node {
-                    if i.attrs.iter().any(|attr| attr.name().map_or(false, |n| n == "test")) {
-                        let did = self.1.hir.body_owner_def_id(body_id);
-                        println!("running test: {}", self.1.def_path_debug_str(did));
-                        miri::eval_main(self.1, did, None, self.0);
-                        self.2.session.abort_if_errors();
+                    if i.attrs.iter().any(|attr| attr.name() == "test") {
+                        let did = self.0.hir.body_owner_def_id(body_id);
+                        println!("running test: {}", self.0.def_path_debug_str(did));
+                        miri::eval_main(self.0, did, None);
+                        self.1.session.abort_if_errors();
                     }
                 }
             }
             fn visit_trait_item(&mut self, _trait_item: &'hir hir::TraitItem) {}
             fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
         }
-        state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(limits, tcx, state));
-    } else if let Some((entry_node_id, _)) = *state.session.entry_fn.borrow() {
+        state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(tcx, state));
+    } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
         let start_wrapper = tcx.lang_items().start_fn().and_then(|start_fn|
                                 if tcx.is_mir_available(start_fn) { Some(start_fn) } else { None });
-        miri::eval_main(tcx, entry_def_id, start_wrapper, limits);
+        miri::eval_main(tcx, entry_def_id, start_wrapper);
 
         state.session.abort_if_errors();
     } else {

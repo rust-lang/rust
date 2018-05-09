@@ -99,7 +99,7 @@ pub trait MemoryExt<'tcx> {
 }
 
 
-impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> MemoryExt<'tcx> for Memory<'a, 'mir, 'tcx, Evaluator<'tcx>> {
     fn check_locks(
         &self,
         ptr: MemoryPointer,
@@ -109,7 +109,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
         if len == 0 {
             return Ok(());
         }
-        let locks = match self.data.locks.get(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
@@ -148,7 +148,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
         );
         self.check_bounds(ptr.offset(len, &*self)?, true)?; // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
 
-        let locks = match self.data.locks.get_mut(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
@@ -197,7 +197,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
     ) -> EvalResult<'tcx> {
         assert!(len > 0);
         let cur_frame = self.cur_frame;
-        let locks = match self.data.locks.get_mut(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),
@@ -275,7 +275,7 @@ impl<'a, 'tcx: 'a> MemoryExt<'tcx> for Memory<'a, 'tcx, Evaluator<'tcx>> {
             frame: cur_frame,
             path: lock_path.clone(),
         };
-        let locks = match self.data.locks.get_mut(&ptr.alloc_id.0) {
+        let locks = match self.data.locks.get_mut(&ptr.alloc_id) {
             Some(locks) => locks,
             // immutable static or other constant memory
             None => return Ok(()),

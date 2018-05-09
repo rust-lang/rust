@@ -1,20 +1,63 @@
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::LayoutOf;
+use rustc::ty::layout::{self, Align, LayoutOf};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
+use rustc_data_structures::indexed_vec::Idx;
+use rustc_target::spec::abi::Abi;
 use syntax::attr;
-use syntax::abi::Abi;
 use syntax::codemap::Span;
 
 use std::mem;
-
-use rustc::traits;
 
 use super::*;
 
 use tls::MemoryExt;
 
 use super::memory::MemoryKind;
+
+fn write_discriminant_value<'a, 'mir, 'tcx: 'a + 'mir>(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>>,
+        dest_ty: Ty<'tcx>,
+        dest: Place,
+        variant_index: usize,
+    ) -> EvalResult<'tcx> {
+        let layout = ecx.layout_of(dest_ty)?;
+
+        match layout.variants {
+            layout::Variants::Single { index } => {
+                if index != variant_index {
+                    // If the layout of an enum is `Single`, all
+                    // other variants are necessarily uninhabited.
+                    assert_eq!(layout.for_variant(&ecx, variant_index).abi,
+                               layout::Abi::Uninhabited);
+                }
+            }
+            layout::Variants::Tagged { .. } => {
+                let discr_val = dest_ty.ty_adt_def().unwrap()
+                    .discriminant_for_variant(*ecx.tcx, variant_index)
+                    .val;
+
+                let (discr_dest, discr) = ecx.place_field(dest, mir::Field::new(0), layout)?;
+                ecx.write_primval(discr_dest, PrimVal::Bytes(discr_val), discr.ty)?;
+            }
+            layout::Variants::NicheFilling {
+                dataful_variant,
+                ref niche_variants,
+                niche_start,
+                ..
+            } => {
+                if variant_index != dataful_variant {
+                    let (niche_dest, niche) =
+                        ecx.place_field(dest, mir::Field::new(0), layout)?;
+                    let niche_value = ((variant_index - niche_variants.start()) as u128)
+                        .wrapping_add(niche_start);
+                    ecx.write_primval(niche_dest, PrimVal::Bytes(niche_value), niche.ty)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 
 pub trait EvalContextExt<'tcx> {
     fn call_c_abi(
@@ -49,7 +92,7 @@ pub trait EvalContextExt<'tcx> {
     fn write_null(&mut self, dest: Place, dest_ty: Ty<'tcx>) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn eval_fn_call(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -59,6 +102,38 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx, bool> {
         trace!("eval_fn_call: {:#?}, {:#?}", instance, destination);
+
+        let def_id = instance.def_id();
+        let item_path = self.tcx.absolute_item_path_str(def_id);
+        if item_path.starts_with("std::") {
+            //println!("{}", item_path);
+        }
+        match &*item_path {
+            "std::sys::unix::thread::guard::init" | "std::sys::unix::thread::guard::current" => {
+                // Return None, as it doesn't make sense to return Some, because miri detects stack overflow itself.
+                let ret_ty = sig.output();
+                match ret_ty.sty {
+                    ty::TyAdt(ref adt_def, _) => {
+                        assert!(adt_def.is_enum(), "Unexpected return type for {}", item_path);
+                        let none_variant_index = adt_def.variants.iter().position(|def| {
+                            def.name.as_str() == "None"
+                        }).expect("No None variant");
+                        let (return_place, return_to_block) = destination.unwrap();
+                        write_discriminant_value(self, ret_ty, return_place, none_variant_index)?;
+                        self.goto_block(return_to_block);
+                        return Ok(true);
+                    }
+                    _ => panic!("Unexpected return type for {}", item_path)
+                }
+            }
+            "std::sys::unix::fast_thread_local::register_dtor" => {
+                // TODO: register the dtor
+                let (_return_place, return_to_block) = destination.unwrap();
+                self.goto_block(return_to_block);
+                return Ok(true);
+            }
+            _ => {}
+        }
 
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
@@ -102,7 +177,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
             Some(name) => name.as_str(),
-            None => self.tcx.item_name(def_id),
+            None => self.tcx.item_name(def_id).as_str(),
         };
 
         match &link_name[..] {
@@ -111,7 +186,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if size == 0 {
                     self.write_null(dest, dest_ty)?;
                 } else {
-                    let align = self.memory.pointer_size();
+                    let align = self.tcx.data_layout.pointer_align;
                     let ptr = self.memory.allocate(size, align, Some(MemoryKind::C.into()))?;
                     self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
                 }
@@ -307,7 +382,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     // +1 for the null terminator
                     let value_copy = self.memory.allocate(
                         (value.len() + 1) as u64,
-                        1,
+                        Align::from_bytes(1, 1).unwrap(),
                         Some(MemoryKind::Env.into()),
                     )?;
                     self.memory.write_bytes(value_copy.into(), &value)?;
@@ -369,6 +444,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
             "sysconf" => {
                 let name = self.value_to_primval(args[0])?.to_u64()?;
+
                 trace!("sysconf() called with name {}", name);
                 // cache the sysconf integers via miri's global cache
                 let paths = &[
@@ -382,13 +458,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                             instance,
                             promoted: None,
                         };
-                        // compute global if not cached
-                        let val = match self.tcx.interpret_interner.borrow().get_cached(cid) {
-                            Some(ptr) => ptr,
-                            None => eval_body(self.tcx, instance, ty::ParamEnv::empty(traits::Reveal::All)).0?.0,
-                        };
-                        let val = self.value_to_primval(ValTy { value: Value::ByRef(val), ty: args[0].ty })?.to_u64()?;
-                        if val == name {
+                        let const_val = self.const_eval(cid)?;
+                        let value = const_val.val.unwrap_u64();
+                        if value == name {
                             result = Some(path_value);
                             break;
                         }
@@ -406,6 +478,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             // Hook pthread calls that go to the thread-local storage memory subsystem
             "pthread_key_create" => {
                 let key_ptr = self.into_ptr(args[0].value)?;
+                let key_align = self.layout_of(args[0].ty)?.align;
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor = match self.into_ptr(args[1].value)?.into_inner_primval() {
@@ -416,7 +489,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 };
 
                 // Figure out how large a pthread TLS key actually is. This is libc::pthread_key_t.
-                let key_type = args[0].ty.builtin_deref(true, ty::LvaluePreference::NoPreference)
+                let key_type = args[0].ty.builtin_deref(true)
                                    .ok_or(EvalErrorKind::AbiViolation("Wrong signature used for pthread_key_create: First argument must be a raw pointer.".to_owned()))?.ty;
                 let key_size = self.layout_of(key_type)?.size;
 
@@ -426,7 +499,8 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     return err!(OutOfTls);
                 }
                 self.memory.write_primval(
-                    key_ptr.to_ptr()?,
+                    key_ptr,
+                    key_align,
                     PrimVal::Bytes(key),
                     key_size.bytes(),
                     false,
@@ -456,6 +530,9 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
                 // Return success (0)
                 self.write_null(dest, dest_ty)?;
+            }
+            "_tlv_atexit" => {
+                // TODO: handle it
             }
 
             // Stub out all the other pthread calls to just return 0
@@ -497,7 +574,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                     for item in mem::replace(&mut items, Default::default()).iter() {
                         if item.ident.name == *segment {
                             if path_it.peek().is_none() {
-                                return Some(ty::Instance::mono(self.tcx, item.def.def_id()));
+                                return Some(ty::Instance::mono(self.tcx.tcx, item.def.def_id()));
                             }
 
                             items = self.tcx.item_children(item.def.def_id());
@@ -550,7 +627,7 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
 
         match &path[..] {
             // Allocators are magic.  They have no MIR, even when the rest of libstd does.
-            "alloc::heap::::__rust_alloc" => {
+            "alloc::alloc::::__rust_alloc" => {
                 let size = self.value_to_primval(args[0])?.to_u64()?;
                 let align = self.value_to_primval(args[1])?.to_u64()?;
                 if size == 0 {
@@ -559,10 +636,12 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
+                let ptr = self.memory.allocate(size,
+                                               Align::from_bytes(align, align).unwrap(),
+                                               Some(MemoryKind::Rust.into()))?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
-            "alloc::heap::::__rust_alloc_zeroed" => {
+            "alloc::alloc::::__rust_alloc_zeroed" => {
                 let size = self.value_to_primval(args[0])?.to_u64()?;
                 let align = self.value_to_primval(args[1])?.to_u64()?;
                 if size == 0 {
@@ -571,11 +650,13 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(size, align, Some(MemoryKind::Rust.into()))?;
+                let ptr = self.memory.allocate(size,
+                                               Align::from_bytes(align, align).unwrap(),
+                                               Some(MemoryKind::Rust.into()))?;
                 self.memory.write_repeat(ptr.into(), 0, size)?;
                 self.write_primval(dest, PrimVal::Ptr(ptr), dest_ty)?;
             }
-            "alloc::heap::::__rust_dealloc" => {
+            "alloc::alloc::::__rust_dealloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1])?.to_u64()?;
                 let align = self.value_to_primval(args[2])?.to_u64()?;
@@ -587,31 +668,27 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
                 }
                 self.memory.deallocate(
                     ptr,
-                    Some((old_size, align)),
+                    Some((old_size, Align::from_bytes(align, align).unwrap())),
                     MemoryKind::Rust.into(),
                 )?;
             }
-            "alloc::heap::::__rust_realloc" => {
+            "alloc::alloc::::__rust_realloc" => {
                 let ptr = self.into_ptr(args[0].value)?.to_ptr()?;
                 let old_size = self.value_to_primval(args[1])?.to_u64()?;
-                let old_align = self.value_to_primval(args[2])?.to_u64()?;
+                let align = self.value_to_primval(args[2])?.to_u64()?;
                 let new_size = self.value_to_primval(args[3])?.to_u64()?;
-                let new_align = self.value_to_primval(args[4])?.to_u64()?;
                 if old_size == 0 || new_size == 0 {
                     return err!(HeapAllocZeroBytes);
                 }
-                if !old_align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(old_align));
-                }
-                if !new_align.is_power_of_two() {
-                    return err!(HeapAllocNonPowerOfTwoAlignment(new_align));
+                if !align.is_power_of_two() {
+                    return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
                 let new_ptr = self.memory.reallocate(
                     ptr,
                     old_size,
-                    old_align,
+                    Align::from_bytes(align, align).unwrap(),
                     new_size,
-                    new_align,
+                    Align::from_bytes(align, align).unwrap(),
                     MemoryKind::Rust.into(),
                 )?;
                 self.write_primval(dest, PrimVal::Ptr(new_ptr), dest_ty)?;

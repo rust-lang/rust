@@ -1,6 +1,9 @@
-use super::{Pointer, EvalResult, PrimVal, EvalContext};
+use mir;
 use rustc::ty::Ty;
 use rustc::ty::layout::LayoutOf;
+
+use super::{Pointer, EvalResult, PrimVal, EvalContext, ValTy};
+use rustc_mir::interpret::sign_extend;
 
 pub trait EvalContextExt<'tcx> {
     fn wrapping_pointer_offset(
@@ -16,9 +19,29 @@ pub trait EvalContextExt<'tcx> {
         pointee_ty: Ty<'tcx>,
         offset: i64,
     ) -> EvalResult<'tcx, Pointer>;
+
+    fn value_to_isize(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, i64>;
+
+    fn value_to_usize(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, u64>;
+
+    fn value_to_i32(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, i32>;
+
+    fn value_to_u8(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, u8>;
 }
 
-impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
     fn wrapping_pointer_offset(
         &self,
         ptr: Pointer,
@@ -63,7 +86,43 @@ impl<'a, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'tcx, super::Evaluator<'
             }
             Ok(ptr)
         } else {
-            err!(OverflowingMath)
+            err!(Overflow(mir::BinOp::Mul))
         };
+    }
+
+    fn value_to_isize(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, i64> {
+        assert_eq!(value.ty, self.tcx.types.isize);
+        let raw = self.value_to_primval(value)?.to_bytes()?;
+        let raw = sign_extend(self.tcx.tcx, raw, self.tcx.types.isize)?;
+        Ok(raw as i64)
+    }
+
+    fn value_to_usize(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, u64> {
+        assert_eq!(value.ty, self.tcx.types.usize);
+        self.value_to_primval(value)?.to_bytes().map(|v| v as u64)
+    }
+
+    fn value_to_i32(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, i32> {
+        assert_eq!(value.ty, self.tcx.types.i32);
+        let raw = self.value_to_primval(value)?.to_bytes()?;
+        let raw = sign_extend(self.tcx.tcx, raw, self.tcx.types.i32)?;
+        Ok(raw as i32)
+    }
+
+    fn value_to_u8(
+        &self,
+        value: ValTy<'tcx>,
+    ) -> EvalResult<'tcx, u8> {
+        assert_eq!(value.ty, self.tcx.types.u8);
+        self.value_to_primval(value)?.to_bytes().map(|v| v as u8)
     }
 }
