@@ -61,7 +61,7 @@ pub struct StringReader<'a> {
     pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
-    source_text: Lrc<String>,
+    src: Lrc<String>,
     /// Stack of open delimiters and their spans. Used for error message.
     token: token::Token,
     span: Span,
@@ -176,7 +176,7 @@ impl<'a> StringReader<'a> {
                                               filemap.name));
         }
 
-        let source_text = (*filemap.src.as_ref().unwrap()).clone();
+        let src = (*filemap.src.as_ref().unwrap()).clone();
 
         StringReader {
             sess,
@@ -190,7 +190,7 @@ impl<'a> StringReader<'a> {
             // dummy values; not read
             peek_tok: token::Eof,
             peek_span: syntax_pos::DUMMY_SP,
-            source_text,
+            src,
             fatal_errs: Vec::new(),
             token: token::Eof,
             span: syntax_pos::DUMMY_SP,
@@ -326,9 +326,7 @@ impl<'a> StringReader<'a> {
     /// offending string to the error message
     fn fatal_span_verbose(&self, from_pos: BytePos, to_pos: BytePos, mut m: String) -> FatalError {
         m.push_str(": ");
-        let from = self.byte_offset(from_pos).to_usize();
-        let to = self.byte_offset(to_pos).to_usize();
-        m.push_str(&self.source_text[from..to]);
+        m.push_str(&self.src[self.src_index(from_pos)..self.src_index(to_pos)]);
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
 
@@ -354,8 +352,9 @@ impl<'a> StringReader<'a> {
         Ok(())
     }
 
-    fn byte_offset(&self, pos: BytePos) -> BytePos {
-        (pos - self.filemap.start_pos)
+    #[inline]
+    fn src_index(&self, pos: BytePos) -> usize {
+        (pos - self.filemap.start_pos).to_usize()
     }
 
     /// Calls `f` with a string slice of the source text spanning from `start`
@@ -386,7 +385,7 @@ impl<'a> StringReader<'a> {
     fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T
         where F: FnOnce(&str) -> T
     {
-        f(&self.source_text[self.byte_offset(start).to_usize()..self.byte_offset(end).to_usize()])
+        f(&self.src[self.src_index(start)..self.src_index(end)])
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
@@ -438,16 +437,13 @@ impl<'a> StringReader<'a> {
         }
     }
 
-
     /// Advance the StringReader by one character. If a newline is
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
-        let next_byte_offset = self.byte_offset(self.next_pos).to_usize();
-        let end = self.terminator.map_or(self.source_text.len(), |t| {
-            self.byte_offset(t).to_usize()
-        });
-        if next_byte_offset < end {
-            let next_ch = char_at(&self.source_text, next_byte_offset);
+        let next_src_index = self.src_index(self.next_pos);
+        let end_src_index = self.terminator.map_or(self.src.len(), |t| self.src_index(t));
+        if next_src_index < end_src_index {
+            let next_ch = char_at(&self.src, next_src_index);
             let next_ch_len = next_ch.len_utf8();
 
             if self.ch.unwrap() == '\n' {
@@ -475,9 +471,9 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.next_pos).to_usize();
-        if offset < self.source_text.len() {
-            Some(char_at(&self.source_text, offset))
+        let next_src_index = self.src_index(self.next_pos);
+        if next_src_index < self.src.len() {
+            Some(char_at(&self.src, next_src_index))
         } else {
             None
         }
@@ -488,14 +484,14 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextnextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.next_pos).to_usize();
-        let s = &self.source_text[..];
-        if offset >= s.len() {
+        let next_src_index = self.src_index(self.next_pos);
+        let s = &self.src[..];
+        if next_src_index >= s.len() {
             return None;
         }
-        let next = offset + char_at(s, offset).len_utf8();
-        if next < s.len() {
-            Some(char_at(s, next))
+        let next_next_src_index = next_src_index + char_at(s, next_src_index).len_utf8();
+        if next_next_src_index < s.len() {
+            Some(char_at(s, next_next_src_index))
         } else {
             None
         }
@@ -1358,8 +1354,8 @@ impl<'a> StringReader<'a> {
                     loop {
                         self.bump();
                         if self.ch_is('\'') {
-                            let start = self.byte_offset(start).to_usize();
-                            let end = self.byte_offset(self.pos).to_usize();
+                            let start = self.src_index(start);
+                            let end = self.src_index(self.pos);
                             self.bump();
                             let span = self.mk_sp(start_with_quote, self.pos);
                             self.sess.span_diagnostic
@@ -1368,8 +1364,7 @@ impl<'a> StringReader<'a> {
                                 .span_suggestion(span,
                                                  "if you meant to write a `str` literal, \
                                                   use double quotes",
-                                                 format!("\"{}\"",
-                                                         &self.source_text[start..end]))
+                                                 format!("\"{}\"", &self.src[start..end]))
                                 .emit();
                             return Ok(token::Literal(token::Str_(Symbol::intern("??")), None))
                         }
