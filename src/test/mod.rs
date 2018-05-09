@@ -191,6 +191,10 @@ fn assert_output(source: &Path, expected_filename: &Path) {
 // rustfmt.
 #[test]
 fn idempotence_tests() {
+    match option_env!("CFG_RELEASE_CHANNEL") {
+        None | Some("nightly") => {}
+        _ => return, // these tests require nightly
+    }
     // Get all files in the tests/target directory.
     let files = get_test_files(Path::new("tests/target"), true);
     let (_reports, count, fails) = check_files(files, None);

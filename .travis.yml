@@ -11,6 +11,11 @@ cache:
  directories:
   - $HOME/.cargo
 
+matrix:
+  include:
+    # Make sure tests will pass on beta
+    - env: CFG_RELEASE_CHANNEL=beta
+
 addons:
   apt:
     packages:
