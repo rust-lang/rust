@@ -8,7 +8,7 @@ before_script:
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
 - rustup component add rust-src
-- cargo install --git https://github.com/japaric/xargo.git
+- cargo install xargo || echo "skipping xargo install"
 - export RUST_SYSROOT=$HOME/rust
 script:
 - set -e
@@ -19,7 +19,7 @@ script:
   # Test plain miri
   cargo build --release --all-features &&
   cargo test --release --all-features --all &&
-  cargo install --all-features
+  cargo install --all-features --force
 - |
   # Test cargo miri
   cd cargo-miri-test &&

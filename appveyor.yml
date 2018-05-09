@@ -22,7 +22,7 @@ install:
     - rustc -V
     - cargo -V
     - rustup component add rust-src
-    - cargo install --git https://github.com/japaric/xargo.git
+    - cargo install xargo
     - cd xargo
     - set RUSTFLAGS=-Zalways-encode-mir -Zmir-emit-validate=1
     - xargo build
