@@ -705,6 +705,42 @@ impl<T> Option<T> {
         }
     }
 
+    /// Returns [`Some`] if exactly one of `self`, `optb` is [`Some`], otherwise returns `None`.
+    ///
+    /// [`Some`]: #variant.Some
+    /// [`None`]: #variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_xor)]
+    ///
+    /// let x = Some(2);
+    /// let y: Option<u32> = None;
+    /// assert_eq!(x.xor(y), Some(2));
+    ///
+    /// let x: Option<u32> = None;
+    /// let y = Some(2);
+    /// assert_eq!(x.xor(y), Some(2));
+    ///
+    /// let x = Some(2);
+    /// let y = Some(2);
+    /// assert_eq!(x.xor(y), None);
+    ///
+    /// let x: Option<u32> = None;
+    /// let y: Option<u32> = None;
+    /// assert_eq!(x.xor(y), None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "option_xor", issue = "50512")]
+    pub fn xor(self, optb: Option<T>) -> Option<T> {
+        match (self, optb) {
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            _ => None,
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////
     // Entry-like operations to insert if None and return a reference
     /////////////////////////////////////////////////////////////////////////
