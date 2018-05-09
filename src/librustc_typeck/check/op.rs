@@ -246,7 +246,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(()) => {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
-                    match is_assign{
+                    let codemap = self.tcx.sess.codemap();
+                    match is_assign {
                         IsAssign::Yes => {
                             let mut err = struct_span_err!(self.tcx.sess, expr.span, E0368,
                                                 "binary assignment operation `{}=` \
@@ -256,6 +257,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             err.span_label(lhs_expr.span,
                                     format!("cannot use `{}=` on type `{}`",
                                     op.node.as_str(), lhs_ty));
+                            let mut suggested_deref = false;
+                            if let TyRef(_, ref ty_mut) = lhs_ty.sty {
+                                if {
+                                    !self.infcx.type_moves_by_default(self.param_env,
+                                                                        ty_mut.ty,
+                                                                        lhs_expr.span) &&
+                                        self.lookup_op_method(ty_mut.ty,
+                                                                &[rhs_ty],
+                                                                Op::Binary(op, is_assign))
+                                            .is_ok()
+                                } {
+                                    if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
+                                        let msg = &format!(
+                                                "`{}=` can be used on '{}', you can \
+                                                dereference `{2}`: `*{2}`",
+                                                op.node.as_str(), ty_mut.ty, lstring);
+                                        err.help(msg);
+                                        suggested_deref = true;
+                                    }
+                                }
+                            }
                             let missing_trait = match op.node {
                                 hir::BiAdd    => Some("std::ops::AddAssign"),
                                 hir::BiSub    => Some("std::ops::SubAssign"),
@@ -269,6 +291,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 hir::BiShr    => Some("std::ops::ShrAssign"),
                                 _             => None
                             };
+                            if let Some(missing_trait) = missing_trait {
+                                if op.node == hir::BiAdd &&
+                                    self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
+                                                            rhs_ty, &mut err) {
+                                    // This has nothing here because it means we did string
+                                    // concatenation (e.g. "Hello " + "World!"). This means
+                                    // we don't want the note in the else clause to be emitted
+                                } else if let ty::TyParam(_) = lhs_ty.sty {
+                                    // FIXME: point to span of param
+                                    err.note(
+                                        &format!("`{}` might need a bound for `{}`",
+                                                    lhs_ty, missing_trait));
+                                } else if !suggested_deref {
+                                    err.note(
+                                        &format!("an implementation of `{}` might \
+                                                    be missing for `{}`",
+                                                    missing_trait, lhs_ty));
+                                }
+                            }
+                            err.emit();
+                        }
+                        IsAssign::No => {
+                            let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
+                                            "binary operation `{}` cannot be applied to type `{}`",
+                                            op.node.as_str(),
+                                            lhs_ty);
                             let mut suggested_deref = false;
                             if let TyRef(_, ref ty_mut) = lhs_ty.sty {
                                 if {
@@ -280,48 +328,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                 Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
-                                    let codemap = self.tcx.sess.codemap();
-                                    match codemap.span_to_snippet(lhs_expr.span) {
-                                        Ok(lstring) =>{
-                                            let msg = &format!(
-                                                "`{}=` can be used on '{}', you can \
+                                    if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
+                                        let msg = &format!(
+                                                "`{}` can be used on '{}', you can \
                                                 dereference `{2}`: `*{2}`",
                                                 op.node.as_str(), ty_mut.ty, lstring);
-                                            err.help(msg);
-                                            suggested_deref = true;
-                                        },
-                                        _ => {}
-                                    };
-                                }
-                            }
-                            if let Some(missing_trait) = missing_trait {
-                                if missing_trait == "std::ops::AddAssign" &&
-                                    self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
-                                                            rhs_ty, &mut err) {
-                                    // This has nothing here because it means we did string
-                                    // concatenation (e.g. "Hello " + "World!"). This means
-                                    // we don't want the note in the else clause to be emitted
-                                } else if let ty::TyParam(_) = lhs_ty.sty {
-                                    // FIXME: point to span of param
-                                    err.note(
-                                        &format!("`{}` might need a bound for `{}`",
-                                                    lhs_ty, missing_trait));
-                                } else {
-                                    if !suggested_deref{
-                                        err.note(
-                                            &format!("an implementation of `{}` might \
-                                                        be missing for `{}`",
-                                                        missing_trait, lhs_ty));
+                                        err.help(msg);
+                                        suggested_deref = true;
                                     }
                                 }
                             }
-                            err.emit();
-                        }
-                        IsAssign::No => {
-                            let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
-                                            "binary operation `{}` cannot be applied to type `{}`",
-                                            op.node.as_str(),
-                                            lhs_ty);
                             let missing_trait = match op.node {
                                 hir::BiAdd    => Some("std::ops::Add"),
                                 hir::BiSub    => Some("std::ops::Sub"),
@@ -338,33 +354,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     Some("std::cmp::PartialOrd"),
                                 _             => None
                             };
-                            let mut suggested_deref = false;
-                            if let TyRef(_, ref ty_mut) = lhs_ty.sty {
-                                if {
-                                    !self.infcx.type_moves_by_default(self.param_env,
-                                                                        ty_mut.ty,
-                                                                        lhs_expr.span) &&
-                                        self.lookup_op_method(ty_mut.ty,
-                                                                &[rhs_ty],
-                                                                Op::Binary(op, is_assign))
-                                            .is_ok()
-                                } {
-                                    let codemap = self.tcx.sess.codemap();
-                                    match codemap.span_to_snippet(lhs_expr.span) {
-                                        Ok(lstring) =>{
-                                            let msg = &format!(
-                                                "`{}` can be used on '{}', you can \
-                                                dereference `{2}`: `*{2}`",
-                                                op.node.as_str(), ty_mut.ty, lstring);
-                                            err.help(msg);
-                                            suggested_deref = true;
-                                        },
-                                        _ =>{}
-                                    }
-                                }
-                            }
                             if let Some(missing_trait) = missing_trait {
-                                if missing_trait == "std::ops::Add" &&
+                                if op.node == hir::BiAdd &&
                                     self.check_str_addition(expr, lhs_expr, rhs_expr, lhs_ty,
                                                             rhs_ty, &mut err) {
                                     // This has nothing here because it means we did string
@@ -375,13 +366,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     err.note(
                                         &format!("`{}` might need a bound for `{}`",
                                                     lhs_ty, missing_trait));
-                                } else {
-                                    if !suggested_deref{
-                                        err.note(
-                                            &format!("an implementation of `{}` might \
-                                                        be missing for `{}`",
-                                                        missing_trait, lhs_ty));
-                                    }
+                                } else if !suggested_deref {
+                                    err.note(
+                                        &format!("an implementation of `{}` might \
+                                                    be missing for `{}`",
+                                                    missing_trait, lhs_ty));
                                 }
                             }
                             err.emit();
@@ -468,20 +457,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                      op.as_str(), actual);
                     err.span_label(ex.span, format!("cannot apply unary \
                                                     operator `{}`", op.as_str()));
-                    let missing_trait = match op {
-                        hir::UnNeg => "std::ops::Neg",
-                        hir::UnNot => "std::ops::Not",
-                        hir::UnDeref => "std::ops::UnDerf"
-                    };
-                    match actual.sty{
-                        TyUint(_) => {
-                            if op == hir::UnNeg{
-                                err.note(&format!("unsigned values cannot be negated"));
-                            }
+                    match actual.sty {
+                        TyUint(_) if op == hir::UnNeg => {
+                            err.note(&format!("unsigned values cannot be negated"));
                         },
                         TyStr | TyNever | TyChar | TyTuple(_) | TyArray(_,_) => {},
                         TyRef(_, ref lty) if lty.ty.sty == TyStr => {},
                         _ => {
+                            let missing_trait = match op {
+                                hir::UnNeg => "std::ops::Neg",
+                                hir::UnNot => "std::ops::Not",
+                                hir::UnDeref => "std::ops::UnDerf"
+                            };
                             err.note(&format!("an implementation of `{}` might \
                                                 be missing for `{}`",
                                              missing_trait, operand_ty));
