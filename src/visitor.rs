@@ -687,7 +687,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub fn skip_empty_lines(&mut self, end_pos: BytePos) {
-        while let Some(pos) = self.snippet_provider
+        while let Some(pos) = self
+            .snippet_provider
             .opt_span_after(mk_sp(self.last_pos, end_pos), "\n")
         {
             if let Some(snippet) = self.opt_snippet(mk_sp(self.last_pos, pos)) {

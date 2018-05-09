@@ -50,7 +50,8 @@ pub fn rewrite_closure(
     if let ast::ExprKind::Block(ref block) = body.node {
         // The body of the closure is an empty block.
         if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
-            return body.rewrite(context, shape)
+            return body
+                .rewrite(context, shape)
                 .map(|s| format!("{} {}", prefix, s));
         }
 

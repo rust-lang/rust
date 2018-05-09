@@ -165,7 +165,8 @@ impl FormattingError {
         match self.kind {
             ErrorKind::LineOverflow(found, max) => (max, found - max),
             ErrorKind::TrailingWhitespace => {
-                let trailing_ws_start = self.line_buffer
+                let trailing_ws_start = self
+                    .line_buffer
                     .rfind(|c: char| !c.is_whitespace())
                     .map(|pos| pos + 1)
                     .unwrap_or(0);

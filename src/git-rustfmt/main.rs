@@ -170,7 +170,8 @@ fn main() {
     env_logger::init();
 
     let opts = make_opts();
-    let matches = opts.parse(env::args().skip(1))
+    let matches = opts
+        .parse(env::args().skip(1))
         .expect("Couldn't parse command line");
     let config = Config::from_args(&matches, &opts);
 

@@ -249,7 +249,8 @@ fn _rewrite_comment(
     // If there are lines without a starting sigil, we won't format them correctly
     // so in that case we won't even re-align (if !config.normalize_comments()) and
     // we should stop now.
-    let num_bare_lines = orig.lines()
+    let num_bare_lines = orig
+        .lines()
         .map(|line| line.trim())
         .filter(|l| !(l.starts_with('*') || l.starts_with("//") || l.starts_with("/*")))
         .count();
@@ -271,11 +272,13 @@ fn identify_comment(
     is_doc_comment: bool,
 ) -> Option<String> {
     let style = comment_style(orig, false);
-    let first_group = orig.lines()
+    let first_group = orig
+        .lines()
         .take_while(|l| style.line_with_same_comment_style(l, false))
         .collect::<Vec<_>>()
         .join("\n");
-    let rest = orig.lines()
+    let rest = orig
+        .lines()
         .skip(first_group.lines().count())
         .collect::<Vec<_>>()
         .join("\n");
@@ -333,7 +336,8 @@ fn rewrite_comment_inner(
     };
 
     let line_breaks = count_newlines(orig.trim_right());
-    let lines = orig.lines()
+    let lines = orig
+        .lines()
         .enumerate()
         .map(|(i, mut line)| {
             line = trim_right_unless_two_whitespaces(line.trim_left(), is_doc_comment);
@@ -553,7 +557,8 @@ fn light_rewrite_comment(
     config: &Config,
     is_doc_comment: bool,
 ) -> Option<String> {
-    let lines: Vec<&str> = orig.lines()
+    let lines: Vec<&str> = orig
+        .lines()
         .map(|l| {
             // This is basically just l.trim(), but in the case that a line starts
             // with `*` we want to leave one space before it, so it aligns with the

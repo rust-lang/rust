@@ -25,7 +25,8 @@ fn main() {
     // #1380
     {
         {
-            let creds = self.client
+            let creds = self
+                .client
                 .client_credentials(&self.config.auth.oauth2.id, &self.config.auth.oauth2.secret)?;
         }
     }

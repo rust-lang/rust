@@ -283,6 +283,7 @@ fn issue_1862() {
 }
 
 fn issue_1878() {
-    let channel: &str = seq.next_element()?
+    let channel: &str = seq
+        .next_element()?
         .ok_or_else(|| de::Error::invalid_length(2, &self))?;
 }

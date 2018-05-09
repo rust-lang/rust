@@ -282,7 +282,8 @@ pub struct IgnoreList(HashSet<PathBuf>);
 
 impl IgnoreList {
     pub fn add_prefix(&mut self, dir: &Path) {
-        self.0 = self.0
+        self.0 = self
+            .0
             .iter()
             .map(|s| {
                 if s.has_root() {

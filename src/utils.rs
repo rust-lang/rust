@@ -29,7 +29,8 @@ const SKIP_ANNOTATION: &str = "rustfmt_skip";
 pub fn extra_offset(text: &str, shape: Shape) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
-        Some(idx) => text.len()
+        Some(idx) => text
+            .len()
             .checked_sub(idx + 1 + shape.used_width())
             .unwrap_or(0),
         None => text.len(),

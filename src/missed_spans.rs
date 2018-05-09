@@ -291,7 +291,8 @@ impl<'a> FmtVisitor<'a> {
             i += offset;
 
             if c == '\n' {
-                let skip_this_line = !self.config
+                let skip_this_line = !self
+                    .config
                     .file_lines()
                     .contains_line(file_name, status.cur_line);
                 if skip_this_line {

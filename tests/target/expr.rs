@@ -404,7 +404,8 @@ impl Foo {
             let x = match () {
                 () => {
                     let i;
-                    i == self.install_config
+                    i == self
+                        .install_config
                         .storage
                         .experimental_compressed_block_size as usize
                 }
