@@ -748,7 +748,7 @@ mod tests {
 
     #[test]
     fn allocator_param() {
-        use allocator::{Alloc, AllocErr};
+        use alloc::AllocErr;
 
         // Writing a test of integration between third-party
         // allocators and RawVec is a little tricky because the RawVec
