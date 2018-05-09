@@ -10,16 +10,13 @@ build = "build.rs"
 [[bin]]
 doc = false
 name = "miri"
-path = "miri/bin/miri.rs"
+path = "src/bin/miri.rs"
 
 [[bin]]
 doc = false
 name = "cargo-miri"
-path = "miri/bin/cargo-miri.rs"
+path = "src/bin/cargo-miri.rs"
 required-features = ["cargo_miri"]
-
-[lib]
-path = "miri/lib.rs"
 
 [dependencies]
 byteorder = { version = "1.1", features = ["i128"]}
