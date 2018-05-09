@@ -22,7 +22,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
     cgu_name: &str,
     files: &[(WorkProductFileKind, PathBuf)]
 ) -> Option<(WorkProductId, WorkProduct)> {
-    debug!("create_trans_partition({:?},{:?})",
+    debug!("copy_cgu_workproducts_to_incr_comp_cache_dir({:?},{:?})",
            cgu_name,
            files);
     if sess.opts.incremental.is_none() {
