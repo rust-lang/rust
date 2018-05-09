@@ -338,6 +338,34 @@ pub const fn size_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
+    unsafe { intrinsics::size_of_val(val) }
+}
+
+/// Returns the size of the pointed-to value in bytes.
+///
+/// This is usually the same as `size_of::<T>()`. However, when `T` *has* no
+/// statically known size, e.g. a slice [`[T]`][slice] or a [trait object],
+/// then `size_of_val` can be used to get the dynamically-known size.
+///
+/// [slice]: ../../std/primitive.slice.html
+/// [trait object]: ../../book/first-edition/trait-objects.html
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of_val(&5i32));
+///
+/// let x: [u8; 13] = [0; 13];
+/// let y: &[u8] = &x;
+/// assert_eq!(13, mem::size_of_val(y));
+/// ```
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 pub fn size_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::size_of_val(val) }
 }
@@ -422,7 +450,28 @@ pub const fn align_of<T>() -> usize {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
+    unsafe { intrinsics::min_align_of_val(val) }
+}
+
+/// Returns the [ABI]-required minimum alignment of the type of the value that `val` points to.
+///
+/// Every reference to a value of the type `T` must be a multiple of this number.
+///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::align_of_val(&5i32));
+/// ```
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
     unsafe { intrinsics::min_align_of_val(val) }
 }
 

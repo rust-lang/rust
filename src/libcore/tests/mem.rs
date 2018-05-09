@@ -48,6 +48,36 @@ fn size_of_val_basic() {
 }
 
 #[test]
+fn size_of_val_const() {
+    macro_rules! ez_byte_string {
+        ($name: ident, $string: expr) => {
+            static $name: [u8; size_of_val($string)] = *$string;
+        }
+    }
+
+    ez_byte_string!(OWO, b"what's this?");
+    ez_byte_string!(EMPTY, b"");
+
+    assert_eq!(&OWO, b"what's this?");
+    assert_eq!(&EMPTY, b"");
+
+    // ~ one day ~
+    // static SIZE_OF_OWO_SLICE: usize = size_of_val(&OWO[..]);
+    // static SIZE_OF_EMPTY_SLICE: usize = size_of_val(&EMPTY[..]);
+
+    // assert_eq!(SIZE_OF_OWO_SLICE, OWO.len());
+    // assert_eq!(SIZE_OF_EMPTY_SLICE, EMPTY.len());
+
+    const SIZE_OF_U8: usize = size_of_val(&0u8);
+    const SIZE_OF_U16: usize = size_of_val(&1u16);
+    static SIZE_OF_U32: usize = size_of_val(&9u32);
+
+    assert_eq!(SIZE_OF_U8, 1);
+    assert_eq!(SIZE_OF_U16, 2);
+    assert_eq!(SIZE_OF_U32, 4);
+}
+
+#[test]
 fn align_of_basic() {
     assert_eq!(align_of::<u8>(), 1);
     assert_eq!(align_of::<u16>(), 2);
@@ -80,6 +110,17 @@ fn align_of_val_basic() {
     assert_eq!(align_of_val(&1u8), 1);
     assert_eq!(align_of_val(&1u16), 2);
     assert_eq!(align_of_val(&1u32), 4);
+}
+
+#[test]
+fn align_of_val_const() {
+    const ALIGN_OF_U8: usize = align_of_val(&0u8);
+    const ALIGN_OF_U16: usize = align_of_val(&1u16);
+    static ALIGN_OF_U32: usize = align_of_val(&9u32);
+
+    assert_eq!(ALIGN_OF_U8, 1);
+    assert_eq!(ALIGN_OF_U16, 2);
+    assert_eq!(ALIGN_OF_U32, 4);
 }
 
 #[test]
