@@ -212,16 +212,16 @@ impl TransCrate for LlvmTransCrate {
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete>{
         use rustc::util::common::time;
-        let trans = trans.downcast::<::back::write::OngoingCrateTranslation>()
+        let (trans, work_products) = trans.downcast::<::back::write::OngoingCrateTranslation>()
             .expect("Expected LlvmTransCrate's OngoingCrateTranslation, found Box<Any>")
-            .join(sess, dep_graph);
+            .join(sess);
         if sess.opts.debugging_opts.incremental_info {
             back::write::dump_incremental_data(&trans);
         }
 
         time(sess,
              "serialize work products",
-             move || rustc_incremental::save_work_products(sess, &dep_graph));
+             move || rustc_incremental::save_work_products(sess, &dep_graph, work_products));
 
         sess.compile_status()?;
 

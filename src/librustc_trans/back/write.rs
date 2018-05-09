@@ -17,8 +17,8 @@ use back::linker::LinkerInfo;
 use back::symbol_export::ExportedSymbols;
 use base;
 use consts;
-use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
-use rustc::dep_graph::{DepGraph, WorkProductFileKind};
+use rustc_incremental::{create_trans_partition, in_incr_comp_dir};
+use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
 use rustc::middle::cstore::{LinkMeta, EncodedMetadata};
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, SomePasses,
                              AllPasses, Sanitizer, Lto};
@@ -1021,11 +1021,13 @@ pub fn start_async_translation(tcx: TyCtxt,
     }
 }
 
-fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
-                                              dep_graph: &DepGraph,
-                                              compiled_modules: &CompiledModules) {
+fn generate_module_artifacts(sess: &Session,
+                             compiled_modules: &CompiledModules)
+                                -> FxHashMap<WorkProductId, WorkProduct> {
+    let mut work_products = FxHashMap::default();
+
     if sess.opts.incremental.is_none() {
-        return;
+        return work_products;
     }
 
     for module in compiled_modules.modules.iter() {
@@ -1041,8 +1043,12 @@ fn copy_module_artifacts_into_incr_comp_cache(sess: &Session,
             files.push((WorkProductFileKind::BytecodeCompressed, path.clone()));
         }
 
-        save_trans_partition(sess, dep_graph, &module.name, &files);
+        if let Some((id, product)) = create_trans_partition(sess, &module.name, &files) {
+            work_products.insert(id, product);
+        }
     }
+
+    work_products
 }
 
 fn produce_final_output_artifacts(sess: &Session,
@@ -2236,7 +2242,7 @@ pub struct OngoingCrateTranslation {
 }
 
 impl OngoingCrateTranslation {
-    pub(crate) fn join(self, sess: &Session, dep_graph: &DepGraph) -> CrateTranslation {
+    pub(crate) fn join(self, sess: &Session) -> (CrateTranslation, FxHashMap<WorkProductId, WorkProduct>) {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = match self.future.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
@@ -2255,9 +2261,8 @@ impl OngoingCrateTranslation {
             time_graph.dump(&format!("{}-timings", self.crate_name));
         }
 
-        copy_module_artifacts_into_incr_comp_cache(sess,
-                                                   dep_graph,
-                                                   &compiled_modules);
+        let work_products = generate_module_artifacts(sess, &compiled_modules);
+
         produce_final_output_artifacts(sess,
                                        &compiled_modules,
                                        &self.output_filenames);
@@ -2281,7 +2286,7 @@ impl OngoingCrateTranslation {
             metadata_module: compiled_modules.metadata_module,
         };
 
-        trans
+        (trans, work_products)
     }
 
     pub(crate) fn submit_pre_translated_module_to_llvm(&self,

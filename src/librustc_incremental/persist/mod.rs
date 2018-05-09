@@ -30,5 +30,5 @@ pub use self::load::load_query_result_cache;
 pub use self::load::LoadResult;
 pub use self::save::save_dep_graph;
 pub use self::save::save_work_products;
-pub use self::work_product::save_trans_partition;
+pub use self::work_product::create_trans_partition;
 pub use self::work_product::delete_workproduct_files;
