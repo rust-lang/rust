@@ -380,7 +380,8 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> String {
+    #[rustc_const_unstable(feature = "const_string_new")]
+    pub const fn new() -> String {
         String { vec: Vec::new() }
     }
 

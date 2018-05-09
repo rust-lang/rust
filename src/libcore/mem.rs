@@ -959,8 +959,9 @@ impl<T> ManuallyDrop<T> {
     /// ManuallyDrop::new(Box::new(()));
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_manually_drop_new")]
     #[inline]
-    pub fn new(value: T) -> ManuallyDrop<T> {
+    pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
     }
 
