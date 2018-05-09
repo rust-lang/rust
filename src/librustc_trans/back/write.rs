@@ -1021,9 +1021,10 @@ pub fn start_async_translation(tcx: TyCtxt,
     }
 }
 
-fn generate_module_artifacts(sess: &Session,
-                             compiled_modules: &CompiledModules)
-                                -> FxHashMap<WorkProductId, WorkProduct> {
+fn generate_module_artifacts(
+    sess: &Session,
+    compiled_modules: &CompiledModules
+) -> FxHashMap<WorkProductId, WorkProduct> {
     let mut work_products = FxHashMap::default();
 
     if sess.opts.incremental.is_none() {
@@ -2242,7 +2243,10 @@ pub struct OngoingCrateTranslation {
 }
 
 impl OngoingCrateTranslation {
-    pub(crate) fn join(self, sess: &Session) -> (CrateTranslation, FxHashMap<WorkProductId, WorkProduct>) {
+    pub(crate) fn join(
+        self,
+        sess: &Session
+    ) -> (CrateTranslation, FxHashMap<WorkProductId, WorkProduct>) {
         self.shared_emitter_main.check(sess, true);
         let compiled_modules = match self.future.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
