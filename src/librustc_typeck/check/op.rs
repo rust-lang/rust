@@ -258,7 +258,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     format!("cannot use `{}=` on type `{}`",
                                     op.node.as_str(), lhs_ty));
                             let mut suggested_deref = false;
-                            if let TyRef(_, ref ty_mut) = lhs_ty.sty {
+                            if let TyRef(_, mut ty_mut) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
                                                                         ty_mut.ty,
@@ -269,10 +269,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
+                                        while let TyRef(_, ty_mut_inner) = ty_mut.ty.sty{
+                                            ty_mut = ty_mut_inner;
+                                        }
                                         let msg = &format!(
                                                 "`{}=` can be used on '{}', you can \
                                                 dereference `{2}`: `*{2}`",
-                                                op.node.as_str(), ty_mut.ty, lstring);
+                                                op.node.as_str(),
+                                                ty_mut.ty,
+                                                lstring
+                                        );
                                         err.help(msg);
                                         suggested_deref = true;
                                     }
@@ -300,14 +306,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     // we don't want the note in the else clause to be emitted
                                 } else if let ty::TyParam(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
-                                    err.note(
-                                        &format!("`{}` might need a bound for `{}`",
-                                                    lhs_ty, missing_trait));
+                                    err.note(&format!(
+                                        "`{}` might need a bound for `{}`",
+                                        lhs_ty, missing_trait
+                                    ));
                                 } else if !suggested_deref {
-                                    err.note(
-                                        &format!("an implementation of `{}` might \
-                                                    be missing for `{}`",
-                                                    missing_trait, lhs_ty));
+                                    err.note(&format!(
+                                        "an implementation of `{}` might \
+                                         be missing for `{}`",
+                                        missing_trait, lhs_ty
+                                    ));
                                 }
                             }
                             err.emit();
@@ -318,7 +326,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             op.node.as_str(),
                                             lhs_ty);
                             let mut suggested_deref = false;
-                            if let TyRef(_, ref ty_mut) = lhs_ty.sty {
+                            if let TyRef(_, mut ty_mut) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
                                                                         ty_mut.ty,
@@ -329,10 +337,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
+                                        while let TyRef(_, ty_mut_inner) = ty_mut.ty.sty{
+                                            ty_mut = ty_mut_inner;
+                                        }
                                         let msg = &format!(
                                                 "`{}` can be used on '{}', you can \
                                                 dereference `{2}`: `*{2}`",
-                                                op.node.as_str(), ty_mut.ty, lstring);
+                                                op.node.as_str(),
+                                                ty_mut.ty,
+                                                lstring
+                                        );
                                         err.help(msg);
                                         suggested_deref = true;
                                     }
@@ -363,14 +377,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     // we don't want the note in the else clause to be emitted
                                 } else if let ty::TyParam(_) = lhs_ty.sty {
                                     // FIXME: point to span of param
-                                    err.note(
-                                        &format!("`{}` might need a bound for `{}`",
-                                                    lhs_ty, missing_trait));
+                                    err.note(&format!(
+                                        "`{}` might need a bound for `{}`",
+                                        lhs_ty, missing_trait
+                                    ));
                                 } else if !suggested_deref {
-                                    err.note(
-                                        &format!("an implementation of `{}` might \
-                                                    be missing for `{}`",
-                                                    missing_trait, lhs_ty));
+                                    err.note(&format!(
+                                        "an implementation of `{}` might \
+                                         be missing for `{}`",
+                                        missing_trait, lhs_ty
+                                    ));
                                 }
                             }
                             err.emit();
