@@ -57,17 +57,34 @@ verify_status() {
     fi
 }
 
+check_dispatch() {
+    if [ "$1" = submodule_changed ]; then
+        # ignore $2 (branch id)
+        verify_status $3 $4
+    elif [ "$2" = beta ]; then
+        echo "Requiring test passing for $3..."
+        if grep -q '"'"$3"'":"\(test\|build\)-fail"' "$TOOLSTATE_FILE"; then
+            exit 4
+        fi
+    fi
+}
+
+status_check() {
+    check_dispatch $1 beta book src/doc/book
+    check_dispatch $1 beta nomicon src/doc/nomicon
+    check_dispatch $1 beta reference src/doc/reference
+    check_dispatch $1 beta rust-by-example src/doc/rust-by-example
+    check_dispatch $1 beta rls src/tool/rls
+    check_dispatch $1 beta rustfmt src/tool/rustfmt
+    # these tools are not required for beta to successfully branch
+    check_dispatch $1 nightly clippy-driver src/tool/clippy
+    check_dispatch $1 nightly miri src/tool/miri
+}
+
 # If this PR is intended to update one of these tools, do not let the build pass
 # when they do not test-pass.
 
-verify_status book src/doc/book
-verify_status nomicon src/doc/nomicon
-verify_status reference src/doc/reference
-verify_status rust-by-example src/doc/rust-by-example
-verify_status rls src/tool/rls
-verify_status rustfmt src/tool/rustfmt
-verify_status clippy-driver src/tool/clippy
-verify_status miri src/tool/miri
+status_check "submodule_changed"
 
 if [ "$RUST_RELEASE_CHANNEL" = nightly -a -n "${TOOLSTATE_REPO_ACCESS_TOKEN+is_set}" ]; then
     . "$(dirname $0)/repo.sh"
@@ -86,6 +103,4 @@ $COMMIT\t$(cat "$TOOLSTATE_FILE")
     exit 0
 fi
 
-if grep -q fail "$TOOLSTATE_FILE"; then
-    exit 4
-fi
+status_check "beta_required"
