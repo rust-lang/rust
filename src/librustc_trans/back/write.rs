@@ -174,10 +174,7 @@ pub fn target_machine_factory(sess: &Session, find_features: bool)
     let triple = &sess.target.target.llvm_target;
 
     let triple = CString::new(triple.as_bytes()).unwrap();
-    let cpu = match sess.opts.cg.target_cpu {
-        Some(ref s) => &**s,
-        None => &*sess.target.target.options.cpu
-    };
+    let cpu = sess.target_cpu();
     let cpu = CString::new(cpu.as_bytes()).unwrap();
     let features = attributes::llvm_target_features(sess)
         .collect::<Vec<_>>()
@@ -294,7 +291,7 @@ impl ModuleConfig {
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode;
         let embed_bitcode = sess.target.target.options.embed_bitcode ||
                             sess.opts.debugging_opts.embed_bitcode ||
-                            sess.opts.debugging_opts.cross_lang_lto;
+                            sess.opts.debugging_opts.cross_lang_lto.embed_bitcode();
         if embed_bitcode {
             match sess.opts.optimize {
                 config::OptLevel::No |
@@ -1358,7 +1355,8 @@ fn execute_work_item(cgcx: &CodegenContext,
 
             // Don't run LTO passes when cross-lang LTO is enabled. The linker
             // will do that for us in this case.
-            let needs_lto = needs_lto && !cgcx.opts.debugging_opts.cross_lang_lto;
+            let needs_lto = needs_lto &&
+                !cgcx.opts.debugging_opts.cross_lang_lto.embed_bitcode();
 
             if needs_lto {
                 Ok(WorkItemResult::NeedsLTO(mtrans))
