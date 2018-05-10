@@ -250,9 +250,11 @@ pub fn run_core(search_paths: SearchPaths,
                                                         |_| Ok(()));
         let driver::InnerExpansionResult {
             mut hir_forest,
-            resolver,
+            mut resolver,
             ..
         } = abort_on_err(result, &sess);
+
+        resolver.ignore_extern_prelude_feature = true;
 
         // We need to hold on to the complete resolver, so we clone everything
         // for the analysis passes to use. Suboptimal, but necessary in the
