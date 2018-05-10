@@ -17,7 +17,7 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
-use rustc::session::{Session, CrateDisambiguator};
+use rustc::session::{CrateDisambiguator, Session};
 use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
@@ -85,6 +85,15 @@ pub struct CrateMetadata {
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
+
+    // Booleans derived from attributes
+    pub compiler_builtins: Option<bool>,
+    pub needs_allocator: Option<bool>,
+    pub needs_panic_runtime: Option<bool>,
+    pub no_builtins: Option<bool>,
+    pub panic_runtime: Option<bool>,
+    pub profiler_runtime: Option<bool>,
+    pub sanitizer_runtime: Option<bool>,
 }
 
 pub struct CStore {
@@ -188,47 +197,40 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
-    pub fn needs_allocator(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "needs_allocator")
+    pub fn needs_allocator(&self) -> bool {
+        self.needs_allocator.unwrap_or(false)
     }
 
     pub fn has_global_allocator(&self) -> bool {
-        self.root.has_global_allocator.clone()
+        self.root.has_global_allocator
     }
 
     pub fn has_default_lib_allocator(&self) -> bool {
-        self.root.has_default_lib_allocator.clone()
+        self.root.has_default_lib_allocator
     }
 
-    pub fn is_panic_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "panic_runtime")
+    pub fn is_panic_runtime(&self) -> bool {
+        self.panic_runtime.unwrap_or(false)
     }
 
-    pub fn needs_panic_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "needs_panic_runtime")
+    pub fn needs_panic_runtime(&self) -> bool {
+        self.needs_panic_runtime.unwrap_or(false)
     }
 
-    pub fn is_compiler_builtins(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "compiler_builtins")
+    pub fn is_compiler_builtins(&self) -> bool {
+        self.compiler_builtins.unwrap_or(false)
     }
 
-    pub fn is_sanitizer_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "sanitizer_runtime")
+    pub fn is_sanitizer_runtime(&self) -> bool {
+        self.sanitizer_runtime.unwrap_or(false)
     }
 
-    pub fn is_profiler_runtime(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "profiler_runtime")
+    pub fn is_profiler_runtime(&self) -> bool {
+        self.profiler_runtime.unwrap_or(false)
     }
 
-    pub fn is_no_builtins(&self, sess: &Session) -> bool {
-        let attrs = self.get_item_attrs(CRATE_DEF_INDEX, sess);
-        attr::contains_name(&attrs, "no_builtins")
+    pub fn is_no_builtins(&self) -> bool {
+        self.no_builtins.unwrap_or(false)
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {

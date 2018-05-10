@@ -214,7 +214,6 @@ impl<'a> CrateLoader<'a> {
         let root = if root.is_some() { root } else { &crate_paths };
 
         let Library { dylib, rlib, rmeta, metadata } = lib;
-
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
         let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
@@ -229,7 +228,7 @@ impl<'a> CrateLoader<'a> {
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
 
-        let cmeta = cstore::CrateMetadata {
+        let mut cmeta = cstore::CrateMetadata {
             name,
             extern_crate: Lock::new(None),
             def_path_table: Lrc::new(def_path_table),
@@ -249,7 +248,16 @@ impl<'a> CrateLoader<'a> {
                 rlib,
                 rmeta,
             },
+            compiler_builtins: None,
+            needs_allocator: None,
+            needs_panic_runtime: None,
+            no_builtins: None,
+            panic_runtime: None,
+            profiler_runtime: None,
+            sanitizer_runtime: None,
         };
+
+        cmeta.derive_attributes(self.sess);
 
         let cmeta = Lrc::new(cmeta);
         self.cstore.set_crate_data(cnum, cmeta.clone());
@@ -641,15 +649,14 @@ impl<'a> CrateLoader<'a> {
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs,
                                                           "needs_panic_runtime");
 
-        let sess = self.sess;
         self.cstore.iter_crate_data(|cnum, data| {
             needs_panic_runtime = needs_panic_runtime ||
-                                  data.needs_panic_runtime(sess);
-            if data.is_panic_runtime(sess) {
+                                  data.needs_panic_runtime();
+            if data.is_panic_runtime() {
                 // Inject a dependency from all #![needs_panic_runtime] to this
                 // #![panic_runtime] crate.
                 self.inject_dependency_if(cnum, "a panic runtime",
-                                          &|data| data.needs_panic_runtime(sess));
+                                          &|data| data.needs_panic_runtime());
                 runtime_found = runtime_found || *data.dep_kind.lock() == DepKind::Explicit;
             }
         });
@@ -686,7 +693,7 @@ impl<'a> CrateLoader<'a> {
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
-        if !data.is_panic_runtime(self.sess) {
+        if !data.is_panic_runtime() {
             self.sess.err(&format!("the crate `{}` is not a panic runtime",
                                    name));
         }
@@ -698,7 +705,7 @@ impl<'a> CrateLoader<'a> {
 
         self.sess.injected_panic_runtime.set(Some(cnum));
         self.inject_dependency_if(cnum, "a panic runtime",
-                                  &|data| data.needs_panic_runtime(self.sess));
+                                  &|data| data.needs_panic_runtime());
     }
 
     fn inject_sanitizer_runtime(&mut self) {
@@ -793,7 +800,7 @@ impl<'a> CrateLoader<'a> {
                                        PathKind::Crate, dep_kind);
 
                 // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
-                if !data.is_sanitizer_runtime(self.sess) {
+                if !data.is_sanitizer_runtime() {
                     self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
                                            name));
                 }
@@ -816,7 +823,7 @@ impl<'a> CrateLoader<'a> {
                                    PathKind::Crate, dep_kind);
 
             // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-            if !data.is_profiler_runtime(self.sess) {
+            if !data.is_profiler_runtime() {
                 self.sess.err(&format!("the crate `profiler_builtins` is not \
                                         a profiler runtime"));
             }
@@ -833,7 +840,7 @@ impl<'a> CrateLoader<'a> {
         let mut needs_allocator = attr::contains_name(&krate.attrs,
                                                       "needs_allocator");
         self.cstore.iter_crate_data(|_, data| {
-            needs_allocator = needs_allocator || data.needs_allocator(self.sess);
+            needs_allocator = needs_allocator || data.needs_allocator();
         });
         if !needs_allocator {
             self.sess.injected_allocator.set(None);
