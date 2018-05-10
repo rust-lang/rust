@@ -254,15 +254,12 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     Position::ArgumentNamed(s) if s == name => (),
                     // So is `{A}` if A is a type parameter
                     Position::ArgumentNamed(s) => match generics.params.iter().find(|param| {
-                        match param.kind {
-                            GenericParamDefKind::Type(_) => param.name == s,
-                            GenericParamDefKind::Lifetime(_) => false,
-                        }
+                        param.name == s
                     }) {
                         Some(_) => (),
                         None => {
                             span_err!(tcx.sess, span, E0230,
-                                      "there is no type parameter \
+                                      "there is no parameter \
                                        {} on trait {}",
                                       s, name);
                             result = Err(ErrorReported);

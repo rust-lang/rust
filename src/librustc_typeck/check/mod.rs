@@ -4918,13 +4918,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Check provided parameters.
-        let (ty_non_def_req_len, ty_req_len, lt_req_len) =
+        let (ty_req_len, accepted, lt_req_len) =
             segment.map_or((0, 0, 0), |(_, generics)| {
                 let param_counts = generics.param_counts();
 
-                let type_params_offset
-                    = (generics.parent.is_none() && generics.has_self) as usize;
-                let type_params = param_counts.types - type_params_offset;
+                let own_self = (generics.parent.is_none() && generics.has_self) as usize;
+                let type_params = param_counts.types - own_self;
                 let type_params_without_defaults = {
                     let mut count = 0;
                     for param in generics.params.iter() {
@@ -4937,14 +4936,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     count
                 };
                 let type_params_barring_defaults =
-                    type_params_without_defaults - type_params_offset;
+                    type_params_without_defaults - own_self;
 
                 (type_params_barring_defaults, type_params, param_counts.lifetimes)
             });
 
-        if types.len() > ty_req_len {
-            let span = types[ty_req_len].span;
-            let expected_text = count_type_params(ty_req_len);
+        if types.len() > accepted {
+            let span = types[accepted].span;
+            let expected_text = count_type_params(accepted);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0087,
                              "too many type parameters provided: \
@@ -4957,8 +4956,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if types.len() < ty_non_def_req_len && !infer_types && !supress_mismatch_error {
-            let expected_text = count_type_params(ty_non_def_req_len);
+        } else if types.len() < ty_req_len && !infer_types && !supress_mismatch_error {
+            let expected_text = count_type_params(ty_req_len);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
                              "too few type parameters provided: \

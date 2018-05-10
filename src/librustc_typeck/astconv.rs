@@ -222,8 +222,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        let type_params_offset = self_ty.is_some() as usize;
-        let ty_param_defs = param_counts.types - type_params_offset;
+        let own_self = self_ty.is_some() as usize;
+        let ty_param_defs = param_counts.types - own_self;
         if !infer_types || num_types_provided > ty_param_defs {
             let type_params_without_defaults = {
                 let mut count = 0;
@@ -241,7 +241,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 span,
                 num_types_provided,
                 ty_param_defs,
-                type_params_without_defaults - type_params_offset);
+                type_params_without_defaults - own_self);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
@@ -258,7 +258,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         };
 
         let substs = Substs::for_item(tcx, def_id, |def, _| {
-            let i = def.index as usize - type_params_offset;
+            let i = def.index as usize - own_self;
             if let Some(lifetime) = parameters.lifetimes.get(i) {
                 self.ast_region_to_region(lifetime, Some(def))
             } else {
@@ -272,7 +272,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
-            let i = i - (param_counts.lifetimes + type_params_offset);
+            let i = i - (param_counts.lifetimes + own_self);
             if i < num_types_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])

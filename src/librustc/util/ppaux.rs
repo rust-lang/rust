@@ -351,8 +351,10 @@ impl PrintContext {
                             let zipped = iter::once((last_ty, types.next().unwrap()))
                                               .chain(type_params.zip(types));
                             for ((def_id, has_default), actual) in zipped {
-                                if !has_default ||
-                                        tcx.type_of(def_id).subst(tcx, substs) != actual {
+                                if !has_default {
+                                    break;
+                                }
+                                if tcx.type_of(def_id).subst(tcx, substs) != actual {
                                     break;
                                 }
                                 num_supplied_defaults += 1;
@@ -604,7 +606,7 @@ define_print! {
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let type_name = match self.kind {
-            ty::GenericParamDefKind::Lifetime(_) => "Region",
+            ty::GenericParamDefKind::Lifetime(_) => "Lifetime",
             ty::GenericParamDefKind::Type(_) => "Type",
         };
         write!(f, "{}({}, {:?}, {})",

@@ -804,7 +804,7 @@ pub struct Generics {
     pub parent_count: usize,
     pub params: Vec<GenericParamDef>,
 
-    /// Reverse map to the `index` field of each `GenericParamDef`'s inner type
+    /// Reverse map to the `index` field of each `GenericParamDef`
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
@@ -836,13 +836,11 @@ impl<'a, 'gcx, 'tcx> Generics {
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        if self.params.iter().any(|param| {
+        for param in self.params.iter() {
             match param.kind {
-                GenericParamDefKind::Type(_) => true,
-                GenericParamDefKind::Lifetime(_) => false
+                GenericParamDefKind::Type(_) => return true,
+                GenericParamDefKind::Lifetime(_) => {}
             }
-        }) {
-            return true;
         }
         if let Some(parent_def_id) = self.parent {
             let parent = tcx.generics_of(parent_def_id);
@@ -858,7 +856,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                         -> &'tcx GenericParamDef
     {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
-            let ref param = self.params[index as usize];
+            let param = &self.params[index as usize];
             match param.kind {
                 ty::GenericParamDefKind::Lifetime(_) => param,
                 _ => bug!("expected region parameter, but found another generic parameter")
@@ -875,53 +873,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
                       -> &'tcx GenericParamDef {
         if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
-            // non-Self type parameters are always offset by exactly
-            // `self.regions.len()`. In the absence of a Self, this is obvious,
-            // but even in the presence of a `Self` we just have to "compensate"
-            // for the regions:
-            //
-            // Without a `Self` (or in a nested generics that doesn't have
-            // a `Self` in itself, even through it parent does), for example
-            // for `fn foo<'a, T1, T2>()`, the situation is:
-            //     Substs:
-            //         0  1  2
-            //         'a T1 T2
-            //     generics.types:
-            //         0  1
-            //         T1 T2
-            //
-            // And with a `Self`, for example for `trait Foo<'a, 'b, T1, T2>`, the
-            // situation is:
-            //     Substs:
-            //         0   1  2  3  4
-            //       Self 'a 'b  T1 T2
-            //     generics.types:
-            //         0  1  2
-            //       Self T1 T2
-            //
-            // And it can be seen that in both cases, to move from a substs
-            // offset to a generics offset you just have to offset by the
-            // number of regions.
-            let type_param_offset = self.param_counts().lifetimes;
-
-            let has_self = self.has_self && self.parent.is_none();
-            let is_separated_self = type_param_offset != 0 && index == 0 && has_self;
-
-            if let Some(_) = (index as usize).checked_sub(type_param_offset) {
-                assert!(!is_separated_self, "found a Self after type_param_offset");
-                let ref param = self.params[index as usize];
-                match param.kind {
-                    ty::GenericParamDefKind::Type(_) => param,
-                    _ => bug!("expected type parameter, but found another generic parameter")
-                }
-            } else {
-                assert!(is_separated_self, "non-Self param before type_param_offset");
-                let ref param = self.params[type_param_offset];
-                match param.kind {
-                    ty::GenericParamDefKind::Type(_) => param,
-                    _ => bug!("expected type parameter, but found another generic parameter")
-                }
-            }
+            &self.params[index as usize]
         } else {
             tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
                 .type_param(param, tcx)

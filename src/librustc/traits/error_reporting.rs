@@ -379,16 +379,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push(("_Self".to_string(), Some(self.tcx.type_of(def.did).to_string())));
         }
 
-        for param in generics.params.iter().filter(|param| {
-            match param.kind {
-                GenericParamDefKind::Type(_) => true,
-                GenericParamDefKind::Lifetime(_) => false,
-            }
-        }) {
+        for param in generics.params.iter() {
             let name = param.name.to_string();
-            let ty = trait_ref.substs.type_for_def(&param);
-            let ty_str = ty.to_string();
-            flags.push((name.clone(), Some(ty_str.clone())));
+            let value = match param.kind {
+                GenericParamDefKind::Type(_) => {
+                    let ty = trait_ref.substs.type_for_def(&param);
+                    ty.to_string()
+                },
+                GenericParamDefKind::Lifetime(_) => continue,
+            };
+            flags.push((name.clone(), Some(value.clone())));
         }
 
         if let Some(true) = self_ty.ty_to_def_id().map(|def_id| def_id.is_local()) {

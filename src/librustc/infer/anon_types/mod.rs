@@ -313,16 +313,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // `['a]` for the first impl trait and `'b` for the
         // second.
         let mut least_region = None;
-        for index in abstract_type_generics.params.iter().filter_map(|param| {
-            if let GenericParamDefKind::Lifetime(_) = param.kind {
-                // Find the index of this region in the list of substitutions.
-                Some(param.index as usize)
-            } else {
-                None
+        for param in &abstract_type_generics.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime(_) => {}
+                _ => continue
             }
-        }) {
             // Get the value supplied for this region from the substs.
-            let subst_arg = anon_defn.substs.region_at(index);
+            let subst_arg = anon_defn.substs.region_at(param.index as usize);
 
             // Compute the least upper bound of it with the other regions.
             debug!("constrain_anon_types: least_region={:?}", least_region);

@@ -1753,7 +1753,7 @@ impl Clean<Generics> for hir::Generics {
         let mut params = Vec::with_capacity(self.params.len());
         for p in &self.params {
             let p = p.clean(cx);
-            if let GenericParam::Type(ref tp) = p {
+            if let GenericParamDef::Type(ref tp) = p {
                 if tp.synthetic == Some(hir::SyntheticTyParamKind::ImplTrait) {
                     cx.impl_trait_bounds.borrow_mut().insert(tp.did, tp.bounds.clone());
                 }

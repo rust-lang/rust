@@ -399,7 +399,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
 impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        for param in self.ev.tcx.generics_of(self.item_def_id).params.iter() {
+        for param in &self.ev.tcx.generics_of(self.item_def_id).params {
             match param.kind {
                 GenericParamDefKind::Type(ty) => {
                     if ty.has_default {
@@ -1340,7 +1340,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        for param in self.tcx.generics_of(self.item_def_id).params.iter() {
+        for param in &self.tcx.generics_of(self.item_def_id).params {
             match param.kind {
                 GenericParamDefKind::Type(ty) => {
                     if ty.has_default {

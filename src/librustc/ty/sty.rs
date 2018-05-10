@@ -366,7 +366,7 @@ struct SplitGeneratorSubsts<'tcx> {
 impl<'tcx> GeneratorSubsts<'tcx> {
     fn split(self, def_id: DefId, tcx: TyCtxt<'_, '_, '_>) -> SplitGeneratorSubsts<'tcx> {
         let generics = tcx.generics_of(def_id);
-        let parent_len = generics.parent_count();
+        let parent_len = generics.parent_count;
         SplitGeneratorSubsts {
             yield_ty: self.substs.type_at(parent_len),
             return_ty: self.substs.type_at(parent_len + 1),

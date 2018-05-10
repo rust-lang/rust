@@ -903,7 +903,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Now create the real type parameters.
     let type_start = own_start + lifetimes.len() as u32;
-    let types = ast_generics.ty_params().enumerate().map(|(i, p)| {
+    let mut types: Vec<_> = ast_generics.ty_params().enumerate().map(|(i, p)| {
         if p.name == keywords::SelfType.name() {
             span_bug!(p.span, "`Self` should not be the name of a regular parameter");
         }
@@ -931,9 +931,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 synthetic: p.synthetic,
             }),
         }
-    });
-
-    let mut types: Vec<_> = types.into_iter().collect();
+    }).collect();
 
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,

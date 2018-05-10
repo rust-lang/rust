@@ -35,7 +35,6 @@ use mir::{self, Mir, interpret};
 use ty::subst::{Kind, Substs, Subst};
 use ty::ReprOptions;
 use ty::Instance;
-use ty::GenericParamDefKind;
 use traits;
 use traits::{Clause, Clauses, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
@@ -2326,20 +2325,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let generics = self.generics_of(def_id);
-        let mut substs = vec![Kind::from(ty)];
-        // Add defaults for other generic params if there are some.
-        for (def_id, has_default) in generics.params.iter().filter_map(|param| {
-            match param.kind {
-                GenericParamDefKind::Type(ty) => Some((param.def_id, ty.has_default)),
-                GenericParamDefKind::Lifetime(_) => None
+        let substs = Substs::for_item(self, def_id, |_, _| bug!(), |def, substs| {
+            if def.index == 0 {
+                ty
+            } else {
+                match def.kind {
+                    ty::GenericParamDefKind::Type(ty_param) => {
+                        assert!(ty_param.has_default);
+                        self.type_of(def.def_id).subst(self, substs)
+                    }
+                    _ => unreachable!()
+                }
             }
-        }).skip(1) {
-            assert!(has_default);
-            let ty = self.type_of(def_id).subst(self, &substs);
-            substs.push(ty.into());
-        }
-        let substs = self.mk_substs(substs.into_iter());
+        });
         self.mk_ty(TyAdt(adt_def, substs))
     }
 

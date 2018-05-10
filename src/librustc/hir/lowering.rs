@@ -374,8 +374,8 @@ impl<'a> LoweringContext<'a> {
 
                 if item_lowered {
                     let item_lifetimes = match self.lctx.items.get(&item.id).unwrap().node {
-                        hir::Item_::ItemImpl(_, _, _, ref generics, .. ) |
-                        hir::Item_::ItemTrait(_, _, ref generics, .. ) => {
+                        hir::Item_::ItemImpl(_, _, _, ref generics, ..)
+                        | hir::Item_::ItemTrait(_, _, ref generics, ..) => {
                             generics.lifetimes().cloned().collect::<Vec<_>>()
                         }
                         _ => Vec::new(),
@@ -1895,13 +1895,11 @@ impl<'a> LoweringContext<'a> {
                 GenericParam::Lifetime(ref lifetime_def) => {
                     hir::GenericParam::Lifetime(self.lower_lifetime_def(lifetime_def))
                 }
-                GenericParam::Type(ref ty_param) => {
-                    hir::GenericParam::Type(self.lower_ty_param(
-                        ty_param,
-                        add_bounds.get(&ty_param.id).map_or(&[][..], |x| &x),
-                        itctx,
-                    ))
-                }
+                GenericParam::Type(ref ty_param) => hir::GenericParam::Type(self.lower_ty_param(
+                    ty_param,
+                    add_bounds.get(&ty_param.id).map_or(&[][..], |x| &x),
+                    itctx,
+                )),
             })
             .collect()
     }

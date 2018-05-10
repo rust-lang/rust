@@ -378,21 +378,18 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
     // For example this forbids the declaration:
     // struct Foo<T = Vec<[u32]>> { .. }
     // Here the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
-    for d in generics.params.iter().filter_map(|param| {
+    for param in &generics.params {
         if let GenericParamDefKind::Type(_) = param.kind {
             if is_our_default(&param) {
-                return Some(param.def_id);
+                let ty = fcx.tcx.type_of(param.def_id);
+                // ignore dependent defaults -- that is, where the default of one type
+                // parameter includes another (e.g., <T, U = T>). In those cases, we can't
+                // be sure if it will error or not as user might always specify the other.
+                if !ty.needs_subst() {
+                    fcx.register_wf_obligation(ty, fcx.tcx.def_span(param.def_id),
+                        ObligationCauseCode::MiscObligation);
+                }
             }
-        }
-        None
-    }) {
-        let ty = fcx.tcx.type_of(d);
-        // ignore dependent defaults -- that is, where the default of one type
-        // parameter includes another (e.g., <T, U = T>). In those cases, we can't
-        // be sure if it will error or not as user might always specify the other.
-        if !ty.needs_subst() {
-            fcx.register_wf_obligation(ty, fcx.tcx.def_span(d),
-                ObligationCauseCode::MiscObligation);
         }
     }
 
@@ -662,20 +659,20 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
                      .collect();
 
     for method_param in generics.params.iter() {
-        let (name, def_id) = match method_param.kind {
+        match method_param.kind {
             // Shadowing is checked in resolve_lifetime.
             GenericParamDefKind::Lifetime(_) => continue,
-            GenericParamDefKind::Type(_) => (method_param.name, method_param.def_id),
+            _ => {},
         };
-        if impl_params.contains_key(&name) {
+        if impl_params.contains_key(&method_param.name) {
             // Tighten up the span to focus on only the shadowing type
-            let type_span = tcx.def_span(def_id);
+            let type_span = tcx.def_span(method_param.def_id);
 
             // The expectation here is that the original trait declaration is
             // local so it should be okay to just unwrap everything.
-            let trait_def_id = impl_params[&name];
+            let trait_def_id = impl_params[&method_param.name];
             let trait_decl_span = tcx.def_span(trait_def_id);
-            error_194(tcx, type_span, trait_decl_span, &name.as_str()[..]);
+            error_194(tcx, type_span, trait_decl_span, &method_param.name.as_str()[..]);
         }
     }
 }
