@@ -12,6 +12,7 @@ use errors::DiagnosticBuilder;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::{Lrc, RwLock, ReadGuard, Lock};
 use std::env;
 use std::hash::Hash;
@@ -132,7 +133,7 @@ impl DepGraph {
         let mut edges = Vec::new();
         for (index, edge_targets) in current_dep_graph.edges.iter_enumerated() {
             let from = current_dep_graph.nodes[index];
-            for &edge_target in edge_targets {
+            for &edge_target in edge_targets.iter() {
                 let to = current_dep_graph.nodes[edge_target];
                 edges.push((from, to));
             }
@@ -210,7 +211,7 @@ impl DepGraph {
         self.with_task_impl(key, cx, arg, false, task,
             |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
-                reads: Vec::new(),
+                reads: SmallVec::new(),
                 read_set: FxHashSet(),
             })),
             |data, key, task| data.borrow_mut().complete_task(key, task))
@@ -231,7 +232,7 @@ impl DepGraph {
 
         self.with_task_impl(key, cx, input, true, identity_fn,
             |_| OpenTask::Ignore,
-            |data, key, _| data.borrow_mut().alloc_node(key, Vec::new()))
+            |data, key, _| data.borrow_mut().alloc_node(key, SmallVec::new()))
     }
 
     fn with_task_impl<'gcx, C, A, R>(
@@ -354,7 +355,7 @@ impl DepGraph {
         if let Some(ref data) = self.data {
             let (result, open_task) = ty::tls::with_context(|icx| {
                 let task = OpenTask::Anon(Lock::new(AnonOpenTask {
-                    reads: Vec::new(),
+                    reads: SmallVec::new(),
                     read_set: FxHashSet(),
                 }));
 
@@ -614,7 +615,7 @@ impl DepGraph {
 
         debug_assert!(data.colors.borrow().get(prev_dep_node_index).is_none());
 
-        let mut current_deps = Vec::new();
+        let mut current_deps = SmallVec::new();
 
         for &dep_dep_node_index in prev_deps {
             let dep_dep_node_color = data.colors.borrow().get(dep_dep_node_index);
@@ -911,7 +912,7 @@ pub enum WorkProductFileKind {
 
 pub(super) struct CurrentDepGraph {
     nodes: IndexVec<DepNodeIndex, DepNode>,
-    edges: IndexVec<DepNodeIndex, Vec<DepNodeIndex>>,
+    edges: IndexVec<DepNodeIndex, SmallVec<[DepNodeIndex; 8]>>,
     node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
     forbidden_edge: Option<EdgeFilter>,
 
@@ -1049,7 +1050,7 @@ impl CurrentDepGraph {
         } = task {
             debug_assert_eq!(node, key);
             let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
-            self.alloc_node(node, vec![krate_idx])
+            self.alloc_node(node, SmallVec::one(krate_idx))
         } else {
             bug!("complete_eval_always_task() - Expected eval always task to be popped");
         }
@@ -1095,7 +1096,7 @@ impl CurrentDepGraph {
 
     fn alloc_node(&mut self,
                   dep_node: DepNode,
-                  edges: Vec<DepNodeIndex>)
+                  edges: SmallVec<[DepNodeIndex; 8]>)
                   -> DepNodeIndex {
         debug_assert_eq!(self.edges.len(), self.nodes.len());
         debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
@@ -1110,12 +1111,12 @@ impl CurrentDepGraph {
 
 pub struct RegularOpenTask {
     node: DepNode,
-    reads: Vec<DepNodeIndex>,
+    reads: SmallVec<[DepNodeIndex; 8]>,
     read_set: FxHashSet<DepNodeIndex>,
 }
 
 pub struct AnonOpenTask {
-    reads: Vec<DepNodeIndex>,
+    reads: SmallVec<[DepNodeIndex; 8]>,
     read_set: FxHashSet<DepNodeIndex>,
 }
 
