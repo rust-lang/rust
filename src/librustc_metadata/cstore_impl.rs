@@ -170,12 +170,17 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
     dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
+    is_panic_runtime => { cdata.panic_runtime }
+    is_compiler_builtins => { cdata.compiler_builtins }
     has_global_allocator => { cdata.has_global_allocator() }
+    is_sanitizer_runtime => { cdata.sanitizer_runtime }
+    is_profiler_runtime => { cdata.profiler_runtime }
     panic_strategy => { cdata.panic_strategy() }
     extern_crate => {
         let r = Lrc::new(*cdata.extern_crate.lock());
         r
     }
+    is_no_builtins => { cdata.no_builtins }
     impl_defaultness => { cdata.get_impl_defaultness(def_id.index) }
     reachable_non_generics => {
         let reachable_non_generics = tcx
