@@ -32,7 +32,7 @@ LL | #[derive(Copy)] //~ ERROR may not be implemented for this type
    |          ^^^^
 LL | enum EFoo2<'a> {
 LL |     Bar(&'a mut bool),
-   |         ------------- this field does not implement `Copy`
+   |         ------------ this field does not implement `Copy`
 
 error: aborting due to 4 previous errors
 

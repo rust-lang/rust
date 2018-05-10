@@ -5741,7 +5741,7 @@ impl<'a> Parser<'a> {
                 let vis = p.parse_visibility(true)?;
                 let ty = p.parse_ty()?;
                 Ok(StructField {
-                    span: lo.to(p.span),
+                    span: lo.to(ty.span),
                     vis,
                     ident: None,
                     id: ast::DUMMY_NODE_ID,
