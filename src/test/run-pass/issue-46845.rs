@@ -24,6 +24,7 @@ union Foo {
 }
 
 // If all the variants are uninhabited, however, the union should be uninhabited.
+// NOTE(#49298) the union being uninhabited shouldn't change its size.
 union Bar {
     _a: (Never, u64),
     _b: (u64, Never)
@@ -31,7 +32,8 @@ union Bar {
 
 fn main() {
     assert_eq!(mem::size_of::<Foo>(), 8);
-    assert_eq!(mem::size_of::<Bar>(), 0);
+    // See the note on `Bar`'s definition for why this isn't `0`.
+    assert_eq!(mem::size_of::<Bar>(), 8);
 
     let f = [Foo { a: 42 }, Foo { a: 10 }];
     println!("{}", unsafe { f[0].a });

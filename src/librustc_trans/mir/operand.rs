@@ -223,12 +223,9 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         let offset = self.layout.fields.offset(i);
 
         let mut val = match (self.val, &self.layout.abi) {
-            // If we're uninhabited, or the field is ZST, it has no data.
-            _ if self.layout.abi == layout::Abi::Uninhabited || field.is_zst() => {
-                return OperandRef {
-                    val: OperandValue::Immediate(C_undef(field.immediate_llvm_type(bx.cx))),
-                    layout: field
-                };
+            // If the field is ZST, it has no data.
+            _ if field.is_zst() => {
+                return OperandRef::new_zst(bx.cx, field);
             }
 
             // Newtype of a scalar, scalar pair or vector.
