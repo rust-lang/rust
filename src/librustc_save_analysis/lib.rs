@@ -12,6 +12,7 @@
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(custom_attribute)]
+#![cfg_attr(stage0, feature(macro_lifetime_matcher))]
 #![allow(unused_attributes)]
 
 #[macro_use]
