@@ -208,7 +208,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 
-    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, ty::GeneratorInterior<'tcx>)>>,
+    deferred_generator_interiors: RefCell<Vec<(hir::BodyId, Ty<'tcx>)>>,
 
     // Anonymized types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
@@ -1009,7 +1009,10 @@ struct GeneratorTypes<'tcx> {
     yield_ty: ty::Ty<'tcx>,
 
     /// Types that are captured (see `GeneratorInterior` for more).
-    interior: ty::GeneratorInterior<'tcx>
+    interior: ty::Ty<'tcx>,
+
+    /// Indicates if the generator is movable or static (immovable)
+    movability: hir::GeneratorMovability,
 }
 
 /// Helper used for fns and closures. Does the grungy work of checking a function
@@ -1084,13 +1087,13 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // This ensures that all nested generators appear before the entry of this generator.
     // resolve_generator_interiors relies on this property.
     let gen_ty = if can_be_generator.is_some() && body.is_generator {
-        let witness = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
-        let interior = ty::GeneratorInterior {
-            witness,
-            movable: can_be_generator.unwrap() == hir::GeneratorMovability::Movable,
-        };
+        let interior = fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span));
         fcx.deferred_generator_interiors.borrow_mut().push((body.id(), interior));
-        Some(GeneratorTypes { yield_ty: fcx.yield_ty.unwrap(), interior: interior })
+        Some(GeneratorTypes {
+            yield_ty: fcx.yield_ty.unwrap(),
+            interior,
+            movability: can_be_generator.unwrap(),
+        })
     } else {
         None
     };
@@ -2390,8 +2393,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let method = self.register_infer_ok_obligations(ok);
 
                 let mut adjustments = autoderef.adjust_steps(needs);
-                if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                    let mutbl = match mt.mutbl {
+                if let ty::TyRef(region, _, r_mutbl) = method.sig.inputs()[0].sty {
+                    let mutbl = match r_mutbl {
                         hir::MutImmutable => AutoBorrowMutability::Immutable,
                         hir::MutMutable => AutoBorrowMutability::Mutable {
                             // Indexing can be desugared to a method call,
@@ -2404,7 +2407,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                         target: self.tcx.mk_ref(region, ty::TypeAndMut {
-                            mutbl: mt.mutbl,
+                            mutbl: r_mutbl,
                             ty: adjusted_ty
                         })
                     });
@@ -3612,8 +3615,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else if let Some(ok) = self.try_overloaded_deref(
                                 expr.span, oprnd_t, needs) {
                             let method = self.register_infer_ok_obligations(ok);
-                            if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                                let mutbl = match mt.mutbl {
+                            if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                                let mutbl = match mutbl {
                                     hir::MutImmutable => AutoBorrowMutability::Immutable,
                                     hir::MutMutable => AutoBorrowMutability::Mutable {
                                         // (It shouldn't actually matter for unary ops whether
@@ -3657,14 +3660,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprAddrOf(mutbl, ref oprnd) => {
             let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
                 match ty.sty {
-                    ty::TyRef(_, ref mt) | ty::TyRawPtr(ref mt) => {
+                    ty::TyRef(_, ty, _) | ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
                         if self.is_place_expr(&oprnd) {
                             // Places may legitimately have unsized types.
                             // For example, dereferences of a fat pointer and
                             // the last field of a struct can be unsized.
-                            ExpectHasType(mt.ty)
+                            ExpectHasType(ty)
                         } else {
-                            Expectation::rvalue_hint(self, mt.ty)
+                            Expectation::rvalue_hint(self, ty)
                         }
                     }
                     _ => NoExpectation

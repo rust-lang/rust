@@ -18,7 +18,7 @@ use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::OptLevel;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, ClosureSubsts, GeneratorSubsts};
 use rustc::ty::subst::Substs;
 use syntax::ast;
 use syntax::attr::InlineAttr;
@@ -302,7 +302,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 self.push_type_name(inner_type, output);
             },
-            ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
+            ty::TyRef(_, inner_type, mutbl) => {
                 output.push('&');
                 if mutbl == hir::MutMutable {
                     output.push_str("mut ");
@@ -376,11 +376,11 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                     self.push_type_name(sig.output(), output);
                 }
             },
-            ty::TyGenerator(def_id, ref closure_substs, _) |
-            ty::TyClosure(def_id, ref closure_substs) => {
+            ty::TyGenerator(def_id, GeneratorSubsts { ref substs }, _) |
+            ty::TyClosure(def_id, ClosureSubsts { ref substs }) => {
                 self.push_def_path(def_id, output);
                 let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
-                let substs = closure_substs.substs.truncate_to(self.tcx, generics);
+                let substs = substs.truncate_to(self.tcx, generics);
                 self.push_type_params(substs, iter::empty(), output);
             }
             ty::TyError |

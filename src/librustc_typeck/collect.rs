@@ -933,38 +933,36 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
-    if let NodeExpr(&hir::Expr { node: hir::ExprClosure(..), .. }) = node {
-        // add a dummy parameter for the closure kind
-        types.push(ty::TypeParameterDef {
-            index: type_start,
-            name: Symbol::intern("<closure_kind>").as_interned_str(),
-            def_id,
-            has_default: false,
-            object_lifetime_default: rl::Set1::Empty,
-            pure_wrt_drop: false,
-            synthetic: None,
-        });
+    if let NodeExpr(&hir::Expr { node: hir::ExprClosure(.., gen), .. }) = node {
+        let dummy_args = if gen.is_some() {
+            &["<yield_ty>", "<return_ty>", "<witness>"][..]
+        } else {
+            &["<closure_kind>", "<closure_signature>"][..]
+        };
 
-        // add a dummy parameter for the closure signature
-        types.push(ty::TypeParameterDef {
-            index: type_start + 1,
-            name: Symbol::intern("<closure_signature>").as_interned_str(),
-            def_id,
-            has_default: false,
-            object_lifetime_default: rl::Set1::Empty,
-            pure_wrt_drop: false,
-            synthetic: None,
-        });
-
-        tcx.with_freevars(node_id, |fv| {
-            types.extend(fv.iter().zip(2..).map(|(_, i)| ty::TypeParameterDef {
-                index: type_start + i,
-                name: Symbol::intern("<upvar>").as_interned_str(),
+        for (i, &arg) in dummy_args.iter().enumerate() {
+            types.push(ty::TypeParameterDef {
+                index: type_start + i as u32,
+                name: Symbol::intern(arg).as_interned_str(),
                 def_id,
                 has_default: false,
                 object_lifetime_default: rl::Set1::Empty,
                 pure_wrt_drop: false,
                 synthetic: None,
+            });
+        }
+
+        tcx.with_freevars(node_id, |fv| {
+            types.extend(fv.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
+                ty::TypeParameterDef {
+                    index: type_start + i,
+                    name: Symbol::intern("<upvar>").as_interned_str(),
+                    def_id,
+                    has_default: false,
+                    object_lifetime_default: rl::Set1::Empty,
+                    pure_wrt_drop: false,
+                    synthetic: None,
+                }
             }));
         });
     }

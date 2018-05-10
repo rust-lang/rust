@@ -662,8 +662,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some("consider using a struct instead"),
             },
 
-            ty::TyRawPtr(ref m) |
-            ty::TyRef(_, ref m) => self.check_type_for_ffi(cache, m.ty),
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::TyRef(_, ty, _) => self.check_type_for_ffi(cache, ty),
 
             ty::TyArray(ty, _) => self.check_type_for_ffi(cache, ty),
 

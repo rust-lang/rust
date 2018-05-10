@@ -54,12 +54,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
         *substs = self.tcx.erase_regions(substs);
     }
 
-    fn visit_closure_substs(&mut self,
-                            substs: &mut ty::ClosureSubsts<'tcx>,
-                            _: Location) {
-        *substs = self.tcx.erase_regions(substs);
-    }
-
     fn visit_statement(&mut self,
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,

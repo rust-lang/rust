@@ -156,10 +156,8 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
                 ty::TyRawPtr(_) |
                 ty::TyRef(
                     _, /*rgn*/
-                    ty::TypeAndMut {
-                        ty: _,
-                            mutbl: hir::MutImmutable,
-                        },
+                    _, /*ty*/
+                    hir::MutImmutable
                     ) => {
                     // don't continue traversing over derefs of raw pointers or shared borrows.
                     self.next = None;
@@ -168,10 +166,8 @@ impl<'cx, 'gcx, 'tcx> Iterator for Prefixes<'cx, 'gcx, 'tcx> {
 
                 ty::TyRef(
                     _, /*rgn*/
-                    ty::TypeAndMut {
-                        ty: _,
-                        mutbl: hir::MutMutable,
-                    },
+                    _, /*ty*/
+                    hir::MutMutable,
                     ) => {
                     self.next = Some(&proj.base);
                     return Some(cursor);

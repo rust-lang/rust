@@ -238,9 +238,9 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
             PatternKind::Deref { ref subpattern } => {
                 match self.ty.sty {
                     ty::TyAdt(def, _) if def.is_box() => write!(f, "box ")?,
-                    ty::TyRef(_, mt) => {
+                    ty::TyRef(_, _, mutbl) => {
                         write!(f, "&")?;
-                        if mt.mutbl == hir::MutMutable {
+                        if mutbl == hir::MutMutable {
                             write!(f, "mut ")?;
                         }
                     }
@@ -424,13 +424,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Slice(ref prefix, ref slice, ref suffix) => {
                 let ty = self.tables.node_id_to_type(pat.hir_id);
                 match ty.sty {
-                    ty::TyRef(_, mt) =>
+                    ty::TyRef(_, ty, _) =>
                         PatternKind::Deref {
                             subpattern: Pattern {
-                                ty: mt.ty,
+                                ty,
                                 span: pat.span,
                                 kind: Box::new(self.slice_or_array_pattern(
-                                    pat.span, mt.ty, prefix, slice, suffix))
+                                    pat.span, ty, prefix, slice, suffix))
                             },
                         },
 
@@ -469,7 +469,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             PatKind::Binding(_, id, ref name, ref sub) => {
                 let var_ty = self.tables.node_id_to_type(pat.hir_id);
                 let region = match var_ty.sty {
-                    ty::TyRef(r, _) => Some(r),
+                    ty::TyRef(r, _, _) => Some(r),
                     _ => None,
                 };
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
@@ -490,8 +490,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 // A ref x pattern is the same node used for x, and as such it has
                 // x's type, which is &T, where we want T (the type being matched).
                 if let ty::BindByReference(_) = bm {
-                    if let ty::TyRef(_, mt) = ty.sty {
-                        ty = mt.ty;
+                    if let ty::TyRef(_, rty, _) = ty.sty {
+                        ty = rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", name.node, ty);
                     }

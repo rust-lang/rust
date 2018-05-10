@@ -12,7 +12,7 @@ use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
@@ -571,15 +571,17 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
-                ty::TyRef(_, mt) | ty::TyRawPtr(mt) => (bx.cx.layout_of(mt.ty), true),
+                ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+                ty::TyRef(_, ty, _)  => (bx.cx.layout_of(ty), true),
                 _ => (arg.layout, false)
             };
 
-            let upvar_tys = match closure_layout.ty.sty {
-                ty::TyClosure(def_id, substs) |
-                ty::TyGenerator(def_id, substs, _) => substs.upvar_tys(def_id, tcx),
+            let (def_id, upvar_substs) = match closure_layout.ty.sty {
+                ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
+                ty::TyGenerator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
                 _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_layout.ty)
             };
+            let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
 
             // Store the pointer to closure data in an alloca for debuginfo
             // because that's what the llvm.dbg.declare intrinsic expects.
@@ -614,8 +616,8 @@ fn arg_local_refs<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
                 // a pointer in an alloca for debuginfo atm.
                 let mut ops = if env_ref || true { &ops[..] } else { &ops[1..] };
 
-                let ty = if let (true, &ty::TyRef(_, mt)) = (decl.by_ref, &ty.sty) {
-                    mt.ty
+                let ty = if let (true, &ty::TyRef(_, ty, _)) = (decl.by_ref, &ty.sty) {
+                    ty
                 } else {
                     ops = &ops[..ops.len() - 1];
                     ty

@@ -84,9 +84,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             expected = loop {
                 debug!("inspecting {:?} with type {:?}", exp_ty, exp_ty.sty);
                 match exp_ty.sty {
-                    ty::TypeVariants::TyRef(_, ty::TypeAndMut{
-                        ty: inner_ty, mutbl: inner_mutability,
-                    }) => {
+                    ty::TypeVariants::TyRef(_, inner_ty, inner_mutability) => {
                         debug!("current discriminant is TyRef, inserting implicit deref");
                         // Preserve the reference type. We'll need it later during HAIR lowering.
                         pat_adjustments.push(exp_ty);
@@ -152,8 +150,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let hir::ExprLit(ref lt) = lt.node {
                     if let ast::LitKind::ByteStr(_) = lt.node {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
-                        if let ty::TyRef(_, mt) = expected_ty.sty {
-                            if let ty::TySlice(_) = mt.ty.sty {
+                        if let ty::TyRef(_, r_ty, _) = expected_ty.sty {
+                            if let ty::TySlice(_) = r_ty.sty {
                                 pat_ty = tcx.mk_imm_ref(tcx.types.re_static,
                                                          tcx.mk_slice(tcx.types.u8))
                             }
@@ -334,8 +332,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // hack detailed in (*) below.
                     debug!("check_pat_walk: expected={:?}", expected);
                     let (rptr_ty, inner_ty) = match expected.sty {
-                        ty::TyRef(_, mt) if mt.mutbl == mutbl => {
-                            (expected, mt.ty)
+                        ty::TyRef(_, r_ty, r_mutbl) if r_mutbl == mutbl => {
+                            (expected, r_ty)
                         }
                         _ => {
                             let inner_ty = self.next_ty_var(
@@ -408,7 +406,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 tcx.sess, pat.span, E0529,
                                 "expected an array or slice, found `{}`",
                                 expected_ty);
-                            if let ty::TyRef(_, ty::TypeAndMut { mutbl: _, ty }) = expected_ty.sty {
+                            if let ty::TyRef(_, ty, _) = expected_ty.sty {
                                 match ty.sty {
                                     ty::TyArray(..) | ty::TySlice(..) => {
                                         err.help("the semantics of slice patterns changed \

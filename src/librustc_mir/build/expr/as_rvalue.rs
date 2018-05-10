@@ -18,7 +18,7 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, UpvarSubsts};
 use rustc::mir::*;
 use rustc::mir::interpret::{Value, PrimVal, EvalErrorKind};
 use syntax_pos::Span;
@@ -185,27 +185,32 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 block.and(Rvalue::Aggregate(box AggregateKind::Tuple, fields))
             }
-            ExprKind::Closure { closure_id, substs, upvars, interior } => { // see (*) above
+            ExprKind::Closure { closure_id, substs, upvars, movability } => {
+                // see (*) above
                 let mut operands: Vec<_> =
                     upvars.into_iter()
                           .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
-                let result = if let Some(interior) = interior {
-                    // Add the state operand since it follows the upvars in the generator
-                    // struct. See librustc_mir/transform/generator.rs for more details.
-                    operands.push(Operand::Constant(box Constant {
-                        span: expr_span,
-                        ty: this.hir.tcx().types.u32,
-                        literal: Literal::Value {
-                            value: this.hir.tcx().mk_const(ty::Const {
-                                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                                ty: this.hir.tcx().types.u32
-                            }),
-                        },
-                    }));
-                    box AggregateKind::Generator(closure_id, substs, interior)
-                } else {
-                    box AggregateKind::Closure(closure_id, substs)
+                let result = match substs {
+                    UpvarSubsts::Generator(substs) => {
+                        let movability = movability.unwrap();
+                        // Add the state operand since it follows the upvars in the generator
+                        // struct. See librustc_mir/transform/generator.rs for more details.
+                        operands.push(Operand::Constant(box Constant {
+                            span: expr_span,
+                            ty: this.hir.tcx().types.u32,
+                            literal: Literal::Value {
+                                value: this.hir.tcx().mk_const(ty::Const {
+                                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
+                                    ty: this.hir.tcx().types.u32
+                                }),
+                            },
+                        }));
+                        box AggregateKind::Generator(closure_id, substs, movability)
+                    }
+                    UpvarSubsts::Closure(substs) => {
+                        box AggregateKind::Closure(closure_id, substs)
+                    }
                 };
                 block.and(Rvalue::Aggregate(result, operands))
             }

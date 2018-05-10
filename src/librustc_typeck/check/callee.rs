@@ -175,8 +175,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let method = self.register_infer_ok_obligations(ok);
                     let mut autoref = None;
                     if borrow {
-                        if let ty::TyRef(region, mt) = method.sig.inputs()[0].sty {
-                            let mutbl = match mt.mutbl {
+                        if let ty::TyRef(region, _, mutbl) = method.sig.inputs()[0].sty {
+                            let mutbl = match mutbl {
                                 hir::MutImmutable => AutoBorrowMutability::Immutable,
                                 hir::MutMutable => AutoBorrowMutability::Mutable {
                                     // For initial two-phase borrow

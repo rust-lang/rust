@@ -201,7 +201,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 // Now libcore provides that impl.
                 ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
                 ty::TyChar | ty::TyRawPtr(..) | ty::TyNever |
-                ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => return Ok(()),
+                ty::TyRef(_, _, hir::MutImmutable) => return Ok(()),
 
                 ty::TyAdt(adt, substs) => (adt, substs),
 
@@ -664,8 +664,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                     _ => bug!("arrays should not have {:?} as length", n)
                 }
             }
-            TyRawPtr(m) |
-            TyRef(_, m) => self.hash(m.mutbl),
+            TyRawPtr(m) => self.hash(m.mutbl),
+            TyRef(_, _, mutbl) => self.hash(mutbl),
             TyClosure(def_id, _) |
             TyGenerator(def_id, _, _) |
             TyAnon(def_id, _) |
@@ -1141,7 +1141,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
 
         match self_arg_ty.sty {
             _ if is_self_ty(self_arg_ty) => ByValue,
-            ty::TyRef(region, ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {
+            ty::TyRef(region, ty, mutbl) if is_self_ty(ty) => {
                 ByReference(region, mutbl)
             }
             ty::TyRawPtr(ty::TypeAndMut { ty, mutbl }) if is_self_ty(ty) => {

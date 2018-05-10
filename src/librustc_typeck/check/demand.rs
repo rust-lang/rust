@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                  expected: Ty<'tcx>)
                  -> Option<(&'static str, String)> {
         match (&expected.sty, &checked_ty.sty) {
-            (&ty::TyRef(_, exp), &ty::TyRef(_, check)) => match (&exp.ty.sty, &check.ty.sty) {
+            (&ty::TyRef(_, exp, _), &ty::TyRef(_, check, _)) => match (&exp.sty, &check.sty) {
                 (&ty::TyStr, &ty::TyArray(arr, _)) |
                 (&ty::TyStr, &ty::TySlice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprLit(_) = expr.node {
@@ -241,7 +241,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 _ => None,
             },
-            (&ty::TyRef(_, mutability), _) => {
+            (&ty::TyRef(_, _, mutability), _) => {
                 // Check if it can work when put into a ref. For example:
                 //
                 // ```
@@ -250,7 +250,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // let x = 0u32;
                 // bar(&x); // error, expected &mut
                 // ```
-                let ref_ty = match mutability.mutbl {
+                let ref_ty = match mutability {
                     hir::Mutability::MutMutable => self.tcx.mk_mut_ref(
                                                        self.tcx.mk_region(ty::ReStatic),
                                                        checked_ty),
@@ -266,7 +266,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             hir::ExprCast(_, _) | hir::ExprBinary(_, _, _) => format!("({})", src),
                             _ => src,
                         };
-                        return Some(match mutability.mutbl {
+                        return Some(match mutability {
                             hir::Mutability::MutMutable => {
                                 ("consider mutably borrowing here", format!("&mut {}", sugg_expr))
                             }
@@ -278,7 +278,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 None
             }
-            (_, &ty::TyRef(_, checked)) => {
+            (_, &ty::TyRef(_, checked, _)) => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest adding a `*`, or removing
                 // a `&`.
@@ -286,7 +286,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // (But, also check check the `expn_info()` to see if this is
                 // a macro; if so, it's hard to extract the text and make a good
                 // suggestion, so don't bother.)
-                if self.infcx.can_sub(self.param_env, checked.ty, &expected).is_ok() &&
+                if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() &&
                    expr.span.ctxt().outer().expn_info().is_none() {
                     match expr.node {
                         // Maybe remove `&`?
@@ -299,7 +299,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // Maybe add `*`? Only if `T: Copy`.
                         _ => {
                             if !self.infcx.type_moves_by_default(self.param_env,
-                                                                checked.ty,
+                                                                checked,
                                                                 expr.span) {
                                 let sp = self.sess().codemap().call_span_if_macro(expr.span);
                                 if let Ok(code) = self.tcx.sess.codemap().span_to_snippet(sp) {

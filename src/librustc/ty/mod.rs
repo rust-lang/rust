@@ -63,7 +63,7 @@ use hir;
 pub use self::sty::{Binder, CanonicalVar, DebruijnIndex};
 pub use self::sty::{FnSig, GenSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
-pub use self::sty::{ClosureSubsts, GeneratorInterior, TypeAndMut};
+pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
 pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
@@ -514,7 +514,7 @@ impl<'tcx> TyS<'tcx> {
                 TypeVariants::TyInfer(InferTy::FloatVar(_)) |
                 TypeVariants::TyInfer(InferTy::FreshIntTy(_)) |
                 TypeVariants::TyInfer(InferTy::FreshFloatTy(_)) => true,
-            TypeVariants::TyRef(_, x) => x.ty.is_primitive_ty(),
+            TypeVariants::TyRef(_, x, _) => x.is_primitive_ty(),
             _ => false,
         }
     }

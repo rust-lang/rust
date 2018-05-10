@@ -7,7 +7,7 @@ use rustc::middle::const_val::{ConstVal, ErrKind};
 use rustc::mir;
 use rustc::ty::layout::{self, Size, Align, HasDataLayout, IntegerExt, LayoutOf, TyLayout};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc::ty::maps::TyCtxtAt;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::middle::const_val::FrameInfo;
@@ -778,8 +778,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
     pub(super) fn type_is_fat_ptr(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
-            ty::TyRawPtr(ref tam) |
-            ty::TyRef(_, ref tam) => !self.type_is_sized(tam.ty),
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::TyRef(_, ty, _) => !self.type_is_sized(ty),
             ty::TyAdt(def, _) if def.is_box() => !self.type_is_sized(ty.boxed_ty()),
             _ => false,
         }
@@ -1262,8 +1262,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             ty::TyFnPtr(_) => PrimValKind::FnPtr,
 
-            ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) if self.type_is_sized(tam.ty) => PrimValKind::Ptr,
+            ty::TyRef(_, ty, _) |
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) if self.type_is_sized(ty) => {
+                PrimValKind::Ptr
+            }
 
             ty::TyAdt(def, _) if def.is_box() => PrimValKind::Ptr,
 
@@ -1403,8 +1405,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             }
 
             ty::TyFnPtr(_) => self.memory.read_ptr_sized(ptr, ptr_align)?,
-            ty::TyRef(_, ref tam) |
-            ty::TyRawPtr(ref tam) => return self.read_ptr(ptr, ptr_align, tam.ty).map(Some),
+            ty::TyRef(_, rty, _) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: rty, .. }) => {
+                return self.read_ptr(ptr, ptr_align, rty).map(Some)
+            }
 
             ty::TyAdt(def, _) => {
                 if def.is_box() {
@@ -1504,10 +1508,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         dst_layout: TyLayout<'tcx>,
     ) -> EvalResult<'tcx> {
         match (&src_layout.ty.sty, &dst_layout.ty.sty) {
-            (&ty::TyRef(_, ref s), &ty::TyRef(_, ref d)) |
-            (&ty::TyRef(_, ref s), &ty::TyRawPtr(ref d)) |
-            (&ty::TyRawPtr(ref s), &ty::TyRawPtr(ref d)) => {
-                self.unsize_into_ptr(src, src_layout.ty, dst, dst_layout.ty, s.ty, d.ty)
+            (&ty::TyRef(_, s, _), &ty::TyRef(_, d, _)) |
+            (&ty::TyRef(_, s, _), &ty::TyRawPtr(TypeAndMut { ty: d, .. })) |
+            (&ty::TyRawPtr(TypeAndMut { ty: s, .. }),
+             &ty::TyRawPtr(TypeAndMut { ty: d, .. })) => {
+                self.unsize_into_ptr(src, src_layout.ty, dst, dst_layout.ty, s, d)
             }
             (&ty::TyAdt(def_a, _), &ty::TyAdt(def_b, _)) => {
                 assert_eq!(def_a, def_b);

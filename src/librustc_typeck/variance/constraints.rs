@@ -272,10 +272,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 bug!("Unexpected closure type in variance computation");
             }
 
-            ty::TyRef(region, ref mt) => {
+            ty::TyRef(region, ty, mutbl) => {
                 let contra = self.contravariant(variance);
                 self.add_constraints_from_region(current, region, contra);
-                self.add_constraints_from_mt(current, mt, variance);
+                self.add_constraints_from_mt(current, &ty::TypeAndMut { ty, mutbl }, variance);
             }
 
             ty::TyArray(typ, _) |

@@ -113,22 +113,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .next_ty_var(TypeVariableOrigin::ClosureSynthetic(expr.span))
             },
         );
-        let substs = ty::ClosureSubsts { substs };
-        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
-
-        if let Some(GeneratorTypes { yield_ty, interior }) = generator_types {
+        if let Some(GeneratorTypes { yield_ty, interior, movability }) = generator_types {
+            let substs = ty::GeneratorSubsts { substs };
             self.demand_eqtype(
                 expr.span,
                 yield_ty,
-                substs.generator_yield_ty(expr_def_id, self.tcx),
+                substs.yield_ty(expr_def_id, self.tcx),
             );
             self.demand_eqtype(
                 expr.span,
                 liberated_sig.output(),
-                substs.generator_return_ty(expr_def_id, self.tcx),
+                substs.return_ty(expr_def_id, self.tcx),
             );
-            return self.tcx.mk_generator(expr_def_id, substs, interior);
+            self.demand_eqtype(
+                expr.span,
+                interior,
+                substs.witness(expr_def_id, self.tcx),
+            );
+            return self.tcx.mk_generator(expr_def_id, substs, movability);
         }
+
+        let substs = ty::ClosureSubsts { substs };
+        let closure_type = self.tcx.mk_closure(expr_def_id, substs);
 
         debug!(
             "check_closure: expr.id={:?} closure_type={:?}",

@@ -298,9 +298,9 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                     self.out.extend(obligations);
                 }
 
-                ty::TyRef(r, mt) => {
+                ty::TyRef(r, rty, _) => {
                     // WfReference
-                    if !r.has_escaping_regions() && !mt.ty.has_escaping_regions() {
+                    if !r.has_escaping_regions() && !rty.has_escaping_regions() {
                         let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
                         self.out.push(
                             traits::Obligation::new(
@@ -308,7 +308,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                                 param_env,
                                 ty::Predicate::TypeOutlives(
                                     ty::Binder::dummy(
-                                        ty::OutlivesPredicate(mt.ty, r)))));
+                                        ty::OutlivesPredicate(rty, r)))));
                     }
                 }
 

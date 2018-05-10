@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use ty::subst::Substs;
-use ty::{CanonicalTy, ClosureSubsts, Region, Ty, GeneratorInterior};
+use ty::{CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty};
 use mir::*;
 use syntax_pos::Span;
 
@@ -243,10 +243,10 @@ macro_rules! make_mir_visitor {
                 self.super_closure_substs(substs);
             }
 
-            fn visit_generator_interior(&mut self,
-                                    interior: & $($mutability)* GeneratorInterior<'tcx>,
+            fn visit_generator_substs(&mut self,
+                                      substs: & $($mutability)* GeneratorSubsts<'tcx>,
                                     _: Location) {
-                self.super_generator_interior(interior);
+                self.super_generator_substs(substs);
             }
 
             fn visit_local_decl(&mut self,
@@ -595,11 +595,10 @@ macro_rules! make_mir_visitor {
                                 self.visit_closure_substs(closure_substs, location);
                             }
                             AggregateKind::Generator(ref $($mutability)* def_id,
-                                                   ref $($mutability)* closure_substs,
-                                                   ref $($mutability)* interior) => {
+                                                     ref $($mutability)* generator_substs,
+                                                     _movability) => {
                                 self.visit_def_id(def_id, location);
-                                self.visit_closure_substs(closure_substs, location);
-                                self.visit_generator_interior(interior, location);
+                                self.visit_generator_substs(generator_substs, location);
                             }
                         }
 
@@ -786,8 +785,8 @@ macro_rules! make_mir_visitor {
             fn super_substs(&mut self, _substs: & $($mutability)* &'tcx Substs<'tcx>) {
             }
 
-            fn super_generator_interior(&mut self,
-                                    _interior: & $($mutability)* GeneratorInterior<'tcx>) {
+            fn super_generator_substs(&mut self,
+                                      _substs: & $($mutability)* GeneratorSubsts<'tcx>) {
             }
 
             fn super_closure_substs(&mut self,

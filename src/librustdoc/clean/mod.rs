@@ -1480,7 +1480,7 @@ impl<'a, 'tcx> Clean<TyParamBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
         for ty_s in trait_ref.input_types().skip(1) {
             if let ty::TyTuple(ts) = ty_s.sty {
                 for &ty_s in ts {
-                    if let ty::TyRef(ref reg, _) = ty_s.sty {
+                    if let ty::TyRef(ref reg, _, _) = ty_s.sty {
                         if let &ty::RegionKind::ReLateBound(..) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(lt) = reg.clean(cx) {
@@ -2231,8 +2231,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
-                    } else if let ty::TyRef(_, mt) = self_arg_ty.sty {
-                        if mt.ty == self_ty {
+                    } else if let ty::TyRef(_, ty, _) = self_arg_ty.sty {
+                        if ty == self_ty {
                             match decl.inputs.values[0].type_ {
                                 BorrowedRef{ref mut type_, ..} => {
                                     **type_ = Generic(String::from("Self"))
@@ -2786,10 +2786,10 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 Array(box ty.clean(cx), n)
             }
             ty::TyRawPtr(mt) => RawPointer(mt.mutbl.clean(cx), box mt.ty.clean(cx)),
-            ty::TyRef(r, mt) => BorrowedRef {
+            ty::TyRef(r, ty, mutbl) => BorrowedRef {
                 lifetime: r.clean(cx),
-                mutability: mt.mutbl.clean(cx),
-                type_: box mt.ty.clean(cx),
+                mutability: mutbl.clean(cx),
+                type_: box ty.clean(cx),
             },
             ty::TyFnDef(..) |
             ty::TyFnPtr(_) => {

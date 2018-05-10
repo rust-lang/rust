@@ -780,7 +780,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn open_drop<'a>(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.sty {
-            ty::TyClosure(def_id, substs) |
+            ty::TyClosure(def_id, substs) => {
+                let tys : Vec<_> = substs.upvar_tys(def_id, self.tcx()).collect();
+                self.open_drop_for_tuple(&tys)
+            }
             // Note that `elaborate_drops` only drops the upvars of a generator,
             // and this is ok because `open_drop` here can only be reached
             // within that own generator's resume function.

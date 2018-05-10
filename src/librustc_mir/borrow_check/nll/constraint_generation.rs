@@ -20,7 +20,7 @@ use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
 use rustc::mir::{Local, PlaceProjection, ProjectionElem, Statement, Terminator};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, CanonicalTy, ClosureSubsts};
+use rustc::ty::{self, CanonicalTy, ClosureSubsts, GeneratorSubsts};
 
 use super::region_infer::{Cause, RegionInferenceContext};
 use super::ToRegionVid;
@@ -95,6 +95,13 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         }
 
         self.super_ty(ty);
+    }
+
+    /// We sometimes have `generator_substs` within an rvalue, or within a
+    /// call. Make them live at the location where they appear.
+    fn visit_generator_substs(&mut self, substs: &GeneratorSubsts<'tcx>, location: Location) {
+        self.add_regular_live_constraint(*substs, location, Cause::LiveOther(location));
+        self.super_generator_substs(substs);
     }
 
     /// We sometimes have `closure_substs` within an rvalue, or within a
@@ -263,7 +270,7 @@ impl<'cx, 'cg, 'gcx, 'tcx> ConstraintGeneration<'cx, 'cg, 'gcx, 'tcx> {
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.sty {
-                        ty::TyRef(ref_region, ty::TypeAndMut { ty: _, mutbl }) => {
+                        ty::TyRef(ref_region, _, mutbl) => {
                             let span = self.mir.source_info(location).span;
                             self.regioncx.add_outlives(
                                 span,

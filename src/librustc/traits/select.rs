@@ -2174,14 +2174,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyChar | ty::TyRawPtr(..) | ty::TyNever |
-            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+            ty::TyRef(_, _, hir::MutImmutable) => {
                 // Implementations provided in libcore
                 None
             }
 
             ty::TyDynamic(..) | ty::TyStr | ty::TySlice(..) |
             ty::TyGenerator(..) | ty::TyGeneratorWitness(..) | ty::TyForeign(..) |
-            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+            ty::TyRef(_, _, hir::MutMutable) => {
                 Never
             }
 
@@ -2270,7 +2270,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::TyRawPtr(ty::TypeAndMut { ty: element_ty, ..}) |
-            ty::TyRef(_, ty::TypeAndMut { ty: element_ty, ..}) => {
+            ty::TyRef(_, element_ty, _) => {
                 vec![element_ty]
             },
 
@@ -2287,8 +2287,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 substs.upvar_tys(def_id, self.tcx()).collect()
             }
 
-            ty::TyGenerator(def_id, ref substs, interior) => {
-                substs.upvar_tys(def_id, self.tcx()).chain(iter::once(interior.witness)).collect()
+            ty::TyGenerator(def_id, ref substs, _) => {
+                let witness = substs.witness(def_id, self.tcx());
+                substs.upvar_tys(def_id, self.tcx()).chain(iter::once(witness)).collect()
             }
 
             ty::TyGeneratorWitness(types) => {
@@ -2762,18 +2763,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match self_ty.sty {
+        let (generator_def_id, substs) = match self_ty.sty {
             ty::TyGenerator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation)
         };
 
         debug!("confirm_generator_candidate({:?},{:?},{:?})",
                obligation,
-               closure_def_id,
+               generator_def_id,
                substs);
 
         let trait_ref =
-            self.generator_trait_ref_unnormalized(obligation, closure_def_id, substs);
+            self.generator_trait_ref_unnormalized(obligation, generator_def_id, substs);
         let Normalized {
             value: trait_ref,
             mut obligations
@@ -2783,8 +2784,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                  obligation.recursion_depth+1,
                                  &trait_ref);
 
-        debug!("confirm_generator_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
-               closure_def_id,
+        debug!("confirm_generator_candidate(generator_def_id={:?}, \
+                trait_ref={:?}, obligations={:?})",
+               generator_def_id,
                trait_ref,
                obligations);
 
@@ -2795,7 +2797,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                         trait_ref)?);
 
         Ok(VtableGeneratorData {
-            closure_def_id: closure_def_id,
+            generator_def_id: generator_def_id,
             substs: substs.clone(),
             nested: obligations
         })
@@ -3301,10 +3303,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn generator_trait_ref_unnormalized(&mut self,
                                       obligation: &TraitObligation<'tcx>,
                                       closure_def_id: DefId,
-                                      substs: ty::ClosureSubsts<'tcx>)
+                                      substs: ty::GeneratorSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let gen_sig = substs.generator_poly_sig(closure_def_id, self.tcx());
+        let gen_sig = substs.poly_sig(closure_def_id, self.tcx());
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an generator type and hence is

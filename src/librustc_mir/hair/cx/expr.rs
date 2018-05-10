@@ -283,7 +283,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprAddrOf(mutbl, ref expr) => {
             let region = match expr_ty.sty {
-                ty::TyRef(r, _) => r,
+                ty::TyRef(r, _, _) => r,
                 _ => span_bug!(expr.span, "type of & not region"),
             };
             ExprKind::Borrow {
@@ -470,9 +470,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
         hir::ExprClosure(..) => {
             let closure_ty = cx.tables().expr_ty(expr);
-            let (def_id, substs, interior) = match closure_ty.sty {
-                ty::TyClosure(def_id, substs) => (def_id, substs, None),
-                ty::TyGenerator(def_id, substs, interior) => (def_id, substs, Some(interior)),
+            let (def_id, substs, movability) = match closure_ty.sty {
+                ty::TyClosure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs), None),
+                ty::TyGenerator(def_id, substs, movability) => {
+                    (def_id, UpvarSubsts::Generator(substs), Some(movability))
+                }
                 _ => {
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
@@ -487,7 +489,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 closure_id: def_id,
                 substs,
                 upvars,
-                interior,
+                movability,
             }
         }
 
@@ -985,13 +987,13 @@ fn overloaded_place<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     // Reconstruct the output assuming it's a reference with the
     // same region and mutability as the receiver. This holds for
     // `Deref(Mut)::Deref(_mut)` and `Index(Mut)::index(_mut)`.
-    let (region, mt) = match recv_ty.sty {
-        ty::TyRef(region, mt) => (region, mt),
+    let (region, mutbl) = match recv_ty.sty {
+        ty::TyRef(region, _, mutbl) => (region, mutbl),
         _ => span_bug!(expr.span, "overloaded_place: receiver is not a reference"),
     };
     let ref_ty = cx.tcx.mk_ref(region, ty::TypeAndMut {
         ty: place_ty,
-        mutbl: mt.mutbl,
+        mutbl,
     });
 
     // construct the complete expression `foo()` for the overloaded call,

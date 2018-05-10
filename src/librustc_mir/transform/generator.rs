@@ -64,7 +64,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
-use rustc::ty::{self, TyCtxt, AdtDef, Ty, GeneratorInterior};
+use rustc::ty::{self, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::Substs;
 use util::dump_mir;
 use util::liveness::{self, LivenessMode};
@@ -464,7 +464,8 @@ fn locals_live_across_suspend_points<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             source: MirSource,
                             upvars: Vec<Ty<'tcx>>,
-                            interior: GeneratorInterior<'tcx>,
+                            interior: Ty<'tcx>,
+                            movable: bool,
                             mir: &mut Mir<'tcx>)
     -> (HashMap<Local, (Ty<'tcx>, usize)>,
         GeneratorLayout<'tcx>,
@@ -474,11 +475,11 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,
                                                                             mir,
                                                                             source,
-                                                                            interior.movable);
+                                                                            movable);
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
     let allowed_upvars = tcx.erase_regions(&upvars);
-    let allowed = match interior.witness.sty {
+    let allowed = match interior.sty {
         ty::TyGeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
         _ => bug!(),
     };
@@ -853,9 +854,11 @@ impl MirPass for StateTransform {
         let gen_ty = mir.local_decls.raw[1].ty;
 
         // Get the interior types and substs which typeck computed
-        let (upvars, interior) = match gen_ty.sty {
-            ty::TyGenerator(_, substs, interior) => {
-                (substs.upvar_tys(def_id, tcx).collect(), interior)
+        let (upvars, interior, movable) = match gen_ty.sty {
+            ty::TyGenerator(_, substs, movability) => {
+                (substs.upvar_tys(def_id, tcx).collect(),
+                 substs.witness(def_id, tcx),
+                 movability == hir::GeneratorMovability::Movable)
             }
             _ => bug!(),
         };
@@ -874,7 +877,13 @@ impl MirPass for StateTransform {
         // Extract locals which are live across suspension point into `layout`
         // `remap` gives a mapping from local indices onto generator struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
-        let (remap, layout, storage_liveness) = compute_layout(tcx, source, upvars, interior, mir);
+        let (remap, layout, storage_liveness) = compute_layout(
+            tcx,
+            source,
+            upvars,
+            interior,
+            movable,
+            mir);
 
         let state_field = mir.upvar_decls.len();
 

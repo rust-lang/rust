@@ -149,8 +149,8 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             // a predicate requirement of T: 'a (T outlives 'a).
             //
             // We also want to calculate potential predicates for the T
-            ty::TyRef(region, mt) => {
-                insert_outlives_predicate(tcx, mt.ty.into(), region, required_predicates);
+            ty::TyRef(region, rty, _) => {
+                insert_outlives_predicate(tcx, rty.into(), region, required_predicates);
             }
 
             // For each TyAdt (struct/enum/union) type `Foo<'a, T>`, we

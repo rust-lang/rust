@@ -835,10 +835,17 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 tys.iter().cloned().enumerate()
                     .for_each(|field| drop_field(self, field));
             }
-            // Closures and generators also have disjoint fields, but they are only
-            // directly accessed in the body of the closure/generator.
+            // Closures also have disjoint fields, but they are only
+            // directly accessed in the body of the closure.
             ty::TyClosure(def, substs)
-            | ty::TyGenerator(def, substs, ..)
+                if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
+            => {
+                substs.upvar_tys(def, self.tcx).enumerate()
+                    .for_each(|field| drop_field(self, field));
+            }
+            // Generators also have disjoint fields, but they are only
+            // directly accessed in the body of the generator.
+            ty::TyGenerator(def, substs, _)
                 if *drop_place == Place::Local(Local::new(1)) && !self.mir.upvar_decls.is_empty()
             => {
                 substs.upvar_tys(def, self.tcx).enumerate()
@@ -1906,8 +1913,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                         // Check the kind of deref to decide
                         match base_ty.sty {
-                            ty::TyRef(_, tnm) => {
-                                match tnm.mutbl {
+                            ty::TyRef(_, _, mutbl) => {
+                                match mutbl {
                                     // Shared borrowed data is never mutable
                                     hir::MutImmutable => Err(place),
                                     // Mutably borrowed data is mutable, but only if we have a
@@ -2341,13 +2348,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         }
                         (
                             ProjectionElem::Deref,
-                            ty::TyRef(
-                                _,
-                                ty::TypeAndMut {
-                                    ty: _,
-                                    mutbl: hir::MutImmutable,
-                                },
-                            ),
+                            ty::TyRef( _, _, hir::MutImmutable),
                             _,
                         ) => {
                             // the borrow goes through a dereference of a shared reference.

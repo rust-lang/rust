@@ -18,7 +18,7 @@ use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
-use rustc::ty::{AdtDef, ClosureSubsts, Region, Ty, GeneratorInterior};
+use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty};
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -266,9 +266,9 @@ pub enum ExprKind<'tcx> {
     },
     Closure {
         closure_id: DefId,
-        substs: ClosureSubsts<'tcx>,
+        substs: UpvarSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
-        interior: Option<GeneratorInterior<'tcx>>,
+        movability: Option<hir::GeneratorMovability>,
     },
     Literal {
         literal: Literal<'tcx>,

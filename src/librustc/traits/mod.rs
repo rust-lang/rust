@@ -482,8 +482,8 @@ pub struct VtableImplData<'tcx, N> {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct VtableGeneratorData<'tcx, N> {
-    pub closure_def_id: DefId,
-    pub substs: ty::ClosureSubsts<'tcx>,
+    pub generator_def_id: DefId,
+    pub substs: ty::GeneratorSubsts<'tcx>,
     /// Nested obligations. This can be non-empty if the generator
     /// signature contains associated types.
     pub nested: Vec<N>
@@ -991,7 +991,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
                 nested: p.nested.into_iter().map(f).collect(),
             }),
             VtableGenerator(c) => VtableGenerator(VtableGeneratorData {
-                closure_def_id: c.closure_def_id,
+                generator_def_id: c.generator_def_id,
                 substs: c.substs,
                 nested: c.nested.into_iter().map(f).collect(),
             }),

@@ -844,9 +844,9 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     match (&source_ty.sty, &target_ty.sty) {
-        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
-         &ty::TyRef(_, ty::TypeAndMut { ty: b, .. })) |
-        (&ty::TyRef(_, ty::TypeAndMut { ty: a, .. }),
+        (&ty::TyRef(_, a, _),
+         &ty::TyRef(_, b, _)) |
+        (&ty::TyRef(_, a, _),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::TyRawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::TyRawPtr(ty::TypeAndMut { ty: b, .. })) => {
