@@ -38,6 +38,9 @@ crate struct AllFacts {
 
     // `region_live_at(R, P)` when the region R appears in a live variable at P
     crate region_live_at: Vec<(RegionVid, LocationIndex)>,
+
+    // `invalidates(P, B)` when the borrow B is invalidated at point P
+    crate invalidates: Vec<(LocationIndex, BorrowIndex)>,
 }
 
 impl AllFacts {
@@ -69,6 +72,7 @@ impl AllFacts {
                 killed,
                 outlives,
                 region_live_at,
+                invalidates,
             ])
         }
         Ok(())
