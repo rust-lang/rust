@@ -38,6 +38,7 @@
       - [The lowering module in rustc](./traits-lowering-module.md)
     - [Well-formedness checking](./traits-wf.md)
     - [The SLG solver](./traits-slg.md)
+    - [An Overview of Chalk](./chalk-overview.md)
     - [Bibliography](./traits-bibliography.md)
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
