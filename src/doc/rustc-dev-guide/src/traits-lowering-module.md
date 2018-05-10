@@ -18,7 +18,7 @@ returns a vector of program clauses.
 
 [query]: ./query.html
 
-<a name=unit-tests>
+<a name="unit-tests"></a>
 
 ## Unit tests
 

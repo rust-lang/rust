@@ -22,6 +22,8 @@ though that is something we may want to change in the future.)
 
 [intoiter-item]: https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html#associatedtype.Item
 
+<a name="normalize"></a>
+
 In some cases, associated type projections can be **normalized** --
 that is, simplified -- based on the types given in an impl. So, to
 continue with our example, the impl of `IntoIterator` for `Option<T>`

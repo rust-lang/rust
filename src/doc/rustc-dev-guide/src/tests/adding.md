@@ -68,7 +68,7 @@ then it might make sense to put the tests in directories like:
 In other cases, there may already be a suitable directory. (The proper
 directory structure to use is actually an area of active debate.)
 
-<a name=explanatory_comment>
+<a name="explanatory_comment"></a>
 
 ## Comment explaining what the test is about
 
@@ -90,7 +90,7 @@ test must be rewritten because it no longer tests what is was meant to
 test, and then it's useful to know what it *was* meant to test
 exactly).
 
-<a name=header_commands>
+<a name="header_commands"></a>
 
 ## Header commands: configuring rustc
 
@@ -167,7 +167,7 @@ source.
 
 [`header.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/header.rs
 
-<a name="error_annotations">
+<a name="error_annotations"></a>
 
 ## Error annotations
 
@@ -229,7 +229,7 @@ currently only apply to the test as a whole, not to particular
 revisions. The only headers that are intended to really work when
 customized to a revision are error patterns and compiler flags.
 
-<a name="ui">
+<a name="ui"></a>
 
 ## Guide to the UI tests
 

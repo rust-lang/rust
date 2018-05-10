@@ -51,7 +51,7 @@ the role of `liveness_constraints` vs other `constraints`, plus
 
 *to be written*
 
-<a name=mirtypeck>
+<a name="mirtypeck"></a>
 
 ## The MIR type-check
 
@@ -88,7 +88,7 @@ The kinds of region elements are as follows:
 *to be written* -- describe how we can extend the values of a variable
  with causal tracking etc
 
-<a name=skol>
+<a name="skol"></a>
 
 ## Skolemization and universes
 

@@ -3,7 +3,7 @@ chapter covers [formatting](#formatting), [coding for correctness](#cc),
 [using crates from crates.io](#cio), and some tips on
 [structuring your PR for easy review](#er).
 
-<a name=formatting>
+<a name="formatting"></a>
 
 # Formatting and the tidy script
 
@@ -16,7 +16,7 @@ in isolation with `./x.py test src/tools/tidy`.
 
 [fmt]: https://github.com/rust-lang-nursery/fmt-rfcs
 
-<a name=copyright>
+<a name="copyright"></a>
 
 ### Copyright notice
 
@@ -57,7 +57,7 @@ the copyright notice) like so:
 
 Prefer 4-space indent.
 
-<a name=cc>
+<a name="cc"></a>
 
 # Coding for correctness
 
@@ -99,7 +99,7 @@ if foo {
 }
 ```
 
-<a name=cio>
+<a name="cio"></a>
 
 # Using crates from crates.io
 
@@ -108,7 +108,7 @@ dependencies should not be added gratuitously. All such crates must
 have a suitably permissive license. There is an automatic check which
 inspects the Cargo metadata to ensure this.
 
-<a name=er>
+<a name="er"></a>
 
 # How to structure your PR
 

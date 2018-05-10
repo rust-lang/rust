@@ -94,7 +94,7 @@ forall<Self, P1..Pn> {
 }
 ```
 
-<a name="implied-bounds">
+<a name="implied-bounds"></a>
 
 #### Implied bounds
 
@@ -176,7 +176,7 @@ we must show that `WellFormed(TraitRef)`. This in turn justifies the
 implied bounds rules that allow us to extend the set of `FromEnv`
 items.
 
-<a name=trait-items>
+<a name="trait-items"></a>
 
 ## Lowering trait items
 
@@ -291,7 +291,7 @@ forall<P0..Pm> {
 Note that `WC` and `WC1` both encode where-clauses that the impl can
 rely on.
 
-<a name=constant-vals>
+<a name="constant-vals"></a>
 
 ### Function and constant values
 

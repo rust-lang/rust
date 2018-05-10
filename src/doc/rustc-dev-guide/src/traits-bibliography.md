@@ -10,7 +10,7 @@ new every time you open it.
 
 [phl]: https://www.amazon.com/Programming-Higher-Order-Logic-Dale-Miller/dp/052187940X
 
-<a name=pphhf>
+<a name="pphhf"></a>
 
 ["A proof procedure for the logic of Hereditary Harrop formulas"][pphhf],
 by Gopalan Nadathur. This paper covers the basics of universes,
@@ -18,7 +18,7 @@ environments, and Lambda Prolog-style proof search. Quite readable.
 
 [pphhf]: https://dl.acm.org/citation.cfm?id=868380
 
-<a name=slg> 
+<a name="slg"></a> 
 
 ["A new formulation of tabled resolution with delay"][nftrd], by
 [Theresa Swift]. This paper gives a kind of abstract treatment of the

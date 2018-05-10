@@ -4,7 +4,7 @@ This section covers a numbers of common compiler terms that arise in
 this guide. We try to give the general definition while providing some
 Rust-specific context.
 
-<a name=cfg>
+<a name="cfg"></a>
 
 ## What is a control-flow graph?
 
@@ -72,7 +72,7 @@ When using a control-flow graph, a loop simply appears as a cycle in
 the graph, and the `break` keyword translates into a path out of that
 cycle.
 
-<a name=dataflow>
+<a name="dataflow"></a>
 
 ## What is a dataflow analysis?
 
@@ -81,13 +81,13 @@ and Michael I. Schwartzbach is an incredible resource!
 
 *to be written*
 
-<a name=quantified>
+<a name="quantified"></a>
 
 ## What is "universally quantified"? What about "existentially quantified"?
 
 *to be written*
 
-<a name=variance>
+<a name="variance"></a>
 
 ## What is co- and contra-variance?
 
@@ -97,7 +97,7 @@ Check out the subtyping chapter from the
 See the [variance](./variance.html) chapter of this guide for more info on how
 the type checker handles variance.
 
-<a name=free-vs-bound>
+<a name="free-vs-bound"></a>
 
 ## What is a "free region" or a "free variable"? What about "bound region"?
 

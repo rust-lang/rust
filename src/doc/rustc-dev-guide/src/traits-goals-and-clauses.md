@@ -39,11 +39,11 @@ gives the details.
 
 [pphhf]: ./traits-bibliography.html#pphhf
 
-<a name="domain-goals">
+<a name="domain-goals"></a>
 
 ## Domain goals
 
-<a name=trait-ref>
+<a name="trait-ref"></a>
 
 To define the set of *domain goals* in our system, we need to first
 introduce a few simple formulations. A **trait reference** consists of
@@ -58,7 +58,7 @@ IntoIterator`. Note that Rust surface syntax also permits some extra
 things, like associated type bindings (`Vec<T>: IntoIterator<Item =
 T>`), that are not part of a trait reference.
 
-<a name=projection>
+<a name="projection"></a>
 
 A **projection** consists of an associated item reference along with
 its inputs P0..Pm:
@@ -105,7 +105,7 @@ DomainGoal = Implemented(TraitRef)
 
 [n]: ./traits-associated-types.html#normalize
 
-<a name=coinductive>
+<a name="coinductive"></a>
 
 ## Coinductive goals
 

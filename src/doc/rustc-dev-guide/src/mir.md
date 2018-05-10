@@ -234,7 +234,7 @@ but [you can read about those below](#promoted)).
 
 *to be written*
 
-<a name=promoted>
+<a name="promoted"></a>
 
 ### Promoted constants
 
