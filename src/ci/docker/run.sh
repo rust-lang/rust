@@ -36,8 +36,10 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
       url="https://s3-us-west-1.amazonaws.com/$SCCACHE_BUCKET/docker/$cksum"
       echo "Attempting to download $s3url"
+      rm -f /tmp/rustci_docker_cache
       set +e
-      loaded_images=$(curl $url | docker load | sed 's/.* sha/sha/')
+      retry curl -f -L -C - -o /tmp/rustci_docker_cache "$url"
+      loaded_images=$(docker load -i /tmp/rustci_docker_cache | sed 's/.* sha/sha/')
       set -e
       echo "Downloaded containers:\n$loaded_images"
     fi
