@@ -28,6 +28,11 @@ name = "sccache-plus-cl"
 path = "bin/sccache-plus-cl.rs"
 test = false
 
+[[bin]]
+name = "llvm-config-wrapper"
+path = "bin/llvm-config-wrapper.rs"
+test = false
+
 [dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.23"

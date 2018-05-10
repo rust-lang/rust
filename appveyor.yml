@@ -138,6 +138,20 @@ install:
   - if defined MINGW_URL 7z x -y %MINGW_ARCHIVE% > nul
   - if defined MINGW_URL set PATH=%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
 
+  # If we're compiling for MSVC then we, like most other distribution builders,
+  # switch to clang as the compiler. This'll allow us eventually to enable LTO
+  # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
+  # clang has an output mode compatible with MinGW that we need. If it does we
+  # should switch to clang for MinGW as well!
+  #
+  # Note that the LLVM installer is an NSIS installer
+  #
+  # Original downloaded here came from
+  # http://releases.llvm.org/6.0.0/LLVM-6.0.0-win64.exe
+  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-6.0.0-win64.exe
+  - if NOT defined MINGW_URL .\LLVM-6.0.0-win64.exe /S /NCRC /D=C:\clang-rust
+  - if NOT defined MINGW_URL set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=C:\clang-rust\bin\clang-cl.exe
+
   # Here we do a pretty heinous thing which is to mangle the MinGW installation
   # we just had above. Currently, as of this writing, we're using MinGW-w64
   # builds of gcc, and that's currently at 6.3.0. We use 6.3.0 as it appears to
@@ -166,8 +180,8 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-pc-windows-msvc
-  - mv 2018-04-02-sccache-x86_64-pc-windows-msvc sccache.exe
+  - appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc
+  - mv 2018-04-26-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja

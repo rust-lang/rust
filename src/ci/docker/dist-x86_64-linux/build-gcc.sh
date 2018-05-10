@@ -42,7 +42,6 @@ hide_output ../gcc-$GCC/configure \
     --enable-languages=c,c++
 hide_output make -j10
 hide_output make install
-ln -nsf gcc /rustroot/bin/cc
 
 cd ..
 rm -rf gcc-build

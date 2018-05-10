@@ -751,7 +751,11 @@ impl<'a> Builder<'a> {
         // the options through environment variables that are fetched and understood by both.
         //
         // FIXME: the guard against msvc shouldn't need to be here
-        if !target.contains("msvc") {
+        if target.contains("msvc") {
+            if let Some(ref cl) = self.config.llvm_clang_cl {
+                cargo.env("CC", cl).env("CXX", cl);
+            }
+        } else {
             let ccache = self.config.ccache.as_ref();
             let ccacheify = |s: &Path| {
                 let ccache = match ccache {

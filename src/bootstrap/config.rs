@@ -82,6 +82,7 @@ pub struct Config {
     pub llvm_version_check: bool,
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
+    pub llvm_clang_cl: Option<String>,
     pub llvm_targets: Option<String>,
     pub llvm_experimental_targets: String,
     pub llvm_link_jobs: Option<u32>,
@@ -250,6 +251,7 @@ struct Llvm {
     experimental_targets: Option<String>,
     link_jobs: Option<u32>,
     link_shared: Option<bool>,
+    clang_cl: Option<String>
 }
 
 #[derive(Deserialize, Default, Clone)]
@@ -504,6 +506,7 @@ impl Config {
             config.llvm_experimental_targets = llvm.experimental_targets.clone()
                 .unwrap_or("WebAssembly".to_string());
             config.llvm_link_jobs = llvm.link_jobs;
+            config.llvm_clang_cl = llvm.clang_cl.clone();
         }
 
         if let Some(ref rust) = toml.rust {
