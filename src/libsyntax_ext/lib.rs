@@ -18,7 +18,7 @@
 #![feature(decl_macro)]
 #![feature(str_escape)]
 
-#![cfg_attr(not(stage0), feature(rustc_diagnostic_macros))]
+#![feature(rustc_diagnostic_macros)]
 
 extern crate fmt_macros;
 #[macro_use]
@@ -29,7 +29,6 @@ extern crate rustc_data_structures;
 extern crate rustc_errors as errors;
 extern crate rustc_target;
 
-#[cfg(not(stage0))]
 mod diagnostics;
 
 mod assert;

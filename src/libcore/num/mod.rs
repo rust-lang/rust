@@ -422,7 +422,6 @@ $EndFeature, "
         /// assert_eq!(m, -22016);
         /// ```
         #[unstable(feature = "reverse_bits", issue = "48763")]
-        #[cfg(not(stage0))]
         #[inline]
         pub fn reverse_bits(self) -> Self {
             (self as $UnsignedT).reverse_bits() as Self
@@ -2194,7 +2193,6 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
         /// assert_eq!(m, 43520);
         /// ```
         #[unstable(feature = "reverse_bits", issue = "48763")]
-        #[cfg(not(stage0))]
         #[inline]
         pub fn reverse_bits(self) -> Self {
             unsafe { intrinsics::bitreverse(self as $ActualT) as Self }

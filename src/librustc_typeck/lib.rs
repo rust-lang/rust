@@ -71,8 +71,6 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
-#![cfg_attr(stage0, feature(dyn_trait))]
-
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]

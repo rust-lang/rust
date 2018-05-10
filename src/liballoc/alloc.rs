@@ -22,28 +22,6 @@ use core::usize;
 #[doc(inline)]
 pub use core::alloc::*;
 
-#[cfg(stage0)]
-extern "Rust" {
-    #[allocator]
-    #[rustc_allocator_nounwind]
-    fn __rust_alloc(size: usize, align: usize, err: *mut u8) -> *mut u8;
-    #[cold]
-    #[rustc_allocator_nounwind]
-    fn __rust_oom(err: *const u8) -> !;
-    #[rustc_allocator_nounwind]
-    fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
-    #[rustc_allocator_nounwind]
-    fn __rust_realloc(ptr: *mut u8,
-                      old_size: usize,
-                      old_align: usize,
-                      new_size: usize,
-                      new_align: usize,
-                      err: *mut u8) -> *mut u8;
-    #[rustc_allocator_nounwind]
-    fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8) -> *mut u8;
-}
-
-#[cfg(not(stage0))]
 extern "Rust" {
     #[allocator]
     #[rustc_allocator_nounwind]
@@ -74,10 +52,7 @@ pub const Heap: Global = Global;
 unsafe impl GlobalAlloc for Global {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
-        #[cfg(not(stage0))]
         let ptr = __rust_alloc(layout.size(), layout.align());
-        #[cfg(stage0)]
-        let ptr = __rust_alloc(layout.size(), layout.align(), &mut 0);
         ptr as *mut Opaque
     }
 
@@ -88,20 +63,13 @@ unsafe impl GlobalAlloc for Global {
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut Opaque, layout: Layout, new_size: usize) -> *mut Opaque {
-        #[cfg(not(stage0))]
         let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(), new_size);
-        #[cfg(stage0)]
-        let ptr = __rust_realloc(ptr as *mut u8, layout.size(), layout.align(),
-                                 new_size, layout.align(), &mut 0);
         ptr as *mut Opaque
     }
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut Opaque {
-        #[cfg(not(stage0))]
         let ptr = __rust_alloc_zeroed(layout.size(), layout.align());
-        #[cfg(stage0)]
-        let ptr = __rust_alloc_zeroed(layout.size(), layout.align(), &mut 0);
         ptr as *mut Opaque
     }
 }
@@ -152,14 +120,7 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     }
 }
 
-#[cfg(stage0)]
-#[lang = "box_free"]
-#[inline]
-unsafe fn old_box_free<T: ?Sized>(ptr: *mut T) {
-    box_free(Unique::new_unchecked(ptr))
-}
-
-#[cfg_attr(not(any(test, stage0)), lang = "box_free")]
+#[cfg_attr(not(test), lang = "box_free")]
 #[inline]
 pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     let ptr = ptr.as_ptr();
@@ -172,12 +133,6 @@ pub(crate) unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
     }
 }
 
-#[cfg(stage0)]
-pub fn oom() -> ! {
-    unsafe { ::core::intrinsics::abort() }
-}
-
-#[cfg(not(stage0))]
 pub fn oom() -> ! {
     extern {
         #[lang = "oom"]

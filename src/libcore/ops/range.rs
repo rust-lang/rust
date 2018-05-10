@@ -335,18 +335,8 @@ pub struct RangeInclusive<Idx> {
     // but it is known that LLVM is not able to optimize loops following that RFC.
     // Consider adding an extra `bool` field to indicate emptiness of the range.
     // See #45222 for performance test cases.
-    #[cfg(not(stage0))]
     pub(crate) start: Idx,
-    #[cfg(not(stage0))]
     pub(crate) end: Idx,
-    /// The lower bound of the range (inclusive).
-    #[cfg(stage0)]
-    #[unstable(feature = "inclusive_range_fields", issue = "49022")]
-    pub start: Idx,
-    /// The upper bound of the range (inclusive).
-    #[cfg(stage0)]
-    #[unstable(feature = "inclusive_range_fields", issue = "49022")]
-    pub end: Idx,
 }
 
 impl<Idx> RangeInclusive<Idx> {

@@ -24,7 +24,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
 #![feature(decl_macro)]
-#![cfg_attr(stage0, feature(dyn_trait))]
 #![feature(fs_read_write)]
 #![feature(macro_vis_matcher)]
 #![feature(exhaustive_patterns)]
@@ -34,7 +33,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(crate_visibility_modifier)]
 #![feature(never_type)]
 #![feature(specialization)]
-#![cfg_attr(stage0, feature(try_trait))]
+#![feature(try_trait)]
 
 extern crate arena;
 #[macro_use]
@@ -53,16 +52,6 @@ extern crate rustc_target;
 extern crate log_settings;
 extern crate rustc_apfloat;
 extern crate byteorder;
-
-#[cfg(stage0)]
-macro_rules! do_catch {
-  ($t:expr) => { (|| ::std::ops::Try::from_ok($t) )() }
-}
-
-#[cfg(not(stage0))]
-macro_rules! do_catch {
-  ($t:expr) => { do catch { $t } }
-}
 
 mod diagnostics;
 

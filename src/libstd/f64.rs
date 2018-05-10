@@ -19,13 +19,7 @@
 #![allow(missing_docs)]
 
 #[cfg(not(test))]
-#[cfg(stage0)]
-use core::num::Float;
-#[cfg(not(test))]
 use intrinsics;
-#[cfg(not(test))]
-#[cfg(stage0)]
-use num::FpCategory;
 #[cfg(not(test))]
 use sys::cmath;
 
@@ -41,12 +35,8 @@ pub use core::f64::{MIN, MIN_POSITIVE, MAX};
 pub use core::f64::consts;
 
 #[cfg(not(test))]
-#[cfg_attr(stage0, lang = "f64")]
-#[cfg_attr(not(stage0), lang = "f64_runtime")]
+#[lang = "f64_runtime"]
 impl f64 {
-    #[cfg(stage0)]
-    f64_core_methods!();
-
     /// Returns the largest integer less than or equal to a number.
     ///
     /// # Examples

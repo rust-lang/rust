@@ -73,33 +73,6 @@ unsafe impl Alloc for System {
     }
 }
 
-#[cfg(stage0)]
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<'a> Alloc for &'a System {
-    #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc(*self, layout)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<Opaque>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc_zeroed(*self, layout)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<Opaque>, layout: Layout) {
-        GlobalAlloc::dealloc(*self, ptr.as_ptr(), layout)
-    }
-
-    #[inline]
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<Opaque>,
-                      layout: Layout,
-                      new_size: usize) -> Result<NonNull<Opaque>, AllocErr> {
-        NonNull::new(GlobalAlloc::realloc(*self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
-    }
-}
-
 #[cfg(any(windows, unix, target_os = "cloudabi", target_os = "redox"))]
 mod realloc_fallback {
     use core::alloc::{GlobalAlloc, Opaque, Layout};

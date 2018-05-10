@@ -45,17 +45,6 @@ impl State {
     }
 }
 
-macro_rules! span_err_if_not_stage0 {
-    ($cx:expr, $sp:expr, $code:ident, $text:tt) => {
-        #[cfg(not(stage0))] {
-            span_err!($cx, $sp, $code, $text)
-        }
-        #[cfg(stage0)] {
-            $cx.span_err($sp, $text)
-        }
-    }
-}
-
 const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
@@ -100,7 +89,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 if asm_str_style.is_some() {
                     // If we already have a string with instructions,
                     // ending up in Asm state again is an error.
-                    span_err_if_not_stage0!(cx, sp, E0660, "malformed inline assembly");
+                    span_err!(cx, sp, E0660, "malformed inline assembly");
                     return DummyResult::expr(sp);
                 }
                 // Nested parser, stop before the first colon (see above).
@@ -153,7 +142,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                             Some(Symbol::intern(&format!("={}", ch.as_str())))
                         }
                         _ => {
-                            span_err_if_not_stage0!(cx, span, E0661,
+                            span_err!(cx, span, E0661,
                                                     "output operand constraint lacks '=' or '+'");
                             None
                         }
@@ -179,10 +168,10 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     let (constraint, _str_style) = panictry!(p.parse_str());
 
                     if constraint.as_str().starts_with("=") {
-                        span_err_if_not_stage0!(cx, p.prev_span, E0662,
+                        span_err!(cx, p.prev_span, E0662,
                                                 "input operand constraint contains '='");
                     } else if constraint.as_str().starts_with("+") {
-                        span_err_if_not_stage0!(cx, p.prev_span, E0663,
+                        span_err!(cx, p.prev_span, E0663,
                                                 "input operand constraint contains '+'");
                     }
 
@@ -205,7 +194,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
                     } else if s.as_str().starts_with("{") || s.as_str().ends_with("}") {
-                        span_err_if_not_stage0!(cx, p.prev_span, E0664,
+                        span_err!(cx, p.prev_span, E0664,
                                                 "clobber should not be surrounded by braces");
                     }
 

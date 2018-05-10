@@ -19,7 +19,7 @@
 
 use mem;
 use num::Float;
-#[cfg(not(stage0))] use num::FpCategory;
+use num::FpCategory;
 use num::FpCategory as Fp;
 
 /// The radix or base of the internal representation of `f64`.
@@ -276,7 +276,6 @@ impl Float for f64 {
 
 // FIXME: remove (inline) this macro and the Float trait
 // when updating to a bootstrap compiler that has the new lang items.
-#[cfg_attr(stage0, macro_export)]
 #[unstable(feature = "core_float", issue = "32110")]
 macro_rules! f64_core_methods { () => {
     /// Returns `true` if this value is `NaN` and false otherwise.
@@ -562,7 +561,6 @@ macro_rules! f64_core_methods { () => {
 
 #[lang = "f64"]
 #[cfg(not(test))]
-#[cfg(not(stage0))]
 impl f64 {
     f64_core_methods!();
 }
