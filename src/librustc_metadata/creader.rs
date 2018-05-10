@@ -51,7 +51,6 @@ pub struct Library {
 pub struct CrateLoader<'a> {
     pub sess: &'a Session,
     cstore: &'a CStore,
-    next_crate_num: CrateNum,
     local_crate_name: Symbol,
 }
 
@@ -102,7 +101,6 @@ impl<'a> CrateLoader<'a> {
         CrateLoader {
             sess,
             cstore,
-            next_crate_num: cstore.next_crate_num(),
             local_crate_name: Symbol::intern(local_crate_name),
         }
     }
@@ -198,8 +196,7 @@ impl<'a> CrateLoader<'a> {
         self.verify_no_symbol_conflicts(span, &crate_root);
 
         // Claim this crate number and cache it
-        let cnum = self.next_crate_num;
-        self.next_crate_num = CrateNum::from_u32(cnum.as_u32() + 1);
+        let cnum = self.cstore.alloc_new_crate_num();
 
         // Stash paths for top-most crate locally if necessary.
         let crate_paths = if root.is_none() {
