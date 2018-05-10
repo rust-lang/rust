@@ -309,6 +309,18 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
                         StatementKind::Assign(_, Rvalue::Ref(r, bk, ref mut place)) => {
+                            // Find the underlying local for this (necessarilly interior) borrow.
+                            // HACK(eddyb) using a recursive function because of mutable borrows.
+                            fn interior_base<'a, 'tcx>(place: &'a mut Place<'tcx>)
+                                                       -> &'a mut Place<'tcx> {
+                                if let Place::Projection(ref mut proj) = *place {
+                                    assert_ne!(proj.elem, ProjectionElem::Deref);
+                                    return interior_base(&mut proj.base);
+                                }
+                                place
+                            }
+                            let place = interior_base(place);
+
                             let ty = place.ty(local_decls, self.tcx).to_ty(self.tcx);
                             let ref_ty = self.tcx.mk_ref(r,
                                 ty::TypeAndMut {
