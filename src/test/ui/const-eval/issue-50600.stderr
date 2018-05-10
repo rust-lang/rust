@@ -1,0 +1,15 @@
+error[E0912]: closures cannot be constants
+  --> $DIR/issue-50600.rs:13:18
+   |
+LL | struct Foo ([u8; |x: u8| { }]);
+   |                  ^^^^^^^^^^^
+
+error[E0912]: closures cannot be constants
+  --> $DIR/issue-50600.rs:16:14
+   |
+LL |     Square = |x:i32| { },
+   |              ^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0912`.
