@@ -20,7 +20,7 @@ use middle::resolve_lifetime as rl;
 use namespace::Namespace;
 use rustc::ty::subst::{Kind, UnpackedKind, Subst, Substs};
 use rustc::traits;
-use rustc::ty::{self, RegionKind, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, RegionKind, Ty, TyCtxt, GenericParamDefKind, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
 use std::slice;
@@ -246,11 +246,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |param: &ty::GenericParamDef| {
-            if is_object && param.to_type().has_default {
-                if tcx.at(span).type_of(param.def_id).has_self_ty() {
-                    // There is no suitable inference default for a type parameter
-                    // that references self, in an object type.
-                    return true;
+            if let GenericParamDefKind::Type(ty) = param.kind {
+                if is_object && ty.has_default {
+                    if tcx.at(span).type_of(param.def_id).has_self_ty() {
+                        // There is no suitable inference default for a type parameter
+                        // that references self, in an object type.
+                        return true;
+                    }
                 }
             }
 
@@ -272,6 +274,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 return ty;
             }
 
+            let has_default = match def.kind {
+                GenericParamDefKind::Type(ty) => ty.has_default,
+                _ => unreachable!()
+            };
+
             let i = i - (param_counts.lifetimes + own_self);
             if i < num_types_provided {
                 // A provided type parameter.
@@ -284,7 +291,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     self.ty_infer(span)
                 };
                 ty_var
-            } else if def.to_type().has_default {
+            } else if has_default {
                 // No type parameter provided, but a default exists.
 
                 // If we are converting an object type, then the

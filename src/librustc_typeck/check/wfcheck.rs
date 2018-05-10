@@ -371,7 +371,12 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
     let generics = tcx.generics_of(def_id);
     let is_our_default = |def: &ty::GenericParamDef| {
-        def.to_type().has_default && def.index >= generics.parent_count as u32
+        match def.kind {
+            GenericParamDefKind::Type(ty) => {
+                ty.has_default && def.index >= generics.parent_count as u32
+            }
+            _ => unreachable!()
+        }
     };
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.

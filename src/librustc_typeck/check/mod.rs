@@ -96,7 +96,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::{GlobalId};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPredicate};
+use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::maps::Providers;
@@ -4802,10 +4802,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 i -= generics.param_counts().lifetimes;
             }
 
+            let has_default = match def.kind {
+                GenericParamDefKind::Type(ty) => ty.has_default,
+                _ => unreachable!()
+            };
+
             if let Some(ast_ty) = types.get(i) {
                 // A provided type parameter.
                 self.to_ty(ast_ty)
-            } else if !infer_types && def.to_type().has_default {
+            } else if !infer_types && has_default {
                 // No type parameter provided, but a default exists.
                 let default = self.tcx.type_of(def.def_id);
                 self.normalize_ty(

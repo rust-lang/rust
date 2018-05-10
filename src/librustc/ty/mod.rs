@@ -743,13 +743,6 @@ pub struct GenericParamDef {
 }
 
 impl GenericParamDef {
-    pub fn to_type(&self) -> TypeParamDef {
-        match self.kind {
-            GenericParamDefKind::Type(ty) => ty,
-            _ => bug!("cannot convert a non-type to a type")
-        }
-    }
-
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         match self.kind {
             GenericParamDefKind::Lifetime => {
