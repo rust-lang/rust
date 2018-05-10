@@ -257,7 +257,7 @@ impl PrintContext {
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
-        let mut param_counts = GenericParamCount {
+        let mut own_counts = GenericParamCount {
             lifetimes: 0,
             types: 0,
         };
@@ -306,7 +306,7 @@ impl PrintContext {
                 }
             }
             let mut generics = tcx.generics_of(item_def_id);
-            let child_param_counts = generics.param_counts();
+            let child_own_counts = generics.own_counts();
             let mut path_def_id = did;
             has_self = generics.has_self;
 
@@ -314,9 +314,9 @@ impl PrintContext {
             if let Some(def_id) = generics.parent {
                 // Methods.
                 assert!(is_value_path);
-                child_types = child_param_counts.types;
+                child_types = child_own_counts.types;
                 generics = tcx.generics_of(def_id);
-                param_counts = generics.param_counts();
+                own_counts = generics.own_counts();
 
                 if has_self {
                     print!(f, self, write("<"), print_display(substs.type_at(0)), write(" as "))?;
@@ -331,7 +331,7 @@ impl PrintContext {
                     assert_eq!(has_self, false);
                 } else {
                     // Types and traits.
-                    param_counts = child_param_counts;
+                    own_counts = child_own_counts;
                 }
             }
 
@@ -415,10 +415,10 @@ impl PrintContext {
             Ok(())
         };
 
-        print_regions(f, "<", 0, param_counts.lifetimes)?;
+        print_regions(f, "<", 0, own_counts.lifetimes)?;
 
         let tps = substs.types()
-                        .take(param_counts.types - num_supplied_defaults)
+                        .take(own_counts.types - num_supplied_defaults)
                         .skip(has_self as usize);
 
         for ty in tps {
@@ -450,10 +450,10 @@ impl PrintContext {
                 write!(f, "::{}", item_name)?;
             }
 
-            print_regions(f, "::<", param_counts.lifetimes, usize::MAX)?;
+            print_regions(f, "::<", own_counts.lifetimes, usize::MAX)?;
 
             // FIXME: consider being smart with defaults here too
-            for ty in substs.types().skip(param_counts.types) {
+            for ty in substs.types().skip(own_counts.types) {
                 start_or_continue(f, "::<", ", ")?;
                 ty.print_display(f, self)?;
             }

@@ -208,9 +208,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
         let decl_generics = tcx.generics_of(def_id);
-        let param_counts = decl_generics.param_counts();
+        let own_counts = decl_generics.own_counts();
         let num_types_provided = parameters.types.len();
-        let expected_num_region_params = param_counts.lifetimes;
+        let expected_num_region_params = own_counts.lifetimes;
         let supplied_num_region_params = parameters.lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
             report_lifetime_number_error(tcx, span,
@@ -223,7 +223,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Check the number of type parameters supplied by the user.
         let own_self = self_ty.is_some() as usize;
-        let ty_param_defs = param_counts.types - own_self;
+        let ty_param_defs = own_counts.types - own_self;
         if !infer_types || num_types_provided > ty_param_defs {
             let type_params_without_defaults = {
                 let mut count = 0;
@@ -279,7 +279,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 _ => unreachable!()
             };
 
-            let i = i - (param_counts.lifetimes + own_self);
+            let i = i - (own_counts.lifetimes + own_self);
             if i < num_types_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])

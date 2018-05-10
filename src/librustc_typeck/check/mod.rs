@@ -1239,7 +1239,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
         } else {
             for item in &m.items {
                 let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
-                if generics.params.len() - generics.param_counts().lifetimes != 0 {
+                if generics.params.len() - generics.own_counts().lifetimes != 0 {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
                     err.span_label(item.span, "can't have type parameters");
@@ -4799,7 +4799,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Skip over the lifetimes in the same segment.
             if let Some((_, generics)) = segment {
-                i -= generics.param_counts().lifetimes;
+                i -= generics.own_counts().lifetimes;
             }
 
             let has_default = match def.kind {
@@ -4925,10 +4925,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check provided parameters.
         let (ty_req_len, accepted, lt_req_len) =
             segment.map_or((0, 0, 0), |(_, generics)| {
-                let param_counts = generics.param_counts();
+                let own_counts = generics.own_counts();
 
                 let own_self = (generics.parent.is_none() && generics.has_self) as usize;
-                let type_params = param_counts.types - own_self;
+                let type_params = own_counts.types - own_self;
                 let type_params_without_defaults = {
                     let mut count = 0;
                     for param in generics.params.iter() {
@@ -4943,7 +4943,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let type_params_barring_defaults =
                     type_params_without_defaults - own_self;
 
-                (type_params_barring_defaults, type_params, param_counts.lifetimes)
+                (type_params_barring_defaults, type_params, own_counts.lifetimes)
             });
 
         if types.len() > accepted {

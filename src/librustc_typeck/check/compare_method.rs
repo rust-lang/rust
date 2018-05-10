@@ -357,8 +357,8 @@ fn check_region_bounds_on_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_to_skol_substs: &Substs<'tcx>)
                                                 -> Result<(), ErrorReported> {
     let span = tcx.sess.codemap().def_span(span);
-    let trait_params = trait_generics.param_counts().lifetimes;
-    let impl_params = impl_generics.param_counts().lifetimes;
+    let trait_params = trait_generics.own_counts().lifetimes;
+    let impl_params = impl_generics.own_counts().lifetimes;
 
     debug!("check_region_bounds_on_impl_method: \
             trait_generics={:?} \
@@ -574,8 +574,8 @@ fn compare_number_of_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         -> Result<(), ErrorReported> {
     let impl_m_generics = tcx.generics_of(impl_m.def_id);
     let trait_m_generics = tcx.generics_of(trait_m.def_id);
-    let num_impl_m_type_params = impl_m_generics.param_counts().types;
-    let num_trait_m_type_params = trait_m_generics.param_counts().types;
+    let num_impl_m_type_params = impl_m_generics.own_counts().types;
+    let num_trait_m_type_params = trait_m_generics.own_counts().types;
     if num_impl_m_type_params != num_trait_m_type_params {
         let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
         let impl_m_item = tcx.hir.expect_impl_item(impl_m_node_id);

@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // parameters from the type and those from the method.
         assert_eq!(method_generics.parent_count, parent_substs.len());
         let provided = &segment.parameters;
-        let param_counts = method_generics.param_counts();
+        let own_counts = method_generics.own_counts();
         Substs::for_item(self.tcx, pick.item.def_id, |def, _| {
             let i = def.index as usize;
             if i < parent_substs.len() {
@@ -334,7 +334,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             } else if let Some(ast_ty)
                 = provided.as_ref().and_then(|p| {
                     let idx =
-                        i - parent_substs.len() - param_counts.lifetimes;
+                        i - parent_substs.len() - own_counts.lifetimes;
                     p.types.get(idx)
                 })
             {

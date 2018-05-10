@@ -794,23 +794,23 @@ impl<'a, 'gcx, 'tcx> Generics {
         self.parent_count + self.params.len()
     }
 
-    pub fn param_counts(&self) -> GenericParamCount {
+    pub fn own_counts(&self) -> GenericParamCount {
         // We could cache this as a property of `GenericParamCount`, but
         // the aim is to refactor this away entirely eventually and the
         // presence of this method will be a constant reminder.
-        let mut param_counts = GenericParamCount {
+        let mut own_counts = GenericParamCount {
             lifetimes: 0,
             types: 0,
         };
 
         for param in self.params.iter() {
             match param.kind {
-                GenericParamDefKind::Lifetime => param_counts.lifetimes += 1,
-                GenericParamDefKind::Type(_) => param_counts.types += 1,
+                GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
+                GenericParamDefKind::Type(_) => own_counts.types += 1,
             };
         }
 
-        param_counts
+        own_counts
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
