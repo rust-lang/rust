@@ -12,7 +12,7 @@ allow users to write impls which are abstract over all array types.
 # Motivation
 [motivation]: #motivation
 
-Rust currently has one type which is parametric over constants: the built-inf
+Rust currently has one type which is parametric over constants: the built-in
 array type `[T; LEN]`. However, because const generics are not a first class
 feature, users cannot define their own types which are generic over constant
 values, and cannot implement traits for all arrays.
