@@ -69,13 +69,13 @@ essentially one of the following:
 This is the phase where we encode the rules of the trait system into logic. For
 example, if we have:
 
-```rust
+```rust,ignore
 impl<T: Clone> Clone for Vec<T> {}
 ```
 
 We generate:
 
-```rust
+```rust,ignore
 forall<T> { (Vec<T>: Clone) :- (T: Clone) }
 ```
 
