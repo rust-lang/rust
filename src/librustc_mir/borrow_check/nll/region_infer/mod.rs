@@ -317,8 +317,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             // Add `end(X)` into the set for X.
-            self.liveness_constraints
-                .add_element(variable, variable, &Cause::UniversalRegion(variable));
+            self.liveness_constraints.add_element(
+                variable,
+                variable,
+                &Cause::UniversalRegion(variable),
+            );
         }
     }
 
@@ -841,7 +844,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             sup_region, sub_region, point
         );
 
-        let inferred_values = self.inferred_values.as_ref().expect("values for regions not yet inferred");
+        let inferred_values = self.inferred_values
+            .as_ref()
+            .expect("values for regions not yet inferred");
 
         debug!(
             "eval_outlives: sup_region's value = {:?}",
@@ -858,10 +863,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // now). Therefore, the sup-region outlives the sub-region if,
         // for each universal region R1 in the sub-region, there
         // exists some region R2 in the sup-region that outlives R1.
-        let universal_outlives =
-            inferred_values.universal_regions_outlived_by(sub_region)
+        let universal_outlives = inferred_values
+            .universal_regions_outlived_by(sub_region)
             .all(|r1| {
-                inferred_values.universal_regions_outlived_by(sup_region)
+                inferred_values
+                    .universal_regions_outlived_by(sup_region)
                     .any(|r2| self.universal_regions.outlives(r2, r1))
             });
 

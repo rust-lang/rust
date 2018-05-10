@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use borrow_check::nll::region_infer::TrackCauses;
+use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::ty::RegionVid;
 use rustc_data_structures::bitvec::SparseBitMatrix;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc::mir::{BasicBlock, Location, Mir};
-use rustc::ty::RegionVid;
 use std::fmt::Debug;
 use std::rc::Rc;
 
@@ -233,7 +233,12 @@ impl RegionValues {
 
     /// Adds the given element to the value for the given region. Returns true if
     /// the element is newly added (i.e., was not already present).
-    pub(super) fn add_element<E: ToElementIndex>(&mut self, r: RegionVid, elem: E, cause: &Cause) -> bool {
+    pub(super) fn add_element<E: ToElementIndex>(
+        &mut self,
+        r: RegionVid,
+        elem: E,
+        cause: &Cause,
+    ) -> bool {
         let i = self.elements.index(elem);
         self.add_internal(r, i, |_| cause.clone())
     }
