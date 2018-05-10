@@ -372,11 +372,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(INCOHERENT_FUNDAMENTAL_IMPLS),
-            reference: "issue #46205 <https://github.com/rust-lang/rust/issues/46205>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(ORDER_DEPENDENT_TRAIT_OBJECTS),
             reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
             edition: None,
@@ -491,6 +486,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "replaced with a generic attribute input check");
     store.register_removed("duplicate_matcher_binding_name",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/57742");
+    store.register_removed("incoherent_fundamental_impls",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {

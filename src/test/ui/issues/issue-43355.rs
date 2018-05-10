@@ -12,7 +12,6 @@ impl<X, T> Trait1<X> for T where T: Trait2<X> {
 
 impl<X> Trait1<Box<X>> for A {
 //~^ ERROR conflicting implementations of trait
-//~| hard error
 //~| downstream crates may implement trait `Trait2<std::boxed::Box<_>>` for type `A`
     type Output = i32;
 }

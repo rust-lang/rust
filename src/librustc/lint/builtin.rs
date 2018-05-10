@@ -199,12 +199,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub INCOHERENT_FUNDAMENTAL_IMPLS,
-    Deny,
-    "potentially-conflicting impls were erroneously allowed"
-}
-
-declare_lint! {
     pub ORDER_DEPENDENT_TRAIT_OBJECTS,
     Deny,
     "trait-object types were treated as different depending on marker-trait order"
@@ -428,7 +422,6 @@ declare_lint_pass! {
         MISSING_FRAGMENT_SPECIFIER,
         PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
         LATE_BOUND_LIFETIME_ARGUMENTS,
-        INCOHERENT_FUNDAMENTAL_IMPLS,
         ORDER_DEPENDENT_TRAIT_OBJECTS,
         DEPRECATED,
         UNUSED_UNSAFE,
