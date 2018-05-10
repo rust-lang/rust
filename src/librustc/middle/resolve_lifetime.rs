@@ -1306,33 +1306,33 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
 
-        for region in defined_by.values() {
-            debug!(
-                "check_uses_for_lifetimes_defined_by_scope: region = {:?}",
-                region
-            );
-
-            let def_id = match region {
+        let mut def_ids: Vec<_> = defined_by.values()
+            .flat_map(|region| match region {
                 Region::EarlyBound(_, def_id, _)
                 | Region::LateBound(_, def_id, _)
-                | Region::Free(_, def_id) => def_id,
+                | Region::Free(_, def_id) => Some(*def_id),
 
-                Region::LateBoundAnon(..) | Region::Static => continue,
-            };
+                Region::LateBoundAnon(..) | Region::Static => None,
+            })
+            .collect();
 
+        // ensure that we issue lints in a repeatable order
+        def_ids.sort_by_key(|&def_id| self.tcx.def_path_hash(def_id));
+
+        for def_id in def_ids {
             debug!(
                 "check_uses_for_lifetimes_defined_by_scope: def_id = {:?}",
-                def_id
+                def_id,
             );
 
-            let lifetimeuseset = self.lifetime_uses.remove(def_id);
+            let lifetimeuseset = self.lifetime_uses.remove(&def_id);
             debug!(
                 "check_uses_for_lifetimes_defined_by_scope: lifetimeuseset = {:?}",
                 lifetimeuseset
             );
             match lifetimeuseset {
                 Some(LifetimeUseSet::One(_)) => {
-                    let node_id = self.tcx.hir.as_local_node_id(*def_id).unwrap();
+                    let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     debug!("node id first={:?}", node_id);
                     if let hir::map::NodeLifetime(hir_lifetime) = self.tcx.hir.get(node_id) {
                         let span = hir_lifetime.span;
@@ -1359,7 +1359,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     debug!("Not one use lifetime");
                 }
                 None => {
-                    let node_id = self.tcx.hir.as_local_node_id(*def_id).unwrap();
+                    let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
                     if let hir::map::NodeLifetime(hir_lifetime) = self.tcx.hir.get(node_id) {
                         let span = hir_lifetime.span;
                         let id = hir_lifetime.id;
