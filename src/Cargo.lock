@@ -2590,6 +2590,7 @@ dependencies = [
 name = "syntax_pos"
 version = "0.0.0"
 dependencies = [
+ "arena 0.0.0",
  "rustc_data_structures 0.0.0",
  "scoped-tls 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",

@@ -16,8 +16,10 @@ use hygiene::SyntaxContext;
 use {Span, DUMMY_SP, GLOBALS};
 
 use rustc_data_structures::fx::FxHashMap;
+use arena::DroplessArena;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
+use std::str;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
 
@@ -198,22 +200,35 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
     }
 }
 
-#[derive(Default)]
+// The &'static strs in this type actually point into the arena
 pub struct Interner {
-    names: FxHashMap<Box<str>, Symbol>,
-    strings: Vec<Box<str>>,
+    arena: DroplessArena,
+    names: FxHashMap<&'static str, Symbol>,
+    strings: Vec<&'static str>,
     gensyms: Vec<Symbol>,
 }
 
 impl Interner {
     pub fn new() -> Self {
-        Interner::default()
+        Interner {
+            arena: DroplessArena::new(),
+            names: Default::default(),
+            strings: Default::default(),
+            gensyms: Default::default(),
+        }
     }
 
     fn prefill(init: &[&str]) -> Self {
         let mut this = Interner::new();
         for &string in init {
-            this.intern(string);
+            if string == "" {
+                // We can't allocate empty strings in the arena, so handle this here
+                let name = Symbol(this.strings.len() as u32);
+                this.names.insert("", name);
+                this.strings.push("");
+            } else {
+                this.intern(string);
+            }
         }
         this
     }
@@ -224,8 +239,17 @@ impl Interner {
         }
 
         let name = Symbol(self.strings.len() as u32);
-        let string = string.to_string().into_boxed_str();
-        self.strings.push(string.clone());
+
+        // from_utf8_unchecked is safe since we just allocated a &str which is known to be utf8
+        let string: &str = unsafe {
+            str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes()))
+        };
+        // It is safe to extend the arena allocation to 'static because we only access
+        // these while the arena is still alive
+        let string: &'static str =  unsafe {
+            &*(string as *const str)
+        };
+        self.strings.push(string);
         self.names.insert(string, name);
         name
     }
@@ -254,7 +278,7 @@ impl Interner {
 
     pub fn get(&self, symbol: Symbol) -> &str {
         match self.strings.get(symbol.0 as usize) {
-            Some(ref string) => string,
+            Some(string) => string,
             None => self.get(self.gensyms[(!0 - symbol.0) as usize]),
         }
     }
