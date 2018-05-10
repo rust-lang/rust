@@ -1849,6 +1849,12 @@ mod traits {
         }
     }
 
+    #[inline(never)]
+    #[cold]
+    fn str_index_overflow_fail() -> ! {
+        panic!("attempted to index str up to maximum usize");
+    }
+
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
     impl SliceIndex<str> for ops::RangeFull {
         type Output = str;
@@ -2029,19 +2035,13 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if let Some(end) = self.end.checked_add(1) {
-                (self.start..end).get(slice)
-            } else {
-                None
-            }
+            if self.end == usize::max_value() { None }
+            else { (self.start..self.end+1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if let Some(end) = self.end.checked_add(1) {
-                (self.start..end).get_mut(slice)
-            } else {
-                None
-            }
+            if self.end == usize::max_value() { None }
+            else { (self.start..self.end+1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
@@ -2053,14 +2053,12 @@ mod traits {
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (self.start..self.end+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (self.start..self.end+1).index_mut(slice)
         }
     }
@@ -2072,40 +2070,30 @@ mod traits {
         type Output = str;
         #[inline]
         fn get(self, slice: &str) -> Option<&Self::Output> {
-            if self.end < usize::max_value() && slice.is_char_boundary(self.end + 1) {
-                Some(unsafe { self.get_unchecked(slice) })
-            } else {
-                None
-            }
+            if self.end == usize::max_value() { None }
+            else { (..self.end+1).get(slice) }
         }
         #[inline]
         fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
-            if self.end < usize::max_value() && slice.is_char_boundary(self.end + 1) {
-                Some(unsafe { self.get_unchecked_mut(slice) })
-            } else {
-                None
-            }
+            if self.end == usize::max_value() { None }
+            else { (..self.end+1).get_mut(slice) }
         }
         #[inline]
         unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
-            let ptr = slice.as_ptr();
-            super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end + 1))
+            (..self.end+1).get_unchecked(slice)
         }
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
-            let ptr = slice.as_ptr();
-            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, self.end + 1))
+            (..self.end+1).get_unchecked_mut(slice)
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (..self.end+1).index(slice)
         }
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
-            assert!(self.end != usize::max_value(),
-                "attempted to index str up to maximum usize");
+            if self.end == usize::max_value() { str_index_overflow_fail(); }
             (..self.end+1).index_mut(slice)
         }
     }
