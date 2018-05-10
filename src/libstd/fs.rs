@@ -1699,8 +1699,8 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::readlink(path.as_ref())
 }
 
-/// Returns the canonical form of a path with all intermediate components
-/// normalized and symbolic links resolved.
+/// Returns the canonical, absolute form of a path with all intermediate
+/// components normalized and symbolic links resolved.
 ///
 /// # Platform-specific behavior
 ///
