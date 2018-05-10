@@ -34,6 +34,7 @@ use tool::{self, Tool};
 use util::{self, dylib_path, dylib_path_var};
 use {Mode, DocTests};
 use toolstate::ToolState;
+use flags::Subcommand;
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
 
@@ -559,6 +560,7 @@ impl Step for RustdocUi {
             target: self.target,
             mode: "ui",
             suite: "rustdoc-ui",
+            path: None,
             compare_mode: None,
         })
     }
@@ -663,7 +665,7 @@ macro_rules! test_definitions {
             const ONLY_HOSTS: bool = $host;
 
             fn should_run(run: ShouldRun) -> ShouldRun {
-                run.path($path)
+                run.suite_path($path)
             }
 
             fn make_run(run: RunConfig) {
@@ -681,6 +683,7 @@ macro_rules! test_definitions {
                     target: self.target,
                     mode: $mode,
                     suite: $suite,
+                    path: Some($path),
                     compare_mode: $compare_mode,
                 })
             }
@@ -853,6 +856,7 @@ struct Compiletest {
     target: Interned<String>,
     mode: &'static str,
     suite: &'static str,
+    path: Option<&'static str>,
     compare_mode: Option<&'static str>,
 }
 
@@ -874,6 +878,9 @@ impl Step for Compiletest {
         let mode = self.mode;
         let suite = self.suite;
         let compare_mode = self.compare_mode;
+
+        // Path for test suite
+        let suite_path = self.path.unwrap_or("");
 
         // Skip codegen tests if they aren't enabled in configuration.
         if !builder.config.codegen_tests && suite == "codegen" {
@@ -997,7 +1004,19 @@ impl Step for Compiletest {
             cmd.arg("--lldb-python-dir").arg(dir);
         }
 
-        cmd.args(&builder.config.cmd.test_args());
+        // Get paths from cmd args
+        let paths = match &builder.config.cmd {
+            Subcommand::Test { ref paths, ..} => &paths[..],
+            _ => &[]
+        };
+
+        // Get test-args by striping suite path
+        let mut test_args: Vec<&str> = paths.iter().filter(|p| p.starts_with(suite_path) &&
+           p.is_file()).map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap()).collect();
+
+        test_args.append(&mut builder.config.cmd.test_args());
+
+        cmd.args(&test_args);
 
         if builder.is_verbose() {
             cmd.arg("--verbose");
