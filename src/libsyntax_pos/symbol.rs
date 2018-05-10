@@ -38,40 +38,48 @@ impl Ident {
     }
 
     /// Maps an interned string to an identifier with an empty syntax context.
+    #[inline]
     pub fn from_interned_str(string: InternedString) -> Ident {
         Ident::with_empty_ctxt(string.as_symbol())
     }
 
     /// Maps a string to an identifier with an empty syntax context.
+    #[inline]
     pub fn from_str(string: &str) -> Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
     /// Replace `lo` and `hi` with those from `span`, but keep hygiene context.
+    #[inline]
     pub fn with_span_pos(self, span: Span) -> Ident {
         Ident::new(self.name, span.with_ctxt(self.span.ctxt()))
     }
 
+    #[inline]
     pub fn without_first_quote(self) -> Ident {
         Ident::new(Symbol::intern(self.name.as_str().trim_left_matches('\'')), self.span)
     }
 
+    #[inline]
     pub fn modern(self) -> Ident {
         Ident::new(self.name, self.span.modern())
     }
 
+    #[inline]
     pub fn gensym(self) -> Ident {
         Ident::new(self.name.gensymed(), self.span)
     }
 }
 
 impl PartialEq for Ident {
+    #[inline]
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name && self.span.ctxt() == rhs.span.ctxt()
     }
 }
 
 impl Hash for Ident {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         self.span.ctxt().hash(state);
@@ -85,12 +93,14 @@ impl fmt::Debug for Ident {
 }
 
 impl fmt::Display for Ident {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.name, f)
     }
 }
 
 impl Encodable for Ident {
+    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         if self.span.ctxt().modern() == SyntaxContext::empty() {
             s.emit_str(&self.name.as_str())
@@ -103,6 +113,7 @@ impl Encodable for Ident {
 }
 
 impl Decodable for Ident {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
         let string = d.read_str()?;
         Ok(if !string.starts_with('#') {
@@ -127,23 +138,28 @@ impl !Sync for Symbol { }
 
 impl Symbol {
     /// Maps a string to its interned representation.
+    #[inline]
     pub fn intern(string: &str) -> Self {
         with_interner(|interner| interner.intern(string))
     }
 
+    #[inline]
     pub fn interned(self) -> Self {
         with_interner(|interner| interner.interned(self))
     }
 
     /// gensym's a new usize, using the current interner.
+    #[inline]
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
     }
 
+    #[inline]
     pub fn gensymed(self) -> Self {
         with_interner(|interner| interner.gensymed(self))
     }
 
+    #[inline]
     pub fn as_str(self) -> LocalInternedString {
         with_interner(|interner| unsafe {
             LocalInternedString {
@@ -152,12 +168,14 @@ impl Symbol {
         })
     }
 
+    #[inline]
     pub fn as_interned_str(self) -> InternedString {
         with_interner(|interner| InternedString {
             symbol: interner.interned(self)
         })
     }
 
+    #[inline]
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -175,24 +193,28 @@ impl fmt::Debug for Symbol {
 }
 
 impl fmt::Display for Symbol {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.as_str(), f)
     }
 }
 
 impl Encodable for Symbol {
+    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(&self.as_str())
     }
 }
 
 impl Decodable for Symbol {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Symbol, D::Error> {
         Ok(Symbol::intern(&d.read_str()?))
     }
 }
 
 impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
+    #[inline]
     fn eq(&self, other: &T) -> bool {
         self.as_str() == other.deref()
     }
@@ -218,11 +240,15 @@ impl Interner {
         this
     }
 
+    #[inline]
     pub fn intern(&mut self, string: &str) -> Symbol {
         if let Some(&name) = self.names.get(string) {
             return name;
         }
+        self.insert(string)
+    }
 
+    fn insert(&mut self, string: &str) -> Symbol {
         let name = Symbol(self.strings.len() as u32);
         let string = string.to_string().into_boxed_str();
         self.strings.push(string.clone());
@@ -230,6 +256,7 @@ impl Interner {
         name
     }
 
+    #[inline]
     pub fn interned(&self, symbol: Symbol) -> Symbol {
         if (symbol.0 as usize) < self.strings.len() {
             symbol
@@ -248,10 +275,12 @@ impl Interner {
         Symbol(!0 - self.gensyms.len() as u32 + 1)
     }
 
+    #[inline]
     fn is_gensymed(&mut self, symbol: Symbol) -> bool {
         symbol.0 as usize >= self.strings.len()
     }
 
+    #[inline]
     pub fn get(&self, symbol: Symbol) -> &str {
         match self.strings.get(symbol.0 as usize) {
             Some(ref string) => string,
@@ -388,6 +417,7 @@ pub struct LocalInternedString {
 }
 
 impl LocalInternedString {
+    #[inline]
     pub fn as_interned_str(self) -> InternedString {
         InternedString {
             symbol: Symbol::intern(self.string)
@@ -399,36 +429,42 @@ impl<U: ?Sized> ::std::convert::AsRef<U> for LocalInternedString
 where
     str: ::std::convert::AsRef<U>
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         self.string.as_ref()
     }
 }
 
 impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for LocalInternedString {
+    #[inline]
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
     }
 }
 
 impl ::std::cmp::PartialEq<LocalInternedString> for str {
+    #[inline]
     fn eq(&self, other: &LocalInternedString) -> bool {
         self == other.string
     }
 }
 
 impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a str {
+    #[inline]
     fn eq(&self, other: &LocalInternedString) -> bool {
         *self == other.string
     }
 }
 
 impl ::std::cmp::PartialEq<LocalInternedString> for String {
+    #[inline]
     fn eq(&self, other: &LocalInternedString) -> bool {
         self == other.string
     }
 }
 
 impl<'a> ::std::cmp::PartialEq<LocalInternedString> for &'a String {
+    #[inline]
     fn eq(&self, other: &LocalInternedString) -> bool {
         *self == other.string
     }
@@ -439,6 +475,7 @@ impl !Sync for LocalInternedString {}
 
 impl ::std::ops::Deref for LocalInternedString {
     type Target = str;
+    #[inline]
     fn deref(&self) -> &str { self.string }
 }
 
@@ -449,18 +486,21 @@ impl fmt::Debug for LocalInternedString {
 }
 
 impl fmt::Display for LocalInternedString {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
     }
 }
 
 impl Decodable for LocalInternedString {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<LocalInternedString, D::Error> {
         Ok(Symbol::intern(&d.read_str()?).as_str())
     }
 }
 
 impl Encodable for LocalInternedString {
+    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_str(self.string)
     }
@@ -473,6 +513,7 @@ pub struct InternedString {
 }
 
 impl InternedString {
+    #[inline]
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
         let str = with_interner(|interner| {
             interner.get(self.symbol) as *const str
@@ -483,22 +524,26 @@ impl InternedString {
         unsafe { f(&*str) }
     }
 
+    #[inline]
     pub fn as_symbol(self) -> Symbol {
         self.symbol
     }
 
+    #[inline]
     pub fn as_str(self) -> LocalInternedString {
         self.symbol.as_str()
     }
 }
 
 impl Hash for InternedString {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.with(|str| str.hash(state))
     }
 }
 
 impl PartialOrd<InternedString> for InternedString {
+    #[inline]
     fn partial_cmp(&self, other: &InternedString) -> Option<Ordering> {
         if self.symbol == other.symbol {
             return Some(Ordering::Equal);
@@ -508,6 +553,7 @@ impl PartialOrd<InternedString> for InternedString {
 }
 
 impl Ord for InternedString {
+    #[inline]
     fn cmp(&self, other: &InternedString) -> Ordering {
         if self.symbol == other.symbol {
             return Ordering::Equal;
@@ -517,42 +563,49 @@ impl Ord for InternedString {
 }
 
 impl<T: ::std::ops::Deref<Target = str>> PartialEq<T> for InternedString {
+    #[inline]
     fn eq(&self, other: &T) -> bool {
         self.with(|string| string == other.deref())
     }
 }
 
 impl PartialEq<InternedString> for InternedString {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         self.symbol == other.symbol
     }
 }
 
 impl PartialEq<InternedString> for str {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         other.with(|string| self == string)
     }
 }
 
 impl<'a> PartialEq<InternedString> for &'a str {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         other.with(|string| *self == string)
     }
 }
 
 impl PartialEq<InternedString> for String {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         other.with(|string| self == string)
     }
 }
 
 impl<'a> PartialEq<InternedString> for &'a String {
+    #[inline]
     fn eq(&self, other: &InternedString) -> bool {
         other.with(|string| *self == string)
     }
 }
 
 impl ::std::convert::From<InternedString> for String {
+    #[inline]
     fn from(val: InternedString) -> String {
         val.as_symbol().to_string()
     }
@@ -565,18 +618,21 @@ impl fmt::Debug for InternedString {
 }
 
 impl fmt::Display for InternedString {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.with(|str| fmt::Display::fmt(&str, f))
     }
 }
 
 impl Decodable for InternedString {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
         Ok(Symbol::intern(&d.read_str()?).as_interned_str())
     }
 }
 
 impl Encodable for InternedString {
+    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         self.with(|string| s.emit_str(string))
     }

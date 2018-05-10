@@ -191,11 +191,13 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl PartialOrd for Span {
+    #[inline]
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         PartialOrd::partial_cmp(&self.data(), &rhs.data())
     }
 }
 impl Ord for Span {
+    #[inline]
     fn cmp(&self, rhs: &Self) -> Ordering {
         Ord::cmp(&self.data(), &rhs.data())
     }
@@ -253,11 +255,13 @@ impl Span {
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
+    #[inline]
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }
     }
 
     /// Return true if `self` fully encloses `other`.
+    #[inline]
     pub fn contains(self, other: Span) -> bool {
         let span = self.data();
         let other = other.data();
@@ -268,6 +272,7 @@ impl Span {
     ///
     /// Use this instead of `==` when either span could be generated code,
     /// and you only care that they point to the same bytes of source text.
+    #[inline]
     pub fn source_equal(&self, other: &Span) -> bool {
         let span = self.data();
         let other = other.data();
@@ -275,6 +280,7 @@ impl Span {
     }
 
     /// Returns `Some(span)`, where the start is trimmed by the end of `other`
+    #[inline]
     pub fn trim_start(self, other: Span) -> Option<Span> {
         let span = self.data();
         let other = other.data();
@@ -406,6 +412,7 @@ impl Span {
     }
 
     /// Return a `Span` between the end of `self` to the beginning of `end`.
+    #[inline]
     pub fn between(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -417,6 +424,7 @@ impl Span {
     }
 
     /// Return a `Span` between the beginning of `self` to the beginning of `end`.
+    #[inline]
     pub fn until(self, end: Span) -> Span {
         let span = self.data();
         let end = end.data();
@@ -488,6 +496,7 @@ pub struct SpanLabel {
 }
 
 impl Default for Span {
+    #[inline]
     fn default() -> Self {
         DUMMY_SP
     }
@@ -539,6 +548,7 @@ impl fmt::Debug for SpanData {
 }
 
 impl MultiSpan {
+    #[inline]
     pub fn new() -> MultiSpan {
         MultiSpan {
             primary_spans: vec![],
@@ -546,6 +556,7 @@ impl MultiSpan {
         }
     }
 
+    #[inline]
     pub fn from_span(primary_span: Span) -> MultiSpan {
         MultiSpan {
             primary_spans: vec![primary_span],
@@ -553,6 +564,7 @@ impl MultiSpan {
         }
     }
 
+    #[inline]
     pub fn from_spans(vec: Vec<Span>) -> MultiSpan {
         MultiSpan {
             primary_spans: vec,
@@ -560,16 +572,19 @@ impl MultiSpan {
         }
     }
 
+    #[inline]
     pub fn push_span_label(&mut self, span: Span, label: String) {
         self.span_labels.push((span, label));
     }
 
     /// Selects the first primary span (if any)
+    #[inline]
     pub fn primary_span(&self) -> Option<Span> {
         self.primary_spans.first().cloned()
     }
 
     /// Returns all primary spans.
+    #[inline]
     pub fn primary_spans(&self) -> &[Span] {
         &self.primary_spans
     }
@@ -625,12 +640,14 @@ impl MultiSpan {
 }
 
 impl From<Span> for MultiSpan {
+    #[inline]
     fn from(span: Span) -> MultiSpan {
         MultiSpan::from_span(span)
     }
 }
 
 impl From<Vec<Span>> for MultiSpan {
+    #[inline]
     fn from(spans: Vec<Span>) -> MultiSpan {
         MultiSpan::from_spans(spans)
     }
@@ -659,6 +676,7 @@ pub enum NonNarrowChar {
 }
 
 impl NonNarrowChar {
+    #[inline]
     fn new(pos: BytePos, width: usize) -> Self {
         match width {
             0 => NonNarrowChar::ZeroWidth(pos),
@@ -669,6 +687,7 @@ impl NonNarrowChar {
     }
 
     /// Returns the absolute offset of the character in the CodeMap
+    #[inline]
     pub fn pos(&self) -> BytePos {
         match *self {
             NonNarrowChar::ZeroWidth(p) |
@@ -678,6 +697,7 @@ impl NonNarrowChar {
     }
 
     /// Returns the width of the character, 0 (zero-width) or 2 (wide)
+    #[inline]
     pub fn width(&self) -> usize {
         match *self {
             NonNarrowChar::ZeroWidth(_) => 0,
@@ -690,6 +710,7 @@ impl NonNarrowChar {
 impl Add<BytePos> for NonNarrowChar {
     type Output = Self;
 
+    #[inline]
     fn add(self, rhs: BytePos) -> Self {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos + rhs),
@@ -702,6 +723,7 @@ impl Add<BytePos> for NonNarrowChar {
 impl Sub<BytePos> for NonNarrowChar {
     type Output = Self;
 
+    #[inline]
     fn sub(self, rhs: BytePos) -> Self {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos - rhs),
@@ -962,6 +984,7 @@ impl FileMap {
     /// and CodeMap will append a newline when adding a filemap without a newline at the end,
     /// so the safe way to call this is with value calculated as
     /// filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.
+    #[inline]
     pub fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let mut lines = self.lines.borrow_mut();
@@ -1037,6 +1060,7 @@ impl FileMap {
         }
     }
 
+    #[inline]
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: usize) {
         assert!(bytes >=2 && bytes <= 4);
         let mbc = MultiByteChar {
@@ -1046,6 +1070,7 @@ impl FileMap {
         self.multibyte_chars.borrow_mut().push(mbc);
     }
 
+    #[inline]
     pub fn record_width(&self, pos: BytePos, ch: char) {
         let width = match ch {
             '\t' =>
@@ -1176,12 +1201,14 @@ impl Sub for BytePos {
 }
 
 impl Encodable for BytePos {
+    #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u32(self.0)
     }
 }
 
 impl Decodable for BytePos {
+    #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<BytePos, D::Error> {
         Ok(BytePos(d.read_u32()?))
     }
