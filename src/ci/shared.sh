@@ -21,11 +21,12 @@ function retry {
   while true; do
     "$@" && break || {
       if [[ $n -lt $max ]]; then
+        sleep $n  # don't retry immediately
         ((n++))
         echo "Command failed. Attempt $n/$max:"
       else
         echo "The command has failed after $n attempts."
-        exit 1
+        return 1
       fi
     }
   done

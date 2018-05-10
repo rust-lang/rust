@@ -246,7 +246,7 @@ impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
         if cnum == LOCAL_CRATE {
             self.cdata().cnum
         } else {
-            self.cdata().cnum_map.borrow()[cnum]
+            self.cdata().cnum_map[cnum]
         }
     }
 }
@@ -932,7 +932,7 @@ impl<'a, 'tcx> CrateMetadata {
     // Translate a DefId from the current compilation environment to a DefId
     // for an external crate.
     fn reverse_translate_def_id(&self, did: DefId) -> Option<DefId> {
-        for (local, &global) in self.cnum_map.borrow().iter_enumerated() {
+        for (local, &global) in self.cnum_map.iter_enumerated() {
             if global == did.krate {
                 return Some(DefId {
                     krate: local,
@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> CrateMetadata {
             .enumerate()
             .flat_map(|(i, link)| {
                 let cnum = CrateNum::new(i + 1);
-                link.map(|link| (self.cnum_map.borrow()[cnum], link))
+                link.map(|link| (self.cnum_map[cnum], link))
             })
             .collect()
     }

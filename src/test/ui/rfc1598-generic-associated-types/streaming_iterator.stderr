@@ -16,6 +16,18 @@ error[E0110]: lifetime parameters are not allowed on this type
 LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>>;
    |                                                ^^ lifetime parameter not allowed on this type
 
-error: aborting due to 3 previous errors
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:47:37
+   |
+LL |     type Item<'a> = (usize, I::Item<'a>);
+   |                                     ^^ lifetime parameter not allowed on this type
+
+error[E0110]: lifetime parameters are not allowed on this type
+  --> $DIR/streaming_iterator.rs:49:48
+   |
+LL |     fn next<'a>(&'a self) -> Option<Self::Item<'a>> {
+   |                                                ^^ lifetime parameter not allowed on this type
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0110`.

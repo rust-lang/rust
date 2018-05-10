@@ -31,11 +31,13 @@ pub struct Span(u32);
 
 impl Copy for Span {}
 impl Clone for Span {
+    #[inline]
     fn clone(&self) -> Span {
         *self
     }
 }
 impl PartialEq for Span {
+    #[inline]
     fn eq(&self, other: &Span) -> bool {
         let a = self.0;
         let b = other.0;
@@ -44,6 +46,7 @@ impl PartialEq for Span {
 }
 impl Eq for Span {}
 impl Hash for Span {
+    #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
         let a = self.0;
         a.hash(state)

@@ -370,6 +370,8 @@ mod prim_unit { }
 //
 /// Raw, unsafe pointers, `*const T`, and `*mut T`.
 ///
+/// *[See also the `std::ptr` module](ptr/index.html).*
+///
 /// Working with raw pointers in Rust is uncommon,
 /// typically limited to a few patterns.
 ///
@@ -443,8 +445,6 @@ mod prim_unit { }
 /// Usually you wouldn't literally use `malloc` and `free` from Rust,
 /// but C APIs hand out a lot of pointers generally, so are a common source
 /// of raw pointers in Rust.
-///
-/// *[See also the `std::ptr` module](ptr/index.html).*
 ///
 /// [`null`]: ../std/ptr/fn.null.html
 /// [`null_mut`]: ../std/ptr/fn.null_mut.html
@@ -563,6 +563,8 @@ mod prim_array { }
 //
 /// A dynamically-sized view into a contiguous sequence, `[T]`.
 ///
+/// *[See also the `std::slice` module](slice/index.html).*
+///
 /// Slices are a view into a block of memory represented as a pointer and a
 /// length.
 ///
@@ -585,8 +587,6 @@ mod prim_array { }
 /// assert_eq!(x, &[1, 7, 3]);
 /// ```
 ///
-/// *[See also the `std::slice` module](slice/index.html).*
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_slice { }
 
@@ -594,15 +594,13 @@ mod prim_slice { }
 //
 /// String slices.
 ///
+/// *[See also the `std::str` module](str/index.html).*
+///
 /// The `str` type, also called a 'string slice', is the most primitive string
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
 /// of string literals, `&'static str`.
 ///
-/// Strings slices are always valid UTF-8.
-///
-/// This documentation describes a number of methods and trait implementations
-/// on the `str` type. For technical reasons, there is additional, separate
-/// documentation in the [`std::str`](str/index.html) module as well.
+/// String slices are always valid UTF-8.
 ///
 /// # Examples
 ///
@@ -862,11 +860,11 @@ mod prim_u128 { }
 //
 /// The pointer-sized signed integer type.
 ///
+/// *[See also the `std::isize` module](isize/index.html).*
+///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
-///
-/// *[See also the `std::isize` module](isize/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_isize { }
 
@@ -874,11 +872,11 @@ mod prim_isize { }
 //
 /// The pointer-sized unsigned integer type.
 ///
+/// *[See also the `std::usize` module](usize/index.html).*
+///
 /// The size of this primitive is how many bytes it takes to reference any
 /// location in memory. For example, on a 32 bit target, this is 4 bytes
 /// and on a 64 bit target, this is 8 bytes.
-///
-/// *[See also the `std::usize` module](usize/index.html).*
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_usize { }
 

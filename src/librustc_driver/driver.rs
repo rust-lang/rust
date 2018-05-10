@@ -980,15 +980,16 @@ where
     let dep_graph = match future_dep_graph {
         None => DepGraph::new_disabled(),
         Some(future) => {
-            let prev_graph = time(sess, "blocked while dep-graph loading finishes", || {
-                future
-                    .open()
-                    .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                        message: format!("could not decode incremental cache: {:?}", e),
-                    })
-                    .open(sess)
-            });
-            DepGraph::new(prev_graph)
+            let (prev_graph, prev_work_products) =
+                time(sess, "blocked while dep-graph loading finishes", || {
+                    future
+                        .open()
+                        .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
+                            message: format!("could not decode incremental cache: {:?}", e),
+                        })
+                        .open(sess)
+                });
+            DepGraph::new(prev_graph, prev_work_products)
         }
     };
     let hir_forest = time(sess, "lowering ast -> hir", || {

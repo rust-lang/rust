@@ -95,6 +95,23 @@ pub enum Lto {
     Fat,
 }
 
+#[derive(Clone, PartialEq, Hash)]
+pub enum CrossLangLto {
+    LinkerPlugin(PathBuf),
+    NoLink,
+    Disabled
+}
+
+impl CrossLangLto {
+    pub fn embed_bitcode(&self) -> bool {
+        match *self {
+            CrossLangLto::LinkerPlugin(_) |
+            CrossLangLto::NoLink => true,
+            CrossLangLto::Disabled => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub enum DebugInfoLevel {
     NoDebugInfo,
@@ -412,6 +429,7 @@ top_level_options!(
 
         // Remap source path prefixes in all output (messages, object files, debug, etc)
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
+
         edition: Edition [TRACKED],
     }
 );
@@ -777,11 +795,15 @@ macro_rules! options {
             Some("`string` or `string=string`");
         pub const parse_lto: Option<&'static str> =
             Some("one of `thin`, `fat`, or omitted");
+        pub const parse_cross_lang_lto: Option<&'static str> =
+            Some("either a boolean (`yes`, `no`, `on`, `off`, etc), `no-link`, \
+                  or the path to the linker plugin");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer, Lto,
+                    CrossLangLto};
         use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
 
@@ -986,6 +1008,26 @@ macro_rules! options {
             true
         }
 
+        fn parse_cross_lang_lto(slot: &mut CrossLangLto, v: Option<&str>) -> bool {
+            if v.is_some() {
+                let mut bool_arg = None;
+                if parse_opt_bool(&mut bool_arg, v) {
+                    *slot = if bool_arg.unwrap() {
+                        CrossLangLto::NoLink
+                    } else {
+                        CrossLangLto::Disabled
+                    };
+                    return true
+                }
+            }
+
+            *slot = match v {
+                None |
+                Some("no-link") => CrossLangLto::NoLink,
+                Some(path) => CrossLangLto::LinkerPlugin(PathBuf::from(path)),
+            };
+            true
+        }
     }
 ) }
 
@@ -1295,7 +1337,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "make the current crate share its generic instantiations"),
     chalk: bool = (false, parse_bool, [TRACKED],
           "enable the experimental Chalk-based trait solving engine"),
-    cross_lang_lto: bool = (false, parse_bool, [TRACKED],
+    cross_lang_lto: CrossLangLto = (CrossLangLto::Disabled, parse_cross_lang_lto, [TRACKED],
           "generate build artifacts that are compatible with linker-based LTO."),
 }
 
@@ -2327,7 +2369,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{CrateType, DebugInfoLevel, ErrorOutputType, Lto, OptLevel, OutputTypes,
-                Passes, Sanitizer};
+                Passes, Sanitizer, CrossLangLto};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
@@ -2391,6 +2433,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
+    impl_dep_tracking_hash_via_hash!(CrossLangLto);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2455,7 +2498,7 @@ mod tests {
     use lint;
     use middle::cstore;
     use session::config::{build_configuration, build_session_options_and_crate_config};
-    use session::config::Lto;
+    use session::config::{Lto, CrossLangLto};
     use session::build_session;
     use std::collections::{BTreeMap, BTreeSet};
     use std::iter::FromIterator;
@@ -3110,6 +3153,10 @@ mod tests {
 
         opts = reference.clone();
         opts.debugging_opts.relro_level = Some(RelroLevel::Full);
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.debugging_opts.cross_lang_lto = CrossLangLto::NoLink;
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
     }
 

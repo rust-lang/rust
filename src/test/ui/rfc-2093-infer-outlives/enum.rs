@@ -20,14 +20,14 @@ enum Foo<'a, T> {
 
 // Type U needs to outlive lifetime 'b
 struct Bar<'b, U> {
-    field2: &'b U //~ ERROR 23:5: 23:18: the parameter type `U` may not live long enough [E0309]
+    field2: &'b U //~ ERROR the parameter type `U` may not live long enough [E0309]
 }
 
 
 
 // Type K needs to outlive lifetime 'c.
 enum Ying<'c, K> {
-    One(&'c Yang<K>) //~ ERROR 30:9: 30:21: the parameter type `K` may not live long enough [E0309]
+    One(&'c Yang<K>) //~ ERROR the parameter type `K` may not live long enough [E0309]
 }
 
 struct Yang<V> {

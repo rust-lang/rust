@@ -64,8 +64,9 @@ pub struct CrateMetadata {
     pub extern_crate: Lock<Option<ExternCrate>>,
 
     pub blob: MetadataBlob,
-    pub cnum_map: Lock<CrateNumMap>,
+    pub cnum_map: CrateNumMap,
     pub cnum: CrateNum,
+    pub dependencies: Lock<Vec<CrateNum>>,
     pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
     pub attribute_cache: Lock<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
 
@@ -96,32 +97,34 @@ pub struct CStore {
 impl CStore {
     pub fn new(metadata_loader: Box<MetadataLoader + Sync>) -> CStore {
         CStore {
-            metas: RwLock::new(IndexVec::new()),
+            // We add an empty entry for LOCAL_CRATE (which maps to zero) in
+            // order to make array indices in `metas` match with the
+            // corresponding `CrateNum`. This first entry will always remain
+            // `None`.
+            metas: RwLock::new(IndexVec::from_elem_n(None, 1)),
             extern_mod_crate_map: Lock::new(FxHashMap()),
             metadata_loader,
         }
     }
 
-    /// You cannot use this function to allocate a CrateNum in a thread-safe manner.
-    /// It is currently only used in CrateLoader which is single-threaded code.
-    pub fn next_crate_num(&self) -> CrateNum {
-        CrateNum::new(self.metas.borrow().len() + 1)
+    pub(super) fn alloc_new_crate_num(&self) -> CrateNum {
+        let mut metas = self.metas.borrow_mut();
+        let cnum = CrateNum::new(metas.len());
+        metas.push(None);
+        cnum
     }
 
-    pub fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
+    pub(super) fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
         self.metas.borrow()[cnum].clone().unwrap()
     }
 
-    pub fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
-        use rustc_data_structures::indexed_vec::Idx;
-        let mut met = self.metas.borrow_mut();
-        while met.len() <= cnum.index() {
-            met.push(None);
-        }
-        met[cnum] = Some(data);
+    pub(super) fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {
+        let mut metas = self.metas.borrow_mut();
+        assert!(metas[cnum].is_none(), "Overwriting crate metadata entry");
+        metas[cnum] = Some(data);
     }
 
-    pub fn iter_crate_data<I>(&self, mut i: I)
+    pub(super) fn iter_crate_data<I>(&self, mut i: I)
         where I: FnMut(CrateNum, &Lrc<CrateMetadata>)
     {
         for (k, v) in self.metas.borrow().iter_enumerated() {
@@ -131,20 +134,22 @@ impl CStore {
         }
     }
 
-    pub fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
+    pub(super) fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         self.push_dependencies_in_postorder(&mut ordering, krate);
         ordering.reverse();
         ordering
     }
 
-    pub fn push_dependencies_in_postorder(&self, ordering: &mut Vec<CrateNum>, krate: CrateNum) {
+    pub(super) fn push_dependencies_in_postorder(&self,
+                                                 ordering: &mut Vec<CrateNum>,
+                                                 krate: CrateNum) {
         if ordering.contains(&krate) {
             return;
         }
 
         let data = self.get_crate_data(krate);
-        for &dep in data.cnum_map.borrow().iter() {
+        for &dep in data.dependencies.borrow().iter() {
             if dep != krate {
                 self.push_dependencies_in_postorder(ordering, dep);
             }
@@ -153,7 +158,7 @@ impl CStore {
         ordering.push(krate);
     }
 
-    pub fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
+    pub(super) fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         let mut ordering = Vec::new();
         for (num, v) in self.metas.borrow().iter_enumerated() {
             if let &Some(_) = v {
@@ -163,11 +168,11 @@ impl CStore {
         return ordering
     }
 
-    pub fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
+    pub(super) fn add_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId, cnum: CrateNum) {
         self.extern_mod_crate_map.borrow_mut().insert(emod_id, cnum);
     }
 
-    pub fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
+    pub(super) fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
