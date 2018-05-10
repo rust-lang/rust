@@ -76,6 +76,8 @@ use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use html::{highlight, layout};
 
+use minifier;
+
 /// A pair of name and its optional document.
 pub type NameDoc = (String, Option<String>);
 
@@ -509,7 +511,8 @@ pub fn run(mut krate: clean::Crate,
            css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
            sort_modules_alphabetically: bool,
-           themes: Vec<PathBuf>) -> Result<(), Error> {
+           themes: Vec<PathBuf>,
+           enable_minification: bool) -> Result<(), Error> {
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -661,7 +664,7 @@ pub fn run(mut krate: clean::Crate,
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
-    write_shared(&cx, &krate, &*cache, index)?;
+    write_shared(&cx, &krate, &*cache, index, enable_minification)?;
 
     // And finally render the whole crate's documentation
     cx.krate(krate)
@@ -740,7 +743,8 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
 fn write_shared(cx: &Context,
                 krate: &clean::Crate,
                 cache: &Cache,
-                search_index: String) -> Result<(), Error> {
+                search_index: String,
+                enable_minification: bool) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
@@ -814,16 +818,20 @@ themePicker.onclick = function() {{
                        .join(",")).as_bytes(),
     )?;
 
-    write(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
-                      include_bytes!("static/main.js"))?;
-    write(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
-                      include_bytes!("static/settings.js"))?;
+    write_minify(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
+                 include_str!("static/main.js"),
+                 enable_minification)?;
+    write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
+                 include_str!("static/settings.js"),
+                 enable_minification)?;
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
-                               cx.shared.resource_suffix).into_bytes();
-        data.extend_from_slice(include_bytes!("static/storage.js"));
-        write(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)), &data)?;
+                               cx.shared.resource_suffix);
+        data.push_str(include_str!("static/storage.js"));
+        write_minify(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
+                     &data,
+                     enable_minification)?;
     }
 
     if let Some(ref css) = cx.shared.css_file_extension {
@@ -1018,6 +1026,14 @@ fn render_sources(dst: &Path, scx: &mut SharedContext,
 /// catch any errors.
 fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
     Ok(try_err!(fs::write(&dst, contents), &dst))
+}
+
+fn write_minify(dst: PathBuf, contents: &str, enable_minification: bool) -> Result<(), Error> {
+    if enable_minification {
+        write(dst, minifier::js::minify(contents).as_bytes())
+    } else {
+        write(dst, contents.as_bytes())
+    }
 }
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
