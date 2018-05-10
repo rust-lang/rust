@@ -755,6 +755,7 @@ impl Term {
         }
     }
 
+    // FIXME: Remove this, do not stabilize
     /// Get a reference to the interned string.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn as_str(&self) -> &str {
@@ -779,7 +780,7 @@ impl Term {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for Term {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_str().fmt(f)
+        self.sym.as_str().fmt(f)
     }
 }
 
@@ -1176,7 +1177,7 @@ impl TokenTree {
             },
             self::TokenTree::Term(tt) => {
                 let ident = ast::Ident::new(tt.sym, tt.span.0);
-                let sym_str = tt.sym.as_str();
+                let sym_str = tt.sym.to_string();
                 let token = if sym_str.starts_with("'") {
                     Lifetime(ident)
                 } else if sym_str.starts_with("r#") {

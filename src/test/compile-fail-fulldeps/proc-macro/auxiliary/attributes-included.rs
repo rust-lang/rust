@@ -86,7 +86,7 @@ fn assert_doc(slice: &mut &[TokenTree]) {
     }
 
     match &tokens[0] {
-        TokenTree::Term(tt) => assert_eq!("doc", tt.as_str()),
+        TokenTree::Term(tt) => assert_eq!("doc", &*tt.to_string()),
         _ => panic!("expected `doc`"),
     }
     match &tokens[1] {
@@ -118,11 +118,11 @@ fn assert_invoc(slice: &mut &[TokenTree]) {
 
 fn assert_foo(slice: &mut &[TokenTree]) {
     match &slice[0] {
-        TokenTree::Term(tt) => assert_eq!(tt.as_str(), "fn"),
+        TokenTree::Term(tt) => assert_eq!(&*tt.to_string(), "fn"),
         _ => panic!("expected fn"),
     }
     match &slice[1] {
-        TokenTree::Term(tt) => assert_eq!(tt.as_str(), "foo"),
+        TokenTree::Term(tt) => assert_eq!(&*tt.to_string(), "foo"),
         _ => panic!("expected foo"),
     }
     match &slice[2] {

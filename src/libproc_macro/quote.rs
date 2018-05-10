@@ -183,7 +183,7 @@ impl Quote for Op {
 
 impl Quote for Term {
     fn quote(self) -> TokenStream {
-        quote!(::Term::new((quote self.as_str()), (quote self.span())))
+        quote!(::Term::new((quote self.sym.as_str()), (quote self.span())))
     }
 }
 
