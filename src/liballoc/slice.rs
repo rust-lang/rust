@@ -10,6 +10,8 @@
 
 //! A dynamically-sized view into a contiguous sequence, `[T]`.
 //!
+//! *[See also the slice primitive type](../../std/primitive.slice.html).*
+//!
 //! Slices are a view into a block of memory represented as a pointer and a
 //! length.
 //!
@@ -77,8 +79,6 @@
 //!   iterators.
 //! * Further methods that return iterators are [`.split`], [`.splitn`],
 //!   [`.chunks`], [`.windows`] and more.
-//!
-//! *[See also the slice primitive type](../../std/primitive.slice.html).*
 //!
 //! [`Clone`]: ../../std/clone/trait.Clone.html
 //! [`Eq`]: ../../std/cmp/trait.Eq.html
