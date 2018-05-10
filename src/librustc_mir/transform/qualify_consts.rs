@@ -737,10 +737,21 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 // We might have a candidate for promotion.
                 let candidate = Candidate::Ref(location);
                 if self.can_promote() {
-                    // We can only promote direct borrows of temps.
+                    // We can only promote interior borrows of non-drop temps.
+                    let mut place = place;
+                    while let Place::Projection(ref proj) = *place {
+                        if proj.elem == ProjectionElem::Deref {
+                            break;
+                        }
+                        place = &proj.base;
+                    }
                     if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
-                            self.promotion_candidates.push(candidate);
+                            if let Some(qualif) = self.temp_qualif[local] {
+                                if !qualif.intersects(Qualif::NEEDS_DROP) {
+                                    self.promotion_candidates.push(candidate);
+                                }
+                            }
                         }
                     }
                 }
