@@ -12,6 +12,7 @@ use errors::DiagnosticBuilder;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::small_vec::SmallVec;
 use rustc_data_structures::sync::{Lrc, RwLock, ReadGuard, Lock};
 use std::env;
 use std::hash::Hash;
@@ -77,7 +78,7 @@ struct DepGraphData {
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: RwLock<FxHashMap<WorkProductId, WorkProduct>>,
+    previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
 
     /// Work-products that we generate in this run.
     work_products: RwLock<FxHashMap<WorkProductId, WorkProduct>>,
@@ -90,7 +91,8 @@ struct DepGraphData {
 
 impl DepGraph {
 
-    pub fn new(prev_graph: PreviousDepGraph) -> DepGraph {
+    pub fn new(prev_graph: PreviousDepGraph,
+               prev_work_products: FxHashMap<WorkProductId, WorkProduct>) -> DepGraph {
         // Pre-allocate the fingerprints array. We over-allocate a little so
         // that we hopefully don't have to re-allocate during this compilation
         // session.
@@ -100,7 +102,7 @@ impl DepGraph {
                                                  (prev_graph_node_count * 115) / 100);
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
-                previous_work_products: RwLock::new(FxHashMap()),
+                previous_work_products: prev_work_products,
                 work_products: RwLock::new(FxHashMap()),
                 dep_node_debug: Lock::new(FxHashMap()),
                 current: Lock::new(CurrentDepGraph::new()),
@@ -131,7 +133,7 @@ impl DepGraph {
         let mut edges = Vec::new();
         for (index, edge_targets) in current_dep_graph.edges.iter_enumerated() {
             let from = current_dep_graph.nodes[index];
-            for &edge_target in edge_targets {
+            for &edge_target in edge_targets.iter() {
                 let to = current_dep_graph.nodes[edge_target];
                 edges.push((from, to));
             }
@@ -209,7 +211,7 @@ impl DepGraph {
         self.with_task_impl(key, cx, arg, false, task,
             |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
-                reads: Vec::new(),
+                reads: SmallVec::new(),
                 read_set: FxHashSet(),
             })),
             |data, key, task| data.borrow_mut().complete_task(key, task))
@@ -230,7 +232,7 @@ impl DepGraph {
 
         self.with_task_impl(key, cx, input, true, identity_fn,
             |_| OpenTask::Ignore,
-            |data, key, _| data.borrow_mut().alloc_node(key, Vec::new()))
+            |data, key, _| data.borrow_mut().alloc_node(key, SmallVec::new()))
     }
 
     fn with_task_impl<'gcx, C, A, R>(
@@ -353,7 +355,7 @@ impl DepGraph {
         if let Some(ref data) = self.data {
             let (result, open_task) = ty::tls::with_context(|icx| {
                 let task = OpenTask::Anon(Lock::new(AnonOpenTask {
-                    reads: Vec::new(),
+                    reads: SmallVec::new(),
                     read_set: FxHashSet(),
                 }));
 
@@ -460,19 +462,6 @@ impl DepGraph {
         self.data.as_ref().unwrap().previous.node_to_index(dep_node)
     }
 
-    /// Indicates that a previous work product exists for `v`. This is
-    /// invoked during initial start-up based on what nodes are clean
-    /// (and what files exist in the incr. directory).
-    pub fn insert_previous_work_product(&self, v: &WorkProductId, data: WorkProduct) {
-        debug!("insert_previous_work_product({:?}, {:?})", v, data);
-        self.data
-            .as_ref()
-            .unwrap()
-            .previous_work_products
-            .borrow_mut()
-            .insert(v.clone(), data);
-    }
-
     /// Indicates that we created the given work-product in this run
     /// for `v`. This record will be preserved and loaded in the next
     /// run.
@@ -492,7 +481,7 @@ impl DepGraph {
         self.data
             .as_ref()
             .and_then(|data| {
-                data.previous_work_products.borrow().get(v).cloned()
+                data.previous_work_products.get(v).cloned()
             })
     }
 
@@ -504,8 +493,8 @@ impl DepGraph {
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> ReadGuard<FxHashMap<WorkProductId, WorkProduct>> {
-        self.data.as_ref().unwrap().previous_work_products.borrow()
+    pub fn previous_work_products(&self) -> &FxHashMap<WorkProductId, WorkProduct> {
+        &self.data.as_ref().unwrap().previous_work_products
     }
 
     #[inline(always)]
@@ -534,15 +523,9 @@ impl DepGraph {
     }
 
     pub fn serialize(&self) -> SerializedDepGraph {
-        let mut fingerprints = self.fingerprints.borrow_mut();
         let current_dep_graph = self.data.as_ref().unwrap().current.borrow();
 
-        // Make sure we don't run out of bounds below.
-        if current_dep_graph.nodes.len() > fingerprints.len() {
-            fingerprints.resize(current_dep_graph.nodes.len(), Fingerprint::ZERO);
-        }
-
-        let fingerprints = fingerprints.clone().convert_index_type();
+        let fingerprints = self.fingerprints.borrow().clone().convert_index_type();
         let nodes = current_dep_graph.nodes.clone().convert_index_type();
 
         let total_edge_count: usize = current_dep_graph.edges.iter()
@@ -626,7 +609,7 @@ impl DepGraph {
 
         debug_assert!(data.colors.borrow().get(prev_dep_node_index).is_none());
 
-        let mut current_deps = Vec::new();
+        let mut current_deps = SmallVec::new();
 
         for &dep_dep_node_index in prev_deps {
             let dep_dep_node_color = data.colors.borrow().get(dep_dep_node_index);
@@ -923,7 +906,7 @@ pub enum WorkProductFileKind {
 
 pub(super) struct CurrentDepGraph {
     nodes: IndexVec<DepNodeIndex, DepNode>,
-    edges: IndexVec<DepNodeIndex, Vec<DepNodeIndex>>,
+    edges: IndexVec<DepNodeIndex, SmallVec<[DepNodeIndex; 8]>>,
     node_to_node_index: FxHashMap<DepNode, DepNodeIndex>,
     forbidden_edge: Option<EdgeFilter>,
 
@@ -1061,7 +1044,7 @@ impl CurrentDepGraph {
         } = task {
             debug_assert_eq!(node, key);
             let krate_idx = self.node_to_node_index[&DepNode::new_no_params(DepKind::Krate)];
-            self.alloc_node(node, vec![krate_idx])
+            self.alloc_node(node, SmallVec::one(krate_idx))
         } else {
             bug!("complete_eval_always_task() - Expected eval always task to be popped");
         }
@@ -1107,7 +1090,7 @@ impl CurrentDepGraph {
 
     fn alloc_node(&mut self,
                   dep_node: DepNode,
-                  edges: Vec<DepNodeIndex>)
+                  edges: SmallVec<[DepNodeIndex; 8]>)
                   -> DepNodeIndex {
         debug_assert_eq!(self.edges.len(), self.nodes.len());
         debug_assert_eq!(self.node_to_node_index.len(), self.nodes.len());
@@ -1122,12 +1105,12 @@ impl CurrentDepGraph {
 
 pub struct RegularOpenTask {
     node: DepNode,
-    reads: Vec<DepNodeIndex>,
+    reads: SmallVec<[DepNodeIndex; 8]>,
     read_set: FxHashSet<DepNodeIndex>,
 }
 
 pub struct AnonOpenTask {
-    reads: Vec<DepNodeIndex>,
+    reads: SmallVec<[DepNodeIndex; 8]>,
     read_set: FxHashSet<DepNodeIndex>,
 }
 

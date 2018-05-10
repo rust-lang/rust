@@ -11,9 +11,9 @@
 //! This module provides constants which are specific to the implementation
 //! of the `f64` floating point data type.
 //!
-//! Mathematically significant numbers are provided in the `consts` sub-module.
-//!
 //! *[See also the `f64` primitive type](../../std/primitive.f64.html).*
+//!
+//! Mathematically significant numbers are provided in the `consts` sub-module.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

@@ -21,7 +21,8 @@ use back::symbol_export;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
-use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel};
+use rustc::session::config::{self, CrateType, OptLevel, DebugInfoLevel,
+                             CrossLangLto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
@@ -127,6 +128,7 @@ pub trait Linker {
     fn subsystem(&mut self, subsystem: &str);
     fn group_start(&mut self);
     fn group_end(&mut self);
+    fn cross_lang_lto(&mut self);
     // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
     fn finalize(&mut self) -> Command;
 }
@@ -434,6 +436,42 @@ impl<'a> Linker for GccLinker<'a> {
             self.linker_arg("--end-group");
         }
     }
+
+    fn cross_lang_lto(&mut self) {
+        match self.sess.opts.debugging_opts.cross_lang_lto {
+            CrossLangLto::Disabled |
+            CrossLangLto::NoLink => {
+                // Nothing to do
+            }
+            CrossLangLto::LinkerPlugin(ref path) => {
+                self.linker_arg(&format!("-plugin={}", path.display()));
+
+                let opt_level = match self.sess.opts.optimize {
+                    config::OptLevel::No => "O0",
+                    config::OptLevel::Less => "O1",
+                    config::OptLevel::Default => "O2",
+                    config::OptLevel::Aggressive => "O3",
+                    config::OptLevel::Size => "Os",
+                    config::OptLevel::SizeMin => "Oz",
+                };
+
+                self.linker_arg(&format!("-plugin-opt={}", opt_level));
+                self.linker_arg(&format!("-plugin-opt=mcpu={}", self.sess.target_cpu()));
+
+                match self.sess.opts.cg.lto {
+                    config::Lto::Thin |
+                    config::Lto::ThinLocal => {
+                        self.linker_arg(&format!("-plugin-opt=thin"));
+                    }
+                    config::Lto::Fat |
+                    config::Lto::Yes |
+                    config::Lto::No => {
+                        // default to regular LTO
+                    }
+                }
+            }
+        }
+    }
 }
 
 pub struct MsvcLinker<'a> {
@@ -666,6 +704,10 @@ impl<'a> Linker for MsvcLinker<'a> {
     // MSVC doesn't need group indicators
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
+
+    fn cross_lang_lto(&mut self) {
+        // Do nothing
+    }
 }
 
 pub struct EmLinker<'a> {
@@ -832,6 +874,10 @@ impl<'a> Linker for EmLinker<'a> {
     // Appears not necessary on Emscripten
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
+
+    fn cross_lang_lto(&mut self) {
+        // Do nothing
+    }
 }
 
 fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
@@ -984,4 +1030,8 @@ impl Linker for WasmLd {
     // Not needed for now with LLD
     fn group_start(&mut self) {}
     fn group_end(&mut self) {}
+
+    fn cross_lang_lto(&mut self) {
+        // Do nothing for now
+    }
 }
