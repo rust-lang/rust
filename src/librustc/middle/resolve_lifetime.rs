@@ -1666,7 +1666,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     GenericParamDefKind::Type(ty) => {
                                         Some(ty.object_lifetime_default)
                                     }
-                                    GenericParamDefKind::Lifetime(_) => None,
+                                    GenericParamDefKind::Lifetime => None,
                                 }
                             })
                             .collect()

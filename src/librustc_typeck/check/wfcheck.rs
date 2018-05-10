@@ -652,7 +652,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
         parent.params.iter()
                      .flat_map(|param| {
                          match param.kind {
-                             GenericParamDefKind::Lifetime(_) => None,
+                             GenericParamDefKind::Lifetime => None,
                              GenericParamDefKind::Type(_) => Some((param.name, param.def_id)),
                          }
                      })
@@ -661,7 +661,7 @@ fn reject_shadowing_parameters(tcx: TyCtxt, def_id: DefId) {
     for method_param in generics.params.iter() {
         match method_param.kind {
             // Shadowing is checked in resolve_lifetime.
-            GenericParamDefKind::Lifetime(_) => continue,
+            GenericParamDefKind::Lifetime => continue,
             _ => {},
         };
         if impl_params.contains_key(&method_param.name) {

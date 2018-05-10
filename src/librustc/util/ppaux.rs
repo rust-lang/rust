@@ -340,7 +340,7 @@ impl PrintContext {
                     generics.params.iter().rev().filter_map(|param| {
                         match param.kind {
                             GenericParamDefKind::Type(ty) => Some((param.def_id, ty.has_default)),
-                            GenericParamDefKind::Lifetime(_) => None,
+                            GenericParamDefKind::Lifetime => None,
                         }
                     });
                 if let Some(last_ty) = type_params.next() {
@@ -606,7 +606,7 @@ define_print! {
 impl fmt::Debug for ty::GenericParamDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let type_name = match self.kind {
-            ty::GenericParamDefKind::Lifetime(_) => "Lifetime",
+            ty::GenericParamDefKind::Lifetime => "Lifetime",
             ty::GenericParamDefKind::Type(_) => "Type",
         };
         write!(f, "{}({}, {:?}, {})",

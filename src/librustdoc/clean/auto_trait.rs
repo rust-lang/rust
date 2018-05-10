@@ -229,7 +229,7 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
 
         for param in generics.params.iter() {
             match param.kind {
-                ty::GenericParamDefKind::Lifetime(_) => {
+                ty::GenericParamDefKind::Lifetime => {
                     let name = if param.name == "" {
                         hir::LifetimeName::Static
                     } else {

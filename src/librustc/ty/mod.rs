@@ -713,21 +713,7 @@ pub struct FloatVarValue(pub ast::FloatTy);
 pub struct TypeParamDef {
     pub has_default: bool,
     pub object_lifetime_default: ObjectLifetimeDefault,
-
-    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
-    /// on generic parameter `T`, asserts data behind the parameter
-    /// `T` won't be accessed during the parent type's `Drop` impl.
-    pub pure_wrt_drop: bool,
-
     pub synthetic: Option<hir::SyntheticTyParamKind>,
-}
-
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct LifetimeParamDef {
-    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
-    /// on generic parameter `'a`, asserts data of lifetime `'a`
-    /// won't be accessed during the parent type's `Drop` impl.
-    pub pure_wrt_drop: bool,
 }
 
 impl ty::EarlyBoundRegion {
@@ -738,7 +724,7 @@ impl ty::EarlyBoundRegion {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum GenericParamDefKind {
-    Lifetime(LifetimeParamDef),
+    Lifetime,
     Type(TypeParamDef),
 }
 
@@ -747,17 +733,16 @@ pub struct GenericParamDef {
     pub name: InternedString,
     pub def_id: DefId,
     pub index: u32,
+
+    /// `pure_wrt_drop`, set by the (unsafe) `#[may_dangle]` attribute
+    /// on generic parameter `'a`/`T`, asserts data behind the parameter
+    /// `'a`/`T` won't be accessed during the parent type's `Drop` impl.
+    pub pure_wrt_drop: bool,
+
     pub kind: GenericParamDefKind,
 }
 
 impl GenericParamDef {
-    pub fn to_lifetime(&self) -> LifetimeParamDef {
-        match self.kind {
-            GenericParamDefKind::Lifetime(lt) => lt,
-            _ => bug!("cannot convert a non-lifetime to a lifetime")
-        }
-    }
-
     pub fn to_type(&self) -> TypeParamDef {
         match self.kind {
             GenericParamDefKind::Type(ty) => ty,
@@ -767,7 +752,7 @@ impl GenericParamDef {
 
     pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
         match self.kind {
-            GenericParamDefKind::Lifetime(_) => {
+            GenericParamDefKind::Lifetime => {
                 ty::EarlyBoundRegion {
                     def_id: self.def_id,
                     index: self.index,
@@ -780,7 +765,7 @@ impl GenericParamDef {
 
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         match self.kind {
-            GenericParamDefKind::Lifetime(_) => {
+            GenericParamDefKind::Lifetime => {
                 self.to_early_bound_region_data().to_bound_region()
             }
             _ => bug!("cannot convert a non-lifetime parameter def to an early bound region")
@@ -827,7 +812,7 @@ impl<'a, 'gcx, 'tcx> Generics {
 
         for param in self.params.iter() {
             match param.kind {
-                GenericParamDefKind::Lifetime(_) => param_counts.lifetimes += 1,
+                GenericParamDefKind::Lifetime => param_counts.lifetimes += 1,
                 GenericParamDefKind::Type(_) => param_counts.types += 1,
             };
         }
@@ -839,7 +824,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         for param in self.params.iter() {
             match param.kind {
                 GenericParamDefKind::Type(_) => return true,
-                GenericParamDefKind::Lifetime(_) => {}
+                GenericParamDefKind::Lifetime => {}
             }
         }
         if let Some(parent_def_id) = self.parent {
@@ -858,7 +843,7 @@ impl<'a, 'gcx, 'tcx> Generics {
         if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
-                ty::GenericParamDefKind::Lifetime(_) => param,
+                ty::GenericParamDefKind::Lifetime => param,
                 _ => bug!("expected region parameter, but found another generic parameter")
             }
         } else {

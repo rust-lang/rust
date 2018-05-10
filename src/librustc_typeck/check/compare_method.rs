@@ -731,13 +731,13 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let impl_m_type_params = impl_m_generics.params.iter().filter_map(|param| {
         match param.kind {
             GenericParamDefKind::Type(_) => Some(param),
-            GenericParamDefKind::Lifetime(_) => None,
+            GenericParamDefKind::Lifetime => None,
         }
     });
     let trait_m_type_params = trait_m_generics.params.iter().filter_map(|param| {
         match param.kind {
             GenericParamDefKind::Type(_) => Some(param),
-            GenericParamDefKind::Lifetime(_) => None,
+            GenericParamDefKind::Lifetime => None,
         }
     });
     for (impl_ty, trait_ty) in impl_m_type_params.zip(trait_m_type_params) {

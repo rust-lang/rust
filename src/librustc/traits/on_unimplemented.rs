@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> OnUnimplementedFormatString {
                     Some((param.name.to_string(),
                          trait_ref.substs.type_for_def(&param).to_string()))
                 },
-                GenericParamDefKind::Lifetime(_) => None
+                GenericParamDefKind::Lifetime => None
             }
         }).collect::<FxHashMap<String, String>>();
 

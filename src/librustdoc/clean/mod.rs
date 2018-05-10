@@ -1855,7 +1855,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             params: gens.params
                         .iter()
                         .flat_map(|param| {
-                            if let ty::GenericParamDefKind::Lifetime(_) = param.kind {
+                            if let ty::GenericParamDefKind::Lifetime = param.kind {
                                 Some(GenericParamDef::Lifetime(param.clean(cx)))
                             } else {
                                 None

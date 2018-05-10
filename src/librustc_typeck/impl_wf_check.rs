@@ -125,7 +125,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     report_unused_parameter(tcx, hir_ty.span, "type", &param_ty.to_string());
                 }
             }
-            (&ty::GenericParamDefKind::Lifetime(_), hir::GenericParam::Lifetime(hir_lt)) => {
+            (&ty::GenericParamDefKind::Lifetime, hir::GenericParam::Lifetime(hir_lt)) => {
                 let param = ctp::Parameter::from(ty_param.to_early_bound_region_data());
                 if lifetimes_in_associated_types.contains(&param) && // (*)
                     !input_parameters.contains(&param) {
@@ -134,7 +134,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
             (&ty::GenericParamDefKind::Type(_), _) => continue,
-            (&ty::GenericParamDefKind::Lifetime(_), _) => continue,
+            (&ty::GenericParamDefKind::Lifetime, _) => continue,
         }
     }
 

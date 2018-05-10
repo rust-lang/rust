@@ -315,7 +315,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut least_region = None;
         for param in &abstract_type_generics.params {
             match param.kind {
-                GenericParamDefKind::Lifetime(_) => {}
+                GenericParamDefKind::Lifetime => {}
                 _ => continue
             }
             // Get the value supplied for this region from the substs.

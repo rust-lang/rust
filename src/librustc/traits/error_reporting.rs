@@ -386,7 +386,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     let ty = trait_ref.substs.type_for_def(&param);
                     ty.to_string()
                 },
-                GenericParamDefKind::Lifetime(_) => continue,
+                GenericParamDefKind::Lifetime => continue,
             };
             flags.push((name.clone(), Some(value.clone())));
         }

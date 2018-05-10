@@ -754,7 +754,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::Generics {
 }
 
 impl_stable_hash_for!(enum ty::GenericParamDefKind {
-    Lifetime(lt),
+    Lifetime,
     Type(ty)
 });
 
@@ -762,17 +762,13 @@ impl_stable_hash_for!(struct ty::GenericParamDef {
     name,
     def_id,
     index,
+    pure_wrt_drop,
     kind
-});
-
-impl_stable_hash_for!(struct ty::LifetimeParamDef {
-    pure_wrt_drop
 });
 
 impl_stable_hash_for!(struct ty::TypeParamDef {
     has_default,
     object_lifetime_default,
-    pure_wrt_drop,
     synthetic
 });
 

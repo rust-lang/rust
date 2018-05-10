@@ -226,7 +226,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .iter()
                 .filter_map(|param| {
                     match param.kind {
-                        ty::GenericParamDefKind::Lifetime(_) => Some(param.name.to_string()),
+                        ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
                         _ => None
                     }
                 })

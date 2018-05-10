@@ -844,10 +844,10 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         index: 0,
                         name: keywords::SelfType.name().as_interned_str(),
                         def_id: tcx.hir.local_def_id(param_id),
+                        pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
                             has_default: false,
                             object_lifetime_default: rl::Set1::Empty,
-                            pure_wrt_drop: false,
                             synthetic: None,
                         }),
                     });
@@ -892,9 +892,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             name: l.lifetime.name.name().as_interned_str(),
             index: own_start + i as u32,
             def_id: tcx.hir.local_def_id(l.lifetime.id),
-            kind: ty::GenericParamDefKind::Lifetime(ty::LifetimeParamDef {
-                pure_wrt_drop: l.pure_wrt_drop,
-            }),
+            pure_wrt_drop: l.pure_wrt_drop,
+            kind: ty::GenericParamDefKind::Lifetime,
         }
     }).collect::<Vec<_>>();
 
@@ -923,11 +922,11 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             index: type_start + i as u32,
             name: p.name.as_interned_str(),
             def_id: tcx.hir.local_def_id(p.id),
+            pure_wrt_drop: p.pure_wrt_drop,
             kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
                 has_default: p.default.is_some(),
                 object_lifetime_default:
                     object_lifetime_defaults.as_ref().map_or(rl::Set1::Empty, |o| o[i]),
-                pure_wrt_drop: p.pure_wrt_drop,
                 synthetic: p.synthetic,
             }),
         }
@@ -948,10 +947,10 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 index: type_start + i as u32,
                 name: Symbol::intern(arg).as_interned_str(),
                 def_id,
+                pure_wrt_drop: false,
                 kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
                     has_default: false,
                     object_lifetime_default: rl::Set1::Empty,
-                    pure_wrt_drop: false,
                     synthetic: None,
                 }),
             });
@@ -963,10 +962,10 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     index: type_start + i,
                     name: Symbol::intern("<upvar>").as_interned_str(),
                     def_id,
+                    pure_wrt_drop: false,
                     kind: ty::GenericParamDefKind::Type(ty::TypeParamDef {
                         has_default: false,
                         object_lifetime_default: rl::Set1::Empty,
-                        pure_wrt_drop: false,
                         synthetic: None,
                     }),
                 }
