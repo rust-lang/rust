@@ -22,8 +22,6 @@ though that is something we may want to change in the future.)
 
 [intoiter-item]: https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html#associatedtype.Item
 
-<a name=normalize>
-
 In some cases, associated type projections can be **normalized** --
 that is, simplified -- based on the types given in an impl. So, to
 continue with our example, the impl of `IntoIterator` for `Option<T>`
@@ -152,4 +150,3 @@ to process that constraint.
 variable X and asks us to prove that `ProjectionEq(P1 = X)` and
 `ProjectionEq(P2 = X)`. That used to be needed in an older system to
 prevent cycles; I rather doubt it still is. -nmatsakis)
-
