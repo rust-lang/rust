@@ -54,7 +54,8 @@ essentially one of the following:
 
 * A [clause] of the form `consequence :- conditions` where `:-` is read as
   "if" and `conditions = cond1 && cond2 && ...`
-* A universally quantified clause of the form `forall<T> { consequence :- conditions }`
+* A universally quantified clause of the form
+  `forall<T> { consequence :- conditions }`
   * `forall<T> { ... }` is used to represent [universal quantification]. See the
     section on [Lowering to logic][lowering-forall] for more information.
   * A key thing to note about `forall` is that we don't allow you to "quantify"
@@ -129,7 +130,7 @@ See [The SLG Solver][slg].
 [ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
 [chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
-[lowering-forall]: traits-lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
+[lowering-forall]: https://rust-lang-nursery.github.io/rustc-guide/traits-lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
 [programclause]: https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/ir/mod.rs#L721
 [clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
 [well-formedness-checks]: https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/ir/lowering/mod.rs#L230-L232
