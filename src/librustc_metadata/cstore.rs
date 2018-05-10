@@ -208,7 +208,7 @@ impl CrateMetadata {
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {
-        self.root.panic_strategy.clone()
+        self.root.panic_strategy
     }
 
     pub fn edition(&self) -> Edition {
