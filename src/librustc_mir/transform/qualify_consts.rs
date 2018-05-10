@@ -229,12 +229,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Check if a Local with the current qualifications is promotable.
-    fn can_promote(&mut self) -> bool {
+    fn can_promote(&self, qualif: Qualif) -> bool {
         // References to statics are allowed, but only in other statics.
         if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-            (self.qualif - Qualif::STATIC_REF).is_empty()
+            (qualif - Qualif::STATIC_REF).is_empty()
         } else {
-            self.qualif.is_empty()
+            qualif.is_empty()
         }
     }
 
@@ -746,10 +746,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 if forbidden_mut {
                     self.add(Qualif::NOT_CONST);
-                } else if self.can_promote() {
+                } else {
                     // We might have a candidate for promotion.
                     let candidate = Candidate::Ref(location);
-                    // We can only promote interior borrows of non-drop temps.
+                    // We can only promote interior borrows of promotable temps.
                     let mut place = place;
                     while let Place::Projection(ref proj) = *place {
                         if proj.elem == ProjectionElem::Deref {
@@ -760,7 +760,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
                             if let Some(qualif) = self.temp_qualif[local] {
-                                if !qualif.intersects(Qualif::NEEDS_DROP) {
+                                // `forbidden_mut` is false, so we can safely ignore
+                                // `MUTABLE_INTERIOR` from the local's qualifications.
+                                // This allows borrowing fields which don't have
+                                // `MUTABLE_INTERIOR`, from a type that does, e.g.:
+                                // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                                if self.can_promote(qualif - Qualif::MUTABLE_INTERIOR) {
                                     self.promotion_candidates.push(candidate);
                                 }
                             }
@@ -920,7 +925,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     }
                     let candidate = Candidate::Argument { bb, index: i };
                     if is_shuffle && i == 2 {
-                        if this.can_promote() {
+                        if this.can_promote(this.qualif) {
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
@@ -936,7 +941,7 @@ This does not pose a problem by itself because they can't be accessed directly."
                     if !constant_arguments.contains(&i) {
                         return
                     }
-                    if this.can_promote() {
+                    if this.can_promote(this.qualif) {
                         this.promotion_candidates.push(candidate);
                     } else {
                         this.tcx.sess.span_err(this.span,

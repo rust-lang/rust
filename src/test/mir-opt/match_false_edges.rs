@@ -88,7 +88,8 @@ fn main() {
 //  }
 //  bb9: { // binding1 and guard
 //      StorageLive(_5);
-//      _5 = &((_2 as Some).0: i32);
+//      _11 = promoted[0];
+//      _5 = &(((*_11) as Some).0: i32);
 //      StorageLive(_8);
 //      _8 = const guard() -> [return: bb10, unwind: bb1];
 //  }
