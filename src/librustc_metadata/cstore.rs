@@ -64,8 +64,9 @@ pub struct CrateMetadata {
     pub extern_crate: Lock<Option<ExternCrate>>,
 
     pub blob: MetadataBlob,
-    pub cnum_map: Lock<CrateNumMap>,
+    pub cnum_map: CrateNumMap,
     pub cnum: CrateNum,
+    pub dependencies: Lock<Vec<CrateNum>>,
     pub codemap_import_info: RwLock<Vec<ImportedFileMap>>,
     pub attribute_cache: Lock<[Vec<Option<Lrc<[ast::Attribute]>>>; 2]>,
 
@@ -144,7 +145,7 @@ impl CStore {
         }
 
         let data = self.get_crate_data(krate);
-        for &dep in data.cnum_map.borrow().iter() {
+        for &dep in data.dependencies.borrow().iter() {
             if dep != krate {
                 self.push_dependencies_in_postorder(ordering, dep);
             }
