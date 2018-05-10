@@ -75,6 +75,11 @@ internally. The result is the compiling `rustc` is done in stages.
 For hacking, often building the stage 1 compiler is enough, but for
 final testing and release, the stage 2 compiler is used.
 
+`./x.py check` is really fast to build the rust compiler. 
+It is, in particular, very useful when you're doing some kind of 
+"type-based refactoring", like renaming a method, or changing the 
+signature of some function.
+
 Once you've created a config.toml, you are now ready to run
 `x.py`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local rust:
