@@ -44,6 +44,7 @@ extern crate parking_lot;
 extern crate cfg_if;
 extern crate stable_deref_trait;
 extern crate rustc_rayon as rayon;
+extern crate rustc_rayon_core as rayon_core;
 extern crate rustc_hash;
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
