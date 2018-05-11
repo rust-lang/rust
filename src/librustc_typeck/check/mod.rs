@@ -4923,32 +4923,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         // Check provided parameters.
-        let (ty_req_len, accepted, lt_req_len) =
-            segment.map_or((0, 0, 0), |(_, generics)| {
-                let own_counts = generics.own_counts();
-
-                let own_self = (generics.parent.is_none() && generics.has_self) as usize;
-                let type_params = own_counts.types - own_self;
-                let type_params_without_defaults = {
-                    let mut count = 0;
-                    for param in generics.params.iter() {
-                        if let ty::GenericParamDefKind::Type(ty) = param.kind {
+        let ((ty_required, ty_accepted), lt_accepted) =
+            segment.map_or(((0, 0), 0), |(_, generics)| {
+                let mut lt_accepted = 0;
+                let mut ty_range = (0, 0);
+                for param in &generics.params {
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => {
+                            lt_accepted += 1;
+                        }
+                        GenericParamDefKind::Type(ty) => {
+                            ty_range.1 += 1;
                             if !ty.has_default {
-                                count += 1
+                                ty_range.0 += 1;
                             }
                         }
-                    }
-                    count
-                };
-                let type_params_barring_defaults =
-                    type_params_without_defaults - own_self;
+                    };
+                }
+                if generics.parent.is_none() && generics.has_self {
+                    ty_range.0 -= 1;
+                    ty_range.1 -= 1;
+                }
 
-                (type_params_barring_defaults, type_params, own_counts.lifetimes)
+                ((ty_range.0, ty_range.1), lt_accepted)
             });
 
-        if types.len() > accepted {
-            let span = types[accepted].span;
-            let expected_text = count_type_params(accepted);
+        if types.len() > ty_accepted {
+            let span = types[ty_accepted].span;
+            let expected_text = count_type_params(ty_accepted);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0087,
                              "too many type parameters provided: \
@@ -4961,8 +4963,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
-        } else if types.len() < ty_req_len && !infer_types && !supress_mismatch_error {
-            let expected_text = count_type_params(ty_req_len);
+        } else if types.len() < ty_required && !infer_types && !supress_mismatch_error {
+            let expected_text = count_type_params(ty_required);
             let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
                              "too few type parameters provided: \
@@ -4984,8 +4986,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let primary_msg = "cannot specify lifetime arguments explicitly \
                                if late bound lifetime parameters are present";
             let note_msg = "the late bound lifetime parameter is introduced here";
-            if !is_method_call && (lifetimes.len() > lt_req_len ||
-                                   lifetimes.len() < lt_req_len && !infer_lifetimes) {
+            if !is_method_call && (lifetimes.len() > lt_accepted ||
+                                   lifetimes.len() < lt_accepted && !infer_lifetimes) {
                 let mut err = self.tcx.sess.struct_span_err(lifetimes[0].span, primary_msg);
                 err.span_note(span_late, note_msg);
                 err.emit();
@@ -4999,9 +5001,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        if lifetimes.len() > lt_req_len {
-            let span = lifetimes[lt_req_len].span;
-            let expected_text = count_lifetime_params(lt_req_len);
+        if lifetimes.len() > lt_accepted {
+            let span = lifetimes[lt_accepted].span;
+            let expected_text = count_lifetime_params(lt_accepted);
             let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0088,
                              "too many lifetime parameters provided: \
@@ -5009,8 +5011,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                              expected_text, actual_text)
                 .span_label(span, format!("expected {}", expected_text))
                 .emit();
-        } else if lifetimes.len() < lt_req_len && !infer_lifetimes {
-            let expected_text = count_lifetime_params(lt_req_len);
+        } else if lifetimes.len() < lt_accepted && !infer_lifetimes {
+            let expected_text = count_lifetime_params(lt_accepted);
             let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0090,
                              "too few lifetime parameters provided: \

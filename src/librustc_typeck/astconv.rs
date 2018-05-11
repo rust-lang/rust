@@ -208,40 +208,39 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
         let decl_generics = tcx.generics_of(def_id);
-        let own_counts = decl_generics.own_counts();
-        let num_types_provided = parameters.types.len();
-        let expected_num_region_params = own_counts.lifetimes;
-        let supplied_num_region_params = parameters.lifetimes.len();
-        if expected_num_region_params != supplied_num_region_params {
-            report_lifetime_number_error(tcx, span,
-                                         supplied_num_region_params,
-                                         expected_num_region_params);
+        let ty_provided = parameters.types.len();
+        let lt_provided = parameters.lifetimes.len();
+
+        let mut lt_accepted = 0;
+        let mut ty_range = (0, 0);
+        for param in &decl_generics.params {
+            match param.kind {
+                GenericParamDefKind::Lifetime => {
+                    lt_accepted += 1;
+                }
+                GenericParamDefKind::Type(ty) => {
+                    ty_range.1 += 1;
+                    if !ty.has_default {
+                        ty_range.0 += 1;
+                    }
+                }
+            };
+        }
+        if self_ty.is_some() {
+            ty_range.0 -= 1;
+            ty_range.1 -= 1;
+        }
+
+        if lt_accepted != lt_provided {
+            report_lifetime_number_error(tcx, span, lt_provided, lt_accepted);
         }
 
         // If a self-type was declared, one should be provided.
         assert_eq!(decl_generics.has_self, self_ty.is_some());
 
         // Check the number of type parameters supplied by the user.
-        let own_self = self_ty.is_some() as usize;
-        let ty_param_defs = own_counts.types - own_self;
-        if !infer_types || num_types_provided > ty_param_defs {
-            let type_params_without_defaults = {
-                let mut count = 0;
-                for param in decl_generics.params.iter() {
-                    if let ty::GenericParamDefKind::Type(ty) = param.kind {
-                        if !ty.has_default {
-                            count += 1
-                        }
-                    }
-                }
-                count
-            };
-
-            check_type_argument_count(tcx,
-                span,
-                num_types_provided,
-                ty_param_defs,
-                type_params_without_defaults - own_self);
+        if !infer_types || ty_provided > ty_range.0 {
+            check_type_argument_count(tcx, span, ty_provided, ty_range);
         }
 
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
@@ -259,6 +258,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             false
         };
 
+        let own_self = self_ty.is_some() as usize;
         let substs = Substs::for_item(tcx, def_id, |def, _| {
             let i = def.index as usize - own_self;
             if let Some(lifetime) = parameters.lifetimes.get(i) {
@@ -279,8 +279,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 _ => unreachable!()
             };
 
-            let i = i - (own_counts.lifetimes + own_self);
-            if i < num_types_provided {
+            let i = i - (lt_accepted + own_self);
+            if i < ty_provided {
                 // A provided type parameter.
                 self.ast_ty_to_ty(&parameters.types[i])
             } else if infer_types {
@@ -1327,11 +1327,9 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 fn check_type_argument_count(tcx: TyCtxt,
                              span: Span,
                              supplied: usize,
-                             ty_param_defs: usize,
-                             ty_param_defs_without_default: usize)
+                             ty_range: (usize, usize))
 {
-    let accepted = ty_param_defs;
-    let required = ty_param_defs_without_default;
+    let (required, accepted) = ty_range;
     if supplied < required {
         let expected = if required < accepted {
             "expected at least"

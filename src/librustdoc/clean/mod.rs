@@ -1339,11 +1339,15 @@ impl Clean<TyParam> for hir::TyParam {
 impl<'tcx> Clean<TyParam> for ty::GenericParamDef {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.renderinfo.borrow_mut().external_typarams.insert(self.def_id, self.name.clean(cx));
+        let has_default = match self.kind {
+            ty::GenericParamDefKind::Type(ty) => ty.has_default,
+            _ => panic!("tried to convert a non-type GenericParamDef as a type")
+        };
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
             bounds: vec![], // these are filled in from the where-clauses
-            default: if self.to_type().has_default {
+            default: if has_default {
                 Some(cx.tcx.type_of(self.def_id).clean(cx))
             } else {
                 None
