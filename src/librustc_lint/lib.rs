@@ -179,7 +179,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                     UNUSED_PARENS);
 
     add_lint_group!(sess,
-                    "rust_2018_migration",
+                    "rust_2018_idioms",
                     BARE_TRAIT_OBJECT,
                     UNREACHABLE_PUB,
                     UNNECESSARY_EXTERN_CRATE);
