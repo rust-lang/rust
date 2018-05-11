@@ -248,9 +248,6 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         },
         "volatile_store" => {
             let dst = args[0].deref(bx.cx);
-            if dst.layout.is_zst() {
-                return;
-            }
             args[1].val.volatile_store(bx, dst);
             return;
         },
@@ -536,19 +533,9 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
         }
 
         "nontemporal_store" => {
-            let tp_ty = substs.type_at(0);
             let dst = args[0].deref(bx.cx);
-            let val = if let OperandValue::Ref(ptr, align) = args[1].val {
-                bx.load(ptr, align)
-            } else {
-                from_immediate(bx, args[1].immediate())
-            };
-            let ptr = bx.pointercast(dst.llval, val_ty(val).ptr_to());
-            let store = bx.nontemporal_store(val, ptr);
-            unsafe {
-                llvm::LLVMSetAlignment(store, cx.align_of(tp_ty).abi() as u32);
-            }
-            return
+            args[1].val.nontemporal_store(bx, dst);
+            return;
         }
 
         _ => {
