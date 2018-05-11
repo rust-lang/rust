@@ -1,5 +1,5 @@
-#![feature(plugin)]
-#![plugin(clippy)]
+
+
 
 #[macro_use]
 extern crate serde_derive;
@@ -16,3 +16,5 @@ struct MacroAttributesTest {
 fn macro_attributes_test() {
     let _ = MacroAttributesTest { _foo: 0 };
 }
+
+fn main() {}

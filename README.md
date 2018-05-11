@@ -73,7 +73,7 @@ SYSROOT=/path/to/rustc/sysroot cargo install clippy
 
 ### Running clippy from the command line without installing it
 
-To have cargo compile your crate with clippy without clippy installation and without needing `#![plugin(clippy)]`
+To have cargo compile your crate with clippy without clippy installation
 in your code, you can use:
 
 ```terminal

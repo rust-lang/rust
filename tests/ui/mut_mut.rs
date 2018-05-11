@@ -4,8 +4,8 @@
 #![allow(unused, no_effect, unnecessary_operation)]
 #![warn(mut_mut)]
 
-//#![plugin(regex_macros)]
-//extern crate regex;
+
+
 
 fn fun(x : &mut &mut u32) -> bool {
     **x > 0

@@ -1,4 +1,4 @@
-#![feature(plugin, non_ascii_idents)]
+#![feature(non_ascii_idents)]
 
 #![warn(clippy, pub_enum_variant_names)]
 

@@ -1,4 +1,4 @@
-#![feature(plugin, custom_attribute)]
+#![feature(custom_attribute)]
 
 
 use std::collections::*;

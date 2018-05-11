@@ -1,4 +1,4 @@
-#![feature(plugin, alloc)]
+#![feature(alloc)]
 #![feature(associated_type_defaults)]
 
 
