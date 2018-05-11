@@ -542,18 +542,6 @@ impl<'tcx> ScopeTree {
         assert!(previous.is_none());
     }
 
-    fn closure_is_enclosed_by(&self,
-                              mut sub_closure: hir::ItemLocalId,
-                              sup_closure: hir::ItemLocalId) -> bool {
-        loop {
-            if sub_closure == sup_closure { return true; }
-            match self.closure_tree.get(&sub_closure) {
-                Some(&s) => { sub_closure = s; }
-                None => { return false; }
-            }
-        }
-    }
-
     fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.item_local_id());
@@ -688,65 +676,37 @@ impl<'tcx> ScopeTree {
         // requires a hash table lookup, and we often have very long scope
         // chains (10s or 100s of scopes) that only differ by a few elements at
         // the start. So this algorithm is faster.
-        let mut ma = Some(scope_a);
-        let mut mb = Some(scope_b);
-        let mut seen_a: SmallVec<[Scope; 32]> = SmallVec::new();
-        let mut seen_b: SmallVec<[Scope; 32]> = SmallVec::new();
+
+        let mut ma = Some(&scope_a);
+        let mut mb = Some(&scope_b);
+
+        // A HashSet<Scope> is a more obvious choice for these, but SmallVec is
+        // faster because the set size is normally small so linear search is
+        // as good or better than a hash table lookup, plus the size is usually
+        // small enough to avoid a heap allocation.
+        let mut seen_a: SmallVec<[&Scope; 32]> = SmallVec::new();
+        let mut seen_b: SmallVec<[&Scope; 32]> = SmallVec::new();
+
         loop {
             if let Some(a) = ma {
-                if seen_b.iter().position(|s| *s == a).is_some() {
-                    return a;
+                if seen_b.iter().any(|s| *s == a) {
+                    return *a;
                 }
                 seen_a.push(a);
-                ma = self.parent_map.get(&a).map(|s| *s);
+                ma = self.parent_map.get(&a);
             }
 
             if let Some(b) = mb {
-                if seen_a.iter().position(|s| *s == b).is_some() {
-                    return b;
+                if seen_a.iter().any(|s| *s == b) {
+                    return *b;
                 }
                 seen_b.push(b);
-                mb = self.parent_map.get(&b).map(|s| *s);
+                mb = self.parent_map.get(&b);
             }
 
             if ma.is_none() && mb.is_none() {
-                break;
-            }
-        };
-
-        fn outermost_scope(parent_map: &FxHashMap<Scope, Scope>, scope: Scope) -> Scope {
-            let mut scope = scope;
-            loop {
-               match parent_map.get(&scope) {
-                   Some(&superscope) => scope = superscope,
-                   None => break scope,
-               }
-            }
-        }
-
-        // In this (rare) case, the two regions belong to completely different
-        // functions. Compare those fn for lexical nesting. The reasoning
-        // behind this is subtle. See the "Modeling closures" section of the
-        // README in infer::region_constraints for more details.
-        let a_root_scope = outermost_scope(&self.parent_map, scope_a);
-        let b_root_scope = outermost_scope(&self.parent_map, scope_b);
-        match (a_root_scope.data(), b_root_scope.data()) {
-            (ScopeData::Destruction(a_root_id),
-             ScopeData::Destruction(b_root_id)) => {
-                if self.closure_is_enclosed_by(a_root_id, b_root_id) {
-                    // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
-                    scope_b
-                } else if self.closure_is_enclosed_by(b_root_id, a_root_id) {
-                    // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
-                    scope_a
-                } else {
-                    // neither fn encloses the other
-                    bug!()
-                }
-            }
-            _ => {
-                // root ids are always Node right now
-                bug!()
+                // No nearest common ancestor found.
+                bug!();
             }
         }
     }
