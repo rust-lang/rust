@@ -67,11 +67,9 @@ enum Operation {
         minimal_config_path: Option<String>,
     },
     /// Print the help message.
-    Help,
+    Help(HelpOp),
     // Print version information
     Version,
-    /// Print detailed configuration help.
-    ConfigHelp,
     /// Output default config to a file, or stdout if None
     ConfigOutputDefault {
         path: Option<String>,
@@ -80,6 +78,13 @@ enum Operation {
     Stdin {
         input: String,
     },
+}
+
+/// Arguments to `--help`
+enum HelpOp {
+    None,
+    Config,
+    FileLines,
 }
 
 fn make_opts() -> Options {
@@ -91,11 +96,6 @@ fn make_opts() -> Options {
         "color",
         "Use colored output (if supported)",
         "[always|never|auto]",
-    );
-    opts.optflag(
-        "",
-        "config-help",
-        "Show details of rustfmt configuration options",
     );
     opts.optopt(
         "",
@@ -130,7 +130,12 @@ fn make_opts() -> Options {
         "Format specified line ranges. See README for more detail on the JSON format.",
         "JSON",
     );
-    opts.optflag("h", "help", "Show this message");
+    opts.optflagopt(
+        "h",
+        "help",
+        "Show this message or help about a specific topic: config or file-lines",
+        "=TOPIC",
+    );
     opts.optflag("", "skip-children", "Don't reformat child modules");
     opts.optflag(
         "",
@@ -154,17 +159,21 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
     let matches = opts.parse(env::args().skip(1))?;
 
     match determine_operation(&matches)? {
-        Operation::Help => {
+        Operation::Help(HelpOp::None) => {
             print_usage_to_stdout(opts, "");
             Summary::print_exit_codes();
             Ok((WriteMode::None, Summary::default()))
         }
-        Operation::Version => {
-            print_version();
+        Operation::Help(HelpOp::Config) => {
+            Config::print_docs(&mut stdout(), matches.opt_present("unstable-features"));
             Ok((WriteMode::None, Summary::default()))
         }
-        Operation::ConfigHelp => {
-            Config::print_docs(&mut stdout(), matches.opt_present("unstable-features"));
+        Operation::Help(HelpOp::FileLines) => {
+            print_help_file_lines();
+            Ok((WriteMode::None, Summary::default()))
+        }
+        Operation::Version => {
+            print_version();
             Ok((WriteMode::None, Summary::default()))
         }
         Operation::ConfigOutputDefault { path } => {
@@ -298,6 +307,27 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
     println!("{}", opts.usage(&msg));
 }
 
+fn print_help_file_lines() {
+    println!("If you want to restrict reformatting to specific sets of lines, you can
+use the `--file-lines` option. Its argument is a JSON array of objects
+with `file` and `range` properties, where `file` is a file name, and
+`range` is an array representing a range of lines like `[7,13]`. Ranges
+are 1-based and inclusive of both end points. Specifying an empty array
+will result in no files being formatted. For example,
+
+```
+rustfmt --file-lines '[
+    {{\"file\":\"src/lib.rs\",\"range\":[7,13]}},
+    {{\"file\":\"src/lib.rs\",\"range\":[21,29]}},
+    {{\"file\":\"src/foo.rs\",\"range\":[10,11]}},
+    {{\"file\":\"src/foo.rs\",\"range\":[15,15]}}]'
+```
+
+would format lines `7-13` and `21-29` of `src/lib.rs`, and lines `10-11`,
+and `15` of `src/foo.rs`. No other files would be formatted, even if they
+are included as out of line modules from `src/lib.rs`.");
+}
+
 fn print_version() {
     let version_info = format!(
         "{}-{}",
@@ -310,11 +340,17 @@ fn print_version() {
 
 fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     if matches.opt_present("h") {
-        return Ok(Operation::Help);
-    }
-
-    if matches.opt_present("config-help") {
-        return Ok(Operation::ConfigHelp);
+        let topic = matches.opt_str("h");
+        if topic == None {
+            return Ok(Operation::Help(HelpOp::None));
+        } else if topic == Some("config".to_owned()) {
+            return Ok(Operation::Help(HelpOp::Config));
+        } else if topic == Some("file-lines".to_owned()) {
+            return Ok(Operation::Help(HelpOp::FileLines));
+        } else {
+            println!("Unknown help topic: `{}`\n", topic.unwrap());
+            return Ok(Operation::Help(HelpOp::None));
+        }
     }
 
     if matches.opt_present("dump-default-config") {
