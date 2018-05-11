@@ -25,7 +25,6 @@ use util::nodemap::FxHashSet;
 use std::cell::Cell;
 use std::fmt;
 use std::usize;
-use std::iter;
 
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
@@ -342,23 +341,22 @@ impl PrintContext {
                             GenericParamDefKind::Type(ty) => Some((param.def_id, ty.has_default)),
                             GenericParamDefKind::Lifetime => None,
                         }
-                    });
-                if let Some(last_ty) = type_params.next() {
-                    let (_, has_default) = last_ty;
-                    if has_default {
-                        if let Some(substs) = tcx.lift(&substs) {
-                            let mut types = substs.types().rev().skip(child_types);
-                            let zipped = iter::once((last_ty, types.next().unwrap()))
-                                              .chain(type_params.zip(types));
-                            for ((def_id, has_default), actual) in zipped {
-                                if !has_default {
-                                    break;
-                                }
-                                if tcx.type_of(def_id).subst(tcx, substs) != actual {
-                                    break;
-                                }
-                                num_supplied_defaults += 1;
+                    }).peekable();
+                let has_default = {
+                    let has_default = type_params.peek().map(|(_, has_default)| has_default);
+                    *has_default.unwrap_or(&false)
+                };
+                if has_default {
+                    if let Some(substs) = tcx.lift(&substs) {
+                        let mut types = substs.types().rev().skip(child_types);
+                        for ((def_id, has_default), actual) in type_params.zip(types) {
+                            if !has_default {
+                                break;
                             }
+                            if tcx.type_of(def_id).subst(tcx, substs) != actual {
+                                break;
+                            }
+                            num_supplied_defaults += 1;
                         }
                     }
                 }

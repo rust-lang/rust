@@ -886,8 +886,10 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         generics.parent_count + generics.params.len()
     });
 
+    let mut params: Vec<_> = opt_self.into_iter().collect();
+
     let early_lifetimes = early_bound_lifetimes_from_generics(tcx, ast_generics);
-    let lifetimes = early_lifetimes.enumerate().map(|(i, l)| {
+    params.extend(early_lifetimes.enumerate().map(|(i, l)| {
         ty::GenericParamDef {
             name: l.lifetime.name.name().as_interned_str(),
             index: own_start + i as u32,
@@ -895,14 +897,14 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             pure_wrt_drop: l.pure_wrt_drop,
             kind: ty::GenericParamDefKind::Lifetime,
         }
-    }).collect::<Vec<_>>();
+    }));
 
     let hir_id = tcx.hir.node_to_hir_id(node_id);
     let object_lifetime_defaults = tcx.object_lifetime_defaults(hir_id);
 
     // Now create the real type parameters.
-    let type_start = own_start + lifetimes.len() as u32;
-    let mut types: Vec<_> = ast_generics.ty_params().enumerate().map(|(i, p)| {
+    let type_start = params.len() as u32;
+    params.extend(ast_generics.ty_params().enumerate().map(|(i, p)| {
         if p.name == keywords::SelfType.name() {
             span_bug!(p.span, "`Self` should not be the name of a regular parameter");
         }
@@ -930,7 +932,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 synthetic: p.synthetic,
             }),
         }
-    }).collect();
+    }));
 
     // provide junk type parameter defs - the only place that
     // cares about anything but the length is instantiation,
@@ -943,7 +945,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         for (i, &arg) in dummy_args.iter().enumerate() {
-            types.push(ty::GenericParamDef {
+            params.push(ty::GenericParamDef {
                 index: type_start + i as u32,
                 name: Symbol::intern(arg).as_interned_str(),
                 def_id,
@@ -957,7 +959,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         tcx.with_freevars(node_id, |fv| {
-            types.extend(fv.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
+            params.extend(fv.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
                 ty::GenericParamDef {
                     index: type_start + i,
                     name: Symbol::intern("<upvar>").as_interned_str(),
@@ -972,11 +974,6 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }));
         });
     }
-
-    let params: Vec<_> = opt_self.into_iter()
-                                 .chain(lifetimes)
-                                 .chain(types)
-                                 .collect();
 
     let param_def_id_to_index = params.iter()
                                       .map(|param| (param.def_id, param.index))

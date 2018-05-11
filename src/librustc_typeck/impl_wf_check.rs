@@ -72,10 +72,9 @@ struct ImplWfCheck<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemImpl(.., ref generics, _, _, ref impl_item_refs) => {
+            hir::ItemImpl(.., _, _, _, ref impl_item_refs) => {
                 let impl_def_id = self.tcx.hir.local_def_id(item.id);
                 enforce_impl_params_are_constrained(self.tcx,
-                                                    generics,
                                                     impl_def_id,
                                                     impl_item_refs);
                 enforce_impl_items_are_distinct(self.tcx, impl_item_refs);
@@ -90,7 +89,6 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for ImplWfCheck<'a, 'tcx> {
 }
 
 fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 impl_hir_generics: &hir::Generics,
                                                  impl_def_id: DefId,
                                                  impl_item_refs: &[hir::ImplItemRef])
 {
@@ -115,26 +113,28 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             ctp::parameters_for(&tcx.type_of(def_id), true)
         }).collect();
 
-    for (ty_param, hir_param) in impl_generics.params.iter()
-                                              .zip(impl_hir_generics.params.iter()) {
-        match (&ty_param.kind, hir_param) {
+    for param in &impl_generics.params {
+        match param.kind {
             // Disallow ANY unconstrained type parameters.
-            (&ty::GenericParamDefKind::Type(_), hir::GenericParam::Type(hir_ty)) => {
-                let param_ty = ty::ParamTy::for_def(ty_param);
+            ty::GenericParamDefKind::Type(_) => {
+                let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx, hir_ty.span, "type", &param_ty.to_string());
+                    report_unused_parameter(tcx,
+                                            tcx.def_span(param.def_id),
+                                            "type",
+                                            &param_ty.to_string());
                 }
             }
-            (&ty::GenericParamDefKind::Lifetime, hir::GenericParam::Lifetime(hir_lt)) => {
-                let param = ctp::Parameter::from(ty_param.to_early_bound_region_data());
-                if lifetimes_in_associated_types.contains(&param) && // (*)
-                    !input_parameters.contains(&param) {
-                    report_unused_parameter(tcx, hir_lt.lifetime.span,
-                                            "lifetime", &hir_lt.lifetime.name.name().to_string());
+            ty::GenericParamDefKind::Lifetime => {
+                let param_lt = ctp::Parameter::from(param.to_early_bound_region_data());
+                if lifetimes_in_associated_types.contains(&param_lt) && // (*)
+                    !input_parameters.contains(&param_lt) {
+                    report_unused_parameter(tcx,
+                                            tcx.def_span(param.def_id),
+                                            "lifetime",
+                                            &param.name.to_string());
                 }
             }
-            (&ty::GenericParamDefKind::Type(_), _) => continue,
-            (&ty::GenericParamDefKind::Lifetime, _) => continue,
         }
     }
 

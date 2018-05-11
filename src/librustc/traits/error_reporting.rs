@@ -380,7 +380,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         for param in generics.params.iter() {
-            let name = param.name.to_string();
             let value = match param.kind {
                 GenericParamDefKind::Type(_) => {
                     let ty = trait_ref.substs.type_for_def(&param);
@@ -388,6 +387,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 },
                 GenericParamDefKind::Lifetime => continue,
             };
+            let name = param.name.to_string();
             flags.push((name.clone(), Some(value.clone())));
         }
 
