@@ -5,7 +5,7 @@
 
 use rustc::lint::*;
 use rustc::hir;
-use rustc::hir::{Expr, Expr_, QPath, Ty_};
+use rustc::hir::{Expr, Expr_, QPath, Ty_, Pat, PatKind, BindingAnnotation, StmtSemi, StmtExpr, StmtDecl, Decl_, Stmt};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use syntax::ast::{self, Attribute, LitKind, DUMMY_NODE_ID};
 use std::collections::HashMap;
@@ -322,10 +322,29 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = body_pat;
                 self.visit_block(body);
             },
-            Expr_::ExprMatch(ref _expr, ref _arms, desugaring) => {
+            Expr_::ExprMatch(ref expr, ref arms, desugaring) => {
                 let des = desugaring_name(desugaring);
-                println!("Match(ref expr, ref arms, {}) = {};", des, current);
-                println!("    // unimplemented: `ExprMatch` is not further destructured at the moment");
+                let expr_pat = self.next("expr");
+                let arms_pat = self.next("arms");
+                println!("Match(ref {}, ref {}, {}) = {};", expr_pat, arms_pat, des, current);
+                self.current = expr_pat;
+                self.visit_expr(expr);
+                println!("    if {}.len() == {};", arms_pat, arms.len());
+                for (i, arm) in arms.iter().enumerate() {
+                    self.current = format!("{}[{}].body", arms_pat, i);
+                    self.visit_expr(&arm.body);
+                    if let Some(ref guard) = arm.guard {
+                        let guard_pat = self.next("guard");
+                        println!("    if let Some(ref {}) = {}[{}].guard", guard_pat, arms_pat, i);
+                        self.current = guard_pat;
+                        self.visit_expr(guard);
+                    }
+                    println!("    if {}[{}].pats.len() == {};", arms_pat, i, arm.pats.len());
+                    for (j, pat) in arm.pats.iter().enumerate() {
+                        self.current = format!("{}[{}].pats[{}]", arms_pat, i, j);
+                        self.visit_pat(pat);
+                    }
+                }
             },
             Expr_::ExprClosure(ref _capture_clause, ref _func, _, _, _) => {
                 println!("Closure(ref capture_clause, ref func, _, _, _) = {};", current);
@@ -450,6 +469,160 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("// unimplemented: repeat count check");
                 self.current = value_pat;
                 self.visit_expr(value);
+            },
+        }
+    }
+
+    fn visit_pat(&mut self, pat: &Pat) {
+        print!("    if let PatKind::");
+        let current = format!("{}.node", self.current);
+        match pat.node {
+            PatKind::Wild => println!("Wild = {};", current),
+            PatKind::Binding(anno, _, name, ref sub) => {
+                let anno_pat = match anno {
+                    BindingAnnotation::Unannotated => "BindingAnnotation::Unannotated",
+                    BindingAnnotation::Mutable => "BindingAnnotation::Mutable",
+                    BindingAnnotation::Ref => "BindingAnnotation::Ref",
+                    BindingAnnotation::RefMut => "BindingAnnotation::RefMut",
+                };
+                let name_pat = self.next("name");
+                if let Some(ref sub) = *sub {
+                    let sub_pat = self.next("sub");
+                    println!("Binding({}, _, {}, Some(ref {})) = {};", anno_pat, name_pat, sub_pat, current);
+                    self.current = sub_pat;
+                    self.visit_pat(sub);
+                } else {
+                    println!("Binding({}, _, {}, None) = {};", anno_pat, name_pat, current);
+                }
+                println!("    if {}.node.as_str() == \"{}\";", name_pat, name.node.as_str());
+            }
+            PatKind::Struct(ref path, ref fields, ignore) => {
+                let path_pat = self.next("path");
+                let fields_pat = self.next("fields");
+                println!("Struct(ref {}, ref {}, {}) = {};", path_pat, fields_pat, ignore, current);
+                self.current = path_pat;
+                self.print_qpath(path);
+                println!("    if {}.len() == {};", fields_pat, fields.len());
+                println!("    // unimplemented: field checks");
+            }
+            PatKind::TupleStruct(ref path, ref fields, skip_pos) => {
+                let path_pat = self.next("path");
+                let fields_pat = self.next("fields");
+                println!("TupleStruct(ref {}, ref {}, {:?}) = {};", path_pat, fields_pat, skip_pos, current);
+                self.current = path_pat;
+                self.print_qpath(path);
+                println!("    if {}.len() == {};", fields_pat, fields.len());
+                println!("    // unimplemented: field checks");
+            },
+            PatKind::Path(ref path) => {
+                let path_pat = self.next("path");
+                println!("Path(ref {}) = {};", path_pat, current);
+                self.current = path_pat;
+                self.print_qpath(path);
+            }
+            PatKind::Tuple(ref fields, skip_pos) => {
+                let fields_pat = self.next("fields");
+                println!("Tuple(ref {}, {:?}) = {};", fields_pat, skip_pos, current);
+                println!("    if {}.len() == {};", fields_pat, fields.len());
+                println!("    // unimplemented: field checks");
+            }
+            PatKind::Box(ref pat) => {
+                let pat_pat = self.next("pat");
+                println!("Box(ref {}) = {};", pat_pat, current);
+                self.current = pat_pat;
+                self.visit_pat(pat);
+            },
+            PatKind::Ref(ref pat, muta) => {
+                let pat_pat = self.next("pat");
+                println!("Ref(ref {}, Mutability::{:?}) = {};", pat_pat, muta, current);
+                self.current = pat_pat;
+                self.visit_pat(pat);
+            },
+            PatKind::Lit(ref lit_expr) => {
+                let lit_expr_pat = self.next("lit_expr");
+                println!("Lit(ref {}) = {}", lit_expr_pat, current);
+                self.current = lit_expr_pat;
+                self.visit_expr(lit_expr);
+            }
+            PatKind::Range(ref start, ref end, end_kind) => {
+                let start_pat = self.next("start");
+                let end_pat = self.next("end");
+                println!("Range(ref {}, ref {}, RangeEnd::{:?}) = {};", start_pat, end_pat, end_kind, current);
+                self.current = start_pat;
+                self.visit_expr(start);
+                self.current = end_pat;
+                self.visit_expr(end);
+            }
+            PatKind::Slice(ref start, ref middle, ref end) => {
+                let start_pat = self.next("start");
+                let end_pat = self.next("end");
+                if let Some(ref middle) = middle {
+                    let middle_pat = self.next("middle");
+                    println!("Slice(ref {}, Some(ref {}), ref {}) = {};", start_pat, middle_pat, end_pat, current);
+                    self.current = middle_pat;
+                    self.visit_pat(middle);
+                } else {
+                    println!("Slice(ref {}, None, ref {}) = {};", start_pat, end_pat, current);
+                }
+                println!("    if {}.len() == {};", start_pat, start.len());
+                for (i, pat) in start.iter().enumerate() {
+                    self.current = format!("{}[{}]", start_pat, i);
+                    self.visit_pat(pat);
+                }
+                println!("    if {}.len() == {};", end_pat, end.len());
+                for (i, pat) in end.iter().enumerate() {
+                    self.current = format!("{}[{}]", end_pat, i);
+                    self.visit_pat(pat);
+                }
+            }
+        }
+    }
+
+    fn visit_stmt(&mut self, s: &Stmt) {
+        print!("    if let Stmt_::");
+        let current = format!("{}.node", self.current);
+        match s.node {
+            // Could be an item or a local (let) binding:
+            StmtDecl(ref decl, _) => {
+                let decl_pat = self.next("decl");
+                println!("StmtDecl(ref {}, _) = {}", decl_pat, current);
+                print!("    if let Decl_::");
+                let current = format!("{}.node", decl_pat);
+                match decl.node {
+                    // A local (let) binding:
+                    Decl_::DeclLocal(ref local) => {
+                        let local_pat = self.next("local");
+                        println!("DeclLocal(ref {}) = {};", local_pat, current);
+                        if let Some(ref init) = local.init {
+                            let init_pat = self.next("init");
+                            println!("    if let Some(ref {}) = {}.init", init_pat, local_pat);
+                            self.current = init_pat;
+                            self.visit_expr(init);
+                        }
+                        self.current = format!("{}.pat", local_pat);
+                        self.visit_pat(&local.pat);
+                    },
+                    // An item binding:
+                    Decl_::DeclItem(_) => {
+                        println!("DeclItem(item_id) = {};", current);
+                    },
+                }
+            }
+
+            // Expr without trailing semi-colon (must have unit type):
+            StmtExpr(ref e, _) => {
+                let e_pat = self.next("e");
+                println!("StmtExpr(ref {}, _) = {}", e_pat, current);
+                self.current = e_pat;
+                self.visit_expr(e);
+            },
+
+            // Expr with trailing semi-colon (may have any type):
+            StmtSemi(ref e, _) => {
+                let e_pat = self.next("e");
+                println!("StmtSemi(ref {}, _) = {}", e_pat, current);
+                self.current = e_pat;
+                self.visit_expr(e);
             },
         }
     }

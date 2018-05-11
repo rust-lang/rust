@@ -4,10 +4,12 @@ out
 
 # Compiled files
 *.o
+*.d
 *.so
 *.rlib
 *.dll
 *.pyc
+*.rmeta
 
 # Executables
 *.exe
