@@ -1,13 +1,10 @@
 #![feature(compiler_builtins_lib)]
-#![feature(i128_type)]
-#![feature(lang_items, core_float, core_float_bits)]
+#![feature(lang_items)]
 #![allow(bad_style)]
 #![allow(unused_imports)]
 #![no_std]
 
-use core::num::Float;
-
-extern crate compiler_builtins;
+extern crate compiler_builtins as builtins;
 
 #[cfg(all(target_arch = "arm",
           not(any(target_env = "gnu", target_env = "musl")),

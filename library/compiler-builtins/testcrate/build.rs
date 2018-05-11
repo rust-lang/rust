@@ -1,5 +1,3 @@
-#![feature(i128_type, i128)]
-
 extern crate cast;
 extern crate rand;
 
@@ -40,7 +38,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::add::__adddf3(a, b)");
+        "builtins::float::add::__adddf3(a, b)");
     gen(|(a, b): (MyF32, MyF32)| {
             let c = a.0 + b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
@@ -49,7 +47,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::add::__addsf3(a, b)");
+        "builtins::float::add::__addsf3(a, b)");
 
     if target_arch_arm {
         gen(|(a, b): (MyF64, MyF64)| {
@@ -60,7 +58,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::add::__adddf3vfp(a, b)");
+            "builtins::float::add::__adddf3vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 let c = a.0 + b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
@@ -69,7 +67,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::add::__addsf3vfp(a, b)");
+            "builtins::float::add::__addsf3vfp(a, b)");
     }
 
 
@@ -90,7 +88,7 @@ fn main() {
                 Some(0)
             }
         },
-        "compiler_builtins::float::cmp::__gedf2(a, b)");
+        "builtins::float::cmp::__gedf2(a, b)");
     gen(|(a, b): (MyF32, MyF32)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
@@ -107,7 +105,7 @@ fn main() {
                 Some(0)
             }
         },
-        "compiler_builtins::float::cmp::__gesf2(a, b)");
+        "builtins::float::cmp::__gesf2(a, b)");
     gen(|(a, b): (MyF64, MyF64)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
@@ -124,7 +122,7 @@ fn main() {
                 Some(0)
             }
         },
-        "compiler_builtins::float::cmp::__ledf2(a, b)");
+        "builtins::float::cmp::__ledf2(a, b)");
     gen(|(a, b): (MyF32, MyF32)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
@@ -141,19 +139,19 @@ fn main() {
                 Some(0)
             }
         },
-        "compiler_builtins::float::cmp::__lesf2(a, b)");
+        "builtins::float::cmp::__lesf2(a, b)");
 
     gen(|(a, b): (MyF32, MyF32)| {
             let c = a.0.is_nan() || b.0.is_nan();
             Some(c as i32)
         },
-        "compiler_builtins::float::cmp::__unordsf2(a, b)");
+        "builtins::float::cmp::__unordsf2(a, b)");
 
     gen(|(a, b): (MyF64, MyF64)| {
             let c = a.0.is_nan() || b.0.is_nan();
             Some(c as i32)
         },
-        "compiler_builtins::float::cmp::__unorddf2(a, b)");
+        "builtins::float::cmp::__unorddf2(a, b)");
 
     if target_arch_arm {
         gen(|(a, b): (MyF32, MyF32)| {
@@ -163,7 +161,7 @@ fn main() {
                 let c = (a.0 <= b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_fcmple(a, b)");
+            "builtins::float::cmp::__aeabi_fcmple(a, b)");
 
         gen(|(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -172,7 +170,7 @@ fn main() {
                 let c = (a.0 >= b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_fcmpge(a, b)");
+            "builtins::float::cmp::__aeabi_fcmpge(a, b)");
 
         gen(|(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -181,7 +179,7 @@ fn main() {
                 let c = (a.0 == b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_fcmpeq(a, b)");
+            "builtins::float::cmp::__aeabi_fcmpeq(a, b)");
 
         gen(|(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -190,7 +188,7 @@ fn main() {
                 let c = (a.0 < b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_fcmplt(a, b)");
+            "builtins::float::cmp::__aeabi_fcmplt(a, b)");
 
         gen(|(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -199,7 +197,7 @@ fn main() {
                 let c = (a.0 > b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_fcmpgt(a, b)");
+            "builtins::float::cmp::__aeabi_fcmpgt(a, b)");
 
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -208,7 +206,7 @@ fn main() {
                 let c = (a.0 <= b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_dcmple(a, b)");
+            "builtins::float::cmp::__aeabi_dcmple(a, b)");
 
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -217,7 +215,7 @@ fn main() {
                 let c = (a.0 >= b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_dcmpge(a, b)");
+            "builtins::float::cmp::__aeabi_dcmpge(a, b)");
 
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -226,7 +224,7 @@ fn main() {
                 let c = (a.0 == b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_dcmpeq(a, b)");
+            "builtins::float::cmp::__aeabi_dcmpeq(a, b)");
 
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -235,7 +233,7 @@ fn main() {
                 let c = (a.0 < b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_dcmplt(a, b)");
+            "builtins::float::cmp::__aeabi_dcmplt(a, b)");
 
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -244,7 +242,7 @@ fn main() {
                 let c = (a.0 > b.0) as i32;
                 Some(c)
             },
-            "compiler_builtins::float::cmp::__aeabi_dcmpgt(a, b)");
+            "builtins::float::cmp::__aeabi_dcmpgt(a, b)");
 
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
@@ -252,84 +250,84 @@ fn main() {
                 }
                 Some((a.0 >= b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__gesf2vfp(a, b)");
+            "builtins::float::cmp::__gesf2vfp(a, b)");
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 >= b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__gedf2vfp(a, b)");
+            "builtins::float::cmp::__gedf2vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 > b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__gtsf2vfp(a, b)");
+            "builtins::float::cmp::__gtsf2vfp(a, b)");
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 > b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__gtdf2vfp(a, b)");
+            "builtins::float::cmp::__gtdf2vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 < b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__ltsf2vfp(a, b)");
+            "builtins::float::cmp::__ltsf2vfp(a, b)");
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 < b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__ltdf2vfp(a, b)");
+            "builtins::float::cmp::__ltdf2vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 <= b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__lesf2vfp(a, b)");
+            "builtins::float::cmp::__lesf2vfp(a, b)");
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 <= b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__ledf2vfp(a, b)");
+            "builtins::float::cmp::__ledf2vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 != b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__nesf2vfp(a, b)");
+            "builtins::float::cmp::__nesf2vfp(a, b)");
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 != b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__nedf2vfp(a, b)");
+            "builtins::float::cmp::__nedf2vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 == b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__eqsf2vfp(a, b)");
+            "builtins::float::cmp::__eqsf2vfp(a, b)");
         gen(|(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 == b.0) as i32)
             },
-            "compiler_builtins::float::cmp::__eqdf2vfp(a, b)");
+            "builtins::float::cmp::__eqdf2vfp(a, b)");
     }
 
     // float/extend.rs
@@ -339,7 +337,7 @@ fn main() {
             }
             Some(f64(a.0))
         },
-        "compiler_builtins::float::extend::__extendsfdf2(a)");
+        "builtins::float::extend::__extendsfdf2(a)");
     if target_arch_arm {
         gen(|a: LargeF32| {
             if a.0.is_nan() {
@@ -347,55 +345,55 @@ fn main() {
             }
             Some(f64(a.0))
         },
-        "compiler_builtins::float::extend::__extendsfdf2vfp(a)");
+        "builtins::float::extend::__extendsfdf2vfp(a)");
     }
 
     // float/conv.rs
     gen(|a: MyF64| i64(a.0).ok(),
-        "compiler_builtins::float::conv::__fixdfdi(a)");
+        "builtins::float::conv::__fixdfdi(a)");
     gen(|a: MyF64| i32(a.0).ok(),
-        "compiler_builtins::float::conv::__fixdfsi(a)");
+        "builtins::float::conv::__fixdfsi(a)");
     gen(|a: MyF32| i64(a.0).ok(),
-        "compiler_builtins::float::conv::__fixsfdi(a)");
+        "builtins::float::conv::__fixsfdi(a)");
     gen(|a: MyF32| i32(a.0).ok(),
-        "compiler_builtins::float::conv::__fixsfsi(a)");
+        "builtins::float::conv::__fixsfsi(a)");
     gen(|a: MyF32| i128(a.0).ok(),
-        "compiler_builtins::float::conv::__fixsfti(a)");
+        "builtins::float::conv::__fixsfti(a)");
     gen(|a: MyF64| i128(a.0).ok(),
-        "compiler_builtins::float::conv::__fixdfti(a)");
+        "builtins::float::conv::__fixdfti(a)");
     gen(|a: MyF64| u64(a.0).ok(),
-        "compiler_builtins::float::conv::__fixunsdfdi(a)");
+        "builtins::float::conv::__fixunsdfdi(a)");
     gen(|a: MyF64| u32(a.0).ok(),
-        "compiler_builtins::float::conv::__fixunsdfsi(a)");
+        "builtins::float::conv::__fixunsdfsi(a)");
     gen(|a: MyF32| u64(a.0).ok(),
-        "compiler_builtins::float::conv::__fixunssfdi(a)");
+        "builtins::float::conv::__fixunssfdi(a)");
     gen(|a: MyF32| u32(a.0).ok(),
-        "compiler_builtins::float::conv::__fixunssfsi(a)");
+        "builtins::float::conv::__fixunssfsi(a)");
     gen(|a: MyF32| u128(a.0).ok(),
-        "compiler_builtins::float::conv::__fixunssfti(a)");
+        "builtins::float::conv::__fixunssfti(a)");
     gen(|a: MyF64| u128(a.0).ok(),
-        "compiler_builtins::float::conv::__fixunsdfti(a)");
+        "builtins::float::conv::__fixunsdfti(a)");
     gen(|a: MyI64| Some(f64(a.0)),
-        "compiler_builtins::float::conv::__floatdidf(a)");
+        "builtins::float::conv::__floatdidf(a)");
     gen(|a: MyI32| Some(f64(a.0)),
-        "compiler_builtins::float::conv::__floatsidf(a)");
+        "builtins::float::conv::__floatsidf(a)");
     gen(|a: MyI32| Some(f32(a.0)),
-        "compiler_builtins::float::conv::__floatsisf(a)");
+        "builtins::float::conv::__floatsisf(a)");
     gen(|a: MyU64| Some(f64(a.0)),
-        "compiler_builtins::float::conv::__floatundidf(a)");
+        "builtins::float::conv::__floatundidf(a)");
     gen(|a: MyU32| Some(f64(a.0)),
-        "compiler_builtins::float::conv::__floatunsidf(a)");
+        "builtins::float::conv::__floatunsidf(a)");
     gen(|a: MyU32| Some(f32(a.0)),
-        "compiler_builtins::float::conv::__floatunsisf(a)");
+        "builtins::float::conv::__floatunsisf(a)");
     gen(|a: MyU128| f32(a.0).ok(),
-        "compiler_builtins::float::conv::__floatuntisf(a)");
+        "builtins::float::conv::__floatuntisf(a)");
     if !target_arch_mips {
         gen(|a: MyI128| Some(f32(a.0)),
-            "compiler_builtins::float::conv::__floattisf(a)");
+            "builtins::float::conv::__floattisf(a)");
         gen(|a: MyI128| Some(f64(a.0)),
-            "compiler_builtins::float::conv::__floattidf(a)");
+            "builtins::float::conv::__floattidf(a)");
         gen(|a: MyU128| Some(f64(a.0)),
-            "compiler_builtins::float::conv::__floatuntidf(a)");
+            "builtins::float::conv::__floatuntidf(a)");
     }
 
     // float/pow.rs
@@ -407,7 +405,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::pow::__powidf2(a, b)");
+        "builtins::float::pow::__powidf2(a, b)");
     gen(|(a, b): (MyF32, MyI32)| {
 			let c = a.0.powi(b.0);
 			if a.0.is_nan() || c.is_nan() {
@@ -416,7 +414,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::pow::__powisf2(a, b)");
+        "builtins::float::pow::__powisf2(a, b)");
 
     // float/sub.rs
     gen(|(a, b): (MyF64, MyF64)| {
@@ -427,7 +425,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::sub::__subdf3(a, b)");
+        "builtins::float::sub::__subdf3(a, b)");
     gen(|(a, b): (MyF32, MyF32)| {
             let c = a.0 - b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
@@ -436,7 +434,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::sub::__subsf3(a, b)");
+        "builtins::float::sub::__subsf3(a, b)");
 
     if target_arch_arm {
         gen(|(a, b): (MyF64, MyF64)| {
@@ -447,7 +445,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::sub::__subdf3vfp(a, b)");
+            "builtins::float::sub::__subdf3vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 let c = a.0 - b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
@@ -456,7 +454,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::sub::__subsf3vfp(a, b)");
+            "builtins::float::sub::__subsf3vfp(a, b)");
     }
 
     // float/mul.rs
@@ -468,7 +466,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::mul::__muldf3(a, b)");
+        "builtins::float::mul::__muldf3(a, b)");
     gen(|(a, b): (LargeF32, LargeF32)| {
             let c = a.0 * b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
@@ -477,7 +475,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::mul::__mulsf3(a, b)");
+        "builtins::float::mul::__mulsf3(a, b)");
 
     if target_arch_arm {
         gen(|(a, b): (MyF64, MyF64)| {
@@ -488,7 +486,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::mul::__muldf3vfp(a, b)");
+            "builtins::float::mul::__muldf3vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 let c = a.0 * b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
@@ -497,7 +495,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::mul::__mulsf3vfp(a, b)");
+            "builtins::float::mul::__mulsf3vfp(a, b)");
     }
 
     // float/div.rs
@@ -514,7 +512,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::div::__divdf3(a, b)");
+        "builtins::float::div::__divdf3(a, b)");
     gen(|(a, b): (LargeF32, LargeF32)| {
             if b.0 == 0.0 {
                 return None
@@ -528,7 +526,7 @@ fn main() {
                 Some(c)
             }
         },
-        "compiler_builtins::float::div::__divsf3(a, b)");
+        "builtins::float::div::__divsf3(a, b)");
 
     if target_arch_arm {
         gen(|(a, b): (MyF64, MyF64)| {
@@ -544,7 +542,7 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::div::__divdf3vfp(a, b)");
+            "builtins::float::div::__divdf3vfp(a, b)");
         gen(|(a, b): (LargeF32, LargeF32)| {
                 if b.0 == 0.0 {
                     return None
@@ -558,49 +556,49 @@ fn main() {
                     Some(c)
                 }
             },
-            "compiler_builtins::float::div::__divsf3vfp(a, b)");
+            "builtins::float::div::__divsf3vfp(a, b)");
     }
 
     // int/addsub.rs
     gen(|(a, b): (MyU128, MyU128)| Some(a.0.wrapping_add(b.0)),
-        "compiler_builtins::int::addsub::rust_u128_add(a, b)");
+        "builtins::int::addsub::rust_u128_add(a, b)");
     gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_add(b.0)),
-        "compiler_builtins::int::addsub::rust_i128_add(a, b)");
+        "builtins::int::addsub::rust_i128_add(a, b)");
     gen(|(a, b): (MyU128, MyU128)| Some(a.0.overflowing_add(b.0)),
-        "compiler_builtins::int::addsub::rust_u128_addo(a, b)");
+        "builtins::int::addsub::rust_u128_addo(a, b)");
     gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_add(b.0)),
-        "compiler_builtins::int::addsub::rust_i128_addo(a, b)");
+        "builtins::int::addsub::rust_i128_addo(a, b)");
     gen(|(a, b): (MyU128, MyU128)| Some(a.0.wrapping_sub(b.0)),
-        "compiler_builtins::int::addsub::rust_u128_sub(a, b)");
+        "builtins::int::addsub::rust_u128_sub(a, b)");
     gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_sub(b.0)),
-        "compiler_builtins::int::addsub::rust_i128_sub(a, b)");
+        "builtins::int::addsub::rust_i128_sub(a, b)");
     gen(|(a, b): (MyU128, MyU128)| Some(a.0.overflowing_sub(b.0)),
-        "compiler_builtins::int::addsub::rust_u128_subo(a, b)");
+        "builtins::int::addsub::rust_u128_subo(a, b)");
     gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_sub(b.0)),
-        "compiler_builtins::int::addsub::rust_i128_subo(a, b)");
+        "builtins::int::addsub::rust_i128_subo(a, b)");
 
     // int/mul.rs
     gen(|(a, b): (MyU64, MyU64)| Some(a.0.wrapping_mul(b.0)),
-        "compiler_builtins::int::mul::__muldi3(a, b)");
+        "builtins::int::mul::__muldi3(a, b)");
     gen(|(a, b): (MyI64, MyI64)| Some(a.0.overflowing_mul(b.0)),
         "{
             let mut o = 2;
-            let c = compiler_builtins::int::mul::__mulodi4(a, b, &mut o);
+            let c = builtins::int::mul::__mulodi4(a, b, &mut o);
             (c, match o { 0 => false, 1 => true, _ => panic!() })
         }");
     gen(|(a, b): (MyI32, MyI32)| Some(a.0.overflowing_mul(b.0)),
         "{
             let mut o = 2;
-            let c = compiler_builtins::int::mul::__mulosi4(a, b, &mut o);
+            let c = builtins::int::mul::__mulosi4(a, b, &mut o);
             (c, match o { 0 => false, 1 => true, _ => panic!() })
         }");
     gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_mul(b.0)),
-        "compiler_builtins::int::mul::__multi3(a, b)");
+        "builtins::int::mul::__multi3(a, b)");
     if !target_arch_mips { // FIXME(#137)
         gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_mul(b.0)),
             "{
                 let mut o = 2;
-                let c = compiler_builtins::int::mul::__muloti4(a, b, &mut o);
+                let c = builtins::int::mul::__muloti4(a, b, &mut o);
                 (c, match o { 0 => false, 1 => true, _ => panic!() })
             }");
     }
@@ -613,7 +611,7 @@ fn main() {
                 Some(a.0 / b.0)
             }
         },
-        "compiler_builtins::int::sdiv::__divdi3(a, b)");
+        "builtins::int::sdiv::__divdi3(a, b)");
     gen(|(a, b): (MyI64, MyI64)| {
             if b.0 == 0 {
                 None
@@ -623,7 +621,7 @@ fn main() {
         },
         "{
             let mut r = 0;
-            (compiler_builtins::int::sdiv::__divmoddi4(a, b, &mut r), r)
+            (builtins::int::sdiv::__divmoddi4(a, b, &mut r), r)
         }");
     gen(|(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
@@ -634,7 +632,7 @@ fn main() {
         },
         "{
             let mut r = 0;
-            (compiler_builtins::int::sdiv::__divmodsi4(a, b, &mut r), r)
+            (builtins::int::sdiv::__divmodsi4(a, b, &mut r), r)
         }");
     gen(|(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
@@ -643,7 +641,7 @@ fn main() {
                 Some(a.0 / b.0)
             }
         },
-        "compiler_builtins::int::sdiv::__divsi3(a, b)");
+        "builtins::int::sdiv::__divsi3(a, b)");
     gen(|(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
                 None
@@ -651,7 +649,7 @@ fn main() {
                 Some(a.0 % b.0)
             }
         },
-        "compiler_builtins::int::sdiv::__modsi3(a, b)");
+        "builtins::int::sdiv::__modsi3(a, b)");
     gen(|(a, b): (MyI64, MyI64)| {
             if b.0 == 0 {
                 None
@@ -659,7 +657,7 @@ fn main() {
                 Some(a.0 % b.0)
             }
         },
-        "compiler_builtins::int::sdiv::__moddi3(a, b)");
+        "builtins::int::sdiv::__moddi3(a, b)");
     if !target_arch_mips { // FIXME(#137)
         gen(|(a, b): (MyI128, MyI128)| {
                 if b.0 == 0 {
@@ -668,7 +666,7 @@ fn main() {
                     Some(a.0 / b.0)
                 }
             },
-            "compiler_builtins::int::sdiv::__divti3(a, b)");
+            "builtins::int::sdiv::__divti3(a, b)");
         gen(|(a, b): (MyI128, MyI128)| {
                 if b.0 == 0 {
                     None
@@ -676,22 +674,22 @@ fn main() {
                     Some(a.0 % b.0)
                 }
             },
-            "compiler_builtins::int::sdiv::__modti3(a, b)");
+            "builtins::int::sdiv::__modti3(a, b)");
     }
 
     // int/shift.rs
     gen(|(a, b): (MyU64, MyU32)| Some(a.0 << (b.0 % 64)),
-        "compiler_builtins::int::shift::__ashldi3(a, b % 64)");
+        "builtins::int::shift::__ashldi3(a, b % 64)");
     gen(|(a, b): (MyU128, MyU32)| Some(a.0 << (b.0 % 128)),
-        "compiler_builtins::int::shift::__ashlti3(a, b % 128)");
+        "builtins::int::shift::__ashlti3(a, b % 128)");
     gen(|(a, b): (MyI64, MyU32)| Some(a.0 >> (b.0 % 64)),
-        "compiler_builtins::int::shift::__ashrdi3(a, b % 64)");
+        "builtins::int::shift::__ashrdi3(a, b % 64)");
     gen(|(a, b): (MyI128, MyU32)| Some(a.0 >> (b.0 % 128)),
-        "compiler_builtins::int::shift::__ashrti3(a, b % 128)");
+        "builtins::int::shift::__ashrti3(a, b % 128)");
     gen(|(a, b): (MyU64, MyU32)| Some(a.0 >> (b.0 % 64)),
-        "compiler_builtins::int::shift::__lshrdi3(a, b % 64)");
+        "builtins::int::shift::__lshrdi3(a, b % 64)");
     gen(|(a, b): (MyU128, MyU32)| Some(a.0 >> (b.0 % 128)),
-        "compiler_builtins::int::shift::__lshrti3(a, b % 128)");
+        "builtins::int::shift::__lshrti3(a, b % 128)");
 
     // int/udiv.rs
     gen(|(a, b): (MyU64, MyU64)| {
@@ -701,7 +699,7 @@ fn main() {
                 Some(a.0 / b.0)
             }
         },
-        "compiler_builtins::int::udiv::__udivdi3(a, b)");
+        "builtins::int::udiv::__udivdi3(a, b)");
     gen(|(a, b): (MyU64, MyU64)| {
             if b.0 == 0 {
                 None
@@ -711,7 +709,7 @@ fn main() {
         },
         "{
             let mut r = 0;
-            (compiler_builtins::int::udiv::__udivmoddi4(a, b, Some(&mut r)), r)
+            (builtins::int::udiv::__udivmoddi4(a, b, Some(&mut r)), r)
         }");
     gen(|(a, b): (MyU32, MyU32)| {
             if b.0 == 0 {
@@ -722,7 +720,7 @@ fn main() {
         },
         "{
             let mut r = 0;
-            (compiler_builtins::int::udiv::__udivmodsi4(a, b, Some(&mut r)), r)
+            (builtins::int::udiv::__udivmodsi4(a, b, Some(&mut r)), r)
         }");
     gen(|(a, b): (MyU32, MyU32)| {
             if b.0 == 0 {
@@ -731,7 +729,7 @@ fn main() {
                 Some(a.0 / b.0)
             }
         },
-        "compiler_builtins::int::udiv::__udivsi3(a, b)");
+        "builtins::int::udiv::__udivsi3(a, b)");
     gen(|(a, b): (MyU32, MyU32)| {
             if b.0 == 0 {
                 None
@@ -739,7 +737,7 @@ fn main() {
                 Some(a.0 % b.0)
             }
         },
-        "compiler_builtins::int::udiv::__umodsi3(a, b)");
+        "builtins::int::udiv::__umodsi3(a, b)");
     gen(|(a, b): (MyU64, MyU64)| {
             if b.0 == 0 {
                 None
@@ -747,7 +745,7 @@ fn main() {
                 Some(a.0 % b.0)
             }
         },
-        "compiler_builtins::int::udiv::__umoddi3(a, b)");
+        "builtins::int::udiv::__umoddi3(a, b)");
     if !target_arch_mips { // FIXME(#137)
         gen(|(a, b): (MyU128, MyU128)| {
                 if b.0 == 0 {
@@ -756,7 +754,7 @@ fn main() {
                     Some(a.0 / b.0)
                 }
             },
-            "compiler_builtins::int::udiv::__udivti3(a, b)");
+            "builtins::int::udiv::__udivti3(a, b)");
         gen(|(a, b): (MyU128, MyU128)| {
                 if b.0 == 0 {
                     None
@@ -764,7 +762,7 @@ fn main() {
                     Some(a.0 % b.0)
                 }
             },
-            "compiler_builtins::int::udiv::__umodti3(a, b)");
+            "builtins::int::udiv::__umodti3(a, b)");
         gen(|(a, b): (MyU128, MyU128)| {
                 if b.0 == 0 {
                     None
@@ -774,7 +772,7 @@ fn main() {
             },
             "{
                 let mut r = 0;
-                (compiler_builtins::int::udiv::__udivmodti4(a, b, Some(&mut r)), r)
+                (builtins::int::udiv::__udivmodti4(a, b, Some(&mut r)), r)
             }");
     }
 }
