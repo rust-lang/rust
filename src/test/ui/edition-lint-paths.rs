@@ -18,6 +18,22 @@ pub mod foo {
     //~| WARN this was previously accepted
     use super::bar::Bar2;
     use crate::bar::Bar3;
+
+    use bar;
+    //~^ ERROR Absolute
+    //~| WARN this was previously accepted
+    use crate::{bar as something_else};
+
+    use {Bar as SomethingElse, main};
+    //~^ ERROR Absolute
+    //~| WARN this was previously accepted
+    //~| ERROR Absolute
+    //~| WARN this was previously accepted
+
+    use crate::{Bar as SomethingElse2, main as another_main};
+
+    pub fn test() {
+    }
 }
 
 
@@ -38,4 +54,5 @@ fn main() {
     let x = bar::Bar;
     let x = ::crate::bar::Bar;
     let x = self::bar::Bar;
+    foo::test();
 }
