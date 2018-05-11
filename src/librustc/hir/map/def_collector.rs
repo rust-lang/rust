@@ -74,18 +74,19 @@ impl<'a> DefCollector<'a> {
         self.parent_def = parent;
     }
 
-    pub fn visit_const_expr(&mut self, expr: &Expr) {
+    pub fn visit_const_expr(&mut self, expr: &Expr) -> Option<DefIndex> {
         match expr.node {
             // Find the node which will be used after lowering.
-            ExprKind::Paren(ref inner) => return self.visit_const_expr(inner),
-            ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id, true),
+            ExprKind::Paren(ref inner) => self.visit_const_expr(inner),
+            ExprKind::Mac(..) =>  {
+                self.visit_macro_invoc(expr.id, true);
+                None
+            }
             // FIXME(eddyb) Closures should have separate
             // function definition IDs and expression IDs.
-            ExprKind::Closure(..) => return,
-            _ => {}
+            ExprKind::Closure(..) => None,
+            _ => Some(self.create_def(expr.id, DefPathData::Initializer, REGULAR_SPACE, expr.span))
         }
-
-        self.create_def(expr.id, DefPathData::Initializer, REGULAR_SPACE, expr.span);
     }
 
     fn visit_macro_invoc(&mut self, id: NodeId, const_expr: bool) {
@@ -268,34 +269,41 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = self.parent_def;
 
-        match expr.node {
+        self.parent_def = match expr.node {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id, false),
             ExprKind::Repeat(_, ref count) => self.visit_const_expr(count),
             ExprKind::Closure(..) => {
-                let def = self.create_def(expr.id,
-                                          DefPathData::ClosureExpr,
-                                          REGULAR_SPACE,
-                                          expr.span);
-                self.parent_def = Some(def);
+                Some(self.create_def(expr.id,
+                                     DefPathData::ClosureExpr,
+                                     REGULAR_SPACE,
+                                     expr.span))
             }
-            _ => {}
-        }
+            _ => None
+        }.or(self.parent_def);
 
         visit::walk_expr(self, expr);
         self.parent_def = parent_def;
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.node {
+        let parent = match ty.node {
             TyKind::Mac(..) => return self.visit_macro_invoc(ty.id, false),
-            TyKind::Array(_, ref length) => self.visit_const_expr(length),
+            TyKind::Array(_, ref length) => {
+                self.visit_const_expr(length)
+            }
             TyKind::ImplTrait(..) => {
                 self.create_def(ty.id, DefPathData::ImplTrait, REGULAR_SPACE, ty.span);
+                None
             }
-            TyKind::Typeof(ref expr) => self.visit_const_expr(expr),
-            _ => {}
-        }
+            TyKind::Typeof(ref expr) => {
+                self.visit_const_expr(expr)
+            }
+            _ => None
+        };
+        let prev_parent = self.parent_def;
+        self.parent_def = parent.or(self.parent_def);
         visit::walk_ty(self, ty);
+        self.parent_def = prev_parent;
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
