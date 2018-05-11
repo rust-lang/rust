@@ -75,6 +75,7 @@ impl FileDesc {
         unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
+            use convert::TryInto;
             use libc::pread64;
             // pread64 on emscripten actually takes a 32 bit offset
             if let Ok(o) = offset.try_into() {
@@ -122,6 +123,7 @@ impl FileDesc {
         unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
+            use convert::TryInto;
             use libc::pwrite64;
             // pwrite64 on emscripten actually takes a 32 bit offset
             if let Ok(o) = offset.try_into() {
