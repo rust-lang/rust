@@ -401,7 +401,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
             }
 
             // Potentially-fat pointers.
-            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRef(_, pointee, _) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 assert!(i < 2);
 
@@ -658,11 +658,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                     }
                 }
                 TyNever => return err!(ValidationFailure(format!("The empty type is never valid."))),
-                TyRef(region,
-                    ty::TypeAndMut {
-                        ty: pointee_ty,
-                        mutbl,
-                    }) => {
+                TyRef(region, pointee_ty, mutbl) => {
                     let val = self.read_place(query.place.1)?;
                     // Sharing restricts our context
                     if mutbl == MutImmutable {
