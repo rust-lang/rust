@@ -40,7 +40,7 @@ extern crate rustc_target;
 extern crate syntax_pos;
 
 use rustc::lint;
-use rustc::lint::builtin::{BARE_TRAIT_OBJECT, ABSOLUTE_PATH_STARTING_WITH_MODULE};
+use rustc::lint::builtin::{BARE_TRAIT_OBJECT, ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE};
 use rustc::session;
 use rustc::util;
 
@@ -282,7 +282,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             //       standard library, and thus should never be removed or changed to an error.
         },
         FutureIncompatibleInfo {
-            id: LintId::of(ABSOLUTE_PATH_STARTING_WITH_MODULE),
+            id: LintId::of(ABSOLUTE_PATH_NOT_STARTING_WITH_CRATE),
             reference: "issue TBD",
             edition: Some(Edition::Edition2018),
         },

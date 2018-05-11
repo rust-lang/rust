@@ -1185,7 +1185,7 @@ impl<'tcx> RegionDefinition<'tcx> {
 }
 
 impl fmt::Debug for Constraint {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
             "({:?}: {:?} @ {:?}) due to {:?}",
