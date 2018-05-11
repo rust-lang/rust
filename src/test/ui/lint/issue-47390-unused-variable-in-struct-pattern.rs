@@ -35,6 +35,10 @@ fn main() {
         endless_and_singing: true
     };
 
+    let mut mut_unused_var = 1;
+
+    let (mut var, unused_var) = (1, 2);
+
     if let SoulHistory { corridors_of_light,
                          mut hours_are_suns,
                          endless_and_singing: true } = who_from_the_womb_remembered {

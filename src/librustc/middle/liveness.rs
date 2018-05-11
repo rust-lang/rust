@@ -453,11 +453,11 @@ fn visit_arm<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, arm: &'tcx hir::Arm) {
             }
         }
 
-        pat.each_binding(|bm, p_id, sp, path1| {
+        pat.each_binding(|bm, p_id, _sp, path1| {
             debug!("adding local variable {} from match with bm {:?}",
                    p_id, bm);
             let name = path1.node;
-            ir.add_live_node_for_node(p_id, VarDefNode(sp));
+            ir.add_live_node_for_node(p_id, VarDefNode(path1.span));
             ir.add_variable(Local(LocalInfo {
                 id: p_id,
                 name: name,
@@ -628,10 +628,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn pat_bindings<F>(&mut self, pat: &hir::Pat, mut f: F) where
         F: FnMut(&mut Liveness<'a, 'tcx>, LiveNode, Variable, Span, NodeId),
     {
-        pat.each_binding(|_bm, p_id, sp, _n| {
+        pat.each_binding(|_bm, p_id, sp, n| {
             let ln = self.live_node(p_id, sp);
-            let var = self.variable(p_id, sp);
-            f(self, ln, var, sp, p_id);
+            let var = self.variable(p_id, n.span);
+            f(self, ln, var, n.span, p_id);
         })
     }
 
@@ -1398,7 +1398,8 @@ fn check_local<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, local: &'tcx hir::Local)
         },
         None => {
             this.pat_bindings(&local.pat, |this, ln, var, sp, id| {
-                this.warn_about_unused(sp, id, ln, var);
+                let span = local.pat.simple_span().unwrap_or(sp);
+                this.warn_about_unused(span, id, ln, var);
             })
         }
     }
@@ -1497,7 +1498,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
         for arg in &body.arguments {
-            arg.pat.each_binding(|_bm, p_id, sp, path1| {
+            arg.pat.each_binding(|_bm, p_id, _, path1| {
+                let sp = path1.span;
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
                 let name = path1.node;
@@ -1541,6 +1543,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 let suggest_underscore_msg = format!("consider using `_{}` instead",
                                                      name);
+
                 if is_assigned {
                     self.ir.tcx
                         .lint_node_note(lint::builtin::UNUSED_VARIABLES, id, sp,

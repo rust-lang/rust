@@ -141,6 +141,15 @@ impl hir::Pat {
         }
     }
 
+    pub fn simple_span(&self) -> Option<Span> {
+        match self.node {
+            PatKind::Binding(hir::BindingAnnotation::Unannotated, _, ref path1, None) |
+            PatKind::Binding(hir::BindingAnnotation::Mutable, _, ref path1, None) =>
+                Some(path1.span),
+            _ => None,
+        }
+    }
+
     /// Return variants that are necessary to exist for the pattern to match.
     pub fn necessary_variants(&self) -> Vec<DefId> {
         let mut variants = vec![];
