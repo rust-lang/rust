@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,10 +7,20 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 #![deny(single_use_lifetime)]
-// FIXME(#44752) -- this scenario should not be warned
-fn deref<'x>() -> &'x u32 { //~ ERROR lifetime name `'x` only used once
-    22
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
+// Test that we DO warn for a lifetime used only once in an inherent method.
+
+struct Foo<'f> {
+    data: &'f u32
+}
+
+impl<'f> Foo<'f> { //~ ERROR `'f` only used once
+    fn inherent_a<'a>(&self, data: &'a u32) { //~ ERROR `'a` only used once
+    }
 }
 
 fn main() { }
