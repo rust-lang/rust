@@ -41,7 +41,7 @@ use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{MultiSpan, Span};
 
-use rustc_target::spec::{LinkerFlavor, PanicStrategy};
+use rustc_target::spec::{LldFlavor, LinkerFlavor, PanicStrategy};
 use rustc_target::spec::{Target, TargetTriple};
 use rustc_data_structures::flock;
 use jobserver::Client;
@@ -600,11 +600,51 @@ impl Session {
             .panic
             .unwrap_or(self.target.target.options.panic_strategy)
     }
-    pub fn linker_flavor(&self) -> LinkerFlavor {
+
+    fn linker(&self) -> &str {
         self.opts
-            .debugging_opts
-            .linker_flavor
-            .unwrap_or(self.target.target.linker_flavor)
+            .cg
+            .linker
+            .as_ref()
+            .and_then(|l| l.file_name())
+            .and_then(|l| l.to_str())
+            .unwrap_or_else(|| {
+                self.target.target.options.linker.as_ref().map(|l| &**l).unwrap_or_else(|| {
+                    "cc"
+                })
+            })
+    }
+
+    pub fn linker_flavor(&self) -> LinkerFlavor {
+        self.opts.debugging_opts.linker_flavor.unwrap_or_else(|| {
+            let linker = self.linker();
+
+            if linker.ends_with("gcc") { // e.g. `arm-none-eabi-gcc`
+                LinkerFlavor::Gcc
+            } else if linker == "lld" || linker == "rustc-lld" {
+                let flavor = if self.target.target.target_os == "macos" {
+                    LldFlavor::Ld64
+                } else if self.target.target.target_env == "msvc" {
+                    LldFlavor::Link
+                } else if self.target.target.arch.starts_with("wasm") {
+                    LldFlavor::Wasm
+                } else {
+                    // most likely ELF output
+                    LldFlavor::Ld
+                };
+
+                LinkerFlavor::Lld(flavor)
+            } else if linker.ends_with("ld") || // e.g. `arm-none-eabi-ld`
+                linker.starts_with("ld.") { // e.g. `ld.lld` or `ld.gold`
+                LinkerFlavor::Ld
+            } else if linker == "emcc" {
+                LinkerFlavor::Em
+            } else if linker == "link.exe" {
+                LinkerFlavor::Msvc
+            } else {
+                LinkerFlavor::Gcc
+            }
+        })
     }
 
     pub fn fewer_names(&self) -> bool {

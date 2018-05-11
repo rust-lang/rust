@@ -27,7 +27,6 @@ pub fn target() -> TargetResult {
         target_os: "haiku".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

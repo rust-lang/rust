@@ -44,7 +44,6 @@ pub fn target() -> Result<Target, String> {
         target_vendor: "unknown".to_string(),
         data_layout: "e-p:32:32-i64:64-v128:32:128-n32-S128".to_string(),
         arch: "wasm32".to_string(),
-        linker_flavor: LinkerFlavor::Em,
         options: opts,
     })
 }

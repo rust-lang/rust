@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetResult};
+use spec::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::linux_musl_base::opts();
@@ -28,7 +28,6 @@ pub fn target() -> TargetResult {
         target_os: "linux".to_string(),
         target_env: "musl".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

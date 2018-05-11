@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use spec::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     let base = super::linux_base::opts();
@@ -22,7 +22,6 @@ pub fn target() -> TargetResult {
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
             // Info about features at https://wiki.debian.org/ArmHardFloatPort

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetResult};
+use spec::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::windows_msvc_base::opts();
@@ -26,7 +26,6 @@ pub fn target() -> TargetResult {
         target_os: "windows".to_string(),
         target_env: "msvc".to_string(),
         target_vendor: "pc".to_string(),
-        linker_flavor: LinkerFlavor::Msvc,
         options: base,
     })
 }

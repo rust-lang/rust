@@ -35,7 +35,6 @@ pub fn target() -> TargetResult {
         target_os: "netbsd".to_string(),
         target_env: "".to_string(),
         target_vendor: "rumprun".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

@@ -10,7 +10,7 @@
 
 // Targets the Cortex-M3 processor (ARMv7-M)
 
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use spec::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
     Ok(Target {
@@ -23,7 +23,6 @@ pub fn target() -> TargetResult {
         target_os: "none".to_string(),
         target_env: "".to_string(),
         target_vendor: "".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
             max_atomic_width: Some(32),

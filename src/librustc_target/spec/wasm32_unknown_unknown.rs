@@ -17,7 +17,7 @@
 // (aka panic=abort by default), but otherwise this is in general a relatively
 // standard target.
 
-use super::{LldFlavor, LinkerFlavor, Target, TargetOptions, PanicStrategy};
+use super::{Target, TargetOptions, PanicStrategy};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
@@ -65,7 +65,6 @@ pub fn target() -> Result<Target, String> {
         target_vendor: "unknown".to_string(),
         data_layout: "e-m:e-p:32:32-i64:64-n32:64-S128".to_string(),
         arch: "wasm32".to_string(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Wasm),
         options: opts,
     })
 }

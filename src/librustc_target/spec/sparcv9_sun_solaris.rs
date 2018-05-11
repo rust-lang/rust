@@ -32,7 +32,6 @@ pub fn target() -> TargetResult {
         target_os: "solaris".to_string(),
         target_env: "".to_string(),
         target_vendor: "sun".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

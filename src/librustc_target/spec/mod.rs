@@ -393,8 +393,6 @@ pub struct Target {
     pub arch: String,
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
-    /// Linker flavor
-    pub linker_flavor: LinkerFlavor,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -420,6 +418,9 @@ pub struct TargetOptions {
 
     /// Linker to invoke
     pub linker: Option<String>,
+
+    /// Linker flavor
+    pub linker_flavor: Option<LinkerFlavor>,
 
     /// Linker arguments that are unconditionally passed *before* any
     /// user-defined libraries.
@@ -633,6 +634,7 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
+            linker_flavor: None,
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             asm_args: Vec::new(),
@@ -769,10 +771,6 @@ impl Target {
             target_os: get_req_field("os")?,
             target_env: get_opt_field("env", ""),
             target_vendor: get_opt_field("vendor", "unknown"),
-            linker_flavor: LinkerFlavor::from_str(&*get_req_field("linker-flavor")?)
-                .ok_or_else(|| {
-                    format!("linker flavor must be {}", LinkerFlavor::one_of())
-                })?,
             options: Default::default(),
         };
 
@@ -1087,10 +1085,10 @@ impl ToJson for Target {
         target_val!(target_env, "env");
         target_val!(target_vendor, "vendor");
         target_val!(data_layout);
-        target_val!(linker_flavor);
 
         target_option_val!(is_builtin);
         target_option_val!(linker);
+        target_option_val!(linker_flavor);
         target_option_val!(link_args - pre_link_args);
         target_option_val!(pre_link_objects_exe);
         target_option_val!(pre_link_objects_dll);

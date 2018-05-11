@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use spec::{LinkerFlavor, Target, TargetOptions, TargetResult};
+use spec::{Target, TargetOptions, TargetResult};
 use super::apple_ios_base::{opts, Arch};
 
 pub fn target() -> TargetResult {
@@ -23,7 +23,6 @@ pub fn target() -> TargetResult {
         target_os: "ios".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".to_string(),
             max_atomic_width: Some(64),

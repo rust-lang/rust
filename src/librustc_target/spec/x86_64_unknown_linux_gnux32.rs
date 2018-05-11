@@ -28,7 +28,6 @@ pub fn target() -> TargetResult {
         target_os: "linux".to_string(),
         target_env: "gnu".to_string(),
         target_vendor: "unknown".to_string(),
-        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }
