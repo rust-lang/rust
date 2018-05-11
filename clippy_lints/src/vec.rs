@@ -35,8 +35,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // search for `&vec![_]` expressions where the adjusted type is `&[_]`
         if_chain! {
-            if let ty::TyRef(_, ref ty) = cx.tables.expr_ty_adjusted(expr).sty;
-            if let ty::TySlice(..) = ty.ty.sty;
+            if let ty::TyRef(_, ty, _) = cx.tables.expr_ty_adjusted(expr).sty;
+            if let ty::TySlice(..) = ty.sty;
             if let ExprAddrOf(_, ref addressee) = expr.node;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {

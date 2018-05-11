@@ -72,10 +72,8 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                 );
             } else if let ty::TyRef(
                 _,
-                ty::TypeAndMut {
-                    mutbl: hir::MutMutable,
-                    ..
-                },
+                _,
+                hir::MutMutable,
             ) = self.cx.tables.expr_ty(e).sty
             {
                 span_lint(

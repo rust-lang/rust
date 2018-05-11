@@ -426,7 +426,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             _ => None,
         },
         ConstVal::Value(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(n))) => match result.ty.sty {
-            ty::TyRef(_, tam) => match tam.ty.sty {
+            ty::TyRef(_, tam, _) => match tam.sty {
                 ty::TyStr => {
                     let alloc = tcx
                         .interpret_interner
