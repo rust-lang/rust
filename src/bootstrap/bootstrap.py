@@ -489,7 +489,7 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, self.build, "stage0")
 
-    def get_toml(self, key):
+    def get_toml(self, key, section=None):
         """Returns the value of the given key in config.toml, otherwise returns None
 
         >>> rb = RustBuild()
@@ -501,12 +501,29 @@ class RustBuild(object):
 
         >>> rb.get_toml("key3") is None
         True
+
+        Optionally also matches the section the key appears in
+
+        >>> rb.config_toml = '[a]\\nkey = "value1"\\n[b]\\nkey = "value2"'
+        >>> rb.get_toml('key', 'a')
+        'value1'
+        >>> rb.get_toml('key', 'b')
+        'value2'
+        >>> rb.get_toml('key', 'c') is None
+        True
         """
+
+        cur_section = None
         for line in self.config_toml.splitlines():
+            section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
+            if section_match is not None:
+                cur_section = section_match.group(1)
+
             match = re.match(r'^{}\s*=(.*)$'.format(key), line)
             if match is not None:
                 value = match.group(1)
-                return self.get_string(value) or value.strip()
+                if section is None or section == cur_section:
+                    return self.get_string(value) or value.strip()
         return None
 
     def cargo(self):
@@ -589,7 +606,17 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
-        env["RUSTFLAGS"] = "-Cdebuginfo=2"
+        env["RUSTFLAGS"] = "-Cdebuginfo=2 "
+
+        build_section = "target.{}".format(self.build_triple())
+        target_features = []
+        if self.get_toml("crt-static", build_section) == "true":
+            target_features += ["+crt-static"]
+        elif self.get_toml("crt-static", build_section) == "false":
+            target_features += ["-crt-static"]
+        if target_features:
+            env["RUSTFLAGS"] += "-C target-feature=" + (",".join(target_features)) + " "
+
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
