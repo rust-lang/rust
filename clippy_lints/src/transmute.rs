@@ -229,16 +229,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 e.span,
                                 &format!("transmute from a type (`{}`) to itself", from_ty),
                             ),
-                            (&ty::TyRef(_, rty), &ty::TyRawPtr(ptr_ty)) => span_lint_and_then(
+                            (&ty::TyRef(_, rty, rty_mutbl), &ty::TyRawPtr(ptr_ty)) => span_lint_and_then(
                                 cx,
                                 USELESS_TRANSMUTE,
                                 e.span,
                                 "transmute from a reference to a pointer",
                                 |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                    let sugg = if ptr_ty == rty {
+                                    let rty_and_mut = ty::TypeAndMut { ty: rty, mutbl: rty_mutbl };
+
+                                    let sugg = if ptr_ty == rty_and_mut {
                                         arg.as_ty(to_ty)
                                     } else {
-                                        arg.as_ty(cx.tcx.mk_ptr(rty)).as_ty(to_ty)
+                                        arg.as_ty(cx.tcx.mk_ptr(rty_and_mut)).as_ty(to_ty)
                                     };
 
                                     db.span_suggestion(e.span, "try", sugg.to_string());
@@ -284,7 +286,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     to_ty
                                 ),
                             ),
-                            (&ty::TyRawPtr(from_pty), &ty::TyRef(_, to_ref_ty)) => span_lint_and_then(
+                            (&ty::TyRawPtr(from_pty), &ty::TyRef(_, to_ref_ty, mutbl)) => span_lint_and_then(
                                 cx,
                                 TRANSMUTE_PTR_TO_REF,
                                 e.span,
@@ -296,16 +298,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 ),
                                 |db| {
                                     let arg = sugg::Sugg::hir(cx, &args[0], "..");
-                                    let (deref, cast) = if to_ref_ty.mutbl == Mutability::MutMutable {
+                                    let (deref, cast) = if mutbl == Mutability::MutMutable {
                                         ("&mut *", "*mut")
                                     } else {
                                         ("&*", "*const")
                                     };
 
-                                    let arg = if from_pty.ty == to_ref_ty.ty {
+                                    let arg = if from_pty.ty == to_ref_ty {
                                         arg
                                     } else {
-                                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty.ty)))
+                                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
                                     };
 
                                     db.span_suggestion(e.span, "try", sugg::make_unop(deref, arg).to_string());
@@ -331,13 +333,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     );
                                 },
                             ),
-                            (&ty::TyRef(_, ref ref_from), &ty::TyRef(_, ref ref_to)) => {
+                            (&ty::TyRef(_, ty_from, from_mutbl), &ty::TyRef(_, ty_to, to_mutbl)) => {
                                 if_chain! {
-                                    if let (&ty::TySlice(slice_ty), &ty::TyStr) = (&ref_from.ty.sty, &ref_to.ty.sty);
+                                    if let (&ty::TySlice(slice_ty), &ty::TyStr) = (&ty_from.sty, &ty_to.sty);
                                     if let ty::TyUint(ast::UintTy::U8) = slice_ty.sty;
-                                    if ref_from.mutbl == ref_to.mutbl;
+                                    if from_mutbl == to_mutbl;
                                     then {
-                                        let postfix = if ref_from.mutbl == Mutability::MutMutable {
+                                        let postfix = if from_mutbl == Mutability::MutMutable {
                                             "_mut"
                                         } else {
                                             ""
@@ -367,8 +369,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                             e.span,
                                             "transmute from a reference to a reference",
                                             |db| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
-                                                let sugg_paren = arg.as_ty(cx.tcx.mk_ptr(*ref_from)).as_ty(cx.tcx.mk_ptr(*ref_to));
-                                                let sugg = if ref_to.mutbl == Mutability::MutMutable {
+                                                let ty_from_and_mut = ty::TypeAndMut { ty: ty_from, mutbl: from_mutbl };
+                                                let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: to_mutbl };
+                                                let sugg_paren = arg.as_ty(cx.tcx.mk_ptr(ty_from_and_mut)).as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
+                                                let sugg = if to_mutbl == Mutability::MutMutable {
                                                     sugg_paren.mut_addr_deref()
                                                 } else {
                                                     sugg_paren.addr_deref()

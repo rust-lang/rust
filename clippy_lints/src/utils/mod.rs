@@ -674,7 +674,7 @@ pub fn walk_ptrs_hir_ty(ty: &hir::Ty) -> &hir::Ty {
 /// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: Ty) -> Ty {
     match ty.sty {
-        ty::TyRef(_, ref tm) => walk_ptrs_ty(tm.ty),
+        ty::TyRef(_, ty, _) => walk_ptrs_ty(ty),
         _ => ty,
     }
 }
@@ -684,7 +684,7 @@ pub fn walk_ptrs_ty(ty: Ty) -> Ty {
 pub fn walk_ptrs_ty_depth(ty: Ty) -> (Ty, usize) {
     fn inner(ty: Ty, depth: usize) -> (Ty, usize) {
         match ty.sty {
-            ty::TyRef(_, ref tm) => inner(tm.ty, depth + 1),
+            ty::TyRef(_, ty, _) => inner(ty, depth + 1),
             _ => (ty, depth),
         }
     }

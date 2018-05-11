@@ -152,10 +152,8 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
         if let ty::TyRef(
             _,
-            ty::TypeAndMut {
-                ty,
-                mutbl: MutImmutable,
-            },
+            ty,
+            _
         ) = ty.sty
         {
             if match_type(cx, ty, &paths::VEC) {

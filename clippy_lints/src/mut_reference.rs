@@ -63,10 +63,8 @@ fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], typ
                 match parameter.sty {
                     ty::TyRef(
                         _,
-                        ty::TypeAndMut {
-                            mutbl: MutImmutable,
-                            ..
-                        },
+                        _,
+                        _,
                     ) |
                     ty::TyRawPtr(ty::TypeAndMut {
                         mutbl: MutImmutable,
