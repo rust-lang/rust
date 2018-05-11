@@ -20,6 +20,7 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
+use std::rc::Rc;
 
 #[derive(Copy, Clone, Eq)]
 pub struct Ident {
@@ -200,10 +201,15 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 
 #[derive(Default)]
 pub struct Interner {
-    names: FxHashMap<Box<str>, Symbol>,
-    strings: Vec<Box<str>>,
+    names: FxHashMap<Rc<str>, Symbol>,
+    strings: Vec<Rc<str>>,
     gensyms: Vec<Symbol>,
 }
+
+// The impl is safe because the ref counts are only modified by one thread at a
+// time, during insertion and during destruction. These may happen on different
+// threads, but are mutually excluded.
+unsafe impl Send for Interner {}
 
 impl Interner {
     pub fn new() -> Self {
@@ -224,7 +230,7 @@ impl Interner {
         }
 
         let name = Symbol(self.strings.len() as u32);
-        let string = string.to_string().into_boxed_str();
+        let string: Rc<str> = Rc::from(string);
         self.strings.push(string.clone());
         self.names.insert(string, name);
         name
