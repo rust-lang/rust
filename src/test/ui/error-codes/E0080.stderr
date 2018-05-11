@@ -12,15 +12,15 @@ error[E0080]: constant evaluation error
 LL |     X = (1 << 500), //~ ERROR E0080
    |         ^^^^^^^^^^ attempt to shift left with overflow
 
-warning: attempt to divide by zero
+error: attempt to divide by zero
   --> $DIR/E0080.rs:14:9
    |
 LL |     Y = (1 / 0) //~ ERROR E0080
    |         ^^^^^^^
    |
-   = note: #[warn(const_err)] on by default
+   = note: #[deny(const_err)] on by default
 
-warning: constant evaluation error
+error: constant evaluation error
   --> $DIR/E0080.rs:14:9
    |
 LL |     Y = (1 / 0) //~ ERROR E0080
@@ -32,6 +32,6 @@ error[E0080]: constant evaluation error
 LL |     Y = (1 / 0) //~ ERROR E0080
    |         ^^^^^^^ attempt to divide by zero
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

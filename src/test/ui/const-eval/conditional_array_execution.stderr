@@ -1,19 +1,23 @@
 warning: attempt to subtract with overflow
-  --> $DIR/conditional_array_execution.rs:15:19
+  --> $DIR/conditional_array_execution.rs:16:19
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    |                   ^^^^^
    |
-   = note: #[warn(const_err)] on by default
+note: lint level defined here
+  --> $DIR/conditional_array_execution.rs:12:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
 warning: this constant cannot be used
-  --> $DIR/conditional_array_execution.rs:15:1
+  --> $DIR/conditional_array_execution.rs:16:1
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to subtract with overflow
 
 warning: constant evaluation error
-  --> $DIR/conditional_array_execution.rs:20:20
+  --> $DIR/conditional_array_execution.rs:21:20
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors

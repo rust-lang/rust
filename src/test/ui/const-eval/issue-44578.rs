@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-pass
+#![warn(const_err)]
 
 trait Foo {
     const AMT: usize;

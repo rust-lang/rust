@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(const_err)]
+
 // compile-pass
 // compile-flags: -O
 fn main() {

@@ -1,13 +1,17 @@
 warning: constant evaluation error
-  --> $DIR/issue-44578.rs:35:20
+  --> $DIR/issue-44578.rs:36:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
    |
-   = note: #[warn(const_err)] on by default
+note: lint level defined here
+  --> $DIR/issue-44578.rs:12:9
+   |
+LL | #![warn(const_err)]
+   |         ^^^^^^^^^
 
 warning: constant evaluation error
-  --> $DIR/issue-44578.rs:35:20
+  --> $DIR/issue-44578.rs:36:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT); //~ WARN const_err
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
