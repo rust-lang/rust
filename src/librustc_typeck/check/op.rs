@@ -258,25 +258,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     format!("cannot use `{}=` on type `{}`",
                                     op.node.as_str(), lhs_ty));
                             let mut suggested_deref = false;
-                            if let TyRef(_, mut ty_mut) = lhs_ty.sty {
+                            if let TyRef(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
-                                                                        ty_mut.ty,
+                                                                        rty,
                                                                         lhs_expr.span) &&
-                                        self.lookup_op_method(ty_mut.ty,
-                                                                &[rhs_ty],
-                                                                Op::Binary(op, is_assign))
+                                        self.lookup_op_method(rty,
+                                                              &[rhs_ty],
+                                                              Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
-                                        while let TyRef(_, ty_mut_inner) = ty_mut.ty.sty{
-                                            ty_mut = ty_mut_inner;
+                                        while let TyRef(_, rty_inner, _) = rty.sty {
+                                            rty = rty_inner;
                                         }
                                         let msg = &format!(
                                                 "`{}=` can be used on '{}', you can \
                                                 dereference `{2}`: `*{2}`",
                                                 op.node.as_str(),
-                                                ty_mut.ty,
+                                                rty,
                                                 lstring
                                         );
                                         err.help(msg);
@@ -326,25 +326,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             op.node.as_str(),
                                             lhs_ty);
                             let mut suggested_deref = false;
-                            if let TyRef(_, mut ty_mut) = lhs_ty.sty {
+                            if let TyRef(_, mut rty, _) = lhs_ty.sty {
                                 if {
                                     !self.infcx.type_moves_by_default(self.param_env,
-                                                                        ty_mut.ty,
+                                                                        rty,
                                                                         lhs_expr.span) &&
-                                        self.lookup_op_method(ty_mut.ty,
-                                                                &[rhs_ty],
-                                                                Op::Binary(op, is_assign))
+                                        self.lookup_op_method(rty,
+                                                              &[rhs_ty],
+                                                              Op::Binary(op, is_assign))
                                             .is_ok()
                                 } {
                                     if let Ok(lstring) = codemap.span_to_snippet(lhs_expr.span) {
-                                        while let TyRef(_, ty_mut_inner) = ty_mut.ty.sty{
-                                            ty_mut = ty_mut_inner;
+                                        while let TyRef(_, rty_inner, _) = rty.sty {
+                                            rty = rty_inner;
                                         }
                                         let msg = &format!(
                                                 "`{}` can be used on '{}', you can \
                                                 dereference `{2}`: `*{2}`",
                                                 op.node.as_str(),
-                                                ty_mut.ty,
+                                                rty,
                                                 lstring
                                         );
                                         err.help(msg);
@@ -478,7 +478,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             err.note(&format!("unsigned values cannot be negated"));
                         },
                         TyStr | TyNever | TyChar | TyTuple(_) | TyArray(_,_) => {},
-                        TyRef(_, ref lty) if lty.ty.sty == TyStr => {},
+                        TyRef(_, ref lty, _) if lty.sty == TyStr => {},
                         _ => {
                             let missing_trait = match op {
                                 hir::UnNeg => "std::ops::Neg",
