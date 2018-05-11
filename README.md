@@ -26,22 +26,26 @@ More information on the inner workings of the tool can be found
 ## Installation
 
 The tool is implemented as a cargo plugin. As of now, it can be obtained from this git
-repository and compiled from source.
+repository and compiled from source or installed from
+[crates.io](https://crates.io/crates/semverver). Keep in mind that only the newest version
+of the nighly toolchain is supported at any given time.
 
 If you are already using Rust nightly and have successfully installed tools like
 `cargo add` and `cargo clippy`, just do:
 
 ```sh
+$ rustup update nightly
 $ cargo +nightly install semverver
 ```
 
 You'd also need `cmake` for some dependencies, and a few common libraries (if I you hit
 build failures because of missing system-wide dependencies, please open an issue, so they
-can be added here.
+can be added here).
 
 You can also install the newest version of the tool from git:
 
 ```sh
+$ rustup update nightly
 $ cargo +nightly install --git https://github.com/rust-lang-nursery/rust-semverver
 ```
 
