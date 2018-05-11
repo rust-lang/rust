@@ -1038,11 +1038,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     let ret_ty = fn_sig.output();
     fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::SizedReturnType);
-    let ret_ty = fcx.instantiate_anon_types_from_return_value(fn_id, &ret_ty);
-    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
+    let revealed_ret_ty = fcx.instantiate_anon_types_from_return_value(fn_id, &ret_ty);
+    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
-        ret_ty,
+        revealed_ret_ty,
         fn_sig.variadic,
         fn_sig.unsafety,
         fn_sig.abi
@@ -1124,7 +1124,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         actual_return_ty = fcx.next_diverging_ty_var(
             TypeVariableOrigin::DivergingFn(span));
     }
-    fcx.demand_suptype(span, ret_ty, actual_return_ty);
+    fcx.demand_suptype(span, revealed_ret_ty, actual_return_ty);
 
     // Check that the main return type implements the termination trait.
     if let Some(term_id) = fcx.tcx.lang_items().termination() {
