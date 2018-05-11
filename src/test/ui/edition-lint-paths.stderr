@@ -13,7 +13,34 @@ LL | #![deny(absolute_path_starting_with_module)]
    = note: for more information, see issue TBD
 
 error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:24:5
+  --> $DIR/edition-lint-paths.rs:22:9
+   |
+LL |     use bar;
+   |         ^^^ help: use `crate`: `crate::bar`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:27:10
+   |
+LL |     use {Bar as SomethingElse, main};
+   |          ^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::Bar as SomethingElse`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:27:32
+   |
+LL |     use {Bar as SomethingElse, main};
+   |                                ^^^^ help: use `crate`: `crate::main`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:40:5
    |
 LL | use bar::Bar;
    |     ^^^^^^^^ help: use `crate`: `crate::bar::Bar`
@@ -22,7 +49,7 @@ LL | use bar::Bar;
    = note: for more information, see issue TBD
 
 error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:35:13
+  --> $DIR/edition-lint-paths.rs:51:13
    |
 LL |     let x = ::bar::Bar;
    |             ^^^^^^^^^^ help: use `crate`: `crate::bar::Bar`
@@ -30,5 +57,5 @@ LL |     let x = ::bar::Bar;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue TBD
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
