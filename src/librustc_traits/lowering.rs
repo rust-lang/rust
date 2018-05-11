@@ -13,10 +13,9 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
 use rustc::hir::{self, ImplPolarity};
 use rustc::traits::{
-    Clause, Clauses, DomainGoal, FromEnv, Goal, PolyDomainGoal, ProgramClause, WellFormed,
-    WhereClause,
+    Clause, Clauses, DomainGoal, Goal, PolyDomainGoal, ProgramClause, WhereClauseAtom,
 };
-use rustc::ty::query::Providers;
+use rustc::ty::subst::Substs;
 use rustc::ty::{self, Slice, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::mem;
@@ -278,21 +277,15 @@ fn program_clauses_for_trait<'a, 'tcx>(
             hypotheses,
         }))
         .map(|wc| implied_bound_from_trait(tcx, trait_pred, wc));
-    let wellformed_clauses = where_clauses[1..]
-        .into_iter()
-        .map(|wc| wellformed_from_bound(tcx, trait_pred, wc));
-    tcx.mk_clauses(
-        clauses
-            .chain(implied_bound_clauses)
-            .chain(wellformed_clauses),
-    )
+    let wellformed_clauses = wellformed_from_bound(tcx, trait_pred, &where_clauses[1..]);
+    tcx.mk_clauses(clauses.chain(implied_bound_clauses).chain(wellformed_clauses))
 }
 
 fn wellformed_from_bound<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_pred: ty::TraitPredicate<'tcx>,
-    where_clause: &ty::Predicate<'tcx>,
-) -> Clause<'tcx> {
+    where_clauses: &[ty::Predicate<'tcx>],
+) -> iter::Once<Clause<'tcx>> {
     // Rule WellFormed-TraitRef
     //
     // For each where clause WC:
@@ -309,18 +302,17 @@ fn wellformed_from_bound<'a, 'tcx>(
         .lower()
         .map_bound(|wc| wc.into_wellformed_goal());
     // Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)
-    let mut where_clauses = vec![impl_trait];
-    where_clauses.push(wellformed_wc);
-    Clause::ForAll(where_clause.lower().map_bound(|_| {
-        ProgramClause {
-            goal: wellformed_trait,
-            hypotheses: tcx.mk_goals(
-                where_clauses
-                    .into_iter()
-                    .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
-            ),
-        }
-    }))
+    let mut wcs = vec![impl_trait];
+    wcs.extend(wellformed_wcs);
+
+    let clause = ProgramClause {
+        goal: wellformed_trait,
+        hypotheses: tcx.mk_goals(
+            wcs.into_iter()
+                .map(|wc| Goal::from_poly_domain_goal(wc, tcx)),
+        ),
+    };
+    iter::once(Clause::ForAll(ty::Binder::dummy(clause)))
 }
 
 fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Clauses<'tcx> {
