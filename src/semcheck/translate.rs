@@ -146,6 +146,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     fn translate<T: TypeFoldable<'tcx>>(&self, index_map: &HashMap<u32, DefId>, orig: &T) -> T {
         use rustc::ty::{AdtDef, Binder, ExistentialProjection, ExistentialTraitRef};
         use rustc::ty::ExistentialPredicate::*;
+        use rustc::ty::TypeAndMut;
         use rustc::ty::TypeVariants::*;
 
         orig.fold_with(&mut BottomUpFolder { tcx: self.tcx, fldop: |ty| {
@@ -160,8 +161,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                         ty
                     }
                 },
-                TyRef(region, type_and_mut) => {
-                    self.tcx.mk_ref(self.translate_region(region), type_and_mut)
+                TyRef(region, ty, mutbl) => {
+                    let ty_and_mut = TypeAndMut { ty, mutbl };
+                    self.tcx.mk_ref(self.translate_region(region), ty_and_mut)
                 },
                 TyFnDef(did, substs) => {
                     // TODO: this might be buggy as *technically* the substs are
@@ -493,12 +495,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx,
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.infcx.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        use rustc::ty::TypeAndMut;
         use rustc::ty::TypeVariants::{TyError, TyInfer, TyRef};
 
         let t1 = ty.super_fold_with(self);
         match t1.sty {
-            TyRef(region, tm) if region.needs_infer() => {
-                self.infcx.tcx.mk_ref(self.infcx.tcx.types.re_erased, tm)
+            TyRef(region, ty, mutbl) if region.needs_infer() => {
+                let ty_and_mut = TypeAndMut { ty, mutbl };
+                self.infcx.tcx.mk_ref(self.infcx.tcx.types.re_erased, ty_and_mut)
             },
             TyInfer(_) => self.infcx.tcx.mk_ty(TyError),
             _ => t1,

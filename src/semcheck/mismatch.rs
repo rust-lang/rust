@@ -157,9 +157,9 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
                 let _ = self.relate(&a_mt, &b_mt)?;
                 None
             },
-            (&TyRef(a_r, a_mt), &TyRef(b_r, b_mt)) => {
+            (&TyRef(a_r, a_ty, _), &TyRef(b_r, b_ty, _)) => {
                 let _ = self.relate(&a_r, &b_r)?;
-                let _ = self.relate(&a_mt, &b_mt)?;
+                let _ = self.relate(&a_ty, &b_ty)?;
                 None
             },
             (&TyFnDef(a_def_id, a_substs), &TyFnDef(b_def_id, b_substs)) => {
