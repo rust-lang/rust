@@ -91,6 +91,12 @@ fn make_opts() -> Options {
     let mut opts = Options::new();
 
     // Sorted in alphabetical order.
+    opts.optflag(
+        "",
+        "check",
+        "Run in 'check' mode. Exits with 0 if input if formatted correctly. Exits \
+         with 1 and prints a diff if formatting is required.",
+    );
     opts.optopt(
         "",
         "color",
@@ -308,7 +314,8 @@ fn print_usage_to_stdout(opts: &Options, reason: &str) {
 }
 
 fn print_help_file_lines() {
-    println!("If you want to restrict reformatting to specific sets of lines, you can
+    println!(
+        "If you want to restrict reformatting to specific sets of lines, you can
 use the `--file-lines` option. Its argument is a JSON array of objects
 with `file` and `range` properties, where `file` is a file name, and
 `range` is an array representing a range of lines like `[7,13]`. Ranges
@@ -325,7 +332,8 @@ rustfmt --file-lines '[
 
 would format lines `7-13` and `21-29` of `src/lib.rs`, and lines `10-11`,
 and `15` of `src/foo.rs`. No other files would be formatted, even if they
-are included as out of line modules from `src/lib.rs`.");
+are included as out of line modules from `src/lib.rs`."
+    );
 }
 
 fn print_version() {

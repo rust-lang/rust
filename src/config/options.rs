@@ -332,6 +332,7 @@ pub struct CliOptions {
     verbose: bool,
     pub(super) config_path: Option<PathBuf>,
     write_mode: Option<WriteMode>,
+    check: bool,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
@@ -361,7 +362,11 @@ impl CliOptions {
 
         options.config_path = matches.opt_str("config-path").map(PathBuf::from);
 
+        options.check = matches.opt_present("check");
         if let Some(ref write_mode) = matches.opt_str("write-mode") {
+            if options.check {
+                return Err(format_err!("Invalid to set write-mode and `--check`"));
+            }
             if let Ok(write_mode) = WriteMode::from_str(write_mode) {
                 options.write_mode = Some(write_mode);
             } else {
@@ -410,7 +415,9 @@ impl CliOptions {
         if let Some(error_on_unformatted) = self.error_on_unformatted {
             config.set().error_on_unformatted(error_on_unformatted);
         }
-        if let Some(write_mode) = self.write_mode {
+        if self.check {
+            config.set().write_mode(WriteMode::Check);
+        } else if let Some(write_mode) = self.write_mode {
             config.set().write_mode(write_mode);
         }
         if let Some(color) = self.color {
