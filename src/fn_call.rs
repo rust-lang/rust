@@ -531,14 +531,21 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                 // Return success (0)
                 self.write_null(dest, dest_ty)?;
             }
+
             "_tlv_atexit" => {
-                // TODO: handle it
-            }
+                return err!(Unimplemented("can't interpret with full mir for osx target".to_owned()));
+            },
 
             // Stub out all the other pthread calls to just return 0
             link_name if link_name.starts_with("pthread_") => {
                 info!("ignoring C ABI call: {}", link_name);
                 self.write_null(dest, dest_ty)?;
+            }
+
+            "mmap" => {
+                // This is a horrible hack, but well... the guard page mechanism calls mmap and expects a particular return value, so we give it that value
+                let addr = self.into_ptr(args[0].value)?;
+                self.write_ptr(dest, addr, dest_ty)?;
             }
 
             _ => {
