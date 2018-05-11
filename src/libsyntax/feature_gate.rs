@@ -1861,56 +1861,61 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             continue
         }
 
-        match attr.meta_item_list() {
+        let list = match attr.meta_item_list() {
+            Some(list) => list,
             None => {
                 span_err!(span_handler, attr.span, E0555,
                           "malformed feature attribute, expected #![feature(...)]");
+                continue
             }
-            Some(list) => {
-                for mi in list {
+        };
 
-                    let name = if let Some(word) = mi.word() {
-                        word.name()
-                    } else {
-                        span_err!(span_handler, mi.span, E0556,
-                                  "malformed feature, expected just one word");
-                        continue
-                    };
+        for mi in list {
+            let name = if let Some(word) = mi.word() {
+                word.name()
+            } else {
+                span_err!(span_handler, mi.span, E0556,
+                          "malformed feature, expected just one word");
+                continue
+            };
 
-                    if let Some(&(_, _, _, _, set)) = ACTIVE_FEATURES.iter()
-                        .find(|& &(n, ..)| name == n) {
-                        set(&mut features, mi.span);
-                        feature_checker.collect(&features, mi.span);
-                    }
-                    else if let Some(&(.., reason)) = REMOVED_FEATURES.iter()
-                            .find(|& &(n, ..)| name == n)
-                        .or_else(|| STABLE_REMOVED_FEATURES.iter()
-                            .find(|& &(n, ..)| name == n)) {
-                        feature_removed(span_handler, mi.span, reason);
-                    }
-                    else if let Some(&(..)) = ACCEPTED_FEATURES.iter()
-                        .find(|& &(n, ..)| name == n) {
-                        features.declared_stable_lang_features.push((name, mi.span));
-                    } else if let Some(&edition) = ALL_EDITIONS.iter()
-                                                              .find(|e| name == e.feature_name()) {
-                        if edition <= crate_edition {
-                            feature_removed(span_handler, mi.span, None);
-                        } else {
-                            for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
-                                if let Some(f_edition) = f_edition {
-                                    if edition >= f_edition {
-                                        // FIXME(Manishearth) there is currently no way to set
-                                        // lib features by edition
-                                        set(&mut features, DUMMY_SP);
-                                    }
-                                }
-                            }
+            if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
+                set(&mut features, mi.span);
+                feature_checker.collect(&features, mi.span);
+                continue
+            }
+
+            let removed = REMOVED_FEATURES.iter().find(|f| name == f.0);
+            let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.0);
+            if let Some((.., reason)) = removed.or(stable_removed) {
+                feature_removed(span_handler, mi.span, *reason);
+                continue
+            }
+
+            if ACCEPTED_FEATURES.iter().any(|f| name == f.0) {
+                features.declared_stable_lang_features.push((name, mi.span));
+                continue
+            }
+
+            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
+                if *edition <= crate_edition {
+                    continue
+                }
+
+                for &(.., f_edition, set) in ACTIVE_FEATURES.iter() {
+                    if let Some(f_edition) = f_edition {
+                        if *edition >= f_edition {
+                            // FIXME(Manishearth) there is currently no way to set
+                            // lib features by edition
+                            set(&mut features, DUMMY_SP);
                         }
-                    } else {
-                        features.declared_lib_features.push((name, mi.span));
                     }
                 }
+
+                continue
             }
+
+            features.declared_lib_features.push((name, mi.span));
         }
     }
 
