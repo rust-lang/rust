@@ -590,13 +590,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
+    pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef, align: Align) -> ValueRef {
         debug!("Store {:?} -> {:?}", Value(val), Value(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store.volatile");
         let ptr = self.check_store(val, ptr);
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            llvm::LLVMSetAlignment(insn, align.abi() as c_uint);
             llvm::LLVMSetVolatile(insn, llvm::True);
             insn
         }

@@ -247,26 +247,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
             to_immediate(bx, load, cx.layout_of(tp_ty))
         },
         "volatile_store" => {
-            let tp_ty = substs.type_at(0);
             let dst = args[0].deref(bx.cx);
-            if let OperandValue::Pair(a, b) = args[1].val {
-                bx.volatile_store(a, dst.project_field(bx, 0).llval);
-                bx.volatile_store(b, dst.project_field(bx, 1).llval);
-            } else {
-                let val = if let OperandValue::Ref(ptr, align) = args[1].val {
-                    bx.load(ptr, align)
-                } else {
-                    if dst.layout.is_zst() {
-                        return;
-                    }
-                    from_immediate(bx, args[1].immediate())
-                };
-                let ptr = bx.pointercast(dst.llval, val_ty(val).ptr_to());
-                let store = bx.volatile_store(val, ptr);
-                unsafe {
-                    llvm::LLVMSetAlignment(store, cx.align_of(tp_ty).abi() as u32);
-                }
+            if dst.layout.is_zst() {
+                return;
             }
+            args[1].val.volatile_store(bx, dst);
             return;
         },
         "prefetch_read_data" | "prefetch_write_data" |

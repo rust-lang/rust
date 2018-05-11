@@ -320,7 +320,7 @@ pub fn coerce_unsized_into<'a, 'tcx>(bx: &Builder<'a, 'tcx>,
 
                 if src_f.layout.ty == dst_f.layout.ty {
                     memcpy_ty(bx, dst_f.llval, src_f.llval, src_f.layout,
-                        src_f.align.min(dst_f.align));
+                              src_f.align.min(dst_f.align), false);
                 } else {
                     coerce_unsized_into(bx, src_f, dst_f);
                 }
@@ -408,7 +408,8 @@ pub fn call_memcpy(bx: &Builder,
                    dst: ValueRef,
                    src: ValueRef,
                    n_bytes: ValueRef,
-                   align: Align) {
+                   align: Align,
+                   volatile: bool) {
     let cx = bx.cx;
     let ptr_width = &cx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
@@ -417,7 +418,7 @@ pub fn call_memcpy(bx: &Builder,
     let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
     let size = bx.intcast(n_bytes, cx.isize_ty, false);
     let align = C_i32(cx, align.abi() as i32);
-    let volatile = C_bool(cx, false);
+    let volatile = C_bool(cx, volatile);
     bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
 }
 
@@ -427,13 +428,14 @@ pub fn memcpy_ty<'a, 'tcx>(
     src: ValueRef,
     layout: TyLayout<'tcx>,
     align: Align,
+    volatile: bool,
 ) {
     let size = layout.size.bytes();
     if size == 0 {
         return;
     }
 
-    call_memcpy(bx, dst, src, C_usize(bx.cx, size), align);
+    call_memcpy(bx, dst, src, C_usize(bx.cx, size), align, volatile);
 }
 
 pub fn call_memset<'a, 'tcx>(bx: &Builder<'a, 'tcx>,

@@ -275,6 +275,14 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
 impl<'a, 'tcx> OperandValue {
     pub fn store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+        self.store_maybe_volatile(bx, dest, false);
+    }
+
+    pub fn volatile_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+        self.store_maybe_volatile(bx, dest, true);
+    }
+
+    fn store_maybe_volatile(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>, volatile: bool) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -284,9 +292,14 @@ impl<'a, 'tcx> OperandValue {
         match self {
             OperandValue::Ref(r, source_align) =>
                 base::memcpy_ty(bx, dest.llval, r, dest.layout,
-                                source_align.min(dest.align)),
+                                source_align.min(dest.align), volatile),
             OperandValue::Immediate(s) => {
-                bx.store(base::from_immediate(bx, s), dest.llval, dest.align);
+                let val = base::from_immediate(bx, s);
+                if !volatile {
+                    bx.store(val, dest.llval, dest.align);
+                } else {
+                    bx.volatile_store(val, dest.llval, dest.align);
+                }
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
@@ -295,7 +308,12 @@ impl<'a, 'tcx> OperandValue {
                     if common::val_ty(x) == Type::i1(bx.cx) {
                         llptr = bx.pointercast(llptr, Type::i8p(bx.cx));
                     }
-                    bx.store(base::from_immediate(bx, x), llptr, dest.align);
+                    let val = base::from_immediate(bx, x);
+                    if !volatile {
+                        bx.store(val, llptr, dest.align);
+                    } else {
+                        bx.volatile_store(val, llptr, dest.align);
+                    }
                 }
             }
         }

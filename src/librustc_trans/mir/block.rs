@@ -626,7 +626,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     // have scary latent bugs around.
 
                     let scratch = PlaceRef::alloca(bx, arg.layout, "arg");
-                    base::memcpy_ty(bx, scratch.llval, llval, op.layout, align);
+                    base::memcpy_ty(bx, scratch.llval, llval, op.layout, align, false);
                     (scratch.llval, scratch.align, true)
                 } else {
                     (llval, align, true)
