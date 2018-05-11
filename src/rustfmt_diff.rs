@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use config::{Color, Config};
+use config::{Color, Config, Verbosity};
 use diff;
 use std::collections::VecDeque;
 use std::io;
@@ -154,7 +154,11 @@ where
     F: Fn(u32) -> String,
 {
     let color = config.color();
-    let line_terminator = if config.verbose_diff() { "⏎" } else { "" };
+    let line_terminator = if config.verbose() == Verbosity::Verbose {
+        "⏎"
+    } else {
+        ""
+    };
 
     let mut writer = OutputWriter::new(color);
 

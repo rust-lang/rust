@@ -130,11 +130,6 @@ fn make_opts() -> Options {
         "Format specified line ranges. See README for more detail on the JSON format.",
         "JSON",
     );
-    opts.optflag(
-        "",
-        "verbose-diff",
-        "Emit a more verbose diff, indicating the end of lines.",
-    );
     opts.optflag("h", "help", "Show this message");
     opts.optflag("", "skip-children", "Don't reformat child modules");
     opts.optflag(

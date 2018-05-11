@@ -330,7 +330,6 @@ pub struct CliOptions {
     skip_children: Option<bool>,
     quiet: bool,
     verbose: bool,
-    verbose_diff: bool,
     pub(super) config_path: Option<PathBuf>,
     write_mode: Option<WriteMode>,
     color: Option<Color>,
@@ -347,7 +346,6 @@ impl CliOptions {
         if options.verbose && options.quiet {
             return Err(format_err!("Can't use both `--verbose` and `--quiet`"));
         }
-        options.verbose_diff = matches.opt_present("verbose-diff");
 
         let unstable_features = matches.opt_present("unstable-features");
         let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
@@ -404,7 +402,6 @@ impl CliOptions {
         } else {
             config.set().verbose(Verbosity::Normal);
         }
-        config.set().verbose_diff(self.verbose_diff);
         config.set().file_lines(self.file_lines);
         config.set().unstable_features(self.unstable_features);
         if let Some(skip_children) = self.skip_children {
