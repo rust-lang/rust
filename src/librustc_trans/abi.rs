@@ -220,7 +220,8 @@ impl<'a, 'tcx> ArgTypeExt<'a, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                                   bx.pointercast(dst.llval, Type::i8p(cx)),
                                   bx.pointercast(llscratch, Type::i8p(cx)),
                                   C_usize(cx, self.layout.size.bytes()),
-                                  self.layout.align.min(scratch_align));
+                                  self.layout.align.min(scratch_align),
+                                  false);
 
                 bx.lifetime_end(llscratch, scratch_size);
             }
