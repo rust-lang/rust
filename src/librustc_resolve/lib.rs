@@ -3324,6 +3324,24 @@ impl<'a> Resolver<'a> {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
+
+                        if let Some(id) = node_id {
+                            if i == 1 && self.session.features_untracked().crate_in_paths
+                                      && !self.session.rust_2018() {
+                                let prev_name = path[0].name;
+                                if prev_name == keywords::Extern.name() ||
+                                   prev_name == keywords::CrateRoot.name() {
+                                    let diag = lint::builtin::BuiltinLintDiagnostics
+                                                   ::AbsPathWithModule(path_span);
+                                    self.session.buffer_lint_with_diagnostic(
+                                        lint::builtin::ABSOLUTE_PATH_STARTING_WITH_MODULE,
+                                        id, path_span,
+                                        "Absolute paths must start with `self`, `super`, \
+                                        `crate`, or an external crate name in the 2018 edition",
+                                        diag);
+                                }
+                            }
+                        }
                         return PathResult::NonModule(PathResolution::with_unresolved_segments(
                             def, path.len() - 1
                         ));
