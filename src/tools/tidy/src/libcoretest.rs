@@ -22,12 +22,15 @@ pub fn check(path: &Path, bad: &mut bool) {
         &libcore_path,
         &mut |subpath| t!(subpath.strip_prefix(&libcore_path)).starts_with("tests"),
         &mut |subpath| {
-            if t!(read_to_string(subpath)).contains("#[test]") {
-                tidy_error!(
-                    bad,
-                    "{} contains #[test]; libcore tests must be placed inside `src/libcore/tests/`",
-                    subpath.display()
-                );
+            if subpath.ends_with(".rs") {
+                if t!(read_to_string(subpath)).contains("#[test]") {
+                    tidy_error!(
+                        bad,
+                        "{} contains #[test]; libcore tests must be placed inside \
+                        `src/libcore/tests/`",
+                        subpath.display()
+                    );
+                }
             }
         },
     );
