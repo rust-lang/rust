@@ -1548,6 +1548,9 @@ impl LintPass for ExternCrate {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExternCrate {
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
+        if !cx.tcx.features().extern_absolute_paths {
+            return
+        }
         if let hir::ItemExternCrate(ref orig) =  it.node {
             if it.attrs.iter().any(|a| a.check_name("macro_use")) {
                 return

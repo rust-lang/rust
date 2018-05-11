@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: --edition 2018
+
 #![deny(unnecessary_extern_crate)]
 #![feature(alloc, test, libc)]
 
