@@ -162,66 +162,65 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
         }
     }
 
-    /// Intern a type. global_interners is Some only if this is
-    /// a local interner and global_interners is its counterpart.
-    fn intern_ty(&self, st: TypeVariants<'tcx>,
-                 global_interners: Option<&CtxtInterners<'gcx>>)
-                 -> Ty<'tcx> {
-        let ty = {
-            let mut interner = self.type_.borrow_mut();
+    /// Intern a type
+    fn intern_ty(
+        local: &CtxtInterners<'tcx>,
+        global: &CtxtInterners<'gcx>,
+        st: TypeVariants<'tcx>
+    ) -> Ty<'tcx> {
+        let flags = super::flags::FlagComputation::for_sty(&st);
+
+        // HACK(eddyb) Depend on flags being accurate to
+        // determine that all contents are in the global tcx.
+        // See comments on Lift for why we can't use that.
+        if flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
+            let mut interner = local.type_.borrow_mut();
             if let Some(&Interned(ty)) = interner.get(&st) {
                 return ty;
             }
-            let global_interner = global_interners.map(|interners| {
-                (interners.type_.borrow_mut(), &interners.arena)
-            });
-            if let Some((ref type_, _)) = global_interner {
-                if let Some(&Interned(ty)) = type_.get(&st) {
-                    return ty;
-                }
-            }
 
-            let flags = super::flags::FlagComputation::for_sty(&st);
             let ty_struct = TyS {
                 sty: st,
                 flags: flags.flags,
                 region_depth: flags.depth,
             };
 
-            // HACK(eddyb) Depend on flags being accurate to
-            // determine that all contents are in the global tcx.
-            // See comments on Lift for why we can't use that.
-            if !flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-                if let Some((mut type_, arena)) = global_interner {
-                    let ty_struct: TyS<'gcx> = unsafe {
-                        mem::transmute(ty_struct)
-                    };
-                    let ty: Ty<'gcx> = arena.alloc(ty_struct);
-                    type_.insert(Interned(ty));
-                    return ty;
-                }
-            } else {
-                // Make sure we don't end up with inference
-                // types/regions in the global tcx.
-                if global_interner.is_none() {
-                    drop(interner);
-                    bug!("Attempted to intern `{:?}` which contains \
-                          inference types/regions in the global type context",
-                         &ty_struct);
-                }
+            // Make sure we don't end up with inference
+            // types/regions in the global interner
+            if local as *const _ as usize == global as *const _ as usize {
+                bug!("Attempted to intern `{:?}` which contains \
+                    inference types/regions in the global type context",
+                    &ty_struct);
             }
 
             // Don't be &mut TyS.
-            let ty: Ty<'tcx> = self.arena.alloc(ty_struct);
+            let ty: Ty<'tcx> = local.arena.alloc(ty_struct);
             interner.insert(Interned(ty));
             ty
-        };
+        } else {
+            let mut interner = global.type_.borrow_mut();
+            if let Some(&Interned(ty)) = interner.get(&st) {
+                return ty;
+            }
 
-        debug!("Interned type: {:?} Pointer: {:?}",
-            ty, ty as *const TyS);
-        ty
+            let ty_struct = TyS {
+                sty: st,
+                flags: flags.flags,
+                region_depth: flags.depth,
+            };
+
+            // This is safe because all the types the ty_struct can point to
+            // already is in the global arena
+            let ty_struct: TyS<'gcx> = unsafe {
+                mem::transmute(ty_struct)
+            };
+
+            // Don't be &mut TyS.
+            let ty: Ty<'gcx> = global.arena.alloc(ty_struct);
+            interner.insert(Interned(ty));
+            ty
+        }
     }
-
 }
 
 pub struct CommonTypes<'tcx> {
@@ -796,7 +795,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
-        let mk = |sty| interners.intern_ty(sty, None);
+        let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
             if let Some(r) = interners.region.borrow().get(&r) {
                 return r.0;
@@ -2130,31 +2129,17 @@ macro_rules! intern_method {
                                             $keep_in_local_tcx:expr) -> $ty:ty) => {
         impl<'a, 'gcx, $lt_tcx> TyCtxt<'a, 'gcx, $lt_tcx> {
             pub fn $method(self, v: $alloc) -> &$lt_tcx $ty {
-                {
-                    let key = ($alloc_to_key)(&v);
-                    if let Some(i) = self.interners.$name.borrow().get(key) {
-                        return i.0;
-                    }
-                    if !self.is_global() {
-                        if let Some(i) = self.global_interners.$name.borrow().get(key) {
-                            return i.0;
-                        }
-                    }
-                }
+                let key = ($alloc_to_key)(&v);
 
                 // HACK(eddyb) Depend on flags being accurate to
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
-                if !($keep_in_local_tcx)(&v) {
-                    if !self.is_global() {
-                        let v = unsafe {
-                            mem::transmute(v)
-                        };
-                        let i = ($alloc_to_ret)(self.global_interners.arena.$alloc_method(v));
-                        self.global_interners.$name.borrow_mut().insert(Interned(i));
-                        return i;
+                if ($keep_in_local_tcx)(&v) {
+                    let mut interner = self.interners.$name.borrow_mut();
+                    if let Some(&Interned(v)) = interner.get(key) {
+                        return v;
                     }
-                } else {
+
                     // Make sure we don't end up with inference
                     // types/regions in the global tcx.
                     if self.is_global() {
@@ -2162,11 +2147,24 @@ macro_rules! intern_method {
                               inference types/regions in the global type context",
                              v);
                     }
-                }
 
-                let i = ($alloc_to_ret)(self.interners.arena.$alloc_method(v));
-                self.interners.$name.borrow_mut().insert(Interned(i));
-                i
+                    let i = ($alloc_to_ret)(self.interners.arena.$alloc_method(v));
+                    interner.insert(Interned(i));
+                    i
+                } else {
+                    let mut interner = self.global_interners.$name.borrow_mut();
+                    if let Some(&Interned(v)) = interner.get(key) {
+                        return v;
+                    }
+
+                    // This transmutes $alloc<'tcx> to $alloc<'gcx>
+                    let v = unsafe {
+                        mem::transmute(v)
+                    };
+                    let i = ($alloc_to_ret)(self.global_interners.arena.$alloc_method(v));
+                    interner.insert(Interned(i));
+                    i
+                }
             }
         }
     }
@@ -2274,15 +2272,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_fn_ptr(converted_sig)
     }
 
-    // Interns a type/name combination, stores the resulting box in cx.interners,
-    // and returns the box as cast to an unsafe ptr (see comments for Ty above).
-    pub fn mk_ty(self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
-        let global_interners = if !self.is_global() {
-            Some(&self.global_interners)
-        } else {
-            None
-        };
-        self.interners.intern_ty(st, global_interners)
+    pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
+        CtxtInterners::intern_ty(&self.interners, &self.global_interners, st)
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
