@@ -11,10 +11,10 @@
 // Testing that these do not ICE.
 
 struct Foo ([u8; |x: u8| { }]);
-//~^ ERROR closures cannot be constants
+//~^ ERROR expected numerical constant, found closure
 enum Functions {
     Square = |x:i32| { },
-    //~^ ERROR closures cannot be constants
+    //~^ ERROR expected numerical constant, found closure
 }
 
 fn main() {}

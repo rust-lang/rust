@@ -4770,5 +4770,5 @@ register_diagnostics! {
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0907, // type inside generator must be known in this context
-    E0912, // closures cannot be constants
+    E0912, // expected numerical constant, found closure
 }

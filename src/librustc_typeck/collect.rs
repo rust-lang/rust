@@ -1092,7 +1092,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
 
             if !tcx.has_typeck_tables(def_id) {
-                span_err!(tcx.sess, span, E0912, "closures cannot be constants");
+                span_err!(tcx.sess, span, E0912, "expected numerical constant, found closure");
             }
 
             let substs = ty::ClosureSubsts {
