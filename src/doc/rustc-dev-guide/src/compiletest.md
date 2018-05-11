@@ -13,7 +13,7 @@ cases, even failure to compile.  Tests are typically organized as a Rust source
 file with annotations in comments before and/or within the test code, which
 serve to direct `compiletest` on if or how to run the test, what behavior to
 expect, and more.  If you are unfamiliar with the compiler testing framework,
-see [`this chapter`](./tests/intro.html) for additional background.
+see [this chapter](./tests/intro.html) for additional background.
 
 The tests themselves are typically (but not always) organized into
 "suites"--for example, `run-pass`, a folder representing tests that should
@@ -22,8 +22,8 @@ but return a failure (non-zero status), `compile-fail`, a folder holding tests
 that should fail to compile, and many more.  The various suites are defined in
 [src/tools/compiletest/src/common.rs][common] in the `pub struct Config`
 declaration.  And a very good introduction to the different suites of compiler
-tests along with details about them can be found in [`Adding new
-tests`](./tests/adding.html).
+tests along with details about them can be found in [Adding new
+tests](./tests/adding.html).
 
 ## Adding a new test file
 
