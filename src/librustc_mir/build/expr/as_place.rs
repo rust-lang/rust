@@ -11,7 +11,7 @@
 //! See docs in build/expr/mod.rs
 
 use build::{BlockAnd, BlockAndExtension, Builder};
-use build::ForGuard::{OutsideGuard, WithinGuard};
+use build::ForGuard::{OutsideGuard, RefWithinGuard, ValWithinGuard};
 use build::expr::category::Category;
 use hair::*;
 use rustc::mir::*;
@@ -88,10 +88,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::VarRef { id } => {
                 let place = if this.is_bound_var_in_guard(id) {
-                    let index = this.var_local_id(id, WithinGuard);
                     if this.hir.tcx().all_pat_vars_are_implicit_refs_within_guards() {
+                        let index = this.var_local_id(id, RefWithinGuard);
                         Place::Local(index).deref()
                     } else {
+                        let index = this.var_local_id(id, ValWithinGuard);
                         Place::Local(index)
                     }
                 } else {

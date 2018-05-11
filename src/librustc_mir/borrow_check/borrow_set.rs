@@ -53,6 +53,17 @@ impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
     }
 }
 
+/// Every two-phase borrow has *exactly one* use (or else it is not a
+/// proper two-phase borrow under our current definition. However, not
+/// all uses are actually ones that activate the reservation.. In
+/// particular, a shared borrow of a `&mut` does not activate the
+/// reservation.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+crate enum TwoPhaseUse {
+    MutActivate,
+    SharedUse,
+}
+
 #[derive(Debug)]
 crate struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
@@ -60,7 +71,7 @@ crate struct BorrowData<'tcx> {
     crate reserve_location: Location,
     /// Location where the borrow is activated. None if this is not a
     /// 2-phase borrow.
-    crate activation_location: Option<Location>,
+    crate activation_location: Option<(TwoPhaseUse, Location)>,
     /// What kind of borrow this is
     crate kind: mir::BorrowKind,
     /// The region for which this borrow is live
@@ -215,9 +226,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                 Some(&borrow_index) => {
                     let borrow_data = &mut self.idx_vec[borrow_index];
 
-                    // Watch out: the use of TMP in the borrow
-                    // itself doesn't count as an
-                    // activation. =)
+                    // Watch out: the use of TMP in the borrow itself
+                    // doesn't count as an activation. =)
                     if borrow_data.reserve_location == location && context == PlaceContext::Store {
                         return;
                     }
@@ -225,7 +235,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                     if let Some(other_activation) = borrow_data.activation_location {
                         span_bug!(
                             self.mir.source_info(location).span,
-                            "found two activations for 2-phase borrow temporary {:?}: \
+                            "found two uses for 2-phase borrow temporary {:?}: \
                              {:?} and {:?}",
                             temp,
                             location,
@@ -235,11 +245,25 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
                     // Otherwise, this is the unique later use
                     // that we expect.
-                    borrow_data.activation_location = Some(location);
-                    self.activation_map
-                        .entry(location)
-                        .or_insert(Vec::new())
-                        .push(borrow_index);
+
+                    let two_phase_use;
+
+                    match context {
+                        // The use of TMP in a shared borrow does not
+                        // count as an actual activation.
+                        PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. } => {
+                            two_phase_use = TwoPhaseUse::SharedUse;
+                        }
+                        _ => {
+                            two_phase_use = TwoPhaseUse::MutActivate;
+                            self.activation_map
+                                .entry(location)
+                                .or_insert(Vec::new())
+                                .push(borrow_index);
+                        }
+                    }
+
+                    borrow_data.activation_location = Some((two_phase_use, location));
                 }
 
                 None => {}

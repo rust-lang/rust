@@ -15,7 +15,7 @@
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
-use build::ForGuard::{self, OutsideGuard, WithinGuard};
+use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::ty::{self, Ty};
@@ -88,12 +88,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
-                .map(|_| {
-                    let arm_block = self.cfg.start_new_block();
-                    arm_block
-                })
-                .collect(),
-
+                        .map(|_| self.cfg.start_new_block())
+                        .collect(),
         };
 
         // Get the arm bodies and their scopes, while declaring bindings.
@@ -110,9 +106,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // create binding start block for link them by false edges
         let candidate_count = arms.iter().fold(0, |ac, c| ac + c.patterns.len());
         let pre_binding_blocks: Vec<_> = (0..candidate_count + 1)
-            .map(|_| self.cfg.start_new_block())
-
-            .collect();
+            .map(|_| self.cfg.start_new_block()).collect();
 
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
@@ -315,7 +309,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         // now apply the bindings, which will also declare the variables
-        self.bind_matched_candidate_for_arm_body(block, &candidate.bindings, false);
+        self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
 
         block.unit()
     }
@@ -956,22 +950,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         //      (because all we have is the places associated with the
         //      match input itself; it is up to us to create a place
         //      holding a `&` or `&mut` that we can then borrow).
-        //
-        //    * Therefore, when the binding is by-reference, we
-        //      *eagerly* introduce the binding for the arm body
-        //      (`tmp2`) and then borrow it (`tmp1`).
-        //
-        //    * This is documented with "NOTE tricky business" below.
-        //
-        // FIXME The distinction in how `tmp2` is initialized is
-        // currently encoded in a pretty awkward fashion; namely, by
-        // passing a boolean to bind_matched_candidate_for_arm_body
-        // indicating whether all of the by-ref bindings were already
-        // initialized.
-        //
-        // * Also: pnkfelix thinks "laziness" is natural; but since
-        //   MIR-borrowck did not complain with earlier (universally
-        //   eager) MIR codegen, laziness might not be *necessary*.
 
         let autoref = self.hir.tcx().all_pat_vars_are_implicit_refs_within_guards();
         if let Some(guard) = candidate.guard {
@@ -985,7 +963,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 debug!("Entering guard building context: {:?}", guard_frame);
                 self.guard_context.push(guard_frame);
             } else {
-                self.bind_matched_candidate_for_arm_body(block, &candidate.bindings, false);
+                self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
             }
 
             // the block to branch to if the guard fails; if there is no
@@ -999,14 +977,47 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
 
             let false_edge_block = self.cfg.start_new_block();
+
+            // We want to ensure that the matched candidates are bound
+            // after we have confirmed this candidate *and* any
+            // associated guard; Binding them on `block` is too soon,
+            // because that would be before we've checked the result
+            // from the guard.
+            //
+            // But binding them on `arm_block` is *too late*, because
+            // then all of the candidates for a single arm would be
+            // bound in the same place, that would cause a case like:
+            //
+            // ```rust
+            // match (30, 2) {
+            //     (mut x, 1) | (2, mut x) if { true } => { ... }
+            //     ...                                 // ^^^^^^^ (this is `arm_block`)
+            // }
+            // ```
+            //
+            // would yield a `arm_block` something like:
+            //
+            // ```
+            // StorageLive(_4);        // _4 is `x`
+            // _4 = &mut (_1.0: i32);  // this is handling `(mut x, 1)` case
+            // _4 = &mut (_1.1: i32);  // this is handling `(2, mut x)` case
+            // ```
+            //
+            // and that is clearly not correct.
+            let post_guard_block = self.cfg.start_new_block();
             self.cfg.terminate(block, source_info,
-                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block,
-                                   false_edge_block));
+                               TerminatorKind::if_(self.hir.tcx(), cond, post_guard_block,
+                                                   false_edge_block));
+
+            if autoref {
+                self.bind_matched_candidate_for_arm_body(post_guard_block, &candidate.bindings);
+            }
+
+            self.cfg.terminate(post_guard_block, source_info,
+                               TerminatorKind::Goto { target: arm_block });
 
             let otherwise = self.cfg.start_new_block();
-            if autoref {
-                self.bind_matched_candidate_for_arm_body(block, &candidate.bindings, true);
-            }
+
             self.cfg.terminate(false_edge_block, source_info,
                                TerminatorKind::FalseEdges {
                                    real_target: otherwise,
@@ -1015,13 +1026,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                });
             Some(otherwise)
         } else {
-            self.bind_matched_candidate_for_arm_body(block, &candidate.bindings, false);
+            // (Here, it is not too early to bind the matched
+            // candidate on `block`, because there is no guard result
+            // that we have to inspect before we bind them.)
+            self.bind_matched_candidate_for_arm_body(block, &candidate.bindings);
             self.cfg.terminate(block, candidate_source_info,
                                TerminatorKind::Goto { target: arm_block });
             None
         }
     }
 
+    // Only called when all_pat_vars_are_implicit_refs_within_guards,
+    // and thus all code/comments assume we are in that context.
     fn bind_matched_candidate_for_guard(&mut self,
                                         block: BasicBlock,
                                         bindings: &[Binding<'tcx>]) {
@@ -1034,61 +1050,54 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let re_empty = self.hir.tcx().types.re_empty;
         for binding in bindings {
             let source_info = self.source_info(binding.span);
-            let local_for_guard = self.storage_live_binding(
-                block, binding.var_id, binding.span, WithinGuard);
+
+            // For each pattern ident P of type T, `ref_for_guard` is
+            // a reference R: &T pointing to the location matched by
+            // the pattern, and every occurrence of P within a guard
+            // denotes *R.
+            let ref_for_guard = self.storage_live_binding(
+                block, binding.var_id, binding.span, RefWithinGuard);
             // Question: Why schedule drops if bindings are all
             // shared-&'s?  Answer: Because schedule_drop_for_binding
             // also emits StorageDead's for those locals.
-            self.schedule_drop_for_binding(binding.var_id, binding.span, WithinGuard);
+            self.schedule_drop_for_binding(binding.var_id, binding.span, RefWithinGuard);
             match binding.binding_mode {
                 BindingMode::ByValue => {
                     let rvalue = Rvalue::Ref(re_empty, BorrowKind::Shared, binding.source.clone());
-                    self.cfg.push_assign(block, source_info, &local_for_guard, rvalue);
+                    self.cfg.push_assign(block, source_info, &ref_for_guard, rvalue);
                 }
                 BindingMode::ByRef(region, borrow_kind) => {
-                    // NOTE tricky business: For `ref id` and `ref mut
-                    // id` patterns, we want `id` within the guard to
+                    // Tricky business: For `ref id` and `ref mut id`
+                    // patterns, we want `id` within the guard to
                     // correspond to a temp of type `& &T` or `& &mut
-                    // T`, while within the arm body it will
-                    // correspond to a temp of type `&T` or `&mut T`,
-                    // as usual.
+                    // T` (i.e. a "borrow of a borrow") that is
+                    // implicitly dereferenced.
                     //
-                    // But to inject the level of indirection, we need
-                    // something to point to.
+                    // To borrow a borrow, we need that inner borrow
+                    // to point to. So, create a temp for the inner
+                    // borrow, and then take a reference to it.
                     //
-                    // So:
-                    //
-                    // 1. First set up the local for the arm body
-                    //   (even though we have not yet evaluated the
-                    //   guard itself),
-                    //
-                    // 2. Then setup the local for the guard, which is
-                    //    just a reference to the local from step 1.
-                    //
-                    // Note that since we are setting up the local for
-                    // the arm body a bit eagerly here (and likewise
-                    // scheduling its drop code), we should *not* do
-                    // it redundantly later on.
-                    //
-                    // While we could have kept track of this with a
-                    // flag or collection of such bindings, the
-                    // treatment of all of these cases is uniform, so
-                    // we should be safe just avoiding the code
-                    // without maintaining such state.)
-                    let local_for_arm_body = self.storage_live_binding(
-                        block, binding.var_id, binding.span, OutsideGuard);
-                    self.schedule_drop_for_binding(binding.var_id, binding.span, OutsideGuard);
+                    // Note: the temp created here is *not* the one
+                    // used by the arm body itself. This eases
+                    // observing two-phase borrow restrictions.
+                    let val_for_guard = self.storage_live_binding(
+                        block, binding.var_id, binding.span, ValWithinGuard);
+                    self.schedule_drop_for_binding(binding.var_id, binding.span, ValWithinGuard);
 
-                    // rust-lang/rust#27282: this potentially mutable
-                    // borrow may require a cast in the future to
-                    // avoid conflicting with an implicit borrow of
-                    // the whole match input; or maybe it just
-                    // requires an extension of our two-phase borrows
-                    // system. See discussion on rust-lang/rust#49870.
+                    // rust-lang/rust#27282: We reuse the two-phase
+                    // borrow infrastructure so that the mutable
+                    // borrow (whose mutabilty is *unusable* within
+                    // the guard) does not conflict with the implicit
+                    // borrow of the whole match input. See additional
+                    // discussion on rust-lang/rust#49870.
+                    let borrow_kind = match borrow_kind {
+                        BorrowKind::Shared | BorrowKind::Unique => borrow_kind,
+                        BorrowKind::Mut { .. } => BorrowKind::Mut { allow_two_phase_borrow: true },
+                    };
                     let rvalue = Rvalue::Ref(region, borrow_kind, binding.source.clone());
-                    self.cfg.push_assign(block, source_info, &local_for_arm_body, rvalue);
-                    let rvalue = Rvalue::Ref(region, BorrowKind::Shared, local_for_arm_body);
-                    self.cfg.push_assign(block, source_info, &local_for_guard, rvalue);
+                    self.cfg.push_assign(block, source_info, &val_for_guard, rvalue);
+                    let rvalue = Rvalue::Ref(region, BorrowKind::Shared, val_for_guard);
+                    self.cfg.push_assign(block, source_info, &ref_for_guard, rvalue);
                 }
             }
         }
@@ -1096,19 +1105,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn bind_matched_candidate_for_arm_body(&mut self,
                                            block: BasicBlock,
-                                           bindings: &[Binding<'tcx>],
-                                           already_initialized_state_for_refs: bool) {
-        debug!("bind_matched_candidate_for_arm_body(block={:?}, bindings={:?}, \
-                already_initialized_state_for_refs={:?})",
-               block, bindings, already_initialized_state_for_refs);
+                                           bindings: &[Binding<'tcx>]) {
+        debug!("bind_matched_candidate_for_arm_body(block={:?}, bindings={:?}", block, bindings);
 
         // Assign each of the bindings. This may trigger moves out of the candidate.
         for binding in bindings {
-            if let BindingMode::ByRef(..) = binding.binding_mode {
-                // See "NOTE tricky business" above
-                if already_initialized_state_for_refs { continue; }
-            }
-
             let source_info = self.source_info(binding.span);
             let local = self.storage_live_binding(block, binding.var_id, binding.span,
                                                   OutsideGuard);
@@ -1145,7 +1146,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                var_id, name, var_ty, source_info, syntactic_scope);
 
         let tcx = self.hir.tcx();
-        let for_arm_body = self.local_decls.push(LocalDecl::<'tcx> {
+        let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty.clone(),
             name: Some(name),
@@ -1153,9 +1154,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             syntactic_scope,
             internal: false,
             is_user_variable: true,
-        });
+        };
+        let for_arm_body = self.local_decls.push(local.clone());
         let locals = if has_guard.0 && tcx.all_pat_vars_are_implicit_refs_within_guards() {
-            let for_guard = self.local_decls.push(LocalDecl::<'tcx> {
+            let val_for_guard =  self.local_decls.push(local);
+            let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 mutability,
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
                 name: Some(name),
@@ -1164,7 +1167,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 internal: false,
                 is_user_variable: true,
             });
-            LocalsForNode::Two { for_guard, for_arm_body }
+            LocalsForNode::Three { val_for_guard, ref_for_guard, for_arm_body }
         } else {
             LocalsForNode::One(for_arm_body)
         };

@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 #[derive(Debug)]
 enum LocalsForNode {
     One(Local),
-    Two { for_guard: Local, for_arm_body: Local },
+    Three { val_for_guard: Local, ref_for_guard: Local, for_arm_body: Local },
 }
 
 #[derive(Debug)]
@@ -325,12 +325,15 @@ struct GuardFrame {
     locals: Vec<GuardFrameLocal>,
 }
 
-/// ForGuard is isomorphic to a boolean flag. It indicates whether we are
-/// talking about the temp for a local binding for a use within a guard expression,
-/// or a temp for use outside of a guard expressions.
+/// ForGuard indicates whether we are talking about:
+///   1. the temp for a local binding used solely within guard expressions,
+///   2. the temp that holds reference to (1.), which is actually what the
+///      guard expressions see, or
+///   3. the temp for use outside of guard expressions.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum ForGuard {
-    WithinGuard,
+    ValWithinGuard,
+    RefWithinGuard,
     OutsideGuard,
 }
 
@@ -338,11 +341,13 @@ impl LocalsForNode {
     fn local_id(&self, for_guard: ForGuard) -> Local {
         match (self, for_guard) {
             (&LocalsForNode::One(local_id), ForGuard::OutsideGuard) |
-            (&LocalsForNode::Two { for_guard: local_id, .. }, ForGuard::WithinGuard) |
-            (&LocalsForNode::Two { for_arm_body: local_id, .. }, ForGuard::OutsideGuard) =>
+            (&LocalsForNode::Three { val_for_guard: local_id, .. }, ForGuard::ValWithinGuard) |
+            (&LocalsForNode::Three { ref_for_guard: local_id, .. }, ForGuard::RefWithinGuard) |
+            (&LocalsForNode::Three { for_arm_body: local_id, .. }, ForGuard::OutsideGuard) =>
                 local_id,
 
-            (&LocalsForNode::One(_), ForGuard::WithinGuard) =>
+            (&LocalsForNode::One(_), ForGuard::ValWithinGuard) |
+            (&LocalsForNode::One(_), ForGuard::RefWithinGuard) =>
                 bug!("anything with one local should never be within a guard."),
         }
     }
