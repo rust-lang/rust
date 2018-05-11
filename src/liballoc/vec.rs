@@ -2533,9 +2533,11 @@ impl<'a, T> Drop for Drain<'a, T> {
                 // memmove back untouched tail, update to new length
                 let start = source_vec.len();
                 let tail = self.tail_start;
-                let src = source_vec.as_ptr().offset(tail as isize);
-                let dst = source_vec.as_mut_ptr().offset(start as isize);
-                ptr::copy(src, dst, self.tail_len);
+                if tail != start {
+                    let src = source_vec.as_ptr().offset(tail as isize);
+                    let dst = source_vec.as_mut_ptr().offset(start as isize);
+                    ptr::copy(src, dst, self.tail_len);
+                }
                 source_vec.set_len(start + self.tail_len);
             }
         }
