@@ -1287,32 +1287,27 @@ impl LintPass for UnreachablePub {
 
 impl UnreachablePub {
     fn perform_lint(&self, cx: &LateContext, what: &str, id: ast::NodeId,
-                    vis: &hir::Visibility, span: Span, exportable: bool) {
+                    vis: &hir::Visibility, span: Span, exportable: bool,
+                    mut applicability: Applicability) {
         if !cx.access_levels.is_reachable(id) && *vis == hir::Visibility::Public {
+            if span.ctxt().outer().expn_info().is_some() {
+                applicability = Applicability::MaybeIncorrect;
+            }
             let def_span = cx.tcx.sess.codemap().def_span(span);
             let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
                                               &format!("unreachable `pub` {}", what));
-            // visibility is token at start of declaration (can be macro
-            // variable rather than literal `pub`)
+            // We are presuming that visibility is token at start of
+            // declaration (can be macro variable rather than literal `pub`)
             let pub_span = cx.tcx.sess.codemap().span_until_char(def_span, ' ');
             let replacement = if cx.tcx.features().crate_visibility_modifier {
                 "crate"
             } else {
                 "pub(crate)"
             }.to_owned();
-            let app = if span.ctxt().outer().expn_info().is_none() {
-                // even if macros aren't involved the suggestion
-                // may be incorrect -- the user may have mistakenly
-                // hidden it behind a private module and this lint is
-                // a helpful way to catch that. However, we're trying
-                // not to change the nature of the code with this lint
-                // so it's marked as machine applicable.
-                Applicability::MachineApplicable
-            } else {
-                Applicability::MaybeIncorrect
-            };
-            err.span_suggestion_with_applicability(pub_span, "consider restricting its visibility",
-                                                   replacement, app);
+            err.span_suggestion_with_applicability(pub_span,
+                                                   "consider restricting its visibility",
+                                                   replacement,
+                                                   applicability);
             if exportable {
                 err.help("or consider exporting it for use by other crates");
             }
@@ -1321,21 +1316,31 @@ impl UnreachablePub {
     }
 }
 
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
+        let applicability = match item.node {
+            // suggestion span-manipulation is inadequate for `pub use
+            // module::{item}` (Issue #50455)
+            hir::ItemUse(..) => Applicability::MaybeIncorrect,
+            _ => Applicability::MachineApplicable,
+        };
+        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true, applicability);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext, foreign_item: &hir::ForeignItem) {
-        self.perform_lint(cx, "item", foreign_item.id, &foreign_item.vis, foreign_item.span, true);
+        self.perform_lint(cx, "item", foreign_item.id, &foreign_item.vis,
+                          foreign_item.span, true, Applicability::MachineApplicable);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &hir::StructField) {
-        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false);
+        self.perform_lint(cx, "field", field.id, &field.vis, field.span, false,
+                          Applicability::MachineApplicable);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext, impl_item: &hir::ImplItem) {
-        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false);
+        self.perform_lint(cx, "item", impl_item.id, &impl_item.vis, impl_item.span, false,
+                          Applicability::MachineApplicable);
     }
 }
 
