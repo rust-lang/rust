@@ -110,20 +110,6 @@ fn make_opts() -> Options {
          found reverts to the input file path",
         "[Path for the configuration file]",
     );
-    opts.opt(
-        "",
-        "dump-default-config",
-        "Dumps default configuration to PATH. PATH defaults to stdout, if omitted.",
-        "PATH",
-        getopts::HasArg::Maybe,
-        getopts::Occur::Optional,
-    );
-    opts.optopt(
-        "",
-        "dump-minimal-config",
-        "Dumps configuration options that were checked during formatting to a file.",
-        "PATH",
-    );
     opts.optflag(
         "",
         "error-on-unformatted",
@@ -141,6 +127,13 @@ fn make_opts() -> Options {
         "help",
         "Show this message or help about a specific topic: config or file-lines",
         "=TOPIC",
+    );
+    opts.optopt(
+        "",
+        "print-config",
+        "Dumps a default or minimal config to PATH. A minimal config is the \
+         subset of the current config file used for formatting the current program.",
+        "[minimal|default] PATH",
     );
     opts.optflag("", "skip-children", "Don't reformat child modules");
     opts.optflag(
@@ -361,28 +354,23 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         }
     }
 
-    if matches.opt_present("dump-default-config") {
-        // NOTE for some reason when configured with HasArg::Maybe + Occur::Optional opt_default
-        // doesn't recognize `--foo bar` as a long flag with an argument but as a long flag with no
-        // argument *plus* a free argument. Thus we check for that case in this branch -- this is
-        // required for backward compatibility.
-        if let Some(path) = matches.free.get(0) {
-            return Ok(Operation::ConfigOutputDefault {
-                path: Some(path.clone()),
-            });
-        } else {
-            return Ok(Operation::ConfigOutputDefault {
-                path: matches.opt_str("dump-default-config"),
-            });
+    let mut minimal_config_path = None;
+    if matches.opt_present("print-config") {
+        let kind = matches.opt_str("print-config");
+        let path = matches.free.get(0);
+        if kind == "default" {
+            return Ok(Operation::ConfigOutputDefault { path: path.clone() });
+        } else if kind = "minimal" {
+            minimal_config_path = path;
+            if minimal_config_path.is_none() {
+                println!("WARNING: PATH required for `--print-config minimal`");
+            }
         }
     }
 
     if matches.opt_present("version") {
         return Ok(Operation::Version);
     }
-
-    // If no path is given, we won't output a minimal config.
-    let minimal_config_path = matches.opt_str("dump-minimal-config");
 
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {
