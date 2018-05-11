@@ -426,15 +426,11 @@ impl<'a> Resolver<'a> {
                                   -> Result<Def, Determinacy> {
         let ast::Path { ref segments, span } = *path;
         let segments: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
-        let path = ResolvePath {
-            segments: &segments,
-            source: None,
-        };
         let invocation = self.invocations[&scope];
         let module = invocation.module.get();
         self.current_module = if module.is_trait() { module.parent.unwrap() } else { module };
 
-        if path.segments.len() > 1 {
+        if segments.len() > 1 {
             if !self.use_extern_macros && self.gated_errors.insert(span) {
                 let msg = "non-ident macro paths are experimental";
                 let feature = "use_extern_macros";
@@ -443,37 +439,44 @@ impl<'a> Resolver<'a> {
                 return Err(Determinacy::Determined);
             }
 
-            let def = match self.resolve_path(&path, Some(MacroNS), false, span) {
-                PathResult::NonModule(path_res) => match path_res.base_def() {
-                    Def::Err => Err(Determinacy::Determined),
-                    def @ _ => {
-                        if path_res.unresolved_segments() > 0 {
-                            self.found_unresolved_macro = true;
-                            self.session.span_err(span, "fail to resolve non-ident macro path");
-                            Err(Determinacy::Determined)
-                        } else {
-                            Ok(def)
+            let def = {
+                let path = ResolvePath {
+                    segments: &segments,
+                    source: None,
+                };
+
+                match self.resolve_path(&path, Some(MacroNS), false, span) {
+                    PathResult::NonModule(path_res) => match path_res.base_def() {
+                        Def::Err => Err(Determinacy::Determined),
+                        def @ _ => {
+                            if path_res.unresolved_segments() > 0 {
+                                self.found_unresolved_macro = true;
+                                self.session.span_err(span, "fail to resolve non-ident macro path");
+                                Err(Determinacy::Determined)
+                            } else {
+                                Ok(def)
+                            }
                         }
-                    }
-                },
-                PathResult::Module(..) => unreachable!(),
-                PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
-                _ => {
-                    self.found_unresolved_macro = true;
-                    Err(Determinacy::Determined)
-                },
+                    },
+                    PathResult::Module(..) => unreachable!(),
+                    PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
+                    _ => {
+                        self.found_unresolved_macro = true;
+                        Err(Determinacy::Determined)
+                    },
+                }
             };
             self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
-                .push((path_segments.into_boxed_slice(), span));
+                .push((segments.into_boxed_slice(), span));
             return def;
         }
 
         let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope,
-                                                          path.segments[0], false);
+                                                          segments[0], false);
         let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
             Ok(Def::Macro(binding.def_id, MacroKind::Bang))
         } else {
-            match self.resolve_lexical_macro_path_segment(path.segments[0], MacroNS, false, span) {
+            match self.resolve_lexical_macro_path_segment(segments[0], MacroNS, false, span) {
                 Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
                 Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
@@ -484,7 +487,7 @@ impl<'a> Resolver<'a> {
         };
 
         self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
-            .push((scope, path.segments[0], span, kind));
+            .push((scope, segments[0], span, kind));
 
         result
     }

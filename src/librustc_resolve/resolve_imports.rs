@@ -679,14 +679,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 return None;
             }
             PathResult::Failed(span, msg, true) => {
-                let (mut self_path, mut self_result) = (module_path.segments.clone(), None);
+                let (mut self_path, mut self_result) = (module_path.segments.to_vec(), None);
                 let is_special = |ident| token::is_path_segment_keyword(ident) &&
                                          ident.name != keywords::CrateRoot.name();
                 if !self_path.is_empty() && !is_special(self_path[0]) &&
                    !(self_path.len() > 1 && is_special(self_path[1])) {
                     self_path[0].name = keywords::SelfValue.name();
                     let self_path = ResolvePath {
-                        segments: self_path,
+                        segments: &self_path,
                         source: None,
                     };
                     self_result = Some(self.resolve_path(&self_path, None, false, span));
