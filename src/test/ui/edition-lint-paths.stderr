@@ -1,19 +1,46 @@
-error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:16:9
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:22:9
    |
 LL |     use ::bar::Bar;
    |         ^^^^^^^^^^ help: use `crate`: `crate::bar::Bar`
    |
 note: lint level defined here
-  --> $DIR/edition-lint-paths.rs:12:9
+  --> $DIR/edition-lint-paths.rs:15:9
    |
-LL | #![deny(absolute_path_starting_with_module)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(absolute_path_not_starting_with_crate)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue TBD
 
-error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:24:5
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:28:9
+   |
+LL |     use bar;
+   |         ^^^ help: use `crate`: `crate::bar`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:33:10
+   |
+LL |     use {Bar as SomethingElse, main};
+   |          ^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::Bar as SomethingElse`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:33:32
+   |
+LL |     use {Bar as SomethingElse, main};
+   |                                ^^^^ help: use `crate`: `crate::main`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:45:5
    |
 LL | use bar::Bar;
    |     ^^^^^^^^ help: use `crate`: `crate::bar::Bar`
@@ -21,8 +48,17 @@ LL | use bar::Bar;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue TBD
 
-error: Absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:35:13
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:57:9
+   |
+LL |     use *;
+   |         ^ help: use `crate`: `crate::*`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue TBD
+
+error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
+  --> $DIR/edition-lint-paths.rs:63:13
    |
 LL |     let x = ::bar::Bar;
    |             ^^^^^^^^^^ help: use `crate`: `crate::bar::Bar`
@@ -30,5 +66,5 @@ LL |     let x = ::bar::Bar;
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
    = note: for more information, see issue TBD
 
-error: aborting due to 3 previous errors
+error: aborting due to 7 previous errors
 
