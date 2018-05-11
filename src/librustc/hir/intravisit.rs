@@ -1039,10 +1039,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
                 match destination.target_id {
-                    ScopeTarget::Block(node_id) |
-                    ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
+                    LoopIdResult::Ok(node_id) =>
                         visitor.visit_def_mention(Def::Label(node_id)),
-                    ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
+                    LoopIdResult::Err(_) => {},
                 };
             }
             walk_list!(visitor, visit_expr, opt_expr);
@@ -1051,10 +1050,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             if let Some(ref label) = destination.label {
                 visitor.visit_label(label);
                 match destination.target_id {
-                    ScopeTarget::Block(_) => bug!("can't `continue` to a non-loop block"),
-                    ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
+                    LoopIdResult::Ok(node_id) =>
                         visitor.visit_def_mention(Def::Label(node_id)),
-                    ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
+                    LoopIdResult::Err(_) => {},
                 };
             }
         }

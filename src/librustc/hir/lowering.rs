@@ -928,29 +928,27 @@ impl<'a> LoweringContext<'a> {
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         match destination {
             Some((id, label)) => {
-                let target = if let Def::Label(loop_id) = self.expect_full_def(id) {
+                let target_id = if let Def::Label(loop_id) = self.expect_full_def(id) {
                     hir::LoopIdResult::Ok(self.lower_node_id(loop_id).node_id)
                 } else {
                     hir::LoopIdResult::Err(hir::LoopIdError::UnresolvedLabel)
                 };
                 hir::Destination {
                     label: self.lower_label(Some(label)),
-                    target_id: hir::ScopeTarget::Loop(target),
+                    target_id,
                 }
             }
             None => {
-                let loop_id = self.loop_scopes
+                let target_id = self.loop_scopes
                     .last()
-                    .map(|innermost_loop_id| *innermost_loop_id);
+                    .map(|innermost_loop_id| *innermost_loop_id)
+                    .map(|id| Ok(self.lower_node_id(id).node_id))
+                    .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
+                    .into();
 
                 hir::Destination {
                     label: None,
-                    target_id: hir::ScopeTarget::Loop(
-                        loop_id
-                            .map(|id| Ok(self.lower_node_id(id).node_id))
-                            .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
-                            .into(),
-                    ),
+                    target_id,
                 }
             }
         }
@@ -3193,9 +3191,7 @@ impl<'a> LoweringContext<'a> {
                 let destination = if self.is_in_loop_condition && opt_label.is_none() {
                     hir::Destination {
                         label: None,
-                        target_id: hir::ScopeTarget::Loop(
-                            Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
-                        ),
+                        target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
                     }
                 } else {
                     self.lower_loop_destination(opt_label.map(|label| (e.id, label)))
@@ -3209,9 +3205,7 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprAgain(if self.is_in_loop_condition && opt_label.is_none() {
                     hir::Destination {
                         label: None,
-                        target_id: hir::ScopeTarget::Loop(
-                            Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
-                        ),
+                        target_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
                     }
                 } else {
                     self.lower_loop_destination(opt_label.map(|label| (e.id, label)))
@@ -3604,7 +3598,7 @@ impl<'a> LoweringContext<'a> {
                             hir::ExprBreak(
                                 hir::Destination {
                                     label: None,
-                                    target_id: hir::ScopeTarget::Block(catch_node),
+                                    target_id: hir::LoopIdResult::Ok(catch_node),
                                 },
                                 Some(from_err_expr),
                             ),

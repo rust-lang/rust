@@ -1526,18 +1526,11 @@ impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum ScopeTarget {
-    Block(NodeId),
-    Loop(LoopIdResult),
-}
-
-impl ScopeTarget {
-    pub fn opt_id(self) -> Option<NodeId> {
+impl LoopIdResult {
+    pub fn ok(self) -> Option<NodeId> {
         match self {
-            ScopeTarget::Block(node_id) |
-            ScopeTarget::Loop(LoopIdResult::Ok(node_id)) => Some(node_id),
-            ScopeTarget::Loop(LoopIdResult::Err(_)) => None,
+            LoopIdResult::Ok(node_id) => Some(node_id),
+            LoopIdResult::Err(_) => None,
         }
     }
 }
@@ -1549,7 +1542,7 @@ pub struct Destination {
 
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
-    pub target_id: ScopeTarget,
+    pub target_id: LoopIdResult,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

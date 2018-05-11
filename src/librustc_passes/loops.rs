@@ -85,20 +85,21 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(Closure, |v| v.visit_nested_body(b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
-                let loop_id = match label.target_id {
-                    hir::ScopeTarget::Block(_) => return,
-                    hir::ScopeTarget::Loop(loop_res) => {
-                        match loop_res.into() {
-                            Ok(loop_id) => loop_id,
-                            Err(hir::LoopIdError::OutsideLoopScope) => ast::DUMMY_NODE_ID,
-                            Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                                self.emit_unlabled_cf_in_while_condition(e.span, "break");
-                                ast::DUMMY_NODE_ID
-                            },
-                            Err(hir::LoopIdError::UnresolvedLabel) => ast::DUMMY_NODE_ID,
-                        }
-                    }
+                let loop_id = match label.target_id.into() {
+                    Ok(loop_id) => loop_id,
+                    Err(hir::LoopIdError::OutsideLoopScope) => ast::DUMMY_NODE_ID,
+                    Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
+                        self.emit_unlabled_cf_in_while_condition(e.span, "break");
+                        ast::DUMMY_NODE_ID
+                    },
+                    Err(hir::LoopIdError::UnresolvedLabel) => ast::DUMMY_NODE_ID,
                 };
+                if loop_id != ast::DUMMY_NODE_ID {
+                    match self.hir_map.find(loop_id).unwrap() {
+                        hir::map::NodeBlock(_) => return,
+                        _=> (),
+                    }
+                }
 
                 if opt_expr.is_some() {
                     let loop_kind = if loop_id == ast::DUMMY_NODE_ID {
@@ -132,9 +133,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.require_loop("break", e.span);
             }
             hir::ExprAgain(label) => {
-                if let hir::ScopeTarget::Loop(
-                    hir::LoopIdResult::Err(
-                        hir::LoopIdError::UnlabeledCfInWhileCondition)) = label.target_id {
+                if let hir::LoopIdResult::Err(
+                        hir::LoopIdError::UnlabeledCfInWhileCondition) = label.target_id {
                     self.emit_unlabled_cf_in_while_condition(e.span, "continue");
                 }
                 self.require_loop("continue", e.span)

@@ -3723,7 +3723,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               tcx.mk_nil()
           }
           hir::ExprBreak(destination, ref expr_opt) => {
-              if let Some(target_id) = destination.target_id.opt_id() {
+              if let Some(target_id) = destination.target_id.ok() {
                   let (e_ty, cause);
                   if let Some(ref e) = *expr_opt {
                       // If this is a break with a value, we need to type-check

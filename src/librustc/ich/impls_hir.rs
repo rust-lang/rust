@@ -667,11 +667,6 @@ impl_stable_hash_for!(enum hir::LoopIdError {
     UnresolvedLabel
 });
 
-impl_stable_hash_for!(enum hir::ScopeTarget {
-    Block(node_id),
-    Loop(loop_id_result)
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Ident {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a>,

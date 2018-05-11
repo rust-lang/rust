@@ -582,19 +582,16 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                   scope_cf_kind: ScopeCfKind) -> (region::Scope, CFGIndex) {
 
         match destination.target_id {
-            hir::ScopeTarget::Block(block_expr_id) => {
+            hir::LoopIdResult::Ok(loop_id) => {
                 for b in &self.breakable_block_scopes {
-                    if b.block_expr_id == self.tcx.hir.node_to_hir_id(block_expr_id).local_id {
-                        let scope_id = self.tcx.hir.node_to_hir_id(block_expr_id).local_id;
+                    if b.block_expr_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
+                        let scope_id = self.tcx.hir.node_to_hir_id(loop_id).local_id;
                         return (region::Scope::Node(scope_id), match scope_cf_kind {
                             ScopeCfKind::Break => b.break_index,
                             ScopeCfKind::Continue => bug!("can't continue to block"),
                         });
                     }
                 }
-                span_bug!(expr.span, "no block expr for id {}", block_expr_id);
-            }
-            hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(loop_id)) => {
                 for l in &self.loop_scopes {
                     if l.loop_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
                         let scope_id = self.tcx.hir.node_to_hir_id(loop_id).local_id;
@@ -604,10 +601,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         });
                     }
                 }
-                span_bug!(expr.span, "no loop scope for id {}", loop_id);
+                span_bug!(expr.span, "no scope for id {}", loop_id);
             }
-            hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
-                span_bug!(expr.span, "loop scope error: {}",  err),
+            hir::LoopIdResult::Err(err) => span_bug!(expr.span, "scope error: {}",  err),
         }
     }
 }
