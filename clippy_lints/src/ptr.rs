@@ -153,7 +153,7 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId, opt_body_id: Option<
         if let ty::TyRef(
             _,
             ty,
-            _
+            MutImmutable
         ) = ty.sty
         {
             if match_type(cx, ty, &paths::VEC) {
