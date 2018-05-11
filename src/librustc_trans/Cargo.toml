@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+bitflags = "1.0.1"
 cc = "1.0.1"
 flate2 = "1.0"
 jobserver = "0.1.5"

@@ -10,7 +10,7 @@
 
 use llvm::{self, ValueRef, AttributePlace};
 use base;
-use builder::Builder;
+use builder::{Builder, MemFlags};
 use common::{ty_fn_sig, C_usize};
 use context::CodegenCx;
 use mir::place::PlaceRef;
@@ -221,7 +221,7 @@ impl<'a, 'tcx> ArgTypeExt<'a, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                                   bx.pointercast(llscratch, Type::i8p(cx)),
                                   C_usize(cx, self.layout.size.bytes()),
                                   self.layout.align.min(scratch_align),
-                                  false);
+                                  MemFlags::empty());
 
                 bx.lifetime_end(llscratch, scratch_size);
             }
