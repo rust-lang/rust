@@ -71,44 +71,6 @@ similar crates.
 SYSROOT=/path/to/rustc/sysroot cargo install clippy
 ```
 
-### Optional dependency
-
-In some cases you might want to include clippy in your project directly, as an
-optional dependency. To do this, just modify `Cargo.toml`:
-
-```toml
-[dependencies]
-clippy = { version = "*", optional = true }
-```
-
-And, in your `main.rs` or `lib.rs`, add these lines:
-
-```rust
-#![cfg_attr(feature="clippy", feature(plugin))]
-#![cfg_attr(feature="clippy", plugin(clippy))]
-```
-
-Then build by enabling the feature: `cargo +nightly build --features "clippy"`.
-
-Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
-`cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
-(the `-Z no trans`, while not necessary, will stop the compilation process after
-typechecking (and lints) have completed, which can significantly reduce the runtime).
-
-Alternatively, to only run clippy when testing:
-
-```toml
-[dev-dependencies]
-clippy = { version = "*" }
-```
-
-and add to `main.rs` or  `lib.rs`:
-
-```
-#![cfg_attr(test, feature(plugin))]
-#![cfg_attr(test, plugin(clippy))]
-```
-
 ### Running clippy from the command line without installing it
 
 To have cargo compile your crate with clippy without clippy installation and without needing `#![plugin(clippy)]`
@@ -121,53 +83,6 @@ cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 *[Note](https://github.com/rust-lang-nursery/rust-clippy/wiki#a-word-of-warning):*
 Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
 
-### As a Compiler Plugin
-
-*Note:* This is not a recommended installation method.
-
-Since stable Rust is backwards compatible, you should be able to
-compile your stable programs with nightly Rust with clippy plugged in to
-circumvent this.
-
-Add in your `Cargo.toml`:
-
-```toml
-[dependencies]
-clippy = "*"
-```
-
-You then need to add `#![feature(plugin)]` and `#![plugin(clippy)]` to the top
-of your crate entry point (`main.rs` or `lib.rs`).
-
-Sample `main.rs`:
-
-```rust
-#![feature(plugin)]
-
-#![plugin(clippy)]
-
-
-fn main(){
-    let x = Some(1u8);
-    match x {
-        Some(y) => println!("{:?}", y),
-        _ => ()
-    }
-}
-```
-
-Produces this warning:
-
-```terminal
-src/main.rs:8:5: 11:6 warning: you seem to be trying to use match for destructuring a single type. Consider using `if let`, #[warn(single_match)] on by default
-src/main.rs:8     match x {
-src/main.rs:9         Some(y) => println!("{:?}", y),
-src/main.rs:10         _ => ()
-src/main.rs:11     }
-src/main.rs:8:5: 11:6 help: Try
-if let Some(y) = x { println!("{:?}", y) }
-```
-
 ## Configuration
 
 Some lints can be configured in a TOML file named with `clippy.toml` or `.clippy.toml`. It contains basic `variable = value` mapping eg.
@@ -179,12 +94,6 @@ cyclomatic-complexity-threshold = 30
 
 See the [list of lints](https://rust-lang-nursery.github.io/rust-clippy/master/index.html) for more information about which lints can be configured and the
 meaning of the variables.
-
-You can also specify the path to the configuration file with:
-
-```rust
-#![plugin(clippy(conf_file="path/to/clippy's/configuration"))]
-```
 
 To deactivate the “for further information visit *lint-link*” message you can
 define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
