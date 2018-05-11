@@ -12,11 +12,12 @@
 #![feature(core_float)]
 #![feature(lang_items)]
 #![feature(start)]
-#![feature(i128_type)]
 #![feature(global_allocator)]
 #![feature(allocator_api)]
 #![cfg_attr(windows, feature(panic_unwind))]
-#![no_std]
+#![no_core]
+
+extern crate core;
 
 #[cfg(not(thumb))]
 extern crate alloc_system;
