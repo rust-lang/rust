@@ -25,10 +25,9 @@ use failure::err_msg;
 use getopts::{Matches, Options};
 
 use rustfmt::{
-    emit_post_matter, emit_pre_matter, load_config, CliOptions, Config, FmtResult, WriteMode,
-    WRITE_MODE_LIST,
+    emit_post_matter, emit_pre_matter, format_and_emit_report, load_config, CliOptions, Config,
+    FileName, FmtResult, Input, Summary, Verbosity, WriteMode, WRITE_MODE_LIST,
 };
-use rustfmt::{format_and_emit_report, FileName, Input, Summary};
 
 fn main() {
     env_logger::init();
@@ -144,6 +143,7 @@ fn make_opts() -> Options {
         "Enables unstable features. Only available on nightly channel",
     );
     opts.optflag("v", "verbose", "Print verbose output");
+    opts.optflag("q", "quiet", "Print less output");
     opts.optflag("V", "version", "Show version information");
     opts.optopt(
         "",
@@ -187,8 +187,9 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             let options = CliOptions::from_matches(&matches)?;
             let (mut config, _) = load_config(Some(Path::new(".")), Some(&options))?;
 
-            // write_mode is always Plain for Stdin.
-            config.set().write_mode(WriteMode::Plain);
+            // write_mode is always Display for Stdin.
+            config.set().write_mode(WriteMode::Display);
+            config.set().verbose(Verbosity::Quiet);
 
             // parse file_lines
             if let Some(ref file_lines) = matches.opt_str("file-lines") {
@@ -211,7 +212,7 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             }
             emit_post_matter(&config)?;
 
-            Ok((WriteMode::Plain, error_summary))
+            Ok((WriteMode::Display, error_summary))
         }
         Operation::Format {
             files,
@@ -231,7 +232,7 @@ fn format(
     options.verify_file_lines(&files);
     let (config, config_path) = load_config(None, Some(&options))?;
 
-    if config.verbose() {
+    if config.verbose() == Verbosity::Verbose {
         if let Some(path) = config_path.as_ref() {
             println!("Using rustfmt config file {}", path.display());
         }
@@ -252,7 +253,7 @@ fn format(
             let local_config = if config_path.is_none() {
                 let (local_config, config_path) =
                     load_config(Some(file.parent().unwrap()), Some(&options))?;
-                if local_config.verbose() {
+                if local_config.verbose() == Verbosity::Verbose {
                     if let Some(path) = config_path {
                         println!(
                             "Using rustfmt config file {} for {}",

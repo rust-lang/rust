@@ -15,7 +15,7 @@ use std::io::{self, BufWriter, Read, Write};
 use std::path::Path;
 
 use checkstyle::output_checkstyle_file;
-use config::{Config, NewlineStyle, WriteMode};
+use config::{Config, NewlineStyle, Verbosity, WriteMode};
 use rustfmt_diff::{make_diff, output_modified, print_diff, Mismatch};
 use syntax::codemap::FileName;
 
@@ -150,11 +150,10 @@ where
                 write_system_newlines(file, text, config)?;
             }
         }
-        WriteMode::Plain => {
-            write_system_newlines(out, text, config)?;
-        }
         WriteMode::Display | WriteMode::Coverage => {
-            println!("{}:\n", filename);
+            if config.verbose() != Verbosity::Quiet {
+                println!("{}:\n", filename);
+            }
             write_system_newlines(out, text, config)?;
         }
         WriteMode::Diff => {

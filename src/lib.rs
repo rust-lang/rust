@@ -64,7 +64,7 @@ use visitor::{FmtVisitor, SnippetProvider};
 
 pub use config::options::CliOptions;
 pub use config::summary::Summary;
-pub use config::{file_lines, load_config, Config, WriteMode};
+pub use config::{file_lines, load_config, Config, Verbosity, WriteMode};
 
 pub type FmtResult<T> = std::result::Result<T, failure::Error>;
 
@@ -331,7 +331,7 @@ fn should_emit_verbose<F>(path: &FileName, config: &Config, f: F)
 where
     F: Fn(),
 {
-    if config.verbose() && path.to_string() != STDIN {
+    if config.verbose() == Verbosity::Verbose && path.to_string() != STDIN {
         f();
     }
 }
@@ -351,9 +351,7 @@ where
     // diff mode: check if any files are differing
     let mut has_diff = false;
 
-    // We always skip children for the "Plain" write mode, since there is
-    // nothing to distinguish the nested module contents.
-    let skip_children = config.skip_children() || config.write_mode() == config::WriteMode::Plain;
+    let skip_children = config.skip_children();
     for (path, module) in modules::list_files(krate, parse_session.codemap())? {
         if (skip_children && path != *main_file) || config.ignore().skip_file(&path) {
             continue;
@@ -603,7 +601,8 @@ pub fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
     let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
     let input = Input::Text(snippet.into());
     let mut config = config.clone();
-    config.set().write_mode(config::WriteMode::Plain);
+    config.set().write_mode(config::WriteMode::Display);
+    config.set().verbose(Verbosity::Quiet);
     config.set().hide_parse_errors(true);
     match format_input(input, &config, Some(&mut out)) {
         // `format_input()` returns an empty string on parsing error.

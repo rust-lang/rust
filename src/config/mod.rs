@@ -143,7 +143,7 @@ create_config! {
         "Skip formatting the specified files and directories.";
 
     // Not user-facing
-    verbose: bool, false, false, "Use verbose output";
+    verbose: Verbosity, Verbosity::Normal, false, "How much to information to emit to the user";
     verbose_diff: bool, false, false, "Emit verbose diffs";
     file_lines: FileLines, FileLines::all(), false,
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
@@ -230,7 +230,7 @@ fn config_path(options: &CliOptions) -> Result<Option<PathBuf>, Error> {
 
 #[cfg(test)]
 mod test {
-    use super::Config;
+    use super::*;
     use std::str;
 
     #[allow(dead_code)]
@@ -249,7 +249,8 @@ mod test {
                 "Require a specific version of rustfmt.";
             ignore: IgnoreList, IgnoreList::default(), false,
                 "Skip formatting the specified files and directories.";
-            verbose: bool, false, false, "Use verbose output";
+            verbose: Verbosity, Verbosity::Normal, false,
+                "How much to information to emit to the user";
             file_lines: FileLines, FileLines::all(), false,
                 "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
                     via the --file-lines option";
@@ -265,10 +266,10 @@ mod test {
     #[test]
     fn test_config_set() {
         let mut config = Config::default();
-        config.set().verbose(false);
-        assert_eq!(config.verbose(), false);
-        config.set().verbose(true);
-        assert_eq!(config.verbose(), true);
+        config.set().verbose(Verbosity::Quiet);
+        assert_eq!(config.verbose(), Verbosity::Quiet);
+        config.set().verbose(Verbosity::Normal);
+        assert_eq!(config.verbose(), Verbosity::Normal);
     }
 
     #[test]

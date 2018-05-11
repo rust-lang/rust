@@ -185,8 +185,6 @@ configuration_option_enum! { WriteMode:
     // Displays how much of the input file was processed
     Coverage,
     // Unfancy stdout
-    Plain,
-    // Outputs a checkstyle XML file.
     Checkstyle,
     // Output the changed lines (for internal value only)
     Modified,
@@ -205,6 +203,14 @@ configuration_option_enum! { Color:
     Never,
     // Automatically use color, if supported by terminal
     Auto,
+}
+
+configuration_option_enum! { Verbosity:
+    // Emit more.
+    Verbose,
+    Normal,
+    // Emit as little as possible.
+    Quiet,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -322,6 +328,7 @@ impl ::std::str::FromStr for IgnoreList {
 #[derive(Clone, Debug, Default)]
 pub struct CliOptions {
     skip_children: Option<bool>,
+    quiet: bool,
     verbose: bool,
     verbose_diff: bool,
     pub(super) config_path: Option<PathBuf>,
@@ -336,6 +343,10 @@ impl CliOptions {
     pub fn from_matches(matches: &Matches) -> FmtResult<CliOptions> {
         let mut options = CliOptions::default();
         options.verbose = matches.opt_present("verbose");
+        options.quiet = matches.opt_present("quiet");
+        if options.verbose && options.quiet {
+            return Err(format_err!("Can't use both `--verbose` and `--quiet`"));
+        }
         options.verbose_diff = matches.opt_present("verbose-diff");
 
         let unstable_features = matches.opt_present("unstable-features");
@@ -386,7 +397,13 @@ impl CliOptions {
     }
 
     pub fn apply_to(self, config: &mut Config) {
-        config.set().verbose(self.verbose);
+        if self.verbose {
+            config.set().verbose(Verbosity::Verbose);
+        } else if self.quiet {
+            config.set().verbose(Verbosity::Quiet);
+        } else {
+            config.set().verbose(Verbosity::Normal);
+        }
         config.set().verbose_diff(self.verbose_diff);
         config.set().file_lines(self.file_lines);
         config.set().unstable_features(self.unstable_features);
