@@ -115,9 +115,9 @@ The `ir::ProgramEnvironment` is created [in this module][rules-environment].
 
 ## Testing
 
-TODO: Basically, [there is a macro](https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/solve/test/mod.rs#L112-L148)
+TODO: Basically, [there is a macro](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L112-L148)
 that will take syntax and run it through the full pipeline described above.
-[This](https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/solve/test/mod.rs#L83-L110)
+[This](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L83-L110)
 is the function that is ultimately called.
 
 ## Solver
@@ -131,11 +131,11 @@ See [The SLG Solver][slg].
 [chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
 [universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
 [lowering-forall]: https://rust-lang-nursery.github.io/rustc-guide/traits-lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
-[programclause]: https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/ir/mod.rs#L721
+[programclause]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L721
 [clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
-[well-formedness-checks]: https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/ir/lowering/mod.rs#L230-L232
-[ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/ir/mod.rs
+[well-formedness-checks]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir/lowering.rs#L230-L232
+[ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/ir.rs
 [HIR]: hir.html
-[binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/ir/mod.rs#L661
-[rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/17abbabe53c2f78b04af04a9bc9e8a0e3fc676e3/src/rules/mod.rs#L9
+[binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L661
+[rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/rules.rs#L9
 [slg]: traits-slg.html
