@@ -1,0 +1,15 @@
+error: returning the result of a let binding from a block. Consider returning the expression directly.
+ --> $DIR/matches.rs:9:13
+  |
+9 |             x
+  |             ^
+  |
+  = note: `-D let-and-return` implied by `-D warnings`
+note: this expression can be directly returned
+ --> $DIR/matches.rs:8:21
+  |
+8 |             let x = 3;
+  |                     ^
+
+error: aborting due to previous error
+

@@ -1,8 +1,8 @@
 error: for loop over `option`, which is an `Option`. This is more readably written as an `if let` statement.
-  --> $DIR/for_loop.rs:17:31
+  --> $DIR/for_loop.rs:17:14
    |
-17 |     #[clippy(author)]for x in option {
-   |                               ^^^^^^
+17 |     for x in option {
+   |              ^^^^^^
    |
    = note: `-D for-loop-over-option` implied by `-D warnings`
    = help: consider replacing `for x in option` with `if let Some(x) = option`
