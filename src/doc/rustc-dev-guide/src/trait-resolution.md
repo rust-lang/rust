@@ -202,8 +202,8 @@ impl<T:Get> Get for Box<T> {
 
 What happens when we invoke `get_it(&Box::new(1_u16))`, for example? In this
 case, the `Self` type is `Box<u16>` – that unifies with both impls,
-because the first applies to all types, and the second to all
-boxes. In order for this to be unambiguous, the compiler does a *winnowing*
+because the first applies to all types `T`, and the second to all
+`Box<T>`. In order for this to be unambiguous, the compiler does a *winnowing*
 pass that considers `where` clauses
 and attempts to remove candidates. In this case, the first impl only
 applies if `Box<u16> : Copy`, which doesn't hold. After winnowing,
@@ -242,7 +242,7 @@ fn foo<X:A2+B>(x: X) {
 
 In the body of `foo`, clearly we can use methods of `A1`, `A2`, or `B`
 on variable `x`. The line marked `(*)` will incur an obligation `X: A1`,
-which the line marked `(#)` will incur an obligation `X: B`. Meanwhile,
+while the line marked `(#)` will incur an obligation `X: B`. Meanwhile,
 the parameter environment will contain two where-clauses: `X : A2` and `X : B`.
 For each obligation, then, we search this list of where-clauses. The
 obligation `X: B` trivially matches against the where-clause `X: B`.
