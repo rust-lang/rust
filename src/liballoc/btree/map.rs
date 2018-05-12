@@ -246,6 +246,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
     }
 
     fn replace(&mut self, key: K) -> Option<K> {
+        self.ensure_root_is_owned();
         match search::search_tree::<marker::Mut, K, (), K>(self.root.as_mut(), &key) {
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
@@ -523,7 +524,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeMap<K, V> {
         BTreeMap {
-            root: node::Root::new_leaf(),
+            root: node::Root::shared_empty_root(),
             length: 0,
         }
     }
@@ -544,7 +545,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        // FIXME(gereeter) .clear() allocates
         *self = BTreeMap::new();
     }
 
@@ -890,6 +890,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
+        // FIXME(@porglezomp) Avoid allocating if we don't insert
+        self.ensure_root_is_owned();
         match search::search_tree(self.root.as_mut(), &key) {
             Found(handle) => {
                 Occupied(OccupiedEntry {
@@ -910,6 +912,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     }
 
     fn from_sorted_iter<I: Iterator<Item = (K, V)>>(&mut self, iter: I) {
+        self.ensure_root_is_owned();
         let mut cur_node = last_leaf_edge(self.root.as_mut()).into_node();
         // Iterate through all key-value pairs, pushing them into nodes at the right level.
         for (key, value) in iter {
@@ -1019,6 +1022,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let total_num = self.len();
 
         let mut right = Self::new();
+        right.root = node::Root::new_leaf();
         for _ in 0..(self.root.as_ref().height()) {
             right.root.push_level();
         }
@@ -1152,6 +1156,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
 
         self.fix_top();
+    }
+
+    /// If the root node is the shared root node, allocate our own node.
+    fn ensure_root_is_owned(&mut self) {
+        if self.root.is_shared_root() {
+            self.root = node::Root::new_leaf();
+        }
     }
 }
 
@@ -1290,6 +1301,10 @@ impl<K, V> Drop for IntoIter<K, V> {
         self.for_each(drop);
         unsafe {
             let leaf_node = ptr::read(&self.front).into_node();
+            if leaf_node.is_shared_root() {
+                return;
+            }
+
             if let Some(first_parent) = leaf_node.deallocate_and_ascend() {
                 let mut cur_node = first_parent.into_node();
                 while let Some(parent) = cur_node.deallocate_and_ascend() {
