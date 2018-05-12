@@ -462,7 +462,7 @@
                         if (isType !== true || obj.type) {
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
-                            obj.fullPath = obj.displayPath + obj.n;
+                            obj.fullPath = obj.displayPath + obj.name;
                             obj.href = res[1];
                             out.push(obj);
                             if (out.length >= MAX_RESULTS) {
@@ -1259,17 +1259,10 @@
             var length = 0;
             if (array.length > 0) {
                 output = '<table class="search-results"' + extraStyle + '>';
-                var shown = [];
 
                 array.forEach(function(item) {
                     var name, type;
 
-                    var id_ty = item.ty + item.path + item.name;
-                    if (shown.indexOf(id_ty) !== -1) {
-                        return;
-                    }
-
-                    shown.push(id_ty);
                     name = item.name;
                     type = itemTypes[item.ty];
 
