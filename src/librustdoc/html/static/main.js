@@ -1256,6 +1256,7 @@
 
             var output = '';
             var duplicates = {};
+            var length = 0;
             if (array.length > 0) {
                 output = '<table class="search-results"' + extraStyle + '>';
                 var shown = [];
@@ -1280,6 +1281,7 @@
                         }
                         duplicates[fullPath] = true;
                     }
+                    length += 1;
 
                     output += '<tr class="' + type + ' result"><td>' +
                               '<a href="' + item.href + '">' +
@@ -1299,7 +1301,7 @@
                     encodeURIComponent('rust ' + query.query) +
                     '">DuckDuckGo</a>?</div>';
             }
-            return output;
+            return [output, length];
         }
 
         function makeTabHeader(tabNb, text, nbElems) {
@@ -1320,21 +1322,22 @@
                 document.body.appendChild(elem);
                 elem.click();
             }
-            var output, query = getQuery(search_input.value);
+            var query = getQuery(search_input.value);
 
             currentResults = query.id;
-            output = '<h1>Results for ' + escape(query.query) +
+
+            var ret_others = addTab(results['others'], query);
+            var ret_in_args = addTab(results['in_args'], query, false);
+            var ret_returned = addTab(results['returned'], query, false);
+
+            var output = '<h1>Results for ' + escape(query.query) +
                 (query.type ? ' (type: ' + escape(query.type) + ')' : '') + '</h1>' +
                 '<div id="titles">' +
-                makeTabHeader(0, "In Names", results['others'].length) +
-                makeTabHeader(1, "In Parameters", results['in_args'].length) +
-                makeTabHeader(2, "In Return Types", results['returned'].length) +
-                '</div><div id="results">';
-
-            output += addTab(results['others'], query);
-            output += addTab(results['in_args'], query, false);
-            output += addTab(results['returned'], query, false);
-            output += '</div>';
+                makeTabHeader(0, "In Names", ret_others[1]) +
+                makeTabHeader(1, "In Parameters", ret_in_args[1]) +
+                makeTabHeader(2, "In Return Types", ret_returned[1]) +
+                '</div><div id="results">' +
+                ret_others[0] + ret_in_args[0] + ret_returned[0] + '</div>';
 
             addClass(document.getElementById('main'), 'hidden');
             var search = document.getElementById('search');
