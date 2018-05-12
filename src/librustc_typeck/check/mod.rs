@@ -3081,12 +3081,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(index) = fields.iter().position(|f| f.name.to_ident() == ident) {
                         let field = &fields[index];
                         let field_ty = self.field_ty(expr.span, field, substs);
+                        // Save the index of all fields regardless of their visibility in case
+                        // of error recovery.
+                        self.write_field_index(expr.id, index);
                         if field.vis.is_accessible_from(def_scope, self.tcx) {
                             let adjustments = autoderef.adjust_steps(needs);
                             self.apply_adjustments(base, adjustments);
                             autoderef.finalize();
 
-                            self.write_field_index(expr.id, index);
                             self.tcx.check_stability(field.did, Some(expr.id), expr.span);
                             return field_ty;
                         }
