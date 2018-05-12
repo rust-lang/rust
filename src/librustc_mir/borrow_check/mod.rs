@@ -1810,9 +1810,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 }
             }
             Reservation(WriteKind::Move)
+            | Write(WriteKind::Move)
             | Reservation(WriteKind::StorageDeadOrDrop)
             | Reservation(WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(WriteKind::Move)
             | Write(WriteKind::StorageDeadOrDrop)
             | Write(WriteKind::MutableBorrow(BorrowKind::Shared)) => {
                 if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
@@ -1851,8 +1851,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // mutated, then it is justified to be annotated with the `mut`
                     // keyword, since the mutation may be a possible reassignment.
                     let mpi = self.move_data.rev_lookup.find_local(*local);
-                    if flow_state.inits.contains(&mpi) {
-                        self.used_mut.insert(*local);
+                    let ii = &self.move_data.init_path_map[mpi];
+                    for index in ii {
+                        if flow_state.ever_inits.contains(index) {
+                            self.used_mut.insert(*local);
+                        }
                     }
                 }
             }
