@@ -23,9 +23,43 @@ fn creation() {
 #[test]
 fn secs() {
     assert_eq!(Duration::new(0, 0).as_secs(), 0);
+    assert_eq!(Duration::new(0, 500_000_005).as_secs(), 0);
+    assert_eq!(Duration::new(0, 1_050_000_001).as_secs(), 1);
     assert_eq!(Duration::from_secs(1).as_secs(), 1);
     assert_eq!(Duration::from_millis(999).as_secs(), 0);
     assert_eq!(Duration::from_millis(1001).as_secs(), 1);
+    assert_eq!(Duration::from_micros(999_999).as_secs(), 0);
+    assert_eq!(Duration::from_micros(1_000_001).as_secs(), 1);
+    assert_eq!(Duration::from_nanos(999_999_999).as_secs(), 0);
+    assert_eq!(Duration::from_nanos(1_000_000_001).as_secs(), 1);
+}
+
+#[test]
+fn millis() {
+    assert_eq!(Duration::new(0, 0).subsec_millis(), 0);
+    assert_eq!(Duration::new(0, 500_000_005).subsec_millis(), 500);
+    assert_eq!(Duration::new(0, 1_050_000_001).subsec_millis(), 50);
+    assert_eq!(Duration::from_secs(1).subsec_millis(), 0);
+    assert_eq!(Duration::from_millis(999).subsec_millis(), 999);
+    assert_eq!(Duration::from_millis(1001).subsec_millis(), 1);
+    assert_eq!(Duration::from_micros(999_999).subsec_millis(), 999);
+    assert_eq!(Duration::from_micros(1_001_000).subsec_millis(), 1);
+    assert_eq!(Duration::from_nanos(999_999_999).subsec_millis(), 999);
+    assert_eq!(Duration::from_nanos(1_001_000_000).subsec_millis(), 1);
+}
+
+#[test]
+fn micros() {
+    assert_eq!(Duration::new(0, 0).subsec_micros(), 0);
+    assert_eq!(Duration::new(0, 500_000_005).subsec_micros(), 500_000);
+    assert_eq!(Duration::new(0, 1_050_000_001).subsec_micros(), 50_000);
+    assert_eq!(Duration::from_secs(1).subsec_micros(), 0);
+    assert_eq!(Duration::from_millis(999).subsec_micros(), 999_000);
+    assert_eq!(Duration::from_millis(1001).subsec_micros(), 1_000);
+    assert_eq!(Duration::from_micros(999_999).subsec_micros(), 999_999);
+    assert_eq!(Duration::from_micros(1_000_001).subsec_micros(), 1);
+    assert_eq!(Duration::from_nanos(999_999_999).subsec_micros(), 999_999);
+    assert_eq!(Duration::from_nanos(1_000_001_000).subsec_micros(), 1);
 }
 
 #[test]
@@ -34,8 +68,12 @@ fn nanos() {
     assert_eq!(Duration::new(0, 5).subsec_nanos(), 5);
     assert_eq!(Duration::new(0, 1_000_000_001).subsec_nanos(), 1);
     assert_eq!(Duration::from_secs(1).subsec_nanos(), 0);
-    assert_eq!(Duration::from_millis(999).subsec_nanos(), 999 * 1_000_000);
-    assert_eq!(Duration::from_millis(1001).subsec_nanos(), 1 * 1_000_000);
+    assert_eq!(Duration::from_millis(999).subsec_nanos(), 999_000_000);
+    assert_eq!(Duration::from_millis(1001).subsec_nanos(), 1_000_000);
+    assert_eq!(Duration::from_micros(999_999).subsec_nanos(), 999_999_000);
+    assert_eq!(Duration::from_micros(1_000_001).subsec_nanos(), 1000);
+    assert_eq!(Duration::from_nanos(999_999_999).subsec_nanos(), 999_999_999);
+    assert_eq!(Duration::from_nanos(1_000_000_001).subsec_nanos(), 1);
 }
 
 #[test]

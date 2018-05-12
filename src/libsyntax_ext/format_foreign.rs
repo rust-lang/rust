@@ -989,7 +989,7 @@ mod strcursor {
     }
 
     impl<'a> std::fmt::Debug for StrCursor<'a> {
-        fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(fmt, "StrCursor({:?} | {:?})", self.slice_before(), self.slice_after())
         }
     }

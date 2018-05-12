@@ -22,12 +22,22 @@ pub fn check(path: &Path, bad: &mut bool) {
         &libcore_path,
         &mut |subpath| t!(subpath.strip_prefix(&libcore_path)).starts_with("tests"),
         &mut |subpath| {
-            if t!(read_to_string(subpath)).contains("#[test]") {
-                tidy_error!(
-                    bad,
-                    "{} contains #[test]; libcore tests must be placed inside `src/libcore/tests/`",
-                    subpath.display()
-                );
+            if let Some("rs") = subpath.extension().and_then(|e| e.to_str()) {
+                match read_to_string(subpath) {
+                    Ok(contents) => {
+                        if contents.contains("#[test]") {
+                            tidy_error!(
+                                bad,
+                                "{} contains #[test]; libcore tests must be placed inside \
+                                `src/libcore/tests/`",
+                                subpath.display()
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        panic!("failed to read file {:?}: {}", subpath, err);
+                    }
+                }
             }
         },
     );

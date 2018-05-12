@@ -60,7 +60,7 @@ commit_toolstate_change() {
     OLDFLAGS="$-"
     set -eu
 
-    git config --global user.email '34210020+rust-toolstate-update@users.noreply.github.com'
+    git config --global user.email '7378925+rust-toolstate-update@users.noreply.github.com'
     git config --global user.name 'Rust Toolstate Update'
     git config --global credential.helper store
     printf 'https://%s:x-oauth-basic@github.com\n' "$TOOLSTATE_REPO_ACCESS_TOKEN" \

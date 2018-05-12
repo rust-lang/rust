@@ -75,8 +75,15 @@ impl FileDesc {
         unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
+            use convert::TryInto;
             use libc::pread64;
-            cvt(pread64(fd, buf, count, offset as i32))
+            // pread64 on emscripten actually takes a 32 bit offset
+            if let Ok(o) = offset.try_into() {
+                cvt(pread64(fd, buf, count, o))
+            } else {
+                Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                   "cannot pread >2GB"))
+            }
         }
 
         #[cfg(not(any(target_os = "android", target_os = "emscripten")))]
@@ -116,8 +123,15 @@ impl FileDesc {
         unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
             -> io::Result<isize>
         {
+            use convert::TryInto;
             use libc::pwrite64;
-            cvt(pwrite64(fd, buf, count, offset as i32))
+            // pwrite64 on emscripten actually takes a 32 bit offset
+            if let Ok(o) = offset.try_into() {
+                cvt(pwrite64(fd, buf, count, o))
+            } else {
+                Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                   "cannot pwrite >2GB"))
+            }
         }
 
         #[cfg(not(any(target_os = "android", target_os = "emscripten")))]
