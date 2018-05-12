@@ -17,6 +17,7 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [Running test suite](#running-test-suite)
   * [Testing manually](#testing-manually)
   * [How Clippy works](#how-clippy-works)
+  * [Fixing nightly build failures](#fixing-nightly-build-failures)
 * [Contributions](#contributions)
 
 ## Getting started
@@ -209,6 +210,17 @@ The difference between `EarlyLintPass` and `LateLintPass` is that the methods of
 
 That's why the `else_if_without_else` example uses the `register_early_lint_pass` function. Because the [actual lint logic][else_if_without_else] does not depend on any type information.
 
+### Fixing nightly build failures
+
+Clippy will sometimes break with new nightly version releases. This is expected because Clippy still depends on nightly Rust. Most of the times we have to adapt to the changes and only very rarely there's an actual bug in rust.
+
+In order to find out why Clippy does not work properly with a new nightly version, you can use the [rust-toolstate commit history][toolstate_commit_history].
+You will then have to look for the last commit that contains `test-pass -> build-fail` or `test-pass` -> `test-fail` for the `clippy-driver` component. [Here][toolstate_commit] is an example.
+
+The commit message contains a link to the PR. The PRs are usually small enough to discover the breaking API change and if they are bigger, they likely include some discussion that may help you to fix Clippy.
+
+Fixing nightly build failures is also a good way to learn about actual rustc internals.
+
 ## Contributions
 
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
@@ -229,3 +241,5 @@ All code in this repository is under the [Mozilla Public License, 2.0](https://w
 [reg_late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_plugin/registry/struct.Registry.html#method.register_late_lint_pass
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/trait.EarlyLintPass.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/trait.LateLintPass.html
+[toolstate_commit_history]: https://github.com/rust-lang-nursery/rust-toolstate/commits/master
+[toolstate_commit]: https://github.com/rust-lang-nursery/rust-toolstate/commit/6ce0459f6bfa7c528ae1886492a3e0b5ef0ee547
