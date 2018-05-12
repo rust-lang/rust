@@ -1651,6 +1651,7 @@ extern "C" {
                                                MergeFunctions: bool,
                                                SLPVectorize: bool,
                                                LoopVectorize: bool,
+                                               PrepareForThinLTO: bool,
                                                PGOGenPath: *const c_char,
                                                PGOUsePath: *const c_char);
     pub fn LLVMRustAddLibraryInfo(PM: PassManagerRef,

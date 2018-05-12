@@ -482,7 +482,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
             llvm::CodeGenOptLevel::None => llvm::CodeGenOptLevel::Less,
             level => level,
         };
-        with_llvm_pmb(llmod, config, opt_level, &mut |b| {
+        with_llvm_pmb(llmod, config, opt_level, false, &mut |b| {
             if thin {
                 if !llvm::LLVMRustPassManagerBuilderPopulateThinLTOPassManager(b, pm) {
                     panic!("this version of LLVM does not support ThinLTO");
