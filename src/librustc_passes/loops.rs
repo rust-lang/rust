@@ -152,8 +152,22 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             hir::ExprAgain(label) => {
                 self.require_label_in_labeled_block(e.span, &label, "continue");
 
-                if let Err(hir::LoopIdError::UnlabeledCfInWhileCondition) = label.target_id {
-                    self.emit_unlabled_cf_in_while_condition(e.span, "continue");
+                match label.target_id {
+                    Ok(loop_id) => {
+                        if let hir::map::NodeBlock(block) = self.hir_map.find(loop_id).unwrap() {
+                            struct_span_err!(self.sess, e.span, E0696,
+                                            "`continue` pointing to a labeled block")
+                                .span_label(e.span,
+                                            "labeled blocks cannot be `continue`'d")
+                                .span_note(block.span,
+                                            "labeled block the continue points to")
+                                .emit();
+                        }
+                    }
+                    Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
+                        self.emit_unlabled_cf_in_while_condition(e.span, "continue");
+                    }
+                    _ => {}
                 }
                 self.require_break_cx("continue", e.span)
             },
