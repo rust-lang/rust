@@ -211,6 +211,11 @@ test_script:
   - set NO_CCACHE=1
   - sh src/ci/run.sh
 
+on_failure:
+  # Dump crash log
+  - set PATH=%PATH%;"C:\Program Files (x86)\Windows Kits\10\Debuggers\X64"
+  - if exist %LOCALAPPDATA%\CrashDumps for %%f in (%LOCALAPPDATA%\CrashDumps\*) do cdb -c "k;q" -G -z "%%f"
+
 branches:
   only:
     - auto
