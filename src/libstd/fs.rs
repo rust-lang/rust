@@ -1699,8 +1699,8 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::readlink(path.as_ref())
 }
 
-/// Returns the canonical form of a path with all intermediate components
-/// normalized and symbolic links resolved.
+/// Returns the canonical, absolute form of a path with all intermediate
+/// components normalized and symbolic links resolved.
 ///
 /// # Platform-specific behavior
 ///
@@ -1708,7 +1708,14 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
 /// Note that, this [may change in the future][changes].
 ///
+/// On Windows, this converts the path to use [extended length path][path]
+/// syntax, which allows your program to use longer path names, but means you
+/// can only join backslash-delimited paths to it, and it may be incompatible
+/// with other applications (if passed to the application on the command-line,
+/// or written to a file another application may read).
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
+/// [path]: https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247(v=vs.85).aspx#maxpath
 ///
 /// # Errors
 ///
