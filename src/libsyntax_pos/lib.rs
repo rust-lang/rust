@@ -35,6 +35,7 @@ use std::path::PathBuf;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, Lock};
 
+extern crate arena;
 extern crate rustc_data_structures;
 
 #[macro_use]
