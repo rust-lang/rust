@@ -1267,12 +1267,10 @@
                     type = itemTypes[item.ty];
 
                     if (item.is_alias !== true) {
-                        var fullPath = item.displayPath + name;
-
-                        if (duplicates[fullPath]) {
+                        if (duplicates[item.fullPath]) {
                             return;
                         }
-                        duplicates[fullPath] = true;
+                        duplicates[item.fullPath] = true;
                     }
                     length += 1;
 
