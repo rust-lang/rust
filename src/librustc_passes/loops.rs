@@ -109,6 +109,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 }
 
                 if self.cx == LabeledBlock {
+                    if label.label.is_none() {
+                        struct_span_err!(self.sess, e.span, E0695,
+                                        "unlabeled `break` inside of a labeled block")
+                            .span_label(e.span,
+                                        "`break` statements that would diverge to or through \
+                                        a labeled block need to bear a label")
+                            .emit();
+                    }
                     return;
                 }
 

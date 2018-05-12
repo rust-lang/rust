@@ -259,6 +259,43 @@ let result = loop { // ok!
     i += 1;
 };
 ```
+"##,
+
+E0695: r##"
+A `break` statement without a label appeared inside a labeled block.
+
+Example of erroneous code:
+
+```compile_fail,E0695
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break;
+    }
+}
+```
+
+Make sure to always label the `break`:
+
+```
+'l: loop {
+    'a: {
+        break 'l;
+    }
+}
+```
+
+Or if you want to `break` the labeled block:
+
+```
+# #![feature(label_break_value)]
+loop {
+    'a: {
+        break 'a;
+    }
+    break;
+}
+```
 "##
 }
 
