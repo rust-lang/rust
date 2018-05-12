@@ -204,7 +204,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                     let (otherwise, targets) = targets.split_last().unwrap();
                     let switch = bx.switch(discr.immediate(),
                                             llblock(self, *otherwise), values.len());
-                    let switch_llty = bx.cx.layout_of(switch_ty).immediate_llvm_type(bx.cx);
+                    let switch_llty = bx.cx.layout_of(switch_ty).llvm_type(bx.cx);
                     for (&value, target) in values.iter().zip(targets) {
                         let llval = C_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);
@@ -651,8 +651,6 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                         bx.range_metadata(llval, 0..2);
                     }
                 }
-                // We store bools as i8 so we need to truncate to i1.
-                llval = base::to_immediate(bx, llval, arg.layout);
             }
         }
 

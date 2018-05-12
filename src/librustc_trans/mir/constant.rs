@@ -215,7 +215,7 @@ impl<'a, 'tcx> FunctionCx<'a, 'tcx> {
                             };
                             Ok(primval_to_llvm(
                                 bx.cx, prim, scalar,
-                                layout.immediate_llvm_type(bx.cx),
+                                layout.llvm_type(bx.cx),
                             ))
                         },
                         other => bug!("simd shuffle field {:?}, {}", other, constant.ty),
