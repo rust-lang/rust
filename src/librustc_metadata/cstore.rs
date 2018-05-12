@@ -15,10 +15,7 @@ use schema;
 
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{DepKind, ExternCrate, MetadataLoader};
-use rustc::session::CrateDisambiguator;
-use rustc_target::spec::PanicStrategy;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::util::nodemap::{FxHashMap, NodeMap};
 
@@ -174,63 +171,5 @@ impl CStore {
 
     pub(super) fn do_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> {
         self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
-    }
-}
-
-impl CrateMetadata {
-    pub fn name(&self) -> Symbol {
-        self.root.name
-    }
-
-    pub fn hash(&self) -> Svh {
-        self.root.hash
-    }
-
-    pub fn disambiguator(&self) -> CrateDisambiguator {
-        self.root.disambiguator
-    }
-
-    pub fn needs_allocator(&self) -> bool {
-        self.root.needs_allocator
-    }
-
-    pub fn has_global_allocator(&self) -> bool {
-        self.root.has_global_allocator
-    }
-
-    pub fn has_default_lib_allocator(&self) -> bool {
-        self.root.has_default_lib_allocator
-    }
-
-    pub fn is_panic_runtime(&self) -> bool {
-        self.root.panic_runtime
-    }
-
-    pub fn needs_panic_runtime(&self) -> bool {
-        self.root.needs_panic_runtime
-    }
-
-    pub fn is_compiler_builtins(&self) -> bool {
-        self.root.compiler_builtins
-    }
-
-    pub fn is_sanitizer_runtime(&self) -> bool {
-        self.root.sanitizer_runtime
-    }
-
-    pub fn is_profiler_runtime(&self) -> bool {
-        self.root.profiler_runtime
-    }
-
-    pub fn is_no_builtins(&self) -> bool {
-        self.root.no_builtins
-    }
-
-    pub fn panic_strategy(&self) -> PanicStrategy {
-        self.root.panic_strategy
-    }
-
-    pub fn edition(&self) -> Edition {
-        self.root.edition
     }
 }
