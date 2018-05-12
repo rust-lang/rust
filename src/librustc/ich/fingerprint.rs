@@ -67,7 +67,7 @@ impl Fingerprint {
 }
 
 impl ::std::fmt::Display for Fingerprint {
-    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
+    fn fmt(&self, formatter: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
         write!(formatter, "{:x}-{:x}", self.0, self.1)
     }
 }

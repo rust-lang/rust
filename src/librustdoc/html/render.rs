@@ -2579,7 +2579,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
-                      implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> Result<(), fmt::Error> {
+                      implementor_dups: &FxHashMap<&str, (DefId, bool)>) -> fmt::Result {
     write!(w, "<li><table class='table-display'><tbody><tr><td><code>")?;
     // If there's already another implementor that has the same abbridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
@@ -2612,7 +2612,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
 
 fn render_impls(cx: &Context, w: &mut fmt::Formatter,
                 traits: &[&&Impl],
-                containing_item: &clean::Item) -> Result<(), fmt::Error> {
+                containing_item: &clean::Item) -> fmt::Result {
     for i in traits {
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
