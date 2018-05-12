@@ -305,7 +305,7 @@ where
         T: Deref,
         <T as Deref>::Target: Rewrite + Spanned,
     {
-        Regular(Box<T>),
+        Regular(T),
         Variadic(BytePos),
     }
 
@@ -332,11 +332,7 @@ where
     let list_lo = context.snippet_provider.span_after(span, "(");
     let items = itemize_list(
         context.snippet_provider,
-        // FIXME Would be nice to avoid this allocation,
-        // but I couldn't get the types to work out.
-        inputs
-            .map(|i| ArgumentKind::Regular(Box::new(i)))
-            .chain(variadic_arg),
+        inputs.map(ArgumentKind::Regular).chain(variadic_arg),
         ")",
         ",",
         |arg| match *arg {
