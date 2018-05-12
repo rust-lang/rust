@@ -674,7 +674,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // we move over to lazy normalization *anyway*.
         let fulfill_cx = FulfillmentContext::new_ignoring_regions();
 
-        let predicates = match fully_normalize_with_fulfillcx(
+        let predicates = match fully_normalize(
             &infcx,
             fulfill_cx,
             cause,
@@ -734,31 +734,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-pub fn fully_normalize<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                          cause: ObligationCause<'tcx>,
-                                          param_env: ty::ParamEnv<'tcx>,
-                                          value: &T)
-                                          -> Result<T, Vec<FulfillmentError<'tcx>>>
-    where T : TypeFoldable<'tcx>
-{
-    // FIXME (@jroesch) ISSUE 26721
-    // I'm not sure if this is a bug or not, needs further investigation.
-    // It appears that by reusing the fulfillment_cx here we incur more
-    // obligations and later trip an assertion on regionck.rs line 337.
-    //
-    // The two possibilities I see is:
-    //      - normalization is not actually fully happening and we
-    //        have a bug else where
-    //      - we are adding a duplicate bound into the list causing
-    //        its size to change.
-    //
-    // I think we should probably land this refactor and then come
-    // back to this is a follow-up patch.
-    let fulfillcx = FulfillmentContext::new();
-    fully_normalize_with_fulfillcx(infcx, fulfillcx, cause, param_env, value)
-}
-
-pub fn fully_normalize_with_fulfillcx<'a, 'gcx, 'tcx, T>(
+pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
     infcx: &InferCtxt<'a, 'gcx, 'tcx>,
     mut fulfill_cx: FulfillmentContext<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -779,13 +755,7 @@ pub fn fully_normalize_with_fulfillcx<'a, 'gcx, 'tcx, T>(
     }
 
     debug!("fully_normalize: select_all_or_error start");
-    match fulfill_cx.select_all_or_error(infcx) {
-        Ok(()) => { }
-        Err(e) => {
-            debug!("fully_normalize: error={:?}", e);
-            return Err(e);
-        }
-    }
+    fulfill_cx.select_all_or_error(infcx)?;
     debug!("fully_normalize: select_all_or_error complete");
     let resolved_value = infcx.resolve_type_vars_if_possible(&normalized_value);
     debug!("fully_normalize: resolved_value={:?}", resolved_value);

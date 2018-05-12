@@ -196,6 +196,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // that this always succeeds.
         let impl1_trait_ref =
             match traits::fully_normalize(&infcx,
+                                          FulfillmentContext::new(),
                                           ObligationCause::dummy(),
                                           penv,
                                           &impl1_trait_ref) {
