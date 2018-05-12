@@ -483,10 +483,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let index = items.write_index(&mut self.opaque.cursor);
         let index_bytes = self.position() - i;
 
+        let attrs = tcx.hir.krate_attrs();
         let link_meta = self.link_meta;
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
-        let has_default_lib_allocator =
-            attr::contains_name(tcx.hir.krate_attrs(), "default_lib_allocator");
+        let has_default_lib_allocator = attr::contains_name(&attrs, "default_lib_allocator");
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
 
         let root = self.lazy(&CrateRoot {
@@ -509,6 +509,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
+
+            compiler_builtins: attr::contains_name(&attrs, "compiler_builtins"),
+            needs_allocator: attr::contains_name(&attrs, "needs_allocator"),
+            needs_panic_runtime: attr::contains_name(&attrs, "needs_panic_runtime"),
+            no_builtins: attr::contains_name(&attrs, "no_builtins"),
+            panic_runtime: attr::contains_name(&attrs, "panic_runtime"),
+            profiler_runtime: attr::contains_name(&attrs, "profiler_runtime"),
+            sanitizer_runtime: attr::contains_name(&attrs, "sanitizer_runtime"),
 
             crate_deps,
             dylib_dependency_formats,

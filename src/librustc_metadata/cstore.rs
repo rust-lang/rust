@@ -85,15 +85,6 @@ pub struct CrateMetadata {
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
-
-    // Booleans derived from attributes
-    pub compiler_builtins: bool,
-    pub needs_allocator: bool,
-    pub needs_panic_runtime: bool,
-    pub no_builtins: bool,
-    pub panic_runtime: bool,
-    pub profiler_runtime: bool,
-    pub sanitizer_runtime: bool,
 }
 
 pub struct CStore {
@@ -199,12 +190,40 @@ impl CrateMetadata {
         self.root.disambiguator
     }
 
+    pub fn needs_allocator(&self) -> bool {
+        self.root.needs_allocator
+    }
+
     pub fn has_global_allocator(&self) -> bool {
         self.root.has_global_allocator
     }
 
     pub fn has_default_lib_allocator(&self) -> bool {
         self.root.has_default_lib_allocator
+    }
+
+    pub fn is_panic_runtime(&self) -> bool {
+        self.root.panic_runtime
+    }
+
+    pub fn needs_panic_runtime(&self) -> bool {
+        self.root.needs_panic_runtime
+    }
+
+    pub fn is_compiler_builtins(&self) -> bool {
+        self.root.compiler_builtins
+    }
+
+    pub fn is_sanitizer_runtime(&self) -> bool {
+        self.root.sanitizer_runtime
+    }
+
+    pub fn is_profiler_runtime(&self) -> bool {
+        self.root.profiler_runtime
+    }
+
+    pub fn is_no_builtins(&self) -> bool {
+        self.root.no_builtins
     }
 
     pub fn panic_strategy(&self) -> PanicStrategy {

@@ -28,7 +28,6 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
     if sess.opts.incremental.is_none() {
         return None
     }
-    let work_product_id = WorkProductId::from_cgu_name(cgu_name);
 
     let saved_files: Option<Vec<_>> =
         files.iter()
@@ -63,6 +62,7 @@ pub fn copy_cgu_workproducts_to_incr_comp_cache_dir(
         saved_files,
     };
 
+    let work_product_id = WorkProductId::from_cgu_name(cgu_name);
     Some((work_product_id, work_product))
 }
 

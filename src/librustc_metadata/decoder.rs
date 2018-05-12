@@ -557,12 +557,14 @@ impl<'a, 'tcx> CrateMetadata {
                        -> &'tcx ty::AdtDef {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
-        let kind = match item.kind {
-            EntryKind::Enum(_) => ty::AdtKind::Enum,
-            EntryKind::Struct(_, _) => ty::AdtKind::Struct,
-            EntryKind::Union(_, _) => ty::AdtKind::Union,
+
+        let (kind, repr) = match item.kind {
+            EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
+            EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
+            EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
+
         let variants = if let ty::AdtKind::Enum = kind {
             item.children
                 .decode(self)
@@ -572,12 +574,6 @@ impl<'a, 'tcx> CrateMetadata {
                 .collect()
         } else {
             vec![self.get_variant(&item, item_id)]
-        };
-        let (kind, repr) = match item.kind {
-            EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
-            EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
-            EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
-            _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
         tcx.alloc_adt_def(did, kind, variants, repr)

@@ -210,6 +210,14 @@ pub struct CrateRoot {
     pub interpret_alloc_index: LazySeq<u32>,
 
     pub index: LazySeq<index::Index>,
+
+    pub compiler_builtins: bool,
+    pub needs_allocator: bool,
+    pub needs_panic_runtime: bool,
+    pub no_builtins: bool,
+    pub panic_runtime: bool,
+    pub profiler_runtime: bool,
+    pub sanitizer_runtime: bool,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
