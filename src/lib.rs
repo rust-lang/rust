@@ -14,10 +14,11 @@ extern crate clippy_lints;
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.sess.lint_store.with_read_lock(|lint_store| {
         for (lint, _, _) in lint_store.get_lint_groups() {
+            reg.sess
+                .struct_warn("the clippy plugin is being deprecated, please use cargo clippy or rls with the clippy feature")
+                .emit();
             if lint == "clippy" {
-                reg.sess
-                    .struct_warn("running cargo clippy on a crate that also imports the clippy plugin")
-                    .emit();
+                // cargo clippy run on a crate that also uses the plugin
                 return;
             }
         }

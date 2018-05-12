@@ -1,4 +1,4 @@
-#![feature(plugin, custom_attribute)]
+#![feature(custom_attribute)]
 
 #![warn(cyclomatic_complexity)]
 #![warn(unused)]

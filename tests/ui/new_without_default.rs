@@ -1,4 +1,4 @@
-#![feature(plugin, const_fn)]
+#![feature(const_fn)]
 
 
 #![allow(dead_code)]

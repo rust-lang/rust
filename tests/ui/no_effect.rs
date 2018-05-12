@@ -1,4 +1,4 @@
-#![feature(plugin, box_syntax)]
+#![feature(box_syntax)]
 
 
 #![warn(no_effect, unnecessary_operation)]

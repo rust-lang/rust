@@ -1,4 +1,4 @@
-#![feature(plugin, never_type)]
+#![feature(never_type)]
 
 #![warn(diverging_sub_expression)]
 #![allow(match_same_arms, logic_bug)]

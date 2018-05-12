@@ -1,4 +1,4 @@
-#![feature(plugin, custom_attribute)]
+#![feature(custom_attribute)]
 
 #![allow(clippy)]
 #![warn(cyclomatic_complexity)]

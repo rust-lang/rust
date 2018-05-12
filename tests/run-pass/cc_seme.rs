@@ -1,6 +1,3 @@
-#![feature(plugin)]
-#![plugin(clippy)]
-
 #[allow(dead_code)]
 enum Baz {
     One,
@@ -12,7 +9,9 @@ struct Test {
     b: Baz,
 }
 
-fn main() {
+fn main() { }
+
+pub fn foo() {
     use Baz::*;
     let x = Test { t: Some(0), b: One };
 

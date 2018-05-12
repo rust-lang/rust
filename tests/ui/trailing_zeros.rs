@@ -1,4 +1,4 @@
-#![feature(plugin, custom_attribute, stmt_expr_attributes)]
+#![feature(custom_attribute, stmt_expr_attributes)]
 
 #![allow(unused_parens)]
 

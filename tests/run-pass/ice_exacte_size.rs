@@ -1,5 +1,3 @@
-#![feature(plugin)]
-#![plugin(clippy)]
 #![deny(clippy)]
 
 #[allow(dead_code)]
@@ -15,3 +13,5 @@ impl Iterator for Foo {
 }
 
 impl ExactSizeIterator for Foo {}
+
+fn main() {}
