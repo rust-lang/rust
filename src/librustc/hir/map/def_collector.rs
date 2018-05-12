@@ -149,6 +149,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                             }
 
                             if let Some(ref expr) = v.node.disr_expr {
+                                // FIXME(#50689) The way this is visited makes it harder
+                                // to fix that bug, see test closure-in-constant.rs
                                 this.visit_const_expr(expr);
                             }
                         });
@@ -269,7 +271,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = self.parent_def;
 
-        self.parent_def = match expr.node {
+        let parent = match expr.node {
             ExprKind::Mac(..) => return self.visit_macro_invoc(expr.id, false),
             ExprKind::Repeat(_, ref count) => self.visit_const_expr(count),
             ExprKind::Closure(..) => {
@@ -279,8 +281,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                                      expr.span))
             }
             _ => None
-        }.or(self.parent_def);
+        };
 
+        self.parent_def = parent.or(self.parent_def);
         visit::walk_expr(self, expr);
         self.parent_def = parent_def;
     }
