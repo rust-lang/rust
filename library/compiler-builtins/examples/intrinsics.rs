@@ -15,19 +15,11 @@
 #![feature(global_allocator)]
 #![feature(allocator_api)]
 #![cfg_attr(windows, feature(panic_unwind))]
-#![no_core]
-
-extern crate core;
+#![no_std]
 
 #[cfg(not(thumb))]
-extern crate alloc_system;
-extern crate compiler_builtins;
-#[cfg(windows)]
-extern crate panic_unwind;
-
-#[cfg(not(thumb))]
-#[global_allocator]
-static A: alloc_system::System = alloc_system::System;
+#[link(name = "c")]
+extern {}
 
 // NOTE cfg(not(thumbv6m)) means that the operation is not supported on ARMv6-M at all. Not even
 // compiler-rt provides a C/assembly implementation.
@@ -38,8 +30,6 @@ static A: alloc_system::System = alloc_system::System;
 // have an additional comment: the function name is the ARM name for the intrinsic and the comment
 // in the non-ARM name for the intrinsic.
 mod intrinsics {
-    use core::num::Float;
-
     // trunccdfsf2
     pub fn aeabi_d2f(x: f64) -> f32 {
         x as f32
@@ -299,14 +289,6 @@ mod intrinsics {
         a * b
     }
 
-    pub fn powidf2(a: f64, b: i32) -> f64 {
-        a.powi(b)
-    }
-
-    pub fn powisf2(a: f32, b: i32) -> f32 {
-        a.powi(b)
-    }
-
     pub fn umoddi3(a: u64, b: u64) -> u64 {
         a % b
     }
@@ -398,8 +380,6 @@ fn run() {
     bb(aeabi_uldivmod(bb(2), bb(3)));
     bb(moddi3(bb(2), bb(3)));
     bb(mulodi4(bb(2), bb(3)));
-    bb(powidf2(bb(2.), bb(3)));
-    bb(powisf2(bb(2.), bb(3)));
     bb(umoddi3(bb(2), bb(3)));
     bb(muloti4(bb(2), bb(2)));
     bb(multi3(bb(2), bb(2)));
