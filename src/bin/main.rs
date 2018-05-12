@@ -355,12 +355,11 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     }
 
     let mut minimal_config_path = None;
-    if matches.opt_present("print-config") {
-        let kind = matches.opt_str("print-config");
-        let path = matches.free.get(0);
+    if let Some(ref kind) = matches.opt_str("print-config") {
+        let path = matches.free.get(0).cloned();
         if kind == "default" {
-            return Ok(Operation::ConfigOutputDefault { path: path.clone() });
-        } else if kind = "minimal" {
+            return Ok(Operation::ConfigOutputDefault { path });
+        } else if kind == "minimal" {
             minimal_config_path = path;
             if minimal_config_path.is_none() {
                 println!("WARNING: PATH required for `--print-config minimal`");
