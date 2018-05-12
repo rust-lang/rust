@@ -175,7 +175,7 @@ impl<Node: Idx> DominatorTree<Node> {
 }
 
 impl<Node: Idx> fmt::Debug for DominatorTree<Node> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&DominatorTreeNode {
                             tree: self,
                             node: self.root,
@@ -190,7 +190,7 @@ struct DominatorTreeNode<'tree, Node: Idx> {
 }
 
 impl<'tree, Node: Idx> fmt::Debug for DominatorTreeNode<'tree, Node> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let subtrees: Vec<_> = self.tree
             .children(self.node)
             .iter()
