@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(label_break_value)]
+
 // Simple continue pointing to an unlabeled break should yield in an error
 fn continue_simple() {
     'b: {

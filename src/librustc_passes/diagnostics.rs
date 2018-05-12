@@ -278,6 +278,7 @@ loop {
 Make sure to always label the `break`:
 
 ```
+# #![feature(label_break_value)]
 'l: loop {
     'a: {
         break 'l;

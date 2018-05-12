@@ -8,24 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(label_break_value)]
-
-// These are forbidden occurences of label-break-value
-
-fn labeled_unsafe() {
-    unsafe 'b: {} //~ ERROR expected one of `extern`, `fn`, or `{`
+pub fn main() {
+    'a: { //~ ERROR labels on blocks are unstable
+        break 'a;
+    }
 }
-
-fn labeled_if() {
-    if true 'b: {} //~ ERROR expected `{`, found `'b`
-}
-
-fn labeled_else() {
-    if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
-}
-
-fn labeled_match() {
-    match false 'b: {} //~ ERROR expected one of `.`, `?`, `{`, or an operator
-}
-
-pub fn main() {}

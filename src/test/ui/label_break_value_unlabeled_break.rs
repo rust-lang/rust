@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(label_break_value)]
+
 // Simple unlabeled break should yield in an error
 fn unlabeled_break_simple() {
     'b: {

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(label_break_value)]
+
 // Test control flow to follow label_break_value semantics
 fn label_break(a: bool, b: bool) -> u32 {
     let mut v = 0;
