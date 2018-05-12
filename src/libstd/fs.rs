@@ -331,6 +331,7 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 ///
 /// fn main() -> std::io::Result<()> {
 ///     fs::write("foo.txt", b"Lorem ipsum")?;
+///     fs::write("bar.txt", "dolor sit")?;
 ///     Ok(())
 /// }
 /// ```
