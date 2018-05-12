@@ -12,12 +12,12 @@
 
 #![feature(const_fn)]
 
-use std::mem::transmute;
+use std::mem::size_of_val;
 
 fn random() -> u32 { 0 }
 
 const fn sub(x: &u32) -> usize {
-    unsafe { transmute(x) } //~ ERROR E0015
+    unsafe { size_of_val(x) } //~ ERROR E0015
 }
 
 const fn sub1() -> u32 {

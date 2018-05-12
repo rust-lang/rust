@@ -9,7 +9,7 @@ use rustc::ty::subst::Subst;
 use syntax::ast::Mutability;
 use syntax::codemap::Span;
 
-use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, MemoryPointer, Pointer, PrimVal, AllocId};
+use rustc::mir::interpret::{EvalResult, EvalError, EvalErrorKind, GlobalId, Value, MemoryPointer, Pointer, PrimVal, PrimValKind, AllocId};
 use super::{Place, EvalContext, StackPopCleanup, ValTy, PlaceExtra, Memory};
 
 use std::fmt;
@@ -256,7 +256,7 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
     fn call_intrinsic<'a>(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        _args: &[ValTy<'tcx>],
+        args: &[ValTy<'tcx>],
         dest: Place,
         dest_layout: layout::TyLayout<'tcx>,
         target: mir::BasicBlock,
@@ -265,6 +265,280 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
 
         let intrinsic_name = &ecx.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
+            "add_with_overflow" => {
+                ecx.intrinsic_with_overflow(
+                    mir::BinOp::Add,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?
+            }
+
+            "sub_with_overflow" => {
+                ecx.intrinsic_with_overflow(
+                    mir::BinOp::Sub,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?
+            }
+
+            "mul_with_overflow" => {
+                ecx.intrinsic_with_overflow(
+                    mir::BinOp::Mul,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?
+            }
+
+            "overflowing_sub" => {
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Sub,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "overflowing_mul" => {
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Mul,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "overflowing_add" => {
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Add,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "powf32" => {
+                let f = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let f = f32::from_bits(f as u32);
+                let f2 = ecx.value_to_primval(args[1])?.to_bytes()?;
+                let f2 = f32::from_bits(f2 as u32);
+                ecx.write_primval(
+                    dest,
+                    PrimVal::Bytes(f.powf(f2).to_bits() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
+            "powf64" => {
+                let f = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let f = f64::from_bits(f as u64);
+                let f2 = ecx.value_to_primval(args[1])?.to_bytes()?;
+                let f2 = f64::from_bits(f2 as u64);
+                ecx.write_primval(
+                    dest,
+                    PrimVal::Bytes(f.powf(f2).to_bits() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
+            "fmaf32" => {
+                let a = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let a = f32::from_bits(a as u32);
+                let b = ecx.value_to_primval(args[1])?.to_bytes()?;
+                let b = f32::from_bits(b as u32);
+                let c = ecx.value_to_primval(args[2])?.to_bytes()?;
+                let c = f32::from_bits(c as u32);
+                ecx.write_primval(
+                    dest,
+                    PrimVal::Bytes((a * b + c).to_bits() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
+            "fmaf64" => {
+                let a = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let a = f64::from_bits(a as u64);
+                let b = ecx.value_to_primval(args[1])?.to_bytes()?;
+                let b = f64::from_bits(b as u64);
+                let c = ecx.value_to_primval(args[2])?.to_bytes()?;
+                let c = f64::from_bits(c as u64);
+                ecx.write_primval(
+                    dest,
+                    PrimVal::Bytes((a * b + c).to_bits() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
+            "powif32" => {
+                let f = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let f = f32::from_bits(f as u32);
+                let i = ecx.value_to_primval(args[1])?.to_i128()?;
+                ecx.write_primval(
+                    dest,
+                    PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
+            "powif64" => {
+                let f = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let f = f64::from_bits(f as u64);
+                let i = ecx.value_to_primval(args[1])?.to_i128()?;
+                ecx.write_primval(
+                    dest,
+                    PrimVal::Bytes(f.powi(i as i32).to_bits() as u128),
+                    dest_layout.ty,
+                )?;
+            }
+
+            "unchecked_shl" => {
+                let bits = dest_layout.size.bytes() as u128 * 8;
+                let rhs = ecx.value_to_primval(args[1])?
+                    .to_bytes()?;
+                if rhs >= bits {
+                    return err!(Intrinsic(
+                        format!("Overflowing shift by {} in unchecked_shl", rhs),
+                    ));
+                }
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Shl,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "unchecked_shr" => {
+                let bits = dest_layout.size.bytes() as u128 * 8;
+                let rhs = ecx.value_to_primval(args[1])?
+                    .to_bytes()?;
+                if rhs >= bits {
+                    return err!(Intrinsic(
+                        format!("Overflowing shift by {} in unchecked_shr", rhs),
+                    ));
+                }
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Shr,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "unchecked_div" => {
+                let rhs = ecx.value_to_primval(args[1])?
+                    .to_bytes()?;
+                if rhs == 0 {
+                    return err!(Intrinsic(format!("Division by 0 in unchecked_div")));
+                }
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Div,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "unchecked_rem" => {
+                let rhs = ecx.value_to_primval(args[1])?
+                    .to_bytes()?;
+                if rhs == 0 {
+                    return err!(Intrinsic(format!("Division by 0 in unchecked_rem")));
+                }
+                ecx.intrinsic_overflowing(
+                    mir::BinOp::Rem,
+                    args[0],
+                    args[1],
+                    dest,
+                    dest_layout.ty,
+                )?;
+            }
+
+            "ctpop" | "cttz" | "cttz_nonzero" | "ctlz" | "ctlz_nonzero" | "bswap" => {
+                let ty = substs.type_at(0);
+                let num = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let kind = ecx.ty_to_primval_kind(ty)?;
+                let num = if intrinsic_name.ends_with("_nonzero") {
+                    if num == 0 {
+                        return err!(Intrinsic(format!("{} called on 0", intrinsic_name)));
+                    }
+                    numeric_intrinsic(intrinsic_name.trim_right_matches("_nonzero"), num, kind)?
+                } else {
+                    numeric_intrinsic(intrinsic_name, num, kind)?
+                };
+                ecx.write_primval(dest, num, ty)?;
+            }
+
+            "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
+            "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
+                let f = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let f = f32::from_bits(f as u32);
+                let f = match intrinsic_name {
+                    "sinf32" => f.sin(),
+                    "fabsf32" => f.abs(),
+                    "cosf32" => f.cos(),
+                    "sqrtf32" => f.sqrt(),
+                    "expf32" => f.exp(),
+                    "exp2f32" => f.exp2(),
+                    "logf32" => f.ln(),
+                    "log10f32" => f.log10(),
+                    "log2f32" => f.log2(),
+                    "floorf32" => f.floor(),
+                    "ceilf32" => f.ceil(),
+                    "truncf32" => f.trunc(),
+                    _ => bug!(),
+                };
+                ecx.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_layout.ty)?;
+            }
+
+            "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
+            "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
+                let f = ecx.value_to_primval(args[0])?.to_bytes()?;
+                let f = f64::from_bits(f as u64);
+                let f = match intrinsic_name {
+                    "sinf64" => f.sin(),
+                    "fabsf64" => f.abs(),
+                    "cosf64" => f.cos(),
+                    "sqrtf64" => f.sqrt(),
+                    "expf64" => f.exp(),
+                    "exp2f64" => f.exp2(),
+                    "logf64" => f.ln(),
+                    "log10f64" => f.log10(),
+                    "log2f64" => f.log2(),
+                    "floorf64" => f.floor(),
+                    "ceilf64" => f.ceil(),
+                    "truncf64" => f.trunc(),
+                    _ => bug!(),
+                };
+                ecx.write_primval(dest, PrimVal::Bytes(f.to_bits() as u128), dest_layout.ty)?;
+            }
+
+            "assume" => {
+                let cond = ecx.value_to_primval(args[0])?.to_bool()?;
+                if !cond {
+                    return err!(AssumptionNotHeld);
+                }
+            }
+
+            "likely" | "unlikely" | "forget" => {}
+
+            "align_offset" => {
+                // FIXME: return a real value in case the target allocation has an
+                // alignment bigger than the one requested
+                ecx.write_primval(dest, PrimVal::Bytes(u128::max_value()), dest_layout.ty)?;
+            },
+
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
                 let elem_align = ecx.layout_of(elem_ty)?.align.abi();
@@ -276,6 +550,14 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
                 let ty = substs.type_at(0);
                 let size = ecx.layout_of(ty)?.size.bytes() as u128;
                 ecx.write_primval(dest, PrimVal::from_u128(size), dest_layout.ty)?;
+            }
+
+            "transmute" => {
+                let src_ty = substs.type_at(0);
+                let _src_align = ecx.layout_of(src_ty)?.align;
+                let ptr = ecx.force_allocation(dest)?.to_ptr()?;
+                let dest_align = ecx.layout_of(substs.type_at(1))?.align;
+                ecx.write_value_to_ptr(args[0].value, ptr.into(), dest_align, src_ty).unwrap();
             }
 
             "type_id" => {
@@ -349,6 +631,44 @@ impl<'mir, 'tcx> super::Machine<'mir, 'tcx> for CompileTimeEvaluator {
             ConstEvalError::NotConst("statics with `linkage` attribute".to_string()).into(),
         )
     }
+}
+
+
+fn numeric_intrinsic<'tcx>(
+    name: &str,
+    bytes: u128,
+    kind: PrimValKind,
+) -> EvalResult<'tcx, PrimVal> {
+    macro_rules! integer_intrinsic {
+        ($method:ident) => ({
+            use rustc::mir::interpret::PrimValKind::*;
+            let result_bytes = match kind {
+                I8 => (bytes as i8).$method() as u128,
+                U8 => (bytes as u8).$method() as u128,
+                I16 => (bytes as i16).$method() as u128,
+                U16 => (bytes as u16).$method() as u128,
+                I32 => (bytes as i32).$method() as u128,
+                U32 => (bytes as u32).$method() as u128,
+                I64 => (bytes as i64).$method() as u128,
+                U64 => (bytes as u64).$method() as u128,
+                I128 => (bytes as i128).$method() as u128,
+                U128 => bytes.$method() as u128,
+                _ => bug!("invalid `{}` argument: {:?}", name, bytes),
+            };
+
+            PrimVal::Bytes(result_bytes)
+        });
+    }
+
+    let result_val = match name {
+        "bswap" => integer_intrinsic!(swap_bytes),
+        "ctlz" => integer_intrinsic!(leading_zeros),
+        "ctpop" => integer_intrinsic!(count_ones),
+        "cttz" => integer_intrinsic!(trailing_zeros),
+        _ => bug!("not a numeric intrinsic: {}", name),
+    };
+
+    Ok(result_val)
 }
 
 pub fn const_val_field<'a, 'tcx>(
