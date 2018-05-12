@@ -2,7 +2,7 @@
 
 The HIR – "High-level IR" – is the primary IR used in most of rustc. It is a
 compiler-friendly representation of the abstract syntax tree (AST) that is
-generated after parsing, macro expansion, and name resolution have completed.
+generated after parsing, macro expansion, and name resolution.
 Many parts of HIR resemble Rust surface syntax quite closely, with the
 exception that some of Rust's expression forms have been desugared away. For
 example, `for` loops are converted into a `loop` and do not appear in the HIR.
