@@ -4018,7 +4018,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Ok(count) = count {
-                let zero_or_one = count.val.to_raw_bits().map_or(false, |count| count <= 1);
+                let zero_or_one = count.assert_usize(tcx).map_or(false, |count| count <= 1);
                 if !zero_or_one {
                     // For [foo, ..n] where n > 1, `foo` must have
                     // Copy type:

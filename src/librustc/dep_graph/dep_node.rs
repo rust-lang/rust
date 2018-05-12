@@ -60,7 +60,7 @@
 //! user of the `DepNode` API of having to know how to compute the expected
 //! fingerprint for a given set of node parameters.
 
-use mir::interpret::{GlobalId};
+use mir::interpret::{GlobalId, ConstValue};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use hir::map::DefPathHash;
 use hir::{HirId, ItemLocalId};
@@ -621,13 +621,14 @@ define_dep_nodes!( <'tcx>
     [input] UsedCrateSource(CrateNum),
     [input] PostorderCnums,
 
-    // This query is not expected to have inputs -- as a result, it's
-    // not a good candidate for "replay" because it's essentially a
-    // pure function of its input (and hence the expectation is that
-    // no caller would be green **apart** from just this
-    // query). Making it anonymous avoids hashing the result, which
+    // These queries are not expected to have inputs -- as a result, they
+    // are not good candidates for "replay" because they are essentially
+    // pure functions of their input (and hence the expectation is that
+    // no caller would be green **apart** from just these
+    // queries). Making them anonymous avoids hashing the result, which
     // may save a bit of time.
     [anon] EraseRegionsTy { ty: Ty<'tcx> },
+    [anon] ConstValueToAllocation { val: ConstValue<'tcx>, ty: Ty<'tcx> },
 
     [input] Freevars(DefId),
     [input] MaybeUnusedTraitImport(DefId),

@@ -11,7 +11,7 @@
 use dep_graph::SerializedDepNodeIndex;
 use dep_graph::DepNode;
 use hir::def_id::{CrateNum, DefId, DefIndex};
-use mir::interpret::{GlobalId};
+use mir::interpret::{GlobalId, ConstValue};
 use traits::query::{CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal};
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::Substs;
@@ -134,6 +134,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::super_predicates_of<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("computing the supertraits of `{}`",
                 tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::const_value_to_allocation<'tcx> {
+    fn describe(_tcx: TyCtxt, (val, ty): (ConstValue<'tcx>, Ty<'tcx>)) -> String {
+        format!("converting value `{:?}` ({}) to an allocation", val, ty)
     }
 }
 

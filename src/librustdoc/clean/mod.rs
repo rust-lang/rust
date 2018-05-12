@@ -2644,10 +2644,7 @@ impl Clean<Type> for hir::Ty {
                     promoted: None
                 };
                 let n = cx.tcx.const_eval(param_env.and(cid)).unwrap_or_else(|_| {
-                    cx.tcx.mk_const(ty::Const {
-                        val: ConstVal::Unevaluated(def_id, substs),
-                        ty: cx.tcx.types.usize
-                    })
+                    ty::Const::unevaluated(cx.tcx, def_id, substs, cx.tcx.types.usize)
                 });
                 let n = print_const(cx, n);
                 Array(box ty.clean(cx), n)
@@ -3828,9 +3825,9 @@ fn print_const(cx: &DocContext, n: &ty::Const) -> String {
                 inline::print_inlined_const(cx, def_id)
             }
         },
-        ConstVal::Value(val) => {
+        ConstVal::Value(..) => {
             let mut s = String::new();
-            ::rustc::mir::print_miri_value(val, n.ty, &mut s).unwrap();
+            ::rustc::mir::fmt_const_val(&mut s, n).unwrap();
             // array lengths are obviously usize
             if s.ends_with("usize") {
                 let n = s.len() - "usize".len();

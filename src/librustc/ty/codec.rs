@@ -24,6 +24,7 @@ use std::hash::Hash;
 use std::intrinsics;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
+use mir::interpret::Allocation;
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -262,6 +263,15 @@ pub fn decode_const<'a, 'tcx, D>(decoder: &mut D)
     Ok(decoder.tcx().mk_const(Decodable::decode(decoder)?))
 }
 
+#[inline]
+pub fn decode_allocation<'a, 'tcx, D>(decoder: &mut D)
+                                 -> Result<&'tcx Allocation, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(decoder.tcx().intern_const_alloc(Decodable::decode(decoder)?))
+}
+
 #[macro_export]
 macro_rules! __impl_decoder_methods {
     ($($name:ident -> $ty:ty;)*) => {
@@ -391,6 +401,15 @@ macro_rules! implement_ty_decoder {
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
                     decode_const(self)
+                }
+            }
+
+            impl<$($typaram),*> SpecializedDecoder<&'tcx $crate::mir::interpret::Allocation>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(
+                    &mut self
+                ) -> Result<&'tcx $crate::mir::interpret::Allocation, Self::Error> {
+                    decode_allocation(self)
                 }
             }
         }

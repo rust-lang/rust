@@ -21,7 +21,6 @@ use ty::{TyClosure, TyGenerator, TyGeneratorWitness, TyForeign, TyProjection, Ty
 use ty::{TyDynamic, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use util::nodemap::FxHashSet;
-use mir::interpret::{Value, PrimVal};
 
 use std::cell::Cell;
 use std::fmt;
@@ -1183,14 +1182,11 @@ define_print! {
                 TyArray(ty, sz) => {
                     print!(f, cx, write("["), print(ty), write("; "))?;
                     match sz.val {
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(sz))) => {
-                            write!(f, "{}", sz)?;
-                        }
+                        ConstVal::Value(..) => ty::tls::with(|tcx| {
+                            write!(f, "{}", sz.unwrap_usize(tcx))
+                        })?,
                         ConstVal::Unevaluated(_def_id, _substs) => {
                             write!(f, "_")?;
-                        }
-                        _ => {
-                            write!(f, "{:?}", sz)?;
                         }
                     }
                     write!(f, "]")

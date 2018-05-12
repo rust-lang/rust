@@ -11,12 +11,10 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::maps::Providers;
-use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
@@ -303,7 +301,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match self_ty.sty {
         _ if is_copy => builder.copy_shim(),
         ty::TyArray(ty, len) => {
-            let len = len.val.unwrap_u64();
+            let len = len.unwrap_usize(tcx);
             builder.array_shim(dest, src, ty, len)
         }
         ty::TyClosure(def_id, substs) => {
@@ -442,11 +440,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: func_ty,
             literal: Literal::Value {
-                value: tcx.mk_const(ty::Const {
-                    // ZST function type
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
-                    ty: func_ty
-                }),
+                value: ty::Const::zero_sized(self.tcx, func_ty)
             },
         });
 
@@ -506,10 +500,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             span: self.span,
             ty: self.tcx.types.usize,
             literal: Literal::Value {
-                value: self.tcx.mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(value.into()))),
-                    ty: self.tcx.types.usize,
-                })
+                value: ty::Const::from_usize(self.tcx, value),
             }
         }
     }
@@ -738,11 +729,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 span,
                 ty,
                 literal: Literal::Value {
-                    value: tcx.mk_const(ty::Const {
-                        // ZST function type
-                        val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
-                        ty
-                    }),
+                    value: ty::Const::zero_sized(tcx, ty)
                 },
              }),
              vec![rcvr])

@@ -145,6 +145,15 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx>{
     }
 }
 
+impl<'tcx> Key for (mir::interpret::ConstValue<'tcx>, Ty<'tcx>) {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl<'tcx> Key for Ty<'tcx> {
     fn map_crate(&self) -> CrateNum {
         LOCAL_CRATE

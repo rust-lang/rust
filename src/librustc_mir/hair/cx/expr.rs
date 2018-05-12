@@ -14,8 +14,7 @@ use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::hir::def::{Def, CtorKind};
-use rustc::middle::const_val::ConstVal;
-use rustc::mir::interpret::{GlobalId, Value, PrimVal};
+use rustc::mir::interpret::GlobalId;
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
@@ -522,7 +521,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 promoted: None
             };
             let count = match cx.tcx.at(c.span).const_eval(cx.param_env.and(global_id)) {
-                Ok(cv) => cv.val.unwrap_u64(),
+                Ok(cv) => cv.unwrap_usize(cx.tcx),
                 Err(e) => {
                     e.report(cx.tcx, cx.tcx.def_span(def_id), "array length");
                     0
@@ -635,22 +634,17 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         span: expr.span,
                         kind: ExprKind::Literal {
                             literal: Literal::Value {
-                                value: cx.tcx().mk_const(ty::Const {
-                                    val,
-                                    ty,
-                                }),
+                                value: val,
                             },
                         },
                     }.to_ref();
-                    let offset = mk_const(
-                        ConstVal::Value(Value::ByVal(PrimVal::Bytes(offset as u128))),
-                    );
+                    let offset = mk_const(ty::Const::from_bits(cx.tcx, offset as u128, ty));
                     match did {
                         Some(did) => {
                             // in case we are offsetting from a computed discriminant
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = Substs::identity_for_item(cx.tcx(), did);
-                            let lhs = mk_const(ConstVal::Unevaluated(did, substs));
+                            let lhs = mk_const(ty::Const::unevaluated(cx.tcx(), did, substs, ty));
                             let bin = ExprKind::Binary {
                                 op: BinOp::Add,
                                 lhs,
@@ -707,10 +701,7 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         span: expr.span,
         kind: ExprKind::Literal {
             literal: Literal::Value {
-                value: cx.tcx().mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
-                    ty
-                }),
+                value: ty::Const::zero_sized(cx.tcx(), ty),
             },
         },
     }
@@ -764,20 +755,20 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Def::StructCtor(_, CtorKind::Fn) |
         Def::VariantCtor(_, CtorKind::Fn) => ExprKind::Literal {
             literal: Literal::Value {
-                value: cx.tcx.mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Undef)),
-                    ty: cx.tables().node_id_to_type(expr.hir_id)
-                }),
+                value: ty::Const::zero_sized(
+                    cx.tcx,
+                    cx.tables().node_id_to_type(expr.hir_id)),
             },
         },
 
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => ExprKind::Literal {
             literal: Literal::Value {
-                value: cx.tcx.mk_const(ty::Const {
-                    val: ConstVal::Unevaluated(def_id, substs),
-                    ty: cx.tables().node_id_to_type(expr.hir_id)
-                }),
+                value: ty::Const::unevaluated(
+                    cx.tcx,
+                    def_id,
+                    substs,
+                    cx.tables().node_id_to_type(expr.hir_id))
             },
         },
 

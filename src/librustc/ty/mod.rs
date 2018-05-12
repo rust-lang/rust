@@ -22,12 +22,11 @@ use hir::svh::Svh;
 use ich::Fingerprint;
 use ich::StableHashingContext;
 use infer::canonical::{Canonical, Canonicalize};
-use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
-use mir::interpret::{GlobalId, Value, PrimVal};
+use mir::interpret::GlobalId;
 use mir::GeneratorLayout;
 use session::CrateDisambiguator;
 use traits::{self, Reveal};
@@ -1933,27 +1932,23 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             promoted: None
         };
         match tcx.const_eval(param_env.and(cid)) {
-            Ok(&ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))),
-                ty,
-            }) => {
-                trace!("discriminants: {} ({:?})", b, repr_type);
-                Some(Discr {
-                    val: b,
-                    ty,
-                })
-            },
-            Ok(&ty::Const {
-                val: ConstVal::Value(other),
-                ..
-            }) => {
-                info!("invalid enum discriminant: {:#?}", other);
-                ::middle::const_val::struct_error(
-                    tcx,
-                    tcx.def_span(expr_did),
-                    "constant evaluation of enum discriminant resulted in non-integer",
-                ).emit();
-                None
+            Ok(val) => {
+                // FIXME: Find the right type and use it instead of `val.ty` here
+                if let Some(b) = val.assert_bits(val.ty) {
+                    trace!("discriminants: {} ({:?})", b, repr_type);
+                    Some(Discr {
+                        val: b,
+                        ty: val.ty,
+                    })
+                } else {
+                    info!("invalid enum discriminant: {:#?}", val);
+                    ::middle::const_val::struct_error(
+                        tcx,
+                        tcx.def_span(expr_did),
+                        "constant evaluation of enum discriminant resulted in non-integer",
+                    ).emit();
+                    None
+                }
             }
             Err(err) => {
                 err.report(tcx, tcx.def_span(expr_did), "enum discriminant");
@@ -1964,7 +1959,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
                 None
             }
-            _ => span_bug!(tcx.def_span(expr_did), "const eval "),
         }
     }
 

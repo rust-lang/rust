@@ -13,9 +13,7 @@
 
 use build::Builder;
 
-use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
-use rustc::mir::interpret::{Value, PrimVal};
 
 use rustc::mir::*;
 use syntax_pos::{Span, DUMMY_SP};
@@ -64,10 +62,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
         let literal = Literal::Value {
-            value: self.hir.tcx().mk_const(ty::Const {
-                val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(0))),
-                ty
-            })
+            value: ty::Const::from_bits(self.hir.tcx(), 0, ty)
         };
 
         self.literal_operand(span, ty, literal)

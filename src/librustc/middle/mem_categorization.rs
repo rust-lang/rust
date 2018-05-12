@@ -945,7 +945,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         // Always promote `[T; 0]` (even when e.g. borrowed mutably).
         let promotable = match expr_ty.sty {
-            ty::TyArray(_, len) if len.val.to_raw_bits() == Some(0) => true,
+            ty::TyArray(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
             _ => promotable,
         };
 

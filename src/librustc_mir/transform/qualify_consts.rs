@@ -595,7 +595,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
             Operand::Constant(ref constant) => {
                 if let Literal::Value {
-                    value: &ty::Const { val: ConstVal::Unevaluated(def_id, _), ty }
+                    value: &ty::Const { val: ConstVal::Unevaluated(def_id, _), ty, .. }
                 } = constant.literal {
                     // Don't peek inside trait associated constants.
                     if self.tcx.trait_of_item(def_id).is_some() {
@@ -690,7 +690,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             _ => false
                         }
                     } else if let ty::TyArray(_, len) = ty.sty {
-                        len.val.unwrap_u64() == 0 &&
+                        len.unwrap_usize(self.tcx) == 0 &&
                             self.mode == Mode::Fn
                     } else {
                         false

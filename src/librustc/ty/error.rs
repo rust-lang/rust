@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::TyAdt(def, _) => format!("{} `{}`", def.descr(), tcx.item_path_str(def.did)),
             ty::TyForeign(def_id) => format!("extern type `{}`", tcx.item_path_str(def_id)),
             ty::TyArray(_, n) => {
-                match n.val.to_raw_bits() {
+                match n.assert_usize(tcx) {
                     Some(n) => format!("array of {} elements", n),
                     None => "array".to_string(),
                 }

@@ -25,7 +25,6 @@ use ty::TypeVariants::*;
 use ty::layout::{Integer, IntegerExt};
 use util::common::ErrorReported;
 use middle::lang_items;
-use mir::interpret::{Value, PrimVal};
 
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
@@ -659,9 +658,8 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyArray(_, n) => {
                 self.hash_discriminant_u8(&n.val);
                 match n.val {
-                    ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => self.hash(b),
+                    ConstVal::Value(alloc) => self.hash(alloc),
                     ConstVal::Unevaluated(def_id, _) => self.def_id(def_id),
-                    _ => bug!("arrays should not have {:?} as length", n)
                 }
             }
             TyRawPtr(m) => self.hash(m.mutbl),

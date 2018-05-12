@@ -10,7 +10,7 @@ mod value;
 
 pub use self::error::{EvalError, EvalResult, EvalErrorKind, AssertMessage};
 
-pub use self::value::{PrimVal, PrimValKind, Value, Pointer};
+pub use self::value::{PrimVal, PrimValKind, Value, Pointer, ConstValue};
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -20,8 +20,10 @@ use ty::{self, TyCtxt};
 use ty::layout::{self, Align, HasDataLayout};
 use middle::region;
 use std::iter;
+use std::io;
 use syntax::ast::Mutability;
 use rustc_serialize::{Encoder, Decoder, Decodable, Encodable};
+use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Lock {
@@ -235,7 +237,7 @@ impl fmt::Display for AllocId {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer
@@ -254,16 +256,68 @@ pub struct Allocation {
 }
 
 impl Allocation {
-    pub fn from_bytes(slice: &[u8]) -> Self {
+    pub fn from_bytes(slice: &[u8], align: Align) -> Self {
         let mut undef_mask = UndefMask::new(0);
         undef_mask.grow(slice.len() as u64, true);
         Self {
             bytes: slice.to_owned(),
             relocations: BTreeMap::new(),
             undef_mask,
-            align: Align::from_bytes(1, 1).unwrap(),
+            align,
             runtime_mutability: Mutability::Immutable,
         }
+    }
+
+    pub fn from_byte_aligned_bytes(slice: &[u8]) -> Self {
+        Allocation::from_bytes(slice, Align::from_bytes(1, 1).unwrap())
+    }
+
+    pub fn undef(size: u64, align: Align) -> Self {
+        assert_eq!(size as usize as u64, size);
+        Allocation {
+            bytes: vec![0; size as usize],
+            relocations: BTreeMap::new(),
+            undef_mask: UndefMask::new(size),
+            align,
+            runtime_mutability: Mutability::Immutable,
+        }
+    }
+}
+
+impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
+
+////////////////////////////////////////////////////////////////////////////////
+// Methods to access integers in the target endianness
+////////////////////////////////////////////////////////////////////////////////
+
+pub fn write_target_uint(
+    endianness: layout::Endian,
+    mut target: &mut [u8],
+    data: u128,
+) -> Result<(), io::Error> {
+    let len = target.len();
+    match endianness {
+        layout::Endian::Little => target.write_uint128::<LittleEndian>(data, len),
+        layout::Endian::Big => target.write_uint128::<BigEndian>(data, len),
+    }
+}
+
+pub fn write_target_int(
+    endianness: layout::Endian,
+    mut target: &mut [u8],
+    data: i128,
+) -> Result<(), io::Error> {
+    let len = target.len();
+    match endianness {
+        layout::Endian::Little => target.write_int128::<LittleEndian>(data, len),
+        layout::Endian::Big => target.write_int128::<BigEndian>(data, len),
+    }
+}
+
+pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result<u128, io::Error> {
+    match endianness {
+        layout::Endian::Little => source.read_uint128::<LittleEndian>(source.len()),
+        layout::Endian::Big => source.read_uint128::<BigEndian>(source.len()),
     }
 }
 

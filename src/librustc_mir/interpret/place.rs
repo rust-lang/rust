@@ -1,5 +1,5 @@
 use rustc::mir;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -69,9 +69,13 @@ impl<'tcx> Place {
         self.to_ptr_align().0.to_ptr()
     }
 
-    pub(super) fn elem_ty_and_len(self, ty: Ty<'tcx>) -> (Ty<'tcx>, u64) {
+    pub(super) fn elem_ty_and_len(
+        self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'_, 'tcx, '_>
+    ) -> (Ty<'tcx>, u64) {
         match ty.sty {
-            ty::TyArray(elem, n) => (elem, n.val.unwrap_u64() as u64),
+            ty::TyArray(elem, n) => (elem, n.unwrap_usize(tcx)),
 
             ty::TySlice(elem) => {
                 match self {
@@ -320,7 +324,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
         let base = self.force_allocation(base)?;
         let (base_ptr, align) = base.to_ptr_align();
 
-        let (elem_ty, len) = base.elem_ty_and_len(outer_ty);
+        let (elem_ty, len) = base.elem_ty_and_len(outer_ty, self.tcx.tcx);
         let elem_size = self.layout_of(elem_ty)?.size.bytes();
         assert!(
             n < len,
@@ -396,7 +400,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let base = self.force_allocation(base)?;
                 let (base_ptr, align) = base.to_ptr_align();
 
-                let (elem_ty, n) = base.elem_ty_and_len(base_ty);
+                let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size.bytes();
                 assert!(n >= min_length as u64);
 
@@ -415,7 +419,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
                 let base = self.force_allocation(base)?;
                 let (base_ptr, align) = base.to_ptr_align();
 
-                let (elem_ty, n) = base.elem_ty_and_len(base_ty);
+                let (elem_ty, n) = base.elem_ty_and_len(base_ty, self.tcx.tcx);
                 let elem_size = self.layout_of(elem_ty)?.size.bytes();
                 assert!(u64::from(from) <= n - u64::from(to));
                 let ptr = base_ptr.offset(u64::from(from) * elem_size, &self)?;

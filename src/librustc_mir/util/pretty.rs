@@ -402,7 +402,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for ExtraComments<'cx, 'gcx, 'tcx> {
 
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, _: Location) {
         self.super_const(constant);
-        let ty::Const { ty, val } = constant;
+        let ty::Const { ty, val, .. } = constant;
         self.push(&format!("ty::Const"));
         self.push(&format!("+ ty: {:?}", ty));
         self.push(&format!("+ val: {:?}", val));

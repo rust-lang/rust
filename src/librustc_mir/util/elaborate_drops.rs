@@ -11,7 +11,6 @@
 use std::fmt;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -19,7 +18,6 @@ use rustc::ty::subst::{Kind, Substs};
 use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use util::patch::MirPatch;
-use rustc::mir::interpret::{Value, PrimVal};
 
 use std::{iter, u32};
 
@@ -809,8 +807,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 let succ = self.succ;
                 self.complete_drop(Some(DropFlagMode::Deep), succ, unwind)
             }
-            ty::TyArray(ety, size) => self.open_drop_for_array(
-                ety, size.val.to_raw_bits().map(|i| i as u64)),
+            ty::TyArray(ety, size) => {
+                let size = size.assert_usize(self.tcx());
+                self.open_drop_for_array(ety, size)
+            },
             ty::TySlice(ety) => self.open_drop_for_array(ety, None),
 
             _ => bug!("open drop from non-ADT `{:?}`", ty)
@@ -961,10 +961,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             span: self.source_info.span,
             ty: self.tcx().types.usize,
             literal: Literal::Value {
-                value: self.tcx().mk_const(ty::Const {
-                    val: ConstVal::Value(Value::ByVal(PrimVal::Bytes(val.into()))),
-                    ty: self.tcx().types.usize
-                })
+                value: ty::Const::from_usize(self.tcx(), val.into())
             }
         })
     }

@@ -15,7 +15,7 @@ use syntax::codemap::{self, Span};
 use syntax::ast::Mutability;
 use rustc::mir::interpret::{
     GlobalId, Value, Pointer, PrimVal, PrimValKind,
-    EvalError, EvalResult, EvalErrorKind, MemoryPointer,
+    EvalError, EvalResult, EvalErrorKind, MemoryPointer, ConstValue,
 };
 use std::mem;
 
@@ -116,15 +116,6 @@ pub struct ValTy<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-impl<'tcx> ValTy<'tcx> {
-    pub fn from(val: &ty::Const<'tcx>) -> Option<Self> {
-        match val.val {
-            ConstVal::Value(value) => Some(ValTy { value, ty: val.ty }),
-            ConstVal::Unevaluated { .. } => None,
-        }
-    }
-}
-
 impl<'tcx> ::std::ops::Deref for ValTy<'tcx> {
     type Target = Value;
     fn deref(&self) -> &Value {
@@ -183,6 +174,8 @@ impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> LayoutOf
     }
 }
 
+const MAX_TERMINATORS: usize = 1_000_000;
+
 impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     pub fn new(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
@@ -197,8 +190,17 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
             memory: Memory::new(tcx, memory_data),
             stack: Vec::new(),
             stack_limit: tcx.sess.const_eval_stack_frame_limit,
-            terminators_remaining: 1_000_000,
+            terminators_remaining: MAX_TERMINATORS,
         }
+    }
+
+    pub(crate) fn with_fresh_body<F: FnOnce(&mut Self) -> R, R>(&mut self, f: F) -> R {
+        let stack = mem::replace(&mut self.stack, Vec::new());
+        let terminators_remaining = mem::replace(&mut self.terminators_remaining, MAX_TERMINATORS);
+        let r = f(self);
+        self.stack = stack;
+        self.terminators_remaining = terminators_remaining;
+        r
     }
 
     pub fn alloc_ptr(&mut self, ty: Ty<'tcx>) -> EvalResult<'tcx, MemoryPointer> {
@@ -235,7 +237,27 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         ))
     }
 
-    pub(super) fn const_to_value(&self, const_val: &ConstVal<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn const_value_to_value(
+        &mut self,
+        val: ConstValue<'tcx>,
+        _ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Value> {
+        match val {
+            ConstValue::ByRef(alloc) => {
+                // FIXME: Allocate new AllocId for all constants inside
+                let id = self.memory.allocate_value(alloc.clone(), Some(MemoryKind::Stack))?;
+                Ok(Value::ByRef(MemoryPointer::new(id, 0).into(), alloc.align))
+            },
+            ConstValue::ByValPair(a, b) => Ok(Value::ByValPair(a, b)),
+            ConstValue::ByVal(val) => Ok(Value::ByVal(val)),
+        }
+    }
+
+    pub(super) fn const_to_value(
+        &mut self,
+        const_val: &ConstVal<'tcx>,
+        ty: Ty<'tcx>
+    ) -> EvalResult<'tcx, Value> {
         match *const_val {
             ConstVal::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
@@ -244,7 +266,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     promoted: None,
                 }, ty)
             }
-            ConstVal::Value(val) => Ok(val),
+            ConstVal::Value(val) => self.const_value_to_value(val, ty)
         }
     }
 
@@ -568,7 +590,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
 
             Repeat(ref operand, _) => {
                 let (elem_ty, length) = match dest_ty.sty {
-                    ty::TyArray(elem_ty, n) => (elem_ty, n.val.unwrap_u64()),
+                    ty::TyArray(elem_ty, n) => (elem_ty, n.unwrap_usize(self.tcx.tcx)),
                     _ => {
                         bug!(
                             "tried to assign array-repeat to non-array type {:?}",
@@ -592,7 +614,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
                 let src = self.eval_place(place)?;
                 let ty = self.place_ty(place);
-                let (_, len) = src.elem_ty_and_len(ty);
+                let (_, len) = src.elem_ty_and_len(ty, self.tcx.tcx);
                 self.write_primval(
                     dest,
                     PrimVal::from_u128(len as u128),
@@ -822,8 +844,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                     Literal::Value { ref value } => self.const_to_value(&value.val, ty)?,
 
                     Literal::Promoted { index } => {
+                        let instance = self.frame().instance;
                         self.read_global_as_value(GlobalId {
-                            instance: self.frame().instance,
+                            instance,
                             promoted: Some(index),
                         }, ty)?
                     }
@@ -997,7 +1020,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         Ok(())
     }
 
-    pub fn read_global_as_value(&self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
+    pub fn read_global_as_value(&mut self, gid: GlobalId<'tcx>, ty: Ty<'tcx>) -> EvalResult<'tcx, Value> {
         if self.tcx.is_static(gid.instance.def_id()).is_some() {
             let alloc_id = self
                 .tcx
@@ -1341,9 +1364,55 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
     }
 
-    pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
-        use syntax::ast::FloatTy;
+    pub fn validate_ptr_target(
+        &self,
+        ptr: MemoryPointer,
+        ptr_align: Align,
+        ty: Ty<'tcx>
+    ) -> EvalResult<'tcx> {
+        match ty.sty {
+            ty::TyBool => {
+                let val = self.memory.read_primval(ptr, ptr_align, 1)?;
+                match val {
+                    PrimVal::Bytes(0) | PrimVal::Bytes(1) => (),
+                    // TODO: This seems a little overeager, should reading at bool type already be insta-UB?
+                    _ => return err!(InvalidBool),
+                }
+            }
+            ty::TyChar => {
+                let c = self.memory.read_primval(ptr, ptr_align, 4)?.to_bytes()? as u32;
+                match ::std::char::from_u32(c) {
+                    Some(..) => (),
+                    None => return err!(InvalidChar(c as u128)),
+                }
+            }
 
+            ty::TyFnPtr(_) => {
+                self.memory.read_ptr_sized(ptr, ptr_align)?;
+            },
+            ty::TyRef(_, rty, _) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: rty, .. }) => {
+                self.read_ptr(ptr, ptr_align, rty)?;
+            }
+
+            ty::TyAdt(def, _) => {
+                if def.is_box() {
+                    self.read_ptr(ptr, ptr_align, ty.boxed_ty())?;
+                    return Ok(());
+                }
+
+                if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
+                    let size = scalar.value.size(self).bytes();
+                    self.memory.read_primval(ptr, ptr_align, size)?;
+                }
+            }
+
+            _ => (),
+        }
+        Ok(())
+    }
+
+    pub fn try_read_value(&self, ptr: Pointer, ptr_align: Align, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<Value>> {
         let layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
 
@@ -1352,81 +1421,27 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         }
 
         let ptr = ptr.to_ptr()?;
-        let val = match ty.sty {
-            ty::TyBool => {
-                let val = self.memory.read_primval(ptr, ptr_align, 1)?;
-                let val = match val {
-                    PrimVal::Bytes(0) => false,
-                    PrimVal::Bytes(1) => true,
-                    // TODO: This seems a little overeager, should reading at bool type already be insta-UB?
-                    _ => return err!(InvalidBool),
-                };
-                PrimVal::from_bool(val)
-            }
-            ty::TyChar => {
-                let c = self.memory.read_primval(ptr, ptr_align, 4)?.to_bytes()? as u32;
-                match ::std::char::from_u32(c) {
-                    Some(ch) => PrimVal::from_char(ch),
-                    None => return err!(InvalidChar(c as u128)),
-                }
-            }
 
-            ty::TyInt(int_ty) => {
-                use syntax::ast::IntTy::*;
-                let size = match int_ty {
-                    I8 => 1,
-                    I16 => 2,
-                    I32 => 4,
-                    I64 => 8,
-                    I128 => 16,
-                    Isize => self.memory.pointer_size(),
-                };
-                self.memory.read_primval(ptr, ptr_align, size)?
+        // Not the right place to do this
+        //self.validate_ptr_target(ptr, ptr_align, ty)?;
+
+        match layout.abi {
+            layout::Abi::Scalar(..) => {
+                let primval = self.memory.read_primval(ptr, ptr_align, layout.size.bytes())?;
+                Ok(Some(Value::ByVal(primval)))
             }
-
-            ty::TyUint(uint_ty) => {
-                use syntax::ast::UintTy::*;
-                let size = match uint_ty {
-                    U8 => 1,
-                    U16 => 2,
-                    U32 => 4,
-                    U64 => 8,
-                    U128 => 16,
-                    Usize => self.memory.pointer_size(),
-                };
-                self.memory.read_primval(ptr, ptr_align, size)?
+            layout::Abi::ScalarPair(ref a, ref b) => {
+                let (a, b) = (&a.value, &b.value);
+                let (a_size, b_size) = (a.size(self), b.size(self));
+                let a_ptr = ptr;
+                let b_offset = a_size.abi_align(b.align(self));
+                let b_ptr = ptr.offset(b_offset.bytes(), self)?.into();
+                let a_val = self.memory.read_primval(a_ptr, ptr_align, a_size.bytes())?;
+                let b_val = self.memory.read_primval(b_ptr, ptr_align, b_size.bytes())?;
+                Ok(Some(Value::ByValPair(a_val, b_val)))
             }
-
-            ty::TyFloat(FloatTy::F32) => {
-                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 4)?.to_bytes()?)
-            }
-            ty::TyFloat(FloatTy::F64) => {
-                PrimVal::Bytes(self.memory.read_primval(ptr, ptr_align, 8)?.to_bytes()?)
-            }
-
-            ty::TyFnPtr(_) => self.memory.read_ptr_sized(ptr, ptr_align)?,
-            ty::TyRef(_, rty, _) |
-            ty::TyRawPtr(ty::TypeAndMut { ty: rty, .. }) => {
-                return self.read_ptr(ptr, ptr_align, rty).map(Some)
-            }
-
-            ty::TyAdt(def, _) => {
-                if def.is_box() {
-                    return self.read_ptr(ptr, ptr_align, ty.boxed_ty()).map(Some);
-                }
-
-                if let layout::Abi::Scalar(ref scalar) = self.layout_of(ty)?.abi {
-                    let size = scalar.value.size(self).bytes();
-                    self.memory.read_primval(ptr, ptr_align, size)?
-                } else {
-                    return Ok(None);
-                }
-            }
-
-            _ => return Ok(None),
-        };
-
-        Ok(Some(Value::ByVal(val)))
+            _ => Ok(None),
+        }
     }
 
     pub fn frame(&self) -> &Frame<'mir, 'tcx> {
@@ -1466,7 +1481,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
                 let ptr = self.into_ptr(src)?;
                 // u64 cast is from usize to u64, which is always good
                 let valty = ValTy {
-                    value: ptr.to_value_with_len(length.val.unwrap_u64() ),
+                    value: ptr.to_value_with_len(length.unwrap_usize(self.tcx.tcx)),
                     ty: dest_ty,
                 };
                 self.write_value(valty, dest)

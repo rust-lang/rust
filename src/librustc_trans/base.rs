@@ -199,7 +199,7 @@ pub fn unsized_info<'cx, 'tcx>(cx: &CodegenCx<'cx, 'tcx>,
     let (source, target) = cx.tcx.struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::TyArray(_, len), &ty::TySlice(_)) => {
-            C_usize(cx, len.val.unwrap_u64())
+            C_usize(cx, len.unwrap_usize(cx.tcx))
         }
         (&ty::TyDynamic(..), &ty::TyDynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -1372,7 +1372,7 @@ mod temp_stable_hash_impls {
 }
 
 fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
-    use rustc::mir::interpret::{GlobalId, Value, PrimVal};
+    use rustc::mir::interpret::GlobalId;
     use rustc::middle::const_val::ConstVal;
 
     info!("loading wasm section {:?}", id);
@@ -1392,22 +1392,11 @@ fn fetch_wasm_section(tcx: TyCtxt, id: DefId) -> (String, Vec<u8>) {
     let param_env = ty::ParamEnv::reveal_all();
     let val = tcx.const_eval(param_env.and(cid)).unwrap();
 
-    let val = match val.val {
+    let const_val = match val.val {
         ConstVal::Value(val) => val,
         ConstVal::Unevaluated(..) => bug!("should be evaluated"),
     };
-    let val = match val {
-        Value::ByRef(ptr, _align) => ptr.into_inner_primval(),
-        ref v => bug!("should be ByRef, was {:?}", v),
-    };
-    let mem = match val {
-        PrimVal::Ptr(mem) => mem,
-        ref v => bug!("should be Ptr, was {:?}", v),
-    };
-    assert_eq!(mem.offset, 0);
-    let alloc = tcx
-        .interpret_interner
-        .get_alloc(mem.alloc_id)
-        .expect("miri allocation never successfully created");
+
+    let alloc = tcx.const_value_to_allocation((const_val, val.ty));
     (section.to_string(), alloc.bytes.clone())
 }
