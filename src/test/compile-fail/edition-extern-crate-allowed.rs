@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt;
+// aux-build:edition-extern-crate-allowed.rs
+// compile-flags: --edition 2015
+// compile-pass
 
-union U {
-    a: u8
-}
+#![deny(rust_2018_idioms)]
 
-impl fmt::Display for U {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe { write!(f, "Oh hai {}", self.a) }
-    }
-}
+extern crate edition_extern_crate_allowed;
 
-fn main() {
-    assert_eq!(U { a: 2 }.to_string(), "Oh hai 2");
-}
+fn main() {}

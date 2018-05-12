@@ -29,6 +29,6 @@ pub use self::load::load_dep_graph;
 pub use self::load::load_query_result_cache;
 pub use self::load::LoadResult;
 pub use self::save::save_dep_graph;
-pub use self::save::save_work_products;
-pub use self::work_product::save_trans_partition;
+pub use self::save::save_work_product_index;
+pub use self::work_product::copy_cgu_workproducts_to_incr_comp_cache_dir;
 pub use self::work_product::delete_workproduct_files;
