@@ -547,7 +547,8 @@ unsafe fn optimize(cgcx: &CodegenContext,
             llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
             llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
             let opt_level = config.opt_level.unwrap_or(llvm::CodeGenOptLevel::None);
-            with_llvm_pmb(llmod, &config, opt_level, &mut |b| {
+            let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal;
+            with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
                 llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
                 llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
             })
@@ -2042,6 +2043,7 @@ pub fn run_assembler(cgcx: &CodegenContext, handler: &Handler, assembly: &Path, 
 pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
                             config: &ModuleConfig,
                             opt_level: llvm::CodeGenOptLevel,
+                            prepare_for_thin_lto: bool,
                             f: &mut FnMut(llvm::PassManagerBuilderRef)) {
     use std::ptr;
 
@@ -2069,6 +2071,7 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
         config.merge_functions,
         config.vectorize_slp,
         config.vectorize_loop,
+        prepare_for_thin_lto,
         pgo_gen_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
         pgo_use_path.as_ref().map_or(ptr::null(), |s| s.as_ptr()),
     );
