@@ -13,7 +13,7 @@ use rustc::session::Session;
 
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir;
+use rustc::hir::{self, Destination};
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -91,6 +91,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(LabeledBlock, |v| v.visit_block(&b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
+                self.require_label_in_labeled_block(e.span, &label, "break");
+
                 let loop_id = match label.target_id.into() {
                     Ok(loop_id) => loop_id,
                     Err(hir::LoopIdError::OutsideLoopScope) => ast::DUMMY_NODE_ID,
@@ -109,14 +111,6 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 }
 
                 if self.cx == LabeledBlock {
-                    if label.label.is_none() {
-                        struct_span_err!(self.sess, e.span, E0695,
-                                        "unlabeled `break` inside of a labeled block")
-                            .span_label(e.span,
-                                        "`break` statements that would diverge to or through \
-                                        a labeled block need to bear a label")
-                            .emit();
-                    }
                     return;
                 }
 
@@ -156,6 +150,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.require_break_cx("break", e.span);
             }
             hir::ExprAgain(label) => {
+                self.require_label_in_labeled_block(e.span, &label, "continue");
+
                 if let Err(hir::LoopIdError::UnlabeledCfInWhileCondition) = label.target_id {
                     self.emit_unlabled_cf_in_while_condition(e.span, "continue");
                 }
@@ -193,6 +189,18 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         }
     }
 
+    fn require_label_in_labeled_block(&mut self, span: Span, label: &Destination, cf_type: &str) {
+        if self.cx == LabeledBlock {
+            if label.label.is_none() {
+                struct_span_err!(self.sess, span, E0695,
+                                "unlabeled `{}` inside of a labeled block", cf_type)
+                    .span_label(span,
+                                format!("`{}` statements that would diverge to or through \
+                                a labeled block need to bear a label", cf_type))
+                    .emit();
+            }
+        }
+    }
     fn emit_unlabled_cf_in_while_condition(&mut self, span: Span, cf_type: &str) {
         struct_span_err!(self.sess, span, E0590,
                          "`break` or `continue` with no label in the condition of a `while` loop")
