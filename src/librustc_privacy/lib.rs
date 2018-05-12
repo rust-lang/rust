@@ -30,6 +30,7 @@ use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::maps::Providers;
+use rustc::ty::subst::UnpackedKind;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast::{self, CRATE_NODE_ID, Ident};
 use syntax::symbol::keywords;
@@ -37,6 +38,7 @@ use syntax_pos::Span;
 
 use std::cmp;
 use std::mem::replace;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 
 mod diagnostics;
@@ -624,6 +626,7 @@ struct TypePrivacyVisitor<'a, 'tcx: 'a> {
     in_body: bool,
     span: Span,
     empty_tables: &'a ty::TypeckTables<'tcx>,
+    visited_anon_tys: FxHashSet<DefId>
 }
 
 impl<'a, 'tcx> TypePrivacyVisitor<'a, 'tcx> {
@@ -943,8 +946,15 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                             self.tcx.sess.span_err(self.span, &msg);
                             return true;
                         }
-                        // `Self` here is the same `TyAnon`, so skip it to avoid infinite recursion
-                        for subst in trait_ref.substs.iter().skip(1) {
+                        for subst in trait_ref.substs.iter() {
+                            // Skip repeated `TyAnon`s to avoid infinite recursion.
+                            if let UnpackedKind::Type(ty) = subst.unpack() {
+                                if let ty::TyAnon(def_id, ..) = ty.sty {
+                                    if !self.visited_anon_tys.insert(def_id) {
+                                        continue;
+                                    }
+                                }
+                            }
                             if subst.visit_with(self) {
                                 return true;
                             }
@@ -1677,6 +1687,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         in_body: false,
         span: krate.span,
         empty_tables: &empty_tables,
+        visited_anon_tys: FxHashSet()
     };
     intravisit::walk_crate(&mut visitor, krate);
 
