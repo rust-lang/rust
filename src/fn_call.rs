@@ -459,7 +459,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for EvalContext<'a, 'mir, '
                             promoted: None,
                         };
                         let const_val = self.const_eval(cid)?;
-                        let value = const_val.val.unwrap_u64();
+                        let value = const_val.unwrap_usize(self.tcx.tcx);
                         if value == name {
                             result = Some(path_value);
                             break;
