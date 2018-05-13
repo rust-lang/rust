@@ -98,6 +98,13 @@ pub fn value_to_const_value<'tcx>(
     mut val: Value,
     ty: Ty<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
+    let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+    match (val, &layout.abi) {
+        (Value::ByRef(..), _) |
+        (Value::ByVal(_), &layout::Abi::Scalar(_)) |
+        (Value::ByValPair(..), &layout::Abi::ScalarPair(..)) => {},
+        _ => bug!("bad value/layout combo: {:#?}, {:#?}", val, layout),
+    }
     let val = (|| {
         // Convert to ByVal or ByValPair if possible
         if let Value::ByRef(ptr, align) = val {

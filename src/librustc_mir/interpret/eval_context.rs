@@ -1416,10 +1416,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M
         let layout = self.layout_of(ty)?;
         self.memory.check_align(ptr, ptr_align)?;
 
-        if layout.size.bytes() == 0 {
-            return Ok(Some(Value::ByVal(PrimVal::Undef)));
-        }
-
         let ptr = ptr.to_ptr()?;
 
         // Not the right place to do this
