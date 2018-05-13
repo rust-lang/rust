@@ -327,16 +327,16 @@ impl ::std::str::FromStr for IgnoreList {
 /// Parsed command line options.
 #[derive(Clone, Debug, Default)]
 pub struct CliOptions {
-    skip_children: Option<bool>,
-    quiet: bool,
-    verbose: bool,
-    pub(super) config_path: Option<PathBuf>,
-    write_mode: Option<WriteMode>,
-    check: bool,
-    color: Option<Color>,
-    file_lines: FileLines, // Default is all lines in all files.
-    unstable_features: bool,
-    error_on_unformatted: Option<bool>,
+    pub skip_children: Option<bool>,
+    pub quiet: bool,
+    pub verbose: bool,
+    pub config_path: Option<PathBuf>,
+    pub write_mode: Option<WriteMode>,
+    pub check: bool,
+    pub color: Option<Color>,
+    pub file_lines: FileLines, // Default is all lines in all files.
+    pub unstable_features: bool,
+    pub error_on_unformatted: Option<bool>,
 }
 
 impl CliOptions {
@@ -348,16 +348,23 @@ impl CliOptions {
             return Err(format_err!("Can't use both `--verbose` and `--quiet`"));
         }
 
-        let unstable_features = matches.opt_present("unstable-features");
         let rust_nightly = option_env!("CFG_RELEASE_CHANNEL")
             .map(|c| c == "nightly")
             .unwrap_or(false);
-        if unstable_features && !rust_nightly {
-            return Err(format_err!(
-                "Unstable features are only available on Nightly channel"
-            ));
-        } else {
-            options.unstable_features = unstable_features;
+        if rust_nightly {
+            options.unstable_features = matches.opt_present("unstable-features");
+        }
+
+        if options.unstable_features {
+            if matches.opt_present("skip-children") {
+                options.skip_children = Some(true);
+            }
+            if matches.opt_present("error-on-unformatted") {
+                options.error_on_unformatted = Some(true);
+            }
+            if let Some(ref file_lines) = matches.opt_str("file-lines") {
+                options.file_lines = file_lines.parse().map_err(err_msg)?;
+            }
         }
 
         options.config_path = matches.opt_str("config-path").map(PathBuf::from);
@@ -387,17 +394,6 @@ impl CliOptions {
                 Ok(color) => options.color = Some(color),
                 _ => return Err(format_err!("Invalid color: {}", color)),
             }
-        }
-
-        if let Some(ref file_lines) = matches.opt_str("file-lines") {
-            options.file_lines = file_lines.parse().map_err(err_msg)?;
-        }
-
-        if matches.opt_present("skip-children") {
-            options.skip_children = Some(true);
-        }
-        if matches.opt_present("error-on-unformatted") {
-            options.error_on_unformatted = Some(true);
         }
 
         Ok(options)

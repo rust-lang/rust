@@ -112,18 +112,6 @@ fn make_opts() -> Options {
         "[Path for the configuration file]",
     );
     opts.optopt("", "emit", "What data to emit and how", WRITE_MODE_LIST);
-    opts.optflag(
-        "",
-        "error-on-unformatted",
-        "Error if unable to get comments or string literals within max_width, \
-         or they are left with trailing whitespaces",
-    );
-    opts.optopt(
-        "",
-        "file-lines",
-        "Format specified line ranges. Run with `--help file-lines` for more detail.",
-        "JSON",
-    );
     opts.optflagopt(
         "h",
         "help",
@@ -137,21 +125,48 @@ fn make_opts() -> Options {
          subset of the current config file used for formatting the current program.",
         "[minimal|default] PATH",
     );
-    opts.optflag("", "skip-children", "Don't reformat child modules");
-    opts.optflag(
-        "",
-        "unstable-features",
-        "Enables unstable features. Only available on nightly channel",
-    );
     opts.optflag("v", "verbose", "Print verbose output");
     opts.optflag("q", "quiet", "Print less output");
     opts.optflag("V", "version", "Show version information");
 
+    if is_nightly() {
+        opts.optflag(
+            "",
+            "unstable-features",
+            "Enables unstable features. Only available on nightly channel.",
+        );
+        opts.optflag(
+            "",
+            "error-on-unformatted",
+            "Error if unable to get comments or string literals within max_width, \
+             or they are left with trailing whitespaces (unstable).",
+        );
+        opts.optopt(
+            "",
+            "file-lines",
+            "Format specified line ranges. Run with `--help file-lines` for \
+             more detail (unstable).",
+            "JSON",
+        );
+        opts.optflag(
+            "",
+            "skip-children",
+            "Don't reformat child modules (unstable).",
+        );
+    }
+
     opts
+}
+
+fn is_nightly() -> bool {
+    option_env!("CFG_RELEASE_CHANNEL")
+        .map(|c| c == "nightly")
+        .unwrap_or(false)
 }
 
 fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
     let matches = opts.parse(env::args().skip(1))?;
+    let options = CliOptions::from_matches(&matches)?;
 
     match determine_operation(&matches)? {
         Operation::Help(HelpOp::None) => {
@@ -160,7 +175,7 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             Ok((WriteMode::None, Summary::default()))
         }
         Operation::Help(HelpOp::Config) => {
-            Config::print_docs(&mut stdout(), matches.opt_present("unstable-features"));
+            Config::print_docs(&mut stdout(), options.unstable_features);
             Ok((WriteMode::None, Summary::default()))
         }
         Operation::Help(HelpOp::FileLines) => {
@@ -183,7 +198,6 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
         }
         Operation::Stdin { input } => {
             // try to read config from local directory
-            let options = CliOptions::from_matches(&matches)?;
             let (mut config, _) = load_config(Some(Path::new(".")), Some(&options))?;
 
             // write_mode is always Display for Stdin.
@@ -191,15 +205,11 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
             config.set().verbose(Verbosity::Quiet);
 
             // parse file_lines
-            if let Some(ref file_lines) = matches.opt_str("file-lines") {
-                config
-                    .set()
-                    .file_lines(file_lines.parse().map_err(err_msg)?);
-                for f in config.file_lines().files() {
-                    match *f {
-                        FileName::Custom(ref f) if f == "stdin" => {}
-                        _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
-                    }
+            config.set().file_lines(options.file_lines);
+            for f in config.file_lines().files() {
+                match *f {
+                    FileName::Custom(ref f) if f == "stdin" => {}
+                    _ => eprintln!("Warning: Extra file listed in file_lines option '{}'", f),
                 }
             }
 
@@ -216,10 +226,7 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
         Operation::Format {
             files,
             minimal_config_path,
-        } => {
-            let options = CliOptions::from_matches(&matches)?;
-            format(files, minimal_config_path, options)
-        }
+        } => format(files, minimal_config_path, options),
     }
 }
 
