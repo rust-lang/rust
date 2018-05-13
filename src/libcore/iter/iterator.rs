@@ -366,8 +366,7 @@ pub trait Iterator {
     ///
     /// In other words, it zips two iterators together, into a single one.
     ///
-    /// When either iterator returns [`None`], all further calls to [`next`]
-    /// will return [`None`].
+    /// If either iterator returns [`None`], [`next`] will return [`None`].
     ///
     /// # Examples
     ///
