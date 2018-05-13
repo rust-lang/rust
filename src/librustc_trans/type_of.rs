@@ -213,10 +213,10 @@ pub trait LayoutLlvmExt<'tcx> {
 impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
     fn is_llvm_immediate(&self) -> bool {
         match self.abi {
-            layout::Abi::Uninhabited |
             layout::Abi::Scalar(_) |
             layout::Abi::Vector { .. } => true,
             layout::Abi::ScalarPair(..) => false,
+            layout::Abi::Uninhabited |
             layout::Abi::Aggregate { .. } => self.is_zst()
         }
     }
