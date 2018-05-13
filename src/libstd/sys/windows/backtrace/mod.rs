@@ -47,6 +47,7 @@ mod printing;
 pub mod gnu;
 
 pub use self::printing::{foreach_symbol_fileline, resolve_symname};
+use self::printing::{load_printing_fns_ex, load_printing_fns_64};
 
 pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceContext)> {
     let dbghelp = DynamicLibrary::open("dbghelp.dll")?;
@@ -55,21 +56,23 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
     let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn)?;
     let SymCleanup = sym!(dbghelp, "SymCleanup", SymCleanupFn)?;
 
-    // enum for holding the StackWalk function. Different from StackWalkVariant
-    // below, since there's no need to pass the function itself into
-    // the BacktraceContext
-    enum sw_fn_local {
-        SWExFn(StackWalkExFn),
-        SW64Fn(StackWalk64Fn),
-    }
+
     // StackWalkEx might not be present and we'll fall back to StackWalk64
-    let (StackWalkFn, variant) =
-        sym!(dbghelp, "StackWalkEx", StackWalkExFn)
-        .map(|f| (sw_fn_local::SWExFn(f), StackWalkVariant::StackWalkEx))
-        .or_else(|_|
-            sym!(dbghelp, "StackWalk64", StackWalk64Fn)
-            .map(|f| (sw_fn_local::SW64Fn(f), StackWalkVariant::StackWalk64))
-        )?;
+    let sw_var = match sym!(dbghelp, "StackWalkEx", StackWalkExFn) {
+         Ok(StackWalkEx) =>
+            StackWalkVariant::StackWalkEx(
+                StackWalkEx,
+                load_printing_fns_ex(&dbghelp)?,
+            ),
+        Err(e) => match sym!(dbghelp, "StackWalk64", StackWalk64Fn) {
+            Ok(StackWalk64) =>
+                StackWalkVariant::StackWalk64(
+                    StackWalk64,
+                    load_printing_fns_64(&dbghelp)?,
+                ),
+            Err(..) => return Err(e),
+        },
+    };
 
     // Allocate necessary structures for doing the stack walk
     let process = unsafe { c::GetCurrentProcess() };
@@ -77,7 +80,7 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
     let backtrace_context = BacktraceContext {
         handle: process,
         SymCleanup,
-        StackWalkVariant: variant,
+        StackWalkVariant: sw_var,
         dbghelp,
     };
 
@@ -88,9 +91,9 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
     }
 
     // And now that we're done with all the setup, do the stack walking!
-    match StackWalkFn {
-        sw_fn_local::SWExFn(f) => set_frames_ex(f, frames, backtrace_context, process),
-        sw_fn_local::SW64Fn(f) => set_frames_64(f, frames, backtrace_context, process),
+    match backtrace_context.StackWalkVariant {
+        StackWalkVariant::StackWalkEx(f, _) => set_frames_ex(f, frames, backtrace_context, process),
+        StackWalkVariant::StackWalk64(f, _) => set_frames_64(f, frames, backtrace_context, process),
     }
 }
 
@@ -259,8 +262,8 @@ fn init_frame_64(frame: &mut c::STACKFRAME64, ctx: &c::CONTEXT) -> c::DWORD {
 }
 
 enum StackWalkVariant {
-    StackWalkEx,
-    StackWalk64,
+    StackWalkEx(StackWalkExFn, printing::PrintingFnsEx),
+    StackWalk64(StackWalk64Fn, printing::PrintingFns64),
 }
 
 
@@ -268,8 +271,10 @@ pub struct BacktraceContext {
     handle: c::HANDLE,
     SymCleanup: SymCleanupFn,
     // Only used in printing for msvc and not gnu
+    // The gnu version is effectively a ZST dummy.
     #[allow(dead_code)]
     StackWalkVariant: StackWalkVariant,
+    // keeping DynamycLibrary loaded until its functions no longer needed
     #[allow(dead_code)]
     dbghelp: DynamicLibrary,
 }

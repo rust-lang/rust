@@ -15,7 +15,37 @@ use mem;
 use sys::backtrace::BacktraceContext;
 use sys::backtrace::StackWalkVariant;
 use sys::c;
+use sys::dynamic_lib::DynamicLibrary;
 use sys_common::backtrace::Frame;
+
+
+// Structs holding printing functions and loaders for them
+// Two versions depending on whether dbghelp.dll has StackWalkEx or not
+// (the former being in newer Windows versions, the older being in Win7 and before)
+pub struct PrintingFnsEx {
+    resolve_symname: SymFromInlineContextFn,
+    sym_get_line: SymGetLineFromInlineContextFn,
+}
+pub struct PrintingFns64 {
+    resolve_symname: SymFromAddrFn,
+    sym_get_line: SymGetLineFromAddr64Fn,
+}
+
+pub fn load_printing_fns_ex(dbghelp: &DynamicLibrary) -> io::Result<PrintingFnsEx> {
+    Ok(PrintingFnsEx{
+        resolve_symname: sym!(dbghelp, "SymFromInlineContext",
+                              SymFromInlineContextFn)?,
+        sym_get_line: sym!(dbghelp, "SymGetLineFromInlineContext",
+                           SymGetLineFromInlineContextFn)?,
+    })
+}
+pub fn load_printing_fns_64(dbghelp: &DynamicLibrary) -> io::Result<PrintingFns64> {
+    Ok(PrintingFns64{
+        resolve_symname: sym!(dbghelp, "SymFromAddr", SymFromAddrFn)?,
+        sym_get_line: sym!(dbghelp, "SymGetLineFromAddr64",
+                     SymGetLineFromAddr64Fn)?,
+    })
+}
 
 type SymFromInlineContextFn =
     unsafe extern "system" fn(c::HANDLE, u64, c::ULONG, *mut u64, *mut c::SYMBOL_INFO) -> c::BOOL;
@@ -39,14 +69,11 @@ where
     F: FnOnce(Option<&str>) -> io::Result<()>,
 {
     match context.StackWalkVariant {
-        StackWalkVariant::StackWalkEx => {
-            let SymFromInlineContext =
-                sym!(&context.dbghelp, "SymFromInlineContext",SymFromInlineContextFn)?;
-            resolve_symname_from_inline_context(SymFromInlineContext, frame, callback, context)
+        StackWalkVariant::StackWalkEx(_, ref fns) => {
+            resolve_symname_from_inline_context(fns.resolve_symname, frame, callback, context)
         },
-        StackWalkVariant::StackWalk64 => {
-            let SymFromAddr = sym!(&context.dbghelp, "SymFromAddr", SymFromAddrFn)?;
-            resolve_symname_from_addr(SymFromAddr, frame, callback, context)
+        StackWalkVariant::StackWalk64(_, ref fns) => {
+            resolve_symname_from_addr(fns.resolve_symname, frame, callback, context)
         }
     }
 }
@@ -134,20 +161,10 @@ where
     F: FnMut(&[u8], u32) -> io::Result<()>,
 {
     match context.StackWalkVariant {
-        StackWalkVariant::StackWalkEx => {
-            let SymGetLineFromInlineContext =
-                sym!(&context.dbghelp, "SymGetLineFromInlineContext",
-                     SymGetLineFromInlineContextFn)?;
-            foreach_symbol_fileline_ex(SymGetLineFromInlineContext,
-                frame, f, context)
-        },
-        StackWalkVariant::StackWalk64 => {
-            let SymGetLineFromAddr64 =
-                sym!(&context.dbghelp, "SymGetLineFromAddr64",
-                     SymGetLineFromAddr64Fn)?;
-            foreach_symbol_fileline_64(SymGetLineFromAddr64,
-                frame, f, context)
-        }
+        StackWalkVariant::StackWalkEx(_, ref fns) =>
+            foreach_symbol_fileline_ex(fns.sym_get_line, frame, f, context),
+        StackWalkVariant::StackWalk64(_, ref fns) =>
+            foreach_symbol_fileline_64(fns.sym_get_line, frame, f, context),
     }
 }
 
