@@ -21,6 +21,15 @@ use rustc_version::{version_meta, version_meta_for, Channel, Version, VersionMet
 use ansi_term::Colour::Red;
 
 fn main() {
+    check_rustc_version();
+
+    // Forward the profile to the main compilation
+    println!("cargo:rustc-env=PROFILE={}", env::var("PROFILE").unwrap());
+    // Don't rebuild even if nothing changed
+    println!("cargo:rerun-if-changed=build.rs");
+}
+
+fn check_rustc_version() {
     let string = include_str!("min_version.txt");
     let min_version_meta = version_meta_for(string)
         .expect("Could not parse version string in min_version.txt");
@@ -30,6 +39,12 @@ fn main() {
     let min_version = min_version_meta.clone().semver;
     let min_date_str = min_version_meta.clone().commit_date
         .expect("min_version.txt does not contain a rustc commit date");
+
+    // Dev channel (rustc built from git) does not have any date or commit information in rustc -vV
+    // `current_version_meta.commit_date` would crash, so we return early here.
+    if current_version_meta.channel == Channel::Dev {
+        return
+    }
 
     let current_version = current_version_meta.clone().semver;
     let current_date_str = current_version_meta.clone().commit_date
@@ -69,11 +84,6 @@ fn main() {
         print_version_err(&current_version, &*current_date_str);
         panic!("Aborting compilation due to incompatible compiler.")
     }
-
-    // Forward the profile to the main compilation
-    println!("cargo:rustc-env=PROFILE={}", env::var("PROFILE").unwrap());
-    // Don't rebuild even if nothing changed
-    println!("cargo:rerun-if-changed=build.rs");
 }
 
 fn correct_channel(version_meta: &VersionMeta) -> bool {
