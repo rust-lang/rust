@@ -156,19 +156,6 @@ where
             }
             write_system_newlines(out, text, config)?;
         }
-        WriteMode::Diff => {
-            let filename = filename_to_path();
-            if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {
-                let mismatch = make_diff(&ori, &fmt, 3);
-                let has_diff = !mismatch.is_empty();
-                print_diff(
-                    mismatch,
-                    |line_num| format!("Diff in {} at line {}:", filename.display(), line_num),
-                    config,
-                );
-                return Ok(has_diff);
-            }
-        }
         WriteMode::Modified => {
             let filename = filename_to_path();
             if let Ok((ori, fmt)) = source_and_formatted_text(text, filename, config) {

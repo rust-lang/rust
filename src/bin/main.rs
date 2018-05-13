@@ -26,7 +26,7 @@ use getopts::{Matches, Options};
 
 use rustfmt::{
     emit_post_matter, emit_pre_matter, format_and_emit_report, load_config, CliOptions, Config,
-    FileName, FmtResult, Input, Summary, Verbosity, WriteMode, WRITE_MODE_LIST,
+    FileName, FmtResult, Input, Summary, Verbosity, WriteMode,
 };
 
 fn main() {
@@ -111,7 +111,13 @@ fn make_opts() -> Options {
          found reverts to the input file path",
         "[Path for the configuration file]",
     );
-    opts.optopt("", "emit", "What data to emit and how", WRITE_MODE_LIST);
+    let is_nightly = is_nightly();
+    let emit_opts = if is_nightly {
+        "[files|stdout|coverage|checkstyle]"
+    } else {
+        "[files|stdout]"
+    };
+    opts.optopt("", "emit", "What data to emit and how", emit_opts);
     opts.optflagopt(
         "h",
         "help",
@@ -129,7 +135,7 @@ fn make_opts() -> Options {
     opts.optflag("q", "quiet", "Print less output");
     opts.optflag("V", "version", "Show version information");
 
-    if is_nightly() {
+    if is_nightly {
         opts.optflag(
             "",
             "unstable-features",

@@ -14,7 +14,7 @@ use config::config_type::ConfigType;
 use config::file_lines::FileLines;
 use config::lists::*;
 use config::Config;
-use {FmtResult, WRITE_MODE_LIST};
+use FmtResult;
 
 use failure::err_msg;
 
@@ -174,14 +174,12 @@ configuration_option_enum! { ReportTactic:
 }
 
 configuration_option_enum! { WriteMode:
-    // Backs the original file up and overwrites the original.
-    Replace,
     // Overwrites original file without backup.
     Overwrite,
+    // Backs the original file up and overwrites the original.
+    Replace,
     // Writes the output to stdout.
     Display,
-    // Writes the diff to stdout.
-    Diff,
     // Displays how much of the input file was processed
     Coverage,
     // Unfancy stdout
@@ -195,6 +193,13 @@ configuration_option_enum! { WriteMode:
     // Rustfmt shouldn't output anything formatting-like (e.g., emit a help message).
     None,
 }
+
+const STABLE_WRITE_MODES: [WriteMode; 4] = [
+    WriteMode::Replace,
+    WriteMode::Overwrite,
+    WriteMode::Display,
+    WriteMode::Check,
+];
 
 configuration_option_enum! { Color:
     // Always use color, whether it is a piped or terminal output
@@ -331,7 +336,7 @@ pub struct CliOptions {
     pub quiet: bool,
     pub verbose: bool,
     pub config_path: Option<PathBuf>,
-    pub write_mode: Option<WriteMode>,
+    pub write_mode: WriteMode,
     pub check: bool,
     pub color: Option<Color>,
     pub file_lines: FileLines, // Default is all lines in all files.
@@ -355,7 +360,7 @@ impl CliOptions {
             options.unstable_features = matches.opt_present("unstable-features");
         }
 
-        if options.unstable_features {
+        if !options.unstable_features {
             if matches.opt_present("skip-children") {
                 options.skip_children = Some(true);
             }
@@ -375,16 +380,21 @@ impl CliOptions {
                 return Err(format_err!("Invalid to use `--emit` and `--check`"));
             }
             if let Ok(write_mode) = write_mode_from_emit_str(emit_str) {
-                if write_mode == WriteMode::Overwrite && matches.opt_present("backup") {
-                    options.write_mode = Some(WriteMode::Replace);
-                } else {
-                    options.write_mode = Some(write_mode);
-                }
+                options.write_mode = write_mode;
             } else {
+                return Err(format_err!("Invalid value for `--emit`"));
+            }
+        }
+
+        if options.write_mode == WriteMode::Overwrite && matches.opt_present("backup") {
+            options.write_mode = WriteMode::Replace;
+        }
+
+        if !rust_nightly {
+            if !STABLE_WRITE_MODES.contains(&options.write_mode) {
                 return Err(format_err!(
-                    "Invalid value for `--emit`: {}, expected one of {}",
-                    emit_str,
-                    WRITE_MODE_LIST
+                    "Invalid value for `--emit` - using an unstable \
+                     value without `--unstable-features`",
                 ));
             }
         }
@@ -417,8 +427,8 @@ impl CliOptions {
         }
         if self.check {
             config.set().write_mode(WriteMode::Check);
-        } else if let Some(write_mode) = self.write_mode {
-            config.set().write_mode(write_mode);
+        } else {
+            config.set().write_mode(self.write_mode);
         }
         if let Some(color) = self.color {
             config.set().color(color);

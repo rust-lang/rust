@@ -68,9 +68,6 @@ pub use config::{file_lines, load_config, Config, Verbosity, WriteMode};
 
 pub type FmtResult<T> = std::result::Result<T, failure::Error>;
 
-// FIXME: this is badly named since the user-facing name is `emit` not `write-mode`.
-pub const WRITE_MODE_LIST: &str = "[files|stdout|coverage|checkstyle]";
-
 #[macro_use]
 mod utils;
 
