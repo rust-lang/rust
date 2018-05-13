@@ -648,12 +648,6 @@ fn link_natively(sess: &Session,
         for obj in &sess.target.target.options.pre_link_objects_exe_crt {
             cmd.arg(root.join(obj));
         }
-
-        for obj in &sess.target.target.options.pre_link_objects_exe_crt_sys {
-            if flavor == LinkerFlavor::Gcc {
-                cmd.arg(format!("-l:{}", obj));
-            }
-        }
     }
 
     if sess.target.target.options.is_like_emscripten {
@@ -678,11 +672,6 @@ fn link_natively(sess: &Session,
         cmd.arg(root.join(obj));
     }
     if sess.crt_static() {
-        for obj in &sess.target.target.options.post_link_objects_crt_sys {
-            if flavor == LinkerFlavor::Gcc {
-                cmd.arg(format!("-l:{}", obj));
-            }
-        }
         for obj in &sess.target.target.options.post_link_objects_crt {
             cmd.arg(root.join(obj));
         }
