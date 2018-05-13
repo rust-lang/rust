@@ -16,15 +16,15 @@ use self::CombineMapType::*;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
 use super::unify_key;
 
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::lazy_btree_map::LazyBTreeMap;
 use rustc_data_structures::unify as ut;
 use ty::{self, Ty, TyCtxt};
 use ty::{Region, RegionVid};
 use ty::ReStatic;
 use ty::{BrFresh, ReLateBound, ReVar};
 
-use std::collections::BTreeMap;
 use std::{cmp, fmt, mem, u32};
 
 mod taint;
@@ -81,7 +81,7 @@ pub type VarInfos = IndexVec<RegionVid, RegionVariableInfo>;
 pub struct RegionConstraintData<'tcx> {
     /// Constraints of the form `A <= B`, where either `A` or `B` can
     /// be a region variable (or neither, as it happens).
-    pub constraints: BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+    pub constraints: LazyBTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
 
     /// A "verify" is something that we need to verify after inference
     /// is done, but which does not directly affect inference in any
