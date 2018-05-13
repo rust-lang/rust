@@ -3278,7 +3278,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 span: Span,
                                 variant: &'tcx ty::VariantDef,
                                 ast_fields: &'gcx [hir::Field],
-                                check_completeness: bool) {
+                                check_completeness: bool) -> bool {
         let tcx = self.tcx;
 
         let adt_ty_hint =
@@ -3380,6 +3380,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           truncated_fields_error))
                 .emit();
         }
+        error_happened
     }
 
     fn check_struct_fields_on_error(&self,
@@ -3478,24 +3479,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span, variant, fields,
-                                      base_expr.is_none());
+        let error_happened = self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span,
+                                                           variant, fields, base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
-            self.check_expr_has_type_or_error(base_expr, struct_ty);
-            match struct_ty.sty {
-                ty::TyAdt(adt, substs) if adt.is_struct() => {
-                    let fru_field_types = adt.non_enum_variant().fields.iter().map(|f| {
-                        self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
-                    }).collect();
+            // If check_expr_struct_fields hit an error, do not attempt to populate
+            // the fields with the base_expr. This could cause us to hit errors later
+            // when certain fields are assumed to exist that in fact do not.
+            if !error_happened {
+                self.check_expr_has_type_or_error(base_expr, struct_ty);
+                match struct_ty.sty {
+                    ty::TyAdt(adt, substs) if adt.is_struct() => {
+                        let fru_field_types = adt.non_enum_variant().fields.iter().map(|f| {
+                            self.normalize_associated_types_in(expr.span, &f.ty(self.tcx, substs))
+                        }).collect();
 
-                    self.tables
-                        .borrow_mut()
-                        .fru_field_types_mut()
-                        .insert(expr.hir_id, fru_field_types);
-                }
-                _ => {
-                    span_err!(self.tcx.sess, base_expr.span, E0436,
-                              "functional record update syntax requires a struct");
+                        self.tables
+                            .borrow_mut()
+                            .fru_field_types_mut()
+                            .insert(expr.hir_id, fru_field_types);
+                    }
+                    _ => {
+                        span_err!(self.tcx.sess, base_expr.span, E0436,
+                                  "functional record update syntax requires a struct");
+                    }
                 }
             }
         }
