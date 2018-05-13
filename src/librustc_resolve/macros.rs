@@ -24,7 +24,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
 use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
-use syntax::ext::hygiene::{Mark, MarkKind};
+use syntax::ext::hygiene::{self, Mark, MarkKind};
 use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
@@ -328,7 +328,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         for did in self.unused_macros.iter() {
             let id_span = match *self.macro_map[did] {
                 SyntaxExtension::NormalTT { def_info, .. } => def_info,
-                SyntaxExtension::DeclMacro(.., osp) => osp,
+                SyntaxExtension::DeclMacro(.., osp, _) => osp,
                 _ => None,
             };
             if let Some((id, span)) = id_span {
@@ -371,7 +371,7 @@ impl<'a> Resolver<'a> {
         };
         for path in traits {
             match self.resolve_macro(scope, path, MacroKind::Derive, force) {
-                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
+                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs, _) = *ext {
                     if inert_attrs.contains(&attr_name) {
                         // FIXME(jseyfried) Avoid `mem::replace` here.
                         let dummy_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
@@ -755,7 +755,7 @@ impl<'a> Resolver<'a> {
         let def_id = self.definitions.local_def_id(item.id);
         let ext = Lrc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features_untracked(),
-                                               item));
+                                               item, hygiene::default_edition()));
         self.macro_map.insert(def_id, ext);
 
         let def = match item.node { ast::ItemKind::MacroDef(ref def) => def, _ => unreachable!() };
@@ -803,14 +803,15 @@ impl<'a> Resolver<'a> {
 
         match *ext {
             // If `ext` is a procedural macro, check if we've already warned about it
-            AttrProcMacro(_) | ProcMacro(_) => if !self.warned_proc_macros.insert(name) { return; },
+            AttrProcMacro(..) | ProcMacro(..) =>
+                if !self.warned_proc_macros.insert(name) { return; },
             _ => return,
         }
 
         let warn_msg = match *ext {
-            AttrProcMacro(_) => "attribute procedural macros cannot be \
-                                 imported with `#[macro_use]`",
-            ProcMacro(_) => "procedural macros cannot be imported with `#[macro_use]`",
+            AttrProcMacro(..) => "attribute procedural macros cannot be \
+                                  imported with `#[macro_use]`",
+            ProcMacro(..) => "procedural macros cannot be imported with `#[macro_use]`",
             _ => return,
         };
 

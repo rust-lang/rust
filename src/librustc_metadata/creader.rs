@@ -35,6 +35,7 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
+use syntax::edition::Edition;
 use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax::visit;
@@ -535,7 +536,10 @@ impl<'a> CrateLoader<'a> {
             mem::transmute::<*mut u8, fn(&mut Registry)>(sym)
         };
 
-        struct MyRegistrar(Vec<(ast::Name, Lrc<SyntaxExtension>)>);
+        struct MyRegistrar {
+            extensions: Vec<(ast::Name, Lrc<SyntaxExtension>)>,
+            edition: Edition,
+        }
 
         impl Registry for MyRegistrar {
             fn register_custom_derive(&mut self,
@@ -544,36 +548,38 @@ impl<'a> CrateLoader<'a> {
                                       attributes: &[&'static str]) {
                 let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
                 let derive = ProcMacroDerive::new(expand, attrs.clone());
-                let derive = SyntaxExtension::ProcMacroDerive(Box::new(derive), attrs);
-                self.0.push((Symbol::intern(trait_name), Lrc::new(derive)));
+                let derive = SyntaxExtension::ProcMacroDerive(
+                    Box::new(derive), attrs, self.edition
+                );
+                self.extensions.push((Symbol::intern(trait_name), Lrc::new(derive)));
             }
 
             fn register_attr_proc_macro(&mut self,
                                         name: &str,
                                         expand: fn(TokenStream, TokenStream) -> TokenStream) {
                 let expand = SyntaxExtension::AttrProcMacro(
-                    Box::new(AttrProcMacro { inner: expand })
+                    Box::new(AttrProcMacro { inner: expand }), self.edition
                 );
-                self.0.push((Symbol::intern(name), Lrc::new(expand)));
+                self.extensions.push((Symbol::intern(name), Lrc::new(expand)));
             }
 
             fn register_bang_proc_macro(&mut self,
                                         name: &str,
                                         expand: fn(TokenStream) -> TokenStream) {
                 let expand = SyntaxExtension::ProcMacro(
-                    Box::new(BangProcMacro { inner: expand })
+                    Box::new(BangProcMacro { inner: expand }), self.edition
                 );
-                self.0.push((Symbol::intern(name), Lrc::new(expand)));
+                self.extensions.push((Symbol::intern(name), Lrc::new(expand)));
             }
         }
 
-        let mut my_registrar = MyRegistrar(Vec::new());
+        let mut my_registrar = MyRegistrar { extensions: Vec::new(), edition: root.edition };
         registrar(&mut my_registrar);
 
         // Intentionally leak the dynamic library. We can't ever unload it
         // since the library can make things that will live arbitrarily long.
         mem::forget(lib);
-        my_registrar.0
+        my_registrar.extensions
     }
 
     /// Look for a plugin registrar. Returns library path, crate

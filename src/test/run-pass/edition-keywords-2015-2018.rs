@@ -28,14 +28,14 @@ pub fn check_async() {
 
     if passes_ident!(async) == 1 {} // OK
     if passes_ident!(r#async) == 1 {} // OK
-    one_async::async(); // OK
-    one_async::r#async(); // OK
+    // one_async::async(); // ERROR, unresolved name
+    // one_async::r#async(); // ERROR, unresolved name
     two_async::async(); // OK
     two_async::r#async(); // OK
 }
 
 mod one_async {
-    produces_async! {} // ERROR, FIXME
+    // produces_async! {} // ERROR, reserved
 }
 mod two_async {
     produces_async_raw! {} // OK
@@ -54,13 +54,13 @@ pub fn check_proc() {
     // if passes_ident!(proc) == 1 {} // ERROR, reserved
     if passes_ident!(r#proc) == 1 {} // OK
     // one_proc::proc(); // ERROR, reserved
-    // one_proc::r#proc(); // OK, FIXME
+    one_proc::r#proc(); // OK
     // two_proc::proc(); // ERROR, reserved
     two_proc::r#proc(); // OK
 }
 
 mod one_proc {
-    // produces_proc! {} // OK, FIXME
+    produces_proc! {} // OK
 }
 mod two_proc {
     produces_proc_raw! {} // OK

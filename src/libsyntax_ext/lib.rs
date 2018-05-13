@@ -54,6 +54,7 @@ pub mod proc_macro_impl;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
+use syntax::ext::hygiene;
 use syntax::symbol::Symbol;
 
 pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
@@ -74,6 +75,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                         allow_internal_unstable: false,
                         allow_internal_unsafe: false,
                         unstable_feature: None,
+                        edition: hygiene::default_edition(),
                     });
         )* }
     }
@@ -128,7 +130,8 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
                 def_info: None,
                 allow_internal_unstable: true,
                 allow_internal_unsafe: false,
-                unstable_feature: None
+                unstable_feature: None,
+                edition: hygiene::default_edition(),
             });
 
     for (name, ext) in user_exts {

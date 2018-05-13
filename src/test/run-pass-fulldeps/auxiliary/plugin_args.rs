@@ -20,6 +20,7 @@ extern crate rustc_plugin;
 
 use std::borrow::ToOwned;
 use syntax::ast;
+use syntax::ext::hygiene;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::base::{TTMacroExpander, ExtCtxt, MacResult, MacEager, NormalTT};
 use syntax::print::pprust;
@@ -54,5 +55,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
             allow_internal_unstable: false,
             allow_internal_unsafe: false,
             unstable_feature: None,
+            edition: hygiene::default_edition(),
         });
 }

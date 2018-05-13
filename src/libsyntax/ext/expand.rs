@@ -502,7 +502,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 span: None,
                 allow_internal_unstable: false,
                 allow_internal_unsafe: false,
-                edition: hygiene::default_edition(),
+                edition: ext.edition(),
             }
         });
 
@@ -521,7 +521,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 items.push(item);
                 Some(kind.expect_from_annotatables(items))
             }
-            AttrProcMacro(ref mac) => {
+            AttrProcMacro(ref mac, ..) => {
                 self.gate_proc_macro_attr_item(attr.span, &item);
                 let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
                     Annotatable::Item(item) => token::NtItem(item),
@@ -610,7 +610,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                           allow_internal_unstable,
                                           allow_internal_unsafe,
                                           // can't infer this type
-                                          unstable_feature: Option<(Symbol, u32)>| {
+                                          unstable_feature: Option<(Symbol, u32)>,
+                                          edition| {
 
             // feature-gate the macro invocation
             if let Some((feature, issue)) = unstable_feature {
@@ -643,16 +644,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     span: def_site_span,
                     allow_internal_unstable,
                     allow_internal_unsafe,
-                    edition: hygiene::default_edition(),
+                    edition,
                 },
             });
             Ok(())
         };
 
         let opt_expanded = match *ext {
-            DeclMacro(ref expand, def_span) => {
+            DeclMacro(ref expand, def_span, edition) => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_span.map(|(_, s)| s),
-                                                                    false, false, None) {
+                                                                    false, false, None,
+                                                                    edition) {
                     dummy_span
                 } else {
                     kind.make_from(expand.expand(self.cx, span, mac.node.stream()))
@@ -665,11 +667,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 allow_internal_unstable,
                 allow_internal_unsafe,
                 unstable_feature,
+                edition,
             } => {
                 if let Err(dummy_span) = validate_and_set_expn_info(self, def_info.map(|(_, s)| s),
                                                                     allow_internal_unstable,
                                                                     allow_internal_unsafe,
-                                                                    unstable_feature) {
+                                                                    unstable_feature,
+                                                                    edition) {
                     dummy_span
                 } else {
                     kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
@@ -712,7 +716,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.dummy(span)
             }
 
-            ProcMacro(ref expandfun) => {
+            ProcMacro(ref expandfun, edition) => {
                 if ident.name != keywords::Invalid.name() {
                     let msg =
                         format!("macro {}! expects no ident argument, given '{}'", path, ident);
@@ -731,7 +735,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             // FIXME probably want to follow macro_rules macros here.
                             allow_internal_unstable: false,
                             allow_internal_unsafe: false,
-                            edition: hygiene::default_edition(),
+                            edition,
                         },
                     });
 
@@ -806,12 +810,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 span: None,
                 allow_internal_unstable: false,
                 allow_internal_unsafe: false,
-                edition: hygiene::default_edition(),
+                edition: ext.edition(),
             }
         };
 
         match *ext {
-            ProcMacroDerive(ref ext, _) => {
+            ProcMacroDerive(ref ext, ..) => {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
