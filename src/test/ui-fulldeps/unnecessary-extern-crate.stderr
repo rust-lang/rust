@@ -14,55 +14,55 @@ error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:19:1
    |
 LL | extern crate alloc as x;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc as x`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc as x;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:25:1
    |
 LL | pub extern crate test as y;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use test as y`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use test as y;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:28:1
    |
 LL | pub extern crate libc;
-   | ^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use libc`
+   | ^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use libc;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:34:5
    |
 LL |     extern crate alloc;
-   |     ^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc`
+   |     ^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:37:5
    |
 LL |     extern crate alloc as x;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc as x`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc as x;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:40:5
    |
 LL |     pub extern crate test;
-   |     ^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use test`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use test;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:43:5
    |
 LL |     pub extern crate test as y;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use test as y`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `pub use`: `pub use test as y;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:47:9
    |
 LL |         extern crate alloc;
-   |         ^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc`
+   |         ^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc;`
 
 error: `extern crate` is unnecessary in the new edition
   --> $DIR/unnecessary-extern-crate.rs:50:9
    |
 LL |         extern crate alloc as x;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc as x`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: use `use`: `use alloc as x;`
 
 error: aborting due to 10 previous errors
 

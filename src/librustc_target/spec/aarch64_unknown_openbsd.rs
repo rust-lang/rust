@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,19 +12,16 @@ use spec::{LinkerFlavor, Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::openbsd_base::opts();
-    base.cpu = "pentium4".to_string();
-    base.max_atomic_width = Some(64);
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m32".to_string());
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-fuse-ld=lld".to_string());
-    base.stack_probes = true;
+    base.max_atomic_width = Some(128);
+    base.abi_blacklist = super::arm_base::abi_blacklist();
 
     Ok(Target {
-        llvm_target: "i686-unknown-openbsd".to_string(),
+        llvm_target: "aarch64-unknown-openbsd".to_string(),
         target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
+        target_pointer_width: "64".to_string(),
         target_c_int_width: "32".to_string(),
-        data_layout: "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128".to_string(),
-        arch: "x86".to_string(),
+        data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
+        arch: "aarch64".to_string(),
         target_os: "openbsd".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),

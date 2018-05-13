@@ -1568,10 +1568,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExternCrate {
 
                 if let Some(orig) = orig {
                     err.span_suggestion(it.span, &help,
-                        format!("{}use {} as {}", pub_, orig, it.name));
+                        format!("{}use {} as {};", pub_, orig, it.name));
                 } else {
                     err.span_suggestion(it.span, &help,
-                        format!("{}use {}", pub_, it.name));
+                        format!("{}use {};", pub_, it.name));
                 }
             } else {
                 err.span_suggestion(it.span, "remove it", "".into());
