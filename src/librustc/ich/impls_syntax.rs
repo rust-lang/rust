@@ -314,6 +314,7 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
         token::Token::Pound |
         token::Token::Dollar |
         token::Token::Question |
+        token::Token::SingleQuote |
         token::Token::Whitespace |
         token::Token::Comment |
         token::Token::Eof => {}

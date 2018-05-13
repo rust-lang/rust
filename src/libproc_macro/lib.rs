@@ -487,7 +487,7 @@ impl PartialEq<FileName> for SourceFile {
 pub enum TokenTree {
     /// A token stream surrounded by bracket delimiters.
     Group(Group),
-    /// An identifier or lifetime identifier.
+    /// An identifier.
     Ident(Ident),
     /// A single punctuation character (`+`, `,`, `$`, etc.).
     Punct(Punct),
@@ -702,9 +702,10 @@ impl !Sync for Punct {}
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub enum Spacing {
-    /// e.g. `+` is `Alone` in `+ =`, `+ident` or `+()`.
+    /// E.g. `+` is `Alone` in `+ =`, `+ident` or `+()`.
     Alone,
-    /// e.g. `+` is `Joint` in `+=` or `+#`.
+    /// E.g. `+` is `Joint` in `+=` or `'#`.
+    /// Additionally, single quote `'` can join with identifiers to form lifetimes `'ident`.
     Joint,
 }
 
@@ -717,8 +718,8 @@ impl Punct {
     /// which can be further configured with the `set_span` method below.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
-        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%',
-                                       '^', '&', '|', '@', '.', ',', ';', ':', '#', '$', '?'];
+        const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%', '^',
+                                       '&', '|', '@', '.', ',', ';', ':', '#', '$', '?', '\''];
         if !LEGAL_CHARS.contains(&ch) {
             panic!("unsupported character `{:?}`", ch)
         }
@@ -766,7 +767,7 @@ impl fmt::Display for Punct {
     }
 }
 
-/// An identifier (`ident`) or lifetime identifier (`'ident`).
+/// An identifier (`ident`).
 #[derive(Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Ident {
@@ -783,7 +784,7 @@ impl !Sync for Ident {}
 impl Ident {
     /// Creates a new `Ident` with the given `string` as well as the specified
     /// `span`.
-    /// The `string` argument must be a valid identifier or lifetime identifier permitted by the
+    /// The `string` argument must be a valid identifier permitted by the
     /// language, otherwise the function will panic.
     ///
     /// Note that `span`, currently in rustc, configures the hygiene information
@@ -817,8 +818,7 @@ impl Ident {
     pub fn new_raw(string: &str, span: Span) -> Ident {
         let mut ident = Ident::new(string, span);
         if ident.sym == keywords::Underscore.name() ||
-           token::is_path_segment_keyword(ast::Ident::with_empty_ctxt(ident.sym)) ||
-           ident.sym.as_str().starts_with("\'") {
+           token::is_path_segment_keyword(ast::Ident::with_empty_ctxt(ident.sym)) {
             panic!("`{:?}` is not a valid raw identifier", string)
         }
         ident.is_raw = true;
@@ -1211,12 +1211,18 @@ impl TokenTree {
             Pound => op!('#'),
             Dollar => op!('$'),
             Question => op!('?'),
+            SingleQuote => op!('\''),
 
-            Ident(ident, false) | Lifetime(ident) => {
+            Ident(ident, false) => {
                 tt!(self::Ident::new(&ident.name.as_str(), Span(span)))
             }
             Ident(ident, true) => {
                 tt!(self::Ident::new_raw(&ident.name.as_str(), Span(span)))
+            }
+            Lifetime(ident) => {
+                let ident = ident.without_first_quote();
+                stack.push(tt!(self::Ident::new(&ident.name.as_str(), Span(span))));
+                tt!(Punct::new('\'', Spacing::Joint))
             }
             Literal(lit, suffix) => tt!(self::Literal { lit, suffix, span: Span(span) }),
             DocComment(c) => {
@@ -1260,12 +1266,7 @@ impl TokenTree {
                 }).into();
             },
             self::TokenTree::Ident(tt) => {
-                let ident = ast::Ident::new(tt.sym, tt.span.0);
-                let token = if tt.sym.as_str().starts_with("'") {
-                    Lifetime(ident)
-                } else {
-                    Ident(ident, tt.is_raw)
-                };
+                let token = Ident(ast::Ident::new(tt.sym, tt.span.0), tt.is_raw);
                 return TokenTree::Token(tt.span.0, token).into();
             }
             self::TokenTree::Literal(self::Literal {
@@ -1324,6 +1325,7 @@ impl TokenTree {
             '#' => Pound,
             '$' => Dollar,
             '?' => Question,
+            '\'' => SingleQuote,
             _ => unreachable!(),
         };
 

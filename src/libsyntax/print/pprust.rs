@@ -224,6 +224,7 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Pound                => "#".to_string(),
         token::Dollar               => "$".to_string(),
         token::Question             => "?".to_string(),
+        token::SingleQuote          => "'".to_string(),
 
         /* Literals */
         token::Literal(lit, suf) => {
