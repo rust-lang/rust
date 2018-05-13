@@ -761,17 +761,6 @@ impl LayoutDetails {
             align,
         }
     }
-
-    pub fn uninhabited(field_count: usize) -> Self {
-        let align = Align::from_bytes(1, 1).unwrap();
-        LayoutDetails {
-            variants: Variants::Single { index: 0 },
-            fields: FieldPlacement::Union(field_count),
-            abi: Abi::Uninhabited,
-            align,
-            size: Size::from_bytes(0)
-        }
-    }
 }
 
 /// The details of the layout of a type, alongside the type itself.
@@ -826,10 +815,10 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     /// Returns true if the type is a ZST and not unsized.
     pub fn is_zst(&self) -> bool {
         match self.abi {
-            Abi::Uninhabited => true,
             Abi::Scalar(_) |
             Abi::ScalarPair(..) |
             Abi::Vector { .. } => false,
+            Abi::Uninhabited => self.size.bytes() == 0,
             Abi::Aggregate { sized } => sized && self.size.bytes() == 0
         }
     }
