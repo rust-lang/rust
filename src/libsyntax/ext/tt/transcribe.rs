@@ -13,9 +13,9 @@ use ext::base::ExtCtxt;
 use ext::expand::Marker;
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
-use fold::noop_fold_tt;
+use fold::{Folder, noop_fold_tt};
 use parse::token::{self, Token, NtTT};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, SyntaxContext, DUMMY_SP};
 use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::small_vector::SmallVector;
 
@@ -116,7 +116,7 @@ pub fn transcribe(cx: &ExtCtxt,
             continue
         };
 
-        match tree {
+        match tree.clone() {
             quoted::TokenTree::Sequence(sp, seq) => {
                 // FIXME(pcwalton): Bad copy.
                 match lockstep_iter_size(&quoted::TokenTree::Sequence(sp, seq.clone()),
@@ -150,7 +150,7 @@ pub fn transcribe(cx: &ExtCtxt,
                 }
             }
             // FIXME #2887: think about span stuff here
-            quoted::TokenTree::MetaVar(mut sp, ident) => {
+            quoted::TokenTree::MetaVar(mut sp, ident, _escape_hygiene) => {
                 if let Some(cur_matched) = lookup_cur_matched(ident, &interpolations, &repeats) {
                     if let MatchedNonterminal(ref nt) = *cur_matched {
                         if let NtTT(ref tt) = **nt {
@@ -177,9 +177,15 @@ pub fn transcribe(cx: &ExtCtxt,
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
-            quoted::TokenTree::Token(sp, tok) => {
-                let mut marker = Marker(cx.current_expansion.mark);
-                result.push(noop_fold_tt(TokenTree::Token(sp, tok), &mut marker).into())
+            quoted::TokenTree::Token(sp, tok, hygiene) => {
+                let mut new_tok = match hygiene {
+                    quoted::TokenHygiene::DefSite => noop_fold_tt(TokenTree::Token(sp, tok),
+                        &mut Marker(cx.current_expansion.mark)),
+                    quoted::TokenHygiene::CallSite => noop_fold_tt(TokenTree::Token(sp, tok),
+                        &mut Escaper(cx.call_site().ctxt())),
+                };
+
+                result.push(new_tok.into());
             }
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
@@ -249,7 +255,7 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 size + lockstep_iter_size(tt, interpolations, repeats)
             })
         },
-        TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) =>
+        TokenTree::MetaVar(_, name, _) | TokenTree::MetaVarDecl(_, name, _) =>
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match *matched {
                     MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
@@ -258,5 +264,20 @@ fn lockstep_iter_size(tree: &quoted::TokenTree,
                 _ => LockstepIterSize::Unconstrained
             },
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
+    }
+}
+
+// An Escaper escapes the syntax context with the given syntax context.
+#[derive(Debug)]
+pub struct Escaper(pub SyntaxContext);
+
+impl Folder for Escaper {
+    fn fold_ident(&mut self, mut ident: Ident) -> Ident {
+        ident.span = ident.span.with_ctxt(self.0);
+        ident
+    }
+
+    fn new_span(&mut self, span: Span) -> Span {
+        span.with_ctxt(self.0)
     }
 }

@@ -305,6 +305,9 @@ declare_features! (
     // Declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
 
+    // Hygiene opt-out (escaping) for macros 2.0 using `#ident` syntax.
+    (active, macro_hygiene_optout, "1.27.0", None, None),
+
     // Allows #[link(kind="static-nobundle"...]
     (active, static_nobundle, "1.16.0", Some(37403), None),
 

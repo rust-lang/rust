@@ -332,7 +332,8 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                     }
                 }
             }
-            TokenTree::MetaVar(..) | TokenTree::Token(..) => (),
+            TokenTree::MetaVar(..) |
+            TokenTree::Token(..) => (),
         }
 
         Ok(())
@@ -540,7 +541,7 @@ fn inner_parse_loop(
                 //
                 // At the beginning of the loop, if we reach the end of the delimited submatcher,
                 // we pop the stack to backtrack out of the descent.
-                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..)) => {
+                seq @ TokenTree::Delimited(..) | seq @ TokenTree::Token(_, DocComment(..), _) => {
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame {
@@ -552,7 +553,7 @@ fn inner_parse_loop(
                 }
 
                 // We just matched a normal token. We can just advance the parser.
-                TokenTree::Token(_, ref t) if token_name_eq(t, token) => {
+                TokenTree::Token(_, ref t, _) if token_name_eq(t, token) => {
                     item.idx += 1;
                     next_items.push(item);
                 }
@@ -561,7 +562,8 @@ fn inner_parse_loop(
                 // rules. NOTE that this is not necessarily an error unless _all_ items in
                 // `cur_items` end up doing this. There may still be some other matchers that do
                 // end up working out.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
+                TokenTree::Token(..) |
+                TokenTree::MetaVar(..) => {}
             }
         }
     }

@@ -677,7 +677,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             IdentTT(ref expander, tt_span, allow_internal_unstable) => {
                 if ident.name == keywords::Invalid.name() {
                     self.cx.span_err(path.span,
-                                    &format!("macro {}! expects an ident argument", path));
+                                     &format!("macro {}! expects an ident argument", path));
                     self.cx.trace_macros_diag();
                     kind.dummy(span)
                 } else {

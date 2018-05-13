@@ -121,7 +121,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                 };
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
-                // rhs has holes ( `$id` and `$(...)` that need filled)
+                // rhs has holes ( `$id` and `$(...)` which need to be filled)
                 let mut tts = transcribe(cx, Some(named_matches), rhs);
 
                 // Replace all the tokens for the corresponding positions in the macro, to maintain
@@ -202,7 +202,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
         quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
             tts: vec![
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, lhs_nm, ast::Ident::from_str("tt")),
-                quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
+                quoted::TokenTree::Token(DUMMY_SP, token::FatArrow, quoted::TokenHygiene::DefSite),
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, rhs_nm, ast::Ident::from_str("tt")),
             ],
             separator: Some(if body.legacy { token::Semi } else { token::Comma }),
@@ -211,7 +211,8 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
         })),
         // to phase into semicolon-termination instead of semicolon-separation
         quoted::TokenTree::Sequence(DUMMY_SP, Lrc::new(quoted::SequenceRepetition {
-            tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi)],
+            tts: vec![quoted::TokenTree::Token(DUMMY_SP, token::Semi,
+                quoted::TokenHygiene::DefSite)],
             separator: None,
             op: quoted::KleeneOp::ZeroOrMore,
             num_captures: 0
@@ -237,7 +238,12 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = quoted::parse(tt.clone().into(), true, sess, features, &def.attrs)
+                        let tt = quoted::parse(tt.clone().into(),
+                                               false,
+                                               true,
+                                               sess,
+                                               features,
+                                               &def.attrs)
                             .pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, features, &def.attrs, &tt);
                         return tt;
@@ -254,7 +260,12 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item) -> Syntax
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = *m {
                     if let NtTT(ref tt) = **nt {
-                        return quoted::parse(tt.clone().into(), false, sess, features, &def.attrs)
+                        return quoted::parse(tt.clone().into(),
+                                             !body.legacy && features.macro_hygiene_optout,
+                                             false,
+                                             sess,
+                                             features,
+                                             &def.attrs)
                             .pop().unwrap();
                     }
                 }
@@ -328,7 +339,9 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
     use self::quoted::TokenTree;
     for tt in tts {
         match *tt {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
+            TokenTree::Token(..) |
+            TokenTree::MetaVar(..) |
+            TokenTree::MetaVarDecl(..) => (),
             TokenTree::Delimited(_, ref del) => if !check_lhs_no_empty_seq(sess, &del.tts) {
                 return false;
             },
@@ -410,7 +423,9 @@ impl FirstSets {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
                 match *tt {
-                    TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                    TokenTree::Token(..) |
+                    TokenTree::MetaVar(..) |
+                    TokenTree::MetaVarDecl(..) => {
                         first.replace_with(tt.clone());
                     }
                     TokenTree::Delimited(span, ref delimited) => {
@@ -440,7 +455,8 @@ impl FirstSets {
 
                         if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                         subfirst.maybe_empty) {
-                            first.add_one_maybe(TokenTree::Token(sp, sep.clone()));
+                            first.add_one_maybe(TokenTree::Token(sp, sep.clone(),
+                                quoted::TokenHygiene::DefSite));
                         }
 
                         // Reverse scan: Sequence comes before `first`.
@@ -470,7 +486,9 @@ impl FirstSets {
         for tt in tts.iter() {
             assert!(first.maybe_empty);
             match *tt {
-                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                TokenTree::Token(..) |
+                TokenTree::MetaVar(..) |
+                TokenTree::MetaVarDecl(..) => {
                     first.add_one(tt.clone());
                     return first;
                 }
@@ -487,7 +505,8 @@ impl FirstSets {
 
                             if let (Some(ref sep), true) = (seq_rep.separator.clone(),
                                                             subfirst.maybe_empty) {
-                                first.add_one_maybe(TokenTree::Token(sp, sep.clone()));
+                                first.add_one_maybe(TokenTree::Token(sp, sep.clone(),
+                                    quoted::TokenHygiene::DefSite));
                             }
 
                             assert!(first.maybe_empty);
@@ -641,7 +660,9 @@ fn check_matcher_core(sess: &ParseSess,
         // First, update `last` so that it corresponds to the set
         // of NT tokens that might end the sequence `... token`.
         match *token {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+            TokenTree::Token(..) |
+            TokenTree::MetaVar(..) |
+            TokenTree::MetaVarDecl(..) => {
                 let can_be_followed_by_any;
                 if let Err(bad_frag) = has_legal_fragment_specifier(sess, features, attrs, token) {
                     let msg = format!("invalid fragment specifier `{}`", bad_frag);
@@ -692,7 +713,8 @@ fn check_matcher_core(sess: &ParseSess,
                 let mut new;
                 let my_suffix = if let Some(ref u) = seq_rep.separator {
                     new = suffix_first.clone();
-                    new.add_one_maybe(TokenTree::Token(sp, u.clone()));
+                    new.add_one_maybe(TokenTree::Token(sp, u.clone(),
+                        quoted::TokenHygiene::DefSite));
                     &new
                 } else {
                     &suffix_first
@@ -806,7 +828,7 @@ fn frag_can_be_followed_by_any(frag: &str) -> bool {
 fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'static str)> {
     use self::quoted::TokenTree;
 
-    if let TokenTree::Token(_, token::CloseDelim(_)) = *tok {
+    if let TokenTree::Token(_, token::CloseDelim(_), _) = *tok {
         // closing a token tree can never be matched by any fragment;
         // iow, we always require that `(` and `)` match, etc.
         Ok(true)
@@ -823,14 +845,14 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 Ok(true)
             },
             "stmt" | "expr"  => match *tok {
-                TokenTree::Token(_, ref tok) => match *tok {
+                TokenTree::Token(_, ref tok, _) => match *tok {
                     FatArrow | Comma | Semi => Ok(true),
                     _ => Ok(false)
                 },
                 _ => Ok(false),
             },
             "pat" => match *tok {
-                TokenTree::Token(_, ref tok) => match *tok {
+                TokenTree::Token(_, ref tok, _) => match *tok {
                     FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
                     Ident(i, false) if i.name == "if" || i.name == "in" => Ok(true),
                     _ => Ok(false)
@@ -838,7 +860,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 _ => Ok(false),
             },
             "path" | "ty" => match *tok {
-                TokenTree::Token(_, ref tok) => match *tok {
+                TokenTree::Token(_, ref tok, _) => match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
                     Ident(i, false) if i.name == "as" || i.name == "where" => Ok(true),
@@ -863,7 +885,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             "vis" => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 match *tok {
-                    TokenTree::Token(_, ref tok) => match *tok {
+                    TokenTree::Token(_, ref tok, _) => match *tok {
                         Comma => Ok(true),
                         Ident(i, is_raw) if is_raw || i.name != "priv" => Ok(true),
                         ref tok => Ok(tok.can_begin_type())
@@ -948,8 +970,8 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
 
 fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
     match *tt {
-        quoted::TokenTree::Token(_, ref tok) => ::print::pprust::token_to_string(tok),
-        quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
+        quoted::TokenTree::Token(_, ref tok, _) => ::print::pprust::token_to_string(tok),
+        quoted::TokenTree::MetaVar(_, name, _) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
         _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \
                      in follow set checker"),
