@@ -170,7 +170,7 @@ fn lint_same_cond(cx: &LateContext, conds: &[&Expr]) {
     }
 }
 
-/// Implementation if `MATCH_SAME_ARMS`.
+/// Implementation of `MATCH_SAME_ARMS`.
 fn lint_match_arms(cx: &LateContext, expr: &Expr) {
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
         let hash = |&(_, arm): &(usize, &Arm)| -> u64 {
