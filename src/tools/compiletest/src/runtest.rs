@@ -1476,11 +1476,12 @@ impl<'test> TestCx<'test> {
     }
 
     fn compose_and_run_compiler(&self, mut rustc: Command, input: Option<String>) -> ProcRes {
-        if !self.props.aux_builds.is_empty() {
-            create_dir_all(&self.aux_output_dir_name()).unwrap();
-        }
-
         let aux_dir = self.aux_output_dir_name();
+
+        if !self.props.aux_builds.is_empty() {
+            let _ = fs::remove_dir_all(&aux_dir);
+            create_dir_all(&aux_dir).unwrap();
+        }
 
         for rel_ab in &self.props.aux_builds {
             let aux_testpaths = self.compute_aux_test_paths(rel_ab);
