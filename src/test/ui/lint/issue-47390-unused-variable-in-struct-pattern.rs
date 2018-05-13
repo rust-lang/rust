@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-pass
+// run-rustfix
 
 #![feature(box_syntax)]
 #![feature(box_patterns)]
