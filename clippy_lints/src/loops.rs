@@ -1223,7 +1223,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                     match cx.tables.expr_ty(&args[0]).sty {
                         // If the length is greater than 32 no traits are implemented for array and
                         // therefore we cannot use `&`.
-                        ty::TypeVariants::TyArray(_, size) if size.val.to_raw_bits().expect("array size") > 32 => (),
+                        ty::TypeVariants::TyArray(_, size) if size.assert_usize(cx.tcx).expect("array size") > 32 => (),
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
@@ -1784,7 +1784,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it
     // will allow further borrows afterwards
     let ty = cx.tables.expr_ty(e);
-    is_iterable_array(ty) ||
+    is_iterable_array(ty, cx) ||
     match_type(cx, ty, &paths::VEC) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
     match_type(cx, ty, &paths::HASHMAP) ||
@@ -1795,10 +1795,10 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     match_type(cx, ty, &paths::BTREESET)
 }
 
-fn is_iterable_array(ty: Ty) -> bool {
+fn is_iterable_array(ty: Ty, cx: &LateContext) -> bool {
     // IntoIterator is currently only implemented for array sizes <= 32 in rustc
     match ty.sty {
-        ty::TyArray(_, n) => (0..=32).contains(&n.val.to_raw_bits().expect("array length")),
+        ty::TyArray(_, n) => (0..=32).contains(&n.assert_usize(cx.tcx).expect("array length")),
         _ => false,
     }
 }

@@ -209,7 +209,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprRepeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::TyArray(_, n) => n.val.to_raw_bits().expect("array length"),
+                    ty::TyArray(_, n) => n.assert_usize(self.tcx).expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n as u64))
@@ -415,9 +415,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
-    use rustc::mir::interpret::{Value, PrimVal};
+    use rustc::mir::interpret::{PrimVal, ConstValue};
     match result.val {
-        ConstVal::Value(Value::ByVal(PrimVal::Bytes(b))) => match result.ty.sty {
+        ConstVal::Value(ConstValue::ByVal(PrimVal::Bytes(b))) => match result.ty.sty {
             ty::TyBool => Some(Constant::Bool(b == 1)),
             ty::TyUint(_) | ty::TyInt(_) => Some(Constant::Int(b)),
             ty::TyFloat(FloatTy::F32) => Some(Constant::F32(f32::from_bits(b as u32))),
@@ -425,7 +425,7 @@ pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'
             // FIXME: implement other conversion
             _ => None,
         },
-        ConstVal::Value(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(n))) => match result.ty.sty {
+        ConstVal::Value(ConstValue::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(n))) => match result.ty.sty {
             ty::TyRef(_, tam, _) => match tam.sty {
                 ty::TyStr => {
                     let alloc = tcx

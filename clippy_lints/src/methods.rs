@@ -1299,7 +1299,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: Ty) -> Option<sugg::S
             ty::TySlice(_) => true,
             ty::TyAdt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::TyAdt(..) => match_type(cx, ty, &paths::VEC),
-            ty::TyArray(_, size) => size.val.to_raw_bits().expect("array length") < 32,
+            ty::TyArray(_, size) => size.assert_usize(cx.tcx).expect("array length") < 32,
             ty::TyRef(_, inner, _) => may_slice(cx, inner),
             _ => false,
         }
