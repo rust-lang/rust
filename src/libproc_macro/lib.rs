@@ -11,13 +11,11 @@
 //! A support library for macro authors when defining new macros.
 //!
 //! This library, provided by the standard distribution, provides the types
-//! consumed in the interfaces of procedurally defined macro definitions.
-//! Currently the primary use of this crate is to provide the ability to define
-//! new custom derive modes through `#[proc_macro_derive]`.
+//! consumed in the interfaces of procedurally defined macro definitions such as
+//! function-like macros `#[proc_macro]`, macro attribures `#[proc_macro_attribute]` and
+//! custom derive attributes`#[proc_macro_derive]`.
 //!
-//! Note that this crate is intentionally very bare-bones currently. The main
-//! type, `TokenStream`, only supports `fmt::Display` and `FromStr`
-//! implementations, indicating that it can only go to and come from a string.
+//! Note that this crate is intentionally bare-bones currently.
 //! This functionality is intended to be expanded over time as more surface
 //! area for macro authors is stabilized.
 //!
@@ -110,8 +108,8 @@ impl TokenStream {
 /// May fail for a number of reasons, for example, if the string contains unbalanced delimiters
 /// or characters not existing in the language.
 ///
-/// REVIEW The function actually panics on any error and never returns `LexError`.
-/// REVIEW Should the panics be documented?
+/// NOTE: Some errors may cause panics instead of returning `LexError`. We reserve the right to
+/// change these errors into `LexError`s later.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl FromStr for TokenStream {
     type Err = LexError;
@@ -132,9 +130,9 @@ impl FromStr for TokenStream {
     }
 }
 
-/// Prints the token stream as a string that should be losslessly convertible back
+/// Prints the token stream as a string that is supposed to be losslessly convertible back
 /// into the same token stream (modulo spans), except for possibly `TokenTree::Group`s
-/// with `Delimiter::None` delimiters.
+/// with `Delimiter::None` delimiters and negative numeric literals.
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -152,9 +150,6 @@ impl fmt::Debug for TokenStream {
 }
 
 /// Creates a token stream containing a single token tree.
-///
-/// REVIEW We don't generally have impls `From<T> for Collection<T>`, but I see why this exists
-/// REVIEW from practical point of view.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<TokenTree> for TokenStream {
     fn from(tree: TokenTree) -> TokenStream {
@@ -217,9 +212,6 @@ pub mod token_stream {
                 // need to flattened during iteration over stream's token trees.
                 // Eventually this needs to be removed in favor of keeping original token trees
                 // and not doing the roundtrip through AST.
-                //
-                // REVIEW This may actually be observable if we can create a dummy span via
-                // proc macro API, but it looks like we can't do it with 1.2 yet.
                 if tree.span().0 == DUMMY_SP {
                     if let TokenTree::Group(ref group) = tree {
                         if group.delimiter() == Delimiter::None {
@@ -246,7 +238,7 @@ pub mod token_stream {
 
 /// `quote!(..)` accepts arbitrary tokens and expands into a `TokenStream` describing the input.
 /// For example, `quote!(a + b)` will produce a expression, that, when evaluated, constructs
-/// the `TokenStream` `[Word("a"), Punct('+', Alone), Word("b")]`.
+/// the `TokenStream` `[Ident("a"), Punct('+', Alone), Ident("b")]`.
 ///
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
@@ -266,9 +258,6 @@ pub fn quote_span(span: Span) -> TokenStream {
 }
 
 /// A region of source code, along with macro expansion information.
-///
-/// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
-/// REVIEW Do we want to guarantee `Span` to be `Copy`? Yes.
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Copy, Clone)]
 pub struct Span(syntax_pos::Span);
@@ -555,10 +544,6 @@ impl fmt::Debug for TokenTree {
     }
 }
 
-/// REVIEW the impls below are kind of `From<T> for Option<T>`, not strictly necessary,
-/// REVIEW but convenient. No harm, I guess. I'd actually like to see impls
-/// REVIEW `From<Group/Ident/Punct/Literal> for TokenStream` to avoid stuttering like
-/// REVIEW `TokenTree::Literal(Literal::string("lalala")).into()`.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl From<Group> for TokenTree {
     fn from(g: Group) -> TokenTree {
@@ -587,9 +572,9 @@ impl From<Literal> for TokenTree {
     }
 }
 
-/// Prints the token tree as a string that should be losslessly convertible back
+/// Prints the token tree as a string that is supposed to be losslessly convertible back
 /// into the same token tree (modulo spans), except for possibly `TokenTree::Group`s
-/// with `Delimiter::None` delimiters.
+/// with `Delimiter::None` delimiters and negative numeric literals.
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for TokenTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -699,14 +684,9 @@ impl fmt::Display for Group {
 ///
 /// Multicharacter operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
-///
-/// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
-/// REVIEW Do we want to guarantee `Punct` to be `Copy`?
 #[unstable(feature = "proc_macro", issue = "38356")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Punct {
-    // REVIEW(INTERNAL) `Punct` can avoid using `char` internally and
-    // REVIEW(INTERNAL) can keep u8 or an u8-like enum.
     ch: char,
     spacing: Spacing,
     span: Span,
@@ -735,9 +715,6 @@ impl Punct {
     ///
     /// The returned `Punct` will have the default span of `Span::call_site()`
     /// which can be further configured with the `set_span` method below.
-    ///
-    /// REVIEW Why we even use `char` here? There's no reason to use unicode here.
-    /// REVIEW I guess because it's more convenient to write `new('+')` than `new(b'+')`, that's ok.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn new(ch: char, spacing: Spacing) -> Punct {
         const LEGAL_CHARS: &[char] = &['=', '<', '>', '!', '~', '+', '-', '*', '/', '%',
@@ -753,10 +730,6 @@ impl Punct {
     }
 
     /// Returns the value of this punctuation character as `char`.
-    ///
-    /// REVIEW Again, there's no need for unicode here,
-    /// REVIEW except for maybe future compatibility in case Rust turns into APL,
-    /// REVIEW but if it's more convenient to use `char` then that's okay.
     #[unstable(feature = "proc_macro", issue = "38356")]
     pub fn as_char(&self) -> char {
         self.ch
@@ -794,13 +767,9 @@ impl fmt::Display for Punct {
 }
 
 /// An identifier (`ident`) or lifetime identifier (`'ident`).
-///
-/// REVIEW ATTENTION: `Copy` impl on a struct with private fields.
-/// REVIEW Do we want to guarantee `Ident` to be `Copy`?
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 #[unstable(feature = "proc_macro", issue = "38356")]
 pub struct Ident {
-    // REVIEW(INTERNAL) Symbol + Span is actually `ast::Ident`! We can use it here.
     sym: Symbol,
     span: Span,
     is_raw: bool,
@@ -856,13 +825,6 @@ impl Ident {
         ident
     }
 
-    // FIXME: Remove this, do not stabilize
-    /// Get a reference to the interned string.
-    #[unstable(feature = "proc_macro", issue = "38356")]
-    pub fn as_str(&self) -> &str {
-        unsafe { &*(&*self.sym.as_str() as *const str) }
-    }
-
     /// Returns the span of this `Ident`, encompassing the entire string returned
     /// by `as_str`.
     #[unstable(feature = "proc_macro", issue = "38356")]
@@ -882,6 +844,9 @@ impl Ident {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_raw {
+            f.write_str("r#")?;
+        }
         self.sym.as_str().fmt(f)
     }
 }
@@ -910,6 +875,8 @@ macro_rules! suffixed_int_literals {
         /// This function will create an integer like `1u32` where the integer
         /// value specified is the first part of the token and the integral is
         /// also suffixed at the end.
+        /// Literals created from negative numbers may not survive rountrips through
+        /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
         ///
         /// Literals created through this method have the `Span::call_site()`
         /// span by default, which can be configured with the `set_span` method
@@ -934,6 +901,8 @@ macro_rules! unsuffixed_int_literals {
         /// specified on this token, meaning that invocations like
         /// `Literal::i8_unsuffixed(1)` are equivalent to
         /// `Literal::u32_unsuffixed(1)`.
+        /// Literals created from negative numbers may not survive rountrips through
+        /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
         ///
         /// Literals created through this method have the `Span::call_site()`
         /// span by default, which can be configured with the `set_span` method
@@ -985,6 +954,8 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
+    /// Literals created from negative numbers may not survive rountrips through
+    /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
     ///
@@ -1008,6 +979,8 @@ impl Literal {
     /// specified is the preceding part of the token and `f32` is the suffix of
     /// the token. This token will always be inferred to be an `f32` in the
     /// compiler.
+    /// Literals created from negative numbers may not survive rountrips through
+    /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
     ///
@@ -1030,6 +1003,8 @@ impl Literal {
     /// This constructor is similar to those like `Literal::i8_unsuffixed` where
     /// the float's value is emitted directly into the token but no suffix is
     /// used, so it may be inferred to be a `f64` later in the compiler.
+    /// Literals created from negative numbers may not survive rountrips through
+    /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
     ///
@@ -1053,6 +1028,8 @@ impl Literal {
     /// specified is the preceding part of the token and `f64` is the suffix of
     /// the token. This token will always be inferred to be an `f64` in the
     /// compiler.
+    /// Literals created from negative numbers may not survive rountrips through
+    /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
     ///
     /// # Panics
     ///
@@ -1347,7 +1324,7 @@ impl TokenTree {
             '#' => Pound,
             '$' => Dollar,
             '?' => Question,
-            _ => panic!("unsupported character {}", ch),
+            _ => unreachable!(),
         };
 
         let tree = TokenTree::Token(span.0, token);

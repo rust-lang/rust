@@ -118,7 +118,7 @@ impl Quote for TokenStream {
                     TokenTree::Punct(ref tt) if tt.as_char() == '$' => {}
                     _ => panic!("`$` must be followed by an ident or `$` in `quote!`"),
                 }
-            } else if let TokenTree::Punct(tt) = tree {
+            } else if let TokenTree::Punct(ref tt) = tree {
                 if tt.as_char() == '$' {
                     after_dollar = true;
                     return None;
