@@ -106,7 +106,6 @@ use self::LoopKind::*;
 use self::LiveNodeKind::*;
 use self::VarKind::*;
 
-use errors::Applicability;
 use hir::def::*;
 use ty::{self, TyCtxt};
 use lint;
@@ -1559,9 +1558,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                         err.span_suggestion(sp, "try ignoring the field",
                                             format!("{}: _", name));
                     } else {
-                        err.span_suggestion_with_applicability(
-                            sp, &suggest_underscore_msg,
-                            format!("_{}", name), Applicability::MachineApplicable);
+                        err.span_suggestion_short(sp, &suggest_underscore_msg,
+                                                  format!("_{}", name));
                     }
                     err.emit()
                 }
