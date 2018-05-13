@@ -360,7 +360,7 @@ impl CliOptions {
             options.unstable_features = matches.opt_present("unstable-features");
         }
 
-        if !options.unstable_features {
+        if options.unstable_features {
             if matches.opt_present("skip-children") {
                 options.skip_children = Some(true);
             }

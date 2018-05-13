@@ -102,13 +102,6 @@ impl Summary {
         self.has_parsing_errors |= other.has_parsing_errors;
         self.has_diff |= other.has_diff;
     }
-
-    pub fn print_exit_codes() {
-        let exit_codes = r#"Exit Codes:
-    0 = No errors
-    1 = Encountered error in formatting code"#;
-        println!("{}", exit_codes);
-    }
 }
 
 #[derive(Clone, Copy, Debug)]

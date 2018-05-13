@@ -90,13 +90,26 @@ enum HelpOp {
 fn make_opts() -> Options {
     let mut opts = Options::new();
 
-    // Sorted in alphabetical order.
-    opts.optflag("", "backup", "Backup any modified files.");
     opts.optflag(
         "",
         "check",
         "Run in 'check' mode. Exits with 0 if input if formatted correctly. Exits \
          with 1 and prints a diff if formatting is required.",
+    );
+    let is_nightly = is_nightly();
+    let emit_opts = if is_nightly {
+        "[files|stdout|coverage|checkstyle]"
+    } else {
+        "[files|stdout]"
+    };
+    opts.optopt("", "emit", "What data to emit and how", emit_opts);
+    opts.optflag("", "backup", "Backup any modified files.");
+    opts.optopt(
+        "",
+        "config-path",
+        "Recursively searches the given path for the rustfmt.toml config file. If not \
+         found reverts to the input file path",
+        "[Path for the configuration file]",
     );
     opts.optopt(
         "",
@@ -106,46 +119,17 @@ fn make_opts() -> Options {
     );
     opts.optopt(
         "",
-        "config-path",
-        "Recursively searches the given path for the rustfmt.toml config file. If not \
-         found reverts to the input file path",
-        "[Path for the configuration file]",
-    );
-    let is_nightly = is_nightly();
-    let emit_opts = if is_nightly {
-        "[files|stdout|coverage|checkstyle]"
-    } else {
-        "[files|stdout]"
-    };
-    opts.optopt("", "emit", "What data to emit and how", emit_opts);
-    opts.optflagopt(
-        "h",
-        "help",
-        "Show this message or help about a specific topic: `config` or `file-lines`",
-        "=TOPIC",
-    );
-    opts.optopt(
-        "",
         "print-config",
         "Dumps a default or minimal config to PATH. A minimal config is the \
          subset of the current config file used for formatting the current program.",
         "[minimal|default] PATH",
     );
-    opts.optflag("v", "verbose", "Print verbose output");
-    opts.optflag("q", "quiet", "Print less output");
-    opts.optflag("V", "version", "Show version information");
 
     if is_nightly {
         opts.optflag(
             "",
             "unstable-features",
             "Enables unstable features. Only available on nightly channel.",
-        );
-        opts.optflag(
-            "",
-            "error-on-unformatted",
-            "Error if unable to get comments or string literals within max_width, \
-             or they are left with trailing whitespaces (unstable).",
         );
         opts.optopt(
             "",
@@ -156,10 +140,26 @@ fn make_opts() -> Options {
         );
         opts.optflag(
             "",
+            "error-on-unformatted",
+            "Error if unable to get comments or string literals within max_width, \
+             or they are left with trailing whitespaces (unstable).",
+        );
+        opts.optflag(
+            "",
             "skip-children",
             "Don't reformat child modules (unstable).",
         );
     }
+
+    opts.optflag("v", "verbose", "Print verbose output");
+    opts.optflag("q", "quiet", "Print less output");
+    opts.optflag("V", "version", "Show version information");
+    opts.optflagopt(
+        "h",
+        "help",
+        "Show this message or help about a specific topic: `config` or `file-lines`",
+        "=TOPIC",
+    );
 
     opts
 }
@@ -177,7 +177,6 @@ fn execute(opts: &Options) -> FmtResult<(WriteMode, Summary)> {
     match determine_operation(&matches)? {
         Operation::Help(HelpOp::None) => {
             print_usage_to_stdout(opts, "");
-            Summary::print_exit_codes();
             Ok((WriteMode::None, Summary::default()))
         }
         Operation::Help(HelpOp::Config) => {
