@@ -44,7 +44,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use syntax_pos::{self, FileName, FileMap, Span, DUMMY_SP};
+use syntax_pos::{self, hygiene, FileName, FileMap, Span, DUMMY_SP};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -496,6 +496,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
             panic_strategy: tcx.sess.panic_strategy(),
+            edition: hygiene::default_edition(),
             has_global_allocator: has_global_allocator,
             has_default_lib_allocator: has_default_lib_allocator,
             plugin_registrar_fn: tcx.sess

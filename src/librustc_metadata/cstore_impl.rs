@@ -38,6 +38,7 @@ use std::sync::Arc;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
+use syntax::edition::Edition;
 use syntax::ext::base::SyntaxExtension;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
@@ -462,6 +463,11 @@ impl CrateStore for cstore::CStore {
     fn crate_hash_untracked(&self, cnum: CrateNum) -> hir::svh::Svh
     {
         self.get_crate_data(cnum).hash()
+    }
+
+    fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition
+    {
+        self.get_crate_data(cnum).edition()
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
