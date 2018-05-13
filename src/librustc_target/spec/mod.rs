@@ -313,6 +313,7 @@ supported_targets! {
 
     ("x86_64-unknown-bitrig", x86_64_unknown_bitrig),
 
+    ("aarch64-unknown-openbsd", aarch64_unknown_openbsd),
     ("i686-unknown-openbsd", i686_unknown_openbsd),
     ("x86_64-unknown-openbsd", x86_64_unknown_openbsd),
 
