@@ -27,7 +27,7 @@ script:
 - |
   # Test plain miri
   cargo build --release --all-features &&
-  cargo test --release --all-features --all &&
+  RUST_BACKTRACE=1 cargo test --release --all-features --all &&
   cargo install --all-features --force
 - |
   # Test cargo miri
