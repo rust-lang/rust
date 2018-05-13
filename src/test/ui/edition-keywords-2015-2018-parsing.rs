@@ -16,7 +16,6 @@
 #[macro_use]
 extern crate edition_kw_macro_2018;
 
-// `async`
 pub fn check_async() {
     let mut async = 1; // OK
     let mut r#async = 1; // OK
@@ -30,20 +29,4 @@ pub fn check_async() {
     if passes_ident!(r#async) == 1 {} // OK
     module::async(); // OK
     module::r#async(); // OK
-}
-
-// `proc`
-pub fn check_proc() {
-    let mut proc = 1; //~ ERROR expected identifier, found reserved keyword `proc`
-    let mut r#proc = 1; // OK
-
-    r#proc = consumes_proc!(proc); // OK
-    r#proc = consumes_proc!(r#proc); //~ ERROR no rules expected the token `r#proc`
-    r#proc = consumes_proc_raw!(proc); //~ ERROR no rules expected the token `proc`
-    r#proc = consumes_proc_raw!(r#proc); // OK
-
-    if passes_ident!(proc) == 1 {} //~ ERROR expected expression, found reserved keyword `proc`
-    if passes_ident!(r#proc) == 1 {} // OK
-    module::proc(); //~ ERROR expected identifier, found reserved keyword `proc`
-    module::r#proc(); // OK
 }

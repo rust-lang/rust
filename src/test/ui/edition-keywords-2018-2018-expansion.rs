@@ -16,18 +16,9 @@
 #[macro_use]
 extern crate edition_kw_macro_2018;
 
-// `async`
 mod one_async {
     produces_async! {} // ERROR expected identifier, found reserved keyword `async`
 }
 mod two_async {
     produces_async_raw! {} // OK
-}
-
-// `proc`
-mod one_proc {
-    produces_proc! {} // OK
-}
-mod two_proc {
-    produces_proc_raw! {} // OK
 }

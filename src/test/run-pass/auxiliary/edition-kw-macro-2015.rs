@@ -12,7 +12,6 @@
 
 #![feature(raw_identifiers)]
 
-// `async`
 #[macro_export]
 macro_rules! produces_async {
     () => (pub fn async() {})
@@ -31,32 +30,6 @@ macro_rules! consumes_async {
 #[macro_export]
 macro_rules! consumes_async_raw {
     (r#async) => (1)
-}
-
-#[macro_export]
-macro_rules! passes_ident {
-    ($i: ident) => ($i)
-}
-
-// `proc`
-#[macro_export]
-macro_rules! produces_proc {
-    () => (pub fn proc() {})
-}
-
-#[macro_export]
-macro_rules! produces_proc_raw {
-    () => (pub fn r#proc() {})
-}
-
-#[macro_export]
-macro_rules! consumes_proc {
-    (proc) => (1)
-}
-
-#[macro_export]
-macro_rules! consumes_proc_raw {
-    (r#proc) => (1)
 }
 
 #[macro_export]

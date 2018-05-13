@@ -10,13 +10,13 @@
 
 // compile-flags: --edition=2018
 // aux-build:edition-kw-macro-2015.rs
+// compile-pass
 
 #![feature(raw_identifiers)]
 
 #[macro_use]
 extern crate edition_kw_macro_2015;
 
-// `async`
 mod one_async {
     produces_async! {} // OK
 }
@@ -24,10 +24,4 @@ mod two_async {
     produces_async_raw! {} // OK
 }
 
-// `proc`
-mod one_proc {
-    produces_proc! {} // ERROR expected identifier, found reserved keyword
-}
-mod two_proc {
-    produces_proc_raw! {} // OK
-}
+fn main() {}

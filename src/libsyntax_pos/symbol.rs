@@ -386,25 +386,20 @@ declare_keywords! {
 
     // Edition-specific keywords reserved for future use.
     (55, Async,              "async") // >= 2018 Edition Only
-    (56, Proc,               "proc") // <= 2015 Edition Only
 
     // Special lifetime names
-    (57, UnderscoreLifetime, "'_")
-    (58, StaticLifetime,     "'static")
+    (56, UnderscoreLifetime, "'_")
+    (57, StaticLifetime,     "'static")
 
     // Weak keywords, have special meaning only in specific contexts.
-    (59, Auto,               "auto")
-    (60, Catch,              "catch")
-    (61, Default,            "default")
-    (62, Dyn,                "dyn")
-    (63, Union,              "union")
+    (58, Auto,               "auto")
+    (59, Catch,              "catch")
+    (60, Default,            "default")
+    (61, Dyn,                "dyn")
+    (62, Union,              "union")
 }
 
 impl Symbol {
-    fn is_unused_keyword_2015(self) -> bool {
-        self == keywords::Proc.name()
-    }
-
     fn is_unused_keyword_2018(self) -> bool {
         self == keywords::Async.name()
     }
@@ -426,7 +421,6 @@ impl Ident {
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
         self.name >= keywords::Abstract.name() && self.name <= keywords::Yield.name() ||
-        self.name.is_unused_keyword_2015() && self.span.edition() == Edition::Edition2015 ||
         self.name.is_unused_keyword_2018() && self.span.edition() == Edition::Edition2018
     }
 
