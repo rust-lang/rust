@@ -55,7 +55,7 @@ declare_clippy_lint! {
 /// **Why is this bad?** Name shadowing can hurt readability, especially in
 /// large code bases, because it is easy to lose track of the active binding at
 /// any place in the code. This can be alleviated by either giving more specific
-/// names to bindings ore introducing more scopes to contain the bindings.
+/// names to bindings or introducing more scopes to contain the bindings.
 ///
 /// **Known problems:** This lint, as the other shadowing related lints,
 /// currently only catches very simple patterns.
