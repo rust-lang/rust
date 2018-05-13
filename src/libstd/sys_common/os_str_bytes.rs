@@ -6,11 +6,11 @@ use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::str;
 use crate::mem;
+use crate::ops::{Index, Range, RangeFrom, RangeTo};
 use crate::rc::Rc;
 use crate::sync::Arc;
 use crate::sys_common::{FromInner, IntoInner, AsInner};
 use crate::sys_common::bytestring::debug_fmt_bytestring;
-
 use core::str::lossy::Utf8Lossy;
 
 #[derive(Clone, Hash)]
@@ -31,6 +31,30 @@ impl fmt::Debug for Slice {
 impl fmt::Display for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&Utf8Lossy::from_bytes(&self.inner), formatter)
+    }
+}
+
+impl Index<Range<usize>> for Slice {
+    type Output = Slice;
+
+    fn index(&self, range: Range<usize>) -> &Slice {
+        Slice::from_u8_slice(&self.inner[range])
+    }
+}
+
+impl Index<RangeFrom<usize>> for Slice {
+    type Output = Slice;
+
+    fn index(&self, range: RangeFrom<usize>) -> &Slice {
+        Slice::from_u8_slice(&self.inner[range])
+    }
+}
+
+impl Index<RangeTo<usize>> for Slice {
+    type Output = Slice;
+
+    fn index(&self, range: RangeTo<usize>) -> &Slice {
+        Slice::from_u8_slice(&self.inner[range])
     }
 }
 

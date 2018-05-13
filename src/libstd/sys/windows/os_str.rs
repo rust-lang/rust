@@ -7,6 +7,7 @@ use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
 use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
+use crate::ops::{Index, Range, RangeFrom, RangeTo};
 use crate::sys_common::{AsInner, IntoInner, FromInner};
 
 #[derive(Clone, Hash)]
@@ -57,6 +58,30 @@ impl fmt::Debug for Slice {
 impl fmt::Display for Slice {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, formatter)
+    }
+}
+
+impl Index<Range<usize>> for Slice {
+    type Output = Slice;
+
+    fn index(&self, range: Range<usize>) -> &Slice {
+        unsafe { mem::transmute(&self.inner[range]) }
+    }
+}
+
+impl Index<RangeFrom<usize>> for Slice {
+    type Output = Slice;
+
+    fn index(&self, range: RangeFrom<usize>) -> &Slice {
+        unsafe { mem::transmute(&self.inner[range]) }
+    }
+}
+
+impl Index<RangeTo<usize>> for Slice {
+    type Output = Slice;
+
+    fn index(&self, range: RangeTo<usize>) -> &Slice {
+        unsafe { mem::transmute(&self.inner[range]) }
     }
 }
 

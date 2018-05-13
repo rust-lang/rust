@@ -373,6 +373,36 @@ impl ops::Index<ops::RangeFull> for OsString {
     }
 }
 
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::Range<usize>> for OsString {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, index: ops::Range<usize>) -> &OsStr {
+        OsStr::from_inner(&self.inner.as_slice()[index])
+    }
+}
+
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::RangeFrom<usize>> for OsString {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, index: ops::RangeFrom<usize>) -> &OsStr {
+        OsStr::from_inner(&self.inner.as_slice()[index])
+    }
+}
+
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::RangeTo<usize>> for OsString {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, index: ops::RangeTo<usize>) -> &OsStr {
+        OsStr::from_inner(&self.inner.as_slice()[index])
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for OsString {
     type Target = OsStr;
@@ -966,6 +996,46 @@ impl AsInner<Slice> for OsStr {
     }
 }
 
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::RangeFull> for OsStr {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, _: ops::RangeFull) -> &OsStr {
+        self
+    }
+}
+
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::Range<usize>> for OsStr {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, index: ops::Range<usize>) -> &OsStr {
+        OsStr::from_inner(&self.inner[index])
+    }
+}
+
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::RangeFrom<usize>> for OsStr {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, index: ops::RangeFrom<usize>) -> &OsStr {
+        OsStr::from_inner(&self.inner[index])
+    }
+}
+
+#[stable(feature = "os_str_slice", since = "1.33.0")]
+impl ops::Index<ops::RangeTo<usize>> for OsStr {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, index: ops::RangeTo<usize>) -> &OsStr {
+        OsStr::from_inner(&self.inner[index])
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1132,5 +1202,55 @@ mod tests {
 
         assert_eq!(&*rc2, os_str);
         assert_eq!(&*arc2, os_str);
+    }
+
+    #[test]
+    fn slice_with_utf8_boundary() {
+        let os_str = OsStr::new("Hello🌍🌎🌏");
+        assert_eq!(os_str.len(), 17);
+
+        assert_eq!(os_str, &os_str[..]);
+        assert_eq!(os_str, &os_str[..17]);
+        assert_eq!(os_str, &os_str[0..]);
+        assert_eq!(os_str, &os_str[0..17]);
+
+        assert_eq!(OsStr::new("Hello"), &os_str[..5]);
+        assert_eq!(OsStr::new("🌎🌏"), &os_str[9..]);
+        assert_eq!(OsStr::new("lo🌍"), &os_str[3..9]);
+
+        let os_string = os_str.to_owned();
+        assert_eq!(os_str, &os_string[..]);
+        assert_eq!(os_str, &os_string[..17]);
+        assert_eq!(os_str, &os_string[0..]);
+        assert_eq!(os_str, &os_string[0..17]);
+
+        assert_eq!(OsStr::new("Hello"), &os_string[..5]);
+        assert_eq!(OsStr::new("🌎🌏"), &os_string[9..]);
+        assert_eq!(OsStr::new("lo🌍"), &os_string[3..9]);
+    }
+
+    #[test]
+    #[cfg(any(unix, target_os = "redox", target_arch = "wasm32"))]
+    fn slice_with_non_utf8_boundary_unix() {
+        #[cfg(unix)]
+        use os::unix::ffi::OsStrExt;
+        #[cfg(target_os = "redox")]
+        use os::redox::ffi::OsStrExt;
+
+        let os_str = OsStr::new("Hello🌍🌎🌏");
+        assert_eq!(OsStr::from_bytes(b"Hello\xf0"), &os_str[..6]);
+        assert_eq!(OsStr::from_bytes(b"\x9f\x8c\x8e\xf0\x9f\x8c\x8f"), &os_str[10..]);
+        assert_eq!(OsStr::from_bytes(b"\x8d\xf0\x9f\x8c\x8e"), &os_str[8..13]);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn slice_with_non_utf8_boundary_windows() {
+        use os::windows::ffi::OsStringExt;
+
+        let os_str = OsStr::new("Hello🌍🌎🌏");
+        assert_eq!(OsString::from_wide(&[0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xD83C]), &os_str[..7]);
+        assert_eq!(OsString::from_wide(&[0xDF0E, 0xD83C, 0xDF0F]), &os_str[11..]);
+        assert_eq!(OsString::from_wide(&[0xDF0D, 0xD83C]), &os_str[7..11]);
     }
 }
