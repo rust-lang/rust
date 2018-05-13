@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:invalid-punct-ident.rs
-#![feature(proc_macro)]
+
 #[macro_use]
 extern crate invalid_punct_ident;
 

@@ -73,9 +73,9 @@ use syntax_pos::hygiene::Mark;
 #[derive(Clone)]
 pub struct TokenStream(tokenstream::TokenStream);
 
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for TokenStream {}
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Sync for TokenStream {}
 
 /// Error returned from `TokenStream::from_str`.
@@ -85,9 +85,9 @@ pub struct LexError {
     _inner: (),
 }
 
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Send for LexError {}
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl !Sync for LexError {}
 
 impl TokenStream {
@@ -167,7 +167,7 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 
 /// A "flattening" operation on token streams, collects token trees
 /// from multiple token streams into a single stream.
-#[unstable(feature = "proc_macro", issue = "38356")]
+#[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let mut builder = tokenstream::TokenStreamBuilder::new();

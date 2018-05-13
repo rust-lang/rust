@@ -13,7 +13,7 @@
 // aux-build:hello_macro.rs
 // ignore-stage1
 
-#![feature(proc_macro, proc_macro_non_items)]
+#![feature(use_extern_macros, proc_macro_non_items)]
 
 extern crate hello_macro;
 

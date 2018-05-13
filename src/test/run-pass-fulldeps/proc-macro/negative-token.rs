@@ -11,7 +11,7 @@
 // aux-build:negative-token.rs
 // ignore-stage1
 
-#![feature(proc_macro, proc_macro_non_items)]
+#![feature(proc_macro_non_items)]
 
 extern crate negative_token;
 
