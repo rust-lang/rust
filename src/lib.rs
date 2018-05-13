@@ -68,7 +68,7 @@ pub use config::{file_lines, load_config, Config, Verbosity, WriteMode};
 
 pub type FmtResult<T> = std::result::Result<T, failure::Error>;
 
-pub const WRITE_MODE_LIST: &str = "[replace|overwrite|display|plain|diff|coverage|checkstyle]";
+pub const WRITE_MODE_LIST: &str = "[overwrite|display|plain|diff|coverage|checkstyle]";
 
 #[macro_use]
 mod utils;

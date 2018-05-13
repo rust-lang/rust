@@ -368,7 +368,11 @@ impl CliOptions {
                 return Err(format_err!("Invalid to set write-mode and `--check`"));
             }
             if let Ok(write_mode) = WriteMode::from_str(write_mode) {
-                options.write_mode = Some(write_mode);
+                if write_mode == WriteMode::Overwrite && matches.opt_present("backup") {
+                    options.write_mode = Some(WriteMode::Replace);
+                } else {
+                    options.write_mode = Some(write_mode);
+                }
             } else {
                 return Err(format_err!(
                     "Invalid write-mode: {}, expected one of {}",

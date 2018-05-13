@@ -91,6 +91,7 @@ fn make_opts() -> Options {
     let mut opts = Options::new();
 
     // Sorted in alphabetical order.
+    opts.optflag("", "backup", "Backup any modified files.");
     opts.optflag(
         "",
         "check",
