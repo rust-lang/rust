@@ -277,7 +277,9 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-        let outdir = Mutex::new(TempFileBuilder::new().prefix("rustdoctest").tempdir().expect("rustdoc needs a tempdir"));
+        let outdir = Mutex::new(
+            TempFileBuilder::new().prefix("rustdoctest").tempdir().expect("rustdoc needs a tempdir")
+        );
         let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
         let mut control = driver::CompileController::basic();
 

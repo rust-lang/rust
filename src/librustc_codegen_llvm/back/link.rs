@@ -321,7 +321,10 @@ fn link_binary_output(sess: &Session,
         // final destination, with a `fs::rename` call. In order for the rename to
         // always succeed, the temporary file needs to be on the same filesystem,
         // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = match TempFileBuilder::new().prefix("rmeta").tempdir_in(out_filename.parent().unwrap()) {
+        let metadata_tmpdir = match TempFileBuilder::new()
+            .prefix("rmeta")
+            .tempdir_in(out_filename.parent().unwrap())
+        {
             Ok(tmpdir) => tmpdir,
             Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
         };

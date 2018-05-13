@@ -114,7 +114,7 @@ static WHITELIST: &'static [Crate] = &[
     Crate("scopeguard"),
     Crate("smallvec"),
     Crate("stable_deref_trait"),
-    Crate("tempdir"),
+    Crate("tempfile"),
     Crate("termcolor"),
     Crate("terminon"),
     Crate("termion"),
