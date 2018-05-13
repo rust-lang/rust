@@ -38,7 +38,7 @@ use syntax::ext::base::SyntaxExtension;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
-use rustc_data_structures::sync::{MetadataRef, Lrc};
+use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
 
@@ -254,6 +254,8 @@ pub trait CrateStore {
                                  -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
+
+pub type CrateStoreDyn = CrateStore + sync::Sync;
 
 // FIXME: find a better place for this?
 pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {

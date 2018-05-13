@@ -85,77 +85,80 @@ pub fn run(input_path: &Path,
         edition,
         ..config::basic_options().clone()
     };
+    driver::spawn_thread_pool(sessopts, |sessopts| {
+        let codemap = Lrc::new(CodeMap::new(sessopts.file_path_mapping()));
+        let handler =
+            errors::Handler::with_tty_emitter(ColorConfig::Auto,
+                                            true, false,
+                                            Some(codemap.clone()));
 
-    let codemap = Lrc::new(CodeMap::new(sessopts.file_path_mapping()));
-    let handler =
-        errors::Handler::with_tty_emitter(ColorConfig::Auto,
-                                          true, false,
-                                          Some(codemap.clone()));
+        let mut sess = session::build_session_(
+            sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
+        );
+        let trans = rustc_driver::get_trans(&sess);
+        let cstore = CStore::new(trans.metadata_loader());
+        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-    let mut sess = session::build_session_(
-        sessopts, Some(input_path.to_owned()), handler, codemap.clone(),
-    );
-    let trans = rustc_driver::get_trans(&sess);
-    let cstore = CStore::new(trans.metadata_loader());
-    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+        target_features::add_configuration(&mut cfg, &sess, &*trans);
+        sess.parse_sess.config = cfg;
 
-    let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-    target_features::add_configuration(&mut cfg, &sess, &*trans);
-    sess.parse_sess.config = cfg;
-
-    let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
-                                                      &sess,
-                                                      &input));
-    let driver::ExpansionResult { defs, mut hir_forest, .. } = {
-        phase_2_configure_and_expand(
-            &sess,
-            &cstore,
-            krate,
-            None,
-            "rustdoc-test",
-            None,
-            MakeGlobMap::No,
-            |_| Ok(()),
-        ).expect("phase_2_configure_and_expand aborted in rustdoc!")
-    };
-
-    let crate_name = crate_name.unwrap_or_else(|| {
-        ::rustc_trans_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
-    });
-    let mut opts = scrape_test_config(hir_forest.krate());
-    opts.display_warnings |= display_warnings;
-    let mut collector = Collector::new(crate_name,
-                                       cfgs,
-                                       libs,
-                                       cg,
-                                       externs,
-                                       false,
-                                       opts,
-                                       maybe_sysroot,
-                                       Some(codemap),
-                                       None,
-                                       linker,
-                                       edition);
-
-    {
-        let map = hir::map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
-        let krate = map.krate();
-        let mut hir_collector = HirCollector {
-            sess: &sess,
-            collector: &mut collector,
-            map: &map
+        let krate = panictry!(driver::phase_1_parse_input(&driver::CompileController::basic(),
+                                                        &sess,
+                                                        &input));
+        let driver::ExpansionResult { defs, mut hir_forest, .. } = {
+            phase_2_configure_and_expand(
+                &sess,
+                &cstore,
+                krate,
+                None,
+                "rustdoc-test",
+                None,
+                MakeGlobMap::No,
+                |_| Ok(()),
+            ).expect("phase_2_configure_and_expand aborted in rustdoc!")
         };
-        hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
-            intravisit::walk_crate(this, krate);
+
+        let crate_name = crate_name.unwrap_or_else(|| {
+            ::rustc_trans_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
         });
-    }
+        let mut opts = scrape_test_config(hir_forest.krate());
+        opts.display_warnings |= display_warnings;
+        let mut collector = Collector::new(
+            crate_name,
+            cfgs,
+            libs,
+            cg,
+            externs,
+            false,
+            opts,
+            maybe_sysroot,
+            Some(codemap),
+             None,
+            linker,
+            edition
+        );
 
-    test_args.insert(0, "rustdoctest".to_string());
+        {
+            let map = hir::map::map_crate(&sess, &cstore, &mut hir_forest, &defs);
+            let krate = map.krate();
+            let mut hir_collector = HirCollector {
+                sess: &sess,
+                collector: &mut collector,
+                map: &map
+            };
+            hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+                intravisit::walk_crate(this, krate);
+            });
+        }
 
-    testing::test_main(&test_args,
-                       collector.tests.into_iter().collect(),
-                       testing::Options::new().display_output(display_warnings));
-    0
+        test_args.insert(0, "rustdoctest".to_string());
+
+        testing::test_main(&test_args,
+                        collector.tests.into_iter().collect(),
+                        testing::Options::new().display_output(display_warnings));
+        0
+    })
 }
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
@@ -229,102 +232,106 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
         ..config::basic_options().clone()
     };
 
-    // Shuffle around a few input and output handles here. We're going to pass
-    // an explicit handle into rustc to collect output messages, but we also
-    // want to catch the error message that rustc prints when it fails.
-    //
-    // We take our thread-local stderr (likely set by the test runner) and replace
-    // it with a sink that is also passed to rustc itself. When this function
-    // returns the output of the sink is copied onto the output of our own thread.
-    //
-    // The basic idea is to not use a default Handler for rustc, and then also
-    // not print things by default to the actual stderr.
-    struct Sink(Arc<Mutex<Vec<u8>>>);
-    impl Write for Sink {
-        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-            Write::write(&mut *self.0.lock().unwrap(), data)
+    let (libdir, outdir) = driver::spawn_thread_pool(sessopts, |sessopts| {
+        // Shuffle around a few input and output handles here. We're going to pass
+        // an explicit handle into rustc to collect output messages, but we also
+        // want to catch the error message that rustc prints when it fails.
+        //
+        // We take our thread-local stderr (likely set by the test runner) and replace
+        // it with a sink that is also passed to rustc itself. When this function
+        // returns the output of the sink is copied onto the output of our own thread.
+        //
+        // The basic idea is to not use a default Handler for rustc, and then also
+        // not print things by default to the actual stderr.
+        struct Sink(Arc<Mutex<Vec<u8>>>);
+        impl Write for Sink {
+            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+                Write::write(&mut *self.0.lock().unwrap(), data)
+            }
+            fn flush(&mut self) -> io::Result<()> { Ok(()) }
         }
-        fn flush(&mut self) -> io::Result<()> { Ok(()) }
-    }
-    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
-    impl Drop for Bomb {
-        fn drop(&mut self) {
-            let _ = self.1.write_all(&self.0.lock().unwrap());
-        }
-    }
-    let data = Arc::new(Mutex::new(Vec::new()));
-    let codemap = Lrc::new(CodeMap::new_doctest(
-        sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
-    ));
-    let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
-                                                      Some(codemap.clone()),
-                                                      false,
-                                                      false);
-    let old = io::set_panic(Some(box Sink(data.clone())));
-    let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
-
-    // Compile the code
-    let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
-
-    let mut sess = session::build_session_(
-        sessopts, None, diagnostic_handler, codemap,
-    );
-    let trans = rustc_driver::get_trans(&sess);
-    let cstore = CStore::new(trans.metadata_loader());
-    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-
-    let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
-    let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
-    let mut control = driver::CompileController::basic();
-
-    let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
-    target_features::add_configuration(&mut cfg, &sess, &*trans);
-    sess.parse_sess.config = cfg;
-
-    let out = Some(outdir.lock().unwrap().path().to_path_buf());
-
-    if no_run {
-        control.after_analysis.stop = Compilation::Stop;
-    }
-
-    let res = panic::catch_unwind(AssertUnwindSafe(|| {
-        driver::compile_input(
-            trans,
-            &sess,
-            &cstore,
-            &None,
-            &input,
-            &out,
-            &None,
-            None,
-            &control
-        )
-    }));
-
-    let compile_result = match res {
-        Ok(Ok(())) | Ok(Err(CompileIncomplete::Stopped)) => Ok(()),
-        Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
-    };
-
-    match (compile_result, compile_fail) {
-        (Ok(()), true) => {
-            panic!("test compiled while it wasn't supposed to")
-        }
-        (Ok(()), false) => {}
-        (Err(()), true) => {
-            if error_codes.len() > 0 {
-                let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
-                error_codes.retain(|err| !out.contains(err));
+        struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
+        impl Drop for Bomb {
+            fn drop(&mut self) {
+                let _ = self.1.write_all(&self.0.lock().unwrap());
             }
         }
-        (Err(()), false) => {
-            panic!("couldn't compile the test")
-        }
-    }
+        let data = Arc::new(Mutex::new(Vec::new()));
+        let codemap = Lrc::new(CodeMap::new_doctest(
+            sessopts.file_path_mapping(), filename.clone(), line as isize - line_offset as isize
+        ));
+        let emitter = errors::emitter::EmitterWriter::new(box Sink(data.clone()),
+                                                        Some(codemap.clone()),
+                                                        false,
+                                                        false);
+        let old = io::set_panic(Some(box Sink(data.clone())));
+        let _bomb = Bomb(data.clone(), old.unwrap_or(box io::stdout()));
 
-    if error_codes.len() > 0 {
-        panic!("Some expected error codes were not found: {:?}", error_codes);
-    }
+        // Compile the code
+        let diagnostic_handler = errors::Handler::with_emitter(true, false, box emitter);
+
+        let mut sess = session::build_session_(
+            sessopts, None, diagnostic_handler, codemap,
+        );
+        let trans = rustc_driver::get_trans(&sess);
+        let cstore = CStore::new(trans.metadata_loader());
+        rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
+
+        let outdir = Mutex::new(TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir"));
+        let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
+        let mut control = driver::CompileController::basic();
+
+        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+        target_features::add_configuration(&mut cfg, &sess, &*trans);
+        sess.parse_sess.config = cfg;
+
+        let out = Some(outdir.lock().unwrap().path().to_path_buf());
+
+        if no_run {
+            control.after_analysis.stop = Compilation::Stop;
+        }
+
+        let res = panic::catch_unwind(AssertUnwindSafe(|| {
+            driver::compile_input(
+                trans,
+                &sess,
+                &cstore,
+                &None,
+                &input,
+                &out,
+                &None,
+                None,
+                &control
+            )
+        }));
+
+        let compile_result = match res {
+            Ok(Ok(())) | Ok(Err(CompileIncomplete::Stopped)) => Ok(()),
+            Err(_) | Ok(Err(CompileIncomplete::Errored(_))) => Err(())
+        };
+
+        match (compile_result, compile_fail) {
+            (Ok(()), true) => {
+                panic!("test compiled while it wasn't supposed to")
+            }
+            (Ok(()), false) => {}
+            (Err(()), true) => {
+                if error_codes.len() > 0 {
+                    let out = String::from_utf8(data.lock().unwrap().to_vec()).unwrap();
+                    error_codes.retain(|err| !out.contains(err));
+                }
+            }
+            (Err(()), false) => {
+                panic!("couldn't compile the test")
+            }
+        }
+
+        if error_codes.len() > 0 {
+            panic!("Some expected error codes were not found: {:?}", error_codes);
+        }
+
+        (libdir, outdir)
+    });
 
     if no_run { return }
 

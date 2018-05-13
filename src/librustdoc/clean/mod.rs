@@ -697,7 +697,7 @@ impl<'a> FromIterator<&'a DocFragment> for String {
 pub struct Attributes {
     pub doc_strings: Vec<DocFragment>,
     pub other_attrs: Vec<ast::Attribute>,
-    pub cfg: Option<Rc<Cfg>>,
+    pub cfg: Option<Arc<Cfg>>,
     pub span: Option<syntax_pos::Span>,
     /// map from Rust paths to resolved defs and potential URL fragments
     pub links: Vec<(String, Option<DefId>, Option<String>)>,
@@ -848,7 +848,7 @@ impl Attributes {
         Attributes {
             doc_strings,
             other_attrs,
-            cfg: if cfg == Cfg::True { None } else { Some(Rc::new(cfg)) },
+            cfg: if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) },
             span: sp,
             links: vec![],
         }

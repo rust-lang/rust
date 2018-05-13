@@ -871,8 +871,14 @@ impl Session {
 
     /// Returns the number of query threads that should be used for this
     /// compilation
+    pub fn query_threads_from_opts(opts: &config::Options) -> usize {
+        opts.debugging_opts.query_threads.unwrap_or(1)
+    }
+
+    /// Returns the number of query threads that should be used for this
+    /// compilation
     pub fn query_threads(&self) -> usize {
-        self.opts.debugging_opts.query_threads.unwrap_or(1)
+        Self::query_threads_from_opts(&self.opts)
     }
 
     /// Returns the number of codegen units that should be used for this

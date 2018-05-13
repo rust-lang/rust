@@ -73,7 +73,7 @@ macro_rules! unwrap_or {
     }
 }
 
-struct Globals {
+pub struct Globals {
     used_attrs: Lock<Vec<u64>>,
     known_attrs: Lock<Vec<u64>>,
     syntax_pos_globals: syntax_pos::Globals,
@@ -98,7 +98,7 @@ pub fn with_globals<F, R>(f: F) -> R
     })
 }
 
-scoped_thread_local!(static GLOBALS: Globals);
+scoped_thread_local!(pub static GLOBALS: Globals);
 
 #[macro_use]
 pub mod diagnostics {

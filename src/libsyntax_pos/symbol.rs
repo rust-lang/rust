@@ -527,7 +527,7 @@ impl PartialOrd<InternedString> for InternedString {
         if self.symbol == other.symbol {
             return Some(Ordering::Equal);
         }
-        self.with(|self_str| other.with(|other_str| self_str.partial_cmp(&other_str)))
+        self.with(|self_str| other.with(|other_str| self_str.partial_cmp(other_str)))
     }
 }
 

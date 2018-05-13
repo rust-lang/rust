@@ -88,3 +88,33 @@ impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
         self.visitor.visit_impl_item(impl_item);
     }
 }
+
+/// A parallel variant of ItemLikeVisitor
+pub trait ParItemLikeVisitor<'hir> {
+    fn visit_item(&self, item: &'hir Item);
+    fn visit_trait_item(&self, trait_item: &'hir TraitItem);
+    fn visit_impl_item(&self, impl_item: &'hir ImplItem);
+}
+
+pub trait IntoVisitor<'hir> {
+    type Visitor: Visitor<'hir>;
+    fn into_visitor(&self) -> Self::Visitor;
+}
+
+pub struct ParDeepVisitor<V>(pub V);
+
+impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
+    where V: IntoVisitor<'hir>
+{
+    fn visit_item(&self, item: &'hir Item) {
+        self.0.into_visitor().visit_item(item);
+    }
+
+    fn visit_trait_item(&self, trait_item: &'hir TraitItem) {
+        self.0.into_visitor().visit_trait_item(trait_item);
+    }
+
+    fn visit_impl_item(&self, impl_item: &'hir ImplItem) {
+        self.0.into_visitor().visit_impl_item(impl_item);
+    }
+}

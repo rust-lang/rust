@@ -27,12 +27,15 @@
 #![feature(rustc_stack_internals)]
 #![feature(no_debug)]
 
+#![recursion_limit="256"]
+
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
 extern crate env_logger;
 #[cfg(unix)]
 extern crate libc;
+extern crate rustc_rayon as rayon;
 extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_target;
@@ -51,6 +54,7 @@ extern crate rustc_save_analysis;
 extern crate rustc_traits;
 extern crate rustc_trans_utils;
 extern crate rustc_typeck;
+extern crate scoped_tls;
 extern crate serialize;
 #[macro_use]
 extern crate log;
@@ -64,7 +68,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{self, Lrc};
 use rustc_data_structures::OnDrop;
 use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::CompileIncomplete;
@@ -448,35 +452,39 @@ fn get_trans_sysroot(backend_name: &str) -> fn() -> Box<TransCrate> {
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
-                        callbacks: &mut CompilerCalls<'a>,
+                        callbacks: &mut (CompilerCalls<'a> + sync::Send),
                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
     syntax::with_globals(|| {
-        run_compiler_impl(args, callbacks, file_loader, emitter_dest)
+        let matches = match handle_options(args) {
+            Some(matches) => matches,
+            None => return (Ok(()), None),
+        };
+
+        let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
+
+        driver::spawn_thread_pool(sopts, |sopts| {
+            run_compiler_with_pool(matches, sopts, cfg, callbacks, file_loader, emitter_dest)
+        })
     })
 }
 
-fn run_compiler_impl<'a>(args: &[String],
-                         callbacks: &mut CompilerCalls<'a>,
-                         file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
-                         emitter_dest: Option<Box<Write + Send>>)
-                         -> (CompileResult, Option<Session>)
-{
+fn run_compiler_with_pool<'a>(
+    matches: getopts::Matches,
+    sopts: config::Options,
+    cfg: ast::CrateConfig,
+    callbacks: &mut (CompilerCalls<'a> + sync::Send),
+    file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
+    emitter_dest: Option<Box<Write + Send>>
+) -> (CompileResult, Option<Session>) {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
             Compilation::Continue => {}
         }
     }}
-
-    let matches = match handle_options(args) {
-        Some(matches) => matches,
-        None => return (Ok(()), None),
-    };
-
-    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
     let descriptions = diagnostics_registry();
 
