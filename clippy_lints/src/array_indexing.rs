@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             // Array with known size can be checked statically
             let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
-                let size = size.val.to_raw_bits().unwrap();
+                let size = size.assert_usize(cx.tcx).unwrap().into();
 
                 // Index is a constant uint
                 if let Some((Constant::Int(const_index), _)) = constant(cx, index) {
