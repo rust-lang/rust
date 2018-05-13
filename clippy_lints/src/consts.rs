@@ -163,10 +163,10 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     }
 }
 
-pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
+pub fn constant<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTables<'cc>, e: &Expr) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
         tcx: lcx.tcx,
-        tables: lcx.tables,
+        tables,
         param_env: lcx.param_env,
         needed_resolution: false,
         substs: lcx.tcx.intern_substs(&[]),
@@ -174,12 +174,12 @@ pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
-pub fn constant_simple(lcx: &LateContext, e: &Expr) -> Option<Constant> {
-    constant(lcx, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
+pub fn constant_simple<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTables<'cc>, e: &Expr) -> Option<Constant> {
+    constant(lcx, tables, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
 /// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`
-pub fn constant_context<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'cc ty::TypeckTables<'cc>) -> ConstEvalLateContext<'c, 'cc> {
+pub fn constant_context<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTables<'cc>) -> ConstEvalLateContext<'c, 'cc> {
     ConstEvalLateContext {
         tcx: lcx.tcx,
         tables,

@@ -1120,8 +1120,8 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
     }) = higher::range(cx, arg)
     {
         // ...and both sides are compile-time constant integers...
-        if let Some((start_idx, _)) = constant(cx, start) {
-            if let Some((end_idx, _)) = constant(cx, end) {
+        if let Some((start_idx, _)) = constant(cx, cx.tables, start) {
+            if let Some((end_idx, _)) = constant(cx, cx.tables, end) {
                 // ...and the start index is greater than the end index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the
@@ -2146,7 +2146,7 @@ fn path_name(e: &Expr) -> Option<Name> {
 }
 
 fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, block: &'tcx Block, expr: &'tcx Expr) {
-    if constant(cx, cond).is_some() {
+    if constant(cx, cx.tables, cond).is_some() {
         // A pure constant condition (e.g. while false) is not linted.
         return;
     }

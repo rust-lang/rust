@@ -301,7 +301,7 @@ fn check_ineffective_gt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str
 }
 
 fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
-    match constant(cx, lit)?.0 {
+    match constant(cx, cx.tables, lit)?.0 {
         Constant::Int(n) => Some(n),
         _ => None,
     }

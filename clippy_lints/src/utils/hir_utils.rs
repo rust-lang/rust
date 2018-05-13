@@ -1,6 +1,7 @@
 use consts::{constant_simple, constant_context};
 use rustc::lint::*;
 use rustc::hir::*;
+use rustc::ty::{TypeckTables};
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use syntax::ast::Name;
@@ -16,6 +17,7 @@ use utils::differing_macro_contexts;
 pub struct SpanlessEq<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
+    tables: &'a TypeckTables<'tcx>,
     /// If is true, never consider as equal expressions containing function
     /// calls.
     ignore_fn: bool,
@@ -25,6 +27,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
         Self {
             cx,
+            tables: cx.tables,
             ignore_fn: false,
         }
     }
@@ -32,6 +35,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
     pub fn ignore_fn(self) -> Self {
         Self {
             cx: self.cx,
+            tables: self.cx.tables,
             ignore_fn: true,
         }
     }
@@ -64,7 +68,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             return false;
         }
 
-        if let (Some(l), Some(r)) = (constant_simple(self.cx, left), constant_simple(self.cx, right)) {
+        if let (Some(l), Some(r)) = (constant_simple(self.cx, self.tables, left), constant_simple(self.cx, self.tables, right)) {
             if l == r {
                 return true;
             }
@@ -288,13 +292,15 @@ where
 pub struct SpanlessHash<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
+    tables: &'a TypeckTables<'tcx>,
     s: DefaultHasher,
 }
 
 impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
-    pub fn new(cx: &'a LateContext<'a, 'tcx>) -> Self {
+    pub fn new(cx: &'a LateContext<'a, 'tcx>, tables: &'a TypeckTables<'tcx>) -> Self {
         Self {
             cx,
+            tables,
             s: DefaultHasher::new(),
         }
     }
@@ -317,7 +323,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     #[allow(many_single_char_names)]
     pub fn hash_expr(&mut self, e: &Expr) {
-        if let Some(e) = constant_simple(self.cx, e) {
+        if let Some(e) = constant_simple(self.cx, self.tables, e) {
             return e.hash(&mut self.s);
         }
 
@@ -461,6 +467,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _) -> _ = ExprRepeat;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
+                self.tables = self.cx.tcx.body_tables(l_id);
                 self.hash_expr(&self.cx.tcx.hir.body(l_id).value);
             },
             ExprRet(ref e) => {
