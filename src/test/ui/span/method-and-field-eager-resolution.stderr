@@ -1,0 +1,23 @@
+error[E0282]: type annotations needed
+  --> $DIR/method-and-field-eager-resolution.rs:15:5
+   |
+LL |     let mut x = Default::default();
+   |         ----- consider giving `x` a type
+LL |     x.0;
+   |     ^ cannot infer type for `_`
+   |
+   = note: type must be known at this point
+
+error[E0282]: type annotations needed
+  --> $DIR/method-and-field-eager-resolution.rs:22:5
+   |
+LL |     let mut x = Default::default();
+   |         ----- consider giving `x` a type
+LL |     x[0];
+   |     ^ cannot infer type for `_`
+   |
+   = note: type must be known at this point
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
