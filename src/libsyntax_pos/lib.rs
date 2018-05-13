@@ -300,6 +300,12 @@ impl Span {
         self.ctxt().outer().expn_info().map(|i| i.call_site)
     }
 
+    /// Edition of the crate from which this span came.
+    pub fn edition(self) -> edition::Edition {
+        self.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
+                                                    |einfo| einfo.callee.edition)
+    }
+
     /// Return the source callee.
     ///
     /// Returns None if the supplied span has no expansion trace,

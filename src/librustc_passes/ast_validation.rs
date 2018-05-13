@@ -21,7 +21,6 @@ use rustc::session::Session;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::codemap::Spanned;
-use syntax::parse::token;
 use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax_pos::Span;
@@ -40,14 +39,13 @@ impl<'a> AstValidator<'a> {
         let valid_names = [keywords::UnderscoreLifetime.name(),
                            keywords::StaticLifetime.name(),
                            keywords::Invalid.name()];
-        if !valid_names.contains(&ident.name) &&
-            token::is_reserved_ident(ident.without_first_quote()) {
+        if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
             self.err_handler().span_err(ident.span, "lifetimes cannot use keyword names");
         }
     }
 
     fn check_label(&self, ident: Ident) {
-        if token::is_reserved_ident(ident.without_first_quote()) {
+        if ident.without_first_quote().is_reserved() {
             self.err_handler()
                 .span_err(ident.span, &format!("invalid label name `{}`", ident.name));
         }

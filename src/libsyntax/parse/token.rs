@@ -15,14 +15,13 @@ pub use self::Lit::*;
 pub use self::Token::*;
 
 use ast::{self};
-use edition::Edition;
 use parse::ParseSess;
 use print::pprust;
 use ptr::P;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
-use syntax_pos::{self, hygiene, Span, FileName};
+use syntax_pos::{self, Span, FileName};
 use tokenstream::{TokenStream, TokenTree};
 use tokenstream;
 
@@ -139,48 +138,6 @@ fn ident_can_begin_type(ident: ast::Ident, is_raw: bool) -> bool {
     ].contains(&ident.name)
 }
 
-pub fn is_path_segment_keyword(id: ast::Ident) -> bool {
-    id.name == keywords::Super.name() ||
-    id.name == keywords::SelfValue.name() ||
-    id.name == keywords::SelfType.name() ||
-    id.name == keywords::Extern.name() ||
-    id.name == keywords::Crate.name() ||
-    id.name == keywords::CrateRoot.name() ||
-    id.name == keywords::DollarCrate.name()
-}
-
-// We see this identifier in a normal identifier position, like variable name or a type.
-// How was it written originally? Did it use the raw form? Let's try to guess.
-pub fn is_raw_guess(ident: ast::Ident) -> bool {
-    ident.name != keywords::Invalid.name() &&
-    is_reserved_ident(ident) && !is_path_segment_keyword(ident)
-}
-
-// Returns true for reserved identifiers used internally for elided lifetimes,
-// unnamed method parameters, crate root module, error recovery etc.
-pub fn is_special_ident(id: ast::Ident) -> bool {
-    id.name <= keywords::Underscore.name()
-}
-
-/// Returns `true` if the token is a keyword used in the language.
-pub fn is_used_keyword(id: ast::Ident) -> bool {
-    id.name >= keywords::As.name() && id.name <= keywords::While.name()
-}
-
-/// Returns `true` if the token is a keyword reserved for possible future use.
-pub fn is_unused_keyword(id: ast::Ident) -> bool {
-    let edition = || id.span.ctxt().outer().expn_info().map_or_else(|| hygiene::default_edition(),
-                                                                    |einfo| einfo.callee.edition);
-    id.name >= keywords::Abstract.name() && id.name <= keywords::Yield.name() ||
-    id.name == keywords::Proc.name() && edition() == Edition::Edition2015 ||
-    id.name == keywords::Async.name() && edition() == Edition::Edition2018
-}
-
-/// Returns `true` if the token is either a special identifier or a keyword.
-pub fn is_reserved_ident(id: ast::Ident) -> bool {
-    is_special_ident(id) || is_used_keyword(id) || is_unused_keyword(id)
-}
-
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
@@ -256,7 +213,7 @@ impl Token {
 
     /// Recovers a `Token` from an `ast::Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: ast::Ident) -> Token {
-        Ident(ident, is_raw_guess(ident))
+        Ident(ident, ident.is_raw_guess())
     }
 
     /// Returns `true` if the token starts with '>'.
@@ -436,7 +393,7 @@ impl Token {
 
     pub fn is_path_segment_keyword(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_path_segment_keyword(id),
+            Some((id, false)) => id.is_path_segment_keyword(),
             _ => false,
         }
     }
@@ -445,7 +402,7 @@ impl Token {
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_special_ident(id),
+            Some((id, false)) => id.is_special(),
             _ => false,
         }
     }
@@ -453,7 +410,7 @@ impl Token {
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_used_keyword(id),
+            Some((id, false)) => id.is_used_keyword(),
             _ => false,
         }
     }
@@ -461,7 +418,7 @@ impl Token {
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_unused_keyword(id),
+            Some((id, false)) => id.is_unused_keyword(),
             _ => false,
         }
     }
@@ -469,7 +426,7 @@ impl Token {
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
         match self.ident() {
-            Some((id, false)) => is_reserved_ident(id),
+            Some((id, false)) => id.is_reserved(),
             _ => false,
         }
     }
