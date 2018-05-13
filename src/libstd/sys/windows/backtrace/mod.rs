@@ -46,7 +46,7 @@ mod printing;
 #[path = "backtrace_gnu.rs"]
 pub mod gnu;
 
-pub use self::printing::{resolve_symname, foreach_symbol_fileline};
+pub use self::printing::{foreach_symbol_fileline, resolve_symname};
 
 pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceContext)> {
     let dbghelp = DynamicLibrary::open("dbghelp.dll")?;
@@ -54,19 +54,30 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
     // Fetch the symbols necessary from dbghelp.dll
     let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn)?;
     let SymCleanup = sym!(dbghelp, "SymCleanup", SymCleanupFn)?;
+
+    // enum for holding the StackWalk function. Different from StackWalkVariant
+    // below, since there's no need to pass the function itself into
+    // the BacktraceContext
+    enum sw_fn_local {
+        SWExFn(StackWalkExFn),
+        SW64Fn(StackWalk64Fn),
+    }
     // StackWalkEx might not be present and we'll fall back to StackWalk64
-    let ResStackWalkEx = sym!(dbghelp, "StackWalkEx", StackWalkExFn);
-    let ResStackWalk64 = sym!(dbghelp, "StackWalk64", StackWalk64Fn);
+    let (StackWalkFn, variant) =
+        sym!(dbghelp, "StackWalkEx", StackWalkExFn)
+        .map(|f| (sw_fn_local::SWExFn(f), StackWalkVariant::StackWalkEx))
+        .or_else(|_|
+            sym!(dbghelp, "StackWalk64", StackWalk64Fn)
+            .map(|f| (sw_fn_local::SW64Fn(f), StackWalkVariant::StackWalk64))
+        )?;
 
     // Allocate necessary structures for doing the stack walk
     let process = unsafe { c::GetCurrentProcess() };
-    let thread = unsafe { c::GetCurrentThread() };
-    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
-    unsafe { c::RtlCaptureContext(&mut context) };
 
     let backtrace_context = BacktraceContext {
         handle: process,
         SymCleanup,
+        StackWalkVariant: variant,
         dbghelp,
     };
 
@@ -77,81 +88,102 @@ pub fn unwind_backtrace(frames: &mut [Frame]) -> io::Result<(usize, BacktraceCon
     }
 
     // And now that we're done with all the setup, do the stack walking!
-    match (ResStackWalkEx, ResStackWalk64) {
-        (Ok(StackWalkEx), _) => {
-            let mut frame: c::STACKFRAME_EX = unsafe { mem::zeroed() };
-            frame.StackFrameSize = mem::size_of_val(&frame) as c::DWORD;
-            let image = init_frame_ex(&mut frame, &context);
-
-            let mut i = 0;
-            unsafe {
-                while i < frames.len()
-                    && StackWalkEx(
-                        image,
-                        process,
-                        thread,
-                        &mut frame,
-                        &mut context,
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                        0,
-                    ) == c::TRUE
-                {
-                    let addr = (frame.AddrPC.Offset - 1) as *const u8;
-
-                    frames[i] = Frame {
-                        symbol_addr: addr,
-                        exact_position: addr,
-                        inline_context: frame.InlineFrameContext,
-                    };
-                    i += 1;
-                }
-            }
-
-            Ok((i, backtrace_context))
-        }
-        (_, Ok(StackWalk64)) => {
-            let mut frame: c::STACKFRAME64 = unsafe { mem::zeroed() };
-            let image = init_frame_64(&mut frame, &context);
-
-            // Start from -1 to avoid printing this stack frame, which will
-            // always be exactly the same.
-            let mut i = 0;
-            unsafe {
-                while i < frames.len()
-                    && StackWalk64(
-                        image,
-                        process,
-                        thread,
-                        &mut frame,
-                        &mut context,
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                        ptr::null_mut(),
-                    ) == c::TRUE
-                {
-                    let addr = frame.AddrPC.Offset;
-                    if addr == frame.AddrReturn.Offset || addr == 0 || frame.AddrReturn.Offset == 0
-                    {
-                        break;
-                    }
-
-                    frames[i] = Frame {
-                        symbol_addr: (addr - 1) as *const u8,
-                        exact_position: (addr - 1) as *const u8,
-                        inline_context: 0,
-                    };
-                    i += 1;
-                }
-            }
-
-            Ok((i, backtrace_context))
-        }
-        (Err(e), _) => Err(e),
+    match StackWalkFn {
+        sw_fn_local::SWExFn(f) => set_frames_ex(f, frames, backtrace_context, process),
+        sw_fn_local::SW64Fn(f) => set_frames_64(f, frames, backtrace_context, process),
     }
+}
+
+fn set_frames_ex(
+    StackWalkEx: StackWalkExFn,
+    frames: &mut [Frame],
+    backtrace_context: BacktraceContext,
+    process: c::HANDLE,
+) -> io::Result<(usize, BacktraceContext)> {
+    let thread = unsafe { c::GetCurrentProcess() };
+    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
+    unsafe { c::RtlCaptureContext(&mut context) };
+
+    let mut frame: c::STACKFRAME_EX = unsafe { mem::zeroed() };
+    frame.StackFrameSize = mem::size_of_val(&frame) as c::DWORD;
+    let image = init_frame_ex(&mut frame, &context);
+
+    let mut i = 0;
+    unsafe {
+        while i < frames.len()
+            && StackWalkEx(
+                image,
+                process,
+                thread,
+                &mut frame,
+                &mut context,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                0,
+            ) == c::TRUE
+        {
+            let addr = (frame.AddrPC.Offset - 1) as *const u8;
+
+            frames[i] = Frame {
+                symbol_addr: addr,
+                exact_position: addr,
+                inline_context: frame.InlineFrameContext,
+            };
+            i += 1;
+        }
+    }
+
+    Ok((i, backtrace_context))
+}
+
+fn set_frames_64(
+    StackWalk64: StackWalk64Fn,
+    frames: &mut [Frame],
+    backtrace_context: BacktraceContext,
+    process: c::HANDLE,
+) -> io::Result<(usize, BacktraceContext)> {
+    let thread = unsafe { c::GetCurrentProcess() };
+    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
+    unsafe { c::RtlCaptureContext(&mut context) };
+
+    let mut frame: c::STACKFRAME64 = unsafe { mem::zeroed() };
+    let image = init_frame_64(&mut frame, &context);
+
+    // Start from -1 to avoid printing this stack frame, which will
+    // always be exactly the same.
+    let mut i = 0;
+    unsafe {
+        while i < frames.len()
+            && StackWalk64(
+                image,
+                process,
+                thread,
+                &mut frame,
+                &mut context,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            ) == c::TRUE
+        {
+            let addr = frame.AddrPC.Offset;
+            if addr == frame.AddrReturn.Offset || addr == 0 || frame.AddrReturn.Offset == 0
+            {
+                break;
+            }
+
+            frames[i] = Frame {
+                symbol_addr: (addr - 1) as *const u8,
+                exact_position: (addr - 1) as *const u8,
+                inline_context: 0,
+            };
+            i += 1;
+        }
+    }
+
+    Ok((i, backtrace_context))
 }
 
 type SymInitializeFn = unsafe extern "system" fn(c::HANDLE, *mut c_void, c::BOOL) -> c::BOOL;
@@ -226,16 +258,26 @@ fn init_frame_64(frame: &mut c::STACKFRAME64, ctx: &c::CONTEXT) -> c::DWORD {
     c::IMAGE_FILE_MACHINE_AMD64
 }
 
+enum StackWalkVariant {
+    StackWalkEx,
+    StackWalk64,
+}
+
+
 pub struct BacktraceContext {
     handle: c::HANDLE,
     SymCleanup: SymCleanupFn,
     // Only used in printing for msvc and not gnu
+    #[allow(dead_code)]
+    StackWalkVariant: StackWalkVariant,
     #[allow(dead_code)]
     dbghelp: DynamicLibrary,
 }
 
 impl Drop for BacktraceContext {
     fn drop(&mut self) {
-        unsafe { (self.SymCleanup)(self.handle); }
+        unsafe {
+            (self.SymCleanup)(self.handle);
+        }
     }
 }

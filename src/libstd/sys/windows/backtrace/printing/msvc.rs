@@ -13,11 +13,10 @@ use io;
 use libc::{c_char, c_ulong};
 use mem;
 use sys::backtrace::BacktraceContext;
+use sys::backtrace::StackWalkVariant;
 use sys::c;
 use sys_common::backtrace::Frame;
 
-type SymFromInlineContextFn =
-    unsafe extern "system" fn(c::HANDLE, u64, c::ULONG, *mut u64, *mut c::SYMBOL_INFO) -> c::BOOL;
 type SymFromInlineContextFn =
     unsafe extern "system" fn(c::HANDLE, u64, c::ULONG, *mut u64, *mut c::SYMBOL_INFO) -> c::BOOL;
 type SymGetLineFromInlineContextFn = unsafe extern "system" fn(
@@ -39,57 +38,26 @@ pub fn resolve_symname<F>(frame: Frame, callback: F, context: &BacktraceContext)
 where
     F: FnOnce(Option<&str>) -> io::Result<()>,
 {
-    match (
-        sym!(
-            &context.dbghelp,
-            "SymFromInlineContext",
-            SymFromInlineContextFn
-        ),
-        sym!(&context.dbghelp, "SymFromAddr", SymFromAddrFn),
-    ) {
-        (Ok(SymFromInlineContext), _) => unsafe {
-            let mut info: c::SYMBOL_INFO = mem::zeroed();
-            info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
-            // the struct size in C.  the value is different to
-            // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
-            // due to struct alignment.
-            info.SizeOfStruct = 88;
+    match context.StackWalkVariant {
+        StackWalkVariant::StackWalkEx => {
+            let SymFromInlineContext =
+                sym!(&context.dbghelp, "SymFromInlineContext",SymFromInlineContextFn)?;
+            resolve_symname_from_inline_context(SymFromInlineContext, frame, callback, context)
+        },
+        StackWalkVariant::StackWalk64 => {
+            let SymFromAddr = sym!(&context.dbghelp, "SymFromAddr", SymFromAddrFn)?;
+            resolve_symname_from_addr(SymFromAddr, frame, callback, context)
+        }
+    }
+}
 
-            let mut displacement = 0u64;
-            let ret = SymFromInlineContext(
-                context.handle,
-                frame.symbol_addr as u64,
-                frame.inline_context,
-                &mut displacement,
-                &mut info,
-            );
-            let valid_range =
-                if ret == c::TRUE && frame.symbol_addr as usize >= info.Address as usize {
-                    if info.Size != 0 {
-                        (frame.symbol_addr as usize) < info.Address as usize + info.Size as usize
-                    } else {
-                        true
-                    }
-                } else {
-                    false
-                };
-            let symname = if valid_range {
-                let ptr = info.Name.as_ptr() as *const c_char;
-                CStr::from_ptr(ptr).to_str().ok()
-            } else {
-                None
-            };
-            callback(symname)
+fn resolve_symname_from_inline_context<F>(
+    SymFromInlineContext: SymFromInlineContextFn,
+    frame: Frame, callback: F, context: &BacktraceContext) -> io::Result<()>
+where
+    F: FnOnce(Option<&str>) -> io::Result<()>,
 {
-    match (
-        sym!(
-            &context.dbghelp,
-            "SymFromInlineContext",
-            SymFromInlineContextFn
-        ),
-        sym!(&context.dbghelp, "SymFromAddr", SymFromAddrFn),
-    ) {
-        (Ok(SymFromInlineContext), _) => unsafe {
+    unsafe {
             let mut info: c::SYMBOL_INFO = mem::zeroed();
             info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
             // the struct size in C.  the value is different to
@@ -122,42 +90,69 @@ where
                 None
             };
             callback(symname)
-        },
-        (_, Ok(SymFromAddr)) => unsafe {
-            } else {
-                None
-            };
-            callback(symname)
-        },
-        (_, Ok(SymFromAddr)) => unsafe {
-            let mut info: c::SYMBOL_INFO = mem::zeroed();
-            info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
-            // the struct size in C.  the value is different to
-            // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
-            // due to struct alignment.
-            info.SizeOfStruct = 88;
+        }
+}
 
-            let mut displacement = 0u64;
-            let ret = SymFromAddr(
-                context.handle,
-                frame.symbol_addr as u64,
-                &mut displacement,
-                &mut info,
-            );
+fn resolve_symname_from_addr<F>(
+    SymFromAddr: SymFromAddrFn,
+    frame: Frame, callback: F, context: &BacktraceContext) -> io::Result<()>
+where
+    F: FnOnce(Option<&str>) -> io::Result<()>,
+{
+    unsafe {
+        let mut info: c::SYMBOL_INFO = mem::zeroed();
+        info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
+        // the struct size in C.  the value is different to
+        // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
+        // due to struct alignment.
+        info.SizeOfStruct = 88;
 
-            let symname = if ret == c::TRUE {
-                let ptr = info.Name.as_ptr() as *const c_char;
-                CStr::from_ptr(ptr).to_str().ok()
-            } else {
-                None
-            };
-            callback(symname)
-        },
-        (Err(e), _) => Err(e),
+        let mut displacement = 0u64;
+        let ret = SymFromAddr(
+            context.handle,
+            frame.symbol_addr as u64,
+            &mut displacement,
+            &mut info,
+        );
+
+        let symname = if ret == c::TRUE {
+            let ptr = info.Name.as_ptr() as *const c_char;
+            CStr::from_ptr(ptr).to_str().ok()
+        } else {
+            None
+        };
+        callback(symname)
     }
 }
 
 pub fn foreach_symbol_fileline<F>(
+    frame: Frame,
+    f: F,
+    context: &BacktraceContext,
+) -> io::Result<bool>
+where
+    F: FnMut(&[u8], u32) -> io::Result<()>,
+{
+    match context.StackWalkVariant {
+        StackWalkVariant::StackWalkEx => {
+            let SymGetLineFromInlineContext =
+                sym!(&context.dbghelp, "SymGetLineFromInlineContext",
+                     SymGetLineFromInlineContextFn)?;
+            foreach_symbol_fileline_ex(SymGetLineFromInlineContext,
+                frame, f, context)
+        },
+        StackWalkVariant::StackWalk64 => {
+            let SymGetLineFromAddr64 =
+                sym!(&context.dbghelp, "SymGetLineFromAddr64",
+                     SymGetLineFromAddr64Fn)?;
+            foreach_symbol_fileline_64(SymGetLineFromAddr64,
+                frame, f, context)
+        }
+    }
+}
+
+fn foreach_symbol_fileline_ex<F>(
+    SymGetLineFromInlineContext: SymGetLineFromInlineContextFn,
     frame: Frame,
     mut f: F,
     context: &BacktraceContext,
@@ -165,54 +160,51 @@ pub fn foreach_symbol_fileline<F>(
 where
     F: FnMut(&[u8], u32) -> io::Result<()>,
 {
-    match (
-        sym!(
-            &context.dbghelp,
-            "SymGetLineFromInlineContext",
-            SymGetLineFromInlineContextFn
-        ),
-        sym!(
-            &context.dbghelp,
-            "SymGetLineFromAddr64",
-            SymGetLineFromAddr64Fn
-        ),
-    ) {
-        (Ok(SymGetLineFromInlineContext), _) => unsafe {
-            let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
-            line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
+    unsafe {
+        let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
+        line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
 
-            let mut displacement = 0u32;
-            let ret = SymGetLineFromInlineContext(
-                context.handle,
-                frame.exact_position as u64,
-                frame.inline_context,
-                0,
-                &mut displacement,
-                &mut line,
-            );
-            if ret == c::TRUE {
-                let name = CStr::from_ptr(line.Filename).to_bytes();
-                f(name, line.LineNumber as u32)?;
-            }
-            Ok(false)
-        },
-        (_, Ok(SymGetLineFromAddr64)) => unsafe {
-            let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
-            line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
+        let mut displacement = 0u32;
+        let ret = SymGetLineFromInlineContext(
+            context.handle,
+            frame.exact_position as u64,
+            frame.inline_context,
+            0,
+            &mut displacement,
+            &mut line,
+        );
+        if ret == c::TRUE {
+            let name = CStr::from_ptr(line.Filename).to_bytes();
+            f(name, line.LineNumber as u32)?;
+        }
+        Ok(false)
+    }
+}
 
-            let mut displacement = 0u32;
-            let ret = SymGetLineFromAddr64(
-                context.handle,
-                frame.exact_position as u64,
-                &mut displacement,
-                &mut line,
-            );
-            if ret == c::TRUE {
-                let name = CStr::from_ptr(line.Filename).to_bytes();
-                f(name, line.LineNumber as u32)?;
-            }
-            Ok(false)
-        },
-        (Err(e), _) => Err(e),
+fn foreach_symbol_fileline_64<F>(
+    SymGetLineFromAddr64: SymGetLineFromAddr64Fn,
+    frame: Frame,
+    mut f: F,
+    context: &BacktraceContext,
+) -> io::Result<bool>
+where
+    F: FnMut(&[u8], u32) -> io::Result<()>,
+{
+    unsafe {
+        let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
+        line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
+
+        let mut displacement = 0u32;
+        let ret = SymGetLineFromAddr64(
+            context.handle,
+            frame.exact_position as u64,
+            &mut displacement,
+            &mut line,
+        );
+        if ret == c::TRUE {
+            let name = CStr::from_ptr(line.Filename).to_bytes();
+            f(name, line.LineNumber as u32)?;
+        }
+        Ok(false)
     }
 }
