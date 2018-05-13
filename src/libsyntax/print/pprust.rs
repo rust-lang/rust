@@ -273,6 +273,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtIdent(e, false)    => ident_to_string(e),
             token::NtIdent(e, true)     => format!("r#{}", ident_to_string(e)),
             token::NtLifetime(e)        => ident_to_string(e),
+            token::NtLiteral(ref e)     => expr_to_string(e),
             token::NtTT(ref tree)       => tt_to_string(tree.clone()),
             token::NtArm(ref e)         => arm_to_string(e),
             token::NtImplItem(ref e)    => impl_item_to_string(e),

@@ -115,7 +115,7 @@ macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
             match nt.0 {
-                token::NtExpr(ref e) => {
+                token::NtExpr(ref e) | token::NtLiteral(ref e) => {
                     $p.bump();
                     return Ok((*e).clone());
                 }
@@ -1823,7 +1823,7 @@ impl<'a> Parser<'a> {
     pub fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
         let out = match self.token {
             token::Interpolated(ref nt) => match nt.0 {
-                token::NtExpr(ref v) => match v.node {
+                token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => { lit.node.clone() }
                     _ => { return self.unexpected_last(&self.token); }
                 },
@@ -1862,7 +1862,7 @@ impl<'a> Parser<'a> {
     }
 
     /// matches '-' lit | lit (cf. ast_validation::AstValidator::check_expr_within_pat)
-    pub fn parse_pat_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
+    pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
         let minus_lo = self.span;
@@ -2407,10 +2407,10 @@ impl<'a> Parser<'a> {
                     hi = pth.span;
                     ex = ExprKind::Path(None, pth);
                 } else {
-                    match self.parse_lit() {
-                        Ok(lit) => {
-                            hi = lit.span;
-                            ex = ExprKind::Lit(P(lit));
+                    match self.parse_literal_maybe_minus() {
+                        Ok(expr) => {
+                            hi = expr.span;
+                            ex = expr.node.clone();
                         }
                         Err(mut err) => {
                             self.cancel(&mut err);
@@ -3724,7 +3724,7 @@ impl<'a> Parser<'a> {
             let hi = self.prev_span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path), ThinVec::new()))
         } else {
-            self.parse_pat_literal_maybe_minus()
+            self.parse_literal_maybe_minus()
         }
     }
 
@@ -3914,7 +3914,7 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Try to parse everything else as literal with optional minus
-                match self.parse_pat_literal_maybe_minus() {
+                match self.parse_literal_maybe_minus() {
                     Ok(begin) => {
                         if self.eat(&token::DotDotDot) {
                             let end = self.parse_pat_range_end()?;

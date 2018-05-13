@@ -735,6 +735,7 @@ fn may_begin_with(name: &str, token: &Token) -> bool {
         "expr" => token.can_begin_expr(),
         "ty" => token.can_begin_type(),
         "ident" => get_macro_ident(token).is_some(),
+        "literal" => token.can_begin_literal_or_bool(),
         "vis" => match *token {
             // The follow-set of :vis + "priv" keyword + interpolated
             Token::Comma | Token::Ident(..) | Token::Interpolated(_) => true,
@@ -821,6 +822,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         },
         "pat" => token::NtPat(panictry!(p.parse_pat())),
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
+        "literal" => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => if let Some((ident, is_raw)) = get_macro_ident(&p.token) {

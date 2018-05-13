@@ -114,7 +114,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// matches '-' lit | lit (cf. parser::Parser::parse_pat_literal_maybe_minus),
+    /// matches '-' lit | lit (cf. parser::Parser::parse_literal_maybe_minus),
     /// or path for ranges.
     ///
     /// FIXME: do we want to allow expr -> pattern conversion to create path expressions?

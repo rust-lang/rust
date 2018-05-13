@@ -280,7 +280,12 @@ impl Token {
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
             Interpolated(ref nt) => match nt.0 {
-                NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) | NtLifetime(..) => true,
+                NtLiteral(..) |
+                NtIdent(..)   |
+                NtExpr(..)    |
+                NtBlock(..)   |
+                NtPath(..)    |
+                NtLifetime(..) => true,
                 _ => false,
             },
             _ => false,
@@ -321,6 +326,18 @@ impl Token {
         match *self {
             Literal(..) => true,
             _           => false,
+        }
+    }
+
+    /// Returns `true` if the token is any literal, a minus (which can follow a literal,
+    /// for example a '-42', or one of the boolean idents).
+    pub fn can_begin_literal_or_bool(&self) -> bool {
+        match *self {
+            Literal(..)  => true,
+            BinOp(Minus) => true,
+            Ident(ident, false) if ident.name == keywords::True.name() => true,
+            Ident(ident, false) if ident.name == keywords::False.name() => true,
+            _            => false,
         }
     }
 
@@ -672,6 +689,7 @@ pub enum Nonterminal {
     NtTy(P<ast::Ty>),
     NtIdent(ast::Ident, /* is_raw */ bool),
     NtLifetime(ast::Ident),
+    NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),
@@ -713,6 +731,7 @@ impl fmt::Debug for Nonterminal {
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtTy(..) => f.pad("NtTy(..)"),
             NtIdent(..) => f.pad("NtIdent(..)"),
+            NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
