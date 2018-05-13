@@ -18,6 +18,7 @@ pub(crate) struct Buf {
     pub inner: Vec<u8>
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Slice {
     pub inner: [u8]
 }

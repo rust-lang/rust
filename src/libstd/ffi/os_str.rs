@@ -675,14 +675,6 @@ impl OsStr {
         let boxed = unsafe { Box::from_raw(Box::into_raw(self) as *mut Slice) };
         OsString { inner: Buf::from_box(boxed) }
     }
-
-    /// Gets the underlying byte representation.
-    ///
-    /// Note: it is *crucial* that this API is private, to avoid
-    /// revealing the internal, platform-specific encodings.
-    fn bytes(&self) -> &[u8] {
-        unsafe { &*(&self.inner as *const _ as *const [u8]) }
-    }
 }
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
@@ -819,7 +811,7 @@ impl Default for &OsStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsStr {
     fn eq(&self, other: &OsStr) -> bool {
-        self.bytes().eq(other.bytes())
+        self.inner == other.inner
     }
 }
 
@@ -844,16 +836,16 @@ impl Eq for OsStr {}
 impl PartialOrd for OsStr {
     #[inline]
     fn partial_cmp(&self, other: &OsStr) -> Option<cmp::Ordering> {
-        self.bytes().partial_cmp(other.bytes())
+        self.inner.partial_cmp(&other.inner)
     }
     #[inline]
-    fn lt(&self, other: &OsStr) -> bool { self.bytes().lt(other.bytes()) }
+    fn lt(&self, other: &OsStr) -> bool { self.inner < other.inner }
     #[inline]
-    fn le(&self, other: &OsStr) -> bool { self.bytes().le(other.bytes()) }
+    fn le(&self, other: &OsStr) -> bool { self.inner <= other.inner }
     #[inline]
-    fn gt(&self, other: &OsStr) -> bool { self.bytes().gt(other.bytes()) }
+    fn gt(&self, other: &OsStr) -> bool { self.inner > other.inner }
     #[inline]
-    fn ge(&self, other: &OsStr) -> bool { self.bytes().ge(other.bytes()) }
+    fn ge(&self, other: &OsStr) -> bool { self.inner >= other.inner }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -870,7 +862,7 @@ impl PartialOrd<str> for OsStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsStr {
     #[inline]
-    fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.bytes().cmp(other.bytes()) }
+    fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.inner.cmp(&other.inner) }
 }
 
 macro_rules! impl_cmp {
@@ -915,7 +907,7 @@ impl_cmp!(Cow<'a, OsStr>, OsString);
 impl Hash for OsStr {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.bytes().hash(state)
+        self.inner.hash(state)
     }
 }
 

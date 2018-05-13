@@ -45,6 +45,7 @@ impl fmt::Display for Buf {
     }
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Slice {
     pub inner: Wtf8
 }
