@@ -93,50 +93,69 @@ pub fn eval_body<'a, 'tcx>(
     }
 }
 
-pub fn value_to_const_value<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    val: Value,
+pub fn value_to_const_value<'tcx>(
+    ecx: &EvalContext<'_, '_, 'tcx, CompileTimeEvaluator>,
+    mut val: Value,
     ty: Ty<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    let layout = tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+    let result = (|| {
+        // Convert to ByVal or ByValPair if possible
+        if let Value::ByRef(ptr, align) = val {
+            if let Some(read_val) = ecx.try_read_value(ptr, align, ty)? {
+                val = read_val;
+            }
+        }
 
-    if layout.is_zst() {
-        return ty::Const::from_const_value(
-            tcx,
-            ConstValue::ByVal(PrimVal::Undef),
-            ty);
+        let layout = ecx.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty)).unwrap();
+
+        if layout.is_zst() {
+            return Ok(ty::Const::from_const_value(
+                ecx.tcx.tcx,
+                ConstValue::ByVal(PrimVal::Undef),
+                ty));
+        }
+
+        let val = match layout.abi {
+            layout::Abi::Scalar(..) => {
+                if let Value::ByVal(val) = val {
+                    ConstValue::ByVal(val)
+                } else {
+                    bug!("expected ByVal value, got {:?}", val);
+                }
+            }
+            layout::Abi::ScalarPair(..) => {
+                if let Value::ByValPair(a, b) = val {
+                    ConstValue::ByValPair(a, b)
+                } else {
+                    bug!("expected ByValPair value, got {:?}", val);
+                }
+            }
+            _ => {
+                if let Value::ByRef(ptr, _) = val {
+                    let ptr = ptr.primval.to_ptr().unwrap();
+                    assert_eq!(ptr.offset, 0);
+                    let alloc = ecx.memory.get(ptr.alloc_id)?;
+                    assert!(alloc.align.abi() >= layout.align.abi());
+                    assert!(alloc.bytes.len() as u64 == layout.size.bytes());
+                    let mut alloc = alloc.clone();
+                    // The align field is meaningless for values, so just use the layout's align
+                    alloc.align = layout.align;
+                    let alloc = ecx.tcx.intern_const_alloc(alloc);
+                    ConstValue::ByRef(alloc)
+                } else {
+                    bug!("expected ByRef value, got {:?}", val);
+                }
+            },
+        };
+        Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, ty))
+    })();
+    match result {
+        Ok(v) => v,
+        Err(mut err) => {
+            ecx.report(&mut err, true, None);
+            bug!("miri error occured when converting Value to ConstValue")
+        }
     }
-
-    let val = match layout.abi {
-        layout::Abi::Scalar(..) => {
-            if let Value::ByVal(val) = val {
-                ConstValue::ByVal(val)
-            } else {
-                bug!("expected ByVal value, got {:?}", val);
-            }
-        }
-        layout::Abi::ScalarPair(..) => {
-            if let Value::ByValPair(a, b) = val {
-                ConstValue::ByValPair(a, b)
-            } else {
-                bug!("expected ByValPair value, got {:?}", val);
-            }
-        }
-        _ => {
-            if let Value::ByRef(ptr, align) = val {
-                let ptr = ptr.primval.to_ptr().unwrap();
-                assert_eq!(ptr.offset, 0);
-                let alloc = tcx.interpret_interner
-                               .get_alloc(ptr.alloc_id)
-                               .expect("miri allocation never successfully created");
-                assert_eq!(align, alloc.align);
-                ConstValue::ByRef(alloc)
-            } else {
-                bug!("expected ByRef value, got {:?}", val);
-            }
-        },
-    };
-    ty::Const::from_const_value(tcx, val, ty)
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -423,7 +442,7 @@ pub fn const_val_field<'a, 'tcx>(
     let mut ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         let value = ecx.const_value_to_value(value, ty)?;
-        let (mut field, ty) = match value {
+        let (field, ty) = match value {
             Value::ByValPair(..) | Value::ByVal(_) => 
                 ecx.read_field(value, variant, field, ty)?.expect("const_val_field on non-field"),
             Value::ByRef(ptr, align) => {
@@ -438,24 +457,16 @@ pub fn const_val_field<'a, 'tcx>(
                 (Value::ByRef(ptr, align), layout.ty)
             }
         };
-        if let Value::ByRef(ptr, align) = field {
-            if let Some(val) = ecx.try_read_value(ptr, align, ty)? {
-                field = val;
-            }
-        }
-        Ok((field, ty))
+        Ok(value_to_const_value(&ecx, field, ty))
     })();
-    match result {
-        Ok((field, ty)) => Ok(value_to_const_value(tcx, field, ty)),
-        Err(err) => {
-            let (trace, span) = ecx.generate_stacktrace(None);
-            let err = ErrKind::Miri(err, trace);
-            Err(ConstEvalErr {
-                kind: err.into(),
-                span,
-            })
-        },
-    }
+    result.map_err(|err| {
+        let (trace, span) = ecx.generate_stacktrace(None);
+        let err = ErrKind::Miri(err, trace);
+        ConstEvalErr {
+            kind: err.into(),
+            span,
+        }
+    })
 }
 
 pub fn const_variant_index<'a, 'tcx>(
@@ -541,7 +552,7 @@ pub fn const_eval_provider<'a, 'tcx>(
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
     res.map(|(val, _, miri_ty)| {
-        value_to_const_value(tcx, val, miri_ty)
+        value_to_const_value(&ecx, val, miri_ty)
     }).map_err(|mut err| {
         if tcx.is_static(def_id).is_some() {
             ecx.report(&mut err, true, None);
