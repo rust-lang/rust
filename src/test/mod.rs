@@ -912,18 +912,7 @@ fn verify_check_works() {
     let temp_file = make_temp_file("temp_check.rs");
     assert_cli::Assert::command(&[
         rustfmt().to_str().unwrap(),
-        "--write-mode=check",
-        temp_file.path.to_str().unwrap(),
-    ]).succeeds()
-        .unwrap();
-}
-
-#[test]
-fn verify_diff_works() {
-    let temp_file = make_temp_file("temp_diff.rs");
-    assert_cli::Assert::command(&[
-        rustfmt().to_str().unwrap(),
-        "--write-mode=diff",
+        "--check",
         temp_file.path.to_str().unwrap(),
     ]).succeeds()
         .unwrap();

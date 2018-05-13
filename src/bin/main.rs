@@ -111,6 +111,7 @@ fn make_opts() -> Options {
          found reverts to the input file path",
         "[Path for the configuration file]",
     );
+    opts.optopt("", "emit", "What data to emit and how", WRITE_MODE_LIST);
     opts.optflag(
         "",
         "error-on-unformatted",
@@ -120,13 +121,13 @@ fn make_opts() -> Options {
     opts.optopt(
         "",
         "file-lines",
-        "Format specified line ranges. See README for more detail on the JSON format.",
+        "Format specified line ranges. Run with `--help file-lines` for more detail.",
         "JSON",
     );
     opts.optflagopt(
         "h",
         "help",
-        "Show this message or help about a specific topic: config or file-lines",
+        "Show this message or help about a specific topic: `config` or `file-lines`",
         "=TOPIC",
     );
     opts.optopt(
@@ -145,12 +146,6 @@ fn make_opts() -> Options {
     opts.optflag("v", "verbose", "Print verbose output");
     opts.optflag("q", "quiet", "Print less output");
     opts.optflag("V", "version", "Show version information");
-    opts.optopt(
-        "",
-        "write-mode",
-        "How to write output (not usable when piping from stdin)",
-        WRITE_MODE_LIST,
-    );
 
     opts
 }

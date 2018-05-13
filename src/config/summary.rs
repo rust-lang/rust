@@ -23,7 +23,7 @@ pub struct Summary {
     // Code is valid, but it is impossible to format it properly.
     has_formatting_errors: bool,
 
-    // Formatted code differs from existing code (write-mode diff only).
+    // Formatted code differs from existing code (--check only).
     pub has_diff: bool,
 
     // Keeps track of time spent in parsing and formatting steps.

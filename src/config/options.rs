@@ -363,11 +363,11 @@ impl CliOptions {
         options.config_path = matches.opt_str("config-path").map(PathBuf::from);
 
         options.check = matches.opt_present("check");
-        if let Some(ref write_mode) = matches.opt_str("write-mode") {
+        if let Some(ref emit_str) = matches.opt_str("emit") {
             if options.check {
-                return Err(format_err!("Invalid to set write-mode and `--check`"));
+                return Err(format_err!("Invalid to use `--emit` and `--check`"));
             }
-            if let Ok(write_mode) = WriteMode::from_str(write_mode) {
+            if let Ok(write_mode) = write_mode_from_emit_str(emit_str) {
                 if write_mode == WriteMode::Overwrite && matches.opt_present("backup") {
                     options.write_mode = Some(WriteMode::Replace);
                 } else {
@@ -375,8 +375,8 @@ impl CliOptions {
                 }
             } else {
                 return Err(format_err!(
-                    "Invalid write-mode: {}, expected one of {}",
-                    write_mode,
+                    "Invalid value for `--emit`: {}, expected one of {}",
+                    emit_str,
                     WRITE_MODE_LIST
                 ));
             }
@@ -439,5 +439,15 @@ impl CliOptions {
                 _ => eprintln!("Warning: Not a file '{}'", f),
             }
         }
+    }
+}
+
+fn write_mode_from_emit_str(emit_str: &str) -> FmtResult<WriteMode> {
+    match emit_str {
+        "files" => Ok(WriteMode::Overwrite),
+        "stdout" => Ok(WriteMode::Display),
+        "coverage" => Ok(WriteMode::Coverage),
+        "checkstyle" => Ok(WriteMode::Checkstyle),
+        _ => Err(format_err!("Invalid value for `--emit`")),
     }
 }
