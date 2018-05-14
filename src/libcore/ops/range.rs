@@ -404,6 +404,19 @@ impl<Idx> RangeInclusive<Idx> {
     pub fn end(&self) -> &Idx {
         &self.end
     }
+
+    /// Destructures the RangeInclusive into (lower bound, upper (inclusive) bound).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// assert_eq!((3..=5).into_inner(), (3, 5));
+    /// ```
+    #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[inline]
+    pub fn into_inner(self) -> (Idx, Idx) {
+        (self.start, self.end)
+    }
 }
 
 #[stable(feature = "inclusive_range", since = "1.26.0")]
