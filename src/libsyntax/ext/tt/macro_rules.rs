@@ -904,20 +904,8 @@ fn is_legal_fragment_specifier(sess: &ParseSess,
                                frag_name: &str,
                                frag_span: Span) -> bool {
     match frag_name {
-        "item" | "block" | "stmt" | "expr" | "pat" |
+        "item" | "block" | "stmt" | "expr" | "pat" | "lifetime" |
         "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
-        "lifetime" => {
-            if !features.macro_lifetime_matcher &&
-               !attr::contains_name(attrs, "allow_internal_unstable") {
-                let explain = feature_gate::EXPLAIN_LIFETIME_MATCHER;
-                emit_feature_err(sess,
-                                 "macro_lifetime_matcher",
-                                 frag_span,
-                                 GateIssue::Language,
-                                 explain);
-            }
-            true
-        },
         "literal" => {
             if !features.macro_literal_matcher &&
                !attr::contains_name(attrs, "allow_internal_unstable") {
