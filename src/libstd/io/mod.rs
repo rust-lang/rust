@@ -297,6 +297,11 @@ pub use self::stdio::{_print, _eprint};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
+#[unstable(feature = "set_stdio",
+           reason = "this may disappear completely or be replaced \
+                                         with a more general mechanism",
+           issue = "0")]
+pub use self::stdio::{LocalStderr, LocalStdout};
 
 pub mod prelude;
 mod buffered;
