@@ -1,7 +1,7 @@
 - Feature Name: `unreserve_proc`
 - Start Date: 2018-04-26
-- RFC PR: 
-- Rust Issue: 
+- RFC PR: [rust-lang/rfcs#2420](https://github.com/rust-lang/rfcs/pull/2420)
+- Rust Issue: N/A. Already implemented.
 
 # Summary
 [summary]: #summary
