@@ -649,7 +649,7 @@ where R: 'static + Send,
         let diag = core::new_handler(error_format, None);
 
         fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
-            let mut msg = diag.struct_warn(&format!("WARNING: the `#![doc({})]` attribute is \
+            let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
                                                      considered deprecated", name));
             msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
 
