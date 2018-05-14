@@ -17,7 +17,7 @@ pub use self::ItemEnum::*;
 pub use self::TyParamBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
-pub use self::Visibility::*;
+pub use self::Visibility::{Public, Inherited};
 
 use syntax;
 use rustc_target::spec::abi::Abi;
@@ -2973,11 +2973,22 @@ impl<'tcx> Clean<Item> for ty::FieldDef {
 pub enum Visibility {
     Public,
     Inherited,
+    Crate,
+    Restricted(DefId, Path),
 }
 
 impl Clean<Option<Visibility>> for hir::Visibility {
-    fn clean(&self, _: &DocContext) -> Option<Visibility> {
-        Some(if *self == hir::Visibility::Public { Public } else { Inherited })
+    fn clean(&self, cx: &DocContext) -> Option<Visibility> {
+        Some(match *self {
+            hir::Visibility::Public => Visibility::Public,
+            hir::Visibility::Inherited => Visibility::Inherited,
+            hir::Visibility::Crate => Visibility::Crate,
+            hir::Visibility::Restricted { ref path, .. } => {
+                let path = path.clean(cx);
+                let did = register_def(cx, path.def);
+                Visibility::Restricted(did, path)
+            }
+        })
     }
 }
 
