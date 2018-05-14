@@ -13,6 +13,7 @@ use str as core_str;
 use fmt;
 use fmt::Write;
 use mem;
+use iter::FusedIterator;
 
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "0")]
@@ -146,7 +147,13 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
             broken: &[],
         };
         self.source = &[];
-        return Some(r);
+        Some(r)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // We might return no characters (we encounter an error).
+        // We will return the most characters when the input is all ASCII.
+        (0, Some(self.source.len()))
     }
 }
 
@@ -176,6 +183,8 @@ impl fmt::Display for Utf8Lossy {
         Ok(())
     }
 }
+
+impl<'a> FusedIterator for Utf8LossyChunksIter<'a> {}
 
 impl fmt::Debug for Utf8Lossy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
