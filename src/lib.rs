@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(custom_attribute)]
+#![feature(tool_attributes)]
 #![feature(decl_macro)]
-// FIXME(cramertj) remove after match_default_bindings merges
-#![allow(stable_features)]
 #![allow(unused_attributes)]
-#![feature(match_default_bindings)]
 #![feature(type_ascription)]
 #![feature(unicode_internals)]
 
@@ -396,7 +393,7 @@ where
     Ok((result, has_diff))
 }
 
-/// Returns true if the line with the given line number was skipped by `#[rustfmt_skip]`.
+/// Returns true if the line with the given line number was skipped by `#[rustfmt::skip]`.
 fn is_skipped_line(line_number: usize, skipped_range: &[(usize, usize)]) -> bool {
     skipped_range
         .iter()
@@ -975,7 +972,7 @@ mod unit_tests {
 
     #[test]
     fn test_format_code_block_fail() {
-        #[rustfmt_skip]
+        #[rustfmt::skip]
         let code_block = "this_line_is_100_characters_long_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx(x, y, z);";
         assert!(format_code_block(code_block, &Config::default()).is_none());
     }

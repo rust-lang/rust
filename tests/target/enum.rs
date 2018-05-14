@@ -65,7 +65,7 @@ pub enum EnumWithAttributes {
     TupleVar(usize, usize, usize), /* AAAA AAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAA
                                     * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
     // Pre Comment
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     SkippedItem(String,String,), // Post-comment
     #[another_attr]
     #[attr2]

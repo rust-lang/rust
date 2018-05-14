@@ -1253,7 +1253,7 @@ mod test {
     }
 
     #[test]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     fn format_comments() {
         let mut config: ::config::Config = Default::default();
         config.set().wrap_comments(true);

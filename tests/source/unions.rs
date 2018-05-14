@@ -4,7 +4,7 @@
                                                                        /// A Doc comment
 #[AnAttribute]
 pub union Foo {
-    #[rustfmt_skip]
+    #[rustfmt::skip]
     f :   SomeType, // Comment beside a field
     f: SomeType, // Comment beside a field
     // Comment on a field
@@ -100,7 +100,7 @@ union Palette { /// A map of indices in the palette to a count of pixels in appr
 // when the field had attributes
 union FieldsWithAttributes {
     // Pre Comment
-    #[rustfmt_skip] pub host:String, // Post comment BBBBBBBBBBBBBB BBBBBBBBBBBBBBBB BBBBBBBBBBBBBBBB BBBBBBBBBBBBBBBBB BBBBBBBBBBB
+    #[rustfmt::skip] pub host:String, // Post comment BBBBBBBBBBBBBB BBBBBBBBBBBBBBBB BBBBBBBBBBBBBBBB BBBBBBBBBBBBBBBBB BBBBBBBBBBB
     //Another pre comment
     #[attr1]
     #[attr2] pub id: usize // CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCC CCCCCCCCCCCCCCCCCC CCCCCCCCCCCCCC CCCCCCCCCCCC

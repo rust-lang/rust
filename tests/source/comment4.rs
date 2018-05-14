@@ -48,5 +48,5 @@ fn debug_function() {
 
 #[link_section=".vectors"]
 #[no_mangle] // Test this attribute is preserved.
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[cfg_attr(rustfmt, rustfmt::skip)]
 pub static ISSUE_1284: [i32; 16] = [];

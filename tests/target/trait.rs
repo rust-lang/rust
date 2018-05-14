@@ -127,7 +127,7 @@ trait AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     D,
     E,
 > = FooBar;
-#[rustfmt_skip]
+#[rustfmt::skip]
 trait FooBar = Foo
     + Bar;
 

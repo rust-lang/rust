@@ -9,7 +9,7 @@ fn main() {
         y: y,
         #[attr]
         z: z,
-        #[rustfmt_skip]
+        #[rustfmt::skip]
         skipped: skipped,
     };
 }

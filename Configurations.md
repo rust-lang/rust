@@ -1951,7 +1951,7 @@ lines are found, they are trimmed down to match this integer.
 Original Code:
 
 ```rust
-#![rustfmt_skip]
+#![rustfmt::skip]
 
 fn foo() {
     println!("a");
@@ -2010,7 +2010,7 @@ them, additional blank lines are inserted.
 Original Code (rustfmt will not change it with the default value of `0`):
 
 ```rust
-#![rustfmt_skip]
+#![rustfmt::skip]
 
 fn foo() {
     println!("a");
