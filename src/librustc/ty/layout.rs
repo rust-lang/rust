@@ -888,6 +888,11 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     if x < min { min = x; }
                     if x > max { max = x; }
                 }
+                // We might have no inhabited variants, so pretend there's at least one.
+                if (min, max) == (i128::max_value(), i128::min_value()) {
+                    min = 0;
+                    max = 0;
+                }
                 assert!(min <= max, "discriminant range is {}...{}", min, max);
                 let (min_ity, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
 
