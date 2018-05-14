@@ -318,36 +318,28 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let provided = &segment.parameters;
         let own_counts = method_generics.own_counts();
         Substs::for_item(self.tcx, pick.item.def_id, |param, _| {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    let i = param.index as usize;
-                    let lt = if i < parent_substs.len() {
-                        parent_substs.region_at(i)
-                    } else if let Some(lifetime)
-                            = provided.as_ref().and_then(|p| p.lifetimes.get(i - parent_substs.len())) {
-                        AstConv::ast_region_to_region(self.fcx, lifetime, Some(param))
-                    } else {
-                        self.region_var_for_def(self.span, param)
-                    };
-                    UnpackedKind::Lifetime(lt)
+            let i = param.index as usize;
+            if i < parent_substs.len() {
+                parent_substs[i].unpack()
+            } else {
+                match param.kind {
+                    GenericParamDefKind::Lifetime => {
+                        if let Some(lifetime) = provided.as_ref().and_then(|p| {
+                            p.lifetimes.get(i - parent_substs.len())
+                        }) {
+                            return UnpackedKind::Lifetime(
+                                AstConv::ast_region_to_region(self.fcx, lifetime, Some(param)));
+                        }
+                    }
+                    GenericParamDefKind::Type(_) => {
+                        if let Some(ast_ty) = provided.as_ref().and_then(|p| {
+                            p.types.get(i - parent_substs.len() - own_counts.lifetimes)
+                        }) {
+                            return UnpackedKind::Type(self.to_ty(ast_ty));
+                        }
+                    }
                 }
-                GenericParamDefKind::Type(_) => {
-                    let i = param.index as usize;
-                    let ty = if i < parent_substs.len() {
-                        parent_substs.type_at(i)
-                    } else if let Some(ast_ty)
-                        = provided.as_ref().and_then(|p| {
-                            let idx =
-                                i - parent_substs.len() - own_counts.lifetimes;
-                            p.types.get(idx)
-                        })
-                    {
-                        self.to_ty(ast_ty)
-                    } else {
-                        self.type_var_for_def(self.span, param)
-                    };
-                    UnpackedKind::Type(ty)
-                }
+                self.var_for_def(self.span, param)
             }
         })
     }

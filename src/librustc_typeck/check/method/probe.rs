@@ -1389,26 +1389,17 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             xform_fn_sig.subst(self.tcx, substs)
         } else {
             let substs = Substs::for_item(self.tcx, method, |param, _| {
-                match param.kind {
-                    GenericParamDefKind::Lifetime => {
-                        let i = param.index as usize;
-                        let lt = if i < substs.len() {
-                            substs.region_at(i)
-                        } else {
+                let i = param.index as usize;
+                if i < substs.len() {
+                    substs[i].unpack()
+                } else {
+                    match param.kind {
+                        GenericParamDefKind::Lifetime => {
                             // In general, during probe we erase regions. See
                             // `impl_self_ty()` for an explanation.
-                            self.tcx.types.re_erased
-                        };
-                        UnpackedKind::Lifetime(lt)
-                    }
-                    GenericParamDefKind::Type(_) => {
-                        let i = param.index as usize;
-                        let ty = if i < substs.len() {
-                            substs.type_at(i)
-                        } else {
-                            self.type_var_for_def(self.span, param)
-                        };
-                        UnpackedKind::Type(ty)
+                            UnpackedKind::Lifetime(self.tcx.types.re_erased)
+                        }
+                        GenericParamDefKind::Type(_) => self.var_for_def(self.span, param),
                     }
                 }
             });

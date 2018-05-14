@@ -1746,7 +1746,11 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn ty_infer_for_def(&self,
                         ty_param_def: &ty::GenericParamDef,
                         span: Span) -> Ty<'tcx> {
-        self.type_var_for_def(span, ty_param_def)
+        if let UnpackedKind::Type(ty) = self.var_for_def(span, ty_param_def) {
+            ty
+        } else {
+            unreachable!()
+        }
     }
 
     fn projected_ty_from_poly_trait_ref(&self,
@@ -4759,17 +4763,26 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             (None, None) => (0, false)
         };
         let substs = Substs::for_item(self.tcx, def.def_id(), |param, substs| {
+            let mut i = param.index as usize;
+
+            let segment = if i < fn_start {
+                if let GenericParamDefKind::Type(_) = param.kind {
+                    // Handle Self first, so we can adjust the index to match the AST.
+                    if has_self && i == 0 {
+                        return opt_self_ty.map(|ty| UnpackedKind::Type(ty)).unwrap_or_else(|| {
+                            self.var_for_def(span, param)
+                        });
+                    }
+                }
+                i -= has_self as usize;
+                type_segment
+            } else {
+                i -= fn_start;
+                fn_segment
+            };
+
             match param.kind {
                 GenericParamDefKind::Lifetime => {
-                    let mut i = param.index as usize;
-
-                    let segment = if i < fn_start {
-                        i -= has_self as usize;
-                        type_segment
-                    } else {
-                        i -= fn_start;
-                        fn_segment
-                    };
                     let lifetimes = segment.map_or(&[][..], |(s, _)| {
                         s.parameters.as_ref().map_or(&[][..], |p| &p.lifetimes[..])
                     });
@@ -4782,21 +4795,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     UnpackedKind::Lifetime(lt)
                 }
                 GenericParamDefKind::Type(_) => {
-                    let mut i = param.index as usize;
-
-                    let segment = if i < fn_start {
-                        // Handle Self first, so we can adjust the index to match the AST.
-                        if has_self && i == 0 {
-                            return UnpackedKind::Type(opt_self_ty.unwrap_or_else(|| {
-                                self.type_var_for_def(span, param)
-                            }));
-                        }
-                        i -= has_self as usize;
-                        type_segment
-                    } else {
-                        i -= fn_start;
-                        fn_segment
-                    };
                     let (types, infer_types) = segment.map_or((&[][..], true), |(s, _)| {
                         (s.parameters.as_ref().map_or(&[][..], |p| &p.types[..]), s.infer_types)
                     });
@@ -4811,24 +4809,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => unreachable!()
                     };
 
-                    let ty = if let Some(ast_ty) = types.get(i) {
+                    if let Some(ast_ty) = types.get(i) {
                         // A provided type parameter.
-                        self.to_ty(ast_ty)
+                        UnpackedKind::Type(self.to_ty(ast_ty))
                     } else if !infer_types && has_default {
                         // No type parameter provided, but a default exists.
                         let default = self.tcx.type_of(param.def_id);
-                        self.normalize_ty(
+                        UnpackedKind::Type(self.normalize_ty(
                             span,
                             default.subst_spanned(self.tcx, substs, Some(span))
-                        )
+                        ))
                     } else {
                         // No type parameters were provided, we can infer all.
                         // This can also be reached in some error cases:
                         // We prefer to use inference variables instead of
                         // TyError to let type inference recover somewhat.
-                        self.type_var_for_def(span, param)
-                    };
-                    UnpackedKind::Type(ty)
+                        self.var_for_def(span, param)
+                    }
                 }
             }
         });

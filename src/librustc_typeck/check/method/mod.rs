@@ -256,20 +256,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Construct a trait-reference `self_ty : Trait<input_tys>`
         let substs = Substs::for_item(self.tcx, trait_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    UnpackedKind::Lifetime(self.region_var_for_def(span, param))
-                }
+                GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type(_) => {
-                    let ty = if param.index == 0 {
-                        self_ty
+                    if param.index == 0 {
+                        return UnpackedKind::Type(self_ty);
                     } else if let Some(ref input_types) = opt_input_types {
-                        input_types[param.index as usize - 1]
-                    } else {
-                        self.type_var_for_def(span, param)
-                    };
-                    UnpackedKind::Type(ty)
+                        return UnpackedKind::Type(input_types[param.index as usize - 1]);
+                    }
                 }
             }
+            self.var_for_def(span, param)
         });
 
         let trait_ref = ty::TraitRef::new(trait_def_id, substs);

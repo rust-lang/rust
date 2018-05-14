@@ -2329,18 +2329,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let substs = Substs::for_item(self, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime => bug!(),
-                GenericParamDefKind::Type(_) => {
+                GenericParamDefKind::Type(ty_param) => {
                     if param.index == 0 {
                         UnpackedKind::Type(ty)
                     } else {
-                        match param.kind {
-                            ty::GenericParamDefKind::Type(ty_param) => {
-                                assert!(ty_param.has_default);
-                                UnpackedKind::Type(
-                                    self.type_of(param.def_id).subst(self, substs))
-                            }
-                            _ => unreachable!()
-                        }
+                        assert!(ty_param.has_default);
+                        UnpackedKind::Type(self.type_of(param.def_id).subst(self, substs))
                     }
                 }
             }

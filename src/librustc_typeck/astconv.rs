@@ -276,7 +276,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     };
                     UnpackedKind::Lifetime(lt)
                 }
-                GenericParamDefKind::Type(_) => {
+                GenericParamDefKind::Type(ty) => {
                     let i = param.index as usize;
 
                     // Handle Self first, so we can adjust the index to match the AST.
@@ -284,24 +284,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         return UnpackedKind::Type(ty);
                     }
 
-                    let has_default = match param.kind {
-                        GenericParamDefKind::Type(ty) => ty.has_default,
-                        _ => unreachable!()
-                    };
-
                     let i = i - (lt_accepted + own_self);
                     let ty = if i < ty_provided {
                         // A provided type parameter.
                         self.ast_ty_to_ty(&parameters.types[i])
                     } else if infer_types {
                         // No type parameters were provided, we can infer all.
-                        let ty_var = if !default_needs_object_self(param) {
+                        if !default_needs_object_self(param) {
                             self.ty_infer_for_def(param, span)
                         } else {
                             self.ty_infer(span)
-                        };
-                        ty_var
-                    } else if has_default {
+                        }
+                    } else if ty.has_default {
                         // No type parameter provided, but a default exists.
 
                         // If we are converting an object type, then the

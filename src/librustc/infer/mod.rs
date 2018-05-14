@@ -905,34 +905,34 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.next_region_var(RegionVariableOrigin::NLL(origin))
     }
 
-    /// Create a region inference variable for the given
-    /// region parameter definition.
-    pub fn region_var_for_def(&self,
-                              span: Span,
-                              def: &ty::GenericParamDef)
-                              -> ty::Region<'tcx> {
-        self.next_region_var(EarlyBoundRegion(span, def.name))
-    }
+    pub fn var_for_def(&self,
+                       span: Span,
+                       param: &ty::GenericParamDef)
+                       -> UnpackedKind<'tcx> {
+        match param.kind {
+            GenericParamDefKind::Lifetime => {
+                // Create a region inference variable for the given
+                // region parameter definition.
+                UnpackedKind::Lifetime(self.next_region_var(EarlyBoundRegion(span, param.name)))
+            }
+            GenericParamDefKind::Type(_) => {
+                // Create a type inference variable for the given
+                // type parameter definition. The substitutions are
+                // for actual parameters that may be referred to by
+                // the default of this type parameter, if it exists.
+                // E.g. `struct Foo<A, B, C = (A, B)>(...);` when
+                // used in a path such as `Foo::<T, U>::new()` will
+                // use an inference variable for `C` with `[T, U]`
+                // as the substitutions for the default, `(T, U)`.
+                let ty_var_id = self.type_variables
+                                    .borrow_mut()
+                                    .new_var(self.universe(),
+                                             false,
+                                             TypeVariableOrigin::TypeParameterDefinition(span, param.name));
 
-    /// Create a type inference variable for the given
-    /// type parameter definition. The substitutions are
-    /// for actual parameters that may be referred to by
-    /// the default of this type parameter, if it exists.
-    /// E.g. `struct Foo<A, B, C = (A, B)>(...);` when
-    /// used in a path such as `Foo::<T, U>::new()` will
-    /// use an inference variable for `C` with `[T, U]`
-    /// as the substitutions for the default, `(T, U)`.
-    pub fn type_var_for_def(&self,
-                            span: Span,
-                            def: &ty::GenericParamDef)
-                            -> Ty<'tcx> {
-        let ty_var_id = self.type_variables
-                            .borrow_mut()
-                            .new_var(self.universe(),
-                                     false,
-                                     TypeVariableOrigin::TypeParameterDefinition(span, def.name));
-
-        self.tcx.mk_var(ty_var_id)
+                UnpackedKind::Type(self.tcx.mk_var(ty_var_id))
+            }
+        }
     }
 
     /// Given a set of generics defined on a type or impl, returns a substitution mapping each
@@ -942,14 +942,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                  def_id: DefId)
                                  -> &'tcx Substs<'tcx> {
         Substs::for_item(self.tcx, def_id, |param, _| {
-            match param.kind {
-                GenericParamDefKind::Lifetime => {
-                    UnpackedKind::Lifetime(self.region_var_for_def(span, param))
-                }
-                GenericParamDefKind::Type(_) => {
-                    UnpackedKind::Type(self.type_var_for_def(span, param))
-                }
-            }
+            self.var_for_def(span, param)
         })
     }
 
