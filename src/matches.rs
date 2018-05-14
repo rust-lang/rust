@@ -196,7 +196,7 @@ fn rewrite_match_arms(
 
     let arm_len = arms.len();
     let is_last_iter = repeat(false)
-        .take(arm_len.checked_sub(1).unwrap_or(0))
+        .take(arm_len.saturating_sub(1))
         .chain(repeat(true));
     let beginning_verts = collect_beginning_verts(context, arms, span);
     let items = itemize_list(

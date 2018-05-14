@@ -1091,9 +1091,7 @@ fn indent_macro_snippet(
                         _ if !trimmed => line.to_owned(),
                         Some(original_indent_width) => {
                             let new_indent_width = indent.width()
-                                + original_indent_width
-                                    .checked_sub(min_prefix_space_width)
-                                    .unwrap_or(0);
+                                + original_indent_width.saturating_sub(min_prefix_space_width);
                             let new_indent = Indent::from_width(context.config, new_indent_width);
                             format!("{}{}", new_indent.to_string(context.config), line.trim())
                         }

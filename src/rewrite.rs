@@ -53,7 +53,7 @@ impl<'a> RewriteContext<'a> {
     }
 
     pub fn budget(&self, used_width: usize) -> usize {
-        self.config.max_width().checked_sub(used_width).unwrap_or(0)
+        self.config.max_width().saturating_sub(used_width)
     }
 
     pub fn inside_macro(&self) -> bool {

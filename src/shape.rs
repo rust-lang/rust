@@ -181,7 +181,7 @@ impl Shape {
 
     pub fn indented(indent: Indent, config: &Config) -> Shape {
         Shape {
-            width: config.max_width().checked_sub(indent.width()).unwrap_or(0),
+            width: config.max_width().saturating_sub(indent.width()),
             indent,
             offset: indent.alignment,
         }
@@ -189,10 +189,7 @@ impl Shape {
 
     pub fn with_max_width(&self, config: &Config) -> Shape {
         Shape {
-            width: config
-                .max_width()
-                .checked_sub(self.indent.width())
-                .unwrap_or(0),
+            width: config.max_width().saturating_sub(self.indent.width()),
             ..*self
         }
     }
@@ -266,17 +263,13 @@ impl Shape {
     pub fn rhs_overhead(&self, config: &Config) -> usize {
         config
             .max_width()
-            .checked_sub(self.used_width() + self.width)
-            .unwrap_or(0)
+            .saturating_sub(self.used_width() + self.width)
     }
 
     pub fn comment(&self, config: &Config) -> Shape {
         let width = min(
             self.width,
-            config
-                .comment_width()
-                .checked_sub(self.indent.width())
-                .unwrap_or(0),
+            config.comment_width().saturating_sub(self.indent.width()),
         );
         Shape { width, ..*self }
     }
