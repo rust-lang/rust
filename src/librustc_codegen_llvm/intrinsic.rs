@@ -1197,9 +1197,11 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
         let llvm_name = &format!("llvm.{0}.v{1}{2}", name, in_len, ety);
         let intrinsic = bx.cx.get_intrinsic(&llvm_name);
-        return Ok(bx.call(intrinsic,
-                          &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                          None));
+        let c = bx.call(intrinsic,
+                        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                        None);
+        unsafe { llvm::LLVMRustSetHasUnsafeAlgebra(c) };
+        return Ok(c);
     }
 
     if name == "simd_fsqrt" {
