@@ -2,6 +2,8 @@
 
 Hello fellow Rustacean! Great to see your interest in compiler internals and lints!
 
+**First**: if you're unsure or afraid of _anything_, just ask or submit the issue or pull request anyway. You won't be yelled at for giving it your best effort. The worst that can happen is that you'll be politely asked to change something. We appreciate any sort of contributions, and don't want a wall of rules to get in the way of that.
+
 Clippy welcomes contributions from everyone. There are many ways to contribute to Clippy and the following document explains how
 you can contribute and how to get started.
 If you have any questions about contributing or need help with anything, feel free to ask questions on issues or
