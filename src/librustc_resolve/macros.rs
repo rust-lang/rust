@@ -528,7 +528,6 @@ impl<'a> Resolver<'a> {
                                 b1: shadower,
                                 b2: binding,
                                 lexical: true,
-                                legacy: false,
                             });
                             return potential_illegal_shadower;
                         }

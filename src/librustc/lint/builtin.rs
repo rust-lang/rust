@@ -177,12 +177,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub LEGACY_IMPORTS,
-    Deny,
-    "detects names that resolve to ambiguous glob imports with RFC 1560"
-}
-
-declare_lint! {
     pub LEGACY_CONSTRUCTOR_VISIBILITY,
     Deny,
     "detects use of struct constructors that would be invisible with new visibility rules"
@@ -314,7 +308,6 @@ impl LintPass for HardwiredLints {
             SAFE_PACKED_BORROWS,
             PATTERNS_IN_FNS_WITHOUT_BODY,
             LEGACY_DIRECTORY_OWNERSHIP,
-            LEGACY_IMPORTS,
             LEGACY_CONSTRUCTOR_VISIBILITY,
             MISSING_FRAGMENT_SPECIFIER,
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
