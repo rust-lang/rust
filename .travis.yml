@@ -197,7 +197,7 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
     # TOOLSTATE_REPO_ACCESS_TOKEN=...
-    - secure: "cFh8thThqEJLC98XKI5pfqflUzOlxsYPRW20AWRaYOOgYHPTiGWypTXiPbGSKaeAXTZoOA+DpQtEmefc0U6lt9dHc7a/MIaK6isFurjlnKYiLOeTruzyu1z7PWCeZ/jKXsU2RK/88DBtlNwfMdaMIeuKj14IVfpepPPL71ETbuk="
+    - secure: "ESfcXqv4N2VMhqi2iIyw6da9VrsA78I4iR1asouCaq4hzTTrkB4WNRrfURy6xg72gQ4nMhtRJbB0/2jmc9Cu1+g2CzXtyiL223aJ5CKrXdcvbitopQSDfp07dMWm+UED+hNFEanpErKAeU/6FM3A+J+60PMk8MCF1h9tqNRISJw="
 
 before_install:
   # We'll use the AWS cli to download/upload cached docker layers, so install
