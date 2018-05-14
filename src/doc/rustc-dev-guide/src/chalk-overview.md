@@ -37,7 +37,8 @@ extend.
 Chalk is designed to be incorporated with the Rust compiler, so the syntax and
 concepts it deals with heavily borrow from Rust. It is convenient for the sake
 of testing to be able to run chalk on its own, so chalk includes a parser for a
-Rust-like syntax.
+Rust-like syntax. This syntax is orthogonal to the Rust AST and grammar. It is
+not intended to look exactly like it or support the exact same syntax.
 
 The parser takes that syntax and produces an [Abstract Syntax Tree (AST)][ast].
 You can find the [complete definition of the AST][chalk-ast] in the source code.
