@@ -1051,9 +1051,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprBreak(label, ref opt_expr) => {
               // Find which label this break jumps to
               let target = match label.target_id {
-                    hir::LoopIdResult::Ok(node_id) => self.break_ln.get(&node_id),
-                    hir::LoopIdResult::Err(err) =>
-                        span_bug!(expr.span, "loop scope error: {}", err),
+                    Ok(node_id) => self.break_ln.get(&node_id),
+                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
               }.map(|x| *x);
 
               // Now that we know the label we're going to,
@@ -1068,9 +1067,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           hir::ExprAgain(label) => {
               // Find which label this expr continues to
               let sc = match label.target_id {
-                    hir::LoopIdResult::Ok(node_id) => node_id,
-                    hir::LoopIdResult::Err(err) =>
-                        span_bug!(expr.span, "loop scope error: {}", err),
+                    Ok(node_id) => node_id,
+                    Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
               };
 
               // Now that we know the label we're going to,

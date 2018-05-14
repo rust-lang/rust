@@ -929,9 +929,9 @@ impl<'a> LoweringContext<'a> {
         match destination {
             Some((id, label)) => {
                 let target_id = if let Def::Label(loop_id) = self.expect_full_def(id) {
-                    hir::LoopIdResult::Ok(self.lower_node_id(loop_id).node_id)
+                    Ok(self.lower_node_id(loop_id).node_id)
                 } else {
-                    hir::LoopIdResult::Err(hir::LoopIdError::UnresolvedLabel)
+                    Err(hir::LoopIdError::UnresolvedLabel)
                 };
                 hir::Destination {
                     label: self.lower_label(Some(label)),
@@ -3598,7 +3598,7 @@ impl<'a> LoweringContext<'a> {
                             hir::ExprBreak(
                                 hir::Destination {
                                     label: None,
-                                    target_id: hir::LoopIdResult::Ok(catch_node),
+                                    target_id: Ok(catch_node),
                                 },
                                 Some(from_err_expr),
                             ),

@@ -133,8 +133,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.require_loop("break", e.span);
             }
             hir::ExprAgain(label) => {
-                if let hir::LoopIdResult::Err(
-                        hir::LoopIdError::UnlabeledCfInWhileCondition) = label.target_id {
+                if let Err(hir::LoopIdError::UnlabeledCfInWhileCondition) = label.target_id {
                     self.emit_unlabled_cf_in_while_condition(e.span, "continue");
                 }
                 self.require_loop("continue", e.span)

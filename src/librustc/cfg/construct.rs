@@ -582,7 +582,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                   scope_cf_kind: ScopeCfKind) -> (region::Scope, CFGIndex) {
 
         match destination.target_id {
-            hir::LoopIdResult::Ok(loop_id) => {
+            Ok(loop_id) => {
                 for b in &self.breakable_block_scopes {
                     if b.block_expr_id == self.tcx.hir.node_to_hir_id(loop_id).local_id {
                         let scope_id = self.tcx.hir.node_to_hir_id(loop_id).local_id;
@@ -603,7 +603,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 }
                 span_bug!(expr.span, "no scope for id {}", loop_id);
             }
-            hir::LoopIdResult::Err(err) => span_bug!(expr.span, "scope error: {}",  err),
+            Err(err) => span_bug!(expr.span, "scope error: {}",  err),
         }
     }
 }

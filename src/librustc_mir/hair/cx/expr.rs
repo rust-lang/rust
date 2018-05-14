@@ -536,21 +536,19 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
         hir::ExprBreak(dest, ref value) => {
             match dest.target_id {
-                hir::LoopIdResult::Ok(target_id) => ExprKind::Break {
+                Ok(target_id) => ExprKind::Break {
                     label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(target_id).local_id),
                     value: value.to_ref(),
                 },
-                hir::LoopIdResult::Err(err) =>
-                    bug!("invalid loop id for break: {}", err)
+                Err(err) => bug!("invalid loop id for break: {}", err)
             }
         }
         hir::ExprAgain(dest) => {
             match dest.target_id {
-                hir::LoopIdResult::Ok(loop_id) => ExprKind::Continue {
+                Ok(loop_id) => ExprKind::Continue {
                     label: region::Scope::Node(cx.tcx.hir.node_to_hir_id(loop_id).local_id),
                 },
-                hir::LoopIdResult::Err(err) =>
-                    bug!("invalid loop id for continue: {}", err)
+                Err(err) => bug!("invalid loop id for continue: {}", err)
             }
         }
         hir::ExprMatch(ref discr, ref arms, _) => {

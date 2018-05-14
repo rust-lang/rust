@@ -656,11 +656,6 @@ impl_stable_hash_for!(struct hir::Destination {
 
 impl_stable_hash_for_spanned!(ast::Ident);
 
-impl_stable_hash_for!(enum hir::LoopIdResult {
-    Ok(node_id),
-    Err(loop_id_error)
-});
-
 impl_stable_hash_for!(enum hir::LoopIdError {
     OutsideLoopScope,
     UnlabeledCfInWhileCondition,
