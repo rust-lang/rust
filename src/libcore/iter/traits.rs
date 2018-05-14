@@ -587,7 +587,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// that information can be useful. For example, if you want to iterate
 /// backwards, a good start is to know where the end is.
 ///
-/// When implementing an `ExactSizeIterator`, You must also implement
+/// When implementing an `ExactSizeIterator`, you must also implement
 /// [`Iterator`]. When doing so, the implementation of [`size_hint`] *must*
 /// return the exact size of the iterator.
 ///
