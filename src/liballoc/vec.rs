@@ -569,10 +569,7 @@ impl<T> Vec<T> {
         self.buf.try_reserve_exact(self.len, additional)
     }
 
-    /// Shrinks the capacity of the vector as much as possible.
-    ///
-    /// It will drop down as close as possible to the length but the allocator
-    /// may still inform the vector that there is space for a few more elements.
+    /// Non-binding request to reduce the capacity of the vector.
     ///
     /// # Examples
     ///
