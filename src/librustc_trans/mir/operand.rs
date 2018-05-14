@@ -18,7 +18,7 @@ use rustc_data_structures::indexed_vec::Idx;
 
 use base;
 use common::{self, CodegenCx, C_null, C_undef, C_usize};
-use builder::Builder;
+use builder::{Builder, MemFlags};
 use value::Value;
 use type_of::LayoutLlvmExt;
 use type_::Type;
@@ -272,6 +272,18 @@ impl<'a, 'tcx> OperandRef<'tcx> {
 
 impl<'a, 'tcx> OperandValue {
     pub fn store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+        self.store_with_flags(bx, dest, MemFlags::empty());
+    }
+
+    pub fn volatile_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+        self.store_with_flags(bx, dest, MemFlags::VOLATILE);
+    }
+
+    pub fn nontemporal_store(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>) {
+        self.store_with_flags(bx, dest, MemFlags::NONTEMPORAL);
+    }
+
+    fn store_with_flags(self, bx: &Builder<'a, 'tcx>, dest: PlaceRef<'tcx>, flags: MemFlags) {
         debug!("OperandRef::store: operand={:?}, dest={:?}", self, dest);
         // Avoid generating stores of zero-sized values, because the only way to have a zero-sized
         // value is through `undef`, and store itself is useless.
@@ -279,11 +291,13 @@ impl<'a, 'tcx> OperandValue {
             return;
         }
         match self {
-            OperandValue::Ref(r, source_align) =>
+            OperandValue::Ref(r, source_align) => {
                 base::memcpy_ty(bx, dest.llval, r, dest.layout,
-                                source_align.min(dest.align)),
+                                source_align.min(dest.align), flags)
+            }
             OperandValue::Immediate(s) => {
-                bx.store(base::from_immediate(bx, s), dest.llval, dest.align);
+                let val = base::from_immediate(bx, s);
+                bx.store_with_flags(val, dest.llval, dest.align, flags);
             }
             OperandValue::Pair(a, b) => {
                 for (i, &x) in [a, b].iter().enumerate() {
@@ -292,7 +306,8 @@ impl<'a, 'tcx> OperandValue {
                     if common::val_ty(x) == Type::i1(bx.cx) {
                         llptr = bx.pointercast(llptr, Type::i8p(bx.cx));
                     }
-                    bx.store(base::from_immediate(bx, x), llptr, dest.align);
+                    let val = base::from_immediate(bx, x);
+                    bx.store_with_flags(val, llptr, dest.align, flags);
                 }
             }
         }
