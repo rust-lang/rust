@@ -22,8 +22,8 @@ use config::Color;
 use rewrite::RewriteContext;
 use shape::Shape;
 
-const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
-const SKIP_ANNOTATION: &str = "rustfmt::skip";
+pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
+pub const SKIP_ANNOTATION: &str = "rustfmt::skip";
 
 // Computes the length of a string's last line, minus offset.
 pub fn extra_offset(text: &str, shape: Shape) -> usize {

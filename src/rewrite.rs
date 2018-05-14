@@ -16,6 +16,7 @@ use syntax::parse::ParseSess;
 use config::{Config, IndentStyle};
 use shape::Shape;
 use visitor::SnippetProvider;
+use FormatReport;
 
 use std::cell::RefCell;
 
@@ -38,6 +39,7 @@ pub struct RewriteContext<'a> {
     // When rewriting chain, veto going multi line except the last element
     pub force_one_line_chain: RefCell<bool>,
     pub snippet_provider: &'a SnippetProvider<'a>,
+    pub report: FormatReport,
 }
 
 impl<'a> RewriteContext<'a> {
