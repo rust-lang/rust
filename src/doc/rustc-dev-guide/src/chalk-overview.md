@@ -2,8 +2,8 @@
 
 > Chalk is under heavy development, so if any of these links are broken or if
 > any of the information is inconsistent with the code or outdated, please
-> [open an issue][rustc-issues] so we can fix it. If you are able to fix the issue yourself, we would
-> love your contribution!
+> [open an issue][rustc-issues] so we can fix it. If you are able to fix the
+> issue yourself, we would love your contribution!
 
 [Chalk][chalk] recasts Rust's trait system explicitly in terms of logic
 programming by "lowering" Rust code into a kind of logic program we can then
@@ -42,7 +42,7 @@ Rust-like syntax.
 The parser takes that syntax and produces an [Abstract Syntax Tree (AST)][ast].
 You can find the [complete definition of the AST][chalk-ast] in the source code.
 
-The syntax contains things from Rust that we know and love for example traits,
+The syntax contains things from Rust that we know and love, for example: traits,
 impls, and struct definitions. Parsing is often the first "phase" of
 transformation that a program goes through in order to become a format that
 chalk can understand.
@@ -67,14 +67,14 @@ essentially one of the following:
   * `forall<T> { ... }` is represented in the code using the [`Binders<T>`
     struct][binders-struct].
 
-This is the phase where we encode the rules of the trait system into logic. For
-example, if we have:
+Lowering is the phase where we encode the rules of the trait system into logic.
+For example, if we have the following Rust:
 
 ```rust,ignore
 impl<T: Clone> Clone for Vec<T> {}
 ```
 
-We generate:
+We generate the following program clause:
 
 ```rust,ignore
 forall<T> { (Vec<T>: Clone) :- (T: Clone) }
@@ -102,22 +102,23 @@ For example, if you have a type like `Foo<Bar>`, we would represent `Foo` as a
 string in the AST but in `ir::Program`, we use numeric indices (`ItemId`).
 
 In addition to `ir::Program` which has "rust-like things", there is also
-`ir::ProgramEnvironment` which is "pure logic". The main field in that is
+`ir::ProgramEnvironment` which is "pure logic". The main field in that struct is
 `program_clauses` which contains the `ProgramClause`s that we generated
 previously.
 
 ## Rules
 
 The `rules` module works by iterating over every trait, impl, etc. and emitting
-the rules that come from each one. The traits section of the rustc-guide (that
-you are currently reading) contains the most up-to-date reference on that.
+the rules that come from each one. See [Lowering Rules][lowering-rules] for the
+most up-to-date reference on that.
 
 The `ir::ProgramEnvironment` is created [in this module][rules-environment].
 
 ## Testing
 
 TODO: Basically, [there is a macro](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L112-L148)
-that will take syntax and run it through the full pipeline described above.
+that will take chalk's Rust-like syntax and run it through the full pipeline
+described above.
 [This](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L83-L110)
 is the function that is ultimately called.
 
