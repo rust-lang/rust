@@ -49,9 +49,11 @@ use sys::os as os_imp;
 /// ```
 /// use std::env;
 ///
-/// // We assume that we are in a valid directory.
-/// let path = env::current_dir().unwrap();
-/// println!("The current directory is {}", path.display());
+/// fn main() -> std::io::Result<()> {
+///     let path = env::current_dir()?;
+///     println!("The current directory is {}", path.display());
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn current_dir() -> io::Result<PathBuf> {
@@ -441,15 +443,18 @@ pub struct JoinPathsError {
 /// Joining paths on a Unix-like platform:
 ///
 /// ```
-/// # if cfg!(unix) {
 /// use std::env;
 /// use std::ffi::OsString;
 /// use std::path::Path;
 ///
-/// let paths = [Path::new("/bin"), Path::new("/usr/bin")];
-/// let path_os_string = env::join_paths(paths.iter()).unwrap();
-/// assert_eq!(path_os_string, OsString::from("/bin:/usr/bin"));
+/// fn main() -> Result<(), env::JoinPathsError> {
+/// # if cfg!(unix) {
+///     let paths = [Path::new("/bin"), Path::new("/usr/bin")];
+///     let path_os_string = env::join_paths(paths.iter())?;
+///     assert_eq!(path_os_string, OsString::from("/bin:/usr/bin"));
 /// # }
+///     Ok(())
+/// }
 /// ```
 ///
 /// Joining a path containing a colon on a Unix-like platform results in an error:
@@ -471,11 +476,15 @@ pub struct JoinPathsError {
 /// use std::env;
 /// use std::path::PathBuf;
 ///
-/// if let Some(path) = env::var_os("PATH") {
-///     let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-///     paths.push(PathBuf::from("/home/xyz/bin"));
-///     let new_path = env::join_paths(paths).unwrap();
-///     env::set_var("PATH", &new_path);
+/// fn main() -> Result<(), env::JoinPathsError> {
+///     if let Some(path) = env::var_os("PATH") {
+///         let mut paths = env::split_paths(&path).collect::<Vec<_>>();
+///         paths.push(PathBuf::from("/home/xyz/bin"));
+///         let new_path = env::join_paths(paths)?;
+///         env::set_var("PATH", &new_path);
+///     }
+///
+///     Ok(())
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
